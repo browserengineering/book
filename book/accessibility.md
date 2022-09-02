@@ -755,7 +755,7 @@ to allow the user to go back, to type in the address bar, and to
 create and cycle through tabs, all with the keyboard. We'll also add a
 keyboard shortcut for quitting the browser.[^one-more] Let's make all
 these shortcuts use the `Ctrl` modifier key so they don't interfere
-with normal typing: `Ctrl-Left` to go back, `Ctrl-l` to type in the
+with normal typing: `Ctrl-Left` to go back, `Ctrl-L` to type in the
 address bar, `Ctrl-T` to create a new tab, `Ctrl-Tab` to switch to the
 next tab, and `Ctrl-Q` to exit the browser:
 
@@ -810,10 +810,10 @@ things on the page, and press `Enter` to actually click on them.
 
 We'll implement this by expanding our implementation of *focus*. We
 already have a `focus` property on each `Tab` indicating which `input`
-element is capturing keyboard input. Let's allow allow buttons and
-links to be focused as well. Of course, they don't capture keyboard
-input, but when the user pressed `Enter` we'll press the button
-navigate to the link. We'll start by binding those keys:
+element is capturing keyboard input. Let's allow buttons and links to
+be focused as well. Of course, they don't capture keyboard input, but
+when the user pressed `Enter` we'll press the button or navigate to
+the link. We'll start by binding those keys:
 
 ``` {.python}
 if __name__ == "__main__":
@@ -853,7 +853,7 @@ Let's start with the `advance_tab` method. Each time it's called, the
 browser should advance focus to the next focusable thing. This will
 first require a definition of which elements are focusable:
 
-``` {.python replace=]/]%20\}
+``` {.python replace=)]/)]%20\}
 def is_focusable(node):
     return node.tag in ["input", "button", "a"]
 
@@ -969,11 +969,12 @@ might want to change the order in which the user tabs through
 focusable items.
 
 Browsers support the `tabindex` HTML attribute to make this possible.
-The `tabindex` attribute is a number; elements with a negative value
-aren't focusable and smaller numbers come before larger numbers and
-elements without a `tabindex` attribute. To implement that, we need to
-sort the focusable elements by tab index, so we need a function that
-returns the tab index:
+The `tabindex` attribute is a number. An element isn't focusable if
+its `tabindex` is negative, and elements with smaller `tabindex`
+values come before those with larger values and those without a
+`tabindex` at all. To implement that, we need to sort the focusable
+elements by tab index, so we need a function that returns the tab
+index:
 
 ``` {.python}
 def get_tabindex(node):
@@ -1005,8 +1006,12 @@ this let's first extend `is_focusable` to consider `tabindex`:
 
 ``` {.python}
 def is_focusable(node):
-    return node.tag in ["input", "button", "a"] \
-        or "tabindex" in node.attributes
+    if get_tabindex(node) <= 0:
+        return False
+    elif "tabindex" in node.attributes:
+        return True
+    else:
+        return node.tag in ["input", "button", "a"]
 ```
 
 Next, we need to make sure to send a `click` event when an element is
@@ -1019,6 +1024,9 @@ class Tab:
         if self.js.dispatch_event("click", self.focus): return
         self.activate_element(self.focus)
 ```
+
+Note that just like clicking on an element, activating an element can
+be cancelled from JavaScript using `preventDefault`.
 
 We now have configurable keyboard navigation for both the browser and
 the web page content. And it involved writing barely any new code,
@@ -1051,16 +1059,16 @@ navigate a website, it's a little hard to know which element is
 focused when. A visual indication---similar to the cursor we use on
 text inputs---would help sighted users know if they've reached the
 element they want or if they need to keep hitting `Tab`. In most
-browsers, this visual indiciation is done with a *focus ring* that
-outlines the focused element.
+browsers, this visual indication is a *focus ring* that outlines the
+focused element.
 
 To implement focus rings, we're going to have to generalize how we
-implemented text cursors. Recall that, right now, text cursors are
-added by drawing a verticle line in the `Tab`'s `render` method. We
-could extend that code to draw a cursor or an outline, but before we
-make that method more complicated let's move it into the `InputLayout`
-so we have easier access to size and position information.[^effects]
-To do that, we'll need each `InputLayout` to know whether or not it is
+implement text cursors. Recall that, right now, text cursors are added
+by drawing a verticle line in the `Tab`'s `render` method. We could
+extend that code to draw a cursor or an outline, but before we make
+that method more complicated let's move it into the `InputLayout` so
+we have easier access to size and position information.[^effects] To
+do that, we'll need each `InputLayout` to know whether or not it is
 currently focused:
 
 [^effects]: As a side effect, this change will also mean text cursors
@@ -1159,8 +1167,8 @@ class LineLayout:
             paint_outline(parent, display_list, outline_rect)
 ```
 
-You can also add a `paint_outline` call to `BlockLayout`,
-since users can make any element focusable with `tabindex`.
+You should also add a `paint_outline` call to `BlockLayout`, since
+users can make any element focusable with `tabindex`.
 
 Now when you `Tab` through a page, you should see the focused element
 highlighted with a black outline. And if a link happens to cross
@@ -1192,7 +1200,7 @@ particular, syntax that looks like this:
 
     outline: 3px solid red;
 
-Which means "make the outline red 3px thick". First parse it:
+Which means "make the outline 3 pixels thick and red". First parse it:
 
 ``` {.python}
 def parse_outline(outline_str):
@@ -1206,14 +1214,15 @@ def parse_outline(outline_str):
     return (int(values[0][:-2]), values[2])
 ```
 
-Now to use it. The outline will be present if the element is focused or has the
-`outline` CSS property generally. While we could finish implementing that via
-some extra logic in `paint_outline`, the feature has a fundamental problem that
-has to be fixed. Specifying an outline is a fine feature to offer to web
-developers, but it doesn't actually solve the problem of customizing the focus
-outline. That's because `outline`, if specified by the developer,
-would *always* apply, but instead we want it to only apply to an element when
-it's focused!
+Now to use it. The outline will be present if the element is focused
+or has the `outline` CSS property generally. However: while we could
+finish implementing that via some extra logic in `paint_outline`, the
+feature has a fundamental problem that has to be fixed. Specifying an
+outline is a fine feature to offer to web developers, but it doesn't
+actually solve the problem of customizing the focus outline. That's
+because `outline`, if specified by the developer, would *always*
+apply, but instead we want it to only apply to an element when it's
+focused!
 
 To do this we need some way to let developers
 express *outline-only-while-focused* in CSS. This is done with a

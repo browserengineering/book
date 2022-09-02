@@ -546,8 +546,12 @@ class InputLayout:
             self.x, self.y, self.width, self.height)
 
 def is_focusable(node):
-    return node.tag in ["input", "button", "a"] \
-        or "tabindex" in node.attributes
+    if get_tabindex(node) <= 0:
+        return False
+    elif "tabindex" in node.attributes:
+        return True
+    else:
+        return node.tag in ["input", "button", "a"]
 
 def compute_role(node):
     if isinstance(node, Text):
