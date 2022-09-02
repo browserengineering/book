@@ -1,0 +1,38 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="widget.css" />
+
+<form id="controls">
+  <fieldset id="step-controls">
+    <h1>The Chapter 8 Browser</h1>
+    <button class="reset left" disabled><span>Restart</span></button>
+    <button class="stepf right"><span>Go</span></button>
+  </fieldset>
+  <fieldset id="input-controls">
+    <kbd>https://localhost:8000/<input id="input" class="continue" type="url" value="" /></kbd>
+  </fieldset>
+</form>
+<figure id="widget">
+  <canvas id="canvas" width="352" height="160"></canvas>
+</figure>
+
+<script type="module" src="rt.js"></script>
+<script type="module" src="lab8.js"></script>
+<script type="module">
+import { rt_constants, socket, Widget } from "./rt.js";
+import { Browser, constants } from "./lab8.js";
+import { handle_connection } from "./server8.js";
+
+socket.accept(8000, handle_connection);
+rt_constants.TKELEMENT = document.querySelector("#canvas");
+
+let widget = new Widget(document.querySelector("#controls"));
+widget.run(async function() {
+    constants.WIDTH = window.innerWidth;
+    let url = "https://localhost:8000/" + document.getElementById("input").value;
+    let b = await (new Browser()).init();
+    await b.load(url)
+});
+widget.next();
+</script>

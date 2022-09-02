@@ -1,8 +1,12 @@
 /* This file simulates Python packages used by the WBE browser */
 
 
-export { breakpoint, comparator, filesystem, http_textarea, lib, pysplit,
-    pyrsplit, rt_constants, socket, ssl, tkinter, truthy, Widget, dukpy, urllib };
+export {
+    breakpoint, filesystem,
+    socket, ssl, tkinter, dukpy, urllib,
+    truthy, comparator, pysplit, pyrsplit, asyncfilter,
+    rt_constants, lib, Widget, http_textarea, 
+    };
 
 window.TKELEMENT = null;
 
@@ -365,18 +369,20 @@ static dukpy() {
         onmessage(e) {
             switch (e.data.type) {
             case "call":
-                let result = this.function_table[e.data.fn].call(window, e.data.args);
-                let json_result = JSON.stringify(result);
-                let bytes = new TextEncoder().encode(json_result);
-                if (bytes.length <= this.write_buffer.length) {
-                    for (let i = 0; i < bytes.length; i++) {
-                        Atomics.store(this.write_buffer, i, bytes[i]);
+                let result = this.function_table[e.data.fn].call(window, ... e.data.args);
+                result.then((res) => {
+                    let json_result = JSON.stringify(res);
+                    let bytes = new TextEncoder().encode(json_result);
+                    if (bytes.length <= this.write_buffer.length) {
+                        for (let i = 0; i < bytes.length; i++) {
+                            Atomics.store(this.write_buffer, i, bytes[i]);
+                        }
+                        Atomics.store(this.flag_buffer, 0, bytes.length);
+                        Atomics.notify(this.flag_buffer, 0);
+                    } else {
+                        throw "Buffer too small when calling " + e.data.fn;
                     }
-                    Atomics.store(this.flag_buffer, 0, bytes.length);
-                    Atomics.notify(this.flag_buffer, 0);
-                } else {
-                    throw "Buffer too small when calling " + e.data.fn;
-                }
+                });
                 break;
 
             case "return":
@@ -582,6 +588,16 @@ function comparator(f) {
         else if (fb < fa) return 1;
         else return 0;
     }
+}
+
+async function asyncfilter(fn, arr) {
+    let out = [];
+    for (var i = 0; i < arr.length; i++) {
+        if (await fn(arr[i])) {
+            out.push(arr[i]);
+        }
+    }
+    return out;
 }
 
 class File {
