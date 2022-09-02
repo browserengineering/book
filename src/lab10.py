@@ -166,7 +166,7 @@ class JSContext:
         full_url = resolve_url(url, self.tab.url)
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
-        headers, out = request(full_url, self.tab.url, payload=body)
+        headers, out = request(full_url, self.tab.url, body)
         if url_origin(full_url) != url_origin(self.tab.url):
             raise Exception("Cross-origin XHR request not allowed")
         return out
@@ -186,7 +186,7 @@ class Tab:
             url_origin(url) in self.allowed_origins
 
     def load(self, url, body=None):
-        headers, body = request(url, self.url, payload=body)
+        headers, body = request(url, self.url, body)
         self.scroll = 0
         self.url = url
         self.history.append(url)

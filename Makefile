@@ -23,7 +23,8 @@ widgets: \
 	www/widgets/lab6-browser.html www/widgets/lab6.js \
 	www/widgets/lab7-browser.html www/widgets/lab7.js \
 	www/widgets/lab8-browser.html www/widgets/lab8.js www/widgets/server8.js \
-	www/widgets/lab9-browser.html www/widgets/lab9.js www/widgets/server9.js
+	www/widgets/lab9-browser.html www/widgets/lab9.js www/widgets/server9.js \
+	www/widgets/lab10-browser.html www/widgets/lab10.js www/widgets/server10.js
 
 lint: book/*.md src/*.py
 	python3 infra/compare.py --config config.json
@@ -75,6 +76,9 @@ restart:
 
 backup:
 	rsync server:/home/www/browseng/db.json infra/db.$(shell date +%Y-%m-%d).pickle
+
+test-server:
+	(cd www/ && python3 ../infra/server.py)
 
 test:
 	python3 -m doctest infra/compiler.md

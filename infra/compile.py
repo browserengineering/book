@@ -34,9 +34,15 @@ def catch_issues(f):
         except MissingHint as e1:
             try:
                 return f(tree, *args, **kwargs)
-            except AssertionError as e2:
+            except MissingHint as e:
                 if WRAP_DISABLED: raise e
                 ISSUES.append(e)
+                return "/* " + asttools.unparse(tree) + " */"
+            except AssertionError as e2:
+                if str(e2):
+                    e1.message = str(e2)
+                if WRAP_DISABLED: raise e1
+                ISSUES.append(e1)
                 return "/* " + asttools.unparse(tree) + " */"
     return wrapped
 
@@ -322,6 +328,9 @@ def compile_function(name, args, ctx):
     elif name == "enumerate":
         assert len(args) == 1
         return args_js[0] + ".entries()"
+    elif name == "Exception":
+        assert len(args) == 1
+        return "(new Error(" + args_js[0] + "))"
     else:
         raise UnsupportedConstruct()
 
@@ -342,6 +351,8 @@ def compile_op(op):
     elif isinstance(op, ast.Or): return "||"
     else:
         raise UnsupportedConstruct()
+    
+UNDERSCORES = 0
 
 def lhs_targets(tree):
     if isinstance(tree, ast.Name):
@@ -509,6 +520,10 @@ def compile_expr(tree, ctx):
             return "Error"
         elif tree.id in OUR_CONSTANTS:
             return "constants.{}".format(tree.id)
+        elif tree.id == "_":
+            global UNDERSCORES
+            UNDERSCORES += 1
+            return tree.id + str(UNDERSCORES)
         elif tree.id in ctx:
             return tree.id
         else:
@@ -715,6 +730,11 @@ def compile(tree, ctx, indent=0):
                 out += " " * indent + "}"
 
             return out
+    elif isinstance(tree, ast.Raise):
+        assert tree.exc
+        assert not tree.cause
+        exc = compile_expr(tree.exc, ctx=ctx)
+        return " " * indent + "throw " + exc + ";"
     elif isinstance(tree, ast.Try):
         assert not tree.orelse
         assert not tree.finalbody

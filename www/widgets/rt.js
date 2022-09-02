@@ -3,7 +3,7 @@
 
 export {
     breakpoint, filesystem,
-    socket, ssl, tkinter, dukpy, urllib,
+    socket, ssl, tkinter, dukpy, urllib, html, random,
     truthy, comparator, pysplit, pyrsplit, asyncfilter,
     rt_constants, lib, Widget, http_textarea, 
     };
@@ -325,6 +325,24 @@ static urllib() {
     return { parse: parse };
 }
 
+static html() {
+    function escape(s) {
+        let t = document.createTextNode(s);
+        document.documentElement.appendChild(t);
+        let html = t.innerHTML;
+        t.remove();
+        return t;
+    }
+    return { escape: escape };
+}
+
+static random() {
+    function random() {
+        return Math.random();
+    }
+    return { random: random };
+}
+
 static dukpy() {
     if (!crossOriginIsolated) {
         console.error("No cross-origin isolation; dukpy will not be available.");
@@ -629,3 +647,5 @@ const ssl = lib.ssl();
 const tkinter = lib.tkinter();
 const dukpy = lib.dukpy();
 const urllib = lib.urllib();
+const html = lib.html();
+const random = lib.random();
