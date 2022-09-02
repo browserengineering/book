@@ -18,9 +18,10 @@ import ssl
 import threading
 import time
 import urllib.parse
+import wbetools
 from lab4 import print_tree
 from lab4 import HTMLParser
-from lab13 import Text, Element
+from lab4 import Text, Element
 from lab6 import resolve_url
 from lab6 import tree_to_list
 from lab6 import INHERITED_PROPERTIES
@@ -39,7 +40,21 @@ from lab13 import USE_BROWSER_THREAD, JSContext, diff_styles, \
     CommitData, add_parent_pointers, absolute_bounds_for_obj, \
     DisplayItem, DrawText, \
     DrawLine, paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, \
-    REFRESH_RATE_SEC, HSTEP, VSTEP
+    REFRESH_RATE_SEC, HSTEP, VSTEP, DrawRRect, draw_rect
+
+@wbetools.patch(Element)
+class Element:
+    def __init__(self, tag, attributes, parent):
+        self.tag = tag
+        self.attributes = attributes
+        self.children = []
+        self.parent = parent
+
+        self.style = {}
+        self.animations = {}
+
+        self.is_focused = False
+        self.is_hovered = False
 
 def parse_color(color):
     if color == "white":
@@ -73,77 +88,40 @@ def parse_outline(outline_str):
         return None
     return (int(values[0][:-2]), values[2])
 
-def draw_rect(
-    canvas, rect, fill_color=None, border_color="black", width=1):
-    paint = skia.Paint()
-    if fill_color:
-        paint.setStrokeWidth(width);
-        paint.setColor(parse_color(fill_color))
-    else:
-        paint.setStyle(skia.Paint.kStroke_Style)
-        paint.setStrokeWidth(width);
-        paint.setColor(parse_color(border_color))
-    canvas.drawRect(rect, paint)
-
-
-class DrawRRect(DisplayItem):
-    def __init__(self, rect, radius, color):
+class DrawOutline(DisplayItem):
+    def __init__(self, rect, color, thickness):
         super().__init__(rect)
-        self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
         self.color = color
+        self.thickness = thickness
 
     def is_paint_command(self):
         return True
 
     def execute(self, canvas):
-        sk_color = parse_color(self.color)
-        canvas.drawRRect(self.rrect,
-            paint=skia.Paint(Color=sk_color))
-
-    def print(self, indent=0):
-        return " " * indent + self.__repr__()
+        draw_rect(canvas,
+            self.rect.left(), self.rect.top(),
+            self.rect.right(), self.rect.bottom(),
+            border_color=self.color, width=self.thickness)
 
     def __repr__(self):
-        return "DrawRRect(rect={}, color={})".format(
-            str(self.rrect), self.color)
-
-class DrawRect(DisplayItem):
-    def __init__(self, rect, border_color, fill_color=None, width=0):
-        super().__init__(rect)
-        self.border_color = border_color
-        self.fill_color = fill_color
-        self.width = width
-
-    def is_paint_command(self):
-        return True
-
-    def execute(self, canvas):
-        draw_rect(canvas, self.rect,
-            fill_color=self.fill_color,
-            border_color=self.border_color, width=self.width)
-
-    def __repr__(self):
-        return ("DrawRect(top={} left={} " +
+        return ("DrawOutline(top={} left={} " +
             "bottom={} right={} border_color={} " +
-            "width={} fill_color={})").format(
+            "thickness={})").format(
             self.rect.top(), self.rect.left(), self.rect.bottom(),
-            self.rect.right(), self.border_color,
-            self.width, self.fill_color)
+            self.rect.right(), self.color,
+            self.thickness)
 
-def outline_cmd(rect, outline):
-    (outline_width, outline_color) = outline
-    return DrawRect(rect, border_color=outline_color,
-            width=outline_width)
 
 def is_focused(node):
     if isinstance(node, Text):
         node = node.parent
-    return hasattr(node, "is_focused") and node.is_focused
+    return node.is_focused
 
 def paint_outline(node, cmds, rect):
     outline = parse_outline(node.style.get("outline"))
     if outline:
-        cmds.append(outline_cmd(rect, outline))
+        outline_width, outline_color = outline
+        cmds.append(DrawOutline(rect, outline_color, outline_width))
 
 def has_outline(node):
     return parse_outline(node.style.get("outline"))
@@ -358,14 +336,16 @@ class LineLayout:
         self.height = 1.25 * (max_ascent + max_descent)
 
     def paint(self, display_list):
+        for child in self.children:
+            child.paint(display_list)
+
         outline_rect = skia.Rect.MakeEmpty()
         outline_node = None
         for child in self.children:
-            node = child.node
-            if isinstance(node, Text) and has_outline(node.parent):
-                outline_node = node.parent
+            parent = child.node.parent
+            if has_outline(parent):
+                outline_node = parent
                 outline_rect.join(child.rect())
-            child.paint(display_list)
 
         if outline_node:
             paint_outline(outline_node, display_list, outline_rect)
@@ -553,8 +533,11 @@ class InputLayout:
         cmds.append(DrawText(self.x, self.y,
                              text, self.font, color))
 
-        paint_outline(self.node, cmds, rect)
+        if self.node.is_focused and self.node.tag == "input":
+            cx = rect.left() + self.font.measureText(text)
+            cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom()))
 
+        paint_outline(self.node, cmds, rect)
         cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
 
@@ -563,8 +546,12 @@ class InputLayout:
             self.x, self.y, self.width, self.height)
 
 def is_focusable(node):
-    return node.tag in ["input", "button", "a"] \
-        or "tabindex" in node.attributes
+    if get_tabindex(node) <= 0:
+        return False
+    elif "tabindex" in node.attributes:
+        return True
+    else:
+        return node.tag in ["input", "button", "a"]
 
 def compute_role(node):
     if isinstance(node, Text):
@@ -614,7 +601,7 @@ def announce_text(node):
         text = "Link"
     elif role == "alert":
         text = "Alert"
-    if hasattr(node, "is_focused") and node.is_focused:
+    if is_focused(node):
         text += " is focused"
     return text
 
@@ -683,7 +670,7 @@ class PseudoclassSelector:
         if self.pseudoclass == "focus":
             return is_focused(node)
         elif self.pseudoclass == INTERNAL_ACCESSIBILITY_HOVER:
-            return hasattr(node, "is_hovered") and node.is_hovered
+            return node.is_hovered
         else:
             return False
 
@@ -795,25 +782,27 @@ class CSSParser:
     def parse(self):
         rules = []
         media = None
+        self.whitespace()
         while self.i < len(self.s):
             try:
-                self.whitespace()
-                assert self.i < len(self.s)
                 if self.s[self.i] == "@" and not media:
                     prop, val = self.media_query()
                     if prop == "prefers-color-scheme" and val in ["dark", "light"]:
                         media = val
                     self.whitespace()
                     self.literal("{")
+                    self.whitespace()
                 elif self.s[self.i] == "}" and media:
                     self.literal("}")
                     media = None
+                    self.whitespace()
                 else:
                     selector = self.selector()
                     self.literal("{")
                     self.whitespace()
                     body = self.body()
                     self.literal("}")
+                    self.whitespace()
                     rules.append((media, selector, body))
             except AssertionError:
                 why = self.ignore_until(["}"])
@@ -1204,15 +1193,6 @@ class Tab:
             self.display_list = []
 
             self.document.paint(self.display_list)
-            if self.focus and self.focus.tag == "input":
-                obj = [obj for obj in tree_to_list(self.document, [])
-                   if obj.node == self.focus and \
-                        isinstance(obj, InputLayout)][0]
-                text = self.focus.attributes.get("value", "")
-                x = obj.x + obj.font.measureText(text)
-                y = obj.y
-                self.display_list.append(
-                    DrawLine(x, y, x, y + obj.height))
             self.needs_paint = False
 
         self.measure_render.stop()
@@ -1769,12 +1749,12 @@ class Browser:
 
         # Draw the plus button to add a tab:
         buttonfont = skia.Font(skia.Typeface('Arial'), 30)
-        draw_rect(canvas, skia.Rect.MakeLTRB(10, 10, 30, 30),
+        draw_rect(canvas, 10, 10, 30, 30,
             fill_color=background_color, border_color=color)
         draw_text(canvas, 11, 4, "+", buttonfont, color=color)
 
         # Draw the URL address bar:
-        draw_rect(canvas, skia.Rect.MakeLTRB(40.0, 50.0, WIDTH - 10.0, 90.0),
+        draw_rect(canvas, 40.0, 50.0, WIDTH - 10.0, 90.0,
             fill_color=background_color, border_color=color)
 
         if self.focus == "address bar":
@@ -1788,7 +1768,7 @@ class Browser:
                     color=color)
 
         # Draw the back button:
-        draw_rect(canvas, skia.Rect.MakeLTRB(10, 50, 35, 90),
+        draw_rect(canvas, 10, 50, 35, 90,
             fill_color=background_color, border_color=color)
 
         path = \

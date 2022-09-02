@@ -675,19 +675,20 @@ class CSSParser:
     def parse(self):
         # ...
         media = None
+        self.whitespace()
         while self.i < len(self.s):
             try:
-                self.whitespace()
-                assert self.i < len(self.s)
                 if self.s[self.i] == "@" and not media:
                     prop, val = self.media_query()
                     if prop == "prefers-color-scheme" and val in ["dark", "light"]:
                         media = val
                     self.whitespace()
                     self.literal("{")
+                    self.whitespace()
                 elif self.s[self.i] == "}" and media:
                     self.literal("}")
                     media = None
+                    self.whitespace()
                 else:
                     # ...
                     rules.append((media, selector, body))
@@ -754,7 +755,7 @@ to allow the user to go back, to type in the address bar, and to
 create and cycle through tabs, all with the keyboard. We'll also add a
 keyboard shortcut for quitting the browser.[^one-more] Let's make all
 these shortcuts use the `Ctrl` modifier key so they don't interfere
-with normal typing: `Ctrl-Left` to go back, `Ctrl-l` to type in the
+with normal typing: `Ctrl-Left` to go back, `Ctrl-L` to type in the
 address bar, `Ctrl-T` to create a new tab, `Ctrl-Tab` to switch to the
 next tab, and `Ctrl-Q` to exit the browser:
 
@@ -809,10 +810,10 @@ things on the page, and press `Enter` to actually click on them.
 
 We'll implement this by expanding our implementation of *focus*. We
 already have a `focus` property on each `Tab` indicating which `input`
-element is capturing keyboard input. Let's allow allow buttons and
-links to be focused as well. Of course, they don't capture keyboard
-input, but when the user pressed `Enter` we'll press the button
-navigate to the link. We'll start by binding those keys:
+element is capturing keyboard input. Let's allow buttons and links to
+be focused as well. Of course, they don't capture keyboard input, but
+when the user pressed `Enter` we'll press the button or navigate to
+the link. We'll start by binding those keys:
 
 ``` {.python}
 if __name__ == "__main__":
@@ -852,7 +853,7 @@ Let's start with the `advance_tab` method. Each time it's called, the
 browser should advance focus to the next focusable thing. This will
 first require a definition of which elements are focusable:
 
-``` {.python replace=]/]%20\}
+``` {.python replace=)]/)]%20\}
 def is_focusable(node):
     return node.tag in ["input", "button", "a"]
 
@@ -968,11 +969,12 @@ might want to change the order in which the user tabs through
 focusable items.
 
 Browsers support the `tabindex` HTML attribute to make this possible.
-The `tabindex` attribute is a number; elements with a negative value
-aren't focusable and smaller numbers come before larger numbers and
-elements without a `tabindex` attribute. To implement that, we need to
-sort the focusable elements by tab index, so we need a function that
-returns the tab index:
+The `tabindex` attribute is a number. An element isn't focusable if
+its `tabindex` is negative, and elements with smaller `tabindex`
+values come before those with larger values and those without a
+`tabindex` at all. To implement that, we need to sort the focusable
+elements by tab index, so we need a function that returns the tab
+index:
 
 ``` {.python}
 def get_tabindex(node):
@@ -1004,8 +1006,12 @@ this let's first extend `is_focusable` to consider `tabindex`:
 
 ``` {.python}
 def is_focusable(node):
-    return node.tag in ["input", "button", "a"] \
-        or "tabindex" in node.attributes
+    if get_tabindex(node) <= 0:
+        return False
+    elif "tabindex" in node.attributes:
+        return True
+    else:
+        return node.tag in ["input", "button", "a"]
 ```
 
 Next, we need to make sure to send a `click` event when an element is
@@ -1018,6 +1024,9 @@ class Tab:
         if self.js.dispatch_event("click", self.focus): return
         self.activate_element(self.focus)
 ```
+
+Note that just like clicking on an element, activating an element can
+be cancelled from JavaScript using `preventDefault`.
 
 We now have configurable keyboard navigation for both the browser and
 the web page content. And it involved writing barely any new code,
@@ -1044,20 +1053,39 @@ listener.
 Indicating focus
 ================
 
-Now we have focus implemented on `<a>` and `<button>`, plus a way to cycle
-through them with the keyboard. But how do you know which element is currently
-focused? There needs to be some kind of visual indication, or the tab focus
-feature will be super confusing to use.^[Focus for input elements in our
-browser previously indicated focus only via the input cursor.] This is done with
-a *focus ring*---a visual outline around an element that lets the user know
-what is focused.
+Thanks to our keyboard shortcuts, users can now reach any link,
+button, or text entry from the keyboard. But if you try to use this to
+navigate a website, it's a little hard to know which element is
+focused when. A visual indication---similar to the cursor we use on
+text inputs---would help sighted users know if they've reached the
+element they want or if they need to keep hitting `Tab`. In most
+browsers, this visual indication is a *focus ring* that outlines the
+focused element.
 
-Setting focus sets an `is_focused` property on the node, and has some special
-logic for input elements to clear them out.^[This logic is inherited from
-[Chapter 8][clear-input]. Real browsers will typically preserve what
-was typed there before.]
+To implement focus rings, we're going to have to generalize how we
+implement text cursors. Recall that, right now, text cursors are added
+by drawing a verticle line in the `Tab`'s `render` method. We could
+extend that code to draw a cursor or an outline, but before we make
+that method more complicated let's move it into the `InputLayout` so
+we have easier access to size and position information.[^effects] To
+do that, we'll need each `InputLayout` to know whether or not it is
+currently focused:
+
+[^effects]: As a side effect, this change will also mean text cursors
+    are now affected by visual effects, including blends, opacity, and
+    translations. Translations in particular are important.
 
 ``` {.python}
+class Element:
+    def __init__(self, tag, attributes, parent):
+        self.is_focused = False
+```
+
+We'll set this flag in a new `focus_element` method that we'll now use
+to change the `focus` field in a `Tab`:
+
+``` {.python}
+class Tab:
     def focus_element(self, node):
         if self.focus:
             self.focus.is_focused = False
@@ -1066,82 +1094,90 @@ was typed there before.]
             node.is_focused = True
 ```
 
-Draw the focus ring by painting a `2px` wide black rectangle around the element
-that is focused. This requires some code in various `paint` methods plus this
-helper (note the use of the `is_focused` property added earlier by
-`apply_focus`):
+To draw an outline, we'll need something like `DrawRect`, but which
+draws the rectangle's border, not its inside. I'll call that command
+`DrawOutline`:
+
+``` {.python}
+class DrawOutline(DisplayItem):
+    def __init__(self, rect, color, thickness):
+        super().__init__(rect)
+        self.color = color
+        self.thickness = thickness
+
+    def is_paint_command(self):
+        return True
+
+    def execute(self, canvas):
+        draw_rect(canvas,
+            self.rect.left(), self.rect.top(),
+            self.rect.right(), self.rect.bottom(),
+            border_color=self.color, width=self.thickness)
+```
+
+Now we can paint a 2 pixel black outline around an element like this:
 
 ``` {.python expected=False}
 def paint_outline(node, cmds, rect):
-    if hasattr(node, "is_focused") and node.is_focused:
-        cmds.append(outline_cmd(rect, (2, "black")))
+    if node.is_focused:
+        cmds.append(DrawOutline(rect, "black", 2))
 ```
 
-which is called in `BlockLayout` (note how it's after painting children, but
-before visual effects):
-
-``` {.python}
-class BlockLayout:
-	# ...
-	def paint(self, display_list):
-		# ...
-        for child in self.children:
-            child.paint(cmds)
-
-        paint_outline(self.node, cmds, rect)
-
-        cmds = paint_visual_effects(self.node, cmds, rect)
-```
-
-And `InputLayout` is similar:
+This is in a helper method so that we can call it in both
+`InputLayout` (for text entries and buttons) and in `InlineLayout`
+(for links). In `InputLayout` it looks like this:
 
 ``` {.python}
 class InputLayout:
-	# ...
 	def paint(self, display_list):
 		# ...
-        paint_outline(self.node, cmds, rect)
+        if self.node.is_focused and self.node.tag == "input":
+            cx = rect.left() + self.font.measureText(text)
+            cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom()))
 
+        paint_outline(self.node, cmds, rect)
         cmds = paint_visual_effects(self.node, cmds, rect)
+        display_list.extend(cmds)
 ```
 
-But for inline layout, the situation is more complicated, for two reasons. The
-first is that the painting of each inline element is potentially broken into
-multiple lines of text. So it's not even just one rectangle; if an `<a>`
-element's anchor text spans multiple lines, we should paint one rectangle for
-each text run in each line.
+Note that this comes after painting the rest of the text entry's
+content but before the visual effects.
 
-The second complication is that there is not necessarily a layout object
-corresponding exactly to an `<a>` element, if there is other text or an
-`<input>` or `<button>` on the same line.
-
-We'll solve both of these problems by painting the focus ring in `LineLayout`
-(recall there is one of these for each line of an `InlineLayout`). Each line
-will paint a rect that is the union of the rects of all children that are for a
-`Text` node child of a focused parent.
+Unfortunately, handling links is a little more complicated. That's
+because one `<a>` element corresponds to multiple `TextLayout`
+objects, so there's not just one layout object where we can stick the
+code. Moreover, those `TextLayout`s could be split across several
+lines, so we might want to draw more than one focus ring. To work
+around this, let's draw the focus ring in `LineLayout`. Each
+`LineLayout` finds all of its child `TextLayout`s that are focused,
+and draws a rectangle around them all:
 
 ``` {.python expected=False}
 class LineLayout:
-	# ...
     def paint(self, display_list):
-    	# ...
-        focused_node = None
-        for child in self.children:
-            node = child.node
-            if isinstance(node, Text) and is_focused(node.parent):
-                focused_node = node.parent
-                outline_rect.join(child.rect())
         # ...
-        if focused_node:
-            paint_outline(focused_node, display_list, outline_rect)
-
+        outline_rect = skia.Rect.MakeEmpty()
+        parent = None
+        for child in self.children:
+            parent = child.node.parent
+            if has_outline(parent):
+                outline_node = parent
+                outline_rect.join(child.rect())
+        if parent:
+            paint_outline(parent, display_list, outline_rect)
 ```
 
-Iterating through the focusable elements with the keyboard, and highlighting
-them with a focus rect, should now work. Try it in
-this [example](examples/example14-focus.html). And if you zoom in enough, you
-should be able to make the link cross multiple lines and use multiple
-focus rectangles.
+You should also add a `paint_outline` call to `BlockLayout`, since
+users can make any element focusable with `tabindex`.
+
+Now when you `Tab` through a page, you should see the focused element
+highlighted with a black outline. And if a link happens to cross
+multiple lines, you will see our browser use multiple focus
+rectangles to make crystal-clear what is being focused on.
+
+::: {.todo}
+Add scrolling code here
+:::
 
 ::: {.further}
 
@@ -1164,7 +1200,7 @@ particular, syntax that looks like this:
 
     outline: 3px solid red;
 
-Which means "make the outline red 3px thick". First parse it:
+Which means "make the outline 3 pixels thick and red". First parse it:
 
 ``` {.python}
 def parse_outline(outline_str):
@@ -1178,14 +1214,15 @@ def parse_outline(outline_str):
     return (int(values[0][:-2]), values[2])
 ```
 
-Now to use it. The outline will be present if the element is focused or has the
-`outline` CSS property generally. While we could finish implementing that via
-some extra logic in `paint_outline`, the feature has a fundamental problem that
-has to be fixed. Specifying an outline is a fine feature to offer to web
-developers, but it doesn't actually solve the problem of customizing the focus
-outline. That's because `outline`, if specified by the developer,
-would *always* apply, but instead we want it to only apply to an element when
-it's focused!
+Now to use it. The outline will be present if the element is focused
+or has the `outline` CSS property generally. However: while we could
+finish implementing that via some extra logic in `paint_outline`, the
+feature has a fundamental problem that has to be fixed. Specifying an
+outline is a fine feature to offer to web developers, but it doesn't
+actually solve the problem of customizing the focus outline. That's
+because `outline`, if specified by the developer, would *always*
+apply, but instead we want it to only apply to an element when it's
+focused!
 
 To do this we need some way to let developers
 express *outline-only-while-focused* in CSS. This is done with a
@@ -1231,7 +1268,8 @@ property:
 def paint_outline(node, cmds, rect):
     outline = parse_outline(node.style.get("outline"))
     if outline:
-        cmds.append(outline_cmd(rect, outline))
+        outline_width, outline_color = outline
+        cmds.append(DrawOutline(rect, outline_color, outline_width))
 ```
 
 ``` {.python expected=False}
@@ -1426,7 +1464,7 @@ def announce_text(node):
         text = "Button"
     elif node.tag == "link":
         text = "Link"
-    if hasattr(node, "is_focused") and node.is_focused:
+    if is_focused(node):
         text += " is focused"
     return text
 ```
@@ -1905,7 +1943,7 @@ class PseudoclassSelector:
     def matches(self, node):
         # ...
         elif self.pseudoclass == INTERNAL_ACCESSIBILITY_HOVER:
-            return hasattr(node, "is_hovered") and node.is_hovered
+            return node.is_hovered
 ```
 
 The only step remaining is to restrict to the browser style sheet.
@@ -2061,7 +2099,7 @@ def announce_text(node):
         text = "Link"
     elif role == "alert":
         text = "Alert"
-    if hasattr(node, "is_focused") and node.is_focused:
+    if is_focused(node):
         text += " is focused"
     return text
 ```

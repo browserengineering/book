@@ -15,8 +15,10 @@ import ssl
 import threading
 import time
 import urllib.parse
-from lab4 import print_tree
+import wbetools
+from lab4 import print_tree, Text, Element
 
+@wbetools.patch(Text)
 class Text:
     def __init__(self, text, parent):
         self.text = text
@@ -26,9 +28,7 @@ class Text:
         self.style = {}
         self.animations = {}
 
-    def __repr__(self):
-        return repr(self.text)
-
+@wbetools.patch(Element)
 class Element:
     def __init__(self, tag, attributes, parent):
         self.tag = tag
@@ -38,16 +38,6 @@ class Element:
 
         self.style = {}
         self.animations = {}
-
-    def __repr__(self):
-        attrs = [" " + k + "=\"" + v + "\"" for k, v  in self.attributes.items()]
-        return "<" + self.tag + "".join(attrs) + ">"
-
-# Patch the `Text` and `Element` classes so that all other code that
-# uses them, like HTMLParser, all refer to the patched versions.
-import sys
-sys.modules['lab4'].Text = Text
-sys.modules['lab4'].Element = Element
 
 from lab4 import HTMLParser
 from lab6 import cascade_priority

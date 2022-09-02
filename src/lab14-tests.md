@@ -17,7 +17,7 @@ This file contains tests for Chapter 14 (Accessibility).
     >>> lab14.USE_BROWSER_THREAD = False
     >>> lab14.USE_GPU = False
     >>> lab13.USE_GPU = False
-		>>> lab14.TaskRunner = test.MockTaskRunner
+    >>> lab14.TaskRunner = test.MockTaskRunner
 
 Outlines
 ========
@@ -31,7 +31,7 @@ Values other than "solid" for the secnod word are ignored:
 
     >>> lab14.parse_outline("12px dashed red")
 
-An outline causes a `DrawRect` with the given width and color:
+An outline causes a `DrawOutline` with the given width and color:
 
     >>> styles = 'http://test.test/styles.css'
     >>> test.socket.respond(styles, b"HTTP/1.0 200 OK\r\n" +
@@ -46,10 +46,11 @@ An outline causes a `DrawRect` with the given width and color:
 
     >>> browser = lab14.Browser()
     >>> browser.load(outline_url)
+    >>> browser.tabs[0].advance_tab()
     >>> browser.render()
 
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
-     DrawRect(top=18.0 left=13.0 bottom=58.0 right=43.0 border_color=red width=3 fill_color=None)
+     DrawOutline(top=18.0 left=13.0 bottom=58.0 right=43.0 border_color=red thickness=3)
 
 Focus
 =====
@@ -80,9 +81,9 @@ The 2px wide black display list command is the focus ring for the `input`:
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
      DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=lightblue)
      DrawText(text=)
-     DrawRect(top=21.0 left=13.0 bottom=37.0 right=213.0 border_color=black width=2 fill_color=None)
-     DrawText(text=Link)
      DrawLine top=21.0 left=13.0 bottom=37.0 right=13.0
+     DrawOutline(top=21.0 left=13.0 bottom=37.0 right=213.0 border_color=black thickness=2)
+     DrawText(text=Link)
 
 And now it's for the `a`:
 
@@ -92,7 +93,7 @@ And now it's for the `a`:
      DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=lightblue)
      DrawText(text=)
      DrawText(text=Link)
-     DrawRect(top=21.0 left=229.0 bottom=37.0 right=293.0 border_color=black width=2 fill_color=None)
+     DrawOutline(top=21.0 left=229.0 bottom=37.0 right=293.0 border_color=black thickness=2)
 
 Tabindex changes the order:
 
@@ -113,7 +114,7 @@ This time the `a` element is focused first:
      DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=lightblue)
      DrawText(text=)
      DrawText(text=Link)
-     DrawRect(top=21.0 left=229.0 bottom=37.0 right=293.0 border_color=black width=2 fill_color=None)
+     DrawOutline(top=21.0 left=229.0 bottom=37.0 right=293.0 border_color=black thickness=2)
 
 And then the `input`:
 
@@ -122,9 +123,9 @@ And then the `input`:
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
      DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=lightblue)
      DrawText(text=)
-     DrawRect(top=21.0 left=13.0 bottom=37.0 right=213.0 border_color=black width=2 fill_color=None)
-     DrawText(text=Link)
      DrawLine top=21.0 left=13.0 bottom=37.0 right=13.0
+     DrawOutline(top=21.0 left=13.0 bottom=37.0 right=213.0 border_color=black thickness=2)
+     DrawText(text=Link)
 
 Regular elements aren't focusable, but if the `tabindex` attribute is set, they
 are:
@@ -236,6 +237,6 @@ It also nd also causes a painted outline:
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
      DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=blue)
      DrawText(text=)
-     DrawRect(top=21.0 left=13.0 bottom=37.0 right=213.0 border_color=white width=2 fill_color=None)
-     DrawText(text=Link)
      DrawLine top=21.0 left=13.0 bottom=37.0 right=13.0
+     DrawOutline(top=21.0 left=13.0 bottom=37.0 right=213.0 border_color=white thickness=2)
+     DrawText(text=Link)
