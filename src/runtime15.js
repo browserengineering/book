@@ -1,9 +1,10 @@
-Window.prototype.console = { log: function(x) { call_python("log", x); } }
+window.console = { log: function(x) { call_python("log", x); } }
 
 window.document = { querySelectorAll: function(s) {
     var handles = call_python("querySelectorAll", s);
     return handles.map(function(h) { return new Node(h) });
 }}
+
 
 window.Node = function(handle) { this.handle = handle; }
 
@@ -131,7 +132,7 @@ Window.prototype.addEventListener = function(type, listener) {
     var dict = WINDOW_LISTENERS[this.handle];
     if (!dict[type]) dict[type] = [];
     var list = dict[type];
-    list.push({listener: listener, event_window: window});
+    list.push(listener);
 }
 
 Window.prototype.dispatchEvent = function(evt) {
@@ -139,12 +140,9 @@ Window.prototype.dispatchEvent = function(evt) {
     var handle = this.handle
     var list = (WINDOW_LISTENERS[handle] && WINDOW_LISTENERS[handle][type]) || [];
     for (var i = 0; i < list.length; i++) {
-        event_listener = list[i].listener;
-        event_window = list[i].event_window;
-        with (event_window) {
-            event_listener.call(this, evt);
-        }
+        list[i].call(this, evt);
     }
+
     return evt.do_default;
 }
 
@@ -160,4 +158,3 @@ Object.defineProperty(Window.prototype, 'parent', {
     return undefined;
   }
 });
-

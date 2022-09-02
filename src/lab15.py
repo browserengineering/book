@@ -777,7 +777,7 @@ class JSContext:
     def dispatch_post_message(self, message, window_id):
         self.interp.evaljs(
             wrap_in_window(
-                "window.dispatchEvent(new PostMessageEvent(dukpy.data))",
+                "dispatchEvent(new PostMessageEvent(dukpy.data))",
                 window_id),
             data=message)
 
