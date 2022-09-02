@@ -486,10 +486,16 @@ def compile_expr(tree, ctx):
         assert not gen.is_async
         for if_clause in gen.ifs:
             e = compile_expr(if_clause, ctx2)
-            out = "(await asyncfilter(async (" + arg + ") => " + e + ", " + out + "))"
+            if "await" in e:
+                out = "(await asyncfilter(async (" + arg + ") => " + e + ", " + out + "))"
+            else:
+                out = out + ".filter((" + arg + ") => " + e + ")"
         e = compile_expr(tree.elt, ctx2)
         if e != arg:
-            out = "(await Promise.all(" + out + ".map(async (" + arg + ") => " + e + ")))"
+            if "await" in e:
+                out = "(await Promise.all(" + out + ".map(async (" + arg + ") => " + e + ")))"
+            else:
+                out = out + ".map((" + arg + ") => " + e + ")"
         return out
     elif isinstance(tree, ast.Attribute):
         base = compile_expr(tree.value, ctx)
