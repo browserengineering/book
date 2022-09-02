@@ -18,9 +18,10 @@ import ssl
 import threading
 import time
 import urllib.parse
+import wbetools
 from lab4 import print_tree
 from lab4 import HTMLParser
-from lab4 import Text
+from lab4 import Text, Element
 from lab6 import resolve_url
 from lab6 import tree_to_list
 from lab6 import INHERITED_PROPERTIES
@@ -41,6 +42,7 @@ from lab13 import USE_BROWSER_THREAD, JSContext, diff_styles, \
     DrawLine, paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, \
     REFRESH_RATE_SEC, HSTEP, VSTEP, DrawRRect, draw_rect
 
+@wbetools.patch(Element)
 class Element:
     def __init__(self, tag, attributes, parent):
         self.tag = tag
@@ -53,17 +55,6 @@ class Element:
 
         self.is_focused = False
         self.is_hovered = False
-
-    def __repr__(self):
-        attrs = [" " + k + "=\"" + v + "\"" for k, v  in self.attributes.items()]
-        return "<" + self.tag + "".join(attrs) + ">"
-
-# Patch the `Text` and `Element` classes so that all other code that
-# uses them, like HTMLParser, all refer to the patched versions.
-import sys
-sys.modules['lab4'].Element = Element
-sys.modules['lab6'].Element = Element
-sys.modules['lab13'].Element = Element
 
 def parse_color(color):
     if color == "white":
@@ -1754,12 +1745,12 @@ class Browser:
 
         # Draw the plus button to add a tab:
         buttonfont = skia.Font(skia.Typeface('Arial'), 30)
-        draw_rect(canvas, skia.Rect.MakeLTRB(10, 10, 30, 30),
+        draw_rect(canvas, 10, 10, 30, 30,
             fill_color=background_color, border_color=color)
         draw_text(canvas, 11, 4, "+", buttonfont, color=color)
 
         # Draw the URL address bar:
-        draw_rect(canvas, skia.Rect.MakeLTRB(40.0, 50.0, WIDTH - 10.0, 90.0),
+        draw_rect(canvas, 40.0, 50.0, WIDTH - 10.0, 90.0,
             fill_color=background_color, border_color=color)
 
         if self.focus == "address bar":
@@ -1773,7 +1764,7 @@ class Browser:
                     color=color)
 
         # Draw the back button:
-        draw_rect(canvas, skia.Rect.MakeLTRB(10, 50, 35, 90),
+        draw_rect(canvas, 10, 50, 35, 90,
             fill_color=background_color, border_color=color)
 
         path = \
