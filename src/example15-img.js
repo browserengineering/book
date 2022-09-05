@@ -1,1 +1,4 @@
-window.parent.postMessage("This is the contents of postMessage.", "*");
+var parentWindow = window.parent;
+
+if (parentWindow)
+	postMessage("This is the contents of postMessage.", "*");

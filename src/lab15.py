@@ -133,15 +133,23 @@ def request(url, top_level_url, payload=None):
 
 
 class DrawImage(DisplayItem):
-    def __init__(self, image, src_rect, dst_rect):
+    def __init__(self, image, src_rect, dst_rect, image_rendering):
         super().__init__(dst_rect)
         self.image = image
         self.src_rect = src_rect
         self.dst_rect = dst_rect
+        self.quality = DrawImage.quality(image_rendering)
+
+    def quality(image_rendering):
+        if image_rendering == "crisp-edges":
+            return skia.kNone_FilterQuality
+        else:
+            return skia.kLow_FilterQuality
 
     def execute(self, canvas):
         canvas.drawImageRect(
-            self.image, self.src_rect, self.dst_rect)
+            self.image, self.src_rect, self.dst_rect,
+            skia.Paint(FilterQuality=self.quality))
 
 class DocumentLayout:
     def __init__(self, node, tab):
@@ -598,7 +606,9 @@ class ImageLayout:
         dst_rect = skia.Rect.MakeLTRB(
             self.x, self.y, self.x + self.width,
             self.y + self.height)
-        cmds.append(DrawImage(self.node.image, src_rect, dst_rect))
+
+        cmds.append(DrawImage(self.node.image, src_rect, dst_rect,
+            self.node.style.get("image-rendering", "auto")))
 
         display_list.extend(cmds)
 
