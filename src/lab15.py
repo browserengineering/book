@@ -40,8 +40,8 @@ from lab13 import USE_BROWSER_THREAD, diff_styles, \
     DisplayItem, DrawText, \
     DrawLine, paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, \
     REFRESH_RATE_SEC, HSTEP, VSTEP, SETTIMEOUT_CODE, XHR_ONLOAD_CODE
-from lab14 import parse_color, parse_outline, draw_rect, DrawRRect, DrawRect, \
-    outline_cmd, is_focused, paint_outline, has_outline, \
+from lab14 import parse_color, parse_outline, draw_rect, DrawRRect, \
+    is_focused, paint_outline, has_outline, \
     device_px, style_length, cascade_priority, style, \
     is_focusable, compute_role, announce_text, AccessibilityNode, speak_text, \
     CSSParser
@@ -163,15 +163,6 @@ class DocumentLayout:
         self.height = child.height + 2* device_px(VSTEP, zoom)
 
     def paint(self, display_list, dark_mode):
-        if dark_mode:
-            background_color = "black"
-        else:
-            background_color = "white"
-        display_list.append(
-            DrawRect(skia.Rect.MakeLTRB(
-                self.x, self.y, self.x + self.width,
-                self.y + self.height),
-                background_color, background_color))
         self.children[0].paint(display_list)
 
     def __repr__(self):
@@ -720,19 +711,14 @@ class JSContext:
             self.requestAnimationFrame)
         self.interp.export_function("parent", self.parent)
         self.interp.export_function("postMessage", self.postMessage)
-        self.window_count = -1
 
         self.node_to_handle = {}
         self.handle_to_node = {}
-        self.window_id_to_document = {}
 
     def add_window(self, document):
-        self.window_count += 1
-        self.window_id_to_document[self.window_count] = document
         self.interp.evaljs(
-            "window_{window_count} = new Window({window_count});".format(
-                window_count=self.window_count))
-        return self.window_count
+            "var window_{window_id} = new Window({window_id});".format(
+                window_id=document.window_id))
 
     def run(self, script, code, window_id):
         try:
@@ -769,7 +755,7 @@ class JSContext:
         return elt.attributes.get(attr, None)
 
     def parent(self, window_id):
-        parent_document = self.window_id_to_document[window_id].parent_document
+        parent_document = self.tab.window_id_to_document[window_id].parent_document
         if not parent_document:
             return None
         return parent_document.window_id
@@ -782,7 +768,7 @@ class JSContext:
             data=message)
 
     def postMessage(self, window_id, message, domain):
-        task = Task(self.dispatch_post_message, message, window_id)
+        task = Task(self.tab.post_message, message, window_id)
         self.tab.task_runner.schedule_task(task)
 
     def innerHTML_set(self, handle, s):
@@ -842,6 +828,7 @@ class JSContext:
     def requestAnimationFrame(self):
         self.tab.browser.set_needs_animation_frame(self.tab)
 
+WINDOW_COUNT = 0
 
 class Document:
     def __init__(self, tab, parent_document, frame_element):
@@ -852,6 +839,9 @@ class Document:
         self.parent_document = parent_document
         self.frame_element = frame_element
         self.js = None
+        global WINDOW_COUNT
+        self.window_id = WINDOW_COUNT
+        WINDOW_COUNT += 1
 
         with open("browser15.css") as f:
             self.default_style_sheet = \
@@ -883,12 +873,15 @@ class Document:
 
         self.nodes = HTMLParser(body).parse()
 
-        if not self.parent_document:
+        if not self.parent_document or CROSS_ORIGIN_IFRAMES or \
+            url_origin(self.url) != url_origin(self.parent_document.url):
             self.js = JSContext(self, self.tab)
             self.js.interp.evaljs("function Window(id) {{ this._id = id }};")
         js = self.get_js()
 
-        self.window_id = js.add_window(self)
+        js.add_window(self)
+
+        self.tab.window_id_to_document[self.window_id] = self
 
         with open("runtime15.js") as f:
             wrapped = wrap_in_window(f.read(), self.window_id)
@@ -1017,6 +1010,8 @@ class Tab:
         self.pending_hover = None
         self.hovered_node = None
 
+        self.window_id_to_document = {}
+
     def load(self, url, body=None):
         self.history.append(url)
         self.task_runner.clear_pending_tasks()
@@ -1045,9 +1040,9 @@ class Tab:
     def run_animation_frame(self, scroll):
         if not self.scroll_changed_in_tab:
             self.scroll = scroll
-        for window_id in self.document.js.window_id_to_document.keys():
-            self.document.js.interp.evaljs(
-            wrap_in_window("__runRAFHandlers()", window_id))
+        for (window_id, document) in self.window_id_to_document.items():
+            document.get_js().interp.evaljs(
+                wrap_in_window("__runRAFHandlers()", window_id))
 
         for node in tree_to_list(self.document.nodes, []):
             for (property_name, animation) in \
@@ -1313,6 +1308,10 @@ class Tab:
     def hover(self, x, y):
         self.pending_hover = (x, y)
         self.set_needs_render()
+
+    def post_message(self, message, window_id):
+        document = self.window_id_to_document[window_id]
+        document.get_js().dispatch_post_message(message, window_id)
 
 def draw_line(canvas, x1, y1, x2, y2, color):
     sk_color = parse_color(color)
@@ -1718,12 +1717,12 @@ class Browser:
 
         # Draw the plus button to add a tab:
         buttonfont = skia.Font(skia.Typeface('Arial'), 30)
-        draw_rect(canvas, skia.Rect.MakeLTRB(10, 10, 30, 30),
+        draw_rect(canvas, 10, 10, 30, 30,
             fill_color=background_color, border_color=color)
         draw_text(canvas, 11, 4, "+", buttonfont, color=color)
 
         # Draw the URL address bar:
-        draw_rect(canvas, skia.Rect.MakeLTRB(40.0, 50.0, WIDTH - 10.0, 90.0),
+        draw_rect(canvas, 40.0, 50.0, WIDTH - 10.0, 90.0,
             fill_color=background_color, border_color=color)
 
         if self.focus == "address bar":
@@ -1737,7 +1736,7 @@ class Browser:
                     color=color)
 
         # Draw the back button:
-        draw_rect(canvas, skia.Rect.MakeLTRB(10, 50, 35, 90),
+        draw_rect(canvas, 10, 50, 35, 90,
             fill_color=background_color, border_color=color)
 
         path = \
@@ -1794,6 +1793,8 @@ class Browser:
             sdl2.SDL_GL_DeleteContext(self.gl_context)
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
+CROSS_ORIGIN_IFRAMES = False
+
 if __name__ == "__main__":
     import sys
     import argparse
@@ -1808,12 +1809,15 @@ if __name__ == "__main__":
         default=False, help='Whether to disable use of the GPU')
     parser.add_argument('--show_composited_layer_borders', action="store_true",
         default=False, help='Whether to visually indicate composited layer borders')
+    parser.add_argument("--force_cross_origin_iframes", action="store_true",
+        default=False, help="Whether to treat all iframes as cross-origin")
     args = parser.parse_args()
 
     USE_BROWSER_THREAD = not args.single_threaded
     USE_GPU = not args.disable_gpu
     USE_COMPOSITING = not args.disable_compositing and not args.disable_gpu
     SHOW_COMPOSITED_LAYER_BORDERS = args.show_composited_layer_borders
+    CROSS_ORIGIN_IFRAMES = args.force_cross_origin_iframes
 
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()

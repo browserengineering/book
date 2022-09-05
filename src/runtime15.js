@@ -152,8 +152,15 @@ Object.defineProperty(Window.prototype, 'parent', {
   get: function() {
     handle = call_python('parent', window._id);
     if (handle != undefined) {
-        target_window = eval("window_" + handle);
-        return target_window
+        try {
+            target_window = eval("window_" + handle);
+            // Same-origin
+            return target_window;
+        } catch (e) {
+            // Cross-origin
+            return new Window(handle)
+        }
+
     }
     return undefined;
   }
