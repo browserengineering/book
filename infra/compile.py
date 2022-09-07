@@ -713,7 +713,7 @@ def compile(tree, ctx, indent=0):
             intros = set.intersection(*[set(ctx2) for ctx2 in ctxs]) - set(ctx)
             if intros:
                 for name in intros: ctx[name] =   {"is_class": False}
-                out += "let " + ",".join(sorted(intros)) + ";\n" + " " * indent
+                out += "let " + ", ".join(sorted(intros)) + ";\n" + " " * indent
 
             for i, (test, body) in enumerate(parts):
                 ctx2 = Context(ctx.type, ctx)
