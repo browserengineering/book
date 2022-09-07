@@ -663,9 +663,10 @@ def compile(tree, ctx, indent=0):
         return " " * indent + "return" + (" " + ret if ret else "") + ";"
     elif isinstance(tree, ast.While):
         assert not tree.orelse
+        ctx2 = Context("while", ctx)
         test = compile_expr(tree.test, ctx)
         out = " " * indent + "while (" + test + ") {\n"
-        out += "\n".join([compile(line, indent=indent + INDENT, ctx=ctx) for line in tree.body])
+        out += "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in tree.body])
         out += "\n" + " " * indent + "}"
         return out
     elif isinstance(tree, ast.For):
