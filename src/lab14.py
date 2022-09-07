@@ -79,13 +79,10 @@ def parse_color(color):
         return skia.ColorBLACK
 
 def parse_outline(outline_str):
-    if not outline_str:
-        return None
+    if not outline_str: return None
     values = outline_str.split(" ")
-    if len(values) != 3:
-        return None
-    if values[1] != "solid":
-        return None
+    if len(values) != 3: return None
+    if values[1] != "solid": return None
     return (int(values[0][:-2]), values[2])
 
 class DrawOutline(DisplayItem):
@@ -340,15 +337,15 @@ class LineLayout:
             child.paint(display_list)
 
         outline_rect = skia.Rect.MakeEmpty()
-        outline_node = None
+        focused_node = None
         for child in self.children:
             parent = child.node.parent
             if has_outline(parent):
-                outline_node = parent
+                focused_node = parent
                 outline_rect.join(child.rect())
 
-        if outline_node:
-            paint_outline(outline_node, display_list, outline_rect)
+        if focused_node:
+            paint_outline(focused_node, display_list, outline_rect)
 
     def role(self):
         return "none"
@@ -708,12 +705,9 @@ class CSSParser:
         assert self.i > start
         return self.s[start:self.i]
 
-    def until_char(self, char):
+    def until_char(self, chars):
         start = self.i
-        while self.i < len(self.s):
-            cur = self.s[self.i]
-            if cur == char:
-                break
+        while self.i < len(self.s) and self.s[self.i] not in chars:
             self.i += 1
         return self.s[start:self.i]
 
@@ -736,7 +730,7 @@ class CSSParser:
         pairs = {}
         while self.i < len(self.s) and self.s[self.i] != "}":
             try:
-                prop, val = self.pair(";")
+                prop, val = self.pair([";", "}"])
                 pairs[prop.lower()] = val
                 self.whitespace()
                 self.literal(";")
