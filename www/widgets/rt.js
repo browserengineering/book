@@ -327,11 +327,13 @@ static urllib() {
 
 static html() {
     function escape(s) {
+        let e = document.createElement("div");
         let t = document.createTextNode(s);
-        document.documentElement.appendChild(t);
-        let html = t.innerHTML;
-        t.remove();
-        return t;
+        e.appendChild(t);
+        document.documentElement.appendChild(e);
+        let html = e.innerHTML;
+        e.remove();
+        return html;
     }
     return { escape: escape };
 }
