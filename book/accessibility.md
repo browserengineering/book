@@ -1321,7 +1321,7 @@ def has_outline(node):
 def paint_outline(node, cmds, rect):
     if has_outline(node):
         thickness, color = parse_outline(node.style.get("outline"))
-        cmds.append(DrawOutline(rect, thickness, color))
+        cmds.append(DrawOutline(rect, color, thickness))
 ```
 
 The default two-pixel black outline can now be moved into the browser
@@ -1357,7 +1357,7 @@ outline thanks to the browser stylesheet above:
 class LineLayout:
     def paint(self, display_list):
         for child in self.children:
-            if isinstance(node, Text) and has_outline(node.parent):
+            if has_outline(node.parent):
                 # ...
 ```
 

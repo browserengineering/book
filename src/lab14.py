@@ -114,14 +114,13 @@ def is_focused(node):
         node = node.parent
     return node.is_focused
 
-def paint_outline(node, cmds, rect):
-    outline = parse_outline(node.style.get("outline"))
-    if outline:
-        outline_width, outline_color = outline
-        cmds.append(DrawOutline(rect, outline_color, outline_width))
-
 def has_outline(node):
     return parse_outline(node.style.get("outline"))
+
+def paint_outline(node, cmds, rect):
+    if has_outline(node):
+        thickness, color = parse_outline(node.style.get("outline"))
+        cmds.append(DrawOutline(rect, color, thickness))
 
 class BlockLayout:
     def __init__(self, node, parent, previous):
@@ -339,9 +338,9 @@ class LineLayout:
         outline_rect = skia.Rect.MakeEmpty()
         focused_node = None
         for child in self.children:
-            parent = child.node.parent
-            if has_outline(parent):
-                focused_node = parent
+            node = child.node
+            if has_outline(node.parent):
+                focused_node = node.parent
                 outline_rect.join(child.rect())
 
         if focused_node:
