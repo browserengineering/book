@@ -509,7 +509,7 @@ The `XMLHttpRequest_send` function just calls `request`:[^note-method]
 class JSContext:
     def XMLHttpRequest_send(self, method, url, body):
         full_url = resolve_url(url, self.tab.url)
-        headers, out = request(full_url, payload=body)
+        headers, out = request(full_url, body)
         return out
 ```
 
@@ -823,7 +823,7 @@ request to a page. Modify it like so:
 ``` {.python}
 class Tab:
     def load(self, url, body=None):
-        headers, body = request(url, self.url, payload=body)
+        headers, body = request(url, self.url, body)
         # ...
 ```
 
@@ -861,7 +861,7 @@ their top-level URL:
 class JSContext:
     def XMLHttpRequest_send(self, method, url, body):
         # ...
-        headers, out = request(full_url, self.tab.url, payload=body)
+        headers, out = request(full_url, self.tab.url, body)
         # ...
 ```
 
