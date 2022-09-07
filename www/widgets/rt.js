@@ -99,6 +99,8 @@ static socket() {
                 let response = await fetch(path);
                 this.output = "HTTP/1.0 " + response.status + " " + response.statusText + "\r\n";
                 for (let [header, value] of response.headers.entries()) {
+                    if (header.toLowerCase() == "transfer-encoding") continue;
+                    if (header.toLowerCase() == "content-encoding") continue;
                     this.output += header + ": " + value + "\r\n";
                 }
                 this.output += "\r\n";
