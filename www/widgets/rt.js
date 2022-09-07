@@ -327,6 +327,9 @@ static urllib() {
 
 static html() {
     function escape(s) {
+        // To HTML-escape a string, insert a text node with that
+        // contents into the DOM, and read back its HTML. In effect,
+        // we're leveraging the browser's unparser to escape text.
         let e = document.createElement("div");
         let t = document.createTextNode(s);
         e.appendChild(t);
