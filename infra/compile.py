@@ -352,17 +352,15 @@ def compile_op(op):
     else:
         raise UnsupportedConstruct()
     
-UNDERSCORES = 0
-
 def lhs_targets(tree):
     if isinstance(tree, ast.Name):
-        return set([tree.id])
+        return [tree.id]
     elif isinstance(tree, ast.Tuple):
-        return set().union(*[lhs_targets(t) for t in tree.elts])
+        return sum([lhs_targets(t) for t in tree.elts], [])
     elif isinstance(tree, ast.Attribute):
-        return set()
+        return []
     elif isinstance(tree, ast.Subscript):
-        return set()
+        return []
     else:
         raise UnsupportedConstruct()
     
@@ -520,10 +518,6 @@ def compile_expr(tree, ctx):
             return "Error"
         elif tree.id in OUR_CONSTANTS:
             return "constants.{}".format(tree.id)
-        elif tree.id == "_":
-            global UNDERSCORES
-            UNDERSCORES += 1
-            return tree.id + str(UNDERSCORES)
         elif tree.id in ctx:
             return tree.id
         else:
@@ -636,17 +630,19 @@ def compile(tree, ctx, indent=0):
         assert len(tree.targets) == 1
 
         targets = lhs_targets(tree.targets[0])
-        ins = set([target in ctx for target in targets])
-        if True in ins and False in ins:
-            kw = "let " + ", ".join([target for target in targets if target not in ctx]) + "; "
-        elif ctx.type in ["class"]: kw = ""
-        elif False in ins and ctx.type != "module":
-            kw = "let "
-        else: kw = ""
+        new_targets = set([target for target in targets if target not in ctx])
 
         lhs = compile_lhs(tree.targets[0], ctx)
         rhs = compile_expr(tree.value, ctx)
-        return " " * indent + kw + lhs + " = " + rhs + ";"
+
+        if not new_targets or ctx.type in ["class", "module"]:
+            return " " * indent + lhs + " = " + rhs + ";"
+        elif len(new_targets) < len(targets):
+            line1 = " " * indent + "let " + ", ".join(sorted(new_targets)) + ";"
+            line2 = " " * indent + lhs + " = " + rhs + ";"
+            return line1 + "\n" + line2
+        else:
+            return " " * indent + "let " + lhs + " = " + rhs + ";"
     elif isinstance(tree, ast.AugAssign):
         targets = lhs_targets(tree.target)
         for target in targets:
