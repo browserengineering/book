@@ -310,7 +310,7 @@ class Tab:
         if self.focus:
             if self.js.dispatch_event("keydown", self.focus): return
             self.focus.attributes["value"] += char
-        self.document.paint(self.display_list) # TODO: is this necessary?
+        self.render()
 
     def go_back(self):
         if len(self.history) > 1:
