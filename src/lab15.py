@@ -753,10 +753,11 @@ class JSContext:
             handle = self.node_to_handle[elt]
         return handle
 
-    def querySelectorAll(self, selector_text):
+    def querySelectorAll(self, selector_text, window_id):
+        document = self.tab.window_id_to_document[window_id]
         selector = CSSParser(selector_text).selector()
         nodes = [node for node
-                 in tree_to_list(self.tab.document.nodes, [])
+                 in tree_to_list(document.nodes, [])
                  if selector.matches(node)]
         return [self.get_handle(node) for node in nodes]
 
@@ -988,6 +989,62 @@ class Document:
             self.display_list.append(
                 DrawLine(x, y, x, y + obj.height))
 
+    def apply_focus(self, node):
+        if self.focus:
+            self.focus.is_focused = False
+        self.focus = node
+        if node:
+            if node.tag == "input":
+                node.attributes["value"] = ""
+            node.is_focused = True
+        self.tab.set_needs_render()
+
+    def activate_element(self, elt):
+        if elt.tag == "a" and "href" in elt.attributes:
+            url = resolve_url(elt.attributes["href"], self.url)
+            self.load(url)
+            return None
+        elif elt.tag == "button":
+            while elt:
+                if elt.tag == "form" and "action" in elt.attributes:
+                    self.tab.submit_form(elt)
+                    return None
+                elt = elt.parent
+        return elt
+
+    def click(self, x, y):
+        self.apply_focus(None)
+        y += self.scroll
+        objs = [obj for obj in tree_to_list(self.document_layout, [])
+                if obj.x <= x < obj.x + obj.width
+                and obj.y <= y < obj.y + obj.height]
+        if not objs: return
+        elt = objs[-1].node
+        if elt and self.get_js().dispatch_event(
+            "click", elt, self.window_id): return
+        focus_applied = False
+        while elt:
+            if isinstance(elt, Text):
+                pass
+            elif elt.tag == "iframe":
+                elt.document.click(x, y)
+                return
+            elif elt.tag == "input":
+                elt.attributes["value"] = ""
+                if elt != self.focus:
+                    self.set_needs_render()
+                if not focus_applied:
+                    self.apply_focus(elt)
+                return
+            elif not self.activate_element(elt):
+                if not focus_applied:
+                    self.apply_focus(elt)
+                return
+            elt = elt.parent
+            self.apply_focus(elt)
+            self.focus_applied = True
+
+
 class Tab:
     def __init__(self, browser):
         self.history = []
@@ -1187,58 +1244,9 @@ class Tab:
 
         self.measure_render.stop()
 
-    def apply_focus(self, node):
-        if self.focus:
-            self.focus.is_focused = False
-        self.focus = node
-        if node:
-            if node.tag == "input":
-                node.attributes["value"] = ""
-            node.is_focused = True
-        self.set_needs_render()
-
-    def activate_element(self, elt):
-        if elt.tag == "a" and "href" in elt.attributes:
-            url = resolve_url(elt.attributes["href"], self.url)
-            self.load(url)
-            return None
-        elif elt.tag == "button":
-            while elt:
-                if elt.tag == "form" and "action" in elt.attributes:
-                    self.submit_form(elt)
-                    return None
-                elt = elt.parent
-        return elt
-
     def click(self, x, y):
         self.render()
-        self.apply_focus(None)
-        y += self.scroll
-        objs = [obj for obj in tree_to_list(self.document.document_layout, [])
-                if obj.x <= x < obj.x + obj.width
-                and obj.y <= y < obj.y + obj.height]
-        if not objs: return
-        elt = objs[-1].node
-        if elt and self.document.get_js().dispatch_event(
-            "click", elt, self.document.window_id): return
-        focus_applied = False
-        while elt:
-            if isinstance(elt, Text):
-                pass
-            elif elt.tag == "input":
-                elt.attributes["value"] = ""
-                if elt != self.focus:
-                    self.set_needs_render()
-                if not focus_applied:
-                    self.apply_focus(elt)
-                return
-            elif not self.activate_element(elt):
-                if not focus_applied:
-                    self.apply_focus(elt)
-                return
-            elt = elt.parent
-            self.apply_focus(elt)
-            self.focus_applied = True
+        self.document.click(x, y)
 
     def submit_form(self, elt):
         if self.js.dispatch_event("submit", elt): return
