@@ -68,7 +68,7 @@ def request(url, top_level_url, payload=None):
     if payload:
         content_length = len(payload.encode("utf8"))
         body += "Content-Length: {}\r\n".format(content_length)
-    body += "\r\n" + (payload or "")
+    body += "\r\n" + (payload if payload else "")
     s.send(body.encode("utf8"))
     response = s.makefile("r", encoding="utf8", newline="\r\n")
 
@@ -166,7 +166,7 @@ class JSContext:
         full_url = resolve_url(url, self.tab.url)
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
-        headers, out = request(full_url, self.tab.url, payload=body)
+        headers, out = request(full_url, self.tab.url, body)
         if url_origin(full_url) != url_origin(self.tab.url):
             raise Exception("Cross-origin XHR request not allowed")
         return out
@@ -186,7 +186,7 @@ class Tab:
             url_origin(url) in self.allowed_origins
 
     def load(self, url, body=None):
-        headers, body = request(url, self.url, payload=body)
+        headers, body = request(url, self.url, body)
         self.scroll = 0
         self.url = url
         self.history.append(url)
@@ -310,7 +310,7 @@ class Tab:
         if self.focus:
             if self.js.dispatch_event("keydown", self.focus): return
             self.focus.attributes["value"] += char
-        self.document.paint(self.display_list) # TODO: is this necessary?
+            self.render()
 
     def go_back(self):
         if len(self.history) > 1:

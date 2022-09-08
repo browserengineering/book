@@ -23,7 +23,8 @@ widgets: \
 	www/widgets/lab6-browser.html www/widgets/lab6.js \
 	www/widgets/lab7-browser.html www/widgets/lab7.js \
 	www/widgets/lab8-browser.html www/widgets/lab8.js www/widgets/server8.js \
-	www/widgets/lab9-browser.html www/widgets/lab9.js www/widgets/server9.js
+	www/widgets/lab9-browser.html www/widgets/lab9.js www/widgets/server9.js \
+	www/widgets/lab10-browser.html www/widgets/lab10.js www/widgets/server10.js
 
 lint: book/*.md src/*.py
 	python3 infra/compare.py --config config.json
@@ -41,10 +42,10 @@ www/rss.xml: news.yaml infra/rss-template.xml
 	pandoc --template infra/rss-template.xml  -f markdown -t html $< -o $@
 
 www/widgets/lab%.js: src/lab%.py src/lab%.hints infra/compile.py
-	python3 infra/compile.py $< $@ --hints src/lab$*.hints --use-js-modules
+	python3 infra/compile.py $< $@ --hints src/lab$*.hints
 
 www/widgets/server%.js: src/server%.py src/server%.hints infra/compile.py
-	python3 infra/compile.py $< $@ --hints src/server$*.hints --use-js-modules
+	python3 infra/compile.py $< $@ --hints src/server$*.hints
 
 www/examples/%.html: src/%.html
 	cp $< www/examples
@@ -75,6 +76,9 @@ restart:
 
 backup:
 	rsync server:/home/www/browseng/db.json infra/db.$(shell date +%Y-%m-%d).pickle
+
+test-server:
+	(cd www/ && python3 ../infra/server.py)
 
 test:
 	python3 -m doctest infra/compiler.md

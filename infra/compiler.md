@@ -234,19 +234,33 @@ Conditional expressions are also supported:
     >>> Test.expr("x if y else z")
     (y ? x : z)
 
-One weird case is list comprehensions. We compile those to `map` and
-`asyncfilter`, which can get a bit ugly:
+One weird case is list comprehensions. If we don't call any functions,
+these can be quite short calls to `map` and `filter`:
 
     >>> Test.expr("[x for x in v]")
     v
     >>> Test.expr("[x.y for x in v]")
-    (await Promise.all(v.map(async (x) => x.y)))
+    v.map((x) => x.y)
     >>> Test.expr("[x for x in v if x.y]")
-    (await asyncfilter(async (x) => x.y, v))
+    v.filter((x) => x.y)
     >>> Test.expr("[x for x, y in v.items()]")
-    (await Promise.all((Object.entries(v)).map(async ([x, y]) => x)))
+    (Object.entries(v)).map(([x, y]) => x)
     >>> Test.expr("[x for x, y in v.items() if y > 0]")
-    (await Promise.all((await asyncfilter(async ([x, y]) => (y > 0), (Object.entries(v)))).map(async ([x, y]) => x)))
+    (Object.entries(v)).filter(([x, y]) => (y > 0)).map(([x, y]) => x)
+
+However, if you do call some functions, these need to be longer calls
+with `Promise.all` and a custom `asyncfilter` function:
+
+    >>> OUR_FNS.append("f")
+    >>> Test.expr("[f(x) for x in v]")
+    (await Promise.all(v.map(async (x) => (await f(x)))))
+    >>> Test.expr("[x for x in v if f(x)]")
+    (await asyncfilter(async (x) => (await f(x)), v))
+    >>> Test.expr("[f(x) for x, y in v.items()]")
+    (await Promise.all((Object.entries(v)).map(async ([x, y]) => (await f(x)))))
+    >>> Test.expr("[f(x) for x, y in v.items() if f(y) > 0]") # doctest: +NORMALIZE_WHITESPACE
+    (await Promise.all((await asyncfilter(async ([x, y]) => ((await f(y)) > 0),
+         (Object.entries(v)))).map(async ([x, y]) => (await f(x)))))
 
 The remaining expressions are pretty much direct translations:
 
