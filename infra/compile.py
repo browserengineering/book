@@ -495,10 +495,16 @@ def compile_expr(tree, ctx):
         assert not gen.is_async
         for if_clause in gen.ifs:
             e = compile_expr(if_clause, ctx2)
-            out = "(await asyncfilter(async (" + arg + ") => " + e + ", " + out + "))"
+            if "await" in e:
+                out = "(await asyncfilter(async (" + arg + ") => " + e + ", " + out + "))"
+            else:
+                out = out + ".filter((" + arg + ") => " + e + ")"
         e = compile_expr(tree.elt, ctx2)
         if e != arg:
-            out = "(await Promise.all(" + out + ".map(async (" + arg + ") => " + e + ")))"
+            if "await" in e:
+                out = "(await Promise.all(" + out + ".map(async (" + arg + ") => " + e + ")))"
+            else:
+                out = out + ".map((" + arg + ") => " + e + ")"
         return out
     elif isinstance(tree, ast.Attribute):
         base = compile_expr(tree.value, ctx)
@@ -781,7 +787,7 @@ def compile(tree, ctx, indent=0):
     else:
         raise UnsupportedConstruct()
     
-def compile_module(tree, use_js_modules):
+def compile_module(tree):
     assert isinstance(tree, ast.Module)
     ctx = Context("module", {})
 
@@ -790,18 +796,15 @@ def compile_module(tree, use_js_modules):
     exports = ""
     rt_imports = ""
     render_imports = ""
-    constants_export = "const constants = {};"
-    if use_js_modules:
-        if len(EXPORTS) > 0:
-            exports = "export {{ {} }};".format(", ".join(EXPORTS))
+    constants_export = "export const constants = {};"
+    if len(EXPORTS) > 0:
+        exports = "export {{ {} }};".format(", ".join(EXPORTS))
 
-        imports_str = "import {{ {} }} from \"./{}.js\";"
+    imports_str = "import {{ {} }} from \"./{}.js\";"
 
-        rt_imports_arr = [ 'breakpoint', 'comparator', 'filesystem', 'asyncfilter', 'pysplit', 'pyrsplit', 'truthy' ]
-        rt_imports_arr += set([ mod.split(".")[0] for mod in RT_IMPORTS])
-        rt_imports = imports_str.format(", ".join(sorted(rt_imports_arr)), "rt")
-
-        constants_export = "export " + constants_export
+    rt_imports_arr = [ 'breakpoint', 'comparator', 'filesystem', 'asyncfilter', 'pysplit', 'pyrsplit', 'truthy' ]
+    rt_imports_arr += set([ mod.split(".")[0] for mod in RT_IMPORTS])
+    rt_imports = imports_str.format(", ".join(sorted(rt_imports_arr)), "rt")
 
     return "{}\n{}\n{}\n\n{}".format(
         exports, rt_imports, constants_export, "\n\n".join(items))
@@ -818,7 +821,6 @@ if __name__ == "__main__":
     parser.add_argument("--hints", default=None, type=argparse.FileType())
     parser.add_argument("--indent", default=2, type=int)
     parser.add_argument("--debug", action="store_true")
-    parser.add_argument("--use-js-modules", action="store_true", default=False)
     parser.add_argument("python", type=argparse.FileType())
     parser.add_argument("javascript", type=argparse.FileType("w"))
     args = parser.parse_args()
@@ -832,7 +834,7 @@ if __name__ == "__main__":
     INDENT = args.indent
     tree = asttools.parse(args.python.read(), args.python.name)
     load_outline(asttools.inline(tree))
-    js = compile_module(tree, args.use_js_modules)
+    js = compile_module(tree)
 
     for fn in FILES:
         path = os.path.join(os.path.dirname(args.python.name), fn)
