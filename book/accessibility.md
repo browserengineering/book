@@ -1179,62 +1179,18 @@ rectangles to make crystal-clear what is being focused on.
 Add scrolling code here
 :::
 
-::: {.further}
-
-Keyboards, mice and touch screens are not the only way to interact with a
-computer. There is also the possibility of voice input---talking to the
-computer. Some operating systems have built-in support for voice commands and
-dictation (speaking to type), plus there are software packages you can buy that
-do it. These systems generally work very well with a keyboard-enabled
-browser, because the voice input software can translate voice commands
-directly into simulated keyboard events. This is one more reason that it's
-important for browsers and web sites to provide keyboard input alternatives.
-
-:::
-
-Next up is customizing the focus rectangle via the [`outline`][outline] CSS
-property. As usual, we'll implement only a subset of the full definition; in
-particular, syntax that looks like this:
-
-[outline]: https://developer.mozilla.org/en-US/docs/Web/CSS/outline
-
-    outline: 3px solid red;
-
-Which means "make the outline 3 pixels thick and red". First parse it:
-
-``` {.python}
-def parse_outline(outline_str):
-    if not outline_str:
-        return None
-    values = outline_str.split(" ")
-    if len(values) != 3:
-        return None
-    if values[1] != "solid":
-        return None
-    return (int(values[0][:-2]), values[2])
-```
-
-Now to use it. The outline will be present if the element is focused
-or has the `outline` CSS property generally. However: while we could
-finish implementing that via some extra logic in `paint_outline`, the
-feature has a fundamental problem that has to be fixed. Specifying an
-outline is a fine feature to offer to web developers, but it doesn't
-actually solve the problem of customizing the focus outline. That's
-because `outline`, if specified by the developer, would *always*
-apply, but instead we want it to only apply to an element when it's
-focused!
-
-To do this we need some way to let developers
-express *outline-only-while-focused* in CSS. This is done with a
-[*pseudo-class*][pseudoclass], which is a way to target internal state of the
-browser (in this case internal state of a specific element).
-[^why-pseudoclass] Pseudo-classes are notated with a suffix applied to a tag or
-other selector, separated by a single colon character. For the case of focus,
-the syntax looks like this:
-
-    div:focus { outline: 2px solid black; }
+Focus outlines now basically work. But ideally, the focus indicator
+should be customizable, so that the web page author can make sure the
+focused element stands out. In CSS, that's done with what's called the
+"`:focus` [pseudo-class][pseudoclass]". Basically, this means you can
+write a selector like this:
 
 [pseudoclass]: https://developer.mozilla.org/en-US/docs/Web/CSS/Pseudo-classes
+
+    div:focus { ... }
+
+And then that selector applies only to `<div>` elements that are
+currently focused.[^why-pseudoclass]
 
 [^why-pseudoclass]: It's called a pseudo-class because it's similar to how a
 developer would indicate a [class] attribute on an element for the purpose
@@ -1243,56 +1199,9 @@ there is no actual class attribute set on the element while it's focused.
 
 [class]: https://developer.mozilla.org/en-US/docs/Web/CSS/Class_selectors
 
-Let's implement the `focus` pseudo-class. Then we can change focus outlines to
-use a browser style sheet with `:focus` instead of special code in
-`paint_outline`. The style sheet lines will look like this:
-
-``` {.css}
-input:focus { outline: 2px solid black; }
-button:focus { outline: 2px solid black; }
-div:focus { outline: 2px solid black; }
-
-
-@media (prefers-color-scheme: dark) {
-input:focus { outline: 2px solid white; }
-button:focus { outline: 2px solid white; }
-div:focus { outline: 2px solid white; }
-a:focus { outline: 2px solid white; }
-}
-```
-
-And then we can change `paint_outline` to just look at the `outline` CSS
-property:
-
-``` {.python}
-def paint_outline(node, cmds, rect):
-    outline = parse_outline(node.style.get("outline"))
-    if outline:
-        outline_width, outline_color = outline
-        cmds.append(DrawOutline(rect, outline_color, outline_width))
-```
-
-``` {.python expected=False}
-class LineLayout:
-    # ...
-    def paint(self, display_list):
-        # ...
-        focused_node = None
-        for child in self.children:
-            node = child.node
-            if isinstance(node, Text) and is_focused(node.parent):
-                focused_node = node.parent
-                outline_rect.join(child.rect())
-        # ...
-        if focused_node:
-            paint_outline(focused_node, display_list, outline_rect)
-
-```
-
-Now for adding support for `:focus`. The first step will be teaching
-`CSSParser` how to parse it. To do that, let's change `selector` to
-call a new `simple_selector` subroutine to parse a tag name and a
-possible pseudoclass:
+To implement this, we need to first parse a new kind of selector. To
+do that, let's change `selector` to call a new `simple_selector`
+subroutine to parse a tag name and a possible pseudoclass:
 
 ``` {.python}
 class CSSParser:
@@ -1343,7 +1252,133 @@ class PseudoclassSelector:
             return False
 ```
 
-And that's it! Elegant, right?
+We can now use `:focus` to customize our focus indicator; for example,
+we can make the focused element a different color. But ideally we'd
+also be able to customize the focus outline itself. That's normally
+done with the CSS [`outline` property][outline], which looks like
+this:[^outline-syntax]
+
+[outline]: https://developer.mozilla.org/en-US/docs/Web/CSS/outline
+
+[^outline-syntax]: Naturally, there are other forms this property can
+    take; we'll only implement this syntax.
+
+    outline: 3px solid red;
+
+This asks for a three pixel red outline. To add support for this in
+our browser, we'll again need to first generalize the parser.
+
+First, annoyingly, our CSS parser right now doesn't recognize the line
+above as a valid property/value pair, since it parses values as a
+single word. Let's replace that with any string of characters except a
+semicolon or a curly brace:
+
+``` {.python}
+class CSSParser:
+    def until_char(self, chars):
+        start = self.i
+        while self.i < len(self.s) and self.s[self.i] not in chars:
+            self.i += 1
+        return self.s[start:self.i]
+
+    def pair(self, until):
+        # ...
+        val = self.until_char(until)
+        # ...
+
+    def body(self):
+        while self.i < len(self.s) and self.s[self.i] != "}":
+            try:
+                prop, val = self.pair([";", "}"])
+                # ...
+
+    def media_query(self):
+        # ...
+        (prop, val) = self.pair(")")
+        # ...
+```
+
+Now we have `outline` value in the relevant element's `style`. We can
+parse that into a thickness and a color, assuming that we only want to
+support `solid` outlines:
+
+``` {.python}
+def parse_outline(outline_str):
+    if not outline_str: return None
+    values = outline_str.split(" ")
+    if len(values) != 3: return None
+    if values[1] != "solid": return None
+    return (int(values[0][:-2]), values[2])
+```
+
+Now we can use this `parse_outline` method when drawing an outline, in
+`paint_outline`:
+
+``` {.python}
+def has_outline(node):
+    return parse_outline(node.style.get("outline"))
+
+def paint_outline(node, cmds, rect):
+    if has_outline(node):
+        thickness, color = parse_outline(node.style.get("outline"))
+        cmds.append(DrawOutline(rect, color, thickness))
+```
+
+The default two-pixel black outline can now be moved into the browser
+default stylesheet, like this:
+
+``` {.css}
+input:focus { outline: 2px solid black; }
+button:focus { outline: 2px solid black; }
+div:focus { outline: 2px solid black; }
+```
+
+Moreover, we can now make the outline white when dark mode is
+triggered, which is important for it to stand out against the black
+background:
+
+``` {.css}
+@media (prefers-color-scheme: dark) {
+input:focus { outline: 2px solid white; }
+button:focus { outline: 2px solid white; }
+div:focus { outline: 2px solid white; }
+a:focus { outline: 2px solid white; }
+}
+```
+
+Finally, what if someone sets `outline` on an element that isn't
+focused? It's not really clear why you'd do that, but in a real
+browser that draws the outline no matter what. We can implement that
+by changing all of our `paint` methods to use `has_outline` instead of
+`is_focused` to draw the outline; focused elements will have an
+outline thanks to the browser stylesheet above:
+
+``` {.python}
+class LineLayout:
+    def paint(self, display_list):
+        for child in self.children:
+            if has_outline(node.parent):
+                # ...
+```
+
+As with dark mode, focus outlines are a case where adding an
+accessibility feature meant generalizing existing browser features to
+make them more powerful. And once they were generalized, this
+generalized form can be made accessible to web page authors, who can
+use it for all sorts of things.
+
+::: {.further}
+
+Keyboards, mice and touch screens are not the only way to interact with a
+computer. There is also the possibility of voice input---talking to the
+computer. Some operating systems have built-in support for voice commands and
+dictation (speaking to type), plus there are software packages you can buy that
+do it. These systems generally work very well with a keyboard-enabled
+browser, because the voice input software can translate voice commands
+directly into simulated keyboard events. This is one more reason that it's
+important for browsers and web sites to provide keyboard input alternatives.
+
+:::
 
 ::: {.further}
 
