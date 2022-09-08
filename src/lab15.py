@@ -622,7 +622,6 @@ IFRAME_HEIGHT_PX = 150
 class IframeLayout:
     def __init__(self, node, parent, previous, tab):
         self.node = node
-        self.node.layout_object = self
         self.children = []
         self.parent = parent
         self.previous = previous
