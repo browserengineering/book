@@ -11,8 +11,8 @@ def handle_connection(conx):
     method, url, version = reqline.split(" ", 2)
     assert method in ["GET", "POST"]
     headers = {}
-    for line in req:
-        line = line.decode('utf8')
+    while True:
+        line = req.readline().decode('utf8')
         if line == '\r\n': break
         header, value = line.split(":", 1)
         headers[header.lower()] = value.strip()

@@ -34,9 +34,15 @@ def catch_issues(f):
         except MissingHint as e1:
             try:
                 return f(tree, *args, **kwargs)
-            except AssertionError as e2:
+            except MissingHint as e:
                 if WRAP_DISABLED: raise e
                 ISSUES.append(e)
+                return "/* " + asttools.unparse(tree) + " */"
+            except AssertionError as e2:
+                if str(e2):
+                    e1.message = str(e2)
+                if WRAP_DISABLED: raise e1
+                ISSUES.append(e1)
                 return "/* " + asttools.unparse(tree) + " */"
     return wrapped
 
@@ -322,6 +328,9 @@ def compile_function(name, args, ctx):
     elif name == "enumerate":
         assert len(args) == 1
         return args_js[0] + ".entries()"
+    elif name == "Exception":
+        assert len(args) == 1
+        return "(new Error(" + args_js[0] + "))"
     else:
         raise UnsupportedConstruct()
 
@@ -342,16 +351,16 @@ def compile_op(op):
     elif isinstance(op, ast.Or): return "||"
     else:
         raise UnsupportedConstruct()
-
+    
 def lhs_targets(tree):
     if isinstance(tree, ast.Name):
-        return set([tree.id])
+        return [tree.id]
     elif isinstance(tree, ast.Tuple):
-        return set().union(*[lhs_targets(t) for t in tree.elts])
+        return sum([lhs_targets(t) for t in tree.elts], [])
     elif isinstance(tree, ast.Attribute):
-        return set()
+        return []
     elif isinstance(tree, ast.Subscript):
-        return set()
+        return []
     else:
         raise UnsupportedConstruct()
     
@@ -621,17 +630,19 @@ def compile(tree, ctx, indent=0):
         assert len(tree.targets) == 1
 
         targets = lhs_targets(tree.targets[0])
-        ins = set([target in ctx for target in targets])
-        if True in ins and False in ins:
-            kw = "let " + ", ".join([target for target in targets if target not in ctx]) + "; "
-        elif ctx.type in ["class"]: kw = ""
-        elif False in ins and ctx.type != "module":
-            kw = "let "
-        else: kw = ""
+        new_targets = set([target for target in targets if target not in ctx])
 
         lhs = compile_lhs(tree.targets[0], ctx)
         rhs = compile_expr(tree.value, ctx)
-        return " " * indent + kw + lhs + " = " + rhs + ";"
+
+        if not new_targets or ctx.type in ["class", "module"]:
+            return " " * indent + lhs + " = " + rhs + ";"
+        elif len(new_targets) < len(targets):
+            line1 = " " * indent + "let " + ", ".join(sorted(new_targets)) + ";"
+            line2 = " " * indent + lhs + " = " + rhs + ";"
+            return line1 + "\n" + line2
+        else:
+            return " " * indent + "let " + lhs + " = " + rhs + ";"
     elif isinstance(tree, ast.AugAssign):
         targets = lhs_targets(tree.target)
         for target in targets:
@@ -648,9 +659,10 @@ def compile(tree, ctx, indent=0):
         return " " * indent + "return" + (" " + ret if ret else "") + ";"
     elif isinstance(tree, ast.While):
         assert not tree.orelse
+        ctx2 = Context("while", ctx)
         test = compile_expr(tree.test, ctx)
         out = " " * indent + "while (" + test + ") {\n"
-        out += "\n".join([compile(line, indent=indent + INDENT, ctx=ctx) for line in tree.body])
+        out += "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in tree.body])
         out += "\n" + " " * indent + "}"
         return out
     elif isinstance(tree, ast.For):
@@ -698,7 +710,7 @@ def compile(tree, ctx, indent=0):
             intros = set.intersection(*[set(ctx2) for ctx2 in ctxs]) - set(ctx)
             if intros:
                 for name in intros: ctx[name] =   {"is_class": False}
-                out += "let " + ",".join(sorted(intros)) + ";\n" + " " * indent
+                out += "let " + ", ".join(sorted(intros)) + ";\n" + " " * indent
 
             for i, (test, body) in enumerate(parts):
                 ctx2 = Context(ctx.type, ctx)
@@ -715,6 +727,11 @@ def compile(tree, ctx, indent=0):
                 out += " " * indent + "}"
 
             return out
+    elif isinstance(tree, ast.Raise):
+        assert tree.exc
+        assert not tree.cause
+        exc = compile_expr(tree.exc, ctx=ctx)
+        return " " * indent + "throw " + exc + ";"
     elif isinstance(tree, ast.Try):
         assert not tree.orelse
         assert not tree.finalbody

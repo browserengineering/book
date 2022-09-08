@@ -1,0 +1,13 @@
+[
+  {"code": "'content-length' in headers", "type": "dict"},
+  {"code": "'guest' in params", "type": "dict"},
+  {"code": "'cookie' in headers", "type": "dict"},
+  {"code": "'cookie' not in headers", "type": "dict"},
+  {"code": "'user' in session", "type": "dict"},
+  {"code": "username in LOGINS", "type": "dict"},
+  {"code": "'user' not in session", "type": "dict"},
+  {"code": "'nonce' not in session", "type": "dict"},
+  {"code": "'nonce' not in params", "type": "dict"},
+  {"code": "template.format(token)", "js": "template.replace('{}', token)"},
+  {"code": "SESSIONS.setdefault(token, {})", "js": "(constants.SESSIONS[token] = constants.SESSIONS[token] || {})"}
+]

@@ -3,7 +3,7 @@
 
 export {
     breakpoint, filesystem,
-    socket, ssl, tkinter, dukpy, urllib,
+    socket, ssl, tkinter, dukpy, urllib, html, random,
     truthy, comparator, pysplit, pyrsplit, asyncfilter,
     rt_constants, lib, Widget, http_textarea, 
     };
@@ -99,6 +99,8 @@ static socket() {
                 let response = await fetch(path);
                 this.output = "HTTP/1.0 " + response.status + " " + response.statusText + "\r\n";
                 for (let [header, value] of response.headers.entries()) {
+                    if (header.toLowerCase() == "transfer-encoding") continue;
+                    if (header.toLowerCase() == "content-encoding") continue;
                     this.output += header + ": " + value + "\r\n";
                 }
                 this.output += "\r\n";
@@ -323,6 +325,29 @@ static urllib() {
         }
     }
     return { parse: parse };
+}
+
+static html() {
+    function escape(s) {
+        // To HTML-escape a string, insert a text node with that
+        // contents into the DOM, and read back its HTML. In effect,
+        // we're leveraging the browser's unparser to escape text.
+        let e = document.createElement("div");
+        let t = document.createTextNode(s);
+        e.appendChild(t);
+        document.documentElement.appendChild(e);
+        let html = e.innerHTML;
+        e.remove();
+        return html;
+    }
+    return { escape: escape };
+}
+
+static random() {
+    function random() {
+        return Math.random();
+    }
+    return { random: random };
 }
 
 static dukpy() {
@@ -629,3 +654,5 @@ const ssl = lib.ssl();
 const tkinter = lib.tkinter();
 const dukpy = lib.dukpy();
 const urllib = lib.urllib();
+const html = lib.html();
+const random = lib.random();
