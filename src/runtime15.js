@@ -1,7 +1,7 @@
 window.console = { log: function(x) { call_python("log", x); } }
 
 window.document = { querySelectorAll: function(s) {
-    var handles = call_python("querySelectorAll", s);
+    var handles = call_python("querySelectorAll", s, window._id);
     return handles.map(function(h) { return new Node(h) });
 }}
 
