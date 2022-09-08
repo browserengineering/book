@@ -21,6 +21,8 @@ Plan:
 * iframes
   * Same-origin iframes: same interpreter, postMessage, parent
   * Cross-origin iframes: postMessage
+  * caveat: bug in duktape regarding use of function() foo() {} syntax and the
+    `with` operator
 
   TODO: make all JS APIs and keyboard events properly target iframes
 
