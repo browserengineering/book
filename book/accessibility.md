@@ -1472,7 +1472,7 @@ invisible, such as with the `visibility` or `display` CSS properties.
 
 The accessibility tree is built in a rendering phase just after layout:
 
-``` {.python expected=False}
+``` {.python}
 class Tab:
     def __init__(self, browser):
         # ...
@@ -1482,10 +1482,8 @@ class Tab:
         # ...
         if self.needs_layout:
             # ...
-            if self.accessibility_is_on:
-                self.needs_accessibility = True
-            else:
-                self.needs_paint = True
+            self.needs_accessibility = True
+            self.needs_paint = True
             self.needs_layout = False
 
         if self.needs_accessibility:
@@ -1532,7 +1530,7 @@ class AccessibilityNode:
                 self.role = "StaticText"
         else:
             if "role" in node.attributes:
-                return node.attributes["role"]
+                self.role = node.attributes["role"]
             elif node.tag == "a":
                 self.role = "link"
             elif node.tag == "input":
@@ -1554,15 +1552,17 @@ tree, adding all nodes whose role isn't `none`:
 class AccessibilityNode:
     def build(self):
         for child_node in self.node.children:
-            child_node.build_internal(self)
+            self.build_internal(child_node)
 
-    def build_internal(self, parent):
+    def build_internal(self, node):
         child = AccessibilityNode(node)
         if child.role != "none":
-            parent.children.append(child)
+            self.children.append(child)
             parent = child
+        else:
+            parent = self
         for child_node in node.children:
-            child_node.build_internal(parent)
+            parent.build_internal(child_node)
 ```
 
 The user can now direct the screen-reader to walks up or down this
@@ -1628,7 +1628,7 @@ documentation. If you can't get these libraries working, you can skip
 the "play the sound out loud" aspect of this chapter by replacing
 `speak_text` with something like:
 
-``` {.python}
+``` {.python.example}
 def speak_text(text):
     print("SPEAK:", text)
 ```
@@ -1662,10 +1662,12 @@ class Browser:
         self.accessibility_is_on = False
 
     def toggle_accessibility(self):
+        self.lock.acquire(blocking=True)
         self.accessibility_is_on = not self.accessibility_is_on
         active_tab = self.tabs[self.active_tab]
         task = Task(active_tab.toggle_accessibility)
         active_tab.task_runner.schedule_task(task)
+        self.lock.release()
 ```
 
 The `Tab`, in turn, executes the `speak_task` method if accessibility
@@ -1674,17 +1676,18 @@ is on, which is actually produce sound:
 ``` {.python}
 class Tab:
     def __init__(self, browser):
+        # ...
         self.accessibility_is_on = False
-    # ...
+
+    def render(self):
+        if self.needs_accessibility:
+            if self.accessibility_is_on:
+                task = Task(self.speak_update)
+                self.task_runner.schedule_task(task)
 
     def toggle_accessibility(self):
         self.accessibility_is_on = not self.accessibility_is_on
         self.set_needs_render()
-
-    def render(self):
-        if self.needs_accessibility:
-            # ...
-            self.speak_task()
 ```
 
 Let's now use this code to speak the whole document once after it's been loaded:
@@ -1695,7 +1698,6 @@ class Tab:
         # ...
         self.has_spoken_document = False
 
-    # ...
     def speak_document(self):
         text = "Here are the document contents: "
         tree_list = tree_to_list(self.accessibility_tree, [])
