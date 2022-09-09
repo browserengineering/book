@@ -1680,14 +1680,15 @@ class Tab:
         # ...
         self.accessibility_is_on = False
 
+    def render(self):
+        if self.needs_accessibility:
+            if self.accessibility_is_on:
+                task = Task(self.speak_update)
+                self.task_runner.schedule_task(task)
+
     def toggle_accessibility(self):
         self.accessibility_is_on = not self.accessibility_is_on
         self.set_needs_render()
-
-    def render(self):
-        if self.needs_accessibility:
-            # ...
-            self.speak_task()
 ```
 
 Let's now use this code to speak the whole document once after it's been loaded:
