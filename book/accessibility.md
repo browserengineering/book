@@ -1405,26 +1405,180 @@ colors is something that page authors also have to pay attention to.
 Screen readers
 ==============
 
-Consider a challenge even more fundamental than too-small/too-bright
-content or keyboard navigation: what if the user can't see the web page at
-all?^[The original motivation of screen readers was for blind users, but it's
-also sometimes useful for situations where the user shouldn't be looking
-at the screen (such as driving), or for devices with no screen.]
-For these users, a whole lot of the work our browser does to render content
-visually is simply not useful at all. So what do we do instead?
+Zoom, dark mode, and focus indicators help users with difficulty
+seeing fine details, but if the user can't see the screen at all,^[The
+original motivation of screen readers was for blind users, but it's
+also sometimes useful for situations where the user shouldn't be
+looking at the screen (such as driving), or for devices with no
+screen.] screen-reader software is typically used instead. The name
+kind of explains it all: screen-reader software reads the text on the
+screen, so that users know what it says without having to see it.
 
-Well, there is still the DOM itself, and that has inherent *semantics*
-(meaning) in it. For example, an `<a>` element has a clear meaning and purpose,
-irrespective of how it's displayed on the screen. The same goes for `<input`
-and `<button>`. And of course the text in the document has meaning.
+So: what should we say to the user? There are basically two big
+challenges we must overcome.
 
-So what we need to do is bundle up the semantics of the DOM and present them to
-the user in some way they can access. For a user that can't see the screen,
-the simplest approach will be to read the content out loud. This functionality
-is called a *screen reader*. Screen readers are typically[^why-diff] a different
-application than the browser. But it's actually not so hard to build a
-(very simple) one directly into our browser, and doing so will give you
-insight into how accessibility actually works in a browser.[^os-pain] 
+First, web pages contain visual hints besides text, that we need to
+reproduce for screen-reader users. For example, when focus is on an
+`<input>` or `<button>` element, the screen-reader needs to say so,
+since these users won't see the light blue or orange background.
+
+And second, when listening to a screen-reader, the user must be able
+to direct the browser to the part of the page that interests
+them.[^fast] For example, the user might want to skip headers and
+navigation menus, or even skip most of the page until they get to a
+paragraph of interest. But once they've reached the part of the page
+of interest to them, they may want it read to them, and if some
+sentence or phrase is particularly complex, they may want the
+screen-reader to re-read it.
+
+You see an example[^imagine] of screen-reader navigation in this talk,
+specifically the segment from 2:36--3:54:[^whole-talk]
+
+<iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/qi0tY60Hd6M?start=159" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+[^whole-talk]: The whole talk is recommended; it has great examples of
+    using accessibility technology.
+
+[^fast]: Though though many people who rely on screen-readers learn to
+    listen to *much* faster speech, it's still a less informationally
+    dense medium than vision.
+
+[^imagine] I encourage you to test out your operating system's
+    built-in screen reader to get a feel for what screen-reader
+    navigation is like. On macOS, type Cmd-Fn-F5 to turn on Voice
+    Over; on Windows, type Win-Ctrl-Enter or Win-Enter to start
+    Narrator. Both are largely used via keyboard shortcuts that you
+    can look up.
+    
+To support all this, screen readers structure the page as a tree. The
+higher levels of the tree represent items like paragraphs, headings,
+or navigation menus, while lower levels represent text, links, or
+buttons.
+
+This probably sounds a lot like HTML---and it is quite similar! But,
+just like the HTML tree does not exactly match the layout tree,
+there's not an exact match with this tree either. For example, some
+HTML elements (like `<div>`) group content for styling that is
+meaningless to screen-reader users. Alternatively, some HTML elements
+may be invisible on the screen,[^invisible-example] but relevant to
+screen-reader users. The browser therefore builds a separate
+[accessibility tree][at] to support screen-reader navigation.
+
+[at]: https://developer.mozilla.org/en-US/docs/Glossary/Accessibility_tree
+
+[^invisible-example]: For example, using `opacity:0`. There are
+several other ways in real browsers that elements can be made
+invisible, such as with the `visibility` or `display` CSS properties.
+
+The accessibility tree is built in a rendering phase just after layout:
+
+``` {.python expected=False}
+class Tab:
+    def __init__(self, browser):
+        # ...
+        self.accessibility_tree = None
+
+    def render(self):
+        # ...
+        if self.needs_layout:
+            # ...
+            if self.accessibility_is_on:
+                self.needs_accessibility = True
+            else:
+                self.needs_paint = True
+            self.needs_layout = False
+
+        if self.needs_accessibility:
+            self.accessibility_tree = AccessibilityNode(self.nodes)
+            self.accessibility_tree.build()
+            self.needs_accessibility = False
+            self.needs_paint = True
+```
+
+The accessibility tree is built out of `AccessibilityNode`s:
+
+``` {.python}
+class AccessibilityNode:
+    def __init__(self, node):
+        self.node = node
+        self.previous = None
+        self.children = []
+```
+
+The `build` method on `AccessibilityNode` recursively creates the
+accessibility tree. To do so, we traverse the HTML tree and, for each
+node, determine what "role" it plays in the accessibility tree. Some
+elements, like `<div>`, have no role, so don't appear in the
+accessibility tree, while elements like `<input>`, `<a>` and
+`<button>` have default roles.[^standard] We can compute the role of a
+node based on its tag name, or from the special `role` attribute if
+that exists:
+
+[^standard] Roles and default roles are are specified in the
+[WAI ARIA standard][aria-roles].
+
+[aria-roles]: https://www.w3.org/TR/wai-aria-1.2/#introroles
+
+``` {.python}
+class AccessibilityNode:
+    def __init__(self, node):
+        # ...
+        if isinstance(node, Text):
+            if node.parent.tag == "a":
+                self.role = "link"
+            elif is_focusable(node.parent):
+                self.role = "focusable text"
+            else:
+                self.role = "StaticText"
+        else:
+            if "role" in node.attributes:
+                return node.attributes["role"]
+            elif node.tag == "a":
+                self.role = "link"
+            elif node.tag == "input":
+                self.role = "textbox"
+            elif node.tag == "button":
+                self.role = "button"
+            elif node.tag == "html":
+                self.role = "document"
+            elif is_focusable(node):
+                self.role = "focusable"
+            else:
+                self.role = "none"
+```
+
+To build the accessibility tree, we just recursively walk the HTML
+tree, adding all nodes whose role isn't `none`:
+
+``` {.python}
+class AccessibilityNode:
+    def build(self):
+        for child_node in self.node.children:
+            child_node.build_internal(self)
+
+    def build_internal(self, parent):
+        child = AccessibilityNode(node)
+        if child.role != "none":
+            parent.children.append(child)
+            parent = child
+        for child_node in node.children:
+            child_node.build_internal(parent)
+```
+
+The user can now direct the screen-reader to walks up or down this
+accessibility tree and speak the text at any of the leaves
+
+Using the accessibility tree
+----------------------------
+
+Typically, the screen-reader is a separate application from the
+browser,[^why-diff] which the browser communicates with through
+OS-specific APIs. To keep this book platform-independent, our
+discussion of screen-reader support will instead build a minimal
+screen-reader from scratch.[^os-pain] We'll use two Python libraries
+to actually read text out loud: [`gtts`][gtts] (which wraps the Google
+[text-to-speech API][tts]) and [`playsound`][playsound]. You can
+install them using `pip3`:
 
 [^why-diff]: I think the reason is mainly historical, in that accessibility APIs
 and screen readers evolved first with operating systems, and before/in parallel
@@ -1439,36 +1593,23 @@ you'll see, it really isn't very hard to get the basics working, though a big
 reason is that these days there are high-quality text-to-speech libraries
 available for non-commercial use.
 
-The first step is to install two libraries: one that converts text to audio
-files, and one that plays the audio files. For the first we'll use 
-`gtts`][gtts], a Python library that wraps the Google
-[text-to-speech API][tts]. For the latter we'll use the
-[`playsound`][playsound] library.
-
 [gtts]: https://pypi.org/project/gTTS/
 
 [tts]: https://cloud.google.com/text-to-speech/docs/apis
 
 [playsound]: https://pypi.org/project/playsound/
 
-First install them:
-
     pip3 install gtts
     pip3 install playsound
 
-And then import them (we need the `os` module also, for managing files created
-by `gtts`):
+You can use these libraries to convert text to an audio file, and then
+play it:
 
 ``` {.python}
-import gtts
-# ...
 import os
+import gtts
 import playsound
-```
-Using these libraries is very easy. To speak text out loud you just convert it
-to an audio file, then play the file:
 
-``` {.python}
 SPEECH_FILE = "/tmp/speech-fragment.mp3"
 
 def speak_text(text):
@@ -1476,6 +1617,105 @@ def speak_text(text):
     tts.save(SPEECH_FILE)
     playsound.playsound(SPEECH_FILE)
     os.remove(SPEECH_FILE)
+```
+
+::: {.quirk}
+
+You may need to adjust the `SPEECH_FILE` path to fit your system
+better. If you have trouble importing any of the libraries, you may
+need to consult the [`gtts`][gtts] or [`playsound`][playsound]
+documentation. If you can't get these libraries working, you can skip
+the "play the sound out loud" aspect of this chapter by replacing
+`speak_text` with something like:
+
+``` {.python}
+def speak_text(text):
+    print("SPEAK:", text)
+```
+
+Then you can see what the browser *would have* spoken out loud in the
+standard output.
+
+:::
+
+To start with, we'll want a keybinding that turns the screen-reader on
+and off. While real operating systems typically use more obscure
+shortcuts, I'll use `Ctrl-A` to turn on the screen-reader:
+
+``` {.python}
+if __name__ == "__main__":
+    while True:
+        if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+            # ...
+                if ctrl_down:
+                    # ...
+                    elif event.key.keysym.sym == sdl2.SDLK_a:
+                        browser.toggle_accessibility()            
+```
+
+The `toggle_accessibility` method tells the `Tab` that accessibility
+is on:
+
+``` {.python}
+class Browser:
+    def __init__(self):
+        self.accessibility_is_on = False
+
+    def toggle_accessibility(self):
+        self.accessibility_is_on = not self.accessibility_is_on
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.toggle_accessibility)
+        active_tab.task_runner.schedule_task(task)
+```
+
+The `Tab`, in turn, executes the `speak_task` method if accessibility
+is on, which is actually produce sound:
+
+``` {.python}
+class Tab:
+    def __init__(self, browser):
+        self.accessibility_is_on = False
+    # ...
+
+    def toggle_accessibility(self):
+        self.accessibility_is_on = not self.accessibility_is_on
+        self.set_needs_render()
+
+    def render(self):
+        if self.needs_accessibility:
+            # ...
+            self.speak_task()
+```
+
+Let's now use this code to speak the whole document once after it's been loaded:
+
+``` {.python}
+class Tab:
+    def __init__(self, browser):
+        # ...
+        self.has_spoken_document = False
+
+    # ...
+    def speak_document(self):
+        text = "Here are the document contents: "
+        tree_list = tree_to_list(self.accessibility_tree, [])
+        for accessibility_node in tree_list:
+            new_text = announce_text(accessibility_node.node)
+            if new_text:
+                text += "\n"  + new_text
+        print(text)
+        if not self.browser.is_muted():
+            speak_text(text)
+
+    def speak_update(self):
+        if not self.has_spoken_document:
+            self.speak_document()
+            self.has_spoken_document = True
+
+        if self.focus and \
+            self.focus != self.accessibility_focus:
+            self.accessibility_focus = self.focus
+            self.speak_node(self.focus, "element focused ")
 ```
 
 Let's use this to speak the focused element to the user. A new method,
@@ -1568,201 +1808,6 @@ since these keyboards generate the same OS events as other keyboards.
 :::
 
 [braille-display]: https://en.wikipedia.org/wiki/Refreshable_braille_display
-
-The accessibility tree
-======================
-
-Reading out focus is great, but there are a number of other things users want to
-do with a screen reader, such as reading the whole document and interacting
-with it in various ways. And the semantics of how this works ends up being a
-lot like rendering. For example, DOM nodes that are invisible
-[^invisible-example] to the user, or are purely *presentational* in nature
-(i.e only for the purpose of changing visual appearance
-[^presentational]) should not be read out to users, because they are not
-important.
-
-So just like rendering, we'll create a tree representing the "rendered" output
-of accessibility. But the semantics are sometimes a bit different than layout
-and paint. So instead of shoehorning something into the layout tree or the DOM,
-we'll need to create a new [*accessibility tree*][at] to implement
-it.
-
-[at]: https://developer.mozilla.org/en-US/docs/Glossary/Accessibility_tree
-
-
-[^invisible-example]: For example, `opacity:0`. There are several other
-ways in real browsers that elements can be made invisible, such as with the
-`visibility` or `display` CSS properties.
-
-[^presentational]: A `<div>` element, for example, is by default
-presentational (or more precisely, has no semantic role).
-
-Let's implement that tree. But first, not everyone wants a screen reader to be
-used, so let's bind turning it on to the `ctrl-a` keystroke:
-
-``` {.python}
-    while True:
-        if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            # ...
-                if ctrl_down:
-                    # ...
-                    elif event.key.keysym.sym == sdl2.SDLK_a:
-                        browser.toggle_accessibility()            
-```
-
-``` {.python}
-class Browser:
-    def __init__(self):
-        self.accessibility_is_on = False
-
-    def toggle_accessibility(self):
-        self.accessibility_is_on = not self.accessibility_is_on
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.toggle_accessibility)
-        active_tab.task_runner.schedule_task(task)
-```
-
-``` {.python}
-class Tab:
-    def __init__(self, browser):
-        self.accessibility_is_on = False
-    # ...
-
-    def toggle_accessibility(self):
-        self.accessibility_is_on = not self.accessibility_is_on
-        self.set_needs_render()
-```
-
-The accessibility tree is built in a rendering phase just after layout:
-
-``` {.python expected=False}
-class Tab:
-    def __init__(self, browser):
-        # ...
-        self.accessibility_tree = None
-
-    def render(self):
-        # ...
-        if self.needs_layout:
-            self.document = DocumentLayout(self.nodes)
-            self.document.layout(self.zoom)
-            if self.accessibility_is_on:
-                self.needs_accessibility = True
-            else:
-                self.needs_paint = True
-            self.needs_layout = False
-
-        if self.needs_accessibility:
-            self.accessibility_tree = AccessibilityNode(self.nodes)
-            self.accessibility_tree.build()
-            self.needs_accessibility = False
-            self.needs_paint = True
-            self.speak_task()
-```
-
-The `build` method on `AccessibilityNode` recursively creates the tree. Whether
-a node is represented in the accessibility tree depends on its tag and style,
-which in turn determine not only whether the element is presentational, but if
-not what its semantics are. For example, a `<div>` by itself is by default
-considered presentational or otherwise having no accessibility semantics, but
-`<input>`, `<a>` and `<button>` have them by default. The semantics are called
-the *role* of the element---the role it plays in the meaning of the document.
-And these roles are not arbitrary text; they are specified in a
-[standard][aria-roles] just like rendering.[^not-exposed]
-
-[^not-exposed]: However, the role computed by the browser is not exposed to
-any JavaScript API.
-
-[aria-roles]: https://www.w3.org/TR/wai-aria-1.2/#introroles
-
-``` {.python}
-def compute_role(node):
-    if isinstance(node, Text):
-        if node.parent.tag == "a":
-            return "link"
-        elif is_focusable(node.parent):
-            return "focusable text"
-        else:
-            return "StaticText"
-    else:
-        if node.tag == "a":
-            return "link"
-        elif node.tag == "input":
-            return "textbox"
-        elif node.tag == "button":
-            return "button"
-        elif node.tag == "html":
-            return "document"
-        elif is_focusable(node):
-            return "focusable"
-        else:
-            return "none"
-```
-
-An `AccessibilityNode` forms a tree just like the other ones:
-
-``` {.python}
-class AccessibilityNode:
-    def __init__(self, node):
-        self.node = node
-        self.previous = None
-        self.children = []
-
-    def __repr__(self):
-        return "AccessibilityNode(node={} role={}".format(
-            str(self.node), compute_role(self.node))        
-```
-
-Building the tree requires recursively walking the document tree and adding
-nodes if their role is not `None`:
-
-``` {.python}
-    def build(self):
-        for child_node in self.node.children:
-            AccessibilityNode.build_internal(child_node, self)
-        pass
-
-    def build_internal(node, parent):
-        role = compute_role(node)
-        if role != "none":
-            child = AccessibilityNode(node)
-            parent.children.append(child)
-            parent = child
-        for child_node in node.children:
-            AccessibilityNode.build_internal(child_node, parent)
-```
-
-Let's now use this code to speak the whole document once after it's been loaded:
-
-``` {.python}
-class Tab:
-    def __init__(self, browser):
-        # ...
-        self.has_spoken_document = False
-
-    # ...
-    def speak_document(self):
-        text = "Here are the document contents: "
-        tree_list = tree_to_list(self.accessibility_tree, [])
-        for accessibility_node in tree_list:
-            new_text = announce_text(accessibility_node.node)
-            if new_text:
-                text += "\n"  + new_text
-        print(text)
-        if not self.browser.is_muted():
-            speak_text(text)
-
-    def speak_update(self):
-        if not self.has_spoken_document:
-            self.speak_document()
-            self.has_spoken_document = True
-
-        if self.focus and \
-            self.focus != self.accessibility_focus:
-            self.accessibility_focus = self.focus
-            self.speak_node(self.focus, "element focused ")
-```
-
 The accessibility tree also needs access to the geometry of each object. This
 allows screen readers to know where things are on the screen in case
 the user wants to [hit test][hit-test] a place on the screen to see what is
@@ -2097,16 +2142,6 @@ add support for the `alert` role, which *is* quite useful. This role causes the
 text contents of the element to be immediately announced to the user. That's
 super useful, because it allows the web application to tell the user in words
 what might otherwise have been explained in pictures.
-
-Implementing the `role` attribute is very easy. It's as simple as modifying
-`compute_role`:
-
-``` {.python}
-def compute_role(node):
-    # ...
-        elif "role" in node.attributes:
-            return node.attributes["role"]
-```
 
 Now that roles and element tags need not be the same, we need to redefine
 `announce_text` to look only at the computed role, and not the element tag:
