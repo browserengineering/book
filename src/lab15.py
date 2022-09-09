@@ -39,7 +39,8 @@ from lab13 import USE_BROWSER_THREAD, diff_styles, \
     CommitData, add_parent_pointers, \
     DisplayItem, DrawText, \
     DrawLine, paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, \
-    REFRESH_RATE_SEC, HSTEP, VSTEP, SETTIMEOUT_CODE, XHR_ONLOAD_CODE
+    REFRESH_RATE_SEC, HSTEP, VSTEP, SETTIMEOUT_CODE, XHR_ONLOAD_CODE, \
+    Transform
 from lab14 import parse_color, parse_outline, draw_rect, DrawRRect, \
     is_focused, paint_outline, has_outline, \
     device_px, style_length, cascade_priority, style, \
@@ -622,6 +623,7 @@ IFRAME_HEIGHT_PX = 150
 class IframeLayout:
     def __init__(self, node, parent, previous, tab):
         self.node = node
+        self.node.layout_object = self
         self.children = []
         self.parent = parent
         self.previous = previous
@@ -670,6 +672,8 @@ class IframeLayout:
             cmds.append(DrawRRect(rect, radius, bgcolor))
 
         self.node.document.paint(cmds)
+
+        cmds = [Transform((self.x, self.y), rect, self.node, cmds)]
 
         paint_outline(self.node, cmds, rect)
 
@@ -989,6 +993,24 @@ class Document:
             self.display_list.append(
                 DrawLine(x, y, x, y + obj.height))
 
+    def advance_focus(self):
+        focusable_nodes = [node
+            for node in tree_to_list(self.nodes, [])
+            if isinstance(node, Element) and is_focusable(node)]
+        focusable_nodes.sort(key=Tab.get_tabindex)
+        if not focusable_nodes:
+            self.apply_focus(None)
+        elif not self.focus:
+            self.apply_focus(focusable_nodes[0])
+        else:
+            i = focusable_nodes.index(self.focus)
+            if i < len(focusable_nodes) - 1:
+                self.apply_focus(focusable_nodes[i+1])
+            else:
+                self.apply_focus(None)
+                self.tab.browser.focus_addressbar()
+        self.tab.set_needs_render()
+
     def apply_focus(self, node):
         if self.focus:
             self.focus.is_focused = False
@@ -1027,12 +1049,13 @@ class Document:
             if isinstance(elt, Text):
                 pass
             elif elt.tag == "iframe":
-                elt.document.click(x, y)
+                obj = elt.layout_object
+                elt.document.click(x - obj.x, y - obj.y)
                 return
             elif elt.tag == "input":
                 elt.attributes["value"] = ""
                 if elt != self.focus:
-                    self.set_needs_render()
+                    self.tab.set_needs_render()
                 if not focus_applied:
                     self.apply_focus(elt)
                 return
@@ -1281,22 +1304,7 @@ class Tab:
         return int(node.attributes.get("tabindex", 9999999))
 
     def advance_tab(self):
-        focusable_nodes = [node
-            for node in tree_to_list(self.document.nodes, [])
-            if isinstance(node, Element) and is_focusable(node)]
-        focusable_nodes.sort(key=Tab.get_tabindex)
-        if not focusable_nodes:
-            self.apply_focus(None)
-        elif not self.focus:
-            self.apply_focus(focusable_nodes[0])
-        else:
-            i = focusable_nodes.index(self.focus)
-            if i < len(focusable_nodes) - 1:
-                self.apply_focus(focusable_nodes[i+1])
-            else:
-                self.apply_focus(None)
-                self.browser.focus_addressbar()
-        self.set_needs_render()
+        self.document.advance_focus()
 
     def zoom_by(self, increment):
         if increment > 0:
