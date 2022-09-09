@@ -664,7 +664,6 @@ class IframeLayout:
         rect = skia.Rect.MakeLTRB(
             self.x, self.y,
             self.x + self.width, self.y + self.height)
-
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         if bgcolor != "transparent":
