@@ -1520,13 +1520,11 @@ that exists:
 
 ``` {.python}
 class AccessibilityNode:
-    def __init__(self, node):
+    def __init__(self, node, parent=None):
         # ...
         if isinstance(node, Text):
-            if node.parent.tag == "a":
-                self.role = "link"
-            elif is_focusable(node.parent):
-                self.role = "focusable text"
+            if node.text.isspace():
+                self.role = "none"
             else:
                 self.role = "StaticText"
         else:
@@ -1701,20 +1699,24 @@ describes the element tag, plus whether it's focused.
 
 ``` {.python}
 class AccessibilityNode:
-    def description(node):
+    def description(self):
         text = ""
-        if isinstance(node, Text):
-            text = node.text
-        elif node.role == "input":
-            value = node.attributes["value"] \
-                if "value" in node.attributes else ""
-            text = "Input box: " + value
-        elif node.tag == "button":
+        if self.role == "StaticText":
+            text = self.node.text
+        elif self.role == "focusable text":
+            text = "Focusable text: " + self.node.text
+        elif self.role == "textbox":
+            text = "Input box: "
+            if self.node.tag == "input":
+                text += self.node.attributes.get("value", "")
+        elif self.role == "button":
             text = "Button"
-        elif node.tag == "link":
+        elif self.role == "link":
             text = "Link"
-        if is_focused(node):
-            text += " is focused"
+        elif self.role == "alert":
+            text = "Alert"
+        if is_focused(self.node):
+            text = "Focused " + text
         return text
 ```
 
@@ -1754,8 +1756,36 @@ class Tab:
         if self.accessibility_focus and \
             self.accessibility_focus != self.accessibility_spoken:
             
-            self.accessibility_spoken = self.accessibility_focus
             speak_text(self.accessibility_focus.description())
+            self.accessibility_spoken = self.accessibility_focus
+```
+
+Since `accessibility_focus` and `accessibility_spoken` are pointers
+into the accessibility tree, we need to update them when we rebuild
+the accessibility tree. We can do this by finding the new
+accessibility node pointing to the same HTML element as the old one:
+
+``` {.python}
+class Tab:
+    def find_anode(self, node):
+        if not node: return None
+        anodes = [
+            anode for anode in tree_to_list(self.accessibility_tree, [])
+            if anode.node == node
+        ]
+        return anodes[0] if anodes else None
+
+    def render(self):
+        if self.needs_accessibility:
+            old_afocus = self.accessibility_focus
+            old_aspoken = self.accessibility_spoken
+            self.accessibility_tree = AccessibilityNode(self.nodes)
+            self.accessibility_tree.build()
+            if old_afocus:
+                self.accessibility_focus = self.find_anode(old_afocus.node)
+            if old_aspoken:
+                self.accessibility_spoken = self.find_anode(old_aspoken.node)
+            # ...
 ```
 
 Now we can add navigation key bindings for the accessibility tree.
@@ -1770,13 +1800,13 @@ the `Tab` methods:
 class Tab:
     def accessibility_up(self):
         if self.accessibility_focus.parent:
-            self.accessibility_focus =
+            self.accessibility_focus = \
                 self.accessibility_focus.parent
             self.set_needs_accessibility()
 
     def accessibility_down(self):
         if self.accessibility_focus.children:
-            self.accessibility_focus =
+            self.accessibility_focus = \
                 self.accessibility_focus.children[0]
             self.set_needs_accessibility()
 
@@ -1785,7 +1815,8 @@ class Tab:
             cur = self.accessibility_focus
             idx = cur.parent.children.index(cur)
             if idx - 1 > 0:
-                self.accessibility_focus = cur.parent.children[idx + 1]
+                self.accessibility_focus = \
+                    cur.parent.children[idx + 1]
                 self.set_needs_accessibility()
 
     def accessibility_next(self):
@@ -1793,7 +1824,8 @@ class Tab:
             cur = self.accessibility_focus
             idx = cur.parent.children.index(cur)
             if idx + 1 < len(cur.parent.children):
-                self.accessibility_focus = cur.parent.children[idx + 1]
+                self.accessibility_focus = \
+                    cur.parent.children[idx + 1]
                 self.set_needs_accessibility()
 ```
 
@@ -1801,9 +1833,11 @@ We can also move the accessibility focus when the user presses `Tab`:
 
 ``` {.python}
 class Tab:
-    def focus_element(self):
-        if node:
-            self.accessibility_focus = self.focus
+    def focus_element(self, node):
+        # ...
+        if self.accessibility_tree:
+            self.accessibility_focus = self.find_anode(node)
+        self.set_needs_render()
 ```
 
 Finally, it's convenient to give the user a keybinding to read the
@@ -1822,7 +1856,7 @@ class Tab:
             if idx + 1 < len(all_nodes):
                 self.accessibility_focus = all_nodes[idx + 1]
             else:
-                self.accessiblity_focus = None
+                self.accessibility_focus = None
             self.set_needs_accessibility()
         else:
             self.accessibility_focus = self.accessibility_tree
@@ -2237,8 +2271,6 @@ def announce_text(node):
     text = ""
     if role == "StaticText":
         text = node.text
-    elif role == "focusable text":
-        text = "focusable text: " + node.text
     elif role == "textbox":
         if "value" in node.attributes:
             value = node.attributes["value"]
@@ -2301,7 +2333,7 @@ class Tab:
         if not self.accessibility_is_on:
             return
         self.queued_alerts.append(alert)
-        self.set_needs_accessiblity()
+        self.set_needs_accessibility()
 ```
 
 And speaks them:

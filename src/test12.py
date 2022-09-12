@@ -47,8 +47,14 @@ class MockLock:
 	def __init__(self):
 		pass
 
-	def acquire(self, blocking):
+	def acquire(self, blocking=False):
 		pass
 
 	def release(self, ):
 		pass
+
+	def __enter__(self):
+		self.acquire()
+
+	def __exit__(self, *args):
+		self.release()

@@ -585,7 +585,10 @@ class AccessibilityNode:
         self.children = []
 
         if isinstance(node, Text):
-            self.role = "StaticText"
+            if node.text.isspace():
+                self.role = "none"
+            else:
+                self.role = "StaticText"
         else:
             if "role" in node.attributes:
                 self.role = node.attributes["role"]
@@ -620,6 +623,8 @@ class AccessibilityNode:
         text = ""
         if self.role == "StaticText":
             text = self.node.text
+        elif self.role == "document":
+            text = "Web page contents"
         elif self.role == "focusable text":
             text = "Focusable text: " + self.node.text
         elif self.role == "textbox":
@@ -662,6 +667,7 @@ class AccessibilityNode:
 SPEECH_FILE = "/tmp/speech-fragment.mp3"
 
 def speak_text(text):
+    if not text.strip(): return
     tts = gtts.gTTS(text)
     tts.save(SPEECH_FILE)
     playsound.playsound(SPEECH_FILE)
@@ -1133,12 +1139,14 @@ class Tab:
 
     def accessibility_up(self):
         if self.accessibility_focus.parent:
-            self.accessibility_focus = self.accessibility_focus.parent
+            self.accessibility_focus = \
+                self.accessibility_focus.parent
             self.set_needs_accessibility()
 
     def accessibility_down(self):
         if self.accessibility_focus.children:
-            self.accessibility_focus = self.accessibility_focus.children[0]
+            self.accessibility_focus = \
+                self.accessibility_focus.children[0]
             self.set_needs_accessibility()
 
     def accessibility_prev(self):
@@ -1146,7 +1154,8 @@ class Tab:
             cur = self.accessibility_focus
             idx = cur.parent.children.index(cur)
             if idx - 1 > 0:
-                self.accessibility_focus = cur.parent.children[idx + 1]
+                self.accessibility_focus = \
+                    cur.parent.children[idx + 1]
                 self.set_needs_accessibility()
 
     def accessibility_next(self):
@@ -1154,7 +1163,8 @@ class Tab:
             cur = self.accessibility_focus
             idx = cur.parent.children.index(cur)
             if idx + 1 < len(cur.parent.children):
-                self.accessibility_focus = cur.parent.children[idx + 1]
+                self.accessibility_focus = \
+                    cur.parent.children[idx + 1]
                 self.set_needs_accessibility()
 
     def accessibility_advance(self):
@@ -1181,13 +1191,13 @@ class Tab:
             speak_text(self.accessibility_focus.description())
             self.accessibility_spoken = self.accessibility_focus
 
-    def anode_to_anode(self, old_node):
-        if not old_node: return None
-        nodes = [
-            node for node in tree_to_list(self.accessibility_tree, [])
-            if node.node == old_node.node
+    def find_anode(self, node):
+        if not node: return None
+        anodes = [
+            anode for anode in tree_to_list(self.accessibility_tree, [])
+            if anode.node == node
         ]
-        return nodes[0] if nodes else None
+        return anodes[0] if anodes else None
 
     def render(self):
         self.measure_render.start()
@@ -1214,8 +1224,10 @@ class Tab:
             old_aspoken = self.accessibility_spoken
             self.accessibility_tree = AccessibilityNode(self.nodes)
             self.accessibility_tree.build()
-            self.accessibility_focus = self.anode_to_anode(old_afocus)
-            self.accessibility_spoken = self.anode_to_anode(old_aspoken)
+            if old_afocus:
+                self.accessibility_focus = self.find_anode(old_afocus.node)
+            if old_aspoken:
+                self.accessibility_spoken = self.find_anode(old_aspoken.node)
             self.needs_accessibility = False
             self.needs_paint = True
 
@@ -1255,7 +1267,8 @@ class Tab:
         self.focus = node
         if node:
             node.is_focused = True
-            self.accessibility_focus = node
+        if self.accessibility_tree:
+            self.accessibility_focus = self.find_anode(node)
         self.set_needs_render()
 
     def activate_element(self, elt):
@@ -1963,7 +1976,7 @@ if __name__ == "__main__":
                         browser.increment_zoom(-1)
                     elif event.key.keysym.sym == sdl2.SDLK_0:
                         browser.reset_zoom()
-                    elif event.key.keysym.sym == sdl2.SDLK_LEFT:
+                    elif event.key.keysym.sym == sdl2.SDLK_BACKSPACE:
                         browser.go_back()
                     elif event.key.keysym.sym == sdl2.SDLK_l:
                         browser.focus_addressbar()

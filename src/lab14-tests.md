@@ -152,32 +152,41 @@ But the second one is, because it has a `tabindex` attribute.
 Accessibility
 =============
 
+Let's make it not actually make noise:
+
+    >>> lab14.speak_text = print
+
 The accessibility tree is automatically created.
 
     >>> focus_url = 'http://test.test/focus'
     >>> test.socket.respond(focus_url, b"HTTP/1.0 200 OK\r\n" +
     ... b"content-type: text/html\r\n\r\n" +
-    ... b'<input><a href="/dest">Link</a>')
+    ... b'<input value=val><a href="/dest">Link text</a>')
 
     >>> browser = lab14.Browser()
     >>> browser.load(focus_url)
     >>> browser.tabs[0].toggle_accessibility()
+    >>> browser.tabs[0].toggle_accessibility_reading()
 
 Rendering will read out the accessibility instructions:
 
     >>> browser.render()
-    Here are the document contents: 
-    Input box: 
+    >>> browser.render()
+    Web page contents
+    >>> browser.render()
+    Input box: val
+    >>> browser.render()
     Link
-    Link
+    >>> browser.render()
+    Link text
 
 From this tree:
 
     >>> lab14.print_tree(browser.tabs[0].accessibility_tree)
-     AccessibilityNode(node=<html> role=document
-       AccessibilityNode(node=<input> role=textbox
-       AccessibilityNode(node=<a href="/dest"> role=link
-         AccessibilityNode(node='Link' role=link
+     AccessibilityNode(node=<html> role=document)
+       AccessibilityNode(node=<input value="val"> role=textbox)
+       AccessibilityNode(node=<a href="/dest"> role=link)
+         AccessibilityNode(node='Link text' role=StaticText)
 
 
 Dark mode
