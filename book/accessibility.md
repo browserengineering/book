@@ -1470,7 +1470,8 @@ screen-reader users. The browser therefore builds a separate
 several other ways in real browsers that elements can be made
 invisible, such as with the `visibility` or `display` CSS properties.
 
-The accessibility tree is built in a rendering phase just after layout:
+Let's implement an accessibility tree in our browser. It is built in a
+rendering phase just after layout:
 
 ``` {.python}
 class Tab:
