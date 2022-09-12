@@ -755,9 +755,9 @@ to allow the user to go back, to type in the address bar, and to
 create and cycle through tabs, all with the keyboard. We'll also add a
 keyboard shortcut for quitting the browser.[^one-more] Let's make all
 these shortcuts use the `Ctrl` modifier key so they don't interfere
-with normal typing: `Ctrl-Left` to go back, `Ctrl-L` to type in the
-address bar, `Ctrl-T` to create a new tab, `Ctrl-Tab` to switch to the
-next tab, and `Ctrl-Q` to exit the browser:
+with normal typing: `Ctrl-Backspace` to go back, `Ctrl-L` to type in
+the address bar, `Ctrl-T` to create a new tab, `Ctrl-Tab` to switch to
+the next tab, and `Ctrl-Q` to exit the browser:
 
 [^one-more]: Depending on the OS you might also need shortcuts for
 minimizing or maximizing the browser window. Those require calling
@@ -770,7 +770,7 @@ if __name__ == "__main__":
             elif event.type == sdl2.SDL_KEYDOWN:
                 if ctrl_down:
                     # ...
-                    elif event.key.keysym.sym == sdl2.SDLK_LEFT:
+                    elif event.key.keysym.sym == sdl2.SDLK_BACKSPACE:
                         browser.go_back()
                     elif event.key.keysym.sym == sdl2.SDLK_l:
                         browser.focus_addressbar()
@@ -1513,7 +1513,7 @@ accessibility tree, while elements like `<input>`, `<a>` and
 node based on its tag name, or from the special `role` attribute if
 that exists:
 
-[^standard] Roles and default roles are are specified in the
+[^standard]: Roles and default roles are are specified in the
 [WAI ARIA standard][aria-roles].
 
 [aria-roles]: https://www.w3.org/TR/wai-aria-1.2/#introroles
@@ -1692,104 +1692,184 @@ class Tab:
         self.set_needs_render()
 ```
 
-Let's now use this code to speak the whole document once after it's been loaded:
+The first thing we'll need to know to implement `speak_update` is what
+to say for each accessibility node. We'll do that via a `description`
+method on accessibility nodes:
 
-``` {.python}
-class Tab:
-    def __init__(self, browser):
-        # ...
-        self.has_spoken_document = False
-
-    def speak_document(self):
-        text = "Here are the document contents: "
-        tree_list = tree_to_list(self.accessibility_tree, [])
-        for accessibility_node in tree_list:
-            new_text = announce_text(accessibility_node.node)
-            if new_text:
-                text += "\n"  + new_text
-        print(text)
-        if not self.browser.is_muted():
-            speak_text(text)
-
-    def speak_update(self):
-        if not self.has_spoken_document:
-            self.speak_document()
-            self.has_spoken_document = True
-
-        if self.focus and \
-            self.focus != self.accessibility_focus:
-            self.accessibility_focus = self.focus
-            self.speak_node(self.focus, "element focused ")
-```
-
-Let's use this to speak the focused element to the user. A new method,
-`speak_update`, will check if the focused element changed and say it out loud,
-via a `speak_node` method. Saying it out loud will require knowing what text to
-say, which will be decided in `announce_text`.
-
-Here is `announce_text`. For text nodes it's just the text, and otherwise it
+For text nodes it's just the text, and otherwise it
 describes the element tag, plus whether it's focused.
 
 ``` {.python expected=False}
-def announce_text(node):
-    text = ""
-    if isinstance(node, Text):
-        text = node.text
-    elif node.tag == "input":
-        value = node.attributes["value"] \
-            if "value" in node.attributes else ""
-        text = "Input box: " + value
-    elif node.tag == "button":
-        text = "Button"
-    elif node.tag == "link":
-        text = "Link"
-    if is_focused(node):
-        text += " is focused"
-    return text
+class AccessibilityNode:
+    def description(node):
+        text = ""
+        if isinstance(node, Text):
+            text = node.text
+        elif node.role == "input":
+            value = node.attributes["value"] \
+                if "value" in node.attributes else ""
+            text = "Input box: " + value
+        elif node.tag == "button":
+            text = "Button"
+        elif node.tag == "link":
+            text = "Link"
+        if is_focused(node):
+            text += " is focused"
+        return text
 ```
 
-The `speak_node` method calls `announce_text` and also adds in any text
-children. It then prints it to the screen (most useful for our own debugging),
-and then speaks the text.
+Now we can speak any node by calling `speak_text(node.description())`.
 
-``` {.python}
-class Tab:
-    # ...
-    def speak_node(self, node, text):
-        text += announce_text(node)
-        if text and node.children and \
-            isinstance(node.children[0], Text):
-            text += " " + announce_text(node.children[0])
-        print(text)
-        if text:
-            if not self.browser.is_muted():
-                speak_text(text)
-```
-
-And finally there is `speak_update`:
+So, what node should we speak? Well, we're going to want to allow the
+user a lot of flexibility to traverse the accessibility tree however
+they want. They might want to read the whole document; or, step to the
+next or previous node; or, go "up" and "down" the tree to skim the
+document at a higher or lower level of detail. All of these actions
+take place relative to a "current" node in the accessibility tree,
+which we'll call the "accessibility focus":
 
 ``` {.python}
 class Tab:
     def __init__(self, browser):
         # ...
         self.accessibility_focus = None
-
-    def speak_update(self):
-        if self.focus and \
-            self.focus != self.accessibility_focus:
-            self.accessibility_focus = self.focus
-            self.speak_node(self.focus, "element focused ")
 ```
 
-The `speak_update` method can then be called after layout is done:
+We don't just want to speak this node on every frame, so we'll also
+store the last-spoken node:
 
-``` {.python expected=False}
+``` {.python}
 class Tab:
-    # ...
+    def __init__(self, browser):
+        # ...
+        self.accessibility_spoken = None
+```
+
+Now we can speak a node exactly when the current accessibility focus
+isn't the last spoken node:
+
+``` {.python}
+class Tab:
+    def speak_update(self):
+        if self.accessibility_focus and \
+            self.accessibility_focus != self.accessibility_spoken:
+            
+            speak_text(self.accessibility_focus.description())
+            self.accessibility_spoken = self.accessibility_focus
+```
+
+Now we can add navigation key bindings for the accessibility tree.
+I'll bind `Ctrl-Up` and `Ctrl-Down` to move up and down the tree, and
+`Ctrl-Left` and `Ctrl-Right` for moving to the next and previous node.
+As usual, that requires adding code to the main loop that calls
+methods on `Browser`, and those methods add `Task`s to run methods on
+`Tab`. Since you've already seen that lots of times, I'll just show
+the `Tab` methods:
+
+``` {.python}
+class Tab:
+    def accessibility_up(self):
+        if self.accessibility_focus.parent:
+            self.accessibility_focus =
+                self.accessibility_focus.parent
+            self.set_needs_accessibility()
+
+    def accessibility_down(self):
+        if self.accessibility_focus.children:
+            self.accessibility_focus =
+                self.accessibility_focus.children[0]
+            self.set_needs_accessibility()
+
+    def accessibility_prev(self):
+        if self.accessibility_focus:
+            cur = self.accessibility_focus
+            idx = cur.parent.children.index(cur)
+            if idx - 1 > 0:
+                self.accessibility_focus = cur.parent.children[idx + 1]
+                self.set_needs_accessibility()
+
+    def accessibility_next(self):
+        if self.accessibility_focus:
+            cur = self.accessibility_focus
+            idx = cur.parent.children.index(cur)
+            if idx + 1 < len(cur.parent.children):
+                self.accessibility_focus = cur.parent.children[idx + 1]
+                self.set_needs_accessibility()
+```
+
+We can also move the accessibility focus when the user presses `Tab`:
+
+``` {.python}
+class Tab:
+    def advance_tab(self):
+        # ...
+        self.accessibility_focus = self.focus
+        self.set_needs_render()
+```
+
+Finally, it's convenient to give the user a keybinding to read the
+whole document. Of course, you could implement that by just calling
+`description` on each accessibility node---but that would be a very
+long speech, and the user may want to interrupt and ask the browser to
+stop and repeat something. So instead, let's implement a function that
+steps the accessibility focus by just one node:
+
+``` {.python}
+class Tab:
+    def accessibility_advance(self):
+        if self.accessibility_focus:
+            all_nodes = tree_to_list(self.accessibility_tree, [])
+            idx = all_nodes.index(self.accessibility_focus)
+            if idx + 1 < len(all_nodes):
+                self.accessibility_focus = all_nodes[idx + 1]
+            else:
+                self.accessiblity_focus = None
+            self.set_needs_accessibility()
+        else:
+            self.accessibility_focus = self.accessibility_tree
+            self.set_needs_accessibility()
+```
+
+Then we can read the whole document by calling this method in a loop:
+
+``` {.python}
+class Tab:
+    def __init__(self, browser):
+        # ...
+        self.accessibility_reading = False
+
     def render(self):
         # ...
-            self.document.layout(self.zoom)
-            self.speak_update()     
+        if self.accessibility_reading:
+            task = Task(self.accessibility_advance)
+            self.task_runner.schedule_task(task)
+```
+
+Now, when the `accessibility_reading` flag is set, the browser will
+read the current accessibility node and then advance to the next one
+every frame. We can then add a method that toggles that flag:
+
+``` {.python}
+class Tab:
+    def toggle_accessibility_reading(self):
+        if self.accessibility_is_on:
+            self.accessibility_reading = not self.accessibility_reading
+            self.set_needs_accessibility()
+```
+
+If we bind this to `Ctrl-R`, the user will be able to start reading
+from any node, and then stop by pressing `Ctrl-R` again, at which
+point they can, for example, repeat the last node by pressing
+`Ctrl-Left`.
+
+We can also start accessibility reading when the document is loaded:
+
+``` {.python}
+class Tab:
+    def load(self, url, body=None):
+        # ...
+        if self.accessibility_is_on:
+            self.accessibility_reading = True
 ```
 
 ::: {.further}
@@ -1818,6 +1898,9 @@ the user wants to [hit test][hit-test] a place on the screen to see what is
 there:  user who can't see the screen still might want to do things like touch
 exploration of the screen, or being notified what is under the mouse as they
 move it around.
+
+Mixing mouse and screen reader
+------------------------------
 
 To get access to the geometry, let's add a `layout_object` pointer to each
 `Node` object if it has one. That's easy to do in the constructor of each layout

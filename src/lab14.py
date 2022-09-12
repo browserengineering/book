@@ -621,6 +621,26 @@ class AccessibilityNode:
         for child_node in node.children:
             parent.build_internal(child_node)
 
+    def description(self):
+        text = ""
+        if self.role == "StaticText":
+            text = self.node.text
+        elif self.role == "focusable text":
+            text = "Focusable text: " + self.node.text
+        elif self.role == "textbox":
+            text = "Input box: "
+            if self.node.tag == "input":
+                text += self.node.attributes.get("value", "")
+        elif role == "button":
+            text = "Button"
+        elif role == "link":
+            text = "Link"
+        elif role == "alert":
+            text = "Alert"
+        if is_focused(node):
+            text = "Focused " + text
+        return text
+
     def intersects(self, x, y):
         if hasattr(self.node, "layout_object"):
             obj = self.node.layout_object
