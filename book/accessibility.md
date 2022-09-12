@@ -1411,13 +1411,13 @@ original motivation of screen readers was for blind users, but it's
 also sometimes useful for situations where the user shouldn't be
 looking at the screen (such as driving), or for devices with no
 screen.] screen-reader software is typically used instead. The name
-kind of explains it all: screen-reader software reads the text on the
-screen, so that users know what it says without having to see it.
+kind of explains it all: this software reads the text on the screen
+out loud, so that users know what it says without having to see it.
 
 So: what should we say to the user? There are basically two big
 challenges we must overcome.
 
-First, web pages contain visual hints besides text, that we need to
+First, web pages contain visual hints besides text that we need to
 reproduce for screen-reader users. For example, when focus is on an
 `<input>` or `<button>` element, the screen-reader needs to say so,
 since these users won't see the light blue or orange background.
@@ -1431,17 +1431,17 @@ of interest to them, they may want it read to them, and if some
 sentence or phrase is particularly complex, they may want the
 screen-reader to re-read it.
 
-You see an example[^imagine] of screen-reader navigation in this talk,
-specifically the segment from 2:36--3:54:[^whole-talk]
+You can see an example[^imagine] of screen-reader navigation in this
+talk, specifically the segment from 2:36--3:54:[^whole-talk]
 
 <iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/qi0tY60Hd6M?start=159" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 [^whole-talk]: The whole talk is recommended; it has great examples of
     using accessibility technology.
 
-[^fast]: Though though many people who rely on screen-readers learn to
-    listen to *much* faster speech, it's still a less informationally
-    dense medium than vision.
+[^fast]: Though many people who rely on screen-readers learn to listen
+    to *much* faster speech, it's still a less informationally dense
+    medium than vision.
 
 [^imagine] I encourage you to test out your operating system's
     built-in screen reader to get a feel for what screen-reader
@@ -1450,10 +1450,10 @@ specifically the segment from 2:36--3:54:[^whole-talk]
     Narrator. Both are largely used via keyboard shortcuts that you
     can look up.
     
-To support all this, screen readers structure the page as a tree. The
-higher levels of the tree represent items like paragraphs, headings,
-or navigation menus, while lower levels represent text, links, or
-buttons.
+To support all this, browers structure the page as a tree and use that
+tree to interact with the screen reader. The higher levels of the tree
+represent items like paragraphs, headings, or navigation menus, while
+lower levels represent text, links, or buttons.
 
 This probably sounds a lot like HTML---and it is quite similar! But,
 just like the HTML tree does not exactly match the layout tree,
@@ -1470,7 +1470,8 @@ screen-reader users. The browser therefore builds a separate
 several other ways in real browsers that elements can be made
 invisible, such as with the `visibility` or `display` CSS properties.
 
-The accessibility tree is built in a rendering phase just after layout:
+Let's implement an accessibility tree in our browser. It is built in a
+rendering phase just after layout:
 
 ``` {.python}
 class Tab:
@@ -1546,7 +1547,8 @@ class AccessibilityNode:
 ```
 
 To build the accessibility tree, we just recursively walk the HTML
-tree, adding all nodes whose role isn't `none`:
+tree. As we do so, we skip nodes like `<div>`s whose role is `none`,
+but not their children:
 
 ``` {.python}
 class AccessibilityNode:
@@ -1565,7 +1567,7 @@ class AccessibilityNode:
             parent.build_internal(child_node)
 ```
 
-The user can now direct the screen-reader to walks up or down this
+The user can now direct the screen-reader to walk up or down this
 accessibility tree and speak the text at any of the leaves
 
 Using the accessibility tree
@@ -1638,8 +1640,8 @@ standard output.
 
 :::
 
-To start with, we'll want a keybinding that turns the screen-reader on
-and off. While real operating systems typically use more obscure
+To start with, we'll want a key binding that turns the screen-reader
+on and off. While real operating systems typically use more obscure
 shortcuts, I'll use `Ctrl-A` to turn on the screen-reader:
 
 ``` {.python}
@@ -1671,7 +1673,7 @@ class Browser:
 ```
 
 The `Tab`, in turn, executes the `speak_task` method if accessibility
-is on, which is actually produce sound:
+is on, which is what actually produces sound:
 
 ``` {.python}
 class Tab:
