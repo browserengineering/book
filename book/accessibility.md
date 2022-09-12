@@ -1498,9 +1498,9 @@ The accessibility tree is built out of `AccessibilityNode`s:
 
 ``` {.python}
 class AccessibilityNode:
-    def __init__(self, node):
+    def __init__(self, node, parent=None):
         self.node = node
-        self.previous = None
+        self.parent = parent
         self.children = []
 ```
 
@@ -1557,7 +1557,7 @@ class AccessibilityNode:
             self.build_internal(child_node)
 
     def build_internal(self, node):
-        child = AccessibilityNode(node)
+        child = AccessibilityNode(node, self)
         if child.role != "none":
             self.children.append(child)
             parent = child
@@ -1699,7 +1699,7 @@ method on accessibility nodes:
 For text nodes it's just the text, and otherwise it
 describes the element tag, plus whether it's focused.
 
-``` {.python expected=False}
+``` {.python}
 class AccessibilityNode:
     def description(node):
         text = ""
@@ -1754,8 +1754,8 @@ class Tab:
         if self.accessibility_focus and \
             self.accessibility_focus != self.accessibility_spoken:
             
-            speak_text(self.accessibility_focus.description())
             self.accessibility_spoken = self.accessibility_focus
+            speak_text(self.accessibility_focus.description())
 ```
 
 Now we can add navigation key bindings for the accessibility tree.
@@ -1801,10 +1801,9 @@ We can also move the accessibility focus when the user presses `Tab`:
 
 ``` {.python}
 class Tab:
-    def advance_tab(self):
-        # ...
-        self.accessibility_focus = self.focus
-        self.set_needs_render()
+    def focus_element(self):
+        if node:
+            self.accessibility_focus = self.focus
 ```
 
 Finally, it's convenient to give the user a keybinding to read the
@@ -1840,7 +1839,7 @@ class Tab:
 
     def render(self):
         # ...
-        if self.accessibility_reading:
+        if self.accessibility_is_on and self.accessibility_reading:
             task = Task(self.accessibility_advance)
             self.task_runner.schedule_task(task)
 ```
@@ -1852,9 +1851,8 @@ every frame. We can then add a method that toggles that flag:
 ``` {.python}
 class Tab:
     def toggle_accessibility_reading(self):
-        if self.accessibility_is_on:
-            self.accessibility_reading = not self.accessibility_reading
-            self.set_needs_accessibility()
+        self.accessibility_reading = not self.accessibility_reading
+        self.set_needs_accessibility()
 ```
 
 If we bind this to `Ctrl-R`, the user will be able to start reading
@@ -1931,7 +1929,7 @@ a different tree, of course).
 First we need to listen for mouse move events:
 
 ``` {.python}
-
+if __name__ == "__main__":
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             # ...

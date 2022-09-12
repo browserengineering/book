@@ -579,18 +579,13 @@ def announce_text(node):
     return text
 
 class AccessibilityNode:
-    def __init__(self, node):
+    def __init__(self, node, parent=None):
         self.node = node
-        self.previous = None
+        self.parent = parent
         self.children = []
 
         if isinstance(node, Text):
-            if node.parent.tag == "a":
-                self.role = "link"
-            elif is_focusable(node.parent):
-                self.role = "focusable text"
-            else:
-                self.role = "StaticText"
+            self.role = "StaticText"
         else:
             if "role" in node.attributes:
                 self.role = node.attributes["role"]
@@ -612,7 +607,7 @@ class AccessibilityNode:
             self.build_internal(child_node)
 
     def build_internal(self, node):
-        child = AccessibilityNode(node)
+        child = AccessibilityNode(node, self)
         if child.role != "none":
             self.children.append(child)
             parent = child
@@ -631,13 +626,13 @@ class AccessibilityNode:
             text = "Input box: "
             if self.node.tag == "input":
                 text += self.node.attributes.get("value", "")
-        elif role == "button":
+        elif self.role == "button":
             text = "Button"
-        elif role == "link":
+        elif self.role == "link":
             text = "Link"
-        elif role == "alert":
+        elif self.role == "alert":
             text = "Alert"
-        if is_focused(node):
+        if is_focused(self.node):
             text = "Focused " + text
         return text
 
@@ -661,7 +656,7 @@ class AccessibilityNode:
                 return node
 
     def __repr__(self):
-        return "AccessibilityNode(node={} role={}".format(
+        return "AccessibilityNode(node={} role={})".format(
             str(self.node), self.role)
 
 SPEECH_FILE = "/tmp/speech-fragment.mp3"
@@ -966,8 +961,9 @@ class Tab:
 
         self.accessibility_is_on = False
         self.accessibility_tree = None
-        self.has_spoken_document = False
         self.accessibility_focus = None
+        self.accessibility_spoken = None
+        self.accessibility_reading = False
 
         self.browser = browser
         if USE_BROWSER_THREAD:
@@ -1048,6 +1044,9 @@ class Tab:
             self.rules.extend(CSSParser(body).parse())
         self.set_needs_render()
 
+        if self.accessibility_is_on:
+            self.accessibility_reading = True
+
     def set_needs_render(self):
         self.needs_style = True
         self.browser.set_needs_animation_frame(self)
@@ -1056,7 +1055,7 @@ class Tab:
         self.needs_layout = True
         self.browser.set_needs_animation_frame(self)
 
-    def set_needs_accessiblity(self):
+    def set_needs_accessibility(self):
         self.needs_accessibility = True
         self.browser.set_needs_animation_frame(self)
 
@@ -1132,30 +1131,63 @@ class Tab:
     def speak_hit_test(self, node):
         self.speak_node(node, "hit test ")
 
-    def speak_document(self):
-        text = "Here are the document contents: "
-        tree_list = tree_to_list(self.accessibility_tree, [])
-        for accessibility_node in tree_list:
-            new_text = announce_text(accessibility_node.node)
-            if new_text:
-                text += "\n"  + new_text
-        print(text)
-        if not self.browser.is_muted():
-            speak_text(text)
+    def accessibility_up(self):
+        if self.accessibility_focus.parent:
+            self.accessibility_focus = self.accessibility_focus.parent
+            self.set_needs_accessibility()
+
+    def accessibility_down(self):
+        if self.accessibility_focus.children:
+            self.accessibility_focus = self.accessibility_focus.children[0]
+            self.set_needs_accessibility()
+
+    def accessibility_prev(self):
+        if self.accessibility_focus:
+            cur = self.accessibility_focus
+            idx = cur.parent.children.index(cur)
+            if idx - 1 > 0:
+                self.accessibility_focus = cur.parent.children[idx + 1]
+                self.set_needs_accessibility()
+
+    def accessibility_next(self):
+        if self.accessibility_focus:
+            cur = self.accessibility_focus
+            idx = cur.parent.children.index(cur)
+            if idx + 1 < len(cur.parent.children):
+                self.accessibility_focus = cur.parent.children[idx + 1]
+                self.set_needs_accessibility()
+
+    def accessibility_advance(self):
+        if self.accessibility_focus:
+            all_nodes = tree_to_list(self.accessibility_tree, [])
+            idx = all_nodes.index(self.accessibility_focus)
+            if idx + 1 < len(all_nodes):
+                self.accessibility_focus = all_nodes[idx + 1]
+            else:
+                self.accessibility_focus = None
+            self.set_needs_accessibility()
+        else:
+            self.accessibility_focus = self.accessibility_tree
+            self.set_needs_accessibility()
 
     def speak_update(self):
         for alert in self.queued_alerts:
             self.speak_node(alert, "New alert")
         self.queued_alerts = []
 
-        if not self.has_spoken_document:
-            self.speak_document()
-            self.has_spoken_document = True
+        if self.accessibility_focus and \
+            self.accessibility_focus != self.accessibility_spoken:
 
-        if self.focus and \
-            self.focus != self.accessibility_focus:
-            self.accessibility_focus = self.focus
-            self.speak_node(self.focus, "element focused ")
+            speak_text(self.accessibility_focus.description())
+            self.accessibility_spoken = self.accessibility_focus
+
+    def anode_to_anode(self, old_node):
+        if not old_node: return None
+        nodes = [
+            node for node in tree_to_list(self.accessibility_tree, [])
+            if node.node == old_node.node
+        ]
+        return nodes[0] if nodes else None
 
     def render(self):
         self.measure_render.start()
@@ -1178,8 +1210,12 @@ class Tab:
             self.needs_layout = False
 
         if self.needs_accessibility:
+            old_afocus = self.accessibility_focus
+            old_aspoken = self.accessibility_spoken
             self.accessibility_tree = AccessibilityNode(self.nodes)
             self.accessibility_tree.build()
+            self.accessibility_focus = self.anode_to_anode(old_afocus)
+            self.accessibility_spoken = self.anode_to_anode(old_aspoken)
             self.needs_accessibility = False
             self.needs_paint = True
 
@@ -1207,6 +1243,10 @@ class Tab:
             self.document.paint(self.display_list)
             self.needs_paint = False
 
+        if self.accessibility_is_on and self.accessibility_reading:
+            task = Task(self.accessibility_advance)
+            self.task_runner.schedule_task(task)
+
         self.measure_render.stop()
 
     def focus_element(self, node):
@@ -1215,6 +1255,7 @@ class Tab:
         self.focus = node
         if node:
             node.is_focused = True
+            self.accessibility_focus = node
         self.set_needs_render()
 
     def activate_element(self, elt):
@@ -1323,11 +1364,15 @@ class Tab:
         if not self.accessibility_is_on:
             return
         self.queued_alerts.append(alert)
-        self.set_needs_accessiblity()
+        self.set_needs_accessibility()
 
     def toggle_accessibility(self):
         self.accessibility_is_on = not self.accessibility_is_on
-        self.set_needs_accessiblity()
+        self.set_needs_accessibility()
+
+    def toggle_accessibility_reading(self):
+        self.accessibility_reading = not self.accessibility_reading
+        self.set_needs_accessibility()
 
     def toggle_dark_mode(self):
         self.dark_mode = not self.dark_mode
@@ -1631,6 +1676,13 @@ class Browser:
         active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
+    def toggle_accessibility_reading(self):
+        self.lock.acquire(blocking=True)
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.toggle_accessibility_reading)
+        active_tab.task_runner.schedule_task(task)
+        self.lock.release()
+
     def toggle_mute(self):
         self.lock.acquire(blocking=True)
         self.muted = not self.muted
@@ -1688,6 +1740,34 @@ class Browser:
             active_tab = self.tabs[self.active_tab]
             task = Task(active_tab.keypress, char)
             active_tab.task_runner.schedule_task(task)
+        self.lock.release()
+
+    def handle_ctrl_up(self):
+        self.lock.acquire(blocking=True)
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.accessibility_up)
+        active_tab.task_runner.schedule_task(task)
+        self.lock.release()
+
+    def handle_ctrl_down(self):
+        self.lock.acquire(blocking=True)
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.accessibility_down)
+        active_tab.task_runner.schedule_task(task)
+        self.lock.release()
+
+    def handle_ctrl_left(self):
+        self.lock.acquire(blocking=True)
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.accessibility_prev)
+        active_tab.task_runner.schedule_task(task)
+        self.lock.release()
+
+    def handle_ctrl_right(self):
+        self.lock.acquire(blocking=True)
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.accessibility_next)
+        active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
     def schedule_load(self, url, body=None):
@@ -1889,6 +1969,8 @@ if __name__ == "__main__":
                         browser.focus_addressbar()
                     elif event.key.keysym.sym == sdl2.SDLK_a:
                         browser.toggle_accessibility()
+                    elif event.key.keysym.sym == sdl2.SDLK_r:
+                        browser.toggle_accessibility_reading()
                     elif event.key.keysym.sym == sdl2.SDLK_d:
                         browser.toggle_dark_mode()
                     elif event.key.keysym.sym == sdl2.SDLK_m:
@@ -1908,6 +1990,14 @@ if __name__ == "__main__":
                     browser.handle_down()
                 elif event.key.keysym.sym == sdl2.SDLK_TAB:
                     browser.handle_tab()
+                elif event.key.keysym.sym == sdl2.SDLK_UP:
+                    browser.handle_ctrl_up()
+                elif event.key.keysym.sym == sdl2.SDLK_DOWN:
+                    browser.handle_ctrl_down()
+                elif event.key.keysym.sym == sdl2.SDLK_LEFT:
+                    browser.handle_ctrl_left()
+                elif event.key.keysym.sym == sdl2.SDLK_RIGHT:
+                    browser.handle_ctrl_right()
                 elif event.key.keysym.sym == sdl2.SDLK_RCTRL or \
                     event.key.keysym.sym == sdl2.SDLK_LCTRL:
                     ctrl_down = True
