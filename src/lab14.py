@@ -548,6 +548,9 @@ def is_focusable(node):
         return True
     else:
         return node.tag in ["input", "button", "a"]
+    
+def compute_role(node):
+    return AccessibilityNode(node).role
 
 def announce_text(node):
     role = compute_role(node)
