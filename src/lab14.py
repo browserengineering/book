@@ -7,9 +7,9 @@ without exercises.
 import ctypes
 import dukpy
 import io
-import gtts
 import math
 import os
+import gtts
 import playsound
 import sdl2
 import skia
@@ -548,32 +548,9 @@ def is_focusable(node):
         return True
     else:
         return node.tag in ["input", "button", "a"]
-
+    
 def compute_role(node):
-    if isinstance(node, Text):
-        if node.parent.tag == "a":
-            return "link"
-        elif compute_role(node.parent)  == "textbox":
-            return "none"
-        elif is_focusable(node.parent):
-            return "focusable text"
-        else:
-            return "StaticText"
-    else:
-        if node.tag == "a":
-            return "link"
-        elif node.tag == "input":
-            return "textbox"
-        elif node.tag == "button":
-            return "button"
-        elif node.tag == "html":
-            return "document"
-        elif "role" in node.attributes:
-            return node.attributes["role"]
-        elif is_focusable(node):
-            return "focusable"
-        else:
-            return "none"
+    return AccessibilityNode(node).role
 
 def announce_text(node):
     role = compute_role(node)
@@ -607,19 +584,42 @@ class AccessibilityNode:
         self.previous = None
         self.children = []
 
+        if isinstance(node, Text):
+            if node.parent.tag == "a":
+                self.role = "link"
+            elif is_focusable(node.parent):
+                self.role = "focusable text"
+            else:
+                self.role = "StaticText"
+        else:
+            if "role" in node.attributes:
+                self.role = node.attributes["role"]
+            elif node.tag == "a":
+                self.role = "link"
+            elif node.tag == "input":
+                self.role = "textbox"
+            elif node.tag == "button":
+                self.role = "button"
+            elif node.tag == "html":
+                self.role = "document"
+            elif is_focusable(node):
+                self.role = "focusable"
+            else:
+                self.role = "none"
+
     def build(self):
         for child_node in self.node.children:
-            AccessibilityNode.build_internal(child_node, self)
-        pass
+            self.build_internal(child_node)
 
-    def build_internal(node, parent):
-        role = compute_role(node)
-        if role != "none":
-            child = AccessibilityNode(node)
-            parent.children.append(child)
+    def build_internal(self, node):
+        child = AccessibilityNode(node)
+        if child.role != "none":
+            self.children.append(child)
             parent = child
+        else:
+            parent = self
         for child_node in node.children:
-            AccessibilityNode.build_internal(child_node, parent)
+            parent.build_internal(child_node)
 
     def intersects(self, x, y):
         if hasattr(self.node, "layout_object"):
@@ -642,7 +642,7 @@ class AccessibilityNode:
 
     def __repr__(self):
         return "AccessibilityNode(node={} role={}".format(
-            str(self.node), compute_role(self.node))
+            str(self.node), self.role)
 
 SPEECH_FILE = "/tmp/speech-fragment.mp3"
 
@@ -1153,10 +1153,8 @@ class Tab:
         if self.needs_layout:
             self.document = DocumentLayout(self.nodes)
             self.document.layout(self.zoom)
-            if self.accessibility_is_on:
-                self.needs_accessibility = True
-            else:
-                self.needs_paint = True
+            self.needs_accessibility = True
+            self.needs_paint = True
             self.needs_layout = False
 
         if self.needs_accessibility:
@@ -1165,8 +1163,9 @@ class Tab:
             self.needs_accessibility = False
             self.needs_paint = True
 
-            task = Task(self.speak_update)
-            self.task_runner.schedule_task(task)
+            if self.accessibility_is_on:
+                task = Task(self.speak_update)
+                self.task_runner.schedule_task(task)
 
         if self.pending_hover:
             if self.accessibility_tree:
