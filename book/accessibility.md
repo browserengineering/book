@@ -1450,7 +1450,7 @@ talk, specifically the segment from 2:36--3:54:[^whole-talk]
     Narrator. Both are largely used via keyboard shortcuts that you
     can look up.
     
-To support all this, browers structure the page as a tree and use that
+To support all this, browsers structure the page as a tree and use that
 tree to interact with the screen reader. The higher levels of the tree
 represent items like paragraphs, headings, or navigation menus, while
 lower levels represent text, links, or buttons.
