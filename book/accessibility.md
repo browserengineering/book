@@ -1443,7 +1443,7 @@ talk, specifically the segment from 2:36--3:54:[^whole-talk]
     to *much* faster speech, it's still a less informationally dense
     medium than vision.
 
-[^imagine] I encourage you to test out your operating system's
+[^imagine]: I encourage you to test out your operating system's
     built-in screen reader to get a feel for what screen-reader
     navigation is like. On macOS, type Cmd-Fn-F5 to turn on Voice
     Over; on Windows, type Win-Ctrl-Enter or Win-Enter to start
