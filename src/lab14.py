@@ -945,8 +945,8 @@ class Tab:
         self.accessibility_tree = None
         self.has_spoken_document = False
         self.accessibility_focus = None
-        self.alerts_active = []
-        self.alerts_read = []
+        self.active_alerts = []
+        self.spoken_alerts = []
 
         self.browser = browser
         if USE_BROWSER_THREAD:
@@ -1166,6 +1166,17 @@ class Tab:
                 node for node in self.accessibility_tree
                 if node.role == "alert"
             ]
+
+            new_spoken_alerts = []
+            for old_node in self.spoken_alerts:
+                new_nodes = [
+                    node for node in self.accessiblity_tree
+                    if node.node == old_node.node
+                    and node.role == "alert"
+                ]
+                if new_nodes:
+                    new_spoken_alerts.append(new_nodes[0])
+            self.spoken_alerts = new_spoken_alerts
 
             if self.accessibility_is_on:
                 task = Task(self.speak_update)

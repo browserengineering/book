@@ -2167,7 +2167,8 @@ accessiblity tree for elements with the `alert` role:
 
 ``` {.python}
 class Tab:
-    def __init__(self):
+    def __init__(self, browser):
+        # ...
         self.active_alerts = []
 
     def render(self):
@@ -2185,10 +2186,11 @@ them twice:
 
 ``` {.python}
 class Tab:
-    def __init__(self):
+    def __init__(self, browser):
+        # ...
         self.spoken_alerts = []
 
-    def speak_update(self)
+    def speak_update(self):
         for alert in self.active_alerts:
             if alert not in self.spoken_alerts:
                 self.speak_node(alert, "New alert")
