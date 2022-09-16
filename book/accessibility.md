@@ -2175,7 +2175,7 @@ class Tab:
         if self.needs_accessibility:
             # ...
             self.active_alerts = [
-                node for node in self.accessibility_tree
+                node for node in tree_to_list(self.accessibility_tree, [])
                 if node.role == "alert"
             ]
 ```
@@ -2209,7 +2209,7 @@ class Tab:
             new_spoken_alerts = []
             for old_node in self.spoken_alerts:
                 new_nodes = [
-                    node for node in self.accessiblity_tree
+                    node for node in tree_to_list(self.accessibility_tree, [])
                     if node.node == old_node.node
                     and node.role == "alert"
                 ]
