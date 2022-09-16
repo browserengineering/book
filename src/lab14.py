@@ -869,9 +869,6 @@ class JSContext:
 
     def setAttribute(self, handle, attr, value):
         elt = self.handle_to_node[handle]
-        if attr == "role" and value == "alert" and \
-            self.getAttribute(handle, attr) != "alert":
-            self.tab.queue_alert(elt)
         elt.attributes[attr] = value
         
     def innerHTML_set(self, handle, s):
@@ -948,6 +945,8 @@ class Tab:
         self.accessibility_tree = None
         self.has_spoken_document = False
         self.accessibility_focus = None
+        self.alerts_active = []
+        self.alerts_read = []
 
         self.browser = browser
         if USE_BROWSER_THREAD:
@@ -961,7 +960,6 @@ class Tab:
         self.zoom = 1.0
         self.pending_hover = None
         self.hovered_node = None
-        self.queued_alerts = []
 
         with open("browser14.css") as f:
             self.default_style_sheet = \
@@ -1124,9 +1122,10 @@ class Tab:
             speak_text(text)
 
     def speak_update(self):
-        for alert in self.queued_alerts:
-            self.speak_node(alert, "New alert")
-        self.queued_alerts = []
+        for alert in self.active_alerts:
+            if alert not in self.spoken_alerts:
+                self.speak_node(alert, "New alert")
+                self.spoken_alerts.append(alert)
 
         if not self.has_spoken_document:
             self.speak_document()
@@ -1162,6 +1161,11 @@ class Tab:
             self.accessibility_tree.build()
             self.needs_accessibility = False
             self.needs_paint = True
+
+            self.active_alerts = [
+                node for node in self.accessibility_tree
+                if node.role == "alert"
+            ]
 
             if self.accessibility_is_on:
                 task = Task(self.speak_update)
@@ -1298,12 +1302,6 @@ class Tab:
             self.history.pop()
             back = self.history.pop()
             self.load(back)
-
-    def queue_alert(self, alert):
-        if not self.accessibility_is_on:
-            return
-        self.queued_alerts.append(alert)
-        self.set_needs_accessiblity()
 
     def toggle_accessibility(self):
         self.accessibility_is_on = not self.accessibility_is_on

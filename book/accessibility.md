@@ -1511,10 +1511,17 @@ elements, like `<div>`, have no role, so don't appear in the
 accessibility tree, while elements like `<input>`, `<a>` and
 `<button>` have default roles.[^standard] We can compute the role of a
 node based on its tag name, or from the special `role` attribute if
-that exists:
+that exists:[^role]
 
-[^standard] Roles and default roles are are specified in the
+[^standard]: Roles and default roles are are specified in the
 [WAI ARIA standard][aria-roles].
+
+[^role]: Why would someone want to overwrite that role is computed for
+    an element? It used to be very difficult to style `<input>` and
+    `<button>` elements; it's still not easy in many cases. Developers
+    thus wrote custom buttons and text areas and so on. Custom `role`
+    values let them expose these custom elements to the accessibility
+    tree.
 
 [aria-roles]: https://www.w3.org/TR/wai-aria-1.2/#introroles
 
@@ -2095,94 +2102,44 @@ knowing that it was implemented by a browser is a good sign that it's not
 :::
 
 
-Custom accessibility roles
-===========================
+Live Regions
+============
 
-The accessibility tree can also be customized. As I've already explained, HTML
-tags influence it, and various CSS properties such as `visibility` can cause
-nodes to appear or not in the tree. But there what about changing the role of
-an element? For example, tab-index allows a `<div>` to participate in focus,
-but can it also be made to behave like an input element? That's what the
-[`role`][role] attribute is for: overriding the semantic role of an element
-from its default.
+Scripts do not interact directly with the accessibility tree,[^aom]
+much like they do not interact directly with the display list.
+However, sometimes scripts need to inform the screen reader about
+*why* they're making certain changes to the page to give screen-reader
+users a better experience. The most common example is an alert[^toast]
+telling you that some action you just did failed. Typically, these are
+inserted at some fixed place in the document, and thus in the
+accessibility tree; there's little chance a screen-reader user would
+get to it in time to see it.
 
-This markup gives a `<div>` a role of [`button`][button-role]:
+[^aom]: As of this writing, there's a draft [Accessibility Objet
+    Model](https://wicg.github.io/aom/explainer.html) specification,
+    which would allow scripts to directly create accessibility nodes.
+    
+[^toast]: Also called a "toast", because it pops up.
 
-    <div role=textbox>contents</div>
+To fix this, if an element's role is set to `alert`, the screen-reader
+will immediately[^alert-css] read that element without the user
+needing move around in the accessiblity tree to find it. Note that
+there aren't any HTML elements whose default role is `alert`, so this
+requires setting the `role` attribute. There are also other "live"
+roles like `status` for less urgent information or `alertdialog` if
+the keyboard focus should move to the alerted element.
 
-[button-role]: https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Roles/button_role
-
-Its role in the accessibility tree now becomes equivalent to a `<button>`
-element. The first text child is also reused as the label of the button, and
-all other descendants of the element become presentational. However, all other
-functionality of a `<button>` *does not occur by default*. In particular:
-
- * The elent is not by defafult focusable.
- * Visual styling is unchanged.
- * Event handlers for form submission, such as the `<enter>` key or mouse click,
-    are not added.
-
-That means that the web application---not the browser---is now responsible for
-implementing all of this correctly. And if the application doesn't do it, the
-user is left confused and sad, because the screen reader will claim the element
-is a button but it doesn't seem to work. That's why it's better for a web
-application author to simply use `<button>` elements---it's all too easy to
-accidentally forget to implement something important for those users.
-
-But the `button` role nevertheless exists, so that the web application doesn't
-lose accessibility when the page uses custom widgets for one reason or
-another.^[One common reason is a web app that was originally
-built without much attention to accessibility, but needs to be retrofitted.]
-Likewise, there is a `textbox` role that makes an element behave like
-an `<input>` element.^[Text boxes are even harder for the developer to
-implement, since support is needed for features such as editing partially
-written text and supporting more than one language.] There are in total a
-large number of [defined roles][aria-roles-list].
-
-[aria-roles-list]: https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/ARIA_Techniques
-
-Instead of implementing those not-so-useful `button` and `textbox` roles, let's
-add support for the `alert` role, which *is* quite useful. This role causes the
-text contents of the element to be immediately announced to the user. That's
-super useful, because it allows the web application to tell the user in words
-what might otherwise have been explained in pictures.
-
-Now that roles and element tags need not be the same, we need to redefine
-`announce_text` to look only at the computed role, and not the element tag:
-
-``` {.python}
-def announce_text(node):
-    role = compute_role(node)
-    text = ""
-    if role == "StaticText":
-        text = node.text
-    elif role == "focusable text":
-        text = "focusable text: " + node.text
-    elif role == "textbox":
-        if "value" in node.attributes:
-            value = node.attributes["value"]
-        elif node.tag != "input" and node.children and \
-            isinstance(node.children[0], Text):
-            value = node.children[0].text
-        else:
-            value = ""
-        text = "Input box: " + value
-    elif role == "button":
-        text = "Button"
-    elif role == "link":
-        text = "Link"
-    elif role == "alert":
-        text = "Alert"
-    if is_focused(node):
-        text += " is focused"
-    return text
-```
-
-These alerts are supposed to happen only when the `role` attribute changes
-to alert,^[Or the text contexts of the alert changes, but I won't implement
-that.] so we need a way to detect that an attribute changed. But there isn't
-currently a way to change element attributes other than special ones like
-`style`, so let's first implement that. It will need some runtime code:
+[^alert-css]: The alert is only triggered if the element is added to
+    the document, has the `alert` role (or the equivalent `aria-live`
+    value, `assertive`), and is visible in the layout tree (meaning it
+    doesn't have `display: none`), or if its contents change. In this
+    chapter, I won't handle all of these cases and just focus on new
+    elements with an `alert` role, not changes to contents or CSS.
+    
+Before we jump to implementation, we first need to make it possible
+for scripts to change the `role` attribute. Let's add support for the
+`setAttribute` method. On the JavaScript side, this just calls a
+browser API:
 
 ``` {.javascript}
 Node.prototype.setAttribute = function(attr, value) {
@@ -2190,8 +2147,7 @@ Node.prototype.setAttribute = function(attr, value) {
 }
 ```
 
-And also JS to Python bindings. Here is where we'll detect changes of the 
-`role` attribute and notify the `Tab` accordingly:
+The Python side is also quite simple:
 
 ``` {.python}
 class JSContext:
@@ -2203,38 +2159,71 @@ class JSContext:
 
     def setAttribute(self, handle, attr, value):
         elt = self.handle_to_node[handle]
-        if attr == "role" and value == "alert" and \
-            self.getAttribute(handle, attr) != "alert":
-            self.tab.queue_alert(elt)
         elt.attributes[attr] = value
 ```
 
-Which then queues the alert if accessibility is on:
+Now we can implement the `alert` role. To do so, we'll search the
+accessiblity tree for elements with the `alert` role:
 
 ``` {.python}
 class Tab:
-    def __init__(self, browser):
-        self.queued_alerts = []
+    def __init__(self):
+        self.active_alerts = []
 
-    def queue_alert(self, alert):
-        if not self.accessibility_is_on:
-            return
-        self.queued_alerts.append(alert)
-        self.set_needs_accessiblity()
+    def render(self):
+        if self.needs_accessibility:
+            # ...
+            self.active_alerts = [
+                node for node in self.accessibility_tree
+                if node.role == "alert"
+            ]
 ```
 
-And speaks them:
+Now, we can't just read out every `alert` at every frame; we need to
+keep track of what elements have already been read, so we don't read
+them twice:
 
 ``` {.python}
 class Tab:
-    def speak_update(self):
-        for alert in self.queued_alerts:
-            self.speak_node(alert, "New alert")
-        # ...
+    def __init__(self):
+        self.spoken_alerts = []
+
+    def speak_update(self)
+        for alert in self.active_alerts:
+            if alert not in self.spoken_alerts:
+                self.speak_node(alert, "New alert")
+                self.spoken_alerts.append(alert)
 ```
 
-You should now be able to load up [this example][alert-example] and hear alert
-text once the button is clicked.
+Since `spoken_alerts` points into the accessiblity tree, we'll need to
+update it any time the accessibility tree is rebuilt, to point into
+the new tree:
+
+``` {.python}
+class Tab:
+    def render(self):
+        if self.needs_accessibility:
+            # ...
+            new_spoken_alerts = []
+            for old_node in self.spoken_alerts:
+                new_nodes = [
+                    node for node in self.accessiblity_tree
+                    if node.node == old_node.node
+                    and node.role == "alert"
+                ]
+                if new_nodes:
+                    new_spoken_alerts.append(new_nodes[0])
+            self.spoken_alerts = new_spoken_alerts
+```
+
+Note that if a node *loses* the `alert` role, we remove it from
+`spoken_alerts`, so that if it later gains the `alert` role back, it
+will be spoken again. This sounds like an edge case, but having a
+single element for all of your alerts (and just changing its class,
+say, from hidden to visible) is a common pattern.
+
+You should now be able to load up [this example][alert-example] and
+hear alert text once the button is clicked.
 
 [alert-example]: examples/example14-alert-role.html
 
