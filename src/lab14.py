@@ -614,10 +614,6 @@ class AccessibilityNode:
             self.build_internal(child_node)
 
         self.text = announce_text(self.node, self.role)
-        if self.text and self.node.children and \
-            isinstance(self.node.children[0], Text):
-            self.text += " " + \
-            announce_text(self.node.children[0], self.children[0].role)
 
     def build_internal(self, child_node):
         child = AccessibilityNode(child_node)
@@ -1609,6 +1605,11 @@ class Browser:
 
     def speak_node(self, node, text):
         text += node.text
+        if text and node.children and \
+            node.children[0].role == "StaticText":
+            text += " " + \
+            self.node.children[0].role
+
         print(text)
         if text:
             if not self.is_muted():
