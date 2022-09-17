@@ -613,19 +613,20 @@ class AccessibilityNode:
         for child_node in self.node.children:
             self.build_internal(child_node)
 
-        if self.text and node.children and \
-            isinstance(node.children[0], Text):
+        self.text = announce_text(self.node, self.role)
+        if self.text and self.node.children and \
+            isinstance(self.node.children[0], Text):
             self.text += " " + \
-            announce_text(node.children[0], self.children[0].role)
+            announce_text(self.node.children[0], self.children[0].role)
 
-    def build_internal(self, node):
-        child = AccessibilityNode(node)
+    def build_internal(self, child_node):
+        child = AccessibilityNode(child_node)
         if child.role != "none":
             self.children.append(child)
             child.build()
         else:
-            for child_node in node.children:
-                self.build_internal(child_node)
+            for grandchild_node in child_node.children:
+                self.build_internal(grandchild_node)
 
     def intersects(self, x, y):
         if self.bounds:
