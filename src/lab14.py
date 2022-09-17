@@ -580,9 +580,16 @@ def announce_text(node):
 
 class AccessibilityNode:
     def __init__(self, node):
-        self.node = node
-        self.previous = None
         self.children = []
+
+        # todo: remove this
+        self.node = node
+
+        if hasattr(node, "layout_object"):
+            obj = node.layout_object
+            self.bounds = skia.Rect.MakeXYWH(obj.x, obj.y, obj.width, obj.height)
+        else:
+            self.bounds = None
 
         if isinstance(node, Text):
             if node.parent.tag == "a":
@@ -607,8 +614,7 @@ class AccessibilityNode:
             else:
                 self.role = "none"
 
-    def build(self):
-        for child_node in self.node.children:
+        for child_node in node.children:
             self.build_internal(child_node)
 
     def build_internal(self, node):
@@ -622,10 +628,9 @@ class AccessibilityNode:
             parent.build_internal(child_node)
 
     def intersects(self, x, y):
-        if hasattr(self.node, "layout_object"):
-            obj = self.node.layout_object
-            return obj.x <= x < obj.x + obj.width \
-                and obj.y <= y < obj.y + obj.height
+        if self.bounds:
+            return skia.Rect.Intersects(self.bounds,
+                skia.Rect.MakeXYWH(x, y, 1, 1))
         return False
 
     def hit_test(self, x, y):
@@ -1159,7 +1164,6 @@ class Tab:
 
         if self.needs_accessibility:
             self.accessibility_tree = AccessibilityNode(self.nodes)
-            self.accessibility_tree.build()
             self.needs_accessibility = False
             self.needs_paint = True
 
@@ -1652,6 +1656,8 @@ class Browser:
         self.lock.release()
 
     def handle_hover(self, event):
+        if not self.accessibility_is_on:
+            return
         self.lock.acquire(blocking=True)
         active_tab = self.tabs[self.active_tab]
         task = Task(active_tab.hover, event.x, event.y - CHROME_PX)
