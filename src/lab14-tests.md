@@ -161,11 +161,12 @@ The accessibility tree is automatically created.
 
     >>> browser = lab14.Browser()
     >>> browser.load(focus_url)
-    >>> browser.tabs[0].toggle_accessibility()
+    >>> browser.toggle_accessibility()
 
 Rendering will read out the accessibility instructions:
 
     >>> browser.render()
+    >>> browser.composite_raster_and_draw()
     Here are the document contents: 
     Input box: 
     Link
@@ -173,7 +174,7 @@ Rendering will read out the accessibility instructions:
 
 From this tree:
 
-    >>> lab14.print_tree(browser.tabs[0].accessibility_tree)
+    >>> lab14.print_tree(browser.accessibility_tree)
      AccessibilityNode(node=<html> role=document
        AccessibilityNode(node=<input> role=textbox
        AccessibilityNode(node=<a href="/dest"> role=link

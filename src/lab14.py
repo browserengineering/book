@@ -549,9 +549,6 @@ def is_focusable(node):
     else:
         return node.tag in ["input", "button", "a"]
     
-def compute_role(node):
-    return AccessibilityNode(node).role
-
 def announce_text(node, role):
     text = ""
     if role == "StaticText":
@@ -613,24 +610,23 @@ class AccessibilityNode:
             else:
                 self.role = "none"
 
-        for child_node in node.children:
-            self.build_internal(child_node)
-
+    def build(self):
         self.text = announce_text(node, self.role)
         if self.text and node.children and \
             isinstance(node.children[0], Text):
             self.text += " " + \
             announce_text(node.children[0], self.children[0].role)
 
-    def build_internal(self, node):
-        child = AccessibilityNode(node)
-        if child.role != "none":
-            self.children.append(child)
-            parent = child
-        else:
-            parent = self
+        self.build_internal(node)
+
+    def build_internal(parent):
         for child_node in node.children:
-            parent.build_internal(child_node)
+            child = AccessibilityNode(child_node)
+            if child.role != "none":
+                print('add child')
+                self.children.append(child)
+                child.build(child_node)
+            else:
 
     def intersects(self, x, y):
         if self.bounds:
@@ -1147,6 +1143,7 @@ class Tab:
 
         if self.needs_accessibility:
             self.accessibility_tree = AccessibilityNode(self.nodes)
+            self.accessibility_tree.build(self.nodes)
             self.needs_accessibility = False
             self.needs_paint = True
 
