@@ -577,9 +577,8 @@ def announce_text(node, role):
 class AccessibilityNode:
     def __init__(self, node):
         self.children = []
-
-        # todo: remove this
         self.node = node
+        self.text = None
 
         if hasattr(node, "layout_object"):
             obj = node.layout_object
@@ -611,22 +610,22 @@ class AccessibilityNode:
                 self.role = "none"
 
     def build(self):
-        self.text = announce_text(node, self.role)
+        for child_node in self.node.children:
+            self.build_internal(child_node)
+
         if self.text and node.children and \
             isinstance(node.children[0], Text):
             self.text += " " + \
             announce_text(node.children[0], self.children[0].role)
 
-        self.build_internal(node)
-
-    def build_internal(parent):
-        for child_node in node.children:
-            child = AccessibilityNode(child_node)
-            if child.role != "none":
-                print('add child')
-                self.children.append(child)
-                child.build(child_node)
-            else:
+    def build_internal(self, node):
+        child = AccessibilityNode(node)
+        if child.role != "none":
+            self.children.append(child)
+            child.build()
+        else:
+            for child_node in node.children:
+                self.build_internal(child_node)
 
     def intersects(self, x, y):
         if self.bounds:
@@ -1143,7 +1142,7 @@ class Tab:
 
         if self.needs_accessibility:
             self.accessibility_tree = AccessibilityNode(self.nodes)
-            self.accessibility_tree.build(self.nodes)
+            self.accessibility_tree.build()
             self.needs_accessibility = False
             self.needs_paint = True
 
