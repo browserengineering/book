@@ -1500,8 +1500,8 @@ The accessibility tree is built out of `AccessibilityNode`s:
 class AccessibilityNode:
     def __init__(self, node):
         self.node = node
-        self.previous = None
         self.children = []
+        self.text = None
 ```
 
 The `build` method on `AccessibilityNode` recursively creates the
@@ -1556,15 +1556,16 @@ class AccessibilityNode:
         for child_node in self.node.children:
             self.build_internal(child_node)
 
-    def build_internal(self, node):
-        child = AccessibilityNode(node)
+        self.text = announce_text(self.node, self.role)
+
+    def build_internal(self, child_node):
+        child = AccessibilityNode(child_node)
         if child.role != "none":
             self.children.append(child)
-            parent = child
+            child.build()
         else:
-            parent = self
-        for child_node in node.children:
-            parent.build_internal(child_node)
+            for grandchild_node in child_node.children:
+                self.build_internal(grandchild_node)
 ```
 
 The user can now direct the screen-reader to walk up or down this
@@ -1661,6 +1662,8 @@ is on:
 ``` {.python}
 class Browser:
     def __init__(self):
+        self.needs_accessibility = False
+
         self.accessibility_is_on = False
 
     def toggle_accessibility(self):
@@ -1669,34 +1672,27 @@ class Browser:
         active_tab = self.tabs[self.active_tab]
         task = Task(active_tab.toggle_accessibility)
         active_tab.task_runner.schedule_task(task)
+        self.needs_accessibility = self.accessibility_is_on
         self.lock.release()
 ```
 
-The `Tab`, in turn, executes the `speak_task` method if accessibility
+The `Browser`, in turn, executes the `speak_update` method if accessibility
 is on, which is what actually produces sound:
 
 ``` {.python}
-class Tab:
-    def __init__(self, browser):
+class Browser:
+    def composite_raster_and_draw(self):
         # ...
-        self.accessibility_is_on = False
-
-    def render(self):
         if self.needs_accessibility:
-            if self.accessibility_is_on:
-                task = Task(self.speak_update)
-                self.task_runner.schedule_task(task)
+            self.speak_update()
 
-    def toggle_accessibility(self):
-        self.accessibility_is_on = not self.accessibility_is_on
-        self.set_needs_render()
 ```
 
 Let's now use this code to speak the whole document once after it's been loaded:
 
 ``` {.python}
-class Tab:
-    def __init__(self, browser):
+class Browser:
+    def __init__(self):
         # ...
         self.has_spoken_document = False
 
@@ -1704,22 +1700,31 @@ class Tab:
         text = "Here are the document contents: "
         tree_list = tree_to_list(self.accessibility_tree, [])
         for accessibility_node in tree_list:
-            new_text = announce_text(accessibility_node.node)
+            new_text = accessibility_node.text
             if new_text:
                 text += "\n"  + new_text
         print(text)
-        if not self.browser.is_muted():
+        if not self.is_muted():
             speak_text(text)
 
     def speak_update(self):
+        if not self.accessibility_tree:
+            return
+        for alert in self.queued_alerts:
+            self.speak_node(alert, "New alert")
+        self.queued_alerts = []
+
         if not self.has_spoken_document:
             self.speak_document()
             self.has_spoken_document = True
 
-        if self.focus and \
-            self.focus != self.accessibility_focus:
-            self.accessibility_focus = self.focus
-            self.speak_node(self.focus, "element focused ")
+        if self.tab_focus and \
+            self.tab_focus != self.accessibility_focus:
+            nodes = [node for node in tree_to_list(self.accessibility_tree, [])
+                        if node.node == self.tab_focus]
+            if nodes:
+                self.accessibility_focus = self.tab_focus
+            self.speak_node(nodes[0], "element focused ")
 ```
 
 Let's use this to speak the focused element to the user. A new method,
@@ -1730,19 +1735,28 @@ say, which will be decided in `announce_text`.
 Here is `announce_text`. For text nodes it's just the text, and otherwise it
 describes the element tag, plus whether it's focused.
 
-``` {.python expected=False}
-def announce_text(node):
+``` {.python}
+def announce_text(node, role):
     text = ""
-    if isinstance(node, Text):
+    if role == "StaticText":
         text = node.text
-    elif node.tag == "input":
-        value = node.attributes["value"] \
-            if "value" in node.attributes else ""
+    elif role == "focusable text":
+        text = "focusable text: " + node.text
+    elif role == "textbox":
+        if "value" in node.attributes:
+            value = node.attributes["value"]
+        elif node.tag != "input" and node.children and \
+            isinstance(node.children[0], Text):
+            value = node.children[0].text
+        else:
+            value = ""
         text = "Input box: " + value
-    elif node.tag == "button":
+    elif role == "button":
         text = "Button"
-    elif node.tag == "link":
+    elif role == "link":
         text = "Link"
+    elif role == "alert":
+        text = "Alert"
     if is_focused(node):
         text += " is focused"
     return text
@@ -1756,40 +1770,34 @@ and then speaks the text.
 class Tab:
     # ...
     def speak_node(self, node, text):
-        text += announce_text(node)
+        text += node.text
         if text and node.children and \
-            isinstance(node.children[0], Text):
-            text += " " + announce_text(node.children[0])
+            node.children[0].role == "StaticText":
+            text += " " + \
+            self.node.children[0].role
+
         print(text)
         if text:
-            if not self.browser.is_muted():
+            if not self.is_muted():
                 speak_text(text)
 ```
 
 And finally there is `speak_update`:
 
 ``` {.python}
-class Tab:
-    def __init__(self, browser):
+class Browser:
+    def __init__(self):
         # ...
         self.accessibility_focus = None
 
     def speak_update(self):
-        if self.focus and \
-            self.focus != self.accessibility_focus:
-            self.accessibility_focus = self.focus
-            self.speak_node(self.focus, "element focused ")
-```
-
-The `speak_update` method can then be called after layout is done:
-
-``` {.python expected=False}
-class Tab:
-    # ...
-    def render(self):
-        # ...
-            self.document.layout(self.zoom)
-            self.speak_update()     
+        if self.tab_focus and \
+            self.tab_focus != self.accessibility_focus:
+            nodes = [node for node in tree_to_list(self.accessibility_tree, [])
+                        if node.node == self.tab_focus]
+            if nodes:
+                self.accessibility_focus = self.tab_focus
+            self.speak_node(nodes[0], "element focused ")
 ```
 
 ::: {.further}
@@ -1862,9 +1870,13 @@ In `Browser`:
 class Browser:
     # ...
     def handle_hover(self, event):
+        if not self.accessibility_is_on:
+            return
+        self.pending_hover = (event.x, event.y - CHROME_PX)
         active_tab = self.tabs[self.active_tab]
         task = Task(active_tab.hover, event.x, event.y - CHROME_PX)
         active_tab.task_runner.schedule_task(task)
+        self.needs_accessibility = True
 ```
 
 Now the tab should listen to the hovered position, determine if it's over an
@@ -1907,17 +1919,15 @@ class Tab:
         self.hovered_node = None
 
         if self.pending_hover:
-            if self.accessibility_tree:
                 (x, y) = self.pending_hover
                 a11y_node = self.accessibility_tree.hit_test(x, y)
                 if self.hovered_node:
                     self.hovered_node.is_hovered = False
 
                 if a11y_node:
-                    if a11y_node.node != self.hovered_node:
-                        self.speak_hit_test(a11y_node.node)
                     self.hovered_node = a11y_node.node
-            self.pending_hover = None
+                    self.hovered_node.is_hovered = True
+        self.pending_hover = None
 ```
 
 The last bit is implementing `hit_test` on `AccessibilityNode`. It's
@@ -2151,8 +2161,7 @@ Now that roles and element tags need not be the same, we need to redefine
 `announce_text` to look only at the computed role, and not the element tag:
 
 ``` {.python}
-def announce_text(node):
-    role = compute_role(node)
+def announce_text(node, role):
     text = ""
     if role == "StaticText":
         text = node.text

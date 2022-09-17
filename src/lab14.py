@@ -576,8 +576,8 @@ def announce_text(node, role):
 
 class AccessibilityNode:
     def __init__(self, node):
-        self.children = []
         self.node = node
+        self.children = []
         self.text = None
 
         if hasattr(node, "layout_object"):
@@ -1640,6 +1640,14 @@ class Browser:
             self.speak_document()
             self.has_spoken_document = True
 
+        if self.tab_focus and \
+            self.tab_focus != self.accessibility_focus:
+            nodes = [node for node in tree_to_list(self.accessibility_tree, [])
+                        if node.node == self.tab_focus]
+            if nodes:
+                self.accessibility_focus = self.tab_focus
+            self.speak_node(nodes[0], "element focused ")
+
         if self.pending_hover != None:
             if self.accessibility_tree:
                 (x, y) = self.pending_hover
@@ -1653,20 +1661,6 @@ class Browser:
                     self.hovered_node = a11y_node
                     self.hovered_node.is_hovered = True
             self.pending_hover = None
-
-        if self.hovered_node:
-            active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.hover,
-                self.hovered_node.bounds.x(), self.hovered_node.bounds.y())
-            active_tab.task_runner.schedule_task(task)
-
-        if self.tab_focus and \
-            self.tab_focus != self.accessibility_focus:
-            nodes = [node for node in tree_to_list(self.accessibility_tree, [])
-                        if node.node == self.tab_focus]
-            if nodes:
-                self.accessibility_focus = self.tab_focus
-            self.speak_node(nodes[0], "element focused ")
 
     def toggle_mute(self):
         self.lock.acquire(blocking=True)
@@ -1709,6 +1703,9 @@ class Browser:
         if not self.accessibility_is_on:
             return
         self.pending_hover = (event.x, event.y - CHROME_PX)
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.hover, event.x, event.y - CHROME_PX)
+        active_tab.task_runner.schedule_task(task)
         self.needs_accessibility = True
 
     def handle_key(self, char):
