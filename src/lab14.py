@@ -1098,49 +1098,13 @@ class Tab:
             height=document_height,
             display_list=self.display_list,
             composited_updates=composited_updates,
+            accessibility_tree = self.accessibility_tree
         )
         self.display_list = None
         self.scroll_changed_in_tab = False
+        self.accessibility_tree = None
 
         self.browser.commit(self, commit_data)
-
-    def speak_node(self, node, text):
-        text += announce_text(node)
-        if text and node.children and \
-            isinstance(node.children[0], Text):
-            text += " " + announce_text(node.children[0])
-        print(text)
-        if text:
-            if not self.browser.is_muted():
-                speak_text(text)
-
-    def speak_hit_test(self, node):
-        self.speak_node(node, "hit test ")
-
-    def speak_document(self):
-        text = "Here are the document contents: "
-        tree_list = tree_to_list(self.accessibility_tree, [])
-        for accessibility_node in tree_list:
-            new_text = announce_text(accessibility_node.node)
-            if new_text:
-                text += "\n"  + new_text
-        print(text)
-        if not self.browser.is_muted():
-            speak_text(text)
-
-    def speak_update(self):
-        for alert in self.queued_alerts:
-            self.speak_node(alert, "New alert")
-        self.queued_alerts = []
-
-        if not self.has_spoken_document:
-            self.speak_document()
-            self.has_spoken_document = True
-
-        if self.focus and \
-            self.focus != self.accessibility_focus:
-            self.accessibility_focus = self.focus
-            self.speak_node(self.focus, "element focused ")
 
     def render(self):
         self.measure_render.start()
@@ -1166,10 +1130,6 @@ class Tab:
             self.accessibility_tree = AccessibilityNode(self.nodes)
             self.needs_accessibility = False
             self.needs_paint = True
-
-            if self.accessibility_is_on:
-                task = Task(self.speak_update)
-                self.task_runner.schedule_task(task)
 
         if self.pending_hover:
             if self.accessibility_tree:
@@ -1427,6 +1387,7 @@ class Browser:
                 self.active_tab_display_list = data.display_list
             self.animation_timer = None
             self.composited_updates = data.composited_updates
+            self.accessibility_tree = data.accessibility_tree
             if not self.composited_updates:
                 self.composited_updates = {}
                 self.set_needs_composite()
@@ -1530,6 +1491,10 @@ class Browser:
         self.needs_composite = False
         self.needs_raster = False
         self.needs_draw = False
+
+        if self.accessibility_is_on:
+            self.speak_update()
+
         self.lock.release()
 
     def schedule_animation_frame(self):
@@ -1614,6 +1579,44 @@ class Browser:
         task = Task(active_tab.toggle_accessibility)
         active_tab.task_runner.schedule_task(task)
         self.lock.release()
+
+    def speak_node(self, node, text):
+        text += announce_text(node)
+        if text and node.children and \
+            isinstance(node.children[0], Text):
+            text += " " + announce_text(node.children[0])
+        print(text)
+        if text:
+            if not self.browser.is_muted():
+                speak_text(text)
+
+    def speak_hit_test(self, node):
+        self.speak_node(node, "hit test ")
+
+    def speak_document(self):
+        text = "Here are the document contents: "
+        tree_list = tree_to_list(self.accessibility_tree, [])
+        for accessibility_node in tree_list:
+            new_text = announce_text(accessibility_node.node)
+            if new_text:
+                text += "\n"  + new_text
+        print(text)
+        if not self.browser.is_muted():
+            speak_text(text)
+
+    def speak_update(self):
+        for alert in self.queued_alerts:
+            self.speak_node(alert, "New alert")
+        self.queued_alerts = []
+
+        if not self.has_spoken_document:
+            self.speak_document()
+            self.has_spoken_document = True
+
+        if self.focus and \
+            self.focus != self.accessibility_focus:
+            self.accessibility_focus = self.focus
+            self.speak_node(self.focus, "element focused ")
 
     def toggle_mute(self):
         self.lock.acquire(blocking=True)
