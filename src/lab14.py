@@ -981,6 +981,7 @@ class Tab:
         self.composited_updates = []
         self.zoom = 1.0
         self.pending_hover = None
+        self.hovered_node = None
         self.queued_alerts = []
 
         with open("browser14.css") as f:
@@ -1148,6 +1149,17 @@ class Tab:
             self.accessibility_tree = AccessibilityNode(self.nodes)
             self.needs_accessibility = False
             self.needs_paint = True
+
+            if self.pending_hover:
+                (x, y) = self.pending_hover
+                a11y_node = self.accessibility_tree.hit_test(x, y)
+                if self.hovered_node:
+                    self.hovered_node.is_hovered = False
+
+                if a11y_node:
+                    self.hovered_node = a11y_node.node
+                    self.hovered_node.is_hovered = True
+        self.pending_hover = None
 
         if self.needs_paint:
             self.display_list = []
@@ -1647,7 +1659,7 @@ class Browser:
         if self.hovered_node:
             active_tab = self.tabs[self.active_tab]
             task = Task(active_tab.hover,
-                self.hovered_node.bounds.x, self.hovered_node.bounds.y)
+                self.hovered_node.bounds.x(), self.hovered_node.bounds.y())
             active_tab.task_runner.schedule_task(task)
 
         if self.tab_focus and \
