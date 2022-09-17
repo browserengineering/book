@@ -1606,7 +1606,7 @@ class Browser:
                 speak_text(text)
 
     def speak_hit_test(self, node):
-        self.speak_node(node, "hit testfff ")
+        self.speak_node(node, "hit test ")
 
     def speak_document(self):
         text = "Here are the document contents: "
@@ -1639,7 +1639,6 @@ class Browser:
 
                 if a11y_node:
                     if not self.hovered_node or a11y_node.node != self.hovered_node.node:
-                        print(a11y_node)
                         self.speak_hit_test(a11y_node)
                     self.hovered_node = a11y_node
                     self.hovered_node.is_hovered = True
