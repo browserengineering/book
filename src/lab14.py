@@ -1049,7 +1049,7 @@ class Tab:
         self.needs_layout = True
         self.browser.set_needs_animation_frame(self)
 
-    def set_needs_accessiblity(self):
+    def set_needs_accessibility(self):
         self.needs_accessibility = True
         self.browser.set_needs_animation_frame(self)
 
@@ -1276,11 +1276,11 @@ class Tab:
         if not self.accessibility_is_on:
             return
         self.queued_alerts.append(alert)
-        self.set_needs_accessiblity()
+        self.set_needs_accessibility()
 
     def toggle_accessibility(self):
         self.accessibility_is_on = not self.accessibility_is_on
-        self.set_needs_accessiblity()
+        self.set_needs_accessibility()
 
     def toggle_dark_mode(self):
         self.dark_mode = not self.dark_mode
@@ -1577,7 +1577,7 @@ class Browser:
         self.clear_data()
         if self.active_tab != None:
             active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.set_needs_paint)
+            task = Task(active_tab.set_needs_accessibility)
             active_tab.task_runner.schedule_task(task)
         else:
             self.needs_animation_frame = True
@@ -1608,7 +1608,7 @@ class Browser:
         if text and node.children and \
             node.children[0].role == "StaticText":
             text += " " + \
-            self.node.children[0].role
+            node.children[0].text
 
         print(text)
         if text:
@@ -1632,9 +1632,6 @@ class Browser:
     def speak_update(self):
         if not self.accessibility_tree:
             return
-        for alert in self.queued_alerts:
-            self.speak_node(alert, "New alert")
-        self.queued_alerts = []
 
         if not self.has_spoken_document:
             self.speak_document()
@@ -1661,6 +1658,10 @@ class Browser:
                     self.hovered_node = a11y_node
                     self.hovered_node.is_hovered = True
             self.pending_hover = None
+
+        for alert in self.queued_alerts:
+            self.speak_node(alert, "New alert")
+        self.queued_alerts = []
 
     def toggle_mute(self):
         self.lock.acquire(blocking=True)
