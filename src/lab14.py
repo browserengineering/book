@@ -1615,9 +1615,6 @@ class Browser:
             if not self.is_muted():
                 speak_text(text)
 
-    def speak_hit_test(self, node):
-        self.speak_node(node, "hit test ")
-
     def speak_document(self):
         text = "Here are the document contents: "
         tree_list = tree_to_list(self.accessibility_tree, [])
@@ -1654,7 +1651,7 @@ class Browser:
 
                 if a11y_node:
                     if not self.hovered_node or a11y_node.node != self.hovered_node.node:
-                        self.speak_hit_test(a11y_node)
+                        self.speak_node(a11y_node, "Hit test ")
                     self.hovered_node = a11y_node
                     self.hovered_node.is_hovered = True
             self.pending_hover = None

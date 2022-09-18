@@ -1597,18 +1597,17 @@ to the browser thread. That'll be a straightforward extension of the commit
 concept introduced in [Chapter 12][ch12-commit]. First we'll add the tree
 to `CommitData`: 
 
-``` {.python}
+``` {.python expected=False}
 class CommitData:
     def __init__(self, url, scroll, height,
-        display_list, composited_updates, accessibility_tree,
-        queued_alerts, focus):
+        display_list, composited_updates, accessibility_tree):
         # ...
         self.accessibility_tree = accessibility_tree
 ```
 
 And send it across. Note that once it's sent the `Tab` will no longer have a
 pointer to it, which makes sense since the `Tab` has no use for the
-accessibility tree other than to build it/ Note that now that the accessibility
+accessibility tree other than to build it. Note that now that the accessibility
 tree is present in the browser thread, and not just the display list, changing
 tabs requires re-running both of those rendering steps.
 
@@ -1936,10 +1935,18 @@ First we need to listen for mouse move events:
                 browser.handle_hover(event.motion)
 ```
 
-In `Browser`:
+In `Browser`, store off a `pending_hover`, and also inform the `Tab`.
+Both of them need to know about the hover, because the `Browser` will speak
+the hit-tested node, but the `Tab` will create the outline.^[In real
+browsers, the screen reader often creates an overlay outline, but for
+simplicity I'm re-using the outline code we already have.]
 
 ``` {.python}
 class Browser:
+    def __init__(self):
+        # ...
+        self.pending_hover = None
+
     # ...
     def handle_hover(self, event):
         if not self.accessibility_is_on:
@@ -2003,10 +2010,20 @@ class Tab:
 ```
 
 The last bit is implementing `hit_test` on `AccessibilityNode`. It's
-basically the same as regular hit testing:
+basically the same as regular hit testing, but does require storing bounds
+on the `AccessiblityNode` :
+
 
 ``` {.python}
 class AccessibilityNode:
+    def __init__(self, node):
+        # ...
+        if hasattr(node, "layout_object"):
+            obj = node.layout_object
+            self.bounds = skia.Rect.MakeXYWH(obj.x, obj.y, obj.width, obj.height)
+        else:
+            self.bounds = None
+
     # ...
     def hit_test(self, x, y):
         nodes = [node for node in tree_to_list(self, [])
@@ -2020,6 +2037,29 @@ class AccessibilityNode:
             else:
                 return node
 ```
+
+Over in the `Browser`, we need to also perform a hit test on any
+`pending_hover` (and record which node is hovered in `hovered_node` to avoid
+speaking a hover unless it really changed):
+
+``` {.python}
+class Browser:
+    def speak_update(self):
+        if self.pending_hover != None:
+            if self.accessibility_tree:
+                (x, y) = self.pending_hover
+                a11y_node = self.accessibility_tree.hit_test(x, y)
+                if self.hovered_node:
+                    self.hovered_node.is_hovered = False
+
+                if a11y_node:
+                    if not self.hovered_node or a11y_node.node != self.hovered_node.node:
+                        self.speak_node(a11y_node, "Hit test ")
+                    self.hovered_node = a11y_node
+                    self.hovered_node.is_hovered = True
+            self.pending_hover = None
+```
+
 
 ::: {.further}
 
