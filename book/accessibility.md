@@ -1597,7 +1597,7 @@ to the browser thread. That'll be a straightforward extension of the commit
 concept introduced in [Chapter 12][ch12-commit]. First we'll add the tree
 to `CommitData`: 
 
-```
+``` {.python}
 class CommitData:
     def __init__(self, url, scroll, height,
         display_list, composited_updates, accessibility_tree,
@@ -1612,9 +1612,9 @@ accessibility tree other than to build it/ Note that now that the accessibility
 tree is present in the browser thread, and not just the display list, changing
 tabs requires re-running both of those rendering steps.
 
-```
+``` {.python}
 class Tab:
-    def render(self):
+    def rendrun_animation_frame(self, scroll):
         # ...
         commit_data = CommitData(
             accessibility_tree=self.accessibility_tree,
@@ -1624,7 +1624,7 @@ class Tab:
         self.accessibility_tree = None
 ```
 
-```
+``` {.python}
 class Browser:
     def commit(self, tab, data):
         # ...
@@ -1739,13 +1739,13 @@ which is used by the `Tab` to start building and commiting accessibilty trees:
 
 ``` {.python}
 class Tab:
-    def set_needs_accessiblity(self):
+    def set_needs_accessibility(self):
         self.needs_accessibility = True
         self.browser.set_needs_animation_frame(self)
 
     def toggle_accessibility(self):
         self.accessibility_is_on = not self.accessibility_is_on
-        self.set_needs_accessiblity()
+        self.set_needs_accessibility()
 
 ```
 
@@ -1771,7 +1771,6 @@ DOM context. For each node, we'll figure out its text via the `announce_text`
 function. For text nodes it's just the text, and otherwise it
 describes the element tag, plus whether it's focused.
 
-``` {.python}
 ``` {.python expected=False}
 def announce_text(node):
     text = ""
@@ -1846,7 +1845,7 @@ class Browser:
         if text and node.children and \
             node.children[0].role == "StaticText":
             text += " " + \
-            self.node.children[0].role
+            node.children[0].text
 
         print(text)
         if text:
@@ -2302,7 +2301,7 @@ class Tab:
         if not self.accessibility_is_on:
             return
         self.queued_alerts.append(alert)
-        self.set_needs_accessiblity()
+        self.set_needs_accessibility()
 ```
 
 The queued alert need to be sent over to the browser thread, just like
