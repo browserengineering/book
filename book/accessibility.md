@@ -1614,7 +1614,7 @@ tabs requires re-running both of those rendering steps.
 
 ``` {.python}
 class Tab:
-    def rendrun_animation_frame(self, scroll):
+    def run_animation_frame(self, scroll):
         # ...
         commit_data = CommitData(
             accessibility_tree=self.accessibility_tree,
