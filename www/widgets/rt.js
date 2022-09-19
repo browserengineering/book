@@ -44,8 +44,16 @@ class ExpectedError extends Error {
 class WidgetXHRError extends ExpectedError {
     constructor(hostname) {
         super("This widget cannot access " + hostname + " due to sandboxing, " +
-              "but the underlying Python code should work correctly.");
+              "but the book's Python code should work correctly.");
         this.name = "WidgetXHRError";
+    }
+}
+
+class JSExecutionError extends ExpectedError {
+    constructor(fn) {
+        super("This widget can't handle the " + fn + " exported function's return value, " +
+              "but the book's Python code should work correctly.");
+        this.name = "JSExecutionError";
     }
 }
 
@@ -173,7 +181,7 @@ static tkinter(options) {
                     }
                 });
             } else if (['<Button-1>', '<Button-2>', '<Button-3>'].indexOf(key) !== -1) {
-                window.addEventListener("mousedown", function(e) {
+                this.elt.addEventListener("mousedown", function(e) {
                     if (e.button == key.substr(8, 1) - 1) {
                         fn({ x: e.offsetX, y: e.offsetY }).catch(on_error);
                     }
@@ -391,23 +399,21 @@ static dukpy() {
             });
         }
         
-        onmessage(e) {
+        async onmessage(e) {
             switch (e.data.type) {
             case "call":
-                let result = this.function_table[e.data.fn].call(window, ... e.data.args);
-                result.then((res) => {
-                    let json_result = JSON.stringify(res);
-                    let bytes = new TextEncoder().encode(json_result);
-                    if (bytes.length <= this.write_buffer.length) {
-                        for (let i = 0; i < bytes.length; i++) {
-                            Atomics.store(this.write_buffer, i, bytes[i]);
-                        }
-                        Atomics.store(this.flag_buffer, 0, bytes.length);
-                        Atomics.notify(this.flag_buffer, 0);
-                    } else {
-                        throw "Buffer too small when calling " + e.data.fn;
+                let res = await this.function_table[e.data.fn].call(window, ... e.data.args);
+                let json_result = JSON.stringify(res);
+                let bytes = new TextEncoder().encode(json_result);
+                if (bytes.length <= this.write_buffer.length) {
+                    for (let i = 0; i < bytes.length; i++) {
+                        Atomics.store(this.write_buffer, i, bytes[i]);
                     }
-                });
+                    Atomics.store(this.flag_buffer, 0, bytes.length);
+                    Atomics.notify(this.flag_buffer, 0);
+                } else {
+                    throw new JSExecutionError(e.data.fn);
+                }
                 break;
 
             case "return":
