@@ -2105,29 +2105,24 @@ knowing that it was implemented by a browser is a good sign that it's not
 Live Regions
 ============
 
-Scripts do not interact directly with the accessibility tree,[^aom]
-much like they do not interact directly with the display list.
-However, sometimes scripts need to inform the screen reader about
-*why* they're making certain changes to the page to give screen-reader
-users a better experience. The most common example is an alert[^toast]
-telling you that some action you just did failed. Typically, these are
-inserted at some fixed place in the document, and thus in the
-accessibility tree; there's little chance a screen-reader user would
-get to it in time to see it.
+Scripts do not interact directly with the accessibility tree, much
+like they do not interact directly with the display list. However,
+sometimes scripts need to inform the screen reader about *why* they're
+making certain changes to the page to give screen-reader users a
+better experience. The most common example is an alert[^toast] telling
+you that some action you just did failed. A screen-reader user needs
+the alert read to them immediately, no matter where in the document
+it's inserted.
 
-[^aom]: As of this writing, there's a draft [Accessibility Objet
-    Model](https://wicg.github.io/aom/explainer.html) specification,
-    which would allow scripts to directly create accessibility nodes.
-    
 [^toast]: Also called a "toast", because it pops up.
 
-To fix this, if an element's role is set to `alert`, the screen-reader
-will immediately[^alert-css] read that element without the user
-needing move around in the accessiblity tree to find it. Note that
-there aren't any HTML elements whose default role is `alert`, so this
-requires setting the `role` attribute. There are also other "live"
-roles like `status` for less urgent information or `alertdialog` if
-the keyboard focus should move to the alerted element.
+The `alert` role addresses this need. A screen-reader will
+immediately[^alert-css] read an element with that role, no matter
+where in the document the user currently is. Note that there aren't
+any HTML elements whose default role is `alert`, so this requires
+setting the `role` attribute. There are also other "live" roles like
+`status` for less urgent information or `alertdialog` if the keyboard
+focus should move to the alerted element.
 
 [^alert-css]: The alert is only triggered if the element is added to
     the document, has the `alert` role (or the equivalent `aria-live`
@@ -2137,9 +2132,9 @@ the keyboard focus should move to the alerted element.
     elements with an `alert` role, not changes to contents or CSS.
     
 Before we jump to implementation, we first need to make it possible
-for scripts to change the `role` attribute. Let's add support for the
-`setAttribute` method. On the JavaScript side, this just calls a
-browser API:
+for scripts to change the `role` attribute. To do that, we'll need to
+add support for the `setAttribute` method. On the JavaScript side,
+this just calls a browser API:
 
 ``` {.javascript}
 Node.prototype.setAttribute = function(attr, value) {
@@ -2163,7 +2158,7 @@ class JSContext:
 ```
 
 Now we can implement the `alert` role. To do so, we'll search the
-accessiblity tree for elements with the `alert` role:
+accessiblity tree for elements with that role:
 
 ``` {.python}
 class Tab:
@@ -2341,6 +2336,18 @@ same way as `-internal-accessibility-hover ` but hit tests the layout tree
 instead. Implement it.
 
 [hover-pseudo]: https://developer.mozilla.org/en-US/docs/Web/CSS/:hover
+
+* *Alert updates*: Right now, the screen-reader immediately reads an
+alert when an element gains the `alert` role. But if that element's
+contents change, the alert isn't re-read. In real browsers, changes to
+an alert cause the alert to be re-read. Implement that in your
+browser: if the text description of any node below an `alert` node
+changes in the accessibility tree, re-read the `alert`. For an
+additional challenge, implement the [`aria-relevant`][aria-relevant]
+HTML attribute, which allows an author to explain whether additions,
+removals, or text trigger re-reads.
+
+[aria-relevant]: https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-relevant
 
 * *Find-in-page*: Yet another accessibility feature is searching for
 text within a web page. Implement this feature. A simple approach might be to
