@@ -2102,27 +2102,29 @@ knowing that it was implemented by a browser is a good sign that it's not
 :::
 
 
-Live Regions
-============
+Accessible alerts
+=================
 
 Scripts do not interact directly with the accessibility tree, much
 like they do not interact directly with the display list. However,
 sometimes scripts need to inform the screen reader about *why* they're
 making certain changes to the page to give screen-reader users a
 better experience. The most common example is an alert[^toast] telling
-you that some action you just did failed. A screen-reader user needs
+you that some action you just did failed. A screen reader user needs
 the alert read to them immediately, no matter where in the document
 it's inserted.
 
 [^toast]: Also called a "toast", because it pops up.
 
-The `alert` role addresses this need. A screen-reader will
-immediately[^alert-css] read an element with that role, no matter
+The `alert` role addresses this need.[^other-live] A screen reader
+will immediately[^alert-css] read an element with that role, no matter
 where in the document the user currently is. Note that there aren't
 any HTML elements whose default role is `alert`, so this requires
-setting the `role` attribute. There are also other "live" roles like
-`status` for less urgent information or `alertdialog` if the keyboard
-focus should move to the alerted element.
+setting the `role` attribute.
+
+[^other-live]: There are also other "live" roles like `status` for
+less urgent information or `alertdialog` if the keyboard focus should
+move to the alerted element.
 
 [^alert-css]: The alert is only triggered if the element is added to
     the document, has the `alert` role (or the equivalent `aria-live`
@@ -2337,7 +2339,7 @@ instead. Implement it.
 
 [hover-pseudo]: https://developer.mozilla.org/en-US/docs/Web/CSS/:hover
 
-* *Alert updates*: Right now, the screen-reader immediately reads an
+* *Alert updates*: Right now, the screen reader immediately reads an
 alert when an element gains the `alert` role. But if that element's
 contents change, the alert isn't re-read. In real browsers, changes to
 an alert cause the alert to be re-read. Implement that in your
