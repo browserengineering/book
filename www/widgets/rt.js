@@ -8,8 +8,6 @@ export {
     rt_constants, Widget, http_textarea, 
     };
 
-window.TKELEMENT = null;
-
 function wrap_class(cls) {
     return function(...args) {
         return new cls(...args);
