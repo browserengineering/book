@@ -5,10 +5,8 @@ export {
     breakpoint, filesystem,
     socket, ssl, tkinter, dukpy, urllib, html, random,
     truthy, comparator, pysplit, pyrsplit, asyncfilter,
-    rt_constants, lib, Widget, http_textarea, 
+    rt_constants, Widget, http_textarea, 
     };
-
-window.TKELEMENT = null;
 
 function wrap_class(cls) {
     return function(...args) {
@@ -44,20 +42,31 @@ class ExpectedError extends Error {
 class WidgetXHRError extends ExpectedError {
     constructor(hostname) {
         super("This widget cannot access " + hostname + " due to sandboxing, " +
-              "but the underlying Python code should work correctly.");
+              "but the book's Python code should work correctly.");
         this.name = "WidgetXHRError";
     }
 }
 
-class lib {
+class JSExecutionError extends ExpectedError {
+    constructor(fn) {
+        super("This widget can't handle the " + fn + " exported function's return value, " +
+              "but the book's Python code should work correctly.");
+        this.name = "JSExecutionError";
+    }
+}
 
-static socket() {
-    class socket {
+class socket {
+    static AF_INET = "inet";
+    static SOCK_STREAM = "stream";
+    static IPPROTO_TCP = "tcp";
+
+    static socket = wrap_class(class {
         constructor(params) {
             console.assert(params.family == "inet", "socket family must be inet")
             console.assert(params.type == "stream", "socket type must be stream")
             console.assert(params.proto == "tcp", "socket proto must be tcp")
         }
+
         connect(pair) {
             let [host, port] = pair
             this.host = host
@@ -66,9 +75,11 @@ static socket() {
             this.closed = true;
             this.scheme = "http";
         }
+
         send(text) {
             this.input += text;
         }
+
         async makefile(mode, params) {
             if (mode == "r") {
                 console.assert(params.encoding == "utf8" && params.newline == "\r\n", "Unknown socket encoding or line ending");
@@ -113,6 +124,7 @@ static socket() {
             }
             return this;
         }
+
         readline() {
             console.assert(!this.closed, "Attempt to read from a closed socket")
             let nl = this.output.indexOf("\r\n", this.idx);
@@ -130,29 +142,25 @@ static socket() {
         close() {
             this.closed = true;
         }
-    }
+    })
     
-    function accept(port, fn) {
+    static accept(port, fn) {
         rt_constants.URLS["local://" + port] = fn;
     }
-    
-    return {socket: wrap_class(socket), accept: accept,
-            AF_INET: "inet", SOCK_STREAM: "stream", IPPROTO_TCP: "tcp"}
 }
 
-static ssl() {
-    class context {
+class ssl {
+    static create_default_context = wrap_class(class {
         wrap_socket(s, params) {
             console.assert(s.host == params.server_hostname, "Invalid SSL server name, does not match socket host");
             s.scheme = "https";
             return s;
         }
-    }
-    return { create_default_context: wrap_class(context) };
+    })
 }
 
-static tkinter(options) { 
-    class Tk {
+class tkinter { 
+    static Tk = wrap_class(class {
         constructor() {
             this.elt = rt_constants.TKELEMENT;
         }
@@ -173,7 +181,7 @@ static tkinter(options) {
                     }
                 });
             } else if (['<Button-1>', '<Button-2>', '<Button-3>'].indexOf(key) !== -1) {
-                window.addEventListener("mousedown", function(e) {
+                this.elt.addEventListener("mousedown", function(e) {
                     if (e.button == key.substr(8, 1) - 1) {
                         fn({ x: e.offsetX, y: e.offsetY }).catch(on_error);
                     }
@@ -200,9 +208,9 @@ static tkinter(options) {
                 console.error("Trying to bind unsupported event", key);
             }
         }
-    }
+    })
 
-    class Canvas {
+    static Canvas = wrap_class(class {
         constructor(tk, params) {
             this.tk = tk;
             this.tk.elt.width = params.width * rt_constants.ZOOM;
@@ -265,58 +273,58 @@ static tkinter(options) {
             this.ctx.fillStyle = params.fill ?? "black";
             if (params.text) this.ctx.fillText(params.text, x * rt_constants.ZOOM, y * rt_constants.ZOOM);
         }
-    }
+    })
     
-    class Font {
-        constructor(params) {
-            this.size = params.size ?? 16;
-            this.weight = params.weight ?? "normal";
-            this.style = params.style ?? "normal";
-            this.string = (this.style == "roman" ? "normal" : this.style) + 
-                " " + this.weight + " " + this.size * rt_constants.ZOOM + "px Merriweather";
+    static font = {
+        Font: wrap_class(class {
+            constructor(params) {
+                this.size = params.size ?? 16;
+                this.weight = params.weight ?? "normal";
+                this.style = params.style ?? "normal";
+                this.string = (this.style == "roman" ? "normal" : this.style) + 
+                    " " + this.weight + " " + this.size * rt_constants.ZOOM + "px Merriweather";
 
-            this.$metrics = null;
-        }
-
-        measure(text) {
-            let ctx = rt_constants.TKELEMENT.getContext('2d');
-            ctx.font = this.string;
-            return ctx.measureText(text).width / rt_constants.ZOOM;
-        }
-
-        metrics(field) {
-            if (!this.$metrics) {
-                let ctx = rt_constants.TKELEMENT.getContext('2d');
-                ctx.textBaseline = "alphabetic";
-                ctx.font = this.string;
-                let m = ctx.measureText("Hxy");
-                let asc, desc;
-
-                // Only Safari provides emHeight properties as of 2021-04
-                // We fake them in the other browsers by guessing that emHeight = font.size
-                // This is not quite right but is close enough for many fonts...
-                if (m.emHeightAscent && m.emHeightDescent) {
-                    asc = ctx.measureText("Hxy").emHeightAscent / rt_constants.ZOOM;
-                    desc = ctx.measureText("Hxy").emHeightDescent / rt_constants.ZOOM;
-                } else {
-                    asc = ctx.measureText("Hxy").actualBoundingBoxAscent / rt_constants.ZOOM;
-                    desc = ctx.measureText("Hxy").actualBoundingBoxDescent / rt_constants.ZOOM;
-                    let gap = this.size - (asc + desc)
-                    asc += gap / 2;
-                    desc += gap / 2;
-                }
-                this.$metrics = { ascent: asc, descent: desc, linespace: asc + desc, fixed: 0 };
+                this.$metrics = null;
             }
-            if (field) return this.$metrics[field]
-            else return this.$metrics;
-        }
-    }
 
-    return {Tk: wrap_class(Tk), Canvas: wrap_class(Canvas), font: { Font: wrap_class(Font) }}
+            measure(text) {
+                let ctx = rt_constants.TKELEMENT.getContext('2d');
+                ctx.font = this.string;
+                return ctx.measureText(text).width / rt_constants.ZOOM;
+            }
+
+            metrics(field) {
+                if (!this.$metrics) {
+                    let ctx = rt_constants.TKELEMENT.getContext('2d');
+                    ctx.textBaseline = "alphabetic";
+                    ctx.font = this.string;
+                    let m = ctx.measureText("Hxy");
+                    let asc, desc;
+
+                    // Only Safari provides emHeight properties as of 2021-04
+                    // We fake them in the other browsers by guessing that emHeight = font.size
+                    // This is not quite right but is close enough for many fonts...
+                    if (m.emHeightAscent && m.emHeightDescent) {
+                        asc = ctx.measureText("Hxy").emHeightAscent / rt_constants.ZOOM;
+                        desc = ctx.measureText("Hxy").emHeightDescent / rt_constants.ZOOM;
+                    } else {
+                        asc = ctx.measureText("Hxy").actualBoundingBoxAscent / rt_constants.ZOOM;
+                        desc = ctx.measureText("Hxy").actualBoundingBoxDescent / rt_constants.ZOOM;
+                        let gap = this.size - (asc + desc)
+                        asc += gap / 2;
+                        desc += gap / 2;
+                    }
+                    this.$metrics = { ascent: asc, descent: desc, linespace: asc + desc, fixed: 0 };
+                }
+                if (field) return this.$metrics[field]
+                else return this.$metrics;
+            }
+        })
+    }
 }
 
-static urllib() {
-    class parse {
+class urllib {
+    static parse = class {
         static quote(s) {
             return encodeURIComponent(s);
         }
@@ -324,11 +332,10 @@ static urllib() {
             return decodeURIComponent(s);
         }
     }
-    return { parse: parse };
 }
 
-static html() {
-    function escape(s) {
+class html {
+    static escape(s) {
         // To HTML-escape a string, insert a text node with that
         // contents into the DOM, and read back its HTML. In effect,
         // we're leveraging the browser's unparser to escape text.
@@ -340,28 +347,28 @@ static html() {
         e.remove();
         return html;
     }
-    return { escape: escape };
 }
 
-static random() {
-    function random() {
+class random {
+    static random() {
         return Math.random();
     }
-    return { random: random };
 }
 
-static dukpy() {
-    if (!crossOriginIsolated) {
-        console.error("No cross-origin isolation; dukpy will not be available.");
+class dukpy {
+    static {
+        if (!crossOriginIsolated) {
+            console.error("No cross-origin isolation; dukpy will not be available.");
+        }
     }
 
-    class JSRuntimeError {
+    static JSRuntimeError = class {
         constructor(msg) {
             this.msg = msg;
         }
     }
     
-    class JSInterpreter {
+    static JSInterpreter = wrap_class(class {
         constructor() {
             this.function_table = {};
             this.worker = new Worker("/widgets/dukpy.js");
@@ -391,23 +398,21 @@ static dukpy() {
             });
         }
         
-        onmessage(e) {
+        async onmessage(e) {
             switch (e.data.type) {
             case "call":
-                let result = this.function_table[e.data.fn].call(window, ... e.data.args);
-                result.then((res) => {
-                    let json_result = JSON.stringify(res);
-                    let bytes = new TextEncoder().encode(json_result);
-                    if (bytes.length <= this.write_buffer.length) {
-                        for (let i = 0; i < bytes.length; i++) {
-                            Atomics.store(this.write_buffer, i, bytes[i]);
-                        }
-                        Atomics.store(this.flag_buffer, 0, bytes.length);
-                        Atomics.notify(this.flag_buffer, 0);
-                    } else {
-                        throw "Buffer too small when calling " + e.data.fn;
+                let res = await this.function_table[e.data.fn].call(window, ... e.data.args);
+                let json_result = JSON.stringify(res);
+                let bytes = new TextEncoder().encode(json_result);
+                if (bytes.length <= this.write_buffer.length) {
+                    for (let i = 0; i < bytes.length; i++) {
+                        Atomics.store(this.write_buffer, i, bytes[i]);
                     }
-                });
+                    Atomics.store(this.flag_buffer, 0, bytes.length);
+                    Atomics.notify(this.flag_buffer, 0);
+                } else {
+                    throw new JSExecutionError(e.data.fn);
+                }
                 break;
 
             case "return":
@@ -415,11 +420,7 @@ static dukpy() {
                 break;
             }
         }
-    }
-
-    return { JSRuntimeError: JSRuntimeError, JSInterpreter: wrap_class(JSInterpreter) };
-}
-
+    })
 }
 
 class Breakpoint {
@@ -648,11 +649,3 @@ class FileSystem {
 }
 
 const filesystem = new FileSystem();
-
-const socket = lib.socket();
-const ssl = lib.ssl();
-const tkinter = lib.tkinter();
-const dukpy = lib.dukpy();
-const urllib = lib.urllib();
-const html = lib.html();
-const random = lib.random();
