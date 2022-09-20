@@ -613,7 +613,28 @@ class AccessibilityNode:
         for child_node in self.node.children:
             self.build_internal(child_node)
 
-        self.text = announce_text(self.node, self.role)
+        if self.role == "StaticText":
+            self.text = node.text
+        elif self.role == "focusable text":
+            self.text = "focusable text: " + self.node.text
+        elif self.role == "textbox":
+            if "value" in self.node.attributes:
+                value = self.node.attributes["value"]
+            elif self.node.tag != "input" and self.node.children and \
+                 isinstance(self.node.children[0], Text):
+                value = self.node.children[0].text
+            else:
+                value = ""
+            self.text = "Input box: " + value
+        elif self.role == "button":
+            self.text = "Button"
+        elif self.role == "link":
+            self.text = "Link"
+        elif self.role == "alert":
+            self.text = "Alert"
+
+        if is_focused(self.node):
+            self.text += " is focused"
 
     def build_internal(self, child_node):
         child = AccessibilityNode(child_node)
@@ -649,6 +670,7 @@ class AccessibilityNode:
 SPEECH_FILE = "/tmp/speech-fragment.mp3"
 
 def speak_text(text):
+    print("SPEAK:", text)
     tts = gtts.gTTS(text)
     tts.save(SPEECH_FILE)
     playsound.playsound(SPEECH_FILE)
@@ -959,7 +981,6 @@ class Tab:
         self.document = None
         self.dark_mode = browser.dark_mode
 
-        self.accessibility_is_on = False
         self.accessibility_tree = None
 
         self.browser = browser
@@ -1047,10 +1068,6 @@ class Tab:
 
     def set_needs_layout(self):
         self.needs_layout = True
-        self.browser.set_needs_animation_frame(self)
-
-    def set_needs_accessibility(self):
-        self.needs_accessibility = True
         self.browser.set_needs_animation_frame(self)
 
     def set_needs_paint(self):
@@ -1276,11 +1293,6 @@ class Tab:
         if not self.accessibility_is_on:
             return
         self.queued_alerts.append(alert)
-        self.set_needs_accessibility()
-
-    def toggle_accessibility(self):
-        self.accessibility_is_on = not self.accessibility_is_on
-        self.set_needs_accessibility()
 
     def toggle_dark_mode(self):
         self.dark_mode = not self.dark_mode
@@ -1384,8 +1396,8 @@ class Browser:
         self.has_spoken_document = False
         self.pending_hover = None
         self.hovered_node = None
-        self.accessibility_focus = None
         self.tab_focus = None
+        self.last_tab_focus = None
         self.queued_alerts = []
 
     def render(self):
@@ -1570,17 +1582,13 @@ class Browser:
         self.scroll = 0
         self.url = None
         self.display_list = []
+        self.accessibility_tree = None
         self.composited_layers = []
 
     def set_active_tab(self, index):
         self.active_tab = index
         self.clear_data()
-        if self.active_tab != None:
-            active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.set_needs_accessibility)
-            active_tab.task_runner.schedule_task(task)
-        else:
-            self.needs_animation_frame = True
+        self.needs_animation_frame = True
 
     def go_back(self):
         active_tab = self.tabs[self.active_tab]
@@ -1610,7 +1618,7 @@ class Browser:
             text += " " + \
             node.children[0].text
 
-        print(text)
+
         if text:
             if not self.is_muted():
                 speak_text(text)
@@ -1622,7 +1630,7 @@ class Browser:
             new_text = accessibility_node.text
             if new_text:
                 text += "\n"  + new_text
-        print(text)
+
         if not self.is_muted():
             speak_text(text)
 
@@ -1635,12 +1643,12 @@ class Browser:
             self.has_spoken_document = True
 
         if self.tab_focus and \
-            self.tab_focus != self.accessibility_focus:
+            self.tab_focus != self.last_tab_focus:
             nodes = [node for node in tree_to_list(self.accessibility_tree, [])
                         if node.node == self.tab_focus]
             if nodes:
-                self.accessibility_focus = self.tab_focus
-            self.speak_node(nodes[0], "element focused ")
+                self.speak_node(nodes[0], "element focused ")
+            self.last_tab_focus = self.tab_focus
 
         if self.pending_hover != None:
             if self.accessibility_tree:

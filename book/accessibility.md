@@ -1402,8 +1402,8 @@ colors is something that page authors also have to pay attention to.
 :::
 
 
-Screen readers
-==============
+The accessibility tree
+======================
 
 Zoom, dark mode, and focus indicators help users with difficulty
 seeing fine details, but if the user can't see the screen at all,^[The
@@ -1569,14 +1569,14 @@ class AccessibilityNode:
 The user can now direct the screen reader to walk up or down this
 accessibility tree and describe each node to the user. 
 
-Using the accessibility tree
-----------------------------
+Screen readers
+==============
 
-Typically, the screen reader is a separate application from the browser,
-[^why-diff] which the browser communicates with through OS-specific APIs. To
-keep this book platform-independent, our discussion of screen reader support
-will instead include a minimal screen reader integrated directly into the
-browser.[^os-pain]
+Typically, the screen reader is a separate application from the
+browser,[^why-diff] which the browser communicates with through
+OS-specific APIs. To keep this book platform-independent, our
+discussion of screen reader support will instead include a minimal
+screen reader integrated directly into the browser.[^os-pain]
 
 But should our built-in screen reader live in the `Browser` or each `Tab`? Real
 browsers implement it in the `Browser`, so we'll do that too.^[And therefore
@@ -1585,11 +1585,12 @@ couple of reasons. One is that screen readers need to describe not just the tab
 contents but also browser chrome interactions, and doing it all in one place
 makes it easier to present everything seamlessly to the user. But the most
 critical reason is that since real-world screen readers tend to be in the
-OS, *and their APIs are almost always synchronous*, it's not possible to hook
-tab main threads directly into an OS screen reader without doing drastic things
-like temporarily blocking all threads.^[Which is a really bad idea, not only
-because it's very slow, but also is likely to cause deadlocks unless the
-browser is extremely careful. Most browsers these days are also multi-process,
+OS, *and their APIs are almost always synchronous*. So the browser
+thread needs to interact with the screen reader without the main
+thread's help.^[I suppose you could temporarily synchronize all
+threads, but that's a really bad idea, not only because it's very
+slow, but also is likely to cause deadlocks unless the browser is
+extremely careful. Most browsers these days are also multi-process,
 which makes it even harder.]
 
 So the very first thing we need to do is send the tab's accessibility tree over
@@ -1605,11 +1606,7 @@ class CommitData:
         self.accessibility_tree = accessibility_tree
 ```
 
-And send it across. Note that once it's sent the `Tab` will no longer have a
-pointer to it, which makes sense since the `Tab` has no use for the
-accessibility tree other than to build it. Note that now that the accessibility
-tree is present in the browser thread, and not just the display list, changing
-tabs requires re-running both of those rendering steps.
+Then we send it across in `run_animation_frame`:
 
 ``` {.python}
 class Tab:
@@ -1621,18 +1618,21 @@ class Tab:
         )
         # ...
         self.accessibility_tree = None
-```
 
-``` {.python}
 class Browser:
     def commit(self, tab, data):
         # ...
         self.accessibility_tree = data.accessibility_tree
 
-    def set_active_tab(self, index):
+    def clear_data(self, index):
         # ...
-            task = Task(active_tab.set_needs_accessibility)
+        self.accessibility_tree = None
 ```
+
+Note that I clear the `Tab`'s reference to the accessibility tree once
+it's sent over to the browser thread. This is the same thing we did
+for the display list, and it makes sense, since the `Tab` has no use
+for the accessibility tree other than to build it.
 
 [ch12-commit]: scheduling.html#committing-a-display-list
 
@@ -1674,6 +1674,7 @@ import playsound
 SPEECH_FILE = "/tmp/speech-fragment.mp3"
 
 def speak_text(text):
+    print("SPEAK:", text)
     tts = gtts.gTTS(text)
     tts.save(SPEECH_FILE)
     playsound.playsound(SPEECH_FILE)
@@ -1681,22 +1682,13 @@ def speak_text(text):
 ```
 
 ::: {.quirk}
-
 You may need to adjust the `SPEECH_FILE` path to fit your system
 better. If you have trouble importing any of the libraries, you may
 need to consult the [`gtts`][gtts] or [`playsound`][playsound]
-documentation. If you can't get these libraries working, you can skip
-the "play the sound out loud" aspect of this chapter by replacing
-`speak_text` with something like:
-
-``` {.python.example}
-def speak_text(text):
-    print("SPEAK:", text)
-```
-
-Then you can see what the browser *would have* spoken out loud in the
+documentation. If you can't get these libraries working, just delete
+everything in `speak_text` except the `print` statement. You won't
+hear things being spoken, but you can at least debug by watching the
 standard output.
-
 :::
 
 To start with, we'll want a key binding that turns the screen reader
@@ -1720,36 +1712,18 @@ is on:
 ``` {.python}
 class Browser:
     def __init__(self):
+        # ...
         self.needs_accessibility = False
-
         self.accessibility_is_on = False
 
     def toggle_accessibility(self):
         self.lock.acquire(blocking=True)
         self.accessibility_is_on = not self.accessibility_is_on
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.toggle_accessibility)
-        active_tab.task_runner.schedule_task(task)
-        self.needs_accessibility = self.accessibility_is_on
         self.lock.release()
 ```
 
-which is used by the `Tab` to start building and commiting accessibilty trees:
-
-``` {.python}
-class Tab:
-    def set_needs_accessibility(self):
-        self.needs_accessibility = True
-        self.browser.set_needs_animation_frame(self)
-
-    def toggle_accessibility(self):
-        self.accessibility_is_on = not self.accessibility_is_on
-        self.set_needs_accessibility()
-
-```
-
-The `Browser`, in turn, executes the `speak_update` method if accessibility
-is on, which is what actually produces sound:
+When accessibility is on, the `Browser` executes `speak_update`, which
+is what actually produces sound:
 
 ``` {.python}
 class Browser:
@@ -1760,31 +1734,23 @@ class Browser:
 
 ```
 
-Let's now use this code to speak the whole document once after it's been loaded
-(but only once in our simple browser; real browsers might also re-read changed
-contents after updates). But to do that we need to figure out the text to
-speak. This has to be decided back in the `Tab`, since the text will include
-DOM content that is not accessible to the browser thread. So let's add a
-`text` field to `AccessibilityNode` and set it according to role and surrounding
-DOM context. For each node, we'll figure out its text via the `announce_text`
-function. For text nodes it's just the text, and otherwise it
-describes the element tag, plus whether it's focused.
+Now, what should the screen reader say? Well, that's not really up to
+the browser---the screen reader is a stand-alone application, often
+heavily configured by its user, and can decide on its own. But as a
+simple debugging aid, let's write a screen reader that speaks the
+whole web page once it's loaded; of course, a real screen reader is
+much more flexible than that.
 
-``` {.python expected=False}
-def announce_text(node):
-    text = ""
-    if isinstance(node, Text):
-        text = node.text
-    elif node.tag == "input":
-        value = node.attributes["value"] \
-            if "value" in node.attributes else ""
-        text = "Input box: " + value
-    elif node.tag == "button":
-        text = "Button"
-    elif node.tag == "link":
-```
+To speak the whole document, we need to know how to speak each
+`AccessibilityNode`. This has to be decided back in the `Tab`, since
+the text will include DOM content that is not accessible to the
+browser thread. So let's add a `text` field to `AccessibilityNode` and
+set it according to role and surrounding DOM context. For each node,
+we'll figure out its text via the `announce_text` function. For text
+nodes it's just the text, and otherwise it describes the element tag,
+plus whether it's focused.
 
-``` {.python expected=False}
+``` {.python}
 class AccessibilityNode:
     def __init__(self, node):
         # ...
@@ -1794,10 +1760,34 @@ class AccessibilityNode:
         for child_node in self.node.children:
             self.build_internal(child_node)
 
-        self.text = announce_text(self.node)
+        if self.role == "StaticText":
+            self.text = node.text
+        elif self.role == "focusable text":
+            self.text = "focusable text: " + self.node.text
+        elif self.role == "textbox":
+            if "value" in self.node.attributes:
+                value = self.node.attributes["value"]
+            elif self.node.tag != "input" and self.node.children and \
+                 isinstance(self.node.children[0], Text):
+                value = self.node.children[0].text
+            else:
+                value = ""
+            self.text = "Input box: " + value
+        elif self.role == "button":
+            self.text = "Button"
+        elif self.role == "link":
+            self.text = "Link"
+        elif self.role == "alert":
+            self.text = "Alert"
+
+        if is_focused(self.node):
+            self.text += " is focused"
 ```
 
-Now we can easily read out this text in the browser:
+The screen reader can then read the whole document by speaking the
+`text` field on each `AccessibilityNode`. While in a real screen
+reader, this would happen via a browser API, I'll just put this code
+in `Browser` to avoid discussing operating system accessibility APIs:
 
 ``` {.python}
 class Browser:
@@ -1812,14 +1802,11 @@ class Browser:
             new_text = accessibility_node.text
             if new_text:
                 text += "\n"  + new_text
-        print(text)
-        if not self.is_muted():
-            speak_text(text)
+
+        speak_text(text)
 
     def speak_update(self):
-        if not self.accessibility_tree:
-            return
-        # ...
+        if not self.accessibility_tree: return
 
         if not self.has_spoken_document:
             self.speak_document()
@@ -1827,15 +1814,44 @@ class Browser:
 
 ```
 
-Let's next use this to also speak the focused element to the user. But right now
-the browser thread doesn't actually know what in the `Tab` is focused, so we'll
-need to commit that to a `tab_focus` field on `Browser` as well.^[By adding a
-`focus` field to `CommitData`, etc., just like the accessibilty tree, and
-storing it in a new `tab_focus` property on the `Browser`. Since it's
-repetitive I've omitted that code.]
+Speaking the whole document happens only once. But the user might need
+feedback as they browse the page. For example, let's speak the focused
+element to the user.
 
-Over on the browser, a new `speak_node` method will do something similar to
-`speak_document`, but specific to one node:
+To do that, the browser thread is going to need to know which element
+is focused. Let's add that to the `CommitData`; I'm not going to show
+the code, because it's repetitive, but the point is to store the
+`Tab`'s `focus` field in the `Browser`'s `tab_focus` field.
+
+Now we need to know when focus changes. While we could do that lots of
+ways,[^eg-handle-tab] the best way is to store a `last_tab_focus`
+field on `Browser` with the last focused element we actually spoke out
+loud:
+
+``` {.python}
+class Browser:
+    def __init__(self):
+        # ...
+        self.last_tab_focus = None
+```
+
+Then, if `tab_focus` isn't equal to `last_tab_focus`, we know focus
+has moved and it's time to speak the focused node:
+
+``` {.python}
+class Browser:
+    def speak_update(self):
+        if self.tab_focus and \
+            self.tab_focus != self.last_tab_focus:
+            nodes = [node for node in tree_to_list(self.accessibility_tree, [])
+                        if node.node == self.tab_focus]
+            if nodes:
+                self.speak_node(nodes[0], "element focused ")
+            self.last_tab_focus = self.tab_focus
+```
+
+The `speak_node` method is similar to `speak_document` but it only
+speaks a single node:
 
 ``` {.python}
 class Browser:
@@ -1846,30 +1862,16 @@ class Browser:
             text += " " + \
             node.children[0].text
 
-        print(text)
         if text:
-            if not self.is_muted():
-                speak_text(text)
+            speak_text(text)
 ```
 
-
-And then we can simply call it from `speak_update`:
-
-``` {.python}
-class Browser:
-    def __init__(self):
-        # ...
-        self.accessibility_focus = None
-
-    def speak_update(self):
-        if self.tab_focus and \
-            self.tab_focus != self.accessibility_focus:
-            nodes = [node for node in tree_to_list(self.accessibility_tree, [])
-                        if node.node == self.tab_focus]
-            if nodes:
-                self.accessibility_focus = self.tab_focus
-            self.speak_node(nodes[0], "element focused ")
-```
+There's a lot more in a real screen reader: landmarks, navigating text
+at different granularities, repeating recently spoken text, and so on.
+Those features make various use of the accessibility tree and the
+roles of the various nodes. But since the focus of this book is on the
+browser, not the screen reader itself, let's focus for the rest of
+this chapter on browser features that support accessibility.
 
 ::: {.further}
 
@@ -1897,6 +1899,9 @@ the user wants to [hit test][hit-test] a place on the screen to see what is
 there:  user who can't see the screen still might want to do things like touch
 exploration of the screen, or being notified what is under the mouse as they
 move it around.
+
+Mixed voice / visual interaction
+================================
 
 To get access to the geometry, let's add a `layout_object` pointer to each
 `Node` object if it has one. That's easy to do in the constructor of each layout
