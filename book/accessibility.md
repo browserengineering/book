@@ -1624,7 +1624,7 @@ class Browser:
         # ...
         self.accessibility_tree = data.accessibility_tree
 
-    def clear_data(self, index):
+    def clear_data(self):
         # ...
         self.accessibility_tree = None
 ```
@@ -1761,7 +1761,7 @@ class AccessibilityNode:
             self.build_internal(child_node)
 
         if self.role == "StaticText":
-            self.text = node.text
+            self.text = self.node.text
         elif self.role == "focusable text":
             self.text = "focusable text: " + self.node.text
         elif self.role == "textbox":
@@ -2346,7 +2346,6 @@ class Tab:
         if not self.accessibility_is_on:
             return
         self.queued_alerts.append(alert)
-        self.set_needs_accessibility()
 ```
 
 The queued alert need to be sent over to the browser thread, just like

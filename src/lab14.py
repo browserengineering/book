@@ -614,7 +614,7 @@ class AccessibilityNode:
             self.build_internal(child_node)
 
         if self.role == "StaticText":
-            self.text = node.text
+            self.text = self.node.text
         elif self.role == "focusable text":
             self.text = "focusable text: " + self.node.text
         elif self.role == "textbox":
@@ -1605,9 +1605,6 @@ class Browser:
     def toggle_accessibility(self):
         self.lock.acquire(blocking=True)
         self.accessibility_is_on = not self.accessibility_is_on
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.toggle_accessibility)
-        active_tab.task_runner.schedule_task(task)
         self.needs_accessibility = self.accessibility_is_on
         self.lock.release()
 
@@ -1620,6 +1617,7 @@ class Browser:
 
 
         if text:
+            print(text)
             if not self.is_muted():
                 speak_text(text)
 
@@ -1631,12 +1629,12 @@ class Browser:
             if new_text:
                 text += "\n"  + new_text
 
+        print(text)
         if not self.is_muted():
             speak_text(text)
 
     def speak_update(self):
-        if not self.accessibility_tree:
-            return
+        if not self.accessibility_tree: return
 
         if not self.has_spoken_document:
             self.speak_document()
