@@ -893,9 +893,6 @@ class JSContext:
 
     def setAttribute(self, handle, attr, value):
         elt = self.handle_to_node[handle]
-        if attr == "role" and value == "alert" and \
-            self.getAttribute(handle, attr) != "alert":
-            self.tab.queue_alert(elt)
         elt.attributes[attr] = value
         
     def innerHTML_set(self, handle, s):
@@ -955,15 +952,13 @@ class JSContext:
 
 class CommitData:
     def __init__(self, url, scroll, height,
-        display_list, composited_updates, accessibility_tree,
-        queued_alerts, focus):
+        display_list, composited_updates, accessibility_tree, focus):
         self.url = url
         self.scroll = scroll
         self.height = height
         self.display_list = display_list
         self.composited_updates = composited_updates
         self.accessibility_tree = accessibility_tree
-        self.queued_alerts = queued_alerts
         self.focus = focus
 
 class Tab:
@@ -995,7 +990,6 @@ class Tab:
         self.zoom = 1.0
         self.pending_hover = None
         self.hovered_node = None
-        self.queued_alerts = []
 
         with open("browser14.css") as f:
             self.default_style_sheet = \
@@ -1124,13 +1118,11 @@ class Tab:
             display_list=self.display_list,
             composited_updates=composited_updates,
             accessibility_tree=self.accessibility_tree,
-            queued_alerts=self.queued_alerts,
             focus=self.focus
         )
         self.display_list = None
         self.scroll_changed_in_tab = False
         self.accessibility_tree = None
-        self.queued_alerts = []
 
         self.browser.commit(self, commit_data)
 
@@ -1289,11 +1281,6 @@ class Tab:
             back = self.history.pop()
             self.load(back)
 
-    def queue_alert(self, alert):
-        if not self.accessibility_is_on:
-            return
-        self.queued_alerts.append(alert)
-
     def toggle_dark_mode(self):
         self.dark_mode = not self.dark_mode
         self.set_needs_render()
@@ -1398,7 +1385,8 @@ class Browser:
         self.hovered_node = None
         self.tab_focus = None
         self.last_tab_focus = None
-        self.queued_alerts = []
+        self.active_alerts = []
+        self.spoken_alerts = []
 
     def render(self):
         assert not USE_BROWSER_THREAD
@@ -1419,7 +1407,6 @@ class Browser:
             self.accessibility_tree = data.accessibility_tree
             if self.accessibility_tree:
                 self.needs_accessibilty = True
-            self.queued_alerts = data.queued_alerts
             self.tab_focus = data.focus
             if not self.composited_updates:
                 self.composited_updates = {}
@@ -1527,6 +1514,22 @@ class Browser:
         self.needs_draw = False
 
         if self.needs_accessibility:
+            new_spoken_alerts = []
+            for old_node in self.spoken_alerts:
+                new_nodes = [
+                    node for node in tree_to_list(self.accessibility_tree, [])
+                    if node.node == old_node.node
+                    and node.role == "alert"
+                ]
+                if new_nodes:
+                    new_spoken_alerts.append(new_nodes[0])
+            self.spoken_alerts = new_spoken_alerts
+
+            self.active_alerts = [
+                node for node in tree_to_list(self.accessibility_tree, [])
+                if node.role == "alert"
+            ]
+
             self.speak_update()
 
         self.lock.release()
@@ -1662,9 +1665,10 @@ class Browser:
                     self.hovered_node.is_hovered = True
             self.pending_hover = None
 
-        for alert in self.queued_alerts:
-            self.speak_node(alert, "New alert")
-        self.queued_alerts = []
+        for alert in self.active_alerts:
+            if alert not in self.spoken_alerts:
+                self.speak_node(alert, "New alert")
+                self.spoken_alerts.append(alert)
 
     def toggle_mute(self):
         self.lock.acquire(blocking=True)
