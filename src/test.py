@@ -2,6 +2,7 @@
 This file contains unittests helpers for chapters 1-10
 """
 
+import wbetools
 import builtins
 import io
 import sys
@@ -181,13 +182,16 @@ def breakpoint(name, *args):
     args_str = (", " + ", ".join(["'{}'".format(arg) for arg in args]) if args else "")
     print("breakpoint(name='{}'{})".format(name, args_str))
 
-builtin_breakpoint = builtins.breakpoint
+def patch(cls):
+        return mock.patch("socket.socket", wraps=cls)
+
+builtin_breakpoint = wbetools.record
 
 def patch_breakpoint():
-    builtins.breakpoint = breakpoint
+    wbetools.record = breakpoint
 
 def unpatch_breakpoint():
-    builtins.breakpoint = builtin_breakpoint
+    wbetools.record = builtin_breakpoint
 
 class Event:
     def __init__(self, x, y):
