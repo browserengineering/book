@@ -1573,7 +1573,7 @@ Screen readers
 ==============
 
 Typically, the screen reader is a separate application from the
-browser,[^why-diff] which the browser communicates with through
+browser,[^why-diff] with which the browser communicates through
 OS-specific APIs. To keep this book platform-independent, our
 discussion of screen reader support will instead include a minimal
 screen reader integrated directly into the browser.[^os-pain]
@@ -1868,7 +1868,7 @@ class Browser:
 
 There's a lot more in a real screen reader: landmarks, navigating text
 at different granularities, repeating recently spoken text, and so on.
-Those features make various use of the accessibility tree and the
+Those features make various uses of the accessibility tree and the
 roles of the various nodes. But since the focus of this book is on the
 browser, not the screen reader itself, let's focus for the rest of
 this chapter on browser features that support accessibility.
