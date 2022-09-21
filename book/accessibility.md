@@ -1867,7 +1867,7 @@ class Browser:
 ```
 
 There's a lot more in a real screen reader: landmarks, navigating text
-at different granularities, repeating recently spoken text, and so on.
+at different granularities, repeating text when requested, and so on.
 Those features make various uses of the accessibility tree and the
 roles of the various nodes. But since the focus of this book is on the
 browser, not the screen reader itself, let's focus for the rest of
