@@ -1745,10 +1745,9 @@ To speak the whole document, we need to know how to speak each
 `AccessibilityNode`. This has to be decided back in the `Tab`, since
 the text will include DOM content that is not accessible to the
 browser thread. So let's add a `text` field to `AccessibilityNode` and
-set it according to role and surrounding DOM context. For each node,
-we'll figure out its text via the `announce_text` function. For text
-nodes it's just the text, and otherwise it describes the element tag,
-plus whether it's focused.
+set it in `build` according to the node's role and surrounding DOM
+context. For text nodes it's just the text, and otherwise it describes
+the element tag, plus whether it's focused.
 
 ``` {.python}
 class AccessibilityNode:
