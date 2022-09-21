@@ -2025,7 +2025,7 @@ class AccessibilityNode:
         # ...
         if hasattr(node, "layout_object"):
             obj = node.layout_object
-            self.bounds = skia.Rect.MakeXYWH(obj.x, obj.y, obj.width, obj.height)
+            self.bounds = absolute_bounds_for_obj(node.layout_object)
         else:
             self.bounds = None
 
