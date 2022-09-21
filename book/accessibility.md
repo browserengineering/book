@@ -1814,8 +1814,9 @@ class Browser:
 ```
 
 Speaking the whole document happens only once. But the user might need
-feedback as they browse the page. For example, let's speak the focused
-element to the user.
+feedback as they browse the page. For example, when the user tabs from
+one element to another, they may want the new element spoken to them
+so they know what they're interacting with.
 
 To do that, the browser thread is going to need to know which element
 is focused. Let's add that to the `CommitData`; I'm not going to show
