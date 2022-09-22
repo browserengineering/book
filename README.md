@@ -51,7 +51,7 @@ of Chapter 3 like so:
 
 ```
 cd src/
-PYTHONBREAKPOINT=0 python3 lab3.py https://browser.engineering
+python3 lab3.py https://browser.engineering
 ```
 
 Every chapter can be run in a similar fashion.
@@ -61,7 +61,7 @@ which you can run with:
 
 ```
 cd src/
-PYTHONBREAKPOINT=0 python3 server8.py
+python3 server8.py
 ```
 
 Like the browser, there are different versions of the server for

@@ -167,11 +167,13 @@ key functions to a comparator:
     >>> Test.expr("sorted(rules, key=cascade_priority)")
     (rules.slice().sort(comparator(cascade_priority)))
 
-Finally there is the special `breakpoint` builtin, which we use for
-pausing widgets. It compiles to a `breakpoint.event` function, which
-has to use `await` in order to capture the continuation.
+Finally there is the special `wbetools.record` function, which we use
+for pausing widgets. It compiles to a `breakpoint.event` function,
+which has to use `await` in order to capture the continuation.
 
-    >>> Test.expr("breakpoint('layout_pre', self)")
+    >>> Test.stmt("import wbetools")
+    // Please configure the 'wbetools' module
+    >>> Test.expr("wbetools.record('layout_pre', self)")
     (await breakpoint.event("layout_pre", this))
 
 Compiling Expressions
