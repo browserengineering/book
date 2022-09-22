@@ -399,47 +399,34 @@ CSS lengths should be scaled just like the text is. This is great for
 reading text more easily.
 
 ::: {.further}
-
-Another way that CSS pixels and device pixels can differ is on a high-resolution
-screen. When CSS was first defined, the typical screen had about 96 pixels per
-inch of screen. Since then, various devices (the original iPhone was an early
-example) have screens with much higher pixel densities. This led to a problem
-though---web sites designed for an assumed pixel density of 96 would look
-tiny when displayed on those screens. This was solved with the
-[`devicePixelRatio`][dpr] concept---each CSS pixel is by default multiplied by
-the device pixel ratio to arrive at device pixels. The original iPhone, for
-example, had 163 pixels per inch. 163/96 = 1.7, but since a multiplier like 1.7
-leads to awkward rounding issues in layout, that device selected a
-`devicePixelRatio` of 2.^[Since then, may different screens with different
-pixel densities have appeared, and these days it's not uncommon to have a ratio
-that is not an integer. For example, the Pixelbook Go I'm using to write this
-book has a ratio of 1.25 (but with 166 pixels per inch; as you can see, the
-choice of ratio for a given screen is somewhat arbitrary).]
-
-On a device with a `devicePixelRatio` other than 1, `zoom` and
-`devicePixelRatio` have to be multiplied together in the rendering code. In
-addition, real browsers expose a global variable exposed to JavaScript called
-`devicePixelRatio` that equal to the product of these two and updated whenever
-the user zooms in or out.  Adn there is a (non-standard, please don't
-use it!) [`zoom`][zoom-css] CSS property in WebKit and Chromium browsers that
-allows developers to apply something similar to CSS zoom to specific element
-subtrees.
+On high-resolution screens, CSS pixels are scaled by both zoom and a
+[`devicePixelRatio`][dpr] factor.[^js-dpr] This factor scales device
+pixels so that there are approximately 96 pixels per inch, which a lot
+of old-school desktop displays had. For example, the original iPhone
+had 163 pixels per inch; a browser might use a `devicePixelRatio` of
+2, so that 96 CSS pixels corresponds to 192 device pixels or about
+1.17 inches.[^non-pixel-dpr] This scaling is especially tricky when a
+device is connected to multiple displays: a window may switch from a
+low-resolution to a high-resolution display (thus changing
+`devicePixelRatio`) or even be split across two displays with
+different resolutions.
 
 [dpr]: https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio
 
 [zoom-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/zoom
 
-On devices with touch screens,^[Originally just phones, but now many desktop
-computers have touch screens.] many browsers also implement *pinch zoom*:
-zooming in on the picture with a multi-touch pinch gesture. This kind of zoom
-is just like a CSS scale transform though---it zooms in on the pixels but
-doesn't update the main-thread rendering pipeline, and doesn't affect the
-`devicePixelRatio` variable. The resulting view on the
-screen is called the [visual viewport][visual-viewport].
+[^js-dpr]: Strictly speaking, the JavaScript variable called
+`devicePixelRatio` is the product of the device-specific and
+zoom-based scaling factors.
 
-[visual-viewport]: https://developer.mozilla.org/en-US/docs/Web/API/Visual_Viewport_API
-
+[^non-pixel-dpr]: Typically the `devicePixelRatio` is rounded to an
+integer because that tends to make text look crisper, but this isn't
+required, and as pixel densities increase it becomes less and less
+important. For example, the Pixelbook Go I'm using to write this book,
+with a resolution of 166 pixels per inch has a ratio of 1.25. The
+choice of ratio for a given screen is somewhat arbitrary.
 :::
+
 
 Dark mode
 =========
