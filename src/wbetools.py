@@ -1,4 +1,7 @@
 
+def record(type, *args):
+    pass
+
 def patch(existing_cls):
     def decorator(new_cls):
         for attr in dir(new_cls):

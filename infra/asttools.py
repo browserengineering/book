@@ -14,6 +14,15 @@ def is_sys_modules_hack(cmd):
         cmd.targets[0].value.value.value.id == 'sys' and \
         cmd.targets[0].value.value.attr == 'modules'
 
+def is_patch_decorator(cmd):
+    return isinstance(cmd, ast.Call) and \
+        isinstance(cmd.func, ast.Attribute) and \
+        isinstance(cmd.func.value, ast.Name) and \
+        cmd.func.value.id == "wbetools" and cmd.func.attr == "patch" and \
+        not cmd.keywords and \
+        len(cmd.args) == 1 and \
+        isinstance(cmd.args[0], ast.Name)
+
 def is_if_main(cmd):
     return isinstance(cmd, ast.If) and isinstance(cmd.test, ast.Compare) and \
         isinstance(cmd.test.left, ast.Name) and cmd.test.left.id == "__name__" and \
@@ -95,6 +104,34 @@ class ResolveImports(ast.NodeTransformer):
                 objs.append(defns[0])
 
         return objs
+    
+class ResolvePatches(ast.NodeTransformer):
+    def __init__(self):
+        self.patches = {}
+
+    def visit_ClassDef(self, cmd):
+        if not cmd.decorator_list:
+            patches = self.patches.get(cmd.name, [])
+            if patches:
+                body2 = {}
+                for name, stmt in iter_methods(cmd):
+                    body2[name] = stmt
+                for patch in patches:
+                    for repl_name, repl_stmt in iter_methods(patch):
+                        body2[repl_name] = repl_stmt
+                return ast.ClassDef(cmd.name, cmd.bases, cmd.keywords, list(body2.values()), [])
+            else:
+                return cmd
+        else:
+            assert len(cmd.decorator_list) == 1
+            assert is_patch_decorator(cmd.decorator_list[0])
+            assert cmd.decorator_list[0].args[0].id == cmd.name
+            self.patches.setdefault(cmd.name, []).append(cmd)
+            return None
+
+    def double_visit(self, tree):
+        self.visit(tree)
+        return self.visit(tree)
 
 class AST39(ast.NodeTransformer):
     def visit_Num(self, node):
@@ -131,7 +168,9 @@ def parse(source, filename='<unknown>'):
     return AST39.parse(source, filename)
 
 def inline(tree):
-    return ast.fix_missing_locations(ResolveImports().visit(copy.deepcopy(tree)))
+    tree2 = ResolveImports().visit(copy.deepcopy(tree))
+    tree3 = ResolvePatches().double_visit(tree2)
+    return ast.fix_missing_locations(tree3)
 
 def unparse(tree, explain=False):
     return AST39.unparse(tree, explain=explain)

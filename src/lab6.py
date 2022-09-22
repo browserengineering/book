@@ -4,6 +4,7 @@ up to and including Chapter 6 (Applying User Styles),
 without exercises.
 """
 
+import wbetools
 import socket
 import ssl
 import tkinter
@@ -290,7 +291,7 @@ class BlockLayout:
         self.height = None
 
     def layout(self):
-        breakpoint("layout_pre", self)
+        wbetools.record("layout_pre", self)
         previous = None
         for child in self.node.children:
             if layout_mode(child) == "inline":
@@ -313,7 +314,7 @@ class BlockLayout:
 
         self.height = sum([child.height for child in self.children])
 
-        breakpoint("layout_post", self)
+        wbetools.record("layout_post", self)
 
     def paint(self, display_list):
         for child in self.children:
@@ -331,7 +332,7 @@ class DocumentLayout:
         self.children = []
 
     def layout(self):
-        breakpoint("layout_pre", self)
+        wbetools.record("layout_pre", self)
         child = BlockLayout(self.node, self, None)
         self.children.append(child)
 
@@ -340,7 +341,7 @@ class DocumentLayout:
         self.y = VSTEP
         child.layout()
         self.height = child.height + 2*VSTEP
-        breakpoint("layout_post", self)
+        wbetools.record("layout_post", self)
 
     def paint(self, display_list):
         self.children[0].paint(display_list)

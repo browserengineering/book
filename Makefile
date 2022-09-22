@@ -85,5 +85,5 @@ test:
 	python3 -m doctest infra/annotate_code.md
 	set -e; \
 	for i in $$(seq 1 14); do \
-		(cd src/ && PYTHONBREAKPOINT=0 python3 -m doctest lab$$i-tests.md); \
+		(cd src/ && python3 -m doctest lab$$i-tests.md); \
 	done

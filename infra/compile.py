@@ -203,6 +203,10 @@ def compile_method(base, name, args, ctx):
     elif name == "export_function": # Needs special handling due to "this"
         assert len(args) == 2
         return base_js + ".export_function(" + args_js[0] + ", (...args) => " + args_js[1] + "(...args))"
+    elif base_js == "wbetools" and name == "record":
+        assert isinstance(args[0], ast.Constant)
+        assert isinstance(args[0].value, str)
+        return "await breakpoint.event(" + ", ".join(args_js) + ")"
     elif name in RT_METHODS:
         return "await " + base_js + "." + name + "(" + ", ".join(args_js) + ")"
     elif name in LIBRARY_METHODS:
@@ -307,10 +311,6 @@ def compile_function(name, args, ctx):
             return args_js[0] + ".reduce((a, v) => Math.max(a, v))"
         else:
             return "Math.max(" + args_js[0] + ", " + args_js[1] + ")"
-    elif name == "breakpoint":
-        assert isinstance(args[0], ast.Constant)
-        assert isinstance(args[0].value, str)
-        return "await breakpoint.event(" + ", ".join(args_js) + ")"
     elif name == "min":
         assert 1 <= len(args) <= 2
         if len(args) == 1:

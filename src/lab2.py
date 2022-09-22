@@ -4,6 +4,7 @@ up to and including Chapter 2 (Drawing to the Screen),
 without exercises.
 """
 
+import wbetools
 import socket
 import ssl
 import tkinter
@@ -19,7 +20,7 @@ def lex(body):
             in_angle = False
         elif not in_angle:
             text += c
-        breakpoint("lex", text)
+        wbetools.record("lex", text)
     return text
 
 WIDTH, HEIGHT = 800, 600
@@ -36,7 +37,7 @@ def layout(text):
         if cursor_x >= WIDTH - HSTEP:
             cursor_y += VSTEP
             cursor_x = HSTEP
-        breakpoint("layout", display_list)
+        wbetools.record("layout", display_list)
     return display_list
 
 class Browser:
@@ -62,7 +63,7 @@ class Browser:
     def draw(self):
         self.canvas.delete("all")
         for x, y, c in self.display_list:
-            breakpoint("draw")
+            wbetools.record("draw")
             if y > self.scroll + HEIGHT: continue
             if y + VSTEP < self.scroll: continue
             self.canvas.create_text(x, y - self.scroll, text=c)

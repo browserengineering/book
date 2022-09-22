@@ -1814,8 +1814,9 @@ class Browser:
 ```
 
 Speaking the whole document happens only once. But the user might need
-feedback as they browse the page. For example, let's speak the focused
-element to the user.
+feedback as they browse the page. For example, when the user tabs from
+one element to another, they may want the new element spoken to them
+so they know what they're interacting with.
 
 To do that, the browser thread is going to need to know which element
 is focused. Let's add that to the `CommitData`; I'm not going to show
@@ -1866,7 +1867,7 @@ class Browser:
 ```
 
 There's a lot more in a real screen reader: landmarks, navigating text
-at different granularities, repeating recently spoken text, and so on.
+at different granularities, repeating text when requested, and so on.
 Those features make various uses of the accessibility tree and the
 roles of the various nodes. But since the focus of this book is on the
 browser, not the screen reader itself, let's focus for the rest of
@@ -1898,7 +1899,6 @@ the user wants to [hit test][hit-test] a place on the screen to see what is
 there:  user who can't see the screen still might want to do things like touch
 exploration of the screen, or being notified what is under the mouse as they
 move it around.
-
 
 Accessible alerts
 =================
@@ -2074,7 +2074,6 @@ also defining new and fully stylable [form control elements][openui].
 
 
 
-
 Mixed voice / visual interaction
 ================================
 
@@ -2199,8 +2198,7 @@ class AccessibilityNode:
     def __init__(self, node):
         # ...
         if hasattr(node, "layout_object"):
-            obj = node.layout_object
-            self.bounds = skia.Rect.MakeXYWH(obj.x, obj.y, obj.width, obj.height)
+            self.bounds = absolute_bounds_for_obj(node.layout_object)
         else:
             self.bounds = None
 
