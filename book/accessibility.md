@@ -632,8 +632,8 @@ this CSS will make `<div>`s have a white text on a black background
 only in dark mode:
 
 
-``` {.css expected=False}
-@media (prefers-color-scheme:dark) {
+``` {.css .example}
+@media (prefers-color-scheme: dark) {
   div { background-color: black; color: white; }
 }
 ```
@@ -1124,7 +1124,7 @@ class DrawOutline(DisplayItem):
 
 Now we can paint a 2 pixel black outline around an element like this:
 
-``` {.python expected=False}
+``` {.python replace=node.is_focused/has_outline(node),"black"/color,2/thickness}
 def paint_outline(node, cmds, rect):
     if node.is_focused:
         cmds.append(DrawOutline(rect, "black", 2))
@@ -1159,19 +1159,19 @@ around this, let's draw the focus ring in `LineLayout`. Each
 `LineLayout` finds all of its child `TextLayout`s that are focused,
 and draws a rectangle around them all:
 
-``` {.python expected=False}
+``` {.python}
 class LineLayout:
     def paint(self, display_list):
         # ...
         outline_rect = skia.Rect.MakeEmpty()
-        parent = None
+        focused_node = None
         for child in self.children:
-            parent = child.node.parent
-            if has_outline(parent):
-                outline_node = parent
+            node = child.node
+            if has_outline(node.parent):
+                focused_node = node.parent
                 outline_rect.join(child.rect())
-        if parent:
-            paint_outline(parent, display_list, outline_rect)
+        if focused_node:
+            paint_outline(focused_node, display_list, outline_rect)
 ```
 
 You should also add a `paint_outline` call to `BlockLayout`, since
@@ -1645,10 +1645,10 @@ to the browser thread. That'll be a straightforward extension of the commit
 concept introduced in [Chapter 12][ch12-commit]. First we'll add the tree
 to `CommitData`: 
 
-``` {.python expected=False}
+``` {.python replace=accessibility_tree)/accessibility_tree%2c%20focus)}
 class CommitData:
-    def __init__(self, url, scroll, height,
-        display_list, composited_updates, accessibility_tree):
+    def __init__(self, url, scroll, height, display_list,
+            composited_updates, accessibility_tree):
         # ...
         self.accessibility_tree = accessibility_tree
 ```

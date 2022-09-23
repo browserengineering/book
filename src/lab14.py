@@ -947,8 +947,8 @@ class JSContext:
         self.tab.browser.set_needs_animation_frame(self.tab)
 
 class CommitData:
-    def __init__(self, url, scroll, height,
-        display_list, composited_updates, accessibility_tree, focus):
+    def __init__(self, url, scroll, height, display_list,
+                 composited_updates, accessibility_tree, focus):
         self.url = url
         self.scroll = scroll
         self.height = height
