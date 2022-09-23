@@ -1037,14 +1037,16 @@ often involves generalizing and refining existing concepts, leading to
 more maintainable code overall.
 
 ::: {.further}
+
 Why send the `click` event when an element is activated, instead of a
-special `activate` event? Internet Explorer [did send][onactivate]
-this event, and other browsers used to send a
-[DOMActivate][domactivate] event, but it's been deprecated in favor of
+special `activate` event? Internet Explorer [did use][onactivate]
+a special `activate` event, and other browsers did use to send a
+[DOMActivate][domactivate] event, but modern standards require
 sending the `click` event even if the element was activated via
 keyboard, not via a click. This works better when the developers aren't
 thinking much about accessibility and only register the `click` event
 listener.
+
 :::
 
 [onactivate]: https://docs.microsoft.com/en-us/previous-versions/windows/internet-explorer/ie-developer/platform-apis/aa742710(v=vs.85)
@@ -1409,19 +1411,6 @@ use it for all sorts of things.
 
 ::: {.further}
 
-Keyboards, mice and touch screens are not the only way to interact with a
-computer. There is also the possibility of voice input---talking to the
-computer. Some operating systems have built-in support for voice commands and
-dictation (speaking to type), plus there are software packages you can buy that
-do it. These systems generally work very well with a keyboard-enabled
-browser, because the voice input software can translate voice commands
-directly into simulated keyboard events. This is one more reason that it's
-important for browsers and web sites to provide keyboard input alternatives.
-
-:::
-
-::: {.further}
-
 In addition to focus rings being present for focus, another very important part
 of accessibility is ensuring *contrast*. I alluded to it in the section on dark
 mode, in the context of ensuring that the dark mode style sheet provides good
@@ -1608,6 +1597,36 @@ class AccessibilityNode:
 
 The user can now direct the screen reader to walk up or down this
 accessibility tree and describe each node to the user. 
+
+
+::: {.further}
+
+Generally speaking, the OS does not enforce that the browser build such a tree,
+but it's convenient enough that browsers generally do it. However, in the era of
+multi-process browser engines (of which [Chromium][chrome-mp] was the first), an
+accessibility tree in the browser process that mirrors content state from each
+visible browser tab has become necessary. That's because OS accessibility
+APIs are generally synchronous, and it's not possible to synchronously stop
+the browser and tab at the same time to figure out how to respond. See
+[here][chrome-mp-a11y] for a more
+detailed description of the challenge and how Chromium deals with it.
+
+[chrome-mp]: https://www.chromium.org/developers/design-documents/multi-process-architecture/
+
+[chrome-mp-a11y]: https://chromium.googlesource.com/chromium/src/+/HEAD/docs/accessibility/browser/how_a11y_works_2.md
+
+In addition, defining this tree in a specification is a means to encourage
+interoperability between browsers. This is critically important---imagine how
+frustrating it would be if a web site doesn't work in your chosen browser just
+because it happens to interpret accessibility slightly differently than another
+one! This might force a user to constantly switch browsers in the hope of
+finding one that works well on any particular site, and which one does
+may be unpredictable. Interoperability is also important for web site
+authors who would otherwise have to constantly test everything in every
+browser.
+
+:::
+
 
 Screen readers
 ==============
@@ -1929,20 +1948,15 @@ this chapter on browser features that support accessibility.
 
 ::: {.further}
 
-In addition to speech output, sometimes users prefer output via touch
-instead of speech, such as with a [braille display][braille-display]. Making
-our browser work with such a device is just a matter of replacing
-`speak_text` with the equivalent APIs calls that connect to a braille display
-and programming its output.^[I haven't checked in detail, but there may be
-easy-to-use Python libraries for it. If you're interested and have a braille
-display (or even an emulated one on the computer screen), it would be a fun
-project to implement this functionality.]
-
-And of course, the opposite of a braille display is a braille keyboard that
-allows typing in a more optimized way than memorizing the locations of each key
-on a non-braille keyboard. Or you can buy keyboards with raised braille dots on
-each key. Each of these options should work out of the box with our browser,
-since these keyboards generate the same OS events as other keyboards.
+The accessibility tree isn't just for screen readers. Some users
+prefer touch output such as a [braille display][braille-display],
+instead of or in addition to speech output, for example. While the
+output device is quite different, the accessibility tree would still
+contain all the information about what content is on the page, whether
+it can be interacted with, its state, and so on. Moreover, by using
+the same accessibility tree for all output devices, users who use more
+that one assistive technology (like a braille display and a screen
+reader) are sure to receive consistent information.
 
 :::
 
@@ -1967,10 +1981,6 @@ will immediately[^alert-css] read an element with that role, no matter
 where in the document the user currently is. Note that there aren't
 any HTML elements whose default role is `alert`, so this requires
 setting the `role` attribute.
-
-[^other-live]: There are also other "live" roles like `status` for
-less urgent information or `alertdialog` if the keyboard focus should
-move to the alerted element.
 
 [^alert-css]: The alert is only triggered if the element is added to
     the document, has the `alert` role (or the equivalent `aria-live`
@@ -2083,41 +2093,14 @@ hear alert text once the button is clicked.
 
 ::: {.further}
 
-The `role` attribute is part of the ARIA specification---ARIA stands for
-Accessible Rich Internet Applications. You can see in the
-name a direct reference to the custom-widget-with-good-accessibility goal
-I've presented here. It defines [many]
-different attributes; `role` is just one (though an important one). For
-example, you can mark a whole subtree of the DOM as
-hidden-to-the-accessibility-tree with the `aria-hidden`
-attribute;^[This attribute is useful as a way of indicating parts of the DOM
-that are not being currently presented to the user (but are still there for
-performance or convenience-to-the-developer reasons).] the `aria-label`
-attribute specifies the label for elements like buttons.
-
-[many]: https://www.w3.org/TR/wai-aria-1.2/#accessibilityroleandproperties-correspondence
-
-Some of the accessibility problems that ARIA tries to solve stem from a common
-root problem: it's very difficult or sometimes impossible to apply a custom
-style to the the built-in form control elements. If those were directly
-stylable, then there would in these cases be no need for ARIA attributes,
-because the built-in elements pre-define all of the necessary accessibility
-semantics.
-
-That root problem is in turn because these elements have somewhat magical layout
-and paint behavior that is not defined by CSS or HTML (or any other web
-specification), and so it's not clear *how* to style them. However, there are
-several pseudo-classes available for input controls to
-provide limited styling.^[One example is the [`checked`][checked]
-pseudo-class.] And recently there has been progress towards defining
-additional styles such as [`accent-color`][accent-color] (added in 2021), and
-also defining new and fully stylable [form control elements][openui].
-
-[checked]: https://developer.mozilla.org/en-US/docs/Web/CSS/:checked
-
-[accent-color]: https://developer.mozilla.org/en-US/docs/Web/CSS/accent-color
-
-[openui]: https://open-ui.org/#proposals
+The `alert` role is an example of what ARIA calls a "live region", a
+region of the page which can change as a result of user actions. There
+are other roles (like `status` or `alertdialog`), or live regions can
+be configured on a more granular level by setting their "politeness"
+via the `aria-live` attribute (assertive notifications interrupt the
+user, but polite ones don't); what kinds of changes to announce, via
+`aria-atomic` and `aria-relevant`; and whether the live region is in a
+finished or intermediate state, via `aria-busy`.
 
 :::
 
@@ -2131,6 +2114,7 @@ there:  user who can't see the screen still might want to do things like touch
 exploration of the screen, or being notified what is under the mouse as they
 move it around.
 
+[hit-test]: https://chromium.googlesource.com/chromium/src/+/HEAD/docs/accessibility/browser/how_a11y_works_3.md#Hit-testing
 
 To get access to the geometry, let's add a `layout_object` pointer to each
 `Node` object if it has one. That's easy to do in the constructor of each layout
@@ -2149,8 +2133,6 @@ class BlockLayout:
         # ...
         node.layout_object = self
 ```
-
-[hit-test]: https://chromium.googlesource.com/chromium/src/+/HEAD/docs/accessibility/browser/how_a11y_works_3.md#Hit-testing
 
 Let's implement the second use case I mentioned above (being notified what
 is under the mouse). We'll store the size and location of
@@ -2264,41 +2246,51 @@ class AccessibilityNode:
                 return node
 ```
 
+Over in the `Browser`, we need to also perform a hit test on any
+`pending_hover` (and record which node is hovered in `hovered_node` to avoid
+speaking a hover unless it really changed):
+
+``` {.python}
+class Browser:
+    def speak_update(self):
+        if self.pending_hover != None:
+            if self.accessibility_tree:
+                (x, y) = self.pending_hover
+                a11y_node = self.accessibility_tree.hit_test(x, y)
+                if self.hovered_node:
+                    self.hovered_node.is_hovered = False
+
+                if a11y_node:
+                    if not self.hovered_node or a11y_node.node != self.hovered_node.node:
+                        self.speak_node(a11y_node, "Hit test ")
+                    self.hovered_node = a11y_node
+                    self.hovered_node.is_hovered = True
+            self.pending_hover = None
+```
+
 ::: {.further}
 
-The accessibility tree plays a key role in the interface between
-browsers and accessibility technology like screen readers. The screen reader
-registers itself with accessibility OS APIs that promise to call it when
-interaction events happen, and the browser does the same on the other end.
-Users can express intent by interacting with the accessibility tech, and
-then this is forwarded on by way of the OS to an event triggered on the
-corresponding accessibility object in the tree.
-
-Generally speaking, the OS does not enforce that the browser build such a tree,
-but it's convenient enough that browsers generally do it. However, in the era of
-multi-process browser engines (of which [Chromium][chrome-mp] was the first), an
-accessibility tree in the browser process that mirrors content state from each
-visible browser tab has become necessary. That's because OS accessibility
-APIs are generally synchronous, and it's not possible to synchronously stop
-the browser and tab at the same time to figure out how to respond. See
-[here][chrome-mp-a11y] for a more
-detailed description of the challenge and how Chromium deals with it.
-
-[chrome-mp]: https://www.chromium.org/developers/design-documents/multi-process-architecture/
-
-[chrome-mp-a11y]: https://chromium.googlesource.com/chromium/src/+/HEAD/docs/accessibility/browser/how_a11y_works_2.md
-
-In addition, defining this tree in a specification is a means to encourage
-interoperability between browsers. This is critically important---imagine how
-frustrating it would be if a web site doesn't work in your chosen browser just
-because it happens to interpret accessibility slightly differently than another
-one! This might force a user to constantly switch browsers in the hope of
-finding one that works well on any particular site, and which one does
-may be unpredictable. Interoperability is also important for web site
-authors who would otherwise have to constantly test everything in every
-browser.
+It's ultimately the need for more flexible input elements that leads
+authors to create custom widgets that aren't particularly accessible,
+so in a sense it all goes back to the fact that input elements are
+hard to style. That's because input elements often involve several
+separate pieces, like the path and button in a `file` input, the check
+box in a `checkbox` element, or the pop-up menu in a `select`
+dropdown. CSS isn't (yet) a good match for styling such "compound"
+elements, though "[pseudo-elements][pseudoelts]" such as `::backdrop`
+or `::file-selector-button` help. Plus, their default appearance
+should match operating system defaults, which might not match standard
+CSS. New properties, like [`accent-color`][accent-color] can help
+there. Perhaps the real solution here are [new standards][openui] for
+fully-stylable input elements.
 
 :::
+
+[checked]: https://developer.mozilla.org/en-US/docs/Web/CSS/:checked
+[pseudoelts]: https://developer.mozilla.org/en-US/docs/Web/CSS/Pseudo-elements
+[accent-color]: https://developer.mozilla.org/en-US/docs/Web/CSS/accent-color
+[openui]: https://open-ui.org/#proposals
+
 
 
 Summary
