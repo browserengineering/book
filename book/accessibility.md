@@ -593,24 +593,18 @@ white text on a black background.
 
 ::: {.further}
 
-Dark mode is a relatively recent browser feature. In the original design of CSS,
-the [cascade](https://developer.mozilla.org/en-US/docs/Web/CSS/Cascade) defined
-not just browser and author style sheets, but also [*user*][user-style] style
-sheets. These are style sheets defined by the person using the browser, as a
-kind of custom theme. Another approach is to add a
-[browser extension][extension] (or equivalent browser built-in feature) that
-injects additional style sheets applying dark styles.[^no-user-styles]
+The browser should really not be flipping the colors on unsuspecting
+pages, because it'll likely have terrible accessibility outcomes!
+Instead web pages have to indicate support for dark mode using the
+`color-scheme` [`meta` tag][meta-tag] or [CSS property][css-prop].
+Before `color-scheme` was standardized, web pages could offer
+alternative color schemes using [alternative style sheets][alt-style],
+but few browsers supported it (of the major ones, only Firefox) and it
+wasn't commonly used.
 
-With one of these mechanisms, users might be able to add their
-own dark mode. While it's relatively easy for this to work well overriding the
-browser's default style sheet and a few common sites, it's very hard to come up
-with styles that work well alongside the style sheets of many sites without
-losing readability or failing to provide adequate dark mode styling.
-
-[extension]: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions
-[user-style]: https://developer.mozilla.org/en-US/docs/Web/CSS/Cascade#user_stylesheets
-[^no-user-styles]: Most browsers these days don't even support user style
-sheets, and instead rely on extensions.
+[meta-tag]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meta/name
+[css-prop]: https://developer.mozilla.org/en-US/docs/Web/CSS/color-scheme
+[alt-style]: https://developer.mozilla.org/en-US/docs/Web/CSS/Alternative_style_sheets
 
 :::
 
@@ -724,24 +718,23 @@ lighter foreground.
 
 ::: {.further}
 
-Fully customizable dark mode requires several additional features beyond
-`prefers-color-scheme`. The most important is that web sites need a way
-to declare whether they support dark mode or not (if they don't, the
-browser should really not be flipping the colors on that page, because it'll
-likely have terrible accessibility outcomes!) This feature is achieved with
-the `color-scheme` [`meta` tag][meta-tag], which allows the web page to declare
-whether it supports light mode, dark mode, or both.
+Besides `prefers-color-scheme`, web pages can use media queries to
+increase or decrease contrast when a user
+[`prefers-contrast`][prefer-contrast] or disable unnecessary
+animations when a user [`prefers-reduced-motion`][prefer-redmot], both
+of which can help users with certain disabilities. Users can also
+force the use of a specific, limited palette of colors through their
+operating system; web pages can detect this with the
+[`forced-colors`][forced-colors] media query or disable it for certain
+elements (use with care!) with [`forced-color-adjust`][fc-adjust].
 
-[meta-tag]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meta/name
-
-The second is the [`color-scheme`][color-scheme] CSS property, indicating
-whether that element and its subtree support dark, light or both modes.
-(And with the `only` keyword, whether it should be forced into the ones
-indicated.)
-
-
-[color-scheme]: https://developer.mozilla.org/en-US/docs/Web/CSS/color-scheme
 :::
+
+[prefer-contrast]: https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-contrast
+[prefer-redmot]: https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-motion
+[forced-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/@media/forced-colors
+[fc-adjust]: https://developer.mozilla.org/en-US/docs/Web/CSS/forced-color-adjust
+
 
 Keyboard navigation
 ===================
