@@ -593,18 +593,21 @@ white text on a black background.
 
 ::: {.further}
 
-The browser should really not be flipping the colors on unsuspecting
-pages, because it'll likely have terrible accessibility outcomes!
-Instead web pages have to indicate support for dark mode using the
-`color-scheme` [`meta` tag][meta-tag] or [CSS property][css-prop].
-Before `color-scheme` was standardized, web pages could offer
-alternative color schemes using [alternative style sheets][alt-style],
-but few browsers supported it (of the major ones, only Firefox) and it
-wasn't commonly used.
+Of course, a real browser needs change quite a bit more colors than
+our browser---scroll bars, input elements, menus, and so on.
+The browser should really not be changing colors on unsuspecting
+pages. For example, it'll likely have terrible accessibility outcomes!
+Instead web pages [indicate support][dark-mode-post] for dark mode
+using the `color-scheme` [`meta` tag][meta-tag] or [CSS
+property][css-prop]. Before `color-scheme` was standardized, web pages
+could offer alternative color schemes using [alternative style
+sheets][alt-style], but few browsers supported it (of the major ones,
+only Firefox) and it wasn't commonly used.
 
 [meta-tag]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meta/name
 [css-prop]: https://developer.mozilla.org/en-US/docs/Web/CSS/color-scheme
 [alt-style]: https://developer.mozilla.org/en-US/docs/Web/CSS/Alternative_style_sheets
+[dark-mode-post]: https://blogs.windows.com/msedgedev/2021/06/16/dark-mode-html-form-controls/
 
 :::
 
@@ -1409,7 +1412,7 @@ make them more powerful. And once they were generalized, this
 generalized form can be made accessible to web page authors, who can
 use it for all sorts of things.
 
-::: {.further}
+::: {.further .todo}
 
 In addition to focus rings being present for focus, another very important part
 of accessibility is ensuring *contrast*. I alluded to it in the section on dark
@@ -1599,7 +1602,7 @@ The user can now direct the screen reader to walk up or down this
 accessibility tree and describe each node to the user. 
 
 
-::: {.further}
+::: {.further .todo}
 
 Generally speaking, the OS does not enforce that the browser build such a tree,
 but it's convenient enough that browsers generally do it. However, in the era of
@@ -2282,7 +2285,7 @@ or `::file-selector-button` help. Plus, their default appearance
 should match operating system defaults, which might not match standard
 CSS. New properties, like [`accent-color`][accent-color] can help
 there. Perhaps the real solution here are [new standards][openui] for
-fully-stylable input elements.
+new [fully-stylable][selectmenu] input elements.
 
 :::
 
@@ -2290,6 +2293,7 @@ fully-stylable input elements.
 [pseudoelts]: https://developer.mozilla.org/en-US/docs/Web/CSS/Pseudo-elements
 [accent-color]: https://developer.mozilla.org/en-US/docs/Web/CSS/accent-color
 [openui]: https://open-ui.org/#proposals
+[selectmenu]: https://blogs.windows.com/msedgedev/2022/05/05/styling-select-elements-for-real/
 
 
 
