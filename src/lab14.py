@@ -614,8 +614,8 @@ class AccessibilityNode:
 
         if self.role == "StaticText":
             self.text = self.node.text
-        elif self.role == "Focusable text":
-            self.text = "focusable text: " + self.node.text
+        elif self.role == "focusable text":
+            self.text = "Focusable text: " + self.node.text
         elif self.role == "focusable":
             self.text = "Focusable"
         elif self.role == "textbox":
