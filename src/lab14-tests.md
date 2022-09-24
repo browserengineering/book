@@ -168,6 +168,7 @@ Rendering will read out the accessibility instructions:
     >>> browser.render()
     >>> browser.composite_raster_and_draw()
     Here are the document contents: 
+    Document
     Input box: 
     Link
     Link
@@ -175,11 +176,10 @@ Rendering will read out the accessibility instructions:
 From this tree:
 
     >>> lab14.print_tree(browser.accessibility_tree)
-     AccessibilityNode(node=<html> role=document
-       AccessibilityNode(node=<input> role=textbox
-       AccessibilityNode(node=<a href="/dest"> role=link
-         AccessibilityNode(node='Link' role=link
-
+     AccessibilityNode(node=<html> role=document text=Document
+       AccessibilityNode(node=<input> role=textbox text=Input box: 
+       AccessibilityNode(node=<a href="/dest"> role=link text=Link
+         AccessibilityNode(node='Link' role=link text=Link
 
 Dark mode
 =========

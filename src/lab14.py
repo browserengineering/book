@@ -615,7 +615,9 @@ class AccessibilityNode:
         if self.role == "StaticText":
             self.text = self.node.text
         elif self.role == "focusable text":
-            self.text = "focusable text: " + self.node.text
+            self.text = "Focusable text: " + self.node.text
+        elif self.role == "focusable":
+            self.text = "Focusable"
         elif self.role == "textbox":
             if "value" in self.node.attributes:
                 value = self.node.attributes["value"]
@@ -631,6 +633,8 @@ class AccessibilityNode:
             self.text = "Link"
         elif self.role == "alert":
             self.text = "Alert"
+        elif self.role == "document":
+            self.text = "Document"
 
         if is_focused(self.node):
             self.text += " is focused"
@@ -663,8 +667,8 @@ class AccessibilityNode:
                 return node
 
     def __repr__(self):
-        return "AccessibilityNode(node={} role={}".format(
-            str(self.node), self.role)
+        return "AccessibilityNode(node={} role={} text={}".format(
+            str(self.node), self.role, self.text)
 
 SPEECH_FILE = "/tmp/speech-fragment.mp3"
 
@@ -1512,7 +1516,7 @@ class Browser:
         self.needs_raster = False
         self.needs_draw = False
 
-        if self.needs_accessibility:
+        if self.needs_accessibility and self.accessibility_tree:
             new_spoken_alerts = []
             for old_node in self.spoken_alerts:
                 new_nodes = [
@@ -1611,12 +1615,12 @@ class Browser:
         self.lock.release()
 
     def speak_node(self, node, text):
+        print(node)
         text += node.text
         if text and node.children and \
             node.children[0].role == "StaticText":
             text += " " + \
             node.children[0].text
-
 
         if text:
             print(text)
