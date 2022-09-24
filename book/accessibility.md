@@ -1729,7 +1729,7 @@ is what actually produces sound:
 class Browser:
     def composite_raster_and_draw(self):
         # ...
-        if self.needs_accessibility:
+        if self.needs_accessibility and self.accessibility_tree:
             self.speak_update()
 
 ```
@@ -1762,7 +1762,9 @@ class AccessibilityNode:
         if self.role == "StaticText":
             self.text = self.node.text
         elif self.role == "focusable text":
-            self.text = "focusable text: " + self.node.text
+            self.text = "Focusable text: " + self.node.text
+        elif self.role == "focusable":
+            self.text = "Focusable"
         elif self.role == "textbox":
             if "value" in self.node.attributes:
                 value = self.node.attributes["value"]
@@ -1778,6 +1780,8 @@ class AccessibilityNode:
             self.text = "Link"
         elif self.role == "alert":
             self.text = "Alert"
+        elif self.role == "document":
+            self.text = "Document"
 
         if is_focused(self.node):
             self.text += " is focused"
@@ -1967,7 +1971,7 @@ class Browser:
         self.active_alerts = []
 
     def composite_raster_and_draw(self):
-        if self.needs_accessibility:
+        if self.needs_accessibility and self.accessibility_tree:
             self.active_alerts = [
                 node for node in tree_to_list(self.accessibility_tree, [])
                 if node.role == "alert"
@@ -2005,7 +2009,8 @@ threads. So it's best to do it in `composite_raster_and_draw`:
 ``` {.python}
 class Browser:
     def composite_raster_and_draw(self):
-        if self.needs_accessibility:
+        # ...
+        if self.needs_accessibility and self.accessibility_tree:
             new_spoken_alerts = []
             for old_node in self.spoken_alerts:
                 new_nodes = [
