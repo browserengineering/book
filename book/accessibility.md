@@ -1716,13 +1716,20 @@ class Browser:
         self.needs_accessibility = False
         self.accessibility_is_on = False
 
+    def set_needs_accessibility(self):
+        if not self.accessibility_is_on:
+            return
+        self.needs_accessibility = True
+        self.needs_draw = True
+
     def toggle_accessibility(self):
         self.lock.acquire(blocking=True)
         self.accessibility_is_on = not self.accessibility_is_on
+        self.set_needs_accessibility()
         self.lock.release()
 ```
 
-When accessibility is on, the `Browser` executes `speak_update`, which
+When accessibility is on, the `Browser` calls `update_accessibility`, which
 is what actually produces sound:
 
 ``` {.python}
@@ -1730,7 +1737,7 @@ class Browser:
     def composite_raster_and_draw(self):
         # ...
         if self.needs_accessibility:
-            self.speak_update()
+            self.update_accessibility()
 
 ```
 
@@ -1808,7 +1815,7 @@ class Browser:
 
         speak_text(text)
 
-    def speak_update(self):
+    def update_accessibility(self):
         if not self.accessibility_tree: return
 
         if not self.has_spoken_document:
@@ -1840,35 +1847,21 @@ class Browser:
 ```
 
 Then, if `tab_focus` isn't equal to `last_tab_focus`, we know focus
-has moved and it's time to speak the focused node. This is getting a bit
-more complicafed, so put this logic in a new `update_accessibility` method
-similar to that for raster and draw:
+has moved and it's time to speak the focused node. The change looks like this:
+
 
 ``` {.python}
 class Browser:
     def update_accessibility(self):
-        if not self.accessibility_tree:
-            return
+        # ...
         if self.tab_focus and \
             self.tab_focus != self.last_tab_focus:
             nodes = [node for node in tree_to_list(self.accessibility_tree, [])
                         if node.node == self.tab_focus]
             if nodes:
                 self.focus_a11y_node = nodes[0]
-                self.needs_speak_focused_node = True
+                self.speak_node(self.focus_a11y_node, "element focused ")
             self.last_tab_focus = self.tab_focus
-```
-
-Then the change to `speak_update` is as simple as:
-
-``` {.python}
-class Browser:
-    def speak_update(self):
-        # ...
-        if self.needs_speak_focused_node:
-            self.speak_node(self.focus_a11y_node, "element focused ")
-        self.needs_speak_focused_node = False
-  
 ```
 
 The `speak_node` method is similar to `speak_document` but it only
@@ -1988,12 +1981,11 @@ class Browser:
         self.active_alerts = []
 
     def update_accessibility(self):
-        if self.needs_accessibility:
-            self.active_alerts = [
-                node for node in tree_to_list(self.accessibility_tree, [])
-                if node.role == "alert"
-            ]
-            # ...
+        self.active_alerts = [
+            node for node in tree_to_list(self.accessibility_tree, [])
+            if node.role == "alert"
+        ]
+        # ...
 ```
 
 Now, we can't just read out every `alert` at every frame; we need to
@@ -2006,7 +1998,7 @@ class Browser:
         # ...
         self.spoken_alerts = []
 
-    def speak_update(self):
+    def update_accessibility(self):
         # ...
         for alert in self.active_alerts:
             if alert not in self.spoken_alerts:
@@ -2093,8 +2085,6 @@ also defining new and fully stylable [form control elements][openui].
 
 :::
 
-
-
 Mixed voice / visual interaction
 ================================
 
@@ -2135,11 +2125,10 @@ First we need to listen for mouse move events:
                 browser.handle_hover(event.motion)
 ```
 
-In `Browser`, store off a `pending_hover`, and also inform the `Tab`.
-Both of them need to know about the hover, because the `Browser` will speak
-the hit-tested node, but the `Tab` will create the outline.^[In real
-browsers, the screen reader often creates an overlay outline, but for
-simplicity I'm re-using the outline code we already have.]
+Now the browser should listen to the hovered position, determine if it's over an
+accessibility node, and highlight that node. We'll do that in
+`composite_raster_and_draw`, and in `handle_hover` just set the corresponding
+dirty bit.
 
 ``` {.python}
 class Browser:
@@ -2152,61 +2141,55 @@ class Browser:
         if not self.accessibility_is_on:
             return
         self.pending_hover = (event.x, event.y - CHROME_PX)
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.hover, event.x, event.y - CHROME_PX)
-        active_tab.task_runner.schedule_task(task)
-        self.needs_accessibility = True
+        self.set_needs_accessibility()
 ```
 
-Now the tab should listen to the hovered position, determine if it's over an
-accessibility node, and highlight that node. But as I explained in
-[chapter 11][forced-layout-hit-test], a hit test is one way that forced layouts
-can occur. So we could first call `render` inside `hover` before running the
-hit test. And this is exactly what `click` does. But there is something
-different about hover: when a click happens, the tab needs[^why-needs] to
-respond synchronously to it. But a hover is arguably much less urgent than a
-click, and so the hit test can be delayed until after the next time the
-rendering pipeline runs. By delaying it, we can avoid any forced renders for
-hit testing.
+Then, process the pending hover, and do two things: draw its bounds on the
+screen, and speak it to the user. The first part will need to happen in
+`paint_draw_list`, which will draw the outline of `hovered_a11y_node`. But
+we first need to know what that node is, which requires an accessibility
+tree hit test. And while we're doing that, we should note whether the
+hovered accessibility node changed, because only then should the node be
+read out loud:
 
-[forced-layout-hit-test]: https://browser.engineering/scheduling.html#threaded-style-and-layout
-
-[^why-needs]: It may not be immediately obvious why clicks can't be
-asynchronous and happen after a scheduled render. If all that was happening
-was browser clicks, and the browser was always responsive and fast, then
-maybe that's a good idea. But the browser can't always guarantee that
-scripts or other work won't slow down the page, and it's quite important to
-respond quickly clicks because the user is waiting on the result.
-
-So `hover` should just note down that a hover is desired, and schedule a render:
 
 ``` {.python}
-class Tab:
-    # ...
-    def hover(self, x, y):
-        self.pending_hover = (x, y)
-        self.set_needs_render()
-```
-
-Then, after the accessibility tree is built, process the pending hover:
-
-``` {.python}
-class Tab:
-    def __init__(self, browser):
+class Browser:
+    def paint_draw_list(self):
         # ...
-        self.pending_hover = None
-        self.hovered_node = None
+        if self.pending_hover != None:
+            (x, y) = self.pending_hover
+            a11y_node = self.accessibility_tree.hit_test(x, y)
 
-        if self.pending_hover:
-                (x, y) = self.pending_hover
-                a11y_node = self.accessibility_tree.hit_test(x, y)
-                if self.hovered_node:
-                    self.hovered_node.is_hovered = False
-
-                if a11y_node:
-                    self.hovered_node = a11y_node.node
-                    self.hovered_node.is_hovered = True
+            if a11y_node:
+                if not self.hovered_a11y_node or \
+                    a11y_node.node != self.hovered_a11y_node.node:
+                    self.needs_speak_hovered_node = True
+                self.hovered_a11y_node = a11y_node
         self.pending_hover = None
+```
+
+Drawing is simple:
+
+``` {.python}
+class Browser:
+    def paint_draw_list(self):
+        # ...
+        if self.hovered_a11y_node:
+            self.draw_list.append(DrawOutline(
+                self.hovered_a11y_node.bounds,
+                "white" if self.dark_mode else "black", 2))
+```
+
+And then it's spoke out loud in `update_accessibility`:
+
+``` {.python}
+class Browser:
+    def update_accessibility(self):
+        # ...
+        if self.needs_speak_hovered_node:
+            self.speak_node(self.hovered_a11y_node, "Hit test ")
+        self.needs_speak_hovered_node = False
 ```
 
 The last bit is implementing `hit_test` on `AccessibilityNode`. It's
@@ -2236,29 +2219,6 @@ class AccessibilityNode:
             else:
                 return node
 ```
-
-Over in the `Browser`, we need to also perform a hit test on any
-`pending_hover` (and record which node is hovered in `hovered_node` to avoid
-speaking a hover unless it really changed):
-
-``` {.python}
-class Browser:
-    def speak_update(self):
-        if self.pending_hover != None:
-            if self.accessibility_tree:
-                (x, y) = self.pending_hover
-                a11y_node = self.accessibility_tree.hit_test(x, y)
-                if self.hovered_node:
-                    self.hovered_node.is_hovered = False
-
-                if a11y_node:
-                    if not self.hovered_node or a11y_node.node != self.hovered_node.node:
-                        self.speak_node(a11y_node, "Hit test ")
-                    self.hovered_node = a11y_node
-                    self.hovered_node.is_hovered = True
-            self.pending_hover = None
-```
-
 
 ::: {.further}
 

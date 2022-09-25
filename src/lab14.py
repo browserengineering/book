@@ -1367,7 +1367,6 @@ class Browser:
         self.pending_hover = None
         self.hovered_a11y_node = None
         self.focus_a11y_node = None
-        self.needs_speak_focused_node = False
         self.needs_speak_hovered_node = False
         self.tab_focus = None
         self.last_tab_focus = None
@@ -1506,6 +1505,16 @@ class Browser:
             self.speak_document()
             self.has_spoken_document = True
 
+        self.active_alerts = [
+            node for node in tree_to_list(self.accessibility_tree, [])
+            if node.role == "alert"
+        ]
+
+        for alert in self.active_alerts:
+            if alert not in self.spoken_alerts:
+                self.speak_node(alert, "New alert")
+                self.spoken_alerts.append(alert)
+
         new_spoken_alerts = []
         for old_node in self.spoken_alerts:
             new_nodes = [
@@ -1516,16 +1525,6 @@ class Browser:
             if new_nodes:
                 new_spoken_alerts.append(new_nodes[0])
         self.spoken_alerts = new_spoken_alerts
-
-        for alert in self.active_alerts:
-            if alert not in self.spoken_alerts:
-                self.speak_node(alert, "New alert")
-                self.spoken_alerts.append(alert)
-
-        self.active_alerts = [
-            node for node in tree_to_list(self.accessibility_tree, [])
-            if node.role == "alert"
-        ]
 
         if self.tab_focus and \
             self.tab_focus != self.last_tab_focus:
@@ -1539,7 +1538,6 @@ class Browser:
         if self.needs_speak_hovered_node:
             self.speak_node(self.hovered_a11y_node, "Hit test ")
         self.needs_speak_hovered_node = False
-
 
     def composite_raster_and_draw(self):
         self.lock.acquire(blocking=True)
@@ -1647,7 +1645,7 @@ class Browser:
     def toggle_accessibility(self):
         self.lock.acquire(blocking=True)
         self.accessibility_is_on = not self.accessibility_is_on
-        self.needs_accessibility = self.accessibility_is_on
+        self.set_needs_accessibility()
         self.lock.release()
 
     def speak_node(self, node, text):
@@ -1715,9 +1713,6 @@ class Browser:
         if not self.accessibility_is_on:
             return
         self.pending_hover = (event.x, event.y - CHROME_PX)
-        # active_tab = self.tabs[self.active_tab]
-        # task = Task(active_tab.hover, event.x, event.y - CHROME_PX)
-        # active_tab.task_runner.schedule_task(task)
         self.set_needs_accessibility()
 
     def handle_key(self, char):
