@@ -1805,6 +1805,13 @@ class Browser:
         # ...
         self.has_spoken_document = False
 
+    def update_accessibility(self):
+        if not self.accessibility_tree: return
+
+        if not self.has_spoken_document:
+            self.speak_document()
+            self.has_spoken_document = True
+
     def speak_document(self):
         text = "Here are the document contents: "
         tree_list = tree_to_list(self.accessibility_tree, [])
@@ -1814,14 +1821,6 @@ class Browser:
                 text += "\n"  + new_text
 
         speak_text(text)
-
-    def update_accessibility(self):
-        if not self.accessibility_tree: return
-
-        if not self.has_spoken_document:
-            self.speak_document()
-            self.has_spoken_document = True
-
 ```
 
 Speaking the whole document happens only once. But the user might need

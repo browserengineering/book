@@ -1498,8 +1498,7 @@ class Browser:
                 "white" if self.dark_mode else "black", 2))
 
     def update_accessibility(self):
-        if not self.accessibility_tree:
-            return
+        if not self.accessibility_tree: return
 
         if not self.has_spoken_document:
             self.speak_document()
