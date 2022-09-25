@@ -968,6 +968,7 @@ class Tab:
     def __init__(self, browser):
         self.history = []
         self.focus = None
+        self.focus_changed = False
         self.url = None
         self.scroll = 0
         self.scroll_changed_in_tab = False
@@ -1104,6 +1105,23 @@ class Tab:
             self.scroll_changed_in_tab = True
         self.scroll = clamped_scroll
 
+        if self.focus_changed and self.focus:
+            layout_object = self.focus.layout_object
+            if layout_object.y - self.scroll < 0:
+                self.scroll = \
+                    clamp_scroll(
+                        layout_object.y - SCROLL_STEP,
+                        document_height)
+                self.scroll_changed_in_tab = True
+            elif layout_object.y - self.scroll > HEIGHT - CHROME_PX:
+                self.scroll = \
+                    clamp_scroll(
+                        layout_object.y + HEIGHT - \
+                        CHROME_PX - SCROLL_STEP,
+                        document_height)
+                self.scroll_changed_in_tab = True
+        self.focus_changed = False
+
         scroll = None
         if self.scroll_changed_in_tab:
             scroll = self.scroll
@@ -1175,6 +1193,8 @@ class Tab:
         self.measure_render.stop()
 
     def focus_element(self, node):
+        if node != self.focus:
+            self.focus_changed = True
         if self.focus:
             self.focus.is_focused = False
         self.focus = node
@@ -1250,8 +1270,7 @@ class Tab:
     def advance_tab(self):
         focusable_nodes = [node
             for node in tree_to_list(self.nodes, [])
-            if isinstance(node, Element) and is_focusable(node)
-                           
+            if isinstance(node, Element) and is_focusable(node)                          
             and get_tabindex(node) >= 0]
         focusable_nodes.sort(key=get_tabindex)
 
