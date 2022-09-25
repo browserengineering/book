@@ -1176,12 +1176,12 @@ highlighted with a black outline. And if a link happens to cross
 multiple lines, you will see our browser use multiple focus
 rectangles to make crystal-clear what is being focused on.
 
-Except for one problem: if the focused element is scrolled offscreen, there
-is still no way to tell it's visible. To fix this we'll need to automatically
-scroll it onto the screen.^[JavaScript methods like [`focus`][focus-el] also
-do this (which is why it has an option to skip the scrolling part).] Doing
-this is a bit tricky, because determining if the element is offscreen requires
-layout. So we'll set a new `focus_changed` bit on `Tab`:
+Except for one problem: if the focused element is scrolled offscreen, there is
+still no way to tell it's visible. To fix this we'll need to automatically
+scroll it onto the screen.^[JavaScript methods like [`focus`][focus-el] also do
+this (which is why you'll observe that it has an option to skip the scrolling
+part).] Doing this is a bit tricky, because determining if the element is
+offscreen requires layout. So we'll set a new `focus_changed` bit on `Tab`:
 
 ``` {.python}
 class Tab:
@@ -2598,3 +2598,6 @@ work well on any kind of browser screens and contexts. Responsive design can be
 viewed as a kind of accessibility.
 
 [responsive-design]: https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Responsive_Design
+
+* `Element.focus`: Implement the JavaScript [`focus`][focus-el] method on DOM
+  elements, including the option to prevent scrolling.]
