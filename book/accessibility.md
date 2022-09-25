@@ -1833,10 +1833,9 @@ is focused. Let's add that to the `CommitData`; I'm not going to show
 the code, because it's repetitive, but the point is to store the
 `Tab`'s `focus` field in the `Browser`'s `tab_focus` field.
 
-Now we need to know when focus changes. While we could do that lots of
-ways,[^eg-handle-tab] the best way is to store a `last_tab_focus`
-field on `Browser` with the last focused element we actually spoke out
-loud:
+Now we need to know when focus changes. The simplest way is to store a
+`last_tab_focus` field on `Browser` with the last focused element we actually
+spoke out loud:
 
 ``` {.python}
 class Browser:
@@ -1855,11 +1854,13 @@ class Browser:
         # ...
         if self.tab_focus and \
             self.tab_focus != self.last_tab_focus:
-            nodes = [node for node in tree_to_list(self.accessibility_tree, [])
+            nodes = [node for node in tree_to_list(
+                self.accessibility_tree, [])
                         if node.node == self.tab_focus]
             if nodes:
                 self.focus_a11y_node = nodes[0]
-                self.speak_node(self.focus_a11y_node, "element focused ")
+                self.speak_node(
+                    self.focus_a11y_node, "element focused ")
             self.last_tab_focus = self.tab_focus
 ```
 
@@ -1906,12 +1907,6 @@ since these keyboards generate the same OS events as other keyboards.
 :::
 
 [braille-display]: https://en.wikipedia.org/wiki/Refreshable_braille_display
-The accessibility tree also needs access to the geometry of each object. This
-allows screen readers to know where things are on the screen in case
-the user wants to [hit test][hit-test] a place on the screen to see what is
-there:  user who can't see the screen still might want to do things like touch
-exploration of the screen, or being notified what is under the mouse as they
-move it around.
 
 Accessible alerts
 =================
@@ -1981,7 +1976,8 @@ class Browser:
 
     def update_accessibility(self):
         self.active_alerts = [
-            node for node in tree_to_list(self.accessibility_tree, [])
+            node for node in tree_to_list(
+                self.accessibility_tree, [])
             if node.role == "alert"
         ]
         # ...
@@ -2021,7 +2017,8 @@ class Browser:
         new_spoken_alerts = []
         for old_node in self.spoken_alerts:
             new_nodes = [
-                node for node in tree_to_list(self.accessibility_tree, [])
+                node for node in tree_to_list(
+                    self.accessibility_tree, [])
                 if node.node == old_node.node
                 and node.role == "alert"
             ]
@@ -2086,6 +2083,14 @@ also defining new and fully stylable [form control elements][openui].
 
 Mixed voice / visual interaction
 ================================
+
+The accessibility tree also needs access to the geometry of each object. This
+allows screen readers to know where things are on the screen in case
+the user wants to [hit test][hit-test] a place on the screen to see what is
+there:  user who can't see the screen still might want to do things like touch
+exploration of the screen, or being notified what is under the mouse as they
+move it around.
+
 
 To get access to the geometry, let's add a `layout_object` pointer to each
 `Node` object if it has one. That's easy to do in the constructor of each layout
@@ -2320,10 +2325,16 @@ to another.
 but it'd be nice to also highlight the elements being read as it happens,
 in a similar way to how we did it for mouse hover. Implement that.
 
-* *`:hover` pseudoclass*: There is in fact a pseudoclass for generic mouse
-[hover][hover-pseudo] events (it's unrelated to accessibility). It works the
-same way as `-internal-accessibility-hover ` but hit tests the layout tree
-instead. Implement it.
+* *`:hover` pseudoclass*: There is a pseudoclass for generic mouse
+[hover][hover-pseudo] events (it's unrelated to accessibility). Implement it
+by sending along mouse hover events to the active `Tab` and hit testing
+to find out which element is hovered. Try to do so by avoiding a [forced
+layout][forced-layout-hit-test]; one way to do that is to store a
+`pending_hover` on the `Tab` and running the hit test at the right time during
+`render` (which will be after layout), and then doing *another* render to
+invalidate the hovered element's style.
+
+[forced-layout-hit-test]: https://browser.engineering/scheduling.html#threaded-style-and-layout
 
 [hover-pseudo]: https://developer.mozilla.org/en-US/docs/Web/CSS/:hover
 

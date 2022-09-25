@@ -1505,7 +1505,8 @@ class Browser:
             self.has_spoken_document = True
 
         self.active_alerts = [
-            node for node in tree_to_list(self.accessibility_tree, [])
+            node for node in tree_to_list(
+                self.accessibility_tree, [])
             if node.role == "alert"
         ]
 
@@ -1517,7 +1518,8 @@ class Browser:
         new_spoken_alerts = []
         for old_node in self.spoken_alerts:
             new_nodes = [
-                node for node in tree_to_list(self.accessibility_tree, [])
+                node for node in tree_to_list(
+                    self.accessibility_tree, [])
                 if node.node == old_node.node
                 and node.role == "alert"
             ]
@@ -1527,11 +1529,13 @@ class Browser:
 
         if self.tab_focus and \
             self.tab_focus != self.last_tab_focus:
-            nodes = [node for node in tree_to_list(self.accessibility_tree, [])
+            nodes = [node for node in tree_to_list(
+                self.accessibility_tree, [])
                         if node.node == self.tab_focus]
             if nodes:
                 self.focus_a11y_node = nodes[0]
-                self.speak_node(self.focus_a11y_node, "element focused ")
+                self.speak_node(
+                    self.focus_a11y_node, "element focused ")
             self.last_tab_focus = self.tab_focus
 
         if self.needs_speak_hovered_node:
