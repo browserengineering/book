@@ -26,18 +26,6 @@ a:focus {
     outline: 2px solid black;
 }
 
-input:-internal-accessibility-hover {
-    outline: 4px solid red;
-}
-
-button:-internal-accessibility-hover {
-    outline: 4px solid red;
-}
-
-a:-internal-accessibility-hover {
-    outline: 4px solid red;
-}
-
 @media (prefers-color-scheme: dark) {
   a { color: lightblue; }
   input { background-color: blue; }

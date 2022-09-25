@@ -1729,7 +1729,7 @@ is what actually produces sound:
 class Browser:
     def composite_raster_and_draw(self):
         # ...
-        if self.needs_accessibility and self.accessibility_tree:
+        if self.needs_accessibility:
             self.speak_update()
 
 ```
@@ -1840,18 +1840,35 @@ class Browser:
 ```
 
 Then, if `tab_focus` isn't equal to `last_tab_focus`, we know focus
-has moved and it's time to speak the focused node:
+has moved and it's time to speak the focused node. This is getting a bit
+more complicafed, so put this logic in a new `update_accessibility` method
+similar to that for raster and draw:
 
 ``` {.python}
 class Browser:
-    def speak_update(self):
+    def update_accessibility(self):
+        if not self.accessibility_tree:
+            return
         if self.tab_focus and \
             self.tab_focus != self.last_tab_focus:
             nodes = [node for node in tree_to_list(self.accessibility_tree, [])
                         if node.node == self.tab_focus]
             if nodes:
-                self.speak_node(nodes[0], "element focused ")
+                self.focus_a11y_node = nodes[0]
+                self.needs_speak_focused_node = True
             self.last_tab_focus = self.tab_focus
+```
+
+Then the change to `speak_update` is as simple as:
+
+``` {.python}
+class Browser:
+    def speak_update(self):
+        # ...
+        if self.needs_speak_focused_node:
+            self.speak_node(self.focus_a11y_node, "element focused ")
+        self.needs_speak_focused_node = False
+  
 ```
 
 The `speak_node` method is similar to `speak_document` but it only
@@ -1970,8 +1987,8 @@ class Browser:
         # ...
         self.active_alerts = []
 
-    def composite_raster_and_draw(self):
-        if self.needs_accessibility and self.accessibility_tree:
+    def update_accessibility(self):
+        if self.needs_accessibility:
             self.active_alerts = [
                 node for node in tree_to_list(self.accessibility_tree, [])
                 if node.role == "alert"
@@ -2004,24 +2021,23 @@ pointers in the accessibility tree to match accessibility nodes
 between the old and new accessibility tree. Note that, while this
 matching *could* be done inside `commit`, we want that method to be as
 fast as possible since that method blocks both the browser and main
-threads. So it's best to do it in `composite_raster_and_draw`:
+threads. So it's best to do it in `update_accessibility`:
 
 ``` {.python}
 class Browser:
-    def composite_raster_and_draw(self):
+    def update_accessibility(self):
         # ...
-        if self.needs_accessibility and self.accessibility_tree:
-            new_spoken_alerts = []
-            for old_node in self.spoken_alerts:
-                new_nodes = [
-                    node for node in tree_to_list(self.accessibility_tree, [])
-                    if node.node == old_node.node
-                    and node.role == "alert"
-                ]
-                if new_nodes:
-                    new_spoken_alerts.append(new_nodes[0])
-            self.spoken_alerts = new_spoken_alerts
-            # ...
+        new_spoken_alerts = []
+        for old_node in self.spoken_alerts:
+            new_nodes = [
+                node for node in tree_to_list(self.accessibility_tree, [])
+                if node.node == old_node.node
+                and node.role == "alert"
+            ]
+            if new_nodes:
+                new_spoken_alerts.append(new_nodes[0])
+        self.spoken_alerts = new_spoken_alerts
+        # ...
 ```
 
 Note that if a node *loses* the `alert` role, we remove it from
@@ -2277,125 +2293,6 @@ finding one that works well on any particular site, and which one does
 may be unpredictable. Interoperability is also important for web site
 authors who would otherwise have to constantly test everything in every
 browser.
-
-:::
-
-Hover CSS
-=========
-
-Let's come back to the mouse-hover-for-accessibility use case. Our browser
-can read the hovered element to the user, but it'd be even better to
-highlight it visually, in a way similar to focus outlines. Let's implement
-that with a new pseudo-class for accessibility highlighting.
-
-However, in this case it's not totally clear that it's a good idea to expose
-this pseudo-class to scripts as well. After all, it's really important that
-accessibility features actually help users access a web page---more important,
-in fact, than the ability of web developers to style it.^[Iny any case, there is
-no pseudo-class on the web right now for this situation.]
-
-Nevertheless, it would be super convenient to re-use the pseudo-class machinery
-we just built. Browsers achieve this with *browser-internal*
-pseudo-classes---ones that can only be used from with the default
-browser style sheet. In this case we'll define a new 
-`-internal-accessibility-hover` pseudo-class, and put rules like this in
-`browser.css`:
-
-``` {.css}
-input:-internal-accessibility-hover {
-    outline: 4px solid red;
-}
-```
-
-Making it work is very easy, just set `is_hovered` on the right node:
-
-``` {.python}
-class Tab:
-    # ...
-    def render(self):
-        # ...
-                a11y_node = self.accessibility_tree.hit_test(x, y)
-                if self.hovered_node:
-                    self.hovered_node.is_hovered = False
-                if a11y_node:
-                    # ...
-                    self.hovered_node.is_hovered = True
-```
-
-And match it in `PseudoclassSelector`:
-
-``` {.python}
-INTERNAL_ACCESSIBILITY_HOVER = "-internal-accessibility-hover"
-# ...
-class PseudoclassSelector:
-    # ...
-    def matches(self, node):
-        # ...
-        elif self.pseudoclass == INTERNAL_ACCESSIBILITY_HOVER:
-            return node.is_hovered
-```
-
-The only step remaining is to restrict to the browser style sheet.
-I'll do that with an optional flag on `CSSParser`. When set, internal
-pseudo-classes are allowed; otherwise they are errors:
-
-``` {.python}
-class CSSParser:
-    def __init__(self, s, internal=False):
-        # ...
-        self.is_internal = internal
-
-    def simple_selector(self):
-        if self.i < len(self.s) and self.s[self.i] == ":":
-            # ...
-            if pseudoclass == INTERNAL_ACCESSIBILITY_HOVER:
-                assert self.is_internal
-            # ...
-```
-
-And then parsing the browser style sheet:
-
-``` {.python}
-class Tab:
-    def __init__(self, browser):
-        # ...
-        with open("browser14.css") as f:
-            self.default_style_sheet = \
-                CSSParser(f.read(), internal=True).parse()
-```
-
-
-::: {.further}
-
-Browsers have a number of internal pseudo-classes and other CSS features to
-ease their implementation. For example, check out the
-[internal features][internal-chromium] in Chromium's HTML style sheet
-(everything with the `-internal` prefix).[^vendor-prefix]
-
-[internal-chromium]: https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/core/html/resources/html.css
-
-[^vendor-prefix]: You'll also see various features in there that start with
-`-webkit`. These are not internal, but instead
-[vendor-specific prefixes][vendor-prefix]. A
-decade or so ago, browsers shipped "experimental" features based on these
-prefixes with the intention of standardizing them later. However,
-everyone eventually decided this was a bad idea, because once web sites
-start depending on a feature, even if it's "experimental", you can't remove
-it from browsers or it will break the web. Even worse, browsers that never
-shipped such a feature might be forced to ship it for compatibility reasons.
-
-These features are also sometimes a way to *incubate* new web platform features.
-For example, because it's convenient, browsers sometimes use CSS to style their
-own browser chrome UI, and at times the needs of the UI exceed what is
-expressible in a web page, but could be solved with a simple CSS
-extension.^[Browser-internal accessibility state is a good example.]
-But in some of these cases, it may make sense to later on expose the CSS
-feature to developers, and trying it out on internal UI can inform the
-motivation and design of a corresponding new standardized feature. (Plus,
-knowing that it was implemented by a browser is a good sign that it's not
-*too* hard to do it.)
-
-[vendor-prefix]: https://developer.mozilla.org/en-US/docs/Glossary/Vendor_Prefix
 
 :::
 
