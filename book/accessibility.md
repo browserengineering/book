@@ -853,7 +853,7 @@ Let's start with the `advance_tab` method. Each time it's called, the
 browser should advance focus to the next focusable thing. This will
 first require a definition of which elements are focusable:
 
-``` {.python replace=)]/)]%20\}
+``` {.python replace=)]/)]%20 }
 def is_focusable(node):
     return node.tag in ["input", "button", "a"]
 
@@ -861,7 +861,8 @@ class Tab:
     def advance_tab(self):
         focusable_nodes = [node
             for node in tree_to_list(self.nodes, [])
-            if isinstance(node, Element) and is_focusable(node)]
+            if isinstance(node, Element) and is_focusable(node)
+            and get_tabindex(node) >= 0]
 ```
 
 Next, in `advance_tab`, we need to find out where the
@@ -1175,12 +1176,52 @@ highlighted with a black outline. And if a link happens to cross
 multiple lines, you will see our browser use multiple focus
 rectangles to make crystal-clear what is being focused on.
 
-::: {.todo}
-Add scrolling code here
-:::
+Except for one problem: if the focused element is scrolled offscreen, there is
+still no way to tell it's visible. To fix this we'll need to automatically
+scroll it onto the screen.^[JavaScript methods like [`focus`][focus-el] also do
+this (which is why you'll observe that it has an option to skip the scrolling
+part).] Doing this is a bit tricky, because determining if the element is
+offscreen requires layout. So we'll set a new `focus_changed` bit on `Tab`:
 
-Focus outlines now basically work. But ideally, the focus indicator
-should be customizable, so that the web page author can make sure the
+``` {.python}
+class Tab:
+    def focus_element(self, node):
+        if node != self.focus:
+            self.focus_changed = True
+```
+
+And use it at the end of `run_animation_frame` to set an appropriate scroll.
+If the element is scrolled off the top of the screen, let's place it
+`SCROLL_STEP` pixels from the top, and if it's scrolled off the bottom, place
+it `SCROLL_STEP` pixels from the bottom.
+
+``` {.python}
+class Tab:
+    def run_animation_frame(self, scroll):
+        # ...
+        if self.focus_changed and self.focus:
+            if hasattr(self.focus, "layout_object"):
+                layout_object = self.focus.layout_object
+                if layout_object.y - self.scroll < 0:
+                    self.scroll = \
+                        clamp_scroll(
+                            layout_object.y - SCROLL_STEP,
+                            document_height)
+                    self.scroll_changed_in_tab = True
+                elif layout_object.y - self.scroll > HEIGHT - CHROME_PX:
+                    self.scroll = clamp_scroll(
+                        layout_object.y + HEIGHT - \
+                        CHROME_PX - SCROLL_STEP,
+                        document_height)
+                    self.scroll_changed_in_tab = True
+        self.focus_changed = False
+```
+
+[focus-el]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/focus
+
+Focus outlines now basically work, and will even scroll on-screen if you try
+examples like [this](examples/example14-focus.html). But ideally, the focus
+indicator should be customizable, so that the web page author can make sure the
 focused element stands out. In CSS, that's done with what's called the
 "`:focus` [pseudo-class][pseudoclass]". Basically, this means you can
 write a selector like this:
@@ -2424,3 +2465,6 @@ work well on any kind of browser screens and contexts. Responsive design can be
 viewed as a kind of accessibility.
 
 [responsive-design]: https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Responsive_Design
+
+* `Element.focus`: Implement the JavaScript [`focus`][focus-el] method on DOM
+  elements, including the option to prevent scrolling.]
