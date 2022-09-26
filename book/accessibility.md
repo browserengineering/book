@@ -1200,21 +1200,21 @@ class Tab:
     def run_animation_frame(self, scroll):
         # ...
         if self.focus_changed and self.focus:
-            layout_object = self.focus.layout_object
-            if layout_object.y - self.scroll < 0:
-                self.scroll = \
-                    clamp_scroll(
-                        layout_object.y - SCROLL_STEP,
-                        document_height)
-                self.scroll_changed_in_tab = True
-            elif layout_object.y - self.scroll > HEIGHT - CHROME_PX:
-                self.scroll = \
-                    clamp_scroll(
+            if hasattr(self.focus, "layout_object"):
+                layout_object = self.focus.layout_object
+                if layout_object.y - self.scroll < 0:
+                    self.scroll = \
+                        clamp_scroll(
+                            layout_object.y - SCROLL_STEP,
+                            document_height)
+                    self.scroll_changed_in_tab = True
+                elif layout_object.y - self.scroll > HEIGHT - CHROME_PX:
+                    self.scroll = clamp_scroll(
                         layout_object.y + HEIGHT - \
                         CHROME_PX - SCROLL_STEP,
                         document_height)
-                self.scroll_changed_in_tab = True
-        self.focus_changed = False            
+                    self.scroll_changed_in_tab = True
+        self.focus_changed = False
 ```
 
 [focus-el]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/focus
