@@ -2238,28 +2238,6 @@ class AccessibilityNode:
                 return node
 ```
 
-Over in the `Browser`, we need to also perform a hit test on any
-`pending_hover` (and record which node is hovered in `hovered_node` to avoid
-speaking a hover unless it really changed):
-
-``` {.python}
-class Browser:
-    def speak_update(self):
-        if self.pending_hover != None:
-            if self.accessibility_tree:
-                (x, y) = self.pending_hover
-                a11y_node = self.accessibility_tree.hit_test(x, y)
-                if self.hovered_node:
-                    self.hovered_node.is_hovered = False
-
-                if a11y_node:
-                    if not self.hovered_node or a11y_node.node != self.hovered_node.node:
-                        self.speak_node(a11y_node, "Hit test ")
-                    self.hovered_node = a11y_node
-                    self.hovered_node.is_hovered = True
-            self.pending_hover = None
-```
-
 ::: {.further}
 
 It's ultimately the need for more flexible input elements that leads
