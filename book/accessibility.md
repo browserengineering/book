@@ -1412,26 +1412,24 @@ make them more powerful. And once they were generalized, this
 generalized form can be made accessible to web page authors, who can
 use it for all sorts of things.
 
-::: {.further .todo}
+::: {.further}
 
-In addition to focus rings being present for focus, another very important part
-of accessibility is ensuring *contrast*. I alluded to it in the section on dark
-mode, in the context of ensuring that the dark mode style sheet provides good
-default contrast. But in fact, the focus ring we've implemented here does not
-necessarily have great contrast, for example if it's next to an element with a
-black background provided in a page style sheet. This is not too hard to
-fix, and there is an exercise at the end of this chapter about it.
+It's essential that the focus indicator have [good contrast][contrast]
+against the underlying web page, so the user can clearly see what
+they've tabbed over to. This might [require some care][focus-blog] if
+the default focus indicator looks like the page or element background.
+For example, it might be best to draw [two outlines][ms-blog], white
+and black, to guarantee a visible focus indicator on both dark and
+light backgrounds. If you're designing your own, the [Web Content
+Accessibility Guidelines][wcag] is a standard set of accessibility
+guidelines, including for ensuring good contrast.
 
-Contrast is one part of the [Web Content Accessibility Guidelines][wcag], a
-standard set of recommendations to page authors on how to ensure accessibility.
-The browser can do a lot, but ultimately [good contrast][contrast] between
-colors is something that page authors also have to pay attention to.
-
+:::
 
 [wcag]: https://www.w3.org/WAI/standards-guidelines/wcag/
 [contrast]: https://www.w3.org/TR/WCAG21/#contrast-minimum
-
-:::
+[focus-blog]: https://darekkay.com/blog/accessible-focus-indicator/
+[ms-blog]: https://blogs.windows.com/msedgedev/2019/10/15/form-controls-microsoft-edge-chromium/
 
 
 The accessibility tree
