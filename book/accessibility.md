@@ -410,6 +410,7 @@ device is connected to multiple displays: a window may switch from a
 low-resolution to a high-resolution display (thus changing
 `devicePixelRatio`) or even be split across two displays with
 different resolutions.
+:::
 
 [dpr]: https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio
 
@@ -425,7 +426,6 @@ required, and as pixel densities increase it becomes less and less
 important. For example, the Pixelbook Go I'm using to write this book,
 with a resolution of 166 pixels per inch has a ratio of 1.25. The
 choice of ratio for a given screen is somewhat arbitrary.
-:::
 
 
 Dark mode
@@ -2319,136 +2319,87 @@ should now look something like this:
 Exercises
 =========
 
-* *Focus ring with good contrast*: Add a second white color to the outside of
-the 2px black one, and likewise on the inside, to ensure that there is contrast
-between the focus ring and surrounding content.
+*Focus ring with good contrast*: Improve the contrast of the focus
+indicator by using two outlines, a thicker white one and a thinner
+black one, to ensure that there is contrast between the focus ring and
+surrounding content.
 
-* *Button role*: Add support for the `button` value of the `role` attribute.
+*`Element.focus`*: Implement the JavaScript [`focus`][focus-el]
+method, which lets JavaScript focus a particular element. Make sure
+that the option to prevent scrolling works properly.
 
-* *High-contrast mode*: Implement high-contrast [forced-colors] mode. As part
-of this, draw a rectangular *backplate* behind all lines of text in order to
-ensure that there is sufficient contrast (as [defined][contrast] by the WCAG
-specification) between  foreground and background colors. Also check the
-contrast of the default style sheets I provided in this chapter---do they meet
-the requirements?
+*Highlighting elements during read*: The method to read the document
+works, but it'd be nice to also highlight the elements being read as
+it happens, in a similar way to how we did it for mouse hover.
+Implement that. You may want to replace the `speak_document` method
+with an `advance_accessibility` method that moves the accessibility
+focus by one node and speaks it.
+
+*Width media queries*: Zooming in or out causes the width of the page
+in CSS pixels to change. That means that sometimes elements that used
+to fit comfortably on the page no longer do so, because they become
+too large; if the page becomes narrow enough, a different layout may
+be more appropriate. The [`max-width` media query][width-mq] does
+this; it is active only if the width of the page, in CSS pixels, is
+less than or equal to a given length.[^responsive-width-size]
+Implement this media query. Test that zooming in or out can trigger
+this media query.
+
+[width-mq]: https://developer.mozilla.org/en-US/docs/Web/CSS/@media/width
+
+[^responsive-width-size]: As you've seen, many accessibility features
+overlap have non-accessibility uses. For example, the `max-width`
+media query is indeed a way to customize behavior on zoom, but most
+developers think of it instead as a way to instead customize their
+website for different devices, like desktops, tablets, and mobile
+devices. The idea of [responsive design][responsive-design] means
+designing websites to work well on any kind of browser screens and
+contexts. Responsive design can be viewed as a kind of accessibility.
+
+[responsive-design]: https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Responsive_Design
+
+*Threaded accessibility*: The accessibility code currently speaks text
+on the browser thread, and blocks the browser thread while it speaks.
+This is pretty annoying. Solve this by moving the speaking to a new
+accessibility thread that is in charge of speaking the document.
+
+*High-contrast mode*: Implement high-contrast [forced-colors] mode.
+This should replace all colors with one of a small set of
+[high-contrast][contrast] colors. You should also draw a rectangular
+*backplate* behind all lines of text in order to ensure that there is
+sufficient contrast between the text and whatever is behind it.
 
 [forced-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/@media/forced-colors
 
-* *Custom inputs*: Implement an `<input>` element with a `<div>` completely in
-JavaScript. Make sure that it's represented correctly in the accessibility tree
-and participates correctly in form submission.
-
-* *Threaded accessibility*: The accessibility code currently speaks on the
-main thread, which creates a lot of slowdown because the playback doesn't
-happen in parallel with other work. Solve this by adding a new accessibility
-thread that is in charge of speaking the document. (You don't want to use
-the compositor thread, because then that thread will become slow also.) To
-achieve this you will need to copy the accessibility tree from one thread
-to another.
-
-* *Highlighting elements during read*: The method to read the document works,
-but it'd be nice to also highlight the elements being read as it happens,
-in a similar way to how we did it for mouse hover. Implement that.
-
-* *`:hover` pseudoclass*: There is a pseudoclass for generic mouse
-[hover][hover-pseudo] events (it's unrelated to accessibility). Implement it
-by sending along mouse hover events to the active `Tab` and hit testing
-to find out which element is hovered. Try to do so by avoiding a [forced
-layout][forced-layout-hit-test]; one way to do that is to store a
-`pending_hover` on the `Tab` and running the hit test at the right time during
-`render` (which will be after layout), and then doing *another* render to
+*`:hover` pseudoclass*: There is a `:hover` pseudoclass that
+identifies elements the mouse is [hovering over][hover-pseudo].
+Implement it by sending mouse hover events to the active `Tab` and hit
+testing to find out which element is hovered. Try avoid [forcing a
+layout][forced-layout-hit-test] in this hit test; one way to do that
+is to store a `pending_hover` on the `Tab` and running the hit test
+after `layout` during `render`, and then doing *another* render to
 invalidate the hovered element's style.
 
 [forced-layout-hit-test]: https://browser.engineering/scheduling.html#threaded-style-and-layout
 
 [hover-pseudo]: https://developer.mozilla.org/en-US/docs/Web/CSS/:hover
 
-* *Find-in-page*: Yet another accessibility feature is searching for
-text within a web page. Implement this feature. A simple approach might be to
-binding it to `ctrl-f` and then interpreting subsequent keyboard input
-as the text to search for, and ended by pressing `esc`. Add an internal
-pseudo-class for the selected element so that it can be highlighted
-visually. You don't need to implement matching text across multiple
-`InlineLayout` elements (in general, find-in-page and other [selection]
-APIs are quite complicated).
-
 [selection]: https://developer.mozilla.org/en-US/docs/Web/API/Selection
 
-*  *focus-visible*: In some cases, showing a focus ring around an element makes
-    sense only with some input modes. For example if an `<a>` element has focus
-    and the user achieved that focus with keyboard tabbing, it makes sense to
-    show a focus ring around it, because otherwise the user cannot know that it
-    was focused. But if the user causes the focus by clicking on it, then
-    arguably there is no reason to show the focus ring, because if the user
-    could click with a mouse, they probably know which element it was already.
-    Because of this, many users also find a focus ring created by mouse click
-    distracting, redundant or ugly.
+*focus-visible*: When the user tabs to a link, we probably want to
+show a focus indicator, but if the user clicked on it, most browsers
+don't---the user knows where the focused element is! And a redundant
+focus indicator could be ugly, or distracting. Implement a similar
+heuristic. Clicking on a button should focus it, but not show a focus
+indicator. (Test this on [a page with](examples/example14-focus.html)
+a button is placed outside a form, so clicking the button doesn't
+navigate to a new page.) But both clicking on and tabbing to an input
+element should show a focus ring.
 
-    For this reason, real browsers by default do not create a focus ring for
-    such elements on mouse click. On the other hand, they do show one if
-    focus was caused by keyboard input. Further, whether the mouse click causes
-    a focus ring may depend on the element---an `<input>` element still receives
-    a focus ring on a mouse click, because it's still useful for the user to
-    know that subsequent keyboard typing will go into that element.
-
-    As you can see, there are a number of heuristics and rules that go into the
-    choice of focus ring. For this reason, browsers have in recent years added
-    the [`:focus-visible`][focus-visible] pseudo-class, which applies only if
-    the element is focused *and* the browser would have drawn a focus ring
-    (the focus ring would have been *visible*, hence the name). This lets
-    custom widgets change focus ring styling without losing the useful browser
-    heuristics I mentioned above.
-
-    Implement browser heuristics to not show a focus ring on an `<a>` element if
-    focus occured due to a mouse click, and add the `:focus-visible`
-    pseudo-class. <a href="examples/example14-focus.html">This example</a>
-    should show the difference between mouse and keyboard interaction.
+Also support for the [`:focus-visible` pseudo-class][focus-visible].
+This applies only if the element is focused *and* the browser would
+have drawn a focus ring (the focus ring would have been *visible*,
+hence the name). This lets custom widgets change focus ring styling
+without losing the useful browser heuristics I mentioned above.
 
 [focus-visible]: https://developer.mozilla.org/en-US/docs/Web/CSS/:focus-visible
-
-*   *Width media queries*: Zooming in or out causes the width of the page in CSS
-    pixels to change. That means that sometimes elements that used to fit
-    comfortably on the page no longer do so, because they become too large. The
-    browser tries to flow those elements onto new lines, but sometimes that is
-    not possible because of the structure of the content, such as with a table
-    or grid that can't automatically be broken into multiple lines.
-
-    Just like the other accessibility features can be customized, so can
-    zoom.[^responsive-width-size]
-    For example, a media query such as `max-width` can be used to change the
-    default number of columns in these tables or grids.[^table-grid] A simple
-    example that demonstrates `max-width` media queries is below; in this
-    example, the text becomes green if the width of the viewport in CSS pixels
-    is `700px` or less:
-
-        @media (max-width:700px) {
-        * { color: green }
-        }
-
-    Implement this media query. Our browser starts out with a default width of
-    `800px`, so zooming in a few times should trigger this media query; <a
-    href="examples/example14-maxwidth-media.html">click here</a> to see the
-    example in action.
-
-[^table-grid]: Note that [tables][table-css] and [grids][grid-css] are real
-browser features we have not implemented. To test out such examples you'll have
-to try on a real browser.
-
-[table-css]: https://developer.mozilla.org/en-US/docs/Learn/CSS/Building_blocks/Styling_tables
-[grid-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Grid_Layout
-
-[^responsive-width-size]: The `max-width` media query is indeed a way to
-customize behavior on zoom, but most developers think of it instead as a way to
-customize according to the width and height of the browser viewport pre-zoom,
-which it's also useful for. After all, users can resize a desktop browser
-window to any size they like, and mobile and tablet devices have a wide variety
-of sizes. Developers often use such media queries to create a "mobile"
-or "tablet" layout of web sites; this general technique is called
-[responsive design][responsive-design], which is about designing websites to
-work well on any kind of browser screens and contexts. Responsive design can be
-viewed as a kind of accessibility.
-
-[responsive-design]: https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Responsive_Design
-
-* `Element.focus`: Implement the JavaScript [`focus`][focus-el] method on DOM
-  elements, including the option to prevent scrolling.]
