@@ -1600,33 +1600,24 @@ The user can now direct the screen reader to walk up or down this
 accessibility tree and describe each node to the user. 
 
 
-::: {.further .todo}
+::: {.further}
 
-Generally speaking, the OS does not enforce that the browser build such a tree,
-but it's convenient enough that browsers generally do it. However, in the era of
-multi-process browser engines (of which [Chromium][chrome-mp] was the first), an
-accessibility tree in the browser process that mirrors content state from each
-visible browser tab has become necessary. That's because OS accessibility
-APIs are generally synchronous, and it's not possible to synchronously stop
-the browser and tab at the same time to figure out how to respond. See
-[here][chrome-mp-a11y] for a more
-detailed description of the challenge and how Chromium deals with it.
+In a multi-process browser ([like Chromium][chrome-mp]), the browser and
+main threads run in different processes, and sending data from one to
+the other can be slow. Chromium, therefore, [stores two
+copies][chrome-mp-a11y] of the accessibility tree, one in the browser
+and one in the main thread, and only sends changes between the two. An
+alternative design, used by pre-Chromium Microsoft Edge and some other
+browsers, has each tab process respond to accessibility API requests
+from the operating system. This removes the need to duplicate the
+accessibility tree, but exposing the operating system to individual
+tabs can lead to security issues.
+
+:::
 
 [chrome-mp]: https://www.chromium.org/developers/design-documents/multi-process-architecture/
 
 [chrome-mp-a11y]: https://chromium.googlesource.com/chromium/src/+/HEAD/docs/accessibility/browser/how_a11y_works_2.md
-
-In addition, defining this tree in a specification is a means to encourage
-interoperability between browsers. This is critically important---imagine how
-frustrating it would be if a web site doesn't work in your chosen browser just
-because it happens to interpret accessibility slightly differently than another
-one! This might force a user to constantly switch browsers in the hope of
-finding one that works well on any particular site, and which one does
-may be unpredictable. Interoperability is also important for web site
-authors who would otherwise have to constantly test everything in every
-browser.
-
-:::
 
 
 Screen readers
