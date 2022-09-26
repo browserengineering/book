@@ -1716,21 +1716,28 @@ class Browser:
         self.needs_accessibility = False
         self.accessibility_is_on = False
 
+    def set_needs_accessibility(self):
+        if not self.accessibility_is_on:
+            return
+        self.needs_accessibility = True
+        self.needs_draw = True
+
     def toggle_accessibility(self):
         self.lock.acquire(blocking=True)
         self.accessibility_is_on = not self.accessibility_is_on
+        self.set_needs_accessibility()
         self.lock.release()
 ```
 
-When accessibility is on, the `Browser` executes `speak_update`, which
+When accessibility is on, the `Browser` calls `update_accessibility`, which
 is what actually produces sound:
 
 ``` {.python}
 class Browser:
     def composite_raster_and_draw(self):
         # ...
-        if self.needs_accessibility and self.accessibility_tree:
-            self.speak_update()
+        if self.needs_accessibility:
+            self.update_accessibility()
 
 ```
 
@@ -1798,6 +1805,13 @@ class Browser:
         # ...
         self.has_spoken_document = False
 
+    def update_accessibility(self):
+        if not self.accessibility_tree: return
+
+        if not self.has_spoken_document:
+            self.speak_document()
+            self.has_spoken_document = True
+
     def speak_document(self):
         text = "Here are the document contents: "
         tree_list = tree_to_list(self.accessibility_tree, [])
@@ -1807,14 +1821,6 @@ class Browser:
                 text += "\n"  + new_text
 
         speak_text(text)
-
-    def speak_update(self):
-        if not self.accessibility_tree: return
-
-        if not self.has_spoken_document:
-            self.speak_document()
-            self.has_spoken_document = True
-
 ```
 
 Speaking the whole document happens only once. But the user might need
@@ -1827,10 +1833,9 @@ is focused. Let's add that to the `CommitData`; I'm not going to show
 the code, because it's repetitive, but the point is to store the
 `Tab`'s `focus` field in the `Browser`'s `tab_focus` field.
 
-Now we need to know when focus changes. While we could do that lots of
-ways,[^eg-handle-tab] the best way is to store a `last_tab_focus`
-field on `Browser` with the last focused element we actually spoke out
-loud:
+Now we need to know when focus changes. The simplest way is to store a
+`last_tab_focus` field on `Browser` with the last focused element we actually
+spoke out loud:
 
 ``` {.python}
 class Browser:
@@ -1840,17 +1845,22 @@ class Browser:
 ```
 
 Then, if `tab_focus` isn't equal to `last_tab_focus`, we know focus
-has moved and it's time to speak the focused node:
+has moved and it's time to speak the focused node. The change looks like this:
+
 
 ``` {.python}
 class Browser:
-    def speak_update(self):
+    def update_accessibility(self):
+        # ...
         if self.tab_focus and \
             self.tab_focus != self.last_tab_focus:
-            nodes = [node for node in tree_to_list(self.accessibility_tree, [])
+            nodes = [node for node in tree_to_list(
+                self.accessibility_tree, [])
                         if node.node == self.tab_focus]
             if nodes:
-                self.speak_node(nodes[0], "element focused ")
+                self.focus_a11y_node = nodes[0]
+                self.speak_node(
+                    self.focus_a11y_node, "element focused ")
             self.last_tab_focus = self.tab_focus
 ```
 
@@ -1897,12 +1907,6 @@ since these keyboards generate the same OS events as other keyboards.
 :::
 
 [braille-display]: https://en.wikipedia.org/wiki/Refreshable_braille_display
-The accessibility tree also needs access to the geometry of each object. This
-allows screen readers to know where things are on the screen in case
-the user wants to [hit test][hit-test] a place on the screen to see what is
-there:  user who can't see the screen still might want to do things like touch
-exploration of the screen, or being notified what is under the mouse as they
-move it around.
 
 Accessible alerts
 =================
@@ -1970,13 +1974,13 @@ class Browser:
         # ...
         self.active_alerts = []
 
-    def composite_raster_and_draw(self):
-        if self.needs_accessibility and self.accessibility_tree:
-            self.active_alerts = [
-                node for node in tree_to_list(self.accessibility_tree, [])
-                if node.role == "alert"
-            ]
-            # ...
+    def update_accessibility(self):
+        self.active_alerts = [
+            node for node in tree_to_list(
+                self.accessibility_tree, [])
+            if node.role == "alert"
+        ]
+        # ...
 ```
 
 Now, we can't just read out every `alert` at every frame; we need to
@@ -1989,7 +1993,7 @@ class Browser:
         # ...
         self.spoken_alerts = []
 
-    def speak_update(self):
+    def update_accessibility(self):
         # ...
         for alert in self.active_alerts:
             if alert not in self.spoken_alerts:
@@ -2004,24 +2008,24 @@ pointers in the accessibility tree to match accessibility nodes
 between the old and new accessibility tree. Note that, while this
 matching *could* be done inside `commit`, we want that method to be as
 fast as possible since that method blocks both the browser and main
-threads. So it's best to do it in `composite_raster_and_draw`:
+threads. So it's best to do it in `update_accessibility`:
 
 ``` {.python}
 class Browser:
-    def composite_raster_and_draw(self):
+    def update_accessibility(self):
         # ...
-        if self.needs_accessibility and self.accessibility_tree:
-            new_spoken_alerts = []
-            for old_node in self.spoken_alerts:
-                new_nodes = [
-                    node for node in tree_to_list(self.accessibility_tree, [])
-                    if node.node == old_node.node
-                    and node.role == "alert"
-                ]
-                if new_nodes:
-                    new_spoken_alerts.append(new_nodes[0])
-            self.spoken_alerts = new_spoken_alerts
-            # ...
+        new_spoken_alerts = []
+        for old_node in self.spoken_alerts:
+            new_nodes = [
+                node for node in tree_to_list(
+                    self.accessibility_tree, [])
+                if node.node == old_node.node
+                and node.role == "alert"
+            ]
+            if new_nodes:
+                new_spoken_alerts.append(new_nodes[0])
+        self.spoken_alerts = new_spoken_alerts
+        # ...
 ```
 
 Note that if a node *loses* the `alert` role, we remove it from
@@ -2077,10 +2081,16 @@ also defining new and fully stylable [form control elements][openui].
 
 :::
 
-
-
 Mixed voice / visual interaction
 ================================
+
+The accessibility tree also needs access to the geometry of each object. This
+allows screen readers to know where things are on the screen in case
+the user wants to [hit test][hit-test] a place on the screen to see what is
+there:  user who can't see the screen still might want to do things like touch
+exploration of the screen, or being notified what is under the mouse as they
+move it around.
+
 
 To get access to the geometry, let's add a `layout_object` pointer to each
 `Node` object if it has one. That's easy to do in the constructor of each layout
@@ -2119,11 +2129,10 @@ First we need to listen for mouse move events:
                 browser.handle_hover(event.motion)
 ```
 
-In `Browser`, store off a `pending_hover`, and also inform the `Tab`.
-Both of them need to know about the hover, because the `Browser` will speak
-the hit-tested node, but the `Tab` will create the outline.^[In real
-browsers, the screen reader often creates an overlay outline, but for
-simplicity I'm re-using the outline code we already have.]
+Now the browser should listen to the hovered position, determine if it's over an
+accessibility node, and highlight that node. We'll do that in
+`composite_raster_and_draw`, and in `handle_hover` just set the corresponding
+dirty bit.
 
 ``` {.python}
 class Browser:
@@ -2136,61 +2145,55 @@ class Browser:
         if not self.accessibility_is_on:
             return
         self.pending_hover = (event.x, event.y - CHROME_PX)
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.hover, event.x, event.y - CHROME_PX)
-        active_tab.task_runner.schedule_task(task)
-        self.needs_accessibility = True
+        self.set_needs_accessibility()
 ```
 
-Now the tab should listen to the hovered position, determine if it's over an
-accessibility node, and highlight that node. But as I explained in
-[chapter 11][forced-layout-hit-test], a hit test is one way that forced layouts
-can occur. So we could first call `render` inside `hover` before running the
-hit test. And this is exactly what `click` does. But there is something
-different about hover: when a click happens, the tab needs[^why-needs] to
-respond synchronously to it. But a hover is arguably much less urgent than a
-click, and so the hit test can be delayed until after the next time the
-rendering pipeline runs. By delaying it, we can avoid any forced renders for
-hit testing.
+Then, process the pending hover, and do two things: draw its bounds on the
+screen, and speak it to the user. The first part will need to happen in
+`paint_draw_list`, which will draw the outline of `hovered_a11y_node`. But
+we first need to know what that node is, which requires an accessibility
+tree hit test. And while we're doing that, we should note whether the
+hovered accessibility node changed, because only then should the node be
+read out loud:
 
-[forced-layout-hit-test]: https://browser.engineering/scheduling.html#threaded-style-and-layout
-
-[^why-needs]: It may not be immediately obvious why clicks can't be
-asynchronous and happen after a scheduled render. If all that was happening
-was browser clicks, and the browser was always responsive and fast, then
-maybe that's a good idea. But the browser can't always guarantee that
-scripts or other work won't slow down the page, and it's quite important to
-respond quickly clicks because the user is waiting on the result.
-
-So `hover` should just note down that a hover is desired, and schedule a render:
 
 ``` {.python}
-class Tab:
-    # ...
-    def hover(self, x, y):
-        self.pending_hover = (x, y)
-        self.set_needs_render()
-```
-
-Then, after the accessibility tree is built, process the pending hover:
-
-``` {.python}
-class Tab:
-    def __init__(self, browser):
+class Browser:
+    def paint_draw_list(self):
         # ...
-        self.pending_hover = None
-        self.hovered_node = None
+        if self.pending_hover != None:
+            (x, y) = self.pending_hover
+            a11y_node = self.accessibility_tree.hit_test(x, y)
 
-        if self.pending_hover:
-                (x, y) = self.pending_hover
-                a11y_node = self.accessibility_tree.hit_test(x, y)
-                if self.hovered_node:
-                    self.hovered_node.is_hovered = False
-
-                if a11y_node:
-                    self.hovered_node = a11y_node.node
-                    self.hovered_node.is_hovered = True
+            if a11y_node:
+                if not self.hovered_a11y_node or \
+                    a11y_node.node != self.hovered_a11y_node.node:
+                    self.needs_speak_hovered_node = True
+                self.hovered_a11y_node = a11y_node
         self.pending_hover = None
+```
+
+Drawing is simple:
+
+``` {.python}
+class Browser:
+    def paint_draw_list(self):
+        # ...
+        if self.hovered_a11y_node:
+            self.draw_list.append(DrawOutline(
+                self.hovered_a11y_node.bounds,
+                "white" if self.dark_mode else "black", 2))
+```
+
+And then it's spoke out loud in `update_accessibility`:
+
+``` {.python}
+class Browser:
+    def update_accessibility(self):
+        # ...
+        if self.needs_speak_hovered_node:
+            self.speak_node(self.hovered_a11y_node, "Hit test ")
+        self.needs_speak_hovered_node = False
 ```
 
 The last bit is implementing `hit_test` on `AccessibilityNode`. It's
@@ -2220,29 +2223,6 @@ class AccessibilityNode:
             else:
                 return node
 ```
-
-Over in the `Browser`, we need to also perform a hit test on any
-`pending_hover` (and record which node is hovered in `hovered_node` to avoid
-speaking a hover unless it really changed):
-
-``` {.python}
-class Browser:
-    def speak_update(self):
-        if self.pending_hover != None:
-            if self.accessibility_tree:
-                (x, y) = self.pending_hover
-                a11y_node = self.accessibility_tree.hit_test(x, y)
-                if self.hovered_node:
-                    self.hovered_node.is_hovered = False
-
-                if a11y_node:
-                    if not self.hovered_node or a11y_node.node != self.hovered_node.node:
-                        self.speak_node(a11y_node, "Hit test ")
-                    self.hovered_node = a11y_node
-                    self.hovered_node.is_hovered = True
-            self.pending_hover = None
-```
-
 
 ::: {.further}
 
@@ -2277,125 +2257,6 @@ finding one that works well on any particular site, and which one does
 may be unpredictable. Interoperability is also important for web site
 authors who would otherwise have to constantly test everything in every
 browser.
-
-:::
-
-Hover CSS
-=========
-
-Let's come back to the mouse-hover-for-accessibility use case. Our browser
-can read the hovered element to the user, but it'd be even better to
-highlight it visually, in a way similar to focus outlines. Let's implement
-that with a new pseudo-class for accessibility highlighting.
-
-However, in this case it's not totally clear that it's a good idea to expose
-this pseudo-class to scripts as well. After all, it's really important that
-accessibility features actually help users access a web page---more important,
-in fact, than the ability of web developers to style it.^[Iny any case, there is
-no pseudo-class on the web right now for this situation.]
-
-Nevertheless, it would be super convenient to re-use the pseudo-class machinery
-we just built. Browsers achieve this with *browser-internal*
-pseudo-classes---ones that can only be used from with the default
-browser style sheet. In this case we'll define a new 
-`-internal-accessibility-hover` pseudo-class, and put rules like this in
-`browser.css`:
-
-``` {.css}
-input:-internal-accessibility-hover {
-    outline: 4px solid red;
-}
-```
-
-Making it work is very easy, just set `is_hovered` on the right node:
-
-``` {.python}
-class Tab:
-    # ...
-    def render(self):
-        # ...
-                a11y_node = self.accessibility_tree.hit_test(x, y)
-                if self.hovered_node:
-                    self.hovered_node.is_hovered = False
-                if a11y_node:
-                    # ...
-                    self.hovered_node.is_hovered = True
-```
-
-And match it in `PseudoclassSelector`:
-
-``` {.python}
-INTERNAL_ACCESSIBILITY_HOVER = "-internal-accessibility-hover"
-# ...
-class PseudoclassSelector:
-    # ...
-    def matches(self, node):
-        # ...
-        elif self.pseudoclass == INTERNAL_ACCESSIBILITY_HOVER:
-            return node.is_hovered
-```
-
-The only step remaining is to restrict to the browser style sheet.
-I'll do that with an optional flag on `CSSParser`. When set, internal
-pseudo-classes are allowed; otherwise they are errors:
-
-``` {.python}
-class CSSParser:
-    def __init__(self, s, internal=False):
-        # ...
-        self.is_internal = internal
-
-    def simple_selector(self):
-        if self.i < len(self.s) and self.s[self.i] == ":":
-            # ...
-            if pseudoclass == INTERNAL_ACCESSIBILITY_HOVER:
-                assert self.is_internal
-            # ...
-```
-
-And then parsing the browser style sheet:
-
-``` {.python}
-class Tab:
-    def __init__(self, browser):
-        # ...
-        with open("browser14.css") as f:
-            self.default_style_sheet = \
-                CSSParser(f.read(), internal=True).parse()
-```
-
-
-::: {.further}
-
-Browsers have a number of internal pseudo-classes and other CSS features to
-ease their implementation. For example, check out the
-[internal features][internal-chromium] in Chromium's HTML style sheet
-(everything with the `-internal` prefix).[^vendor-prefix]
-
-[internal-chromium]: https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/core/html/resources/html.css
-
-[^vendor-prefix]: You'll also see various features in there that start with
-`-webkit`. These are not internal, but instead
-[vendor-specific prefixes][vendor-prefix]. A
-decade or so ago, browsers shipped "experimental" features based on these
-prefixes with the intention of standardizing them later. However,
-everyone eventually decided this was a bad idea, because once web sites
-start depending on a feature, even if it's "experimental", you can't remove
-it from browsers or it will break the web. Even worse, browsers that never
-shipped such a feature might be forced to ship it for compatibility reasons.
-
-These features are also sometimes a way to *incubate* new web platform features.
-For example, because it's convenient, browsers sometimes use CSS to style their
-own browser chrome UI, and at times the needs of the UI exceed what is
-expressible in a web page, but could be solved with a simple CSS
-extension.^[Browser-internal accessibility state is a good example.]
-But in some of these cases, it may make sense to later on expose the CSS
-feature to developers, and trying it out on internal UI can inform the
-motivation and design of a corresponding new standardized feature. (Plus,
-knowing that it was implemented by a browser is a good sign that it's not
-*too* hard to do it.)
-
-[vendor-prefix]: https://developer.mozilla.org/en-US/docs/Glossary/Vendor_Prefix
 
 :::
 
@@ -2464,10 +2325,16 @@ to another.
 but it'd be nice to also highlight the elements being read as it happens,
 in a similar way to how we did it for mouse hover. Implement that.
 
-* *`:hover` pseudoclass*: There is in fact a pseudoclass for generic mouse
-[hover][hover-pseudo] events (it's unrelated to accessibility). It works the
-same way as `-internal-accessibility-hover ` but hit tests the layout tree
-instead. Implement it.
+* *`:hover` pseudoclass*: There is a pseudoclass for generic mouse
+[hover][hover-pseudo] events (it's unrelated to accessibility). Implement it
+by sending along mouse hover events to the active `Tab` and hit testing
+to find out which element is hovered. Try to do so by avoiding a [forced
+layout][forced-layout-hit-test]; one way to do that is to store a
+`pending_hover` on the `Tab` and running the hit test at the right time during
+`render` (which will be after layout), and then doing *another* render to
+invalidate the hovered element's style.
+
+[forced-layout-hit-test]: https://browser.engineering/scheduling.html#threaded-style-and-layout
 
 [hover-pseudo]: https://developer.mozilla.org/en-US/docs/Web/CSS/:hover
 

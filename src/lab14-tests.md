@@ -153,7 +153,10 @@ Accessibility
 =============
 
 The accessibility tree is automatically created.
-
+     AccessibilityNode(node=<html> role=document text=Document
+       AccessibilityNode(node=<input> role=textbox text=Input box: 
+       AccessibilityNode(node=<a href="/dest"> role=link text=Link
+         AccessibilityNode(node='Link' role=link text=Link
     >>> focus_url = 'http://test.test/focus'
     >>> test.socket.respond(focus_url, b"HTTP/1.0 200 OK\r\n" +
     ... b"content-type: text/html\r\n\r\n" +
