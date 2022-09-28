@@ -20,7 +20,7 @@ def get_blocks(file):
             try:
                 status = json.loads(metadata)
             except json.decoder.JSONDecodeError:
-                print("Count not decode " + metadata)
+                print("Could not decode " + metadata)
                 status = {}
             accumulator = ""
         elif status is not None:
@@ -40,7 +40,7 @@ function CodeBlock(el)
   end
   io.write("]")
   for k, v in pairs(el.attributes) do
-      io.write(", \"" .. k .. "\": \"" .. v .. "\"")
+      io.write(", \"" .. k .. "\": \"" .. v:gsub("\"", "\\\"") .. "\"")
   end
   io.write("}>\n")
   io.write(el.text .. "\n")
