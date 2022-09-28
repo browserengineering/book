@@ -1200,7 +1200,7 @@ class Tab:
     def run_animation_frame(self, scroll):
         # ...
         if self.focus_changed and self.focus:
-            if hasattr(self.focus, "layout_object"):
+            if self.focus.layout_object:
                 layout_object = self.focus.layout_object
                 if layout_object.y - self.scroll < 0:
                     self.scroll = \
@@ -2122,47 +2122,84 @@ also defining new and fully stylable [form control elements][openui].
 
 :::
 
+
 Mixed voice / visual interaction
 ================================
 
-The accessibility tree also needs access to the geometry of each object. This
-allows screen readers to know where things are on the screen in case
-the user wants to [hit test][hit-test] a place on the screen to see what is
-there:  user who can't see the screen still might want to do things like touch
-exploration of the screen, or being notified what is under the mouse as they
-move it around.
+Thanks to our work in this chapter, our rendering pipeline now
+basically have two different outputs: a display list for visual
+interaction, and an accessibility tree for screen-reader interaction.
+Many users will use just one or the other. However, it can also be
+valuable to use both together. For example, a user might have limited
+vision, able to make out the general items on a web page but unable to
+read the text. Such a user might use their mouse to navigate the page,
+but need the items under the mouse to be read to them by a
+screen-reader.
 
+Implementing this feature will require each accessibility node to know
+about its geometry on the page. The user could then instruct the
+screen-reader to determine which object is under the mouse (this is
+called [hit testing][hit-test]) and read it aloud.
 
-To get access to the geometry, let's add a `layout_object` pointer to each
-`Node` object if it has one. That's easy to do in the constructor of each layout
-object type. Here are two examples (don't forget to handle all of them):
+[hit-test]: https://chromium.googlesource.com/chromium/src/+/HEAD/docs/accessibility/browser/how_a11y_works_3.md#Hit-testing
+
+Getting access to the geometry is tricky, because the accessibility
+tree is generated from the element tree, while the geometry is
+accessible in the layout tree. Let's add a `layout_object` pointer to
+each `Element` object:[^if-has]
+
+[^if-has]: If it has a layout object, that is. Some `Element`s might
+    not, and their `layout_object` pointers will stay `None`.
 
 ``` {.python}
-class DocumentLayout:
-    def __init__(self, node):
+class Element:
+    def __init__(self, tag, attributes, parent):
         # ...
-        node.layout_object = self
+        self.layout_object = None
+
+class Text:
+    def __init__(self, text, parent):
+        # ...
+        self.layout_object = None
 ```
 
+Now, when we construct a layout object, we can fill in the
+`layout_object` field of its `Element`. In `BlockLayout`, it looks
+like this:
+
 ``` {.python}
+class Element:
+    
 class BlockLayout:
     def __init__(self, node, parent, previous):
         # ...
         node.layout_object = self
 ```
 
-[hit-test]: https://chromium.googlesource.com/chromium/src/+/HEAD/docs/accessibility/browser/how_a11y_works_3.md#Hit-testing
+Make sure to add a similar line of code to the constructors for every
+other type of layout object.
 
-Let's implement the second use case I mentioned above (being notified what
-is under the mouse). We'll store the size and location of
-each `AccessibilityNode`, and the hit testing algorithm will be exactly the
-same as we've already implemented when handling mouse clicks (except on 
-a different tree, of course).
-
-First we need to listen for mouse move events:
+Now each `AccessibilityNode` can store the layout object's bounds:
 
 ``` {.python}
+class AccessibilityNode:
+    def __init__(self, node):
+        # ...
+        if node.layout_object:
+            self.bounds = absolute_bounds_for_obj(node.layout_object)
+        else:
+            self.bounds = None
+```
 
+Note that I'm using `absolute_bounds_for_obj` here, because the bounds
+we're interested in are the absolute coordinates on the screen, after
+any transformations like `translate`.
+
+So let's implement the read-on-hover feature. First we need to listen
+for mouse move events, which in SDL are called `MOUSEMOTION`:
+
+``` {.python}
+if __name__ == "__main__":
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             # ...
@@ -2170,10 +2207,11 @@ First we need to listen for mouse move events:
                 browser.handle_hover(event.motion)
 ```
 
-Now the browser should listen to the hovered position, determine if it's over an
-accessibility node, and highlight that node. We'll do that in
-`composite_raster_and_draw`, and in `handle_hover` just set the corresponding
-dirty bit.
+Now the browser should listen to the hovered position, determine if
+it's over an accessibility node, and highlight that node. We don't
+want to disturb our normal rendering cadence, so in `handle_hover`
+we'll save the hover event and then in `composite_raster_and_draw`
+we'll react to the hover:
 
 ``` {.python}
 class Browser:
@@ -2181,7 +2219,6 @@ class Browser:
         # ...
         self.pending_hover = None
 
-    # ...
     def handle_hover(self, event):
         if not self.accessibility_is_on:
             return
@@ -2189,32 +2226,57 @@ class Browser:
         self.set_needs_accessibility()
 ```
 
-Then, process the pending hover, and do two things: draw its bounds on the
-screen, and speak it to the user. The first part will need to happen in
-`paint_draw_list`, which will draw the outline of `hovered_a11y_node`. But
-we first need to know what that node is, which requires an accessibility
-tree hit test. And while we're doing that, we should note whether the
-hovered accessibility node changed, because only then should the node be
-read out loud:
+When the user hovers over a node, we'll do two things. First, we'll
+draw its bounds on the screen; this helps users see what they're
+hovering over, plus it's also helpful for debugging. We'll do that in
+`paint_draw_list`; we'll start by finding the accessibility node the
+user is hovering over:
 
+``` {.python}
+class Browser:
+    def __init__(self):
+        # ...
+        self.hovered_a11y_node = None
+
+    def paint_draw_list(self):
+        # ...
+        if self.pending_hover:
+            (x, y) = self.pending_hover
+            a11y_node = self.accessibility_tree.hit_test(x, y)
+```
+
+The acronym `a11y`, with an "a", the number 11, and a "y", is a common
+shorthand for the word "accessibility".[^why-11] The `hit_test`
+function I'm calling is similar to code we wrote [many chapters
+ago](chrome.md#click-handling) to handle clicks, except of course that
+it is searching a different tree:
+
+[^why-11]: The number "11" refers to the number of letters we're
+    eliding from "accessibility".
+
+``` {.python}
+class AccessibilityNode:
+    def hit_test(self, x, y):
+        for node in tree_to_list(self, []):
+            if node.bounds.intersects(x, y):
+                return node
+```
+
+Once we've done the hit test and we know what node the user is
+hovering over, we can save that on the `Browser` (so that the outline
+persists between frames) and draw an outline:
 
 ``` {.python}
 class Browser:
     def paint_draw_list(self):
-        # ...
-        if self.pending_hover != None:
-            (x, y) = self.pending_hover
-            a11y_node = self.accessibility_tree.hit_test(x, y)
-
+        if self.pending_hover:
+            # ...
             if a11y_node:
-                if not self.hovered_a11y_node or \
-                    a11y_node.node != self.hovered_a11y_node.node:
-                    self.needs_speak_hovered_node = True
                 self.hovered_a11y_node = a11y_node
-        self.pending_hover = None
+            self.pending_hover = None
 ```
 
-Drawing is simple:
+Finally, we can draw the outline at the end of `paint_draw_list`:
 
 ``` {.python}
 class Browser:
@@ -2226,7 +2288,33 @@ class Browser:
                 "white" if self.dark_mode else "black", 2))
 ```
 
-And then it's spoke out loud in `update_accessibility`:
+Note that the color of the outline depends on whether or not dark mode
+is on, to try to ensure high contrast.
+
+So now we have an outline drawn. But we additionally want to speak
+whether the user is hovering over. To do that we'll need another flag,
+`needs_speak_hovered_node`, which we'll set whenever hover moves from
+one element to another:
+
+``` {.python}
+class Browser:
+    def __init__(self):
+        # ...
+        self.needs_speak_hovered_node = False
+
+    def paint_draw_list(self):
+        if self.pending_hover:
+            if a11y_node:
+                if not self.hovered_a11y_node or \
+                    a11y_node.node != self.hovered_a11y_node.node:
+                    self.needs_speak_hovered_node = True
+                # ...
+```
+
+The ugly conditional is necessary to handle two cases: either hovering
+over an object when nothing was previously hovered over, or moving the
+mouse from one object onto another. We set the flag in either case,
+and then use that flag in `update_accessibility`:
 
 ``` {.python}
 class Browser:
@@ -2237,33 +2325,9 @@ class Browser:
         self.needs_speak_hovered_node = False
 ```
 
-The last bit is implementing `hit_test` on `AccessibilityNode`. It's
-basically the same as regular hit testing, but does require storing bounds
-on the `AccessiblityNode` :
-
-
-``` {.python}
-class AccessibilityNode:
-    def __init__(self, node):
-        # ...
-        if hasattr(node, "layout_object"):
-            self.bounds = absolute_bounds_for_obj(node.layout_object)
-        else:
-            self.bounds = None
-
-    # ...
-    def hit_test(self, x, y):
-        nodes = [node for node in tree_to_list(self, [])
-                if node.intersects(x, y)]
-        if not nodes:
-            return None
-        else:
-            node = nodes[-1] 
-            if isinstance(node, Text):
-                return node.parent
-            else:
-                return node
-```
+You should now be able to turn on accessibility mode and move your
+mouse over the page to get both visual and auditory feedback about
+what you're hovering on!
 
 ::: {.further}
 

@@ -54,6 +54,20 @@ class Element:
         self.animations = {}
 
         self.is_focused = False
+        self.layout_object = None
+
+@wbetools.patch(Text)
+class Text:
+    def __init__(self, text, parent):
+        self.text = text
+        self.children = []
+        self.parent = parent
+
+        self.style = {}
+        self.animations = {}
+
+        self.is_focused = False
+        self.layout_object = None
 
 def parse_color(color):
     if color == "white":
@@ -579,7 +593,7 @@ class AccessibilityNode:
         self.children = []
         self.text = None
 
-        if hasattr(node, "layout_object"):
+        if node.layout_object:
             self.bounds = absolute_bounds_for_obj(node.layout_object)
         else:
             self.bounds = None
@@ -654,15 +668,8 @@ class AccessibilityNode:
         return False
 
     def hit_test(self, x, y):
-        nodes = [node for node in tree_to_list(self, [])
-                if node.intersects(x, y)]
-        if not nodes:
-            return None
-        else:
-            node = nodes[-1] 
-            if isinstance(node, Text):
-                return node.parent
-            else:
+        for node in tree_to_list(self, []):
+            if node.bounds.intersects(x, y):
                 return node
 
     def __repr__(self):
@@ -1097,7 +1104,7 @@ class Tab:
         self.scroll = clamped_scroll
 
         if self.focus_changed and self.focus:
-            if hasattr(self.focus, "layout_object"):
+            if self.focus.layout_object:
                 layout_object = self.focus.layout_object
                 if layout_object.y - self.scroll < 0:
                     self.scroll = \
@@ -1500,7 +1507,7 @@ class Browser:
                 parent = parent.parent
             self.draw_list.append(current_effect)
 
-        if self.pending_hover != None:
+        if self.pending_hover:
             (x, y) = self.pending_hover
             a11y_node = self.accessibility_tree.hit_test(x, y)
 
