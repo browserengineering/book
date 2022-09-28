@@ -594,15 +594,15 @@ white text on a black background.
 ::: {.further}
 
 Of course, a real browser needs change quite a bit more colors than
-our browser---scroll bars, input elements, menus, and so on.
-The browser should really not be changing colors on unsuspecting
-pages. For example, it'll likely have terrible accessibility outcomes!
+our browser---scroll bars, input elements, menus, and so on. The
+browser should really not be changing colors on unsuspecting pages.
+For example, it'll likely have terrible accessibility outcomes!
 Instead web pages [indicate support][dark-mode-post] for dark mode
 using the `color-scheme` [`meta` tag][meta-tag] or [CSS
 property][css-prop]. Before `color-scheme` was standardized, web pages
-could offer alternative color schemes using [alternative style
-sheets][alt-style], but few browsers supported it (of the major ones,
-only Firefox) and it wasn't commonly used.
+could in principle offer alternative color schemes using [alternative
+style sheets][alt-style], but few browsers supported it (of the major
+ones, only Firefox) and it wasn't commonly used.
 
 [meta-tag]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meta/name
 [css-prop]: https://developer.mozilla.org/en-US/docs/Web/CSS/color-scheme
