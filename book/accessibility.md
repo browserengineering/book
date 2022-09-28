@@ -403,13 +403,13 @@ On high-resolution screens, CSS pixels are scaled by both zoom and a
 [`devicePixelRatio`][dpr] factor.[^js-dpr] This factor scales device
 pixels so that there are approximately 96 pixels per inch, which a lot
 of old-school desktop displays had. For example, the original iPhone
-had 163 pixels per inch; a browser might use a `devicePixelRatio` of
-2, so that 96 CSS pixels corresponds to 192 device pixels or about
-1.17 inches.[^non-pixel-dpr] This scaling is especially tricky when a
-device is connected to multiple displays: a window may switch from a
-low-resolution to a high-resolution display (thus changing
-`devicePixelRatio`) or even be split across two displays with
-different resolutions.
+had 163 pixels per inch; the browser on that device used a
+`devicePixelRatio` of 2, so that 96 CSS pixels corresponds to 192
+device pixels or about 1.17 inches.[^non-pixel-dpr] This scaling is
+especially tricky when a device is connected to multiple displays: a
+window may switch from a low-resolution to a high-resolution display
+(thus changing `devicePixelRatio`) or even be split across two
+displays with different resolutions.
 :::
 
 [dpr]: https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio
@@ -1043,7 +1043,7 @@ more maintainable code overall.
 
 Why send the `click` event when an element is activated, instead of a
 special `activate` event? Internet Explorer [did use][onactivate]
-a special `activate` event, and other browsers did use to send a
+a special `activate` event, and other browsers used to send a
 [DOMActivate][domactivate] event, but modern standards require
 sending the `click` event even if the element was activated via
 keyboard, not via a click. This works better when the developers aren't
@@ -1246,7 +1246,7 @@ there is no actual class attribute set on the element while it's focused.
 
 To implement this, we need to first parse a new kind of selector. To
 do that, let's change `selector` to call a new `simple_selector`
-subroutine to parse a tag name and a possible pseudoclass:
+subroutine to parse a tag name and a possible pseudo-class:
 
 ``` {.python}
 class CSSParser:
@@ -1259,7 +1259,7 @@ class CSSParser:
 ```
 
 In `simple_selector`, the parser first parses a tag name and then
-checks if that's followed by a colon and a pseudoclass name:
+checks if that's followed by a colon and a pseudo-class name:
 
 ``` {.python}
 class CSSParser:
@@ -1273,7 +1273,7 @@ class CSSParser:
 ```
 
 A `PseudoclassSelector` wraps another selector; it checks that base
-selector but also a pseudoclass.
+selector but also a pseudo-class.
 
 ``` {.python}
 class PseudoclassSelector:
@@ -1283,7 +1283,7 @@ class PseudoclassSelector:
         self.priority = self.base.priority
 ```
 
-Matching is straightforward; if the pseudoclass is unknown, the
+Matching is straightforward; if the pseudo-class is unknown, the
 selector fails to match anything:
 
 ``` {.python}
@@ -2326,13 +2326,13 @@ this media query.
 [width-mq]: https://developer.mozilla.org/en-US/docs/Web/CSS/@media/width
 
 [^responsive-width-size]: As you've seen, many accessibility features
-overlap have non-accessibility uses. For example, the `max-width`
-media query is indeed a way to customize behavior on zoom, but most
+also have non-accessibility uses. For example, the `max-width` media
+query is indeed a way to customize behavior on zoom, but most
 developers think of it instead as a way to instead customize their
 website for different devices, like desktops, tablets, and mobile
 devices. The idea of [responsive design][responsive-design] means
-designing websites to work well on any kind of browser screens and
-contexts. Responsive design can be viewed as a kind of accessibility.
+designing websites to work well on any kind of browser screen and
+context. Responsive design can be viewed as a kind of accessibility.
 
 [responsive-design]: https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Responsive_Design
 
@@ -2349,10 +2349,10 @@ sufficient contrast between the text and whatever is behind it.
 
 [forced-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/@media/forced-colors
 
-*`:hover` pseudoclass*: There is a `:hover` pseudoclass that
+*`:hover` pseudo-class*: There is a `:hover` pseudo-class that
 identifies elements the mouse is [hovering over][hover-pseudo].
 Implement it by sending mouse hover events to the active `Tab` and hit
-testing to find out which element is hovered. Try avoid [forcing a
+testing to find out which element is hovered. Try to avoid [forcing a
 layout][forced-layout-hit-test] in this hit test; one way to do that
 is to store a `pending_hover` on the `Tab` and running the hit test
 after `layout` during `render`, and then doing *another* render to
@@ -2370,11 +2370,11 @@ don't---the user knows where the focused element is! And a redundant
 focus indicator could be ugly, or distracting. Implement a similar
 heuristic. Clicking on a button should focus it, but not show a focus
 indicator. (Test this on [a page with](examples/example14-focus.html)
-a button is placed outside a form, so clicking the button doesn't
+a button placed outside a form, so clicking the button doesn't
 navigate to a new page.) But both clicking on and tabbing to an input
 element should show a focus ring.
 
-Also support for the [`:focus-visible` pseudo-class][focus-visible].
+Also add support for the [`:focus-visible` pseudo-class][focus-visible].
 This applies only if the element is focused *and* the browser would
 have drawn a focus ring (the focus ring would have been *visible*,
 hence the name). This lets custom widgets change focus ring styling
