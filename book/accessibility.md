@@ -2131,7 +2131,7 @@ basically have two different outputs: a display list for visual
 interaction, and an accessibility tree for screen-reader interaction.
 Many users will use just one or the other. However, it can also be
 valuable to use both together. For example, a user might have limited
-vision, able to make out the general items on a web page but unable to
+vision---able to make out the general items on a web page but unable to
 read the text. Such a user might use their mouse to navigate the page,
 but need the items under the mouse to be read to them by a
 screen-reader.
