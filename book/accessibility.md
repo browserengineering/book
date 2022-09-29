@@ -101,6 +101,25 @@ all types of browsers and operating systems, and *these same
 principles* likewise make the web accessible to people of all types
 and abilities.
 
+::: {.further}
+In the United States, the European Union, and many other countries,
+website accessibility is legally required. For example, United States
+Government websites are required to be accessible under [Section
+508][sec508] of the [Rehabilitation Act Amendments of
+1993][rehab-act], and the government has a bunch of
+[regulations][a11yreg]. In the United States, non-government websites
+are also required to be accessible under the [Americans with
+Disabilities Act][ada], though it's [not yet clear][ada-unclear]
+exactly what that legal requirement means in practice, since it's
+mostly being done through the courts.
+:::
+
+[sec508]: https://www.access-board.gov/law/ra.html#section-508-federal-electronic-and-information-technology
+[rehab-act]: https://www.access-board.gov/law/ra.html
+[ada]: https://www.ada.gov/ada_intro.htm
+[a11yreg]: https://www.access-board.gov/ict/
+[ada-unclear]: https://www.americanbar.org/groups/law_practice/publications/law_practice_magazine/2022/jf22/vu-launey-egan/
+
 CSS zoom
 ========
 
@@ -380,47 +399,34 @@ CSS lengths should be scaled just like the text is. This is great for
 reading text more easily.
 
 ::: {.further}
-
-Another way that CSS pixels and device pixels can differ is on a high-resolution
-screen. When CSS was first defined, the typical screen had about 96 pixels per
-inch of screen. Since then, various devices (the original iPhone was an early
-example) have screens with much higher pixel densities. This led to a problem
-though---web sites designed for an assumed pixel density of 96 would look
-tiny when displayed on those screens. This was solved with the
-[`devicePixelRatio`][dpr] concept---each CSS pixel is by default multiplied by
-the device pixel ratio to arrive at device pixels. The original iPhone, for
-example, had 163 pixels per inch. 163/96 = 1.7, but since a multiplier like 1.7
-leads to awkward rounding issues in layout, that device selected a
-`devicePixelRatio` of 2.^[Since then, may different screens with different
-pixel densities have appeared, and these days it's not uncommon to have a ratio
-that is not an integer. For example, the Pixelbook Go I'm using to write this
-book has a ratio of 1.25 (but with 166 pixels per inch; as you can see, the
-choice of ratio for a given screen is somewhat arbitrary).]
-
-On a device with a `devicePixelRatio` other than 1, `zoom` and
-`devicePixelRatio` have to be multiplied together in the rendering code. In
-addition, real browsers expose a global variable exposed to JavaScript called
-`devicePixelRatio` that equal to the product of these two and updated whenever
-the user zooms in or out.  Adn there is a (non-standard, please don't
-use it!) [`zoom`][zoom-css] CSS property in WebKit and Chromium browsers that
-allows developers to apply something similar to CSS zoom to specific element
-subtrees.
+On high-resolution screens, CSS pixels are scaled by both zoom and a
+[`devicePixelRatio`][dpr] factor.[^js-dpr] This factor scales device
+pixels so that there are approximately 96 pixels per inch, which a lot
+of old-school desktop displays had. For example, the original iPhone
+had 163 pixels per inch; the browser on that device used a
+`devicePixelRatio` of 2, so that 96 CSS pixels corresponds to 192
+device pixels or about 1.17 inches.[^non-pixel-dpr] This scaling is
+especially tricky when a device is connected to multiple displays: a
+window may switch from a low-resolution to a high-resolution display
+(thus changing `devicePixelRatio`) or even be split across two
+displays with different resolutions.
+:::
 
 [dpr]: https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio
 
 [zoom-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/zoom
 
-On devices with touch screens,^[Originally just phones, but now many desktop
-computers have touch screens.] many browsers also implement *pinch zoom*:
-zooming in on the picture with a multi-touch pinch gesture. This kind of zoom
-is just like a CSS scale transform though---it zooms in on the pixels but
-doesn't update the main-thread rendering pipeline, and doesn't affect the
-`devicePixelRatio` variable. The resulting view on the
-screen is called the [visual viewport][visual-viewport].
+[^js-dpr]: Strictly speaking, the JavaScript variable called
+`devicePixelRatio` is the product of the device-specific and
+zoom-based scaling factors.
 
-[visual-viewport]: https://developer.mozilla.org/en-US/docs/Web/API/Visual_Viewport_API
+[^non-pixel-dpr]: Typically the `devicePixelRatio` is rounded to an
+integer because that tends to make text look crisper, but this isn't
+required, and as pixel densities increase it becomes less and less
+important. For example, the Pixelbook Go I'm using to write this book,
+with a resolution of 166 pixels per inch has a ratio of 1.25. The
+choice of ratio for a given screen is somewhat arbitrary.
 
-:::
 
 Dark mode
 =========
@@ -587,24 +593,21 @@ white text on a black background.
 
 ::: {.further}
 
-Dark mode is a relatively recent browser feature. In the original design of CSS,
-the [cascade](https://developer.mozilla.org/en-US/docs/Web/CSS/Cascade) defined
-not just browser and author style sheets, but also [*user*][user-style] style
-sheets. These are style sheets defined by the person using the browser, as a
-kind of custom theme. Another approach is to add a
-[browser extension][extension] (or equivalent browser built-in feature) that
-injects additional style sheets applying dark styles.[^no-user-styles]
+Of course, a real browser needs change quite a bit more colors than
+our browser---scroll bars, input elements, menus, and so on. The
+browser should really not be changing colors on unsuspecting pages.
+For example, it'll likely have terrible accessibility outcomes!
+Instead web pages [indicate support][dark-mode-post] for dark mode
+using the `color-scheme` [`meta` tag][meta-tag] or [CSS
+property][css-prop]. Before `color-scheme` was standardized, web pages
+could in principle offer alternative color schemes using [alternative
+style sheets][alt-style], but few browsers supported it (of the major
+ones, only Firefox) and it wasn't commonly used.
 
-With one of these mechanisms, users might be able to add their
-own dark mode. While it's relatively easy for this to work well overriding the
-browser's default style sheet and a few common sites, it's very hard to come up
-with styles that work well alongside the style sheets of many sites without
-losing readability or failing to provide adequate dark mode styling.
-
-[extension]: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions
-[user-style]: https://developer.mozilla.org/en-US/docs/Web/CSS/Cascade#user_stylesheets
-[^no-user-styles]: Most browsers these days don't even support user style
-sheets, and instead rely on extensions.
+[meta-tag]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meta/name
+[css-prop]: https://developer.mozilla.org/en-US/docs/Web/CSS/color-scheme
+[alt-style]: https://developer.mozilla.org/en-US/docs/Web/CSS/Alternative_style_sheets
+[dark-mode-post]: https://blogs.windows.com/msedgedev/2021/06/16/dark-mode-html-form-controls/
 
 :::
 
@@ -626,8 +629,8 @@ this CSS will make `<div>`s have a white text on a black background
 only in dark mode:
 
 
-``` {.css expected=False}
-@media (prefers-color-scheme:dark) {
+``` {.css .example}
+@media (prefers-color-scheme: dark) {
   div { background-color: black; color: white; }
 }
 ```
@@ -718,24 +721,23 @@ lighter foreground.
 
 ::: {.further}
 
-Fully customizable dark mode requires several additional features beyond
-`prefers-color-scheme`. The most important is that web sites need a way
-to declare whether they support dark mode or not (if they don't, the
-browser should really not be flipping the colors on that page, because it'll
-likely have terrible accessibility outcomes!) This feature is achieved with
-the `color-scheme` [`meta` tag][meta-tag], which allows the web page to declare
-whether it supports light mode, dark mode, or both.
+Besides `prefers-color-scheme`, web pages can use media queries to
+increase or decrease contrast when a user
+[`prefers-contrast`][prefer-contrast] or disable unnecessary
+animations when a user [`prefers-reduced-motion`][prefer-redmot], both
+of which can help users with certain disabilities. Users can also
+force the use of a specific, limited palette of colors through their
+operating system; web pages can detect this with the
+[`forced-colors`][forced-colors] media query or disable it for certain
+elements (use with care!) with [`forced-color-adjust`][fc-adjust].
 
-[meta-tag]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meta/name
-
-The second is the [`color-scheme`][color-scheme] CSS property, indicating
-whether that element and its subtree support dark, light or both modes.
-(And with the `only` keyword, whether it should be forced into the ones
-indicated.)
-
-
-[color-scheme]: https://developer.mozilla.org/en-US/docs/Web/CSS/color-scheme
 :::
+
+[prefer-contrast]: https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-contrast
+[prefer-redmot]: https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-motion
+[forced-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/@media/forced-colors
+[fc-adjust]: https://developer.mozilla.org/en-US/docs/Web/CSS/forced-color-adjust
+
 
 Keyboard navigation
 ===================
@@ -1038,14 +1040,16 @@ often involves generalizing and refining existing concepts, leading to
 more maintainable code overall.
 
 ::: {.further}
+
 Why send the `click` event when an element is activated, instead of a
-special `activate` event? Internet Explorer [did send][onactivate]
-this event, and other browsers used to send a
-[DOMActivate][domactivate] event, but it's been deprecated in favor of
+special `activate` event? Internet Explorer [did use][onactivate]
+a special `activate` event, and other browsers used to send a
+[DOMActivate][domactivate] event, but modern standards require
 sending the `click` event even if the element was activated via
 keyboard, not via a click. This works better when the developers aren't
 thinking much about accessibility and only register the `click` event
 listener.
+
 :::
 
 [onactivate]: https://docs.microsoft.com/en-us/previous-versions/windows/internet-explorer/ie-developer/platform-apis/aa742710(v=vs.85)
@@ -1118,7 +1122,7 @@ class DrawOutline(DisplayItem):
 
 Now we can paint a 2 pixel black outline around an element like this:
 
-``` {.python expected=False}
+``` {.python replace=node.is_focused/has_outline(node),"black"/color,2/thickness}
 def paint_outline(node, cmds, rect):
     if node.is_focused:
         cmds.append(DrawOutline(rect, "black", 2))
@@ -1153,19 +1157,19 @@ around this, let's draw the focus ring in `LineLayout`. Each
 `LineLayout` finds all of its child `TextLayout`s that are focused,
 and draws a rectangle around them all:
 
-``` {.python expected=False}
+``` {.python}
 class LineLayout:
     def paint(self, display_list):
         # ...
         outline_rect = skia.Rect.MakeEmpty()
-        parent = None
+        focused_node = None
         for child in self.children:
-            parent = child.node.parent
-            if has_outline(parent):
-                outline_node = parent
+            node = child.node
+            if has_outline(node.parent):
+                focused_node = node.parent
                 outline_rect.join(child.rect())
-        if parent:
-            paint_outline(parent, display_list, outline_rect)
+        if focused_node:
+            paint_outline(focused_node, display_list, outline_rect)
 ```
 
 You should also add a `paint_outline` call to `BlockLayout`, since
@@ -1242,7 +1246,7 @@ there is no actual class attribute set on the element while it's focused.
 
 To implement this, we need to first parse a new kind of selector. To
 do that, let's change `selector` to call a new `simple_selector`
-subroutine to parse a tag name and a possible pseudoclass:
+subroutine to parse a tag name and a possible pseudo-class:
 
 ``` {.python}
 class CSSParser:
@@ -1255,7 +1259,7 @@ class CSSParser:
 ```
 
 In `simple_selector`, the parser first parses a tag name and then
-checks if that's followed by a colon and a pseudoclass name:
+checks if that's followed by a colon and a pseudo-class name:
 
 ``` {.python}
 class CSSParser:
@@ -1269,7 +1273,7 @@ class CSSParser:
 ```
 
 A `PseudoclassSelector` wraps another selector; it checks that base
-selector but also a pseudoclass.
+selector but also a pseudo-class.
 
 ``` {.python}
 class PseudoclassSelector:
@@ -1279,7 +1283,7 @@ class PseudoclassSelector:
         self.priority = self.base.priority
 ```
 
-Matching is straightforward; if the pseudoclass is unknown, the
+Matching is straightforward; if the pseudo-class is unknown, the
 selector fails to match anything:
 
 ``` {.python}
@@ -1410,37 +1414,22 @@ use it for all sorts of things.
 
 ::: {.further}
 
-Keyboards, mice and touch screens are not the only way to interact with a
-computer. There is also the possibility of voice input---talking to the
-computer. Some operating systems have built-in support for voice commands and
-dictation (speaking to type), plus there are software packages you can buy that
-do it. These systems generally work very well with a keyboard-enabled
-browser, because the voice input software can translate voice commands
-directly into simulated keyboard events. This is one more reason that it's
-important for browsers and web sites to provide keyboard input alternatives.
+It's essential that the focus indicator have [good contrast][contrast]
+against the underlying web page, so the user can clearly see what
+they've tabbed over to. This might [require some care][focus-blog] if
+the default focus indicator looks like the page or element background.
+For example, it might be best to draw [two outlines][ms-blog], white
+and black, to guarantee a visible focus indicator on both dark and
+light backgrounds. If you're designing your own, the [Web Content
+Accessibility Guidelines][wcag] is a standard set of accessibility
+guidelines, including for ensuring good contrast.
 
 :::
-
-::: {.further}
-
-In addition to focus rings being present for focus, another very important part
-of accessibility is ensuring *contrast*. I alluded to it in the section on dark
-mode, in the context of ensuring that the dark mode style sheet provides good
-default contrast. But in fact, the focus ring we've implemented here does not
-necessarily have great contrast, for example if it's next to an element with a
-black background provided in a page style sheet. This is not too hard to
-fix, and there is an exercise at the end of this chapter about it.
-
-Contrast is one part of the [Web Content Accessibility Guidelines][wcag], a
-standard set of recommendations to page authors on how to ensure accessibility.
-The browser can do a lot, but ultimately [good contrast][contrast] between
-colors is something that page authors also have to pay attention to.
-
 
 [wcag]: https://www.w3.org/WAI/standards-guidelines/wcag/
 [contrast]: https://www.w3.org/TR/WCAG21/#contrast-minimum
-
-:::
+[focus-blog]: https://darekkay.com/blog/accessible-focus-indicator/
+[ms-blog]: https://blogs.windows.com/msedgedev/2019/10/15/form-controls-microsoft-edge-chromium/
 
 
 The accessibility tree
@@ -1610,6 +1599,27 @@ class AccessibilityNode:
 The user can now direct the screen reader to walk up or down this
 accessibility tree and describe each node to the user. 
 
+
+::: {.further}
+
+In a multi-process browser ([like Chromium][chrome-mp]), the browser and
+main threads run in different processes, and sending data from one to
+the other can be slow. Chromium, therefore, [stores two
+copies][chrome-mp-a11y] of the accessibility tree, one in the browser
+and one in the main thread, and only sends changes between the two. An
+alternative design, used by pre-Chromium Microsoft Edge and some other
+browsers, has each tab process respond to accessibility API requests
+from the operating system. This removes the need to duplicate the
+accessibility tree, but exposing the operating system to individual
+tabs can lead to security issues.
+
+:::
+
+[chrome-mp]: https://www.chromium.org/developers/design-documents/multi-process-architecture/
+
+[chrome-mp-a11y]: https://chromium.googlesource.com/chromium/src/+/HEAD/docs/accessibility/browser/how_a11y_works_2.md
+
+
 Screen readers
 ==============
 
@@ -1639,10 +1649,10 @@ to the browser thread. That'll be a straightforward extension of the commit
 concept introduced in [Chapter 12][ch12-commit]. First we'll add the tree
 to `CommitData`: 
 
-``` {.python expected=False}
+``` {.python replace=accessibility_tree)/accessibility_tree%2c%20focus)}
 class CommitData:
-    def __init__(self, url, scroll, height,
-        display_list, composited_updates, accessibility_tree):
+    def __init__(self, url, scroll, height, display_list,
+            composited_updates, accessibility_tree):
         # ...
         self.accessibility_tree = accessibility_tree
 ```
@@ -1930,20 +1940,15 @@ this chapter on browser features that support accessibility.
 
 ::: {.further}
 
-In addition to speech output, sometimes users prefer output via touch
-instead of speech, such as with a [braille display][braille-display]. Making
-our browser work with such a device is just a matter of replacing
-`speak_text` with the equivalent APIs calls that connect to a braille display
-and programming its output.^[I haven't checked in detail, but there may be
-easy-to-use Python libraries for it. If you're interested and have a braille
-display (or even an emulated one on the computer screen), it would be a fun
-project to implement this functionality.]
-
-And of course, the opposite of a braille display is a braille keyboard that
-allows typing in a more optimized way than memorizing the locations of each key
-on a non-braille keyboard. Or you can buy keyboards with raised braille dots on
-each key. Each of these options should work out of the box with our browser,
-since these keyboards generate the same OS events as other keyboards.
+The accessibility tree isn't just for screen readers. Some users
+prefer touch output such as a [braille display][braille-display],
+instead of or in addition to speech output, for example. While the
+output device is quite different, the accessibility tree would still
+contain all the information about what content is on the page, whether
+it can be interacted with, its state, and so on. Moreover, by using
+the same accessibility tree for all output devices, users who use more
+that one assistive technology (like a braille display and a screen
+reader) are sure to receive consistent information.
 
 :::
 
@@ -1968,10 +1973,6 @@ will immediately[^alert-css] read an element with that role, no matter
 where in the document the user currently is. Note that there aren't
 any HTML elements whose default role is `alert`, so this requires
 setting the `role` attribute.
-
-[^other-live]: There are also other "live" roles like `status` for
-less urgent information or `alertdialog` if the keyboard focus should
-move to the alerted element.
 
 [^alert-css]: The alert is only triggered if the element is added to
     the document, has the `alert` role (or the equivalent `aria-live`
@@ -2084,41 +2085,14 @@ hear alert text once the button is clicked.
 
 ::: {.further}
 
-The `role` attribute is part of the ARIA specification---ARIA stands for
-Accessible Rich Internet Applications. You can see in the
-name a direct reference to the custom-widget-with-good-accessibility goal
-I've presented here. It defines [many]
-different attributes; `role` is just one (though an important one). For
-example, you can mark a whole subtree of the DOM as
-hidden-to-the-accessibility-tree with the `aria-hidden`
-attribute;^[This attribute is useful as a way of indicating parts of the DOM
-that are not being currently presented to the user (but are still there for
-performance or convenience-to-the-developer reasons).] the `aria-label`
-attribute specifies the label for elements like buttons.
-
-[many]: https://www.w3.org/TR/wai-aria-1.2/#accessibilityroleandproperties-correspondence
-
-Some of the accessibility problems that ARIA tries to solve stem from a common
-root problem: it's very difficult or sometimes impossible to apply a custom
-style to the the built-in form control elements. If those were directly
-stylable, then there would in these cases be no need for ARIA attributes,
-because the built-in elements pre-define all of the necessary accessibility
-semantics.
-
-That root problem is in turn because these elements have somewhat magical layout
-and paint behavior that is not defined by CSS or HTML (or any other web
-specification), and so it's not clear *how* to style them. However, there are
-several pseudo-classes available for input controls to
-provide limited styling.^[One example is the [`checked`][checked]
-pseudo-class.] And recently there has been progress towards defining
-additional styles such as [`accent-color`][accent-color] (added in 2021), and
-also defining new and fully stylable [form control elements][openui].
-
-[checked]: https://developer.mozilla.org/en-US/docs/Web/CSS/:checked
-
-[accent-color]: https://developer.mozilla.org/en-US/docs/Web/CSS/accent-color
-
-[openui]: https://open-ui.org/#proposals
+The `alert` role is an example of what ARIA calls a "live region", a
+region of the page which can change as a result of user actions. There
+are other roles (like `status` or `alertdialog`), or live regions can
+be configured on a more granular level by setting their "politeness"
+via the `aria-live` attribute (assertive notifications interrupt the
+user, but polite ones don't); what kinds of changes to announce, via
+`aria-atomic` and `aria-relevant`; and whether the live region is in a
+finished or intermediate state, via `aria-busy`.
 
 :::
 
@@ -2331,39 +2305,28 @@ what you're hovering on!
 
 ::: {.further}
 
-The accessibility tree plays a key role in the interface between
-browsers and accessibility technology like screen readers. The screen reader
-registers itself with accessibility OS APIs that promise to call it when
-interaction events happen, and the browser does the same on the other end.
-Users can express intent by interacting with the accessibility tech, and
-then this is forwarded on by way of the OS to an event triggered on the
-corresponding accessibility object in the tree.
-
-Generally speaking, the OS does not enforce that the browser build such a tree,
-but it's convenient enough that browsers generally do it. However, in the era of
-multi-process browser engines (of which [Chromium][chrome-mp] was the first), an
-accessibility tree in the browser process that mirrors content state from each
-visible browser tab has become necessary. That's because OS accessibility
-APIs are generally synchronous, and it's not possible to synchronously stop
-the browser and tab at the same time to figure out how to respond. See
-[here][chrome-mp-a11y] for a more
-detailed description of the challenge and how Chromium deals with it.
-
-[chrome-mp]: https://www.chromium.org/developers/design-documents/multi-process-architecture/
-
-[chrome-mp-a11y]: https://chromium.googlesource.com/chromium/src/+/HEAD/docs/accessibility/browser/how_a11y_works_2.md
-
-In addition, defining this tree in a specification is a means to encourage
-interoperability between browsers. This is critically important---imagine how
-frustrating it would be if a web site doesn't work in your chosen browser just
-because it happens to interpret accessibility slightly differently than another
-one! This might force a user to constantly switch browsers in the hope of
-finding one that works well on any particular site, and which one does
-may be unpredictable. Interoperability is also important for web site
-authors who would otherwise have to constantly test everything in every
-browser.
+It's ultimately the need for more flexible input elements that leads
+authors to create custom widgets that aren't particularly accessible,
+so in a sense it all goes back to the fact that input elements are
+hard to style. That's because input elements often involve several
+separate pieces, like the path and button in a `file` input, the check
+box in a `checkbox` element, or the pop-up menu in a `select`
+dropdown. CSS isn't (yet) a good match for styling such "compound"
+elements, though "[pseudo-elements][pseudoelts]" such as `::backdrop`
+or `::file-selector-button` help. Plus, their default appearance
+should match operating system defaults, which might not match standard
+CSS. New properties, like [`accent-color`][accent-color] can help
+there. Perhaps the real solution here are [new standards][openui] for
+new [fully-stylable][selectmenu] input elements.
 
 :::
+
+[checked]: https://developer.mozilla.org/en-US/docs/Web/CSS/:checked
+[pseudoelts]: https://developer.mozilla.org/en-US/docs/Web/CSS/Pseudo-elements
+[accent-color]: https://developer.mozilla.org/en-US/docs/Web/CSS/accent-color
+[openui]: https://open-ui.org/#proposals
+[selectmenu]: https://blogs.windows.com/msedgedev/2022/05/05/styling-select-elements-for-real/
+
 
 
 Summary
@@ -2399,136 +2362,87 @@ should now look something like this:
 Exercises
 =========
 
-* *Focus ring with good contrast*: Add a second white color to the outside of
-the 2px black one, and likewise on the inside, to ensure that there is contrast
-between the focus ring and surrounding content.
+*Focus ring with good contrast*: Improve the contrast of the focus
+indicator by using two outlines, a thicker white one and a thinner
+black one, to ensure that there is contrast between the focus ring and
+surrounding content.
 
-* *Button role*: Add support for the `button` value of the `role` attribute.
+*`Element.focus`*: Implement the JavaScript [`focus`][focus-el]
+method, which lets JavaScript focus a particular element. Make sure
+that the option to prevent scrolling works properly.
 
-* *High-contrast mode*: Implement high-contrast [forced-colors] mode. As part
-of this, draw a rectangular *backplate* behind all lines of text in order to
-ensure that there is sufficient contrast (as [defined][contrast] by the WCAG
-specification) between  foreground and background colors. Also check the
-contrast of the default style sheets I provided in this chapter---do they meet
-the requirements?
+*Highlighting elements during read*: The method to read the document
+works, but it'd be nice to also highlight the elements being read as
+it happens, in a similar way to how we did it for mouse hover.
+Implement that. You may want to replace the `speak_document` method
+with an `advance_accessibility` method that moves the accessibility
+focus by one node and speaks it.
+
+*Width media queries*: Zooming in or out causes the width of the page
+in CSS pixels to change. That means that sometimes elements that used
+to fit comfortably on the page no longer do so, because they become
+too large; if the page becomes narrow enough, a different layout may
+be more appropriate. The [`max-width` media query][width-mq] does
+this; it is active only if the width of the page, in CSS pixels, is
+less than or equal to a given length.[^responsive-width-size]
+Implement this media query. Test that zooming in or out can trigger
+this media query.
+
+[width-mq]: https://developer.mozilla.org/en-US/docs/Web/CSS/@media/width
+
+[^responsive-width-size]: As you've seen, many accessibility features
+also have non-accessibility uses. For example, the `max-width` media
+query is indeed a way to customize behavior on zoom, but most
+developers think of it instead as a way to instead customize their
+website for different devices, like desktops, tablets, and mobile
+devices. The idea of [responsive design][responsive-design] means
+designing websites to work well on any kind of browser screen and
+context. Responsive design can be viewed as a kind of accessibility.
+
+[responsive-design]: https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Responsive_Design
+
+*Threaded accessibility*: The accessibility code currently speaks text
+on the browser thread, and blocks the browser thread while it speaks.
+This is pretty annoying. Solve this by moving the speaking to a new
+accessibility thread that is in charge of speaking the document.
+
+*High-contrast mode*: Implement high-contrast [forced-colors] mode.
+This should replace all colors with one of a small set of
+[high-contrast][contrast] colors. You should also draw a rectangular
+*backplate* behind all lines of text in order to ensure that there is
+sufficient contrast between the text and whatever is behind it.
 
 [forced-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/@media/forced-colors
 
-* *Custom inputs*: Implement an `<input>` element with a `<div>` completely in
-JavaScript. Make sure that it's represented correctly in the accessibility tree
-and participates correctly in form submission.
-
-* *Threaded accessibility*: The accessibility code currently speaks on the
-main thread, which creates a lot of slowdown because the playback doesn't
-happen in parallel with other work. Solve this by adding a new accessibility
-thread that is in charge of speaking the document. (You don't want to use
-the compositor thread, because then that thread will become slow also.) To
-achieve this you will need to copy the accessibility tree from one thread
-to another.
-
-* *Highlighting elements during read*: The method to read the document works,
-but it'd be nice to also highlight the elements being read as it happens,
-in a similar way to how we did it for mouse hover. Implement that.
-
-* *`:hover` pseudoclass*: There is a pseudoclass for generic mouse
-[hover][hover-pseudo] events (it's unrelated to accessibility). Implement it
-by sending along mouse hover events to the active `Tab` and hit testing
-to find out which element is hovered. Try to do so by avoiding a [forced
-layout][forced-layout-hit-test]; one way to do that is to store a
-`pending_hover` on the `Tab` and running the hit test at the right time during
-`render` (which will be after layout), and then doing *another* render to
+*`:hover` pseudo-class*: There is a `:hover` pseudo-class that
+identifies elements the mouse is [hovering over][hover-pseudo].
+Implement it by sending mouse hover events to the active `Tab` and hit
+testing to find out which element is hovered. Try to avoid [forcing a
+layout][forced-layout-hit-test] in this hit test; one way to do that
+is to store a `pending_hover` on the `Tab` and running the hit test
+after `layout` during `render`, and then doing *another* render to
 invalidate the hovered element's style.
 
 [forced-layout-hit-test]: https://browser.engineering/scheduling.html#threaded-style-and-layout
 
 [hover-pseudo]: https://developer.mozilla.org/en-US/docs/Web/CSS/:hover
 
-* *Find-in-page*: Yet another accessibility feature is searching for
-text within a web page. Implement this feature. A simple approach might be to
-binding it to `ctrl-f` and then interpreting subsequent keyboard input
-as the text to search for, and ended by pressing `esc`. Add an internal
-pseudo-class for the selected element so that it can be highlighted
-visually. You don't need to implement matching text across multiple
-`InlineLayout` elements (in general, find-in-page and other [selection]
-APIs are quite complicated).
-
 [selection]: https://developer.mozilla.org/en-US/docs/Web/API/Selection
 
-*  *focus-visible*: In some cases, showing a focus ring around an element makes
-    sense only with some input modes. For example if an `<a>` element has focus
-    and the user achieved that focus with keyboard tabbing, it makes sense to
-    show a focus ring around it, because otherwise the user cannot know that it
-    was focused. But if the user causes the focus by clicking on it, then
-    arguably there is no reason to show the focus ring, because if the user
-    could click with a mouse, they probably know which element it was already.
-    Because of this, many users also find a focus ring created by mouse click
-    distracting, redundant or ugly.
+*focus-visible*: When the user tabs to a link, we probably want to
+show a focus indicator, but if the user clicked on it, most browsers
+don't---the user knows where the focused element is! And a redundant
+focus indicator could be ugly, or distracting. Implement a similar
+heuristic. Clicking on a button should focus it, but not show a focus
+indicator. (Test this on [a page with](examples/example14-focus.html)
+a button placed outside a form, so clicking the button doesn't
+navigate to a new page.) But both clicking on and tabbing to an input
+element should show a focus ring.
 
-    For this reason, real browsers by default do not create a focus ring for
-    such elements on mouse click. On the other hand, they do show one if
-    focus was caused by keyboard input. Further, whether the mouse click causes
-    a focus ring may depend on the element---an `<input>` element still receives
-    a focus ring on a mouse click, because it's still useful for the user to
-    know that subsequent keyboard typing will go into that element.
-
-    As you can see, there are a number of heuristics and rules that go into the
-    choice of focus ring. For this reason, browsers have in recent years added
-    the [`:focus-visible`][focus-visible] pseudo-class, which applies only if
-    the element is focused *and* the browser would have drawn a focus ring
-    (the focus ring would have been *visible*, hence the name). This lets
-    custom widgets change focus ring styling without losing the useful browser
-    heuristics I mentioned above.
-
-    Implement browser heuristics to not show a focus ring on an `<a>` element if
-    focus occured due to a mouse click, and add the `:focus-visible`
-    pseudo-class. <a href="examples/example14-focus.html">This example</a>
-    should show the difference between mouse and keyboard interaction.
+Also add support for the [`:focus-visible` pseudo-class][focus-visible].
+This applies only if the element is focused *and* the browser would
+have drawn a focus ring (the focus ring would have been *visible*,
+hence the name). This lets custom widgets change focus ring styling
+without losing the useful browser heuristics I mentioned above.
 
 [focus-visible]: https://developer.mozilla.org/en-US/docs/Web/CSS/:focus-visible
-
-*   *Width media queries*: Zooming in or out causes the width of the page in CSS
-    pixels to change. That means that sometimes elements that used to fit
-    comfortably on the page no longer do so, because they become too large. The
-    browser tries to flow those elements onto new lines, but sometimes that is
-    not possible because of the structure of the content, such as with a table
-    or grid that can't automatically be broken into multiple lines.
-
-    Just like the other accessibility features can be customized, so can
-    zoom.[^responsive-width-size]
-    For example, a media query such as `max-width` can be used to change the
-    default number of columns in these tables or grids.[^table-grid] A simple
-    example that demonstrates `max-width` media queries is below; in this
-    example, the text becomes green if the width of the viewport in CSS pixels
-    is `700px` or less:
-
-        @media (max-width:700px) {
-        * { color: green }
-        }
-
-    Implement this media query. Our browser starts out with a default width of
-    `800px`, so zooming in a few times should trigger this media query; <a
-    href="examples/example14-maxwidth-media.html">click here</a> to see the
-    example in action.
-
-[^table-grid]: Note that [tables][table-css] and [grids][grid-css] are real
-browser features we have not implemented. To test out such examples you'll have
-to try on a real browser.
-
-[table-css]: https://developer.mozilla.org/en-US/docs/Learn/CSS/Building_blocks/Styling_tables
-[grid-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Grid_Layout
-
-[^responsive-width-size]: The `max-width` media query is indeed a way to
-customize behavior on zoom, but most developers think of it instead as a way to
-customize according to the width and height of the browser viewport pre-zoom,
-which it's also useful for. After all, users can resize a desktop browser
-window to any size they like, and mobile and tablet devices have a wide variety
-of sizes. Developers often use such media queries to create a "mobile"
-or "tablet" layout of web sites; this general technique is called
-[responsive design][responsive-design], which is about designing websites to
-work well on any kind of browser screens and contexts. Responsive design can be
-viewed as a kind of accessibility.
-
-[responsive-design]: https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Responsive_Design
-
-* `Element.focus`: Implement the JavaScript [`focus`][focus-el] method on DOM
-  elements, including the option to prevent scrolling.]
