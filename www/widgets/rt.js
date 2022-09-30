@@ -60,7 +60,7 @@ class socket {
     static SOCK_STREAM = "stream";
     static IPPROTO_TCP = "tcp";
 
-    static socket = wrap_class(class {
+    static socket = wrap_class(class socket {
         constructor(params) {
             console.assert(params.family == "inet", "socket family must be inet")
             console.assert(params.type == "stream", "socket type must be stream")
