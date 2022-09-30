@@ -1187,11 +1187,9 @@ The server has also grown since last chapter:
     python3 infra/outlines.py --html src/server10.py
 :::
 
-If you run it, it should look something like this:
-
-::: {.widget height=691}
-    lab10-browser.html
-:::
+If you run it, it should look something like [this
+page](lab10-browser.html); due to the browser sandbox, you will need
+to open that page in a new tab.
 
 
 Exercises
