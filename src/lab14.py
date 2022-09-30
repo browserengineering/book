@@ -968,7 +968,7 @@ class Tab:
     def __init__(self, browser):
         self.history = []
         self.focus = None
-        self.focus_changed = False
+        self.needs_focus_scroll = False
         self.url = None
         self.scroll = 0
         self.scroll_changed_in_tab = False
@@ -1099,26 +1099,11 @@ class Tab:
         clamped_scroll = clamp_scroll(self.scroll, document_height)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
-        if clamped_scroll != self.scroll:
-            self.scroll_changed_in_tab = True
         self.scroll = clamped_scroll
 
-        if self.focus_changed and self.focus:
-            if self.focus.layout_object:
-                layout_object = self.focus.layout_object
-                if layout_object.y - self.scroll < 0:
-                    self.scroll = \
-                        clamp_scroll(
-                            layout_object.y - SCROLL_STEP,
-                            document_height)
-                    self.scroll_changed_in_tab = True
-                elif layout_object.y - self.scroll > HEIGHT - CHROME_PX:
-                    self.scroll = clamp_scroll(
-                        layout_object.y + HEIGHT - \
-                        CHROME_PX - SCROLL_STEP,
-                        document_height)
-                    self.scroll_changed_in_tab = True
-        self.focus_changed = False
+        if self.needs_focus_scroll and self.focus:
+            self.scroll_to(self.focus)
+        self.needs_focus_scroll = False
 
         scroll = None
         if self.scroll_changed_in_tab:
@@ -1180,8 +1165,8 @@ class Tab:
         self.measure_render.stop()
 
     def focus_element(self, node):
-        if node != self.focus:
-            self.focus_changed = True
+        if node and node != self.focus:
+            self.needs_focus_scroll = True
         if self.focus:
             self.focus.is_focused = False
         self.focus = node
@@ -1202,6 +1187,24 @@ class Tab:
                     self.submit_form(elt)
                     return
                 elt = elt.parent
+
+    def scroll_to(self, elt):
+        assert not (self.needs_style or self.needs_layout)
+        objs = [
+            obj for obj in tree_to_list(self.document, [])
+            if obj.node == self.focus
+        ]
+        if not objs: return
+        obj = objs[0]
+
+        content_height = HEIGHT - CHROME_PX
+        if self.scroll < obj.y < self.scroll + content_height:
+            return
+
+        document_height = math.ceil(self.document.height)
+        new_scroll = obj.y - SCROLL_STEP
+        self.scroll = clamp_scroll(new_scroll, document_height)
+        self.scroll_changed_in_tab = True
 
     def click(self, x, y):
         self.render()
