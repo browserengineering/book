@@ -1180,48 +1180,72 @@ highlighted with a black outline. And if a link happens to cross
 multiple lines, you will see our browser use multiple focus
 rectangles to make crystal-clear what is being focused on.
 
-Except for one problem: if the focused element is scrolled offscreen, there is
-still no way to tell it's visible. To fix this we'll need to automatically
-scroll it onto the screen.^[JavaScript methods like [`focus`][focus-el] also do
-this (which is why you'll observe that it has an option to skip the scrolling
-part).] Doing this is a bit tricky, because determining if the element is
-offscreen requires layout. So we'll set a new `focus_changed` bit on `Tab`:
+Except for one problem: if the focused element is scrolled offscreen,
+there is still no way to tell it's visible. To fix this we'll need to
+automatically scroll it onto the screen when the user tabs to it.
+
+Doing this is a bit tricky, because determining if the element is
+offscreen requires layout. So, instead of scrolling to it immediately,
+we'll set a new `needs_focus_scroll` bit on `Tab`:
 
 ``` {.python}
 class Tab:
+    def __init__(self, browser):
+        # ...
+        self.needs_focus_scroll = False
+
     def focus_element(self, node):
-        if node != self.focus:
-            self.focus_changed = True
+        if node and node != self.focus:
+            self.needs_focus_scroll = True
 ```
 
-And use it at the end of `run_animation_frame` to set an appropriate scroll.
-If the element is scrolled off the top of the screen, let's place it
-`SCROLL_STEP` pixels from the top, and if it's scrolled off the bottom, place
-it `SCROLL_STEP` pixels from the bottom.
+Then, `run_animation_frame` can scroll appropriately to reset the
+flag:
 
 ``` {.python}
 class Tab:
     def run_animation_frame(self, scroll):
         # ...
-        if self.focus_changed and self.focus:
-            if self.focus.layout_object:
-                layout_object = self.focus.layout_object
-                if layout_object.y - self.scroll < 0:
-                    self.scroll = \
-                        clamp_scroll(
-                            layout_object.y - SCROLL_STEP,
-                            document_height)
-                    self.scroll_changed_in_tab = True
-                elif layout_object.y - self.scroll > HEIGHT - CHROME_PX:
-                    self.scroll = clamp_scroll(
-                        layout_object.y + HEIGHT - \
-                        CHROME_PX - SCROLL_STEP,
-                        document_height)
-                    self.scroll_changed_in_tab = True
-        self.focus_changed = False
+        if self.needs_focus_scroll and self.focus:
+            self.scroll_to(self.focus)
+        self.needs_focus_scroll = False
+        # ...
 ```
 
-[focus-el]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/focus
+To actually do the scrolling, we need to find the layout object
+corresponding to the focused node:
+
+``` {.python}
+class Tab:
+    def scroll_to(self, elt):
+        objs = [
+            obj for obj in tree_to_list(self.document, [])
+            if obj.node == self.focus
+        ]
+        if not objs: return
+        obj = objs[0]
+```
+
+Then, we scroll to it:
+
+``` {.python}
+class Tab:
+    def scroll_to(self, elt):
+        # ...
+
+        content_height = HEIGHT - CHROME_PX
+        if self.scroll < obj.y < self.scroll + content_height:
+            return
+
+        document_height = math.ceil(self.document.height)
+        new_scroll = obj.y - SCROLL_STEP
+        self.scroll = clamp_scroll(new_scroll, document_height)
+        self.scroll_changed_in_tab = True
+```
+
+Here I'm shifting the scroll position to ensure that the object is
+`SCROLL_PX` pixels from the top of the screen, though a real browser
+will likely use different logic for scrolling up versus down.
 
 Focus outlines now basically work, and will even scroll on-screen if you try
 examples like [this](examples/example14-focus.html). But ideally, the focus
@@ -2369,7 +2393,11 @@ surrounding content.
 
 *`Element.focus`*: Implement the JavaScript [`focus`][focus-el]
 method, which lets JavaScript focus a particular element. Make sure
-that the option to prevent scrolling works properly.
+that the option to prevent scrolling works properly. Be careful:
+before reading an element's position, make sure layout has been
+executed.
+
+[focus-el]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/focus
 
 *Highlighting elements during read*: The method to read the document
 works, but it'd be nice to also highlight the elements being read as
