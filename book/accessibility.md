@@ -2142,8 +2142,6 @@ Now, when we construct a layout object, we can fill in the
 like this:
 
 ``` {.python}
-class Element:
-    
 class BlockLayout:
     def __init__(self, node, parent, previous):
         # ...
