@@ -3,7 +3,7 @@
 
 export {
     breakpoint, filesystem,
-    socket, ssl, tkinter, dukpy, urllib, html, random,
+    socket, ssl, tkinter, dukpy, urllib, html, random, wbetools,
     truthy, comparator, pysplit, pyrsplit, asyncfilter,
     rt_constants, Widget, http_textarea, 
     };
@@ -421,6 +421,10 @@ class dukpy {
             }
         }
     })
+}
+
+class wbetools {
+
 }
 
 class Breakpoint {
