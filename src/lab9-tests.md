@@ -139,7 +139,7 @@ returns its right hand side. I use `void()` to avoid testing that.
     >>> js.run("void(document.querySelectorAll('p')[0].innerHTML" +
     ...     " = 'This is a <b id=new>new</b> element!')")
 
-Once we've changed the page, the browser should rerender:
+Once we've changed the page, the browser should re-render:
 
     >>> lab9.print_tree(b.tabs[0].document)
      DocumentLayout()
@@ -172,7 +172,7 @@ We should also be able to delete nodes this way:
     >>> js.run("document.querySelectorAll('b').length")
     0
     
-The page is rerendered again:
+The page is rer-endered again:
 
     >>> lab9.print_tree(b.tabs[0].document)
      DocumentLayout()
