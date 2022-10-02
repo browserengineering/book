@@ -22,3 +22,4 @@ __pycache__/
 infra/db.*.json
 exercises/
 videos/
+.idea/
