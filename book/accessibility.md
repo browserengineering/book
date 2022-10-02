@@ -1531,7 +1531,7 @@ talk, specifically the segment from 2:36--3:54:[^whole-talk]
 To support all this, browsers structure the page as a tree and use that
 tree to interact with the screen reader. The higher levels of the tree
 represent items like paragraphs, headings, or navigation menus, while
-lower levels represent text, links, or buttons. ^[Generally speaking, the
+lower levels represent text, links, or buttons.^[Generally speaking, the
 OS APIs consume this tree like a data model, and the actual tree and data
 model exposed to the OS APIs is platform-specific.]
 
@@ -1742,11 +1742,14 @@ We'll use two Python libraries to actually read text
 out loud: [`gtts`][gtts] (which wraps the Google [text-to-speech API][tts]) and
 [`playsound`][playsound]. You can install them using `pip3`:
 
-[^why-diff]: I think the reason is mainly historical, in that accessibility APIs
+[^why-diff]: I think the reason is partly historical, in that accessibility APIs
 and screen readers evolved first with operating systems, and before/in parallel
-with the development of browsers. These days, browsers are by far the
-most important app many users interact with (especially on desktop computers),
-so it makes more sense to consider such features core to a browser.
+with the development of browsers. These days, browsers are by far the most
+important app many users interact with (especially on desktop computers), so it
+makes more sense to consider such features core to a browser. (However, even
+though the browser may be most important app, screen reader users need a way to
+perform a variety of operating system actions such as logging in, typing in
+lock screens, and starting & navigating between applications.)
 
 [^os-pain]: Another reason is that it's quite a lot of work to directly
 integrate a browser with the accessibility APIs of each OS. Further, it's not
@@ -2501,3 +2504,10 @@ hence the name). This lets custom widgets change focus ring styling
 without losing the useful browser heuristics I mentioned above.
 
 [focus-visible]: https://developer.mozilla.org/en-US/docs/Web/CSS/:focus-visible
+
+*OS integration*: Add the [`accessible_output`][os-integ] Python library and use
+ it to integrate directly with your OS's built-in screen reader. Try out
+ some of the examples and compare its behavior with the screen reader built
+ into our browser.
+
+[os-integ]: https://pypi.org/project/accessible_output/
