@@ -12,7 +12,7 @@ architecture. The lesson transcends the specific system studied: _all_
 computer systems, no matter how big and seemingly complex, can be
 studied and understood[^other-reasons].
 
-[^other-reasons]: Others reasons for these classes: a focus on speed; learning
+[^other-reasons]: Other reasons for these classes: a focus on speed; learning
 low-level APIs; practice with C; knowing the stack; using systems better; and
 the importance of the system covered.
 
