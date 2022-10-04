@@ -27,7 +27,7 @@ interact with a web page in order to make it easier to
 use.[^other-defs] The web's uniquely-flexible
 core technologies mean that browsers offer a lot of accessibility
 features[^not-just-screen-reader] that allow a user to customize the
-style, layout, and rendering of a web page, as well as interact with a
+rendering of a web page, as well as interact with a
 web page with their keyboard, by voice, or using some kind of helper
 software.
 
@@ -45,7 +45,7 @@ software.
 The reasons for customizing, of course, are as diverse as the customizations
 themselves. MDN [reports][mdn-def] that the World Health Organization
 [found][who-fact-sheet] as much as 15% of the world population have some
-form of disability, and many of them are severe or permanent. Most or all of
+form of disability, and many of them are severe or permanent. Nearly all of
 them can benefit greatly from the accessibility features described in this
 chapter. The more severe the disability for a particular person, the more
 critically important these features become for them.
@@ -83,7 +83,7 @@ and use effectively, but are transformative for those who need them.
 [screen-reader]: https://www.afb.org/blindness-and-low-vision/using-technology/assistive-technology-products/screen-readers
     
 [^for-now]: For now, that is---perhaps software assistants will become
-more widespread as software improves, mediating between the user and
+more widespread as technology improves, mediating between the user and
 web pages. Password managers and form autofill agents are already
 somewhat like this.
 
@@ -112,8 +112,8 @@ and abilities.
 
 ::: {.further}
 In the United States, the European Union, and many other countries,
-website accessibility is legally required. For example, United States
-Government websites are required to be accessible under [Section
+website accessibility is in many cases legally required. For example,
+United States Government websites are required to be accessible under [Section
 508][sec508] of the [Rehabilitation Act Amendments of
 1973 (with amendments added later)][rehab-act], and the government has a bunch of
 [regulations][a11yreg]. In the United States, non-government websites
@@ -325,7 +325,7 @@ browser, this method could also account for differences like high-DPI
 displays.
 
 We'll do this conversion to adjust the font sizes in the `text` and
-`input` methods:
+`input` methods for `InlineLayout`, and in `InputLayout`:
 
 ``` {.python}
 class InlineLayout:
@@ -337,6 +337,16 @@ class InlineLayout:
     def input(self, node, zoom):
 	    # ...
         size = device_px(float(node.style["font-size"][:-2]), zoom)
+```
+
+
+``` {.python}
+class InputLayout:
+    # ....
+    def layout(self, zoom):
+        # ...
+        size = \
+            device_px(float(self.node.style["font-size"][:-2]), zoom)
 ```
 
 As well as the font size in `TextLayout`:[^min-font-size]
@@ -373,7 +383,9 @@ This handles text and text boxes, but that's not the only thing that
 needs to zoom in and out. CSS property values, like `width` and
 `height`, are also specified in CSS pixels, not device pixels, so they
 need to be scaled. The easiest way to do that is by passing the `zoom`
-value to `style_length`, which we already use for reading CSS lengths:
+value to `style_length`, which we already use for reading CSS lengths.
+Note that `default_value` is *not* multiplied by zoom, because it is
+assumed to already be zoomed by the caller.
 
 ``` {.python}
 def style_length(node, style_name, default_value, zoom):
@@ -642,7 +654,7 @@ also need to adjust all the other colors on the page. For example,
 buttons and input elements probably need a darker background color, as
 do any colors that the web developer used on the page.
 
-To support this, CSS uses [media queries][mediaquery]. This special
+To support this, CSS uses [media queries][mediaquery]. This is a special
 syntax that basically wraps some CSS rules in an `if` statement with
 some kind of condition; if the condition is true, those CSS rules are
 used, but if the condition is false, they are ignored. The
@@ -1351,12 +1363,12 @@ also be able to customize the focus outline itself. That's normally
 done with the CSS [`outline` property][outline], which looks like
 this:[^outline-syntax]
 
+    outline: 3px solid red;
+
 [outline]: https://developer.mozilla.org/en-US/docs/Web/CSS/outline
 
 [^outline-syntax]: Naturally, there are other forms this property can
-    take; we'll only implement this syntax.
-
-    outline: 3px solid red;
+take; we'll only implement this syntax.
 
 This asks for a three pixel red outline. To add support for this in
 our browser, we'll again need to first generalize the parser.
@@ -1439,12 +1451,10 @@ a:focus { outline: 2px solid white; }
 }
 ```
 
-Finally, what if someone sets `outline` on an element that isn't
-focused? It's not really clear why you'd do that, but in a real
-browser that draws the outline no matter what. We can implement that
-by changing all of our `paint` methods to use `has_outline` instead of
-`is_focused` to draw the outline; focused elements will have an
-outline thanks to the browser style sheet above:
+Finally, change all of our `paint` methods to use `has_outline` instead of
+`is_focused` to draw the outline (this will mean developers can put an outline
+on any element if they want to). Focused elements will have an outline thanks
+to the browser style sheet above:
 
 ``` {.python}
 class LineLayout:
@@ -1675,22 +1685,23 @@ Screen readers
 
 Typically, the screen reader is a separate application from the
 browser,[^why-diff] with which the browser communicates through
-OS-specific APIs. To keep this book platform-independent, our
+OS-specific APIs. To keep this book platform-independent and demonstrate
+more clearly how screen readers interact with the accessibility tree, our
 discussion of screen reader support will instead include a minimal
-screen reader integrated directly into the browser.[^os-pain]
+screen reader integrated directly into the browser.
 
-But should our built-in screen reader live in the `Browser` or each `Tab`? Real
-browsers implement it in the `Browser`, so we'll do that too.^[And therefore
-the browser thread in our multi-threaded browser.] This is sensible for a
-couple of reasons. One is that screen readers need to describe not just the tab
-contents but also browser chrome interactions, and doing it all in one place
-makes it easier to present everything seamlessly to the user. But the most
-critical reason is that since real-world screen readers tend to be in the
-OS, *and their APIs are almost always synchronous*. So the browser
-thread needs to interact with the screen reader without the main
-thread's help.^[I suppose you could temporarily synchronize all
-threads, but that's a really bad idea, not only because it's very
-slow, but also is likely to cause deadlocks unless the browser is
+But should our built-in screen reader live in the `Browser` or each `Tab`?
+Modern browsers implement it in the `Browser`, so we'll do that
+too.^[And therefore the browser thread in our multi-threaded browser.]
+This is sensible for a couple of reasons. One is that screen readers need
+to describe not just the tab contents but also browser chrome interactions,
+and doing it all in one place makes it easier to present everything
+seamlessly to the user. But the most critical reason is that since
+real-world screen readers tend to be in the OS, *and their APIs are almost
+always synchronous*. So the browser thread needs to interact with the screen
+reader without the main thread's help.^[I suppose you could temporarily
+synchronize all threads, but that's a really bad idea, not only because it's
+very slow, but also is likely to cause deadlocks unless the browser is
 extremely careful. Most browsers these days are also multi-process,
 which makes it even harder.]
 
@@ -1750,13 +1761,6 @@ makes more sense to consider such features core to a browser. (However, even
 though the browser may be most important app, screen reader users need a way to
 perform a variety of operating system actions such as logging in, typing in
 lock screens, and starting & navigating between applications.)
-
-[^os-pain]: Another reason is that it's quite a lot of work to directly
-integrate a browser with the accessibility APIs of each OS. Further, it's not
-very easy to find Python bindings for these APIs, especially Linux. And as
-you'll see, it really isn't very hard to get the basics working, though a big
-reason is that these days there are high-quality text-to-speech libraries
-available for non-commercial use.
 
 [gtts]: https://pypi.org/project/gTTS/
 
@@ -2145,13 +2149,13 @@ be configured on a more granular level by setting their "politeness"
 via the `aria-live` attribute (assertive notifications interrupt the
 user, but polite ones don't); what kinds of changes to announce, via
 `aria-atomic` and `aria-relevant`; and whether the live region is in a
-finished or intermediate state, via `aria-busy`. In fact, `aria-live`
+finished or intermediate state, via `aria-busy`. In addition, `aria-live`
 is all that's necessary to create a live region; no role is necessary.
 
 :::
 
 
-Mixed voice / visual interaction
+Voice + visual interaction
 ================================
 
 Thanks to our work in this chapter, our rendering pipeline now
@@ -2320,7 +2324,7 @@ Note that the color of the outline depends on whether or not dark mode
 is on, to try to ensure high contrast.
 
 So now we have an outline drawn. But we additionally want to speak
-whether the user is hovering over. To do that we'll need another flag,
+what the user is hovering over. To do that we'll need another flag,
 `needs_speak_hovered_node`, which we'll set whenever hover moves from
 one element to another:
 
@@ -2365,7 +2369,7 @@ so in a sense it all goes back to the fact that input elements are
 hard to style. That's because input elements often involve several
 separate pieces, like the path and button in a `file` input, the check
 box in a `checkbox` element, or the pop-up menu in a `select`
-drop-down. CSS isn't (yet) a good match for styling such "compound"
+drop-down. CSS isn't (yet) good at styling such "compound"
 elements, though "[pseudo-elements][pseudoelts]" such as `::backdrop`
 or `::file-selector-button` help. Plus, their default appearance
 should match operating system defaults, which might not match standard
