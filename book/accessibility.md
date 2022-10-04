@@ -2146,7 +2146,7 @@ via the `aria-live` attribute (assertive notifications interrupt the
 user, but polite ones don't); what kinds of changes to announce, via
 `aria-atomic` and `aria-relevant`; and whether the live region is in a
 finished or intermediate state, via `aria-busy`. In fact, `aria-live`
-is all that's necessary to create a live region, no role is necessary.
+is all that's necessary to create a live region; no role is necessary.
 
 :::
 
