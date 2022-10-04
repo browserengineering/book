@@ -120,7 +120,8 @@ Government websites are required to be accessible under [Section
 are also required to be accessible under the [Americans with
 Disabilities Act][ada], though it's [not yet clear][ada-unclear]
 exactly what that legal requirement means in practice, since it's
-mostly being done through the courts.
+mostly being done through the courts. A similar law in the European Union
+is the [European Accessibility Act][europe-a11y].
 :::
 
 [sec508]: https://www.access-board.gov/law/ra.html#section-508-federal-electronic-and-information-technology
@@ -128,6 +129,7 @@ mostly being done through the courts.
 [ada]: https://www.ada.gov/ada_intro.htm
 [a11yreg]: https://www.access-board.gov/ict/
 [ada-unclear]: https://www.americanbar.org/groups/law_practice/publications/law_practice_magazine/2022/jf22/vu-launey-egan/
+[europe-a11y]: https://ec.europa.eu/social/main.jsp?catId=1202
 
 CSS zoom
 ========
@@ -449,7 +451,17 @@ are extra sensitive to light, use their device at night, or just
 prefer a darker color scheme. This browser *dark mode* feature should
 switch both the browser chrome and the web page itself to use white
 text on a black background, and otherwise adjust background colors to
-be darker.
+be darker.[^dark-mode-a11y-origins]
+
+[^dark-mode-a11y-origins]: These days, dark mode has hit the mainstream: it's
+supported by pretty much all operating systems, browsers, and many popular
+apps; many people enable it as a personal preference. But it was an
+accessibility feature long before this point. In operating systems it was often
+described as a high contrast or color filtering mode, as a way to help those
+with color blindness or other conditions requiring bright foreground text.
+This theme of "pioneered by accessibility" recurred for a number of other
+technologies, such as text-to-speech, OCR, on-screen keyboards, and voice
+control.
 
 We'll trigger dark mode with `Ctrl-d`:
 
@@ -760,8 +772,8 @@ also a problem for power users that prefer their keyboards. So ideally
 every browser feature should be accessible via the keyboard as well as
 the mouse. That includes browser chrome interactions like going
 back, typing a URL, or quitting the browser, and also web page
-interactions such as submitting forms, typing in text areas, and
-navigating links.
+interactions such as submitting forms, typing in text areas,
+navigating links, and selecting items on the page.
 
 Let's start with the browser chrome, since it's easiest. Here, we need
 to allow the user to go back, to type in the address bar, and to
@@ -843,7 +855,8 @@ if __name__ == "__main__":
 Note that these lines don't go inside the `if ctrl_down` block, since
 we're binding `Tab` and `Enter`, not `Ctrl-Tab` and `Ctrl-Enter`. In
 `Browser`, we just forward these keys to the active tab's `enter` and
-`advance_tab` methods:
+`advance_tab` methods:^[Real browsers also support `Shift-Tab` to go
+backwards in focus order.]
 
 ``` {.python}
 class Browser:
@@ -1512,13 +1525,15 @@ talk, specifically the segment from 2:36--3:54:[^whole-talk]
     built-in screen reader to get a feel for what screen reader
     navigation is like. On macOS, type Cmd-Fn-F5 to turn on Voice
     Over; on Windows, type Win-Ctrl-Enter or Win-Enter to start
-    Narrator. Both are largely used via keyboard shortcuts that you
-    can look up.
+    Narrator; on ChromeOS type Ctrl-Alt-Z to start ChromeVox. All are
+    largely used via keyboard shortcuts that you can look up.
     
 To support all this, browsers structure the page as a tree and use that
 tree to interact with the screen reader. The higher levels of the tree
 represent items like paragraphs, headings, or navigation menus, while
-lower levels represent text, links, or buttons.
+lower levels represent text, links, or buttons.^[Generally speaking, the
+OS APIs consume this tree like a data model, and the actual tree and data
+model exposed to the OS APIs is platform-specific.]
 
 This probably sounds a lot like HTML---and it is quite similar! But,
 just like the HTML tree does not exactly match the layout tree,
@@ -1727,11 +1742,14 @@ We'll use two Python libraries to actually read text
 out loud: [`gtts`][gtts] (which wraps the Google [text-to-speech API][tts]) and
 [`playsound`][playsound]. You can install them using `pip3`:
 
-[^why-diff]: I think the reason is mainly historical, in that accessibility APIs
+[^why-diff]: I think the reason is partly historical, in that accessibility APIs
 and screen readers evolved first with operating systems, and before/in parallel
-with the development of browsers. These days, browsers are by far the
-most important app many users interact with (especially on desktop computers),
-so it makes more sense to consider such features core to a browser.
+with the development of browsers. These days, browsers are by far the most
+important app many users interact with (especially on desktop computers), so it
+makes more sense to consider such features core to a browser. (However, even
+though the browser may be most important app, screen reader users need a way to
+perform a variety of operating system actions such as logging in, typing in
+lock screens, and starting & navigating between applications.)
 
 [^os-pain]: Another reason is that it's quite a lot of work to directly
 integrate a browser with the accessibility APIs of each OS. Further, it's not
@@ -2127,7 +2145,8 @@ be configured on a more granular level by setting their "politeness"
 via the `aria-live` attribute (assertive notifications interrupt the
 user, but polite ones don't); what kinds of changes to announce, via
 `aria-atomic` and `aria-relevant`; and whether the live region is in a
-finished or intermediate state, via `aria-busy`.
+finished or intermediate state, via `aria-busy`. In fact, `aria-live`
+is all that's necessary to create a live region; no role is necessary.
 
 :::
 
@@ -2485,3 +2504,10 @@ hence the name). This lets custom widgets change focus ring styling
 without losing the useful browser heuristics I mentioned above.
 
 [focus-visible]: https://developer.mozilla.org/en-US/docs/Web/CSS/:focus-visible
+
+*OS integration*: Add the [`accessible_output`][os-integ] Python library and use
+ it to integrate directly with your OS's built-in screen reader. Try out
+ some of the examples and compare its behavior with the screen reader built
+ into our browser.
+
+[os-integ]: https://pypi.org/project/accessible_output/
