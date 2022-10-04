@@ -668,9 +668,10 @@ class AccessibilityNode:
         return False
 
     def hit_test(self, x, y):
-        for node in tree_to_list(self, []):
-            if node.bounds.intersects(x, y):
-                return node
+        nodes = [node for node in tree_to_list(self, [])
+            if node.intersects(x, y)]
+        if nodes:
+            return nodes[-1]
 
     def __repr__(self):
         return "AccessibilityNode(node={} role={} text={}".format(
@@ -807,7 +808,8 @@ class CSSParser:
             try:
                 if self.s[self.i] == "@" and not media:
                     prop, val = self.media_query()
-                    if prop == "prefers-color-scheme" and val in ["dark", "light"]:
+                    if prop == "prefers-color-scheme" and \
+                        val in ["dark", "light"]:
                         media = val
                     self.whitespace()
                     self.literal("{")
@@ -1297,10 +1299,6 @@ class Tab:
         self.dark_mode = not self.dark_mode
         self.set_needs_render()
 
-    def hover(self, x, y):
-        self.pending_hover = (x, y)
-        self.set_needs_render()
-
 def draw_line(canvas, x1, y1, x2, y2, color):
     sk_color = parse_color(color)
     path = skia.Path().moveTo(x1, y1).lineTo(x2, y2)
@@ -1513,7 +1511,6 @@ class Browser:
         if self.pending_hover:
             (x, y) = self.pending_hover
             a11y_node = self.accessibility_tree.hit_test(x, y)
-
             if a11y_node:
                 if not self.hovered_a11y_node or \
                     a11y_node.node != self.hovered_a11y_node.node:
@@ -1742,7 +1739,8 @@ class Browser:
         self.lock.release()
 
     def handle_hover(self, event):
-        if not self.accessibility_is_on:
+        if not self.accessibility_is_on or \
+            not self.accessibility_tree:
             return
         self.pending_hover = (event.x, event.y - CHROME_PX)
         self.set_needs_accessibility()
