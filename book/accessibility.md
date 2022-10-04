@@ -115,7 +115,7 @@ In the United States, the European Union, and many other countries,
 website accessibility is legally required. For example, United States
 Government websites are required to be accessible under [Section
 508][sec508] of the [Rehabilitation Act Amendments of
-1973][rehab-act], and the government has a bunch of
+1973 (with amendments added later)][rehab-act], and the government has a bunch of
 [regulations][a11yreg]. In the United States, non-government websites
 are also required to be accessible under the [Americans with
 Disabilities Act][ada], though it's [not yet clear][ada-unclear]
@@ -907,7 +907,7 @@ class Tab:
 
 Finally, we just need to focus on the chosen element. If we've reached
 the last the focusable node (or if there weren't any focusable nodes
-to begin with), we'll UN-focus the page and move focus to the address
+to begin with), we'll un-focus the page and move focus to the address
 bar:
 
 ``` {.python replace=%20=%20focusable_nodes[idx]/_element(focusable_nodes[idx]),%20=%20None/_element(None)}
