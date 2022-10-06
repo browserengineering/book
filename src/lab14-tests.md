@@ -174,15 +174,14 @@ Rendering will read out the accessibility instructions:
     Document
     Input box: 
     Link
-    Link
+    Focusable text: Link
 
 From this tree:
 
-    >>> lab14.print_tree(browser.accessibility_tree)
      AccessibilityNode(node=<html> role=document text=Document
        AccessibilityNode(node=<input> role=textbox text=Input box: 
        AccessibilityNode(node=<a href="/dest"> role=link text=Link
-         AccessibilityNode(node='Link' role=link text=Link
+         AccessibilityNode(node='Link' role=focusable text text=Focusable text: Link
 
 Dark mode
 =========
