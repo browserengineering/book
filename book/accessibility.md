@@ -1614,9 +1614,7 @@ class AccessibilityNode:
     def __init__(self, node):
         # ...
         if isinstance(node, Text):
-            if node.parent.tag == "a":
-                self.role = "link"
-            elif is_focusable(node.parent):
+            if is_focusable(node.parent):
                 self.role = "focusable text"
             else:
                 self.role = "StaticText"
