@@ -144,7 +144,7 @@ decreased by a specified factor.
 
 [^zoom]: The word zoom evokes an analogy to a camera zooming in, but
 it is not the same, because CSS zoom causes layout. *Pinch zoom*, on
-the other hand is just like a camera and does not cause layout.
+the other hand, is just like a camera and does not cause layout.
 
 To implement it, we first need a way to trigger zooming. On most
 browsers, that's done with the `Ctrl-+`, `Ctrl--`, and `Ctrl-0`
@@ -417,7 +417,7 @@ class DocumentLayout:
         self.height = child.height + 2* device_px(VSTEP, zoom)
 ```
 
-Now try it out. All of the fonts should be get about 10% bigger each
+Now try it out. All of the fonts should get about 10% bigger each
 time you press `+`, and shrink by 10% when you press `-`. The bigger
 text should still wrap appropriately at the edge of the screen, and
 CSS lengths should be scaled just like the text is. This is great for
@@ -787,7 +787,7 @@ back, typing a URL, or quitting the browser, and also web page
 interactions such as submitting forms, typing in text areas,
 navigating links, and selecting items on the page.
 
-Let's start with the browser chrome, since it's easiest. Here, we need
+Let's start with the browser chrome, since it's the easiest. Here, we need
 to allow the user to go back, to type in the address bar, and to
 create and cycle through tabs, all with the keyboard. We'll also add a
 keyboard shortcut for quitting the browser.[^one-more] Let's make all
@@ -1065,7 +1065,7 @@ class Tab:
 ```
 
 Note that just like clicking on an element, activating an element can
-be cancelled from JavaScript using `preventDefault`.
+be canceled from JavaScript using `preventDefault`.
 
 We now have configurable keyboard navigation for both the browser and
 the web page content. And it involved writing barely any new code,
@@ -1604,7 +1604,7 @@ accessibility tree, while elements like `<input>`, `<a>` and
 node based on its tag name, or from the special `role` attribute if
 that exists:
 
-[^standard]: Roles and default roles are are specified in the
+[^standard]: Roles and default roles are specified in the
 [WAI ARIA standard][aria-roles].
 
 [aria-roles]: https://www.w3.org/TR/wai-aria-1.2/#introroles
@@ -1696,9 +1696,10 @@ to describe not just the tab contents but also browser chrome interactions,
 and doing it all in one place makes it easier to present everything
 seamlessly to the user. But the most critical reason is that since
 real-world screen readers tend to be in the OS, *and their APIs are almost
-always synchronous*. So the browser thread needs to interact with the screen
-reader without the main thread's help.^[I suppose you could temporarily
-synchronize all threads, but that's a really bad idea, not only because it's
+always synchronous*, the API has to be serviced on the same thread. So the
+browser thread needs to interact with the screen reader without the main
+thread's help.^[I suppose you could temporarily synchronize all threads,
+but that's a really bad idea, not only because it's
 very slow, but also is likely to cause deadlocks unless the browser is
 extremely careful. Most browsers these days are also multi-process,
 which makes it even harder.]
@@ -1756,8 +1757,8 @@ and screen readers evolved first with operating systems, and before/in parallel
 with the development of browsers. These days, browsers are by far the most
 important app many users interact with (especially on desktop computers), so it
 makes more sense to consider such features core to a browser. (However, even
-though the browser may be most important app, screen reader users need a way to
-perform a variety of operating system actions such as logging in, typing in
+though the browser may be the most important app, screen reader users need away
+to perform a variety of operating system actions such as logging in, typing in
 lock screens, and starting & navigating between applications.)
 
 [gtts]: https://pypi.org/project/gTTS/
@@ -2002,7 +2003,7 @@ output device is quite different, the accessibility tree would still
 contain all the information about what content is on the page, whether
 it can be interacted with, its state, and so on. Moreover, by using
 the same accessibility tree for all output devices, users who use more
-that one assistive technology (like a braille display and a screen
+than one assistive technology (like a braille display and a screen
 reader) are sure to receive consistent information.
 
 :::
@@ -2157,7 +2158,7 @@ Voice & visual interaction
 ==========================
 
 Thanks to our work in this chapter, our rendering pipeline now
-basically have two different outputs: a display list for visual
+basically has two different outputs: a display list for visual
 interaction, and an accessibility tree for screen-reader interaction.
 Many users will use just one or the other. However, it can also be
 valuable to use both together. For example, a user might have limited
@@ -2373,7 +2374,7 @@ or `::file-selector-button` help. Plus, their default appearance
 should match operating system defaults, which might not match standard
 CSS. New properties, like [`accent-color`][accent-color] can help
 there. Perhaps the real solution here are [new standards][openui] for
-new [fully-stylable][selectmenu] input elements.
+new [fully-styleable][selectmenu] input elements.
 
 :::
 
@@ -2389,7 +2390,7 @@ Summary
 =======
 
 This chapter introduces accessibility---features to ensure *all* users can
-access and interact with web sites---then showed how to solve several of
+access and interact with web sites---then shows how to solve several of
 the most common accessibility problems in browsers. The key takeaways are:
 
 * Built-in accessibility is possible because of the semantic and declarative
@@ -2426,7 +2427,7 @@ surrounding content.
 *`Element.focus`*: Implement the JavaScript [`focus`][focus-el]
 method, which lets JavaScript focus a particular element. Make sure
 that the option to prevent scrolling works properly. Be careful:
-before reading an element's position, make sure layout has been
+before reading an element's position, make sure that layout has been
 executed.
 
 [focus-el]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/focus
@@ -2479,8 +2480,8 @@ identifies elements the mouse is [hovering over][hover-pseudo].
 Implement it by sending mouse hover events to the active `Tab` and hit
 testing to find out which element is hovered. Try to avoid [forcing a
 layout][forced-layout-hit-test] in this hit test; one way to do that
-is to store a `pending_hover` on the `Tab` and running the hit test
-after `layout` during `render`, and then doing *another* render to
+is to store a `pending_hover` on the `Tab` and run the hit test
+after `layout` during `render`, and then perform *another* render to
 invalidate the hovered element's style.
 
 [forced-layout-hit-test]: https://browser.engineering/scheduling.html#threaded-style-and-layout
