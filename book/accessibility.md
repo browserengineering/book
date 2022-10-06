@@ -2155,8 +2155,8 @@ is all that's necessary to create a live region; no role is necessary.
 :::
 
 
-Voice + visual interaction
-================================
+Voice & visual interaction
+==========================
 
 Thanks to our work in this chapter, our rendering pipeline now
 basically have two different outputs: a display list for visual
