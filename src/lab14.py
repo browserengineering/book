@@ -506,7 +506,8 @@ class InputLayout:
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
         if style == "normal": style = "roman"
-        size = device_px(float(self.node.style["font-size"][:-2]), zoom)
+        size = \
+            device_px(float(self.node.style["font-size"][:-2]), zoom)
         self.font = get_font(size, weight, style)
 
         self.width = style_length(
