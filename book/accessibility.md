@@ -1696,7 +1696,7 @@ to describe not just the tab contents but also browser chrome interactions,
 and doing it all in one place makes it easier to present everything
 seamlessly to the user. But the most critical reason is that since
 real-world screen readers tend to be in the OS, *and their APIs are almost
-always synchronous*, the API has to be serviced on the same thread. So the
+always synchronous*, those APIs have to be serviced on the same thread. So the
 browser thread needs to interact with the screen reader without the main
 thread's help.^[I suppose you could temporarily synchronize all threads,
 but that's a really bad idea, not only because it's
@@ -1757,9 +1757,9 @@ and screen readers evolved first with operating systems, and before/in parallel
 with the development of browsers. These days, browsers are by far the most
 important app many users interact with (especially on desktop computers), so it
 makes more sense to consider such features core to a browser. (However, even
-though the browser may be the most important app, screen reader users need away
-to perform a variety of operating system actions such as logging in, typing in
-lock screens, and starting & navigating between applications.)
+though the browser may be the most important app, screen reader users need
+a way to perform a variety of operating system actions such as logging in,
+typing in lock screens, and starting & navigating between applications.)
 
 [gtts]: https://pypi.org/project/gTTS/
 
