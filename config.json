@@ -25,7 +25,7 @@
             "runtime": "runtime13.js",
             "example-opacity-html": "example13-opacity-raf.html"},
 
-        "accessibility.md": { "disabled": true, "lab": "lab14.py", "stylesheet": "browser14.css",
+        "accessibility.md": { "disabled": false, "lab": "lab14.py", "stylesheet": "browser14.css",
             "runtime": "runtime14.js" },
         "embeds.md": { "disabled": true, "lab": "lab15.py" },
 

@@ -4,6 +4,14 @@ link: https://browser.engineering/
 description: News, new chapters and blog posts
 webMaster: author@browser.engineering (Pavel Panchekha & Chris Harrelson)
 item:
+  - title: Making Content Accessible
+    link: https://browser.engineering/accessibility.html
+    pubDate: Fri, 7 Oct 2022, 13:31:00 -0700
+    description:
+      Accessibility is an important topic, and often not well
+      understood. Chapter 14 of Web Browser Engineering explains how
+      it works, and also how almost every web user benefits from it in
+      one way or another.
   - title: Animating and Compositing
     link: https://browser.engineering/animations.html
     pubDate: Wed, 26 May 2022, 12:33:00 -0700
