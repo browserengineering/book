@@ -3,7 +3,7 @@
 
 export {
     breakpoint, filesystem,
-    socket, ssl, tkinter, dukpy, urllib, html, random,
+    socket, ssl, tkinter, dukpy, urllib, html, random, wbetools,
     truthy, comparator, pysplit, pyrsplit, asyncfilter,
     rt_constants, Widget, http_textarea, 
     };
@@ -47,20 +47,12 @@ class WidgetXHRError extends ExpectedError {
     }
 }
 
-class JSExecutionError extends ExpectedError {
-    constructor(fn) {
-        super("This widget can't handle the " + fn + " exported function's return value, " +
-              "but the book's Python code should work correctly.");
-        this.name = "JSExecutionError";
-    }
-}
-
 class socket {
     static AF_INET = "inet";
     static SOCK_STREAM = "stream";
     static IPPROTO_TCP = "tcp";
 
-    static socket = wrap_class(class {
+    static socket = wrap_class(class socket {
         constructor(params) {
             console.assert(params.family == "inet", "socket family must be inet")
             console.assert(params.type == "stream", "socket type must be stream")
@@ -355,13 +347,23 @@ class random {
     }
 }
 
-class dukpy {
-    static {
-        if (!crossOriginIsolated) {
-            console.error("No cross-origin isolation; dukpy will not be available.");
-        }
+class JSInterpreterError extends ExpectedError {
+    constructor() {
+        super("This widget cannot execute JavaScript due to sandboxing, " +
+             "but the book's Python code should work correctly.");
+        this.name = "JSEnvironmentError."
     }
+}
 
+class JSExecutionError extends ExpectedError {
+    constructor(fn) {
+        super("This widget can't handle the " + fn + " exported function's return value, " +
+              "but the book's Python code should work correctly.");
+        this.name = "JSExecutionError";
+    }
+}
+
+class dukpy {
     static JSRuntimeError = class {
         constructor(msg) {
             this.msg = msg;
@@ -370,6 +372,11 @@ class dukpy {
     
     static JSInterpreter = wrap_class(class {
         constructor() {
+
+            if (!crossOriginIsolated) {
+                throw new JSInterpreterError(this.host);               
+            }
+
             this.function_table = {};
             this.worker = new Worker("/widgets/dukpy.js");
             this.worker.onmessage = this.onmessage.bind(this);
@@ -421,6 +428,10 @@ class dukpy {
             }
         }
     })
+}
+
+class wbetools {
+
 }
 
 class Breakpoint {
