@@ -1137,8 +1137,8 @@ The server's outline is unchanged from the last chapter:
 :::
 
 If you run it, it should look something like [this
-page](lab9-browser.html); due to the browser sandbox, you will need to
-open that page in a new tab.
+page](widgets/lab9-browser.html); due to the browser sandbox, you will
+need to open that page in a new tab.
 
 Exercises
 =========

@@ -1188,8 +1188,8 @@ The server has also grown since last chapter:
 :::
 
 If you run it, it should look something like [this
-page](lab10-browser.html); due to the browser sandbox, you will need
-to open that page in a new tab.
+page](widgets/lab10-browser.html); due to the browser sandbox, you
+will need to open that page in a new tab.
 
 
 Exercises
