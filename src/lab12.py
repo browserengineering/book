@@ -461,7 +461,7 @@ class TaskRunner:
                 task.run()
 
             self.condition.acquire(blocking=True)
-            if len(self.tasks) == 0:
+            if len(self.tasks) == 0 or self.needs_quit:
                 self.condition.wait()
             self.condition.release()
 
