@@ -18,11 +18,19 @@ class socket:
     def __init__(self, *args, **kwargs):
         self.request = b""
         self.connected = False
+        self.scheme = "http"
+        self.ssl_hostname = None
 
     def connect(self, host_port):
-        self.scheme = "http"
         self.host, self.port = host_port
         self.connected = True
+        self._check_cert()
+
+    def _check_cert(self):
+        if self.connected and self.host and self.ssl_hostname:
+            assert self.host == self.ssl_hostname, "server_hostname does not match the host"
+            if self.host.endswith(".badssl.com"): # Fake badssl.com
+                raise ssl.SSLCertVerificationError()
 
     def send(self, text):
         self.request += text
@@ -36,7 +44,8 @@ class socket:
                        if name.lower() == "content-length")
 
     def makefile(self, mode, encoding, newline):
-        assert self.connected and self.host and self.port
+        assert self.connected and self.host and self.port, \
+            "You cannot call makefile() on a socket until you call connect() and send()"
         if self.port == 80 and self.scheme == "http":
             url = self.scheme + "://" + self.host + self.path
         elif self.port == 443 and self.scheme == "https":
@@ -64,7 +73,7 @@ class socket:
     @classmethod
     def respond_ok(cls, url, response, method="GET", body=None):
         response = ("HTTP/1.0 200 OK\r\n\r\n" + response).encode("utf8")
-        cls.URLs[url] = [method, response, body]
+        cls.respond(url, response, method=method, body=body)
 
     @classmethod
     def made_request(cls, url):
@@ -80,7 +89,8 @@ class socket:
 
 class ssl:
     def wrap_socket(self, s, server_hostname):
-        assert s.host == server_hostname
+        s.ssl_hostname = server_hostname
+        s._check_cert()
         s.scheme = "https"
         return s
 
