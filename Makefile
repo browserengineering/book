@@ -89,4 +89,4 @@ test:
 	done
 
 test-allinone:
-	(cd src/ && python3 -m doctest lab13-allinone-tests.md);
+	(cd src/ && python3 -m doctest lab13_allinone-tests.md);
