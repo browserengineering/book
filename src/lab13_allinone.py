@@ -173,24 +173,6 @@ def layout_mode(node):
     else:
         return "block"
 
-def resolve_url(url, current):
-    if "://" in url:
-        return url
-    elif url.startswith("/"):
-        scheme, hostpath = current.split("://", 1)
-        host, oldpath = hostpath.split("/", 1)
-        return scheme + "://" + host + url
-    else:
-        scheme, hostpath = current.split("://", 1)
-        if "/" not in hostpath:
-            current = current + "/"
-        dir, _ = current.rsplit("/", 1)
-        while url.startswith("../"):
-            url = url[3:]
-            if dir.count("/") == 2: continue
-            dir, _ = dir.rsplit("/", 1)
-        return dir + "/" + url
-
 def tree_to_list(tree, list):
     list.append(tree)
     for child in tree.children:
@@ -252,6 +234,24 @@ class DescendantSelector:
 
 EVENT_DISPATCH_CODE = \
     "new Node(dukpy.handle).dispatchEvent(new Event(dukpy.type))"
+
+def resolve_url(url, current):
+    if "://" in url:
+        return url
+    elif url.startswith("/"):
+        scheme, hostpath = current.split("://", 1)
+        host, oldpath = hostpath.split("/", 1)
+        return scheme + "://" + host + url
+    else:
+        scheme, hostpath = current.split("://", 1)
+        if "/" not in hostpath:
+            current = current + "/"
+        dir, _ = current.rsplit("/", 1)
+        while url.startswith("../"):
+            url = url[3:]
+            if dir.count("/") == 2: continue
+            dir, _ = dir.rsplit("/", 1)
+        return dir + "/" + url
 
 def url_origin(url):
     scheme_colon, _, host, _ = url.split("/", 3)
@@ -336,20 +336,6 @@ def request(url, top_level_url, payload=None):
     s.close()
 
     return headers, body
-
-def draw_line(canvas, x1, y1, x2, y2):
-    path = skia.Path().moveTo(x1, y1).lineTo(x2, y2)
-    paint = skia.Paint(Color=skia.ColorBLACK)
-    paint.setStyle(skia.Paint.kStroke_Style)
-    paint.setStrokeWidth(1)
-    canvas.drawPath(path, paint)
-
-def draw_text(canvas, x, y, text, font, color=None):
-    sk_color = parse_color(color)
-    paint = skia.Paint(AntiAlias=True, Color=sk_color)
-    canvas.drawString(
-        text, float(x), y - font.getMetrics().fAscent,
-        font, paint)
 
 FONTS = {}
 
@@ -582,6 +568,13 @@ class Transform(DisplayItem):
         else:
             return "Transform(<no-op>)"
 
+def draw_line(canvas, x1, y1, x2, y2):
+    path = skia.Path().moveTo(x1, y1).lineTo(x2, y2)
+    paint = skia.Paint(Color=skia.ColorBLACK)
+    paint.setStyle(skia.Paint.kStroke_Style)
+    paint.setStrokeWidth(1)
+    canvas.drawPath(path, paint)
+
 class DrawLine(DisplayItem):
     def __init__(self, x1, y1, x2, y2):
         super().__init__(skia.Rect.MakeLTRB(x1, y1, x2, y2))
@@ -620,6 +613,13 @@ class DrawRRect(DisplayItem):
     def __repr__(self):
         return "DrawRRect(rect={}, color={})".format(
             str(self.rrect), self.color)
+
+def draw_text(canvas, x, y, text, font, color=None):
+    sk_color = parse_color(color)
+    paint = skia.Paint(AntiAlias=True, Color=sk_color)
+    canvas.drawString(
+        text, float(x), y - font.getMetrics().fAscent,
+        font, paint)
 
 class DrawText(DisplayItem):
     def __init__(self, x1, y1, text, font, color):
@@ -749,7 +749,6 @@ class DrawCompositedLayer(DisplayItem):
 
     def __repr__(self):
         return "DrawCompositedLayer()"
-
 
 def parse_transform(transform_str):
     if transform_str.find('translate') < 0:
