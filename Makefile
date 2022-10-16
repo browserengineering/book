@@ -87,3 +87,6 @@ test:
 	for i in $$(seq 1 14); do \
 		(cd src/ && python3 -m doctest lab$$i-tests.md); \
 	done
+
+test-allinone:
+	(cd src/ && python3 -m doctest lab13_allinone-tests.md);
