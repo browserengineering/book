@@ -50,15 +50,6 @@ www/widgets/lab%.js: src/lab%.py src/lab%.hints infra/compile.py
 www/widgets/server%.js: src/server%.py src/server%.hints infra/compile.py
 	python3 infra/compile.py $< $@ --hints src/server$*.hints
 
-www/examples/%.html: src/%.html
-	cp $< www/examples
-
-www/examples/%.js: src/%.js
-	cp $< www/examples
-
-www/examples/%.css: src/%.css
-	cp $< www/examples
-
 www/onepage/%.html: book/%.md infra/chapter.html infra/filter.lua config.json
 	$(PANDOC) --toc --metadata=mode:onepage --variable=cur:$* --template infra/chapter.html $< -o $@
 
