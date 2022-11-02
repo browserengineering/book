@@ -11,7 +11,7 @@ import tkinter
 import tkinter.font
 from lab1 import request
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
-from lab3 import get_font
+from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS, layout_mode, DrawRect
 

@@ -14,7 +14,9 @@ from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS, layout_mode, DrawRect
-from lab6 import DrawText, CSSParser, cascade_priority, style, resolve_url, tree_to_list
+from lab6 import CSSParser, TagSelector, DescendantSelector
+from lab6 import INHERITED_PROPERTIES, style, cascade_priority, compute_style
+from lab6 import DrawText, resolve_url, tree_to_list
 
 class LineLayout:
     def __init__(self, node, parent, previous):

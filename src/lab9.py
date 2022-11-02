@@ -14,10 +14,12 @@ from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS, DrawRect
-from lab6 import DrawText, CSSParser, cascade_priority, style, resolve_url, tree_to_list
-from lab6 import TagSelector, DescendantSelector
+from lab6 import CSSParser, TagSelector, DescendantSelector
+from lab6 import INHERITED_PROPERTIES, style, cascade_priority, compute_style
+from lab6 import DrawText, resolve_url, tree_to_list
 from lab7 import LineLayout, TextLayout, CHROME_PX
-from lab8 import request, DocumentLayout, BlockLayout, InlineLayout, InputLayout, INPUT_WIDTH_PX
+from lab8 import request, layout_mode
+from lab8 import DocumentLayout, BlockLayout, InlineLayout, InputLayout, INPUT_WIDTH_PX
 
 EVENT_DISPATCH_CODE = \
     "new Node(dukpy.handle).dispatchEvent(new Event(dukpy.type))"
