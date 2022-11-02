@@ -6,7 +6,7 @@ main: true
 
 Web browsers are ubiquitous, but how do they work? This book explains,
 building a basic but complete web browser, from networking to
-JavaScript, in a thousand lines of Python.
+JavaScript, in a couple thousand lines of Python.
 
 ::: {.todo}
 This draft version of the book includes unfinished chapters, and those
