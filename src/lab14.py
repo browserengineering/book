@@ -35,6 +35,7 @@ from lab11 import draw_text, get_font, linespace, \
 import OpenGL.GL as GL
 from lab12 import MeasureTime
 from lab13 import USE_BROWSER_THREAD, JSContext, diff_styles, \
+    ANIMATED_PROPERTIES, \
     clamp_scroll, CompositedLayer, absolute_bounds, \
     DrawCompositedLayer, Task, TaskRunner, SingleThreadedTaskRunner, \
     add_parent_pointers, absolute_bounds_for_obj, \
