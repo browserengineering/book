@@ -26,6 +26,9 @@ widgets: \
 	www/widgets/lab9-browser.html www/widgets/lab9.js www/widgets/server9.js \
 	www/widgets/lab10-browser.html www/widgets/lab10.js www/widgets/server10.js
 
+src/lab%.full.py: src/lab%.py
+	python3 infra/inline.py $< > $@
+
 lint: book/*.md src/*.py
 	python3 infra/compare.py --config config.json
 	! grep -n '^```' book/*.md | awk '(NR % 2) {print}' | grep -v '{.'

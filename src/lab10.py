@@ -17,7 +17,8 @@ from lab5 import BLOCK_ELEMENTS, DrawRect
 from lab6 import DrawText, CSSParser, cascade_priority, style, resolve_url, tree_to_list
 from lab6 import TagSelector, DescendantSelector
 from lab7 import LineLayout, TextLayout, CHROME_PX
-from lab8 import DocumentLayout, BlockLayout, InlineLayout, InputLayout, INPUT_WIDTH_PX
+from lab8 import DocumentLayout, BlockLayout, InlineLayout, InputLayout, INPUT_WIDTH_PX, layout_mode
+from lab9 import EVENT_DISPATCH_CODE
 
 def url_origin(url):
     scheme_colon, _, host, _ = url.split("/", 3)
@@ -102,8 +103,6 @@ def request(url, top_level_url, payload=None):
     s.close()
 
     return headers, body
-
-from lab9 import EVENT_DISPATCH_CODE
 
 class JSContext:
     def __init__(self, tab):

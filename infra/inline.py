@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-import ast
-import outlines
+import asttools
 import argparse
 
 if __name__ == "__main__":
@@ -10,6 +9,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     for f in args.file:
-        tree = ast.parse(f.read(), f.name)
-        tree2 = outlines.ResolveImports().visit(tree)
-        print(f.name, ast.unparse(ast.fix_missing_locations(tree2)).count("\n"), sep="\t")
+        tree = asttools.parse(f.read(), f.name)
+        tree = asttools.inline(tree)
+        print(asttools.unparse(tree))
