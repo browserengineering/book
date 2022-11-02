@@ -13,17 +13,14 @@ import skia
 import socket
 import ssl
 import urllib.parse
-from lab4 import print_tree
-from lab4 import Element
-from lab4 import Text
-from lab4 import HTMLParser
-from lab6 import cascade_priority
-from lab6 import resolve_url
-from lab6 import tree_to_list
-from lab6 import INHERITED_PROPERTIES
-from lab6 import CSSParser, compute_style, style
-from lab6 import TagSelector, DescendantSelector
-from lab8 import layout_mode
+from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
+from lab4 import Text, Element, print_tree, HTMLParser
+from lab5 import BLOCK_ELEMENTS
+from lab6 import CSSParser, TagSelector, DescendantSelector
+from lab6 import INHERITED_PROPERTIES, style, cascade_priority, compute_style
+from lab6 import resolve_url, tree_to_list
+from lab7 import CHROME_PX
+from lab8 import INPUT_WIDTH_PX, layout_mode
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, request, url_origin, JSContext
 
@@ -389,8 +386,6 @@ class DocumentLayout:
     def __repr__(self):
         return "DocumentLayout()"
 
-INPUT_WIDTH_PX = 200
-
 class LineLayout:
     def __init__(self, node, parent, previous):
         self.node = node
@@ -560,9 +555,6 @@ def paint_visual_effects(node, cmds, rect):
         ], should_save=needs_blend_isolation),
     ]
 
-SCROLL_STEP = 100
-CHROME_PX = 100
-
 class Tab:
     def __init__(self):
         self.history = []
@@ -709,9 +701,6 @@ class Tab:
             self.history.pop()
             back = self.history.pop()
             self.load(back)
-
-WIDTH, HEIGHT = 800, 600
-HSTEP, VSTEP = 13, 18
 
 class Browser:
     def __init__(self):
