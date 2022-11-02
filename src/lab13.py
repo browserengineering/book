@@ -31,7 +31,7 @@ from lab10 import COOKIE_JAR, request, url_origin
 from lab11 import FONTS, get_font, parse_color, parse_blend_mode, linespace
 from lab11 import draw_line, draw_text, get_font
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
-from lab12 import Task, REFRESH_RATE_SEC
+from lab12 import Task, REFRESH_RATE_SEC, USE_BROWSER_THREAD
 
 
 @wbetools.patch(Text)
@@ -881,8 +881,6 @@ class JSContext:
 
     def requestAnimationFrame(self):
         self.tab.browser.set_needs_animation_frame(self.tab)
-
-USE_BROWSER_THREAD = True
 
 def parse_transition(value):
     properties = {}

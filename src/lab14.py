@@ -19,28 +19,28 @@ import threading
 import time
 import urllib.parse
 import wbetools
-from lab4 import print_tree
-from lab4 import HTMLParser
-from lab4 import Text, Element
-from lab6 import resolve_url
-from lab6 import tree_to_list
-from lab6 import INHERITED_PROPERTIES
-from lab6 import compute_style
-from lab6 import TagSelector, DescendantSelector
-from lab8 import layout_mode
-from lab9 import EVENT_DISPATCH_CODE
-from lab10 import COOKIE_JAR, url_origin, request
-from lab11 import draw_text, get_font, linespace, \
-    parse_blend_mode, CHROME_PX, SCROLL_STEP
 import OpenGL.GL as GL
-from lab12 import MeasureTime
-from lab13 import USE_BROWSER_THREAD, JSContext, diff_styles, \
-    clamp_scroll, CompositedLayer, absolute_bounds, \
-    DrawCompositedLayer, Task, TaskRunner, SingleThreadedTaskRunner, \
-    add_parent_pointers, absolute_bounds_for_obj, \
-    DisplayItem, DrawText, \
-    DrawLine, paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, \
-    REFRESH_RATE_SEC, HSTEP, VSTEP, DrawRRect, draw_rect
+
+from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
+from lab4 import Text, Element, print_tree, HTMLParser
+from lab5 import BLOCK_ELEMENTS
+from lab6 import TagSelector, DescendantSelector
+from lab6 import INHERITED_PROPERTIES, cascade_priority, compute_style
+from lab6 import resolve_url, tree_to_list
+from lab7 import CHROME_PX
+from lab8 import INPUT_WIDTH_PX, layout_mode
+from lab9 import EVENT_DISPATCH_CODE
+from lab10 import COOKIE_JAR, request, url_origin
+from lab11 import FONTS, get_font, parse_blend_mode, linespace
+from lab11 import draw_text
+from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
+from lab12 import Task, REFRESH_RATE_SEC, USE_BROWSER_THREAD
+from lab13 import JSContext, diff_styles, clamp_scroll, add_parent_pointers
+from lab13 import absolute_bounds, absolute_bounds_for_obj
+from lab13 import map_translation, parse_transform
+from lab13 import CompositedLayer, paint_visual_effects
+from lab13 import DisplayItem, DrawText, DrawCompositedLayer, SaveLayer
+from lab13 import ClipRRect, Transform, DrawLine, DrawRRect, draw_rect
 
 @wbetools.patch(Element)
 class Element:
