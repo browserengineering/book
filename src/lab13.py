@@ -16,7 +16,23 @@ import threading
 import time
 import urllib.parse
 import wbetools
-from lab4 import print_tree, Text, Element
+import OpenGL.GL as GL
+
+from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
+from lab4 import Text, Element, print_tree, HTMLParser
+from lab5 import BLOCK_ELEMENTS
+from lab6 import TagSelector, DescendantSelector
+from lab6 import INHERITED_PROPERTIES, cascade_priority, compute_style
+from lab6 import resolve_url, tree_to_list
+from lab7 import CHROME_PX
+from lab8 import INPUT_WIDTH_PX, layout_mode
+from lab9 import EVENT_DISPATCH_CODE
+from lab10 import COOKIE_JAR, request, url_origin
+from lab11 import FONTS, get_font, parse_color, parse_blend_mode, linespace
+from lab11 import draw_line, draw_text, get_font
+from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
+from lab12 import Task, REFRESH_RATE_SEC
+
 
 @wbetools.patch(Text)
 class Text:
@@ -38,24 +54,6 @@ class Element:
 
         self.style = {}
         self.animations = {}
-
-from lab4 import HTMLParser
-from lab6 import cascade_priority
-from lab6 import layout_mode
-from lab6 import resolve_url
-from lab6 import tree_to_list
-from lab6 import INHERITED_PROPERTIES
-from lab6 import compute_style
-from lab6 import TagSelector, DescendantSelector
-from lab8 import layout_mode
-from lab9 import EVENT_DISPATCH_CODE
-from lab10 import COOKIE_JAR, request, url_origin
-from lab11 import draw_line, draw_text, get_font, linespace, \
-    parse_blend_mode, parse_color, request, CHROME_PX, SCROLL_STEP
-from lab12 import MeasureTime
-from lab12 import WIDTH, HEIGHT, SingleThreadedTaskRunner, TaskRunner, Task, \
-    REFRESH_RATE_SEC, HSTEP, VSTEP
-import OpenGL.GL as GL
 
 def center_point(rect):
     return (rect.left() + (rect.right() - rect.left()) / 2,
@@ -591,8 +589,6 @@ class DocumentLayout:
 
     def __repr__(self):
         return "DocumentLayout()"
-
-INPUT_WIDTH_PX = 200
 
 class LineLayout:
     def __init__(self, node, parent, previous):
