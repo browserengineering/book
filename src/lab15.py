@@ -44,7 +44,7 @@ from lab13 import USE_BROWSER_THREAD, diff_styles, \
 from lab14 import parse_color, parse_outline, draw_rect, DrawRRect, \
     is_focused, paint_outline, has_outline, \
     device_px, style_length, cascade_priority, style, \
-    is_focusable, compute_role, announce_text, AccessibilityNode, speak_text, \
+    is_focusable, announce_text, AccessibilityNode, speak_text, \
     CSSParser
 
 def request(url, top_level_url, payload=None):
