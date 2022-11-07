@@ -209,7 +209,6 @@ class InlineLayout:
         self.y = None
         self.width = None
         self.height = None
-        self.display_list = None
 
     def layout(self, zoom):
         self.width = style_length(

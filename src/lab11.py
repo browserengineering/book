@@ -267,7 +267,6 @@ class InlineLayout:
         self.y = None
         self.width = None
         self.height = None
-        self.display_list = None
 
     def layout(self):
         self.width = self.parent.width
