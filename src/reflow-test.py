@@ -23,12 +23,22 @@ def get_font(size, weight, slant):
         FONTS[key] = font
     return FONTS[key]
 
+def propogate_dirty(node):
+    bit = False
+    for child in node.children:
+        propogate_dirty(child)
+        bit = bit or child.dirty or child.dirty_descendant
+    self.dirty_descendant = bit
+
 class Text:
 
     def __init__(self, text, parent):
         self.text = text
         self.children = []
         self.parent = parent
+        self.style = None
+        self.dirty = True
+        self.dirty_style = True
 
     def __repr__(self):
         return repr(self.text)
@@ -40,6 +50,10 @@ class Element:
         self.attributes = attributes
         self.children = []
         self.parent = parent
+        self.dirty = True
+        self.dirty_style = True
+
+        self.style = None
 
     def __repr__(self):
         attrs = [' ' + k + '="' + v + '"' for (k, v) in self.attributes.items()]
@@ -279,6 +293,7 @@ class DescendantSelector:
 INHERITED_PROPERTIES = {'font-size': '16px', 'font-style': 'normal', 'font-weight': 'normal', 'color': 'black'}
 
 def style(node, rules):
+    old_style = node.style
     node.style = {}
     for (property, default_value) in INHERITED_PROPERTIES.items():
         if node.parent:
@@ -298,6 +313,9 @@ def style(node, rules):
         for (property, value) in pairs.items():
             computed_value = compute_style(node, property, value)
             node.style[property] = computed_value
+
+    node.dirty = node.dirty or (node.style != old_style)
+    
     for child in node.children:
         style(child, rules)
 
@@ -447,8 +465,12 @@ class DocumentLayout:
         self.children = []
 
     def layout(self):
-        child = BlockLayout(self.node, self, None)
-        self.children.append(child)
+        if self.node.dirty:
+            child = BlockLayout(self.node, self, None)
+            self.children.append(child)
+        else:
+            child = self.children[0]
+
         self.width = WIDTH - 2 * HSTEP
         self.x = HSTEP
         self.y = VSTEP
@@ -473,15 +495,20 @@ class BlockLayout:
         self.width = None
         self.height = None
 
+        self.dirty = True
+
     def layout(self):
-        previous = None
-        for child in self.node.children:
-            if layout_mode(child) == 'inline':
-                next = InlineLayout(child, self, previous)
-            else:
-                next = BlockLayout(child, self, previous)
-            self.children.append(next)
-            previous = next
+        self.dirty = self.dirty or self.node.dirty_style
+
+        if self.dirty or self.node.dirty or any(child.dirty for child in self.node.children):
+            self.children = []
+            previous = None
+            for child in self.node.children:
+                next = IBLayout(child, self, previous)
+                self.children.append(next)
+                previous = next
+            self.node.dirty = False
+
         self.width = self.parent.width
         self.x = self.parent.x
         if self.previous:
@@ -491,6 +518,8 @@ class BlockLayout:
         for child in self.children:
             child.layout()
         self.height = sum([child.height for child in self.children])
+
+        self.dirty = False
 
     def paint(self, display_list):
         for child in self.children:
@@ -512,6 +541,7 @@ class InlineLayout:
         self.height = None
 
     def layout(self):
+        self.children = []
         self.width = self.parent.width
         self.x = self.parent.x
         if self.previous:
@@ -586,6 +616,30 @@ class InlineLayout:
 
     def __repr__(self):
         return 'InlineLayout(x={}, y={}, width={}, height={}, node={})'.format(self.x, self.y, self.width, self.height, self.node)
+
+class IBLayout(InlineLayout, BlockLayout):
+    def __init__(self, node, parent, previous):
+        BlockLayout.__init__(self, node, parent, previous)
+        self.layout_mode = 'block'
+
+    def layout(self):
+        self.layout_mode = layout_mode(self.node)
+        if self.layout_mode == 'inline':
+            return InlineLayout.layout(self)
+        else:
+            return BlockLayout.layout(self)
+
+    def paint(self, display_list):
+        if self.layout_mode == 'inline':
+            return InlineLayout.paint(self, display_list)
+        else:
+            return BlockLayout.paint(self, display_list)
+
+    def __repr__(self):
+        if self.layout_mode == 'inline':
+            return InlineLayout.__repr__(self)
+        else:
+            return BlockLayout.__repr__(self)
 
 class InputLayout:
 
@@ -766,6 +820,7 @@ class JSContext:
         elt.children = new_nodes
         for child in elt.children:
             child.parent = elt
+        elt.dirty = True
         self.tab.render()
 
     def XMLHttpRequest_send(self, method, url, body):
@@ -824,11 +879,12 @@ class Tab:
             except:
                 continue
             self.rules.extend(CSSParser(body).parse())
+
+        self.document = DocumentLayout(self.nodes)
         self.render()
 
     def render(self):
         style(self.nodes, sorted(self.rules, key=cascade_priority))
-        self.document = DocumentLayout(self.nodes)
         self.document.layout()
         self.display_list = []
         self.document.paint(self.display_list)

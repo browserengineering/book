@@ -48,6 +48,7 @@ ENTRIES = [
 ]
 
 LOGINS = {
+    "": "",
     "crashoverride": "0cool",
     "cerealkiller": "emmanuel",
 }
