@@ -49,7 +49,7 @@ ENTRIES = [
 
 LOGINS = {
     "crashoverride": "0cool",
-    "cerealkiller": "emmanuel"
+    "cerealkiller": "emmanuel",
 }
 
 def do_request(session, method, url, headers, body):
