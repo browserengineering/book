@@ -2,9 +2,11 @@ var allow_submit = true;
 var label = document.querySelectorAll("label")[0];
 
 function lengthCheck() {
-    allow_submit = this.getAttribute("value").length <= 100;
+    allow_submit = this.getAttribute("value").length <= 4;
     if (!allow_submit) {
-        label.innerHTML = "Comment too long!"
+        label.innerHTML = "Comment too long!";
+    } else {
+        label.innerHTML = "";
     }
 }
 
