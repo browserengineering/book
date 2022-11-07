@@ -221,13 +221,13 @@ class InlineLayout:
 
         self.display_list = []
 
-        self.cursor_x = 0
-        self.cursor_y = 0
+        self.cursor_x = self.x
+        self.cursor_y = self.y
         self.line = []
         self.recurse(self.node)
         self.flush()
 
-        self.height = self.cursor_y
+        self.height = self.cursor_y - self.y
 
     def recurse(self, node):
         if isinstance(node, Text):
@@ -247,23 +247,23 @@ class InlineLayout:
         font = get_font(size, weight, style)
         for word in node.text.split():
             w = font.measure(word)
-            if self.cursor_x + w > self.width:
+            if self.cursor_x + w > self.x + self.width:
                 self.flush()
-            self.line.append((self.cursor_x + self.x, word, font, color))
+            self.line.append((self.cursor_x, word, font, color))
             self.cursor_x += w + font.measure(" ")
 
     def flush(self):
         if not self.line: return
         metrics = [font.metrics() for x, word, font, color in self.line]
         max_ascent = max([metric["ascent"] for metric in metrics])
-        baseline = self.y + self.cursor_y + 1.25 * max_ascent
+        baseline = self.cursor_y + 1.25 * max_ascent
         for x, word, font, color in self.line:
             y = baseline - font.metrics("ascent")
             self.display_list.append((x, y, word, font, color))
-        self.cursor_x = 0
+        self.cursor_x = self.x
         self.line = []
         max_descent = max([metric["descent"] for metric in metrics])
-        self.cursor_y += 1.25 * (max_ascent + max_descent)
+        self.cursor_y = baseline + 1.25 * max_descent
 
     def paint(self, display_list):
         bgcolor = self.node.style.get("background-color",
