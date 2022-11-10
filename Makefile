@@ -57,15 +57,18 @@ www/onepage.html: $(patsubst %,www/onepage/%.html,$(CHAPTERS))
 www/onepage.html: book/onepage.md infra/template.html infra/filter.lua config.json
 	$(PANDOC) --metadata=mode:onepage --template infra/template.html -c book.css $< -o $@
 
+bottle.py:
+	curl -O https://raw.githubusercontent.com/bottlepy/bottle/0.12.23/bottle.py
+
 wc:
 	@ printf " Words  Code  File\n"; awk -f infra/wc.awk book/*.md | sort -rn
 
 publish:
-	rsync -rtu --exclude=db.json --exclude=*.hash www/ server:/home/www/browseng/
-	ssh server chmod -Rf a+r /home/www/browseng/ || true
+	rsync -rtu --exclude=db.json --exclude=*.hash www/ server:/var/www/wbe/
+	ssh server chmod -Rf a+r /var/www/wbe/ || true
 
 restart:
-	rsync infra/api.py server:/home/www/browseng/
+	rsync infra/api.py server:/var/www/wbe/
 	ssh server sudo systemctl restart browser-engineering.service
 
 backup:
