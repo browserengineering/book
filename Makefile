@@ -72,7 +72,7 @@ restart:
 	ssh server sudo systemctl restart browser-engineering.service
 
 backup:
-	rsync server:/home/www/browseng/db.json infra/db.$(shell date +%Y-%m-%d).pickle
+	rsync server:/var/www/wbe/db.json infra/db.$(shell date +%Y-%m-%d).pickle
 
 test-server:
 	(cd www/ && python3 ../infra/server.py)
