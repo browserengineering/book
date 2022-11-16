@@ -411,6 +411,8 @@ class LineLayout:
             word.y = baseline - word.font.metrics('ascent')
         max_descent = max([word.font.metrics('descent') for word in self.children])
         self.height = 1.25 * (max_ascent + max_descent)
+        self.dirty_xyw = False
+        self.dirty_h = False
 
     def paint(self, display_list):
         for child in self.children:
@@ -464,6 +466,9 @@ class DocumentLayout:
         self.previous = None
         self.children = []
 
+        self.dirty_xyw = True
+        self.dirty_h = True
+
     def layout(self):
         if self.node.dirty:
             child = BlockLayout(self.node, self, None)
@@ -471,11 +476,20 @@ class DocumentLayout:
         else:
             child = self.children[0]
 
-        self.width = WIDTH - 2 * HSTEP
-        self.x = HSTEP
-        self.y = VSTEP
+        if self.dirty_xyw:
+            self.width = WIDTH - 2 * HSTEP
+            self.x = HSTEP
+            self.y = VSTEP
+            child.dirty_xyw = True
+            self.dirty_xyw = False
+
         child.layout()
-        self.height = child.height + 2 * VSTEP
+
+        if self.dirty_h:
+            assert not child.dirty_h
+            self.height = child.height + 2 * VSTEP
+            # no parent, don't set parent dirty bit
+            self.dirty_h = False
 
     def paint(self, display_list):
         self.children[0].paint(display_list)
@@ -494,65 +508,47 @@ class BlockLayout:
         self.y = None
         self.width = None
         self.height = None
+        self.layout_mode = None
 
-        self.dirty = True
+        self.dirty_xyw = True
+        self.dirty_h = True
 
     def layout(self):
-        self.dirty = self.dirty or self.node.dirty_style
+        if self.dirty_xyw:
+            assert not self.parent.dirty_xyw
+            self.width = self.parent.width
+            self.x = self.parent.x
+            if self.previous:
+                assert not self.previous.dirty_xyw and not self.previous.dirty_h
+                self.y = self.previous.y + self.previous.height
+            else:
+                self.y = self.parent.y
+            for child in self.children:
+                child.dirty_xyw = True
+            self.dirty_xyw = False
 
-        if self.dirty or self.node.dirty or any(child.dirty for child in self.node.children):
+        if self.node.dirty:
+            self.layout_mode = layout_mode(self.node)
             self.children = []
-            previous = None
-            for child in self.node.children:
-                next = IBLayout(child, self, previous)
-                self.children.append(next)
-                previous = next
+            if self.layout_mode == "block":
+                previous = None
+                for child in self.node.children:
+                    next = BlockLayout(child, self, previous)
+                    self.children.append(next)
+                    previous = next
+            elif self.layout_mode == "inline":
+                self.new_line()
+                self.recurse(self.node)
             self.node.dirty = False
 
-        self.width = self.parent.width
-        self.x = self.parent.x
-        if self.previous:
-            self.y = self.previous.y + self.previous.height
-        else:
-            self.y = self.parent.y
         for child in self.children:
             child.layout()
-        self.height = sum([child.height for child in self.children])
 
-        self.dirty = False
-
-    def paint(self, display_list):
-        for child in self.children:
-            child.paint(display_list)
-
-    def __repr__(self):
-        return 'BlockLayout(x={}, y={}, width={}, height={}, node={})'.format(self.x, self.y, self.width, self.height, self.node)
-
-class InlineLayout:
-
-    def __init__(self, node, parent, previous):
-        self.node = node
-        self.parent = parent
-        self.previous = previous
-        self.children = []
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-
-    def layout(self):
-        self.children = []
-        self.width = self.parent.width
-        self.x = self.parent.x
-        if self.previous:
-            self.y = self.previous.y + self.previous.height
-        else:
-            self.y = self.parent.y
-        self.new_line()
-        self.recurse(self.node)
-        for line in self.children:
-            line.layout()
-        self.height = sum([line.height for line in self.children])
+        if self.dirty_h:
+            assert not any([child.dirty_h for child in self.children])
+            self.height = sum([child.height for child in self.children])
+            self.parent.dirty_h = True
+            self.dirty_h = False
 
     def recurse(self, node):
         if isinstance(node, Text):
@@ -581,6 +577,7 @@ class InlineLayout:
         return get_font(size, weight, style)
 
     def text(self, node):
+        assert not self.dirty_xyw
         font = self.get_font(node)
         for word in node.text.split():
             w = font.measure(word)
@@ -593,6 +590,7 @@ class InlineLayout:
             self.cursor_x += w + font.measure(' ')
 
     def input(self, node):
+        assert not self.dirty_xyw
         w = INPUT_WIDTH_PX
         if self.cursor_x + w > self.width:
             self.new_line()
@@ -615,31 +613,9 @@ class InlineLayout:
             child.paint(display_list)
 
     def __repr__(self):
-        return 'InlineLayout(x={}, y={}, width={}, height={}, node={})'.format(self.x, self.y, self.width, self.height, self.node)
-
-class IBLayout(InlineLayout, BlockLayout):
-    def __init__(self, node, parent, previous):
-        BlockLayout.__init__(self, node, parent, previous)
-        self.layout_mode = 'block'
-
-    def layout(self):
-        self.layout_mode = layout_mode(self.node)
-        if self.layout_mode == 'inline':
-            return InlineLayout.layout(self)
-        else:
-            return BlockLayout.layout(self)
-
-    def paint(self, display_list):
-        if self.layout_mode == 'inline':
-            return InlineLayout.paint(self, display_list)
-        else:
-            return BlockLayout.paint(self, display_list)
-
-    def __repr__(self):
-        if self.layout_mode == 'inline':
-            return InlineLayout.__repr__(self)
-        else:
-            return BlockLayout.__repr__(self)
+        return 'BlockLayout[{}](x={}, y={}, width={}, height={}, node={})'.format(
+            self.layout_mode,
+            self.x, self.y, self.width, self.height, self.node)
 
 class InputLayout:
 
@@ -1049,6 +1025,7 @@ class Browser:
             self.canvas.create_text(55, 55, anchor='nw', text=url, font=buttonfont, fill='black')
         self.canvas.create_rectangle(10, 50, 35, 90, outline='black', width=1)
         self.canvas.create_polygon(15, 70, 30, 55, 30, 85, fill='black')
+
 if __name__ == '__main__':
     import sys
     Browser().load(sys.argv[1])
