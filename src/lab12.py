@@ -28,7 +28,7 @@ from lab10 import COOKIE_JAR, request, url_origin
 from lab11 import FONTS, get_font, parse_color, parse_blend_mode, linespace
 from lab11 import SaveLayer, DrawRRect, DrawText, DrawRect, DrawLine, ClipRRect
 from lab11 import draw_line, draw_text, draw_rect
-from lab11 import BlockLayout, InlineLayout, DocumentLayout, LineLayout, TextLayout, InputLayout
+from lab11 import BlockLayout, DocumentLayout, LineLayout, TextLayout, InputLayout
 from lab11 import paint_visual_effects
 
 class MeasureTime:
