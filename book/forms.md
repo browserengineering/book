@@ -168,7 +168,7 @@ We now need to create some `InputLayout`s, which we can do in
 `InlineLayout`:
 
 ``` {.python}
-class InlineLayout:
+class BlockLayout:
     def recurse(self, node):
         if isinstance(node, Text):
             self.text(node)
@@ -193,7 +193,7 @@ Finally, this new `input` method is similar to the `text` method,
 creating a new layout object and adding it to the current line:
 
 ``` {.python}
-class InlineLayout:
+class BlockLayout:
     def input(self, node):
         w = INPUT_WIDTH_PX
         if self.cursor_x + w > self.x + self.width:
@@ -244,7 +244,7 @@ in this case:
 [^atomic-inline-input]
 
 ``` {.python}
-class InlineLayout:
+class BlockLayout:
     # ...
     def paint(self, display_list):
         # ...

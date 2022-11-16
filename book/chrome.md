@@ -23,7 +23,7 @@ headings have their sizes and positions recorded in the layout tree,
 formatted text (like links) does not. We need to fix that.
 
 The big idea is to introduce two new types of layout objects:
-`LineLayout` and `TextLayout`. `InlineLayout` will now have
+`LineLayout` and `TextLayout`. `BlockLayout` will now have
 `LineLayout` children for each line of text, which themselves will
 contain a `TextLayout` for each word in that line. These new classes
 can make the layout tree look different from the HTML tree. So to
@@ -43,8 +43,8 @@ The text in the `body` element wraps across two lines (because of the
 `br` element), so the layout tree will have this structure:
 
     DocumentLayout
-      BlockLayout (html element)
-        InlineLayout (body element)
+      BlockLayout[block] (html element)
+        BlockLayout[inline] (body element)
           LineLayout (first line of text)
             TextLayout ("Here")
             TextLayout ("is")
@@ -92,7 +92,7 @@ need to think about how the `LineLayout` and `TextLayout` objects will
 be created. That happens during word wrapping.
 
 Let's review [how word wrapping works](text.md) right now.
-`InlineLayout` is responsible for word wrapping, inside its `text`
+`BlockLayout` is responsible for word wrapping, inside its `text`
 method. That method updates a `line` field, which stores all the words
 in the current line. When it's time to go to the next line, it calls
 `flush`, which computes the location of the line and each word in it,
@@ -108,7 +108,7 @@ self.line.append((self.cursor_x, word, font, color))
 
 We now want to create a `TextLayout` object and add it to a
 `LineLayout` object. The `LineLayout`s are children of the
-`InlineLayout`, so the current line can be found at the end of the
+`BlockLayout`, so the current line can be found at the end of the
 `children` array:
 
 ``` {.python indent=12}
@@ -267,7 +267,7 @@ field for each `TextLayout`, but we do not need to compute a `y`
 field.
 
 We can compute `font` using the same font-construction code as in
-`InlineLayout`:
+`BlockLayout`:
 
 ``` {.python}
 class TextLayout:
