@@ -18,7 +18,7 @@ from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority, compute_style
 from lab6 import DrawText, resolve_url, tree_to_list
 from lab7 import LineLayout, TextLayout, CHROME_PX
-from lab8 import DocumentLayout, BlockLayout, InlineLayout, InputLayout, INPUT_WIDTH_PX, layout_mode
+from lab8 import DocumentLayout, BlockLayout, InputLayout, INPUT_WIDTH_PX, layout_mode
 from lab9 import EVENT_DISPATCH_CODE
 
 def url_origin(url):

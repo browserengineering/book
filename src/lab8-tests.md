@@ -54,18 +54,18 @@ Testing InputLayout
                'Submit!'
     >>> lab8.print_tree(browser.tabs[0].document)
      DocumentLayout()
-       BlockLayout(x=13, y=18, width=774, height=45.0, node=<html>)
-         BlockLayout(x=13, y=18, width=774, height=45.0, node=<body>)
-           BlockLayout(x=13, y=18, width=774, height=45.0, node=<form action="/submit">)
-             InlineLayout(x=13, y=18, width=774, height=15.0, node=<p>)
+       BlockLayout[block](x=13, y=18, width=774, height=45.0, node=<html>)
+         BlockLayout[block](x=13, y=18, width=774, height=45.0, node=<body>)
+           BlockLayout[block](x=13, y=18, width=774, height=45.0, node=<form action="/submit">)
+             BlockLayout[inline](x=13, y=18, width=774, height=15.0, node=<p>)
                LineLayout(x=13, y=18, width=774, height=15.0)
                  TextLayout(x=13, y=20.25, width=60, height=12, node='Name: ', word=Name:)
                  InputLayout(x=85, y=20.25, width=200, height=12, type=input)
-             InlineLayout(x=13, y=33.0, width=774, height=15.0, node=<p>)
+             BlockLayout[inline](x=13, y=33.0, width=774, height=15.0, node=<p>)
                LineLayout(x=13, y=33.0, width=774, height=15.0)
                  TextLayout(x=13, y=35.25, width=96, height=12, node='Comment: ', word=Comment:)
                  InputLayout(x=121, y=35.25, width=200, height=12, type=input)
-             InlineLayout(x=13, y=48.0, width=774, height=15.0, node=<p>)
+             BlockLayout[inline](x=13, y=48.0, width=774, height=15.0, node=<p>)
                LineLayout(x=13, y=48.0, width=774, height=15.0)
                  InputLayout(x=13, y=50.25, width=200, height=12, type=button text=Submit!)
 
@@ -140,17 +140,17 @@ Testing layout_mode
          <div>
 
 In this case, because there is an inline elemnet (the `<input>`) and a block'
-sibling (the `<div`), they should be contianed in a `BlockLayout`, but the
-`<input>` element is in an `InlineLayout`:
+sibling (the `<div`), they should be contianed in a `BlockLayout[block]`, but the
+`<input>` element is in an `BlockLayout[inline]`:
 
     >>> lab8.print_tree(browser.tabs[0].document)
      DocumentLayout()
-       BlockLayout(x=13, y=18, width=774, height=15.0, node=<html>)
-         BlockLayout(x=13, y=18, width=774, height=15.0, node=<body>)
-           InlineLayout(x=13, y=18, width=774, height=15.0, node=<input>)
+       BlockLayout[block](x=13, y=18, width=774, height=15.0, node=<html>)
+         BlockLayout[block](x=13, y=18, width=774, height=15.0, node=<body>)
+           BlockLayout[inline](x=13, y=18, width=774, height=15.0, node=<input>)
              LineLayout(x=13, y=18, width=774, height=15.0)
                InputLayout(x=13, y=20.25, width=200, height=12, type=input)
-           BlockLayout(x=13, y=33.0, width=774, height=0, node=<div>)
+           BlockLayout[block](x=13, y=33.0, width=774, height=0, node=<div>)
 
 The painted output also is only drawing the input as 200px wide:
 

@@ -41,16 +41,16 @@ Testing tree_to_list
     >>> browser.load(url)
     >>> lab6.print_tree(browser.document)
      DocumentLayout()
-       BlockLayout(x=13, y=18, width=774, height=15.0)
-         BlockLayout(x=13, y=18, width=774, height=15.0)
-           InlineLayout(x=13, y=18, width=774, height=15.0)
+       BlockLayout[block](x=13, y=18, width=774, height=15.0)
+         BlockLayout[block](x=13, y=18, width=774, height=15.0)
+           BlockLayout[inline](x=13, y=18, width=774, height=15.0)
     >>> list = []
     >>> retval = lab6.tree_to_list(browser.document, list)
     >>> retval #doctest: +NORMALIZE_WHITESPACE
     [DocumentLayout(),
-     BlockLayout(x=13, y=18, width=774, height=15.0),
-     BlockLayout(x=13, y=18, width=774, height=15.0),
-     InlineLayout(x=13, y=18, width=774, height=15.0)]
+     BlockLayout[block](x=13, y=18, width=774, height=15.0),
+     BlockLayout[block](x=13, y=18, width=774, height=15.0),
+     BlockLayout[inline](x=13, y=18, width=774, height=15.0)]
     >>> retval == list
     True
 

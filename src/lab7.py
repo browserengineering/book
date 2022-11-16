@@ -116,14 +116,6 @@ class BlockLayout:
 
     def layout(self):
         wbetools.record("layout_pre", self)
-        previous = None
-        for child in self.node.children:
-            if layout_mode(child) == "inline":
-                next = InlineLayout(child, self, previous)
-            else:
-                next = BlockLayout(child, self, previous)
-            self.children.append(next)
-            previous = next
 
         self.width = self.parent.width
         self.x = self.parent.x
@@ -132,6 +124,16 @@ class BlockLayout:
             self.y = self.previous.y + self.previous.height
         else:
             self.y = self.parent.y
+
+        if layout_mode(self.node) == "block":
+            previous = None
+            for child in self.node.children:
+                next = BlockLayout(child, self, previous)
+                self.children.append(next)
+                previous = next
+        else:
+            self.new_line()
+            self.recurse(self.node)
 
         for child in self.children:
             child.layout()
@@ -139,38 +141,6 @@ class BlockLayout:
         self.height = sum([child.height for child in self.children])
 
         wbetools.record("layout_post", self)
-
-    def paint(self, display_list):
-        for child in self.children:
-            child.paint(display_list)
-
-    def __repr__(self):
-        return "BlockLayout(x={}, y={}, width={}, height={})".format(
-            self.x, self.y, self.width, self.height)
-
-class InlineLayout:
-    def __init__(self, node, parent, previous):
-        self.node = node
-        self.parent = parent
-        self.previous = previous
-        self.children = []
-
-    def layout(self):
-        self.width = self.parent.width
-        self.x = self.parent.x
-
-        if self.previous:
-            self.y = self.previous.y + self.previous.height
-        else:
-            self.y = self.parent.y
-
-        self.new_line()
-        self.recurse(self.node)
-        
-        for line in self.children:
-            line.layout()
-
-        self.height = sum([line.height for line in self.children])
 
     def recurse(self, node):
         if isinstance(node, Text):
@@ -211,12 +181,13 @@ class InlineLayout:
             x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
             display_list.append(rect)
+
         for child in self.children:
             child.paint(display_list)
 
     def __repr__(self):
-        return "InlineLayout(x={}, y={}, width={}, height={})".format(
-            self.x, self.y, self.width, self.height)
+        return "BlockLayout[{}](x={}, y={}, width={}, height={})".format(
+            layout_mode(self.node), self.x, self.y, self.width, self.height)
 
 class DocumentLayout:
     def __init__(self, node):

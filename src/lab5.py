@@ -46,7 +46,7 @@ class BlockLayout:
         self.width = None
         self.height = None
 
-        self.display_list = None
+        self.display_list = []
 
     def layout(self):
         wbetools.record("layout_pre", self)
@@ -64,11 +64,6 @@ class BlockLayout:
         else:
             self.layout_inline()
 
-        for child in self.children:
-            child.layout()
-
-        self.height = sum([child.height for child in self.children])
-
         wbetools.record("layout_post", self)
 
     def layout_block(self):
@@ -84,7 +79,6 @@ class BlockLayout:
         self.height = sum([child.height for child in self.children])
 
     def layout_inline(self):
-        self.display_list = []
         self.weight = "normal"
         self.style = "roman"
         self.size = 16
@@ -157,8 +151,10 @@ class BlockLayout:
             x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, "gray")
             display_list.append(rect)
+
         for x, y, word, font in self.display_list:
             display_list.append(DrawText(x, y, word, font))
+
         for child in self.children:
             child.paint(display_list)
 

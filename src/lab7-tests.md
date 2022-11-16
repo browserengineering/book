@@ -35,9 +35,9 @@ Here is how the lines are represented in chapter 7:
 
     >>> lab7.print_tree(browser.tabs[0].document)
      DocumentLayout()
-       BlockLayout(x=13, y=18, width=774, height=45.0)
-         BlockLayout(x=13, y=18, width=774, height=45.0)
-           InlineLayout(x=13, y=18, width=774, height=45.0)
+       BlockLayout[block](x=13, y=18, width=774, height=45.0)
+         BlockLayout[block](x=13, y=18, width=774, height=45.0)
+           BlockLayout[inline](x=13, y=18, width=774, height=45.0)
              LineLayout(x=13, y=18, width=774, height=15.0)
                TextLayout(x=13, y=20.25, width=48, height=12, node='This is a test', word=This)
                TextLayout(x=73, y=20.25, width=24, height=12, node='This is a test', word=is)
@@ -60,9 +60,9 @@ has the same total height:
     >>> browser2.load(url)
     >>> lab6.print_tree(browser2.document)
      DocumentLayout()
-       BlockLayout(x=13, y=18, width=774, height=45.0)
-         BlockLayout(x=13, y=18, width=774, height=45.0)
-           InlineLayout(x=13, y=18, width=774, height=45.0)
+       BlockLayout[block](x=13, y=18, width=774, height=45.0)
+         BlockLayout[block](x=13, y=18, width=774, height=45.0)
+           BlockLayout[inline](x=13, y=18, width=774, height=45.0)
 
 Testing Tab
 ===========
@@ -86,8 +86,8 @@ The browser can have multiple tabs:
 
     >>> lab7.print_tree(browser.tabs[1].document)
      DocumentLayout()
-       BlockLayout(x=13, y=18, width=774, height=15.0)
-         InlineLayout(x=13, y=18, width=774, height=15.0)
+       BlockLayout[block](x=13, y=18, width=774, height=15.0)
+         BlockLayout[inline](x=13, y=18, width=774, height=15.0)
            LineLayout(x=13, y=18, width=774, height=15.0)
              TextLayout(x=13, y=20.25, width=60, height=12, node='Click me', word=Click)
              TextLayout(x=85, y=20.25, width=24, height=12, node='Click me', word=me)
