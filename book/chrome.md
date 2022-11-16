@@ -129,7 +129,7 @@ want to create a new `LineLayout` object. So let's use a different
 method for that:
 
 ``` {.python indent=12}
-if self.cursor_x + w > self.width - HSTEP:
+if self.cursor_x + w > self.width:
     self.new_line()
 ```
 
@@ -138,7 +138,7 @@ This `new_line` method just creates a new line and resets some fields:
 ``` {.python indent=4}
 def new_line(self):
     self.previous_word = None
-    self.cursor_x = self.x
+    self.cursor_x = 0
     last_line = self.children[-1] if self.children else None
     new_line = LineLayout(self.node, self, last_line)
     self.children.append(new_line)

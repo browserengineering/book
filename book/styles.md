@@ -922,7 +922,8 @@ That `display_list` is converted to drawing commands in `paint`:
 def paint(self, display_list):
     # ...
     for x, y, word, font, color in self.display_list:
-        display_list.append(DrawText(x, y, word, font, color))
+        display_list.append(DrawText(self.x + x, self.y + y,
+                                     word, font, color))
 ```
 
 `DrawText` now needs a `color` argument, and needs to pass it to

@@ -239,13 +239,13 @@ class BlockLayout:
         self.height = sum([child.height for child in self.children])
 
     def layout_inline(self):
-        self.cursor_x = self.x
-        self.cursor_y = self.y
+        self.cursor_x = 0
+        self.cursor_y = 0
         self.line = []
         self.recurse(self.node)
         self.flush()
 
-        self.height = self.cursor_y - self.y
+        self.height = self.cursor_y
 
     def recurse(self, node):
         if isinstance(node, Text):
@@ -265,7 +265,7 @@ class BlockLayout:
         font = get_font(size, weight, style)
         for word in node.text.split():
             w = font.measure(word)
-            if self.cursor_x + w > self.x + self.width:
+            if self.cursor_x + w > self.width:
                 self.flush()
             self.line.append((self.cursor_x, word, font, color))
             self.cursor_x += w + font.measure(" ")
@@ -292,7 +292,8 @@ class BlockLayout:
             display_list.append(rect)
 
         for x, y, word, font, color in self.display_list:
-            display_list.append(DrawText(x, y, word, font, color))
+            display_list.append(DrawText(self.x + x, self.y + y,
+                                         word, font, color))
 
         for child in self.children:
             child.paint(display_list)

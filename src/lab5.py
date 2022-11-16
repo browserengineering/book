@@ -46,8 +46,6 @@ class BlockLayout:
         self.width = None
         self.height = None
 
-        self.display_list = []
-
     def layout(self):
         wbetools.record("layout_pre", self)
 
@@ -79,16 +77,19 @@ class BlockLayout:
         self.height = sum([child.height for child in self.children])
 
     def layout_inline(self):
+        self.display_list = []
+
+        self.cursor_x = 0
+        self.cursor_y = 0
         self.weight = "normal"
         self.style = "roman"
         self.size = 16
 
-        self.cursor_x = self.x
-        self.cursor_y = self.y
         self.line = []
         self.recurse(self.node)
         self.flush()
-        self.height = self.cursor_y - self.y
+
+        self.height = self.cursor_y
 
     def recurse(self, node):
         if isinstance(node, Text):
@@ -128,7 +129,7 @@ class BlockLayout:
         font = get_font(self.size, self.weight, self.style)
         for word in node.text.split():
             w = font.measure(word)
-            if self.cursor_x + w > self.width - HSTEP:
+            if self.cursor_x + w > self.width:
                 self.flush()
             self.line.append((self.cursor_x, word, font))
             self.cursor_x += w + font.measure(" ")
@@ -141,7 +142,7 @@ class BlockLayout:
         for x, word, font in self.line:
             y = baseline - font.metrics("ascent")
             self.display_list.append((x, y, word, font))
-        self.cursor_x = self.x
+        self.cursor_x = 0
         self.line = []
         max_descent = max([metric["descent"] for metric in metrics])
         self.cursor_y = baseline + 1.25 * max_descent
@@ -152,8 +153,10 @@ class BlockLayout:
             rect = DrawRect(self.x, self.y, x2, y2, "gray")
             display_list.append(rect)
 
-        for x, y, word, font in self.display_list:
-            display_list.append(DrawText(x, y, word, font))
+        if layout_mode(self.node) == "inline":
+            for x, y, word, font in self.display_list:
+                display_list.append(DrawText(self.x + x, self.y + y,
+                                             word, font))
 
         for child in self.children:
             child.paint(display_list)

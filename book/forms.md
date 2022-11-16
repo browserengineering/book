@@ -196,7 +196,7 @@ creating a new layout object and adding it to the current line:
 class BlockLayout:
     def input(self, node):
         w = INPUT_WIDTH_PX
-        if self.cursor_x + w > self.x + self.width:
+        if self.cursor_x + w > self.width:
             self.new_line()
         line = self.children[-1]
         input = InputLayout(node, line, self.previous_word)

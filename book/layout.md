@@ -180,8 +180,8 @@ class InlineLayout:
         self.flush()
 ```
 
-Let's also initialize `cursor_x` and `cursor_y` from `x` and `y`
-instead of `HSTEP` and `VSTEP`, both in `layout` and `flush`:
+Let's also initialize `cursor_x` and `cursor_y` from `0` instead of
+`HSTEP` and `VSTEP`, both in `layout` and `flush`:
 
 ``` {.python}
 class InlineLayout:
@@ -195,6 +195,20 @@ class InlineLayout:
         # ...
         self.cursor_x = self.x
         # ...
+```
+
+The `cursor_x` and `cursor_y` properties are now _relative_ to the
+block's overall `x` and `y` positions, so we'll wrap lines when
+`cursor_x` reaches its `width`:
+
+``` {.python}
+class InlineLayout:
+    def text(self, node):
+        for word in node.text.split():
+            # ...
+            if self.cursor_x + w > self.width:
+                # ...
+            # ...
 ```
 
 Inline layout objects aren't going to have any children [for
@@ -371,7 +385,7 @@ its *y*-cursor.
 class InlineLayout:
     def layout(self):
         # ...
-        self.height = self.cursor_y - self.y
+        self.height = self.cursor_y
 ```
 
 Again, `width`, `x`, and `y` have to be computed before text is laid
@@ -547,8 +561,12 @@ it would be a bit harder to refactor later.
 class InlineLayout:
     def paint(self, display_list):
         for x, y, word, font in self.display_list:
-            display_list.append(DrawText(x, y, word, font))
+            display_list.append(DrawText(self.x + x, self.y + y,
+                                         word, font))
 ```
+
+Note that we must add the block's `x` and `y`, since the positions in
+the display list are relative to the block's position.
 
 But it can also add `DrawRect` commands for backgrounds. Let's add
 a gray background to `pre` tags (which are used for code examples):

@@ -185,7 +185,7 @@ class BlockLayout:
 
     def new_line(self):
         self.previous_word = None
-        self.cursor_x = self.x
+        self.cursor_x = 0
         last_line = self.children[-1] if self.children else None
         new_line = LineLayout(self.node, self, last_line)
         self.children.append(new_line)
@@ -197,7 +197,7 @@ class BlockLayout:
         font = get_font(size, weight, size)
         for word in node.text.split():
             w = font.measureText(word)
-            if self.cursor_x + w > self.x + self.width:
+            if self.cursor_x + w > self.width:
                 self.new_line()
             line = self.children[-1]
             text = TextLayout(node, word, line, self.previous_word)
@@ -207,7 +207,7 @@ class BlockLayout:
 
     def input(self, node, zoom):
         w = device_px(INPUT_WIDTH_PX, zoom)
-        if self.cursor_x + w > self.x + self.width:
+        if self.cursor_x + w > self.width:
             self.new_line()
         line = self.children[-1]
         input = InputLayout(node, line, self.previous_word)
