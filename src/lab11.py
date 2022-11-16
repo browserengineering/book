@@ -212,15 +212,6 @@ class BlockLayout:
         self.height = None
 
     def layout(self):
-        previous = None
-        for child in self.node.children:
-            if layout_mode(child) == "inline":
-                next = InlineLayout(child, self, previous)
-            else:
-                next = BlockLayout(child, self, previous)
-            self.children.append(next)
-            previous = next
-
         self.width = self.parent.width
         self.x = self.parent.x
 
@@ -228,64 +219,21 @@ class BlockLayout:
             self.y = self.previous.y + self.previous.height
         else:
             self.y = self.parent.y
+
+        if layout_mode(self.node) == "block":
+            previous = None
+            for child in self.node.children:
+                next = BlockLayout(child, self, previous)
+                self.children.append(next)
+                previous = next
+        else:
+            self.new_line()
+            self.recurse(self.node)
 
         for child in self.children:
             child.layout()
 
         self.height = sum([child.height for child in self.children])
-
-    def paint(self, display_list):
-        cmds = []
-
-        rect = skia.Rect.MakeLTRB(
-            self.x, self.y,
-            self.x + self.width, self.y + self.height)
-        bgcolor = self.node.style.get("background-color",
-                                 "transparent")
-        if bgcolor != "transparent":
-            radius = float(
-                self.node.style.get("border-radius", "0px")[:-2])
-            cmds.append(DrawRRect(rect, radius, bgcolor))
-
-        for child in self.children:
-            child.paint(cmds)
-
-        cmds = paint_visual_effects(self.node, cmds, rect)
-        display_list.extend(cmds)
-
-    def __repr__(self):
-        return "BlockLayout(x={}, y={}, width={}, height={}, node={})".format(
-            self.x, self.x, self.width, self.height, self.node)
-
-class InlineLayout:
-    def __init__(self, node, parent, previous):
-        self.node = node
-        self.parent = parent
-        self.previous = previous
-        self.children = []
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-        self.display_list = None
-
-    def layout(self):
-        self.width = self.parent.width
-
-        self.x = self.parent.x
-
-        if self.previous:
-            self.y = self.previous.y + self.previous.height
-        else:
-            self.y = self.parent.y
-
-        self.new_line()
-        self.recurse(self.node)
-        
-        for line in self.children:
-            line.layout()
-
-        self.height = sum([line.height for line in self.children])
 
     def recurse(self, node):
         if isinstance(node, Text):
@@ -339,19 +287,21 @@ class InlineLayout:
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
-            self.x, self.y, self.x + self.width,
-            self.y + self.height)
+            self.x, self.y,
+            self.x + self.width, self.y + self.height)
 
+        bgcolor = self.node.style.get("background-color",
+                                 "transparent")
+        
         is_atomic = not isinstance(self.node, Text) and \
             (self.node.tag == "input" or self.node.tag == "button")
 
         if not is_atomic:
-            bgcolor = self.node.style.get("background-color",
-                                     "transparent")
             if bgcolor != "transparent":
-                radius = float(self.node.style.get("border-radius", "0px")[:-2])
+                radius = float(
+                    self.node.style.get("border-radius", "0px")[:-2])
                 cmds.append(DrawRRect(rect, radius, bgcolor))
- 
+
         for child in self.children:
             child.paint(cmds)
 
@@ -360,8 +310,8 @@ class InlineLayout:
         display_list.extend(cmds)
 
     def __repr__(self):
-        return "InlineLayout(x={}, y={}, width={}, height={}, node={})".format(
-            self.x, self.y, self.width, self.height, self.node)
+        return "BlockLayout[{}](x={}, y={}, width={}, height={}, node={})".format(
+            layout_mode(self.node), self.x, self.y, self.width, self.height, self.node)
 
 class DocumentLayout:
     def __init__(self, node):
