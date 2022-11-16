@@ -61,9 +61,29 @@ Missing end tags are added:
 
 Attributes can be set on tags:
 
-	>>> parser = lab4.HTMLParser("<div name1=value1 name2=value2>text</div")
+	>>> parser = lab4.HTMLParser("<div name1=value1 name2=value2>text</div>")
 	>>> lab4.print_tree(parser.parse())
 	 <html>
 	   <body>
 	     <div name1="value1" name2="value2">
 	       'text'
+
+Testing Layout
+==============
+
+First, let's test that basic layout works as expected:
+
+	>>> parser = lab4.HTMLParser("<p>text</p>")
+	>>> tree = parser.parse()
+    >>> lo = lab4.Layout(tree)
+    >>> lo.display_list
+    [(13, 21.0, 'text', Font size=16 weight=normal slant=roman style=None)]
+
+Moreover, layout should work even if we don't use the
+explicitly-supported tags like `p`:
+
+	>>> parser = lab4.HTMLParser("<div>text</div>")
+	>>> tree = parser.parse()
+    >>> lo = lab4.Layout(tree)
+    >>> lo.display_list
+    [(13, 21.0, 'text', Font size=16 weight=normal slant=roman style=None)]
