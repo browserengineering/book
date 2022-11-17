@@ -4,8 +4,8 @@ Description=Runs the Web Browser Engineering backend server
 [Service]
 ExecStart=/usr/bin/python3 api.py --debug
 WorkingDirectory=/var/www/wbe/
-User=www
-Group=www
+User=www-data
+Group=www-data
 Restart=always
 
 [Install]
