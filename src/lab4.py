@@ -148,6 +148,7 @@ class Layout:
 
         self.line = []
         self.recurse(tree)
+        self.flush()
 
     def recurse(self, tree):
         if isinstance(tree, Text):
