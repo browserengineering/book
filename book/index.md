@@ -17,7 +17,7 @@ misbehave. Read them at your own risk.
 ::: {.signup}
 :::
 
-Follow this book's [blog](blog/) or
+Follow this book's [blog](https://browserbook.substack.com/archive) or
 [Twitter](https://twitter.com/browserbook) for updates. You can also
 talk about the book with others in our [discussion forum][forum].
 
