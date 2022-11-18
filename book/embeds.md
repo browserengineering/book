@@ -20,32 +20,87 @@ complexities of images in a browser, it would already be an entire chapter. But
 many of this topics are pretty advanced details, or get outside of the core
 tasks of a browser engine.
 
-The most obvious missing feature
+Images
+======
 
-Plan:
+Images are everywhere on the web. They are relatively easy to implement in their
+simplest form. Well, they are easy to implement if you have convenient
+libraries to decode and render them. So let's just get to it.[^img-history]
 
-* intro: images! iframes! video!
+Skia doesn't come with built-in image decoding, so first download and install
+the [Pillow/PIL][pillow] library:
 
-* download, decode, draw a simple image
+    pip3 install Pillow
 
-* line layout w/replaced elements
+and include it:
 
-* image resizing, filter quality, decoding to match rendered size
+``` {.python}
+import Pillow
+```
 
+[pillow]: https://pillow.readthedocs.io/en/stable/reference/Image.html
 
-* iframes
-  * Same-origin iframes: same interpreter, postMessage, parent
-  * Cross-origin iframes: postMessage
-  * caveat: bug in duktape regarding use of function() foo() {} syntax and the
+[^img-history] In fact, images  have been around (almost) since the
+beginning, being proposed in [early 1993][img-email]. This makes it ironic that
+images only make their appearance in chapter 15 of the book. My excuse is that
+`tkinter` doesn't support proper image sizing and clipping, so we had to wait
+for the introduction of Skia.
+
+[img-email]: http://1997.webhistory.org/www.lists/www-talk.1993q1/0182.html
+
+Embedded content layout
+=======================
+
+TODO
+
+Image sizing and quality
+==========================
+
+TODO
+
+Iframes
+=======
+
+TODO: make all JS APIs and keyboard events properly target iframes in lab15.py.
+
+Same-origin iframes: same interpreter, postMessage, parent
+
+caveat: bug in duktape regarding use of function() foo() {} syntax and the
     `with` operator
 
-  TODO: make all JS APIs and keyboard events properly target iframes
+Cross-origin iframes
+====================
 
-* postMessage
+Cross-origin iframes: postMessage
 
-Exercises:
-* background-image: positioning, clipping
-* Tiled images
+Iframe security
+===============
 
-* object-fit
+TODO
 
+Other embedded content
+======================
+
+Summary
+=======
+
+This chapter introduced embedded content, via the examples of images and
+iframes.
+
+Exercises
+=========
+
+*Background images*: elements can have not just `background-color`, but also
+[`background-image`][bg-img]. Implement this CSS property for images loaded
+by URL. Also implement the [`background-size`][bg-size] CSS property so the
+image can be sized in various ways.
+
+[bg-img]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-image
+
+[bg-size]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-size
+
+*Object-fit*: implement the [`object-fit`][obj-fit] CSS property. It determines
+how the image within an `<img>` element is sized relative to its container
+element.
+
+[obj-fit]: https://developer.mozilla.org/en-US/docs/Web/CSS/object-fit
