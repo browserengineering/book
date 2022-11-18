@@ -6,7 +6,7 @@ next: skipped
 ...
 
 Our toy browser has a lot of rendering features, but is still missing a few
-features present on pretty much every website. The most obvious is *images*. So
+present on pretty much every website. The most obvious is *images*. So
 we can and should add support for images to our browser to make it feel more
 complete. But images are actually the simplest form of *embedded content*
 within a web page, a much bigger topic, and one that has a lot of interesting
