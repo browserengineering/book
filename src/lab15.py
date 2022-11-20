@@ -93,7 +93,7 @@ def request(url, top_level_url, payload=None):
     body += "\r\n" + (payload or "")
     s.send(body.encode("utf8"))
 
-    response = s.makefile("b")
+    response = s.makefile("b", newline="\r\n")
 
     statusline = response.readline().decode("utf8")
     version, status, explanation = statusline.split(" ", 2)
@@ -131,7 +131,6 @@ def request(url, top_level_url, payload=None):
     s.close()
 
     return headers, body
-
 
 class DrawImage(DisplayItem):
     def __init__(self, image, src_rect, dst_rect, image_rendering):
@@ -584,7 +583,8 @@ class ImageLayout:
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
         if style == "normal": style = "roman"
-        size = device_px(float(self.node.style["font-size"][:-2]), zoom)
+        size = device_px(
+            float(self.node.style["font-size"][:-2]), zoom)
         self.font = get_font(size, weight, style)
 
         self.width = style_length(
@@ -614,8 +614,9 @@ class ImageLayout:
         display_list.extend(cmds)
 
     def __repr__(self):
-        return "ImageLayout(src={}, x={}, y={}, width={}, height={})".format(
-            self.node.attributes["src"], self.x, self.y, self.width, self.height)
+        return ("ImageLayout(src={}, x={}, y={}, width={}," +
+            "height={})").format(self.node.attributes["src"],
+                self.x, self.y, self.width, self.height)
 
 IFRAME_WIDTH_PX = 300
 IFRAME_HEIGHT_PX = 150
@@ -941,7 +942,6 @@ class Document:
                  if isinstance(node, Element)
                  and node.tag == "img"
                  and "src" in node.attributes]
-
         for img in images:
             link = img.attributes["src"]
             image_url = resolve_url(link, url)
