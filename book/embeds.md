@@ -279,8 +279,9 @@ class DrawImage(DisplayItem):
 
 Finally, the `paint` method of `ImageLayout` emits a single `DrawImage`:
 
-``` {.python}
+``` {.python expected=False}
 class ImageLayout:
+    # ...
     def paint(self, display_list):
         cmds = []
 
@@ -291,8 +292,7 @@ class ImageLayout:
             self.x, self.y, self.x + self.width,
             self.y + self.height)
 
-        cmds.append(DrawImage(self.node.image, src_rect, dst_rect,
-            self.node.style.get("image-rendering", "auto")))
+        cmds.append(DrawImage(self.node.image, src_rect, dst_rect)
 
         display_list.extend(cmds)
 ```
