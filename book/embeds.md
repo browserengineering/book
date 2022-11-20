@@ -115,6 +115,31 @@ def request(url, top_level_url, payload=None):
     return headers, body
 ```
 
+Now let's define a method that decodes a response body that we know is an image
+(even if we don't know its format).^[Interestingly, to make it work for our toy
+browser we don't need to consult `content-type`. That's because Pillow already
+auto-detects the image format by peeking at the first few bytes of the binary
+image data, which varies for each image format.] First, reinterpret
+the image "file" as a `BytesIO` object and pass it to Pillow. Then convert
+it to RGBA format (the same RGBA in
+[Chapter 11](/visual-effects.html#sdl-creates-the-window), call `tobytes`
+(which performs the decode and puts the result in a raw byte array), and wrap
+the result in a Skia `Image` object.
+
+``` {.python}
+def decode_image(image_bytes):
+    picture_stream = io.BytesIO(image_bytes)
+    pil_image = PIL.Image.open(picture_stream)
+    if pil_image.mode == "RGBA":
+        pil_image_bytes = pil_image.tobytes()
+    else:
+        pil_image_bytes = pil_image.convert("RGBA").tobytes()
+    return skia.Image.frombytes(
+        array=pil_image_bytes,
+        dimensions=pil_image.size,
+        colorType=skia.kRGBA_8888_ColorType)
+```
+
 Let's now load images found in a web page. Images appear in the `<img>` tag,
 and the URL of the image is in the `src` attribute. In `load` we need to
 first find all of the images in the document:
@@ -232,12 +257,12 @@ class ImageLayout:
 Painting the image is quite straightforward, and uses a new `DrawImage type`.
 There's not much to say, because Skia supports drawing images. The only
 somewhat complicated thing here is the difference between `src_rect` and
-`dst_rect`. The `src_rect` varible indicates a rectangle within the coordinate
-space of the *image* to raster (in our case we're rastering the whole image,
-so it'd be `(0, 0, width, height)`). The `dst_rect` variable is a rectangle
-in the coordinates of the web page---the position and sizing on the page
-of the final image. (For now, assume theis rectangle has the same width and
-height, but later we'll see that they can differ.)
+`dst_rect`. The `src_rect` variable indicates a rectangle within the coordinate
+space of the *image* to raster (in our case we're rastering the whole image, so
+it'd be `(0, 0, width-of-image, height-of-image)`). The `dst_rect` variable is
+a rectangle in the coordinates of the web page---the position and sizing on the
+page of the final image. (For now, assume this rectangle has the same width
+and height, but later we'll see that they can differ.)
 
 ``` {.python expected=False}
 class DrawImage(DisplayItem):
@@ -270,31 +295,6 @@ class ImageLayout:
             self.node.style.get("image-rendering", "auto")))
 
         display_list.extend(cmds)
-```
-
-Now let's define a method that decodes a response body that we know is an image
-(even if we don't know its format).^[Interestingly, to make it work for our toy
-browser we don't need to consult `content-type`. That's because Pillow already
-auto-detects the image format by peeking at the first few bytes of the binary
-image data, which varies for each image format.] First, reinterpret
-the image "file" as a `BytesIO` object and pass it to Pillow. Then convert
-it to RGBA format (the same RGBA in
-[Chapter 11](/visual-effects.html#sdl-creates-the-window), call `tobytes`
-(which performs the decode and puts the result in a raw byte array), and wrap
-the result in a Skia `Image` object.
-
-``` {.python}
-def decode_image(image_bytes):
-    picture_stream = io.BytesIO(image_bytes)
-    pil_image = PIL.Image.open(picture_stream)
-    if pil_image.mode == "RGBA":
-        pil_image_bytes = pil_image.tobytes()
-    else:
-        pil_image_bytes = pil_image.convert("RGBA").tobytes()
-    return skia.Image.frombytes(
-        array=pil_image_bytes,
-        dimensions=pil_image.size,
-        colorType=skia.kRGBA_8888_ColorType)
 ```
 
 Now it's time to dig into what decoding actually does. *Decoding* is the process
