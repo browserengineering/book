@@ -27,13 +27,20 @@ Images are everywhere on the web. They are relatively easy to implement in their
 simplest form. Well, they are easy to implement if you have convenient
 libraries to decode and render them. So let's just get to it.[^img-history]
 
-[^img-history]: In fact, images  have been around (almost) since the
+[^img-history]: In fact, images have been around (almost) since the
 beginning, being proposed in [early 1993][img-email]. This makes it ironic that
 images only make their appearance in chapter 15 of the book. My excuse is that
-Tkinter doesn't support proper image sizing and clipping, so we had to wait
-for the introduction of Skia.
+Tkinter doesn't support proper image sizing and clipping, and doesn't support
+very many image formats, so we had to wait for the introduction of Skia.
 
 [img-email]: http://1997.webhistory.org/www.lists/www-talk.1993q1/0182.html
+
+There are three steps to displaying images:
+
+1. Download it from a URL.
+2. Decode it into a buffer in memory.^[I'll get into how this works in a bit;
+for now just think of it like decompressing a zip file.]
+3. Paint it in the right place in the display list.
 
 Skia doesn't come with built-in image decoding, so first download and install
 the [Pillow/PIL][pillow] library for this task:
@@ -49,21 +56,108 @@ Python Image Library---which is why the import says PIL.]
 import PIL.Image
 ```
 
-But what is decoding? *Decoding* is the process of converting an *encoded* image
-from a binary form optimized for quick download over a network into a
-*decoded* one suitable for rendering, typically a raw bitmap in memory that's
-suitable for direct input into rasterization on the GPU. It's
-called "decoding" and not "decompression" because many encoded image formats
-are [*lossy*][lossy], meaning that they "cheat": they don't faithfully represent all of
-the information in the original picture, in cases where it's unlikely that a
-human viewing the decoded image will notice the difference.
+For step 1 (download), we'll need to make some changes to the `request`
+function to add support for binary data formats; currently it assumes an HTTP
+response is always `utf8`. We'll start by creating a binary file object
+from the response instead of `utf8`:
+
+``` {.python}
+def request(url, top_level_url, payload=None):
+    # ...
+    response = s.makefile("b", newline="\r\n")
+```
+Now each time we read a line we need to decode it individually; for image
+responses, all lines will be `utf8` except for the body, which be raw
+encoded image data.
+
+``` {.python}
+def request(url, top_level_url, payload=None):
+    # ...
+    statusline = response.readline().decode("utf8")
+    # ...
+    while True:
+        line = response.readline().decode("utf8")
+        # ...    
+```
+
+Then when we get to the body, check for the `content-type` header. We encountered
+this header briefly in [Chapter 1](/http.html#the-servers-response), where I
+noted that HTML web page responses have a value of `text/html` for this header.
+This value is a *MIME type*. MIME stands for Multipurpose Internet
+Mail Extensions, and was originally intended for enumerating all of the
+acceptable data formats for email attachments.^[Most email these days is
+actually HTML, and is encoded with the "text/html" MIME type. Gmail, for example,
+by default uses this format, but can be put in a "plain text mode" that
+encodes the email in "text/plain".] We've actually encountered two more content
+types already: `text/css` and `application/javascript`, but since we assumed
+both were in `utf8` there was no need to differentiate in the code.^[That's
+not a correct thing to do in a real browser, and alternate character sets are
+an exercise in chapter 1.]
+
+The `content-type` of an image depends on its format. For example, JPEG is
+`image/jpeg`; PNG is `image/png`. Arbitrary binary data with no specific
+format is `application/octet-stream`.^[An "octet" is a number with 8 bits,
+hence "oct" from the Latin root "octo".] So as a cheat, we'll look at
+`content-type` and assume that if it starts with `text` the content is
+`utf8`, and otherwise return it as undecoded data:
+
+``` {.python}
+def request(url, top_level_url, payload=None):
+    # ...
+    if headers.get(
+        'content-type',
+        'application/octet-stream').startswith("text"):
+        body = response.read().decode("utf8")
+    else:
+        body = response.read()
+    # ...
+    return headers, body
+```
+
+Now let's define a method that decodes a response body that we know is an image
+(even if we don't know its format).^[Interestingly, to make it work for our toy
+browser we don't need to consult `content-type`. That's because Pillow already
+auto-detects the image format by peeking at the first few bytes of the binary
+image data, which varies for each image format.] First, reinterpret
+the image "file" as a `BytesIO` object and pass it to Pillow. Then convert
+it to RGBA format (the same RGBA in
+[Chapter 11](/visual-effects.html#sdl-creates-the-window), call `tobytes`
+(which performs the decode and puts the result in a raw byte array), and wrap
+the result in a Skia `Image` object.
+
+``` {.python}
+def decode_image(image_bytes):
+    picture_stream = io.BytesIO(image_bytes)
+    pil_image = PIL.Image.open(picture_stream)
+    if pil_image.mode == "RGBA":
+        pil_image_bytes = pil_image.tobytes()
+    else:
+        pil_image_bytes = pil_image.convert("RGBA").tobytes()
+    return skia.Image.frombytes(
+        array=pil_image_bytes,
+        dimensions=pil_image.size,
+        colorType=skia.kRGBA_8888_ColorType)
+```
+
+Now it's time to dig into what decoding actually does. *Decoding* is the process
+of converting an *encoded* image from a binary form optimized for quick
+download over a network into a *decoded* one suitable for rendering, typically
+a raw bitmap in memory that's suitable for direct input into rasterization on
+the GPU. It's called "decoding" and not "decompression" because many encoded
+image formats are [*lossy*][lossy], meaning that they "cheat": they don't
+faithfully represent all of the information in the original picture, in cases
+where it's unlikely that a human viewing the decoded image will notice the
+difference.
 
 [lossy]: https://en.wikipedia.org/wiki/Lossy_compression
 
 Many encoded image formats are very good at compression. This means that when
 a browser decodes it, the image may take up quite a bit of memory, even if
 the downloaded file size is not so big. As a result, it's very important
-for browsers to optimize decoding in a few ways. 
+for browsers to do as little decoding and use as little memory as possible.
+Two ways they achieve that are by avoiding decode for images not currently
+on the screen, and decoding directly to the size of the image. I've left the
+first technique to an exercise, but let's dig into the second one here.
 
 Embedded content layout
 =======================
@@ -132,8 +226,11 @@ decodes images that are visible on the screen.
 the encoded size can still be enough to noticeably slow down web page loads.
 Implement an optimization in your browser that only loads images that are
 within a certain number of pixels of the being visible on the
-screen.^[Real browsers have specal [APIs][lli] and optimizations for this
-purpose.]
+screen.^[Real browsers have special [APIs][lli] and optimizations for this
+purpose; they don't actually lazy-load images by default, because otherwise
+some web sites would break or look ugly. In the early days of the web,
+computer networks were slow enought that browsers had a user setting to
+disable downloading of images until the usre expresssly asked for them.]
 
 [lli]: https://developer.mozilla.org/en-US/docs/Web/Performance/Lazy_loading
 

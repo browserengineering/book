@@ -93,7 +93,7 @@ def request(url, top_level_url, payload=None):
     body += "\r\n" + (payload or "")
     s.send(body.encode("utf8"))
 
-    response = s.makefile("b")
+    response = s.makefile("b", newline="\r\n")
 
     statusline = response.readline().decode("utf8")
     version, status, explanation = statusline.split(" ", 2)
