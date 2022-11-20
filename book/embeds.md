@@ -40,7 +40,8 @@ There are three steps to displaying images:
 1. Download it from a URL.
 2. Decode it into a buffer in memory.^[I'll get into how this works in a bit;
 for now just think of it like decompressing a zip file.]
-3. Paint it in the right place in the display list.
+3. Layout the image.
+4. Paint it in the right place in the display list.
 
 Skia doesn't come with built-in image decoding, so first download and install
 the [Pillow/PIL][pillow] library for this task:
@@ -112,6 +113,163 @@ def request(url, top_level_url, payload=None):
         body = response.read()
     # ...
     return headers, body
+```
+
+Let's now load images found in a web page. Images appear in the `<img>` tag,
+and the URL of the image is in the `src` attribute. In `load` we need to
+first find all of the images in the document:
+
+``` {.python expected=False}
+class Tab:
+    # ...
+    def load(self, url, body=None):
+        # ...
+        images = [node
+                 for node in tree_to_list(self.nodes, [])
+                 if isinstance(node, Element)
+                 and node.tag == "img"
+                 and "src" in node.attributes]
+```
+
+and then request them from the network and decode them, placing the result
+on the `Element` object for each image.
+
+``` {.python}
+        # ...
+        for img in images:
+            link = img.attributes["src"]
+            image_url = resolve_url(link, url)
+            if not self.allowed_request(image_url):
+                print("Blocked image", link, "due to CSP")
+                continue
+            try:
+                header, body = request(image_url, url)
+                img.image = decode_image(body)
+            except:
+                continue
+```
+
+Images have inline layout, so we'll need to add a new value in `InlineLayout`
+and a new `ImageLayout` class.
+
+``` {.python}
+class InlineLayout:
+    # ...
+    def recurse(self, node, zoom):
+            # ...
+            elif node.tag == "img":
+                self.image(node, zoom)
+    
+    def image(self, node, zoom):
+        w = style_length(
+            node, "width", node.image.width(), zoom)
+        if self.cursor_x + w > self.x + self.width:
+            self.new_line()
+        line = self.children[-1]
+        input = ImageLayout(node, line, self.previous_word)
+        line.children.append(input)
+        self.previous_word = input
+        weight = node.style["font-weight"]
+        style = node.style["font-style"]
+        size = device_px(float(node.style["font-size"][:-2]), zoom)
+        font = get_font(size, weight, size)
+        self.cursor_x += w + font.measureText(" ")
+```
+
+`ImageLayout` is almost exactly the same as other kinds of inline layout. Notice
+in particular how the positioning of an image depends on the font size of the
+element. That's unexpected---there is no font in an image, why does this
+happen? The reason is that, as a type of inline layout, images are designed to
+flow along with related text. For example, the baseline of the image should
+line up with the baseline of the text next to it. And so the font of that text
+affects the layout of the image.
+
+TODO: discussion about width and height.
+
+``` {.python}
+class ImageLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        self.children = []
+        self.parent = parent
+        self.previous = previous
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+
+    def get_ascent(self, font_multiplier=1.0):
+        return -self.height
+
+    def get_descent(self, font_multiplier=1.0):
+        return 0
+
+    def layout(self, zoom):
+        weight = self.node.style["font-weight"]
+        style = self.node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = device_px(
+            float(self.node.style["font-size"][:-2]), zoom)
+        self.font = get_font(size, weight, style)
+
+        self.width = style_length(
+            self.node, "width", self.node.image.width(), zoom)
+        self.height = style_length(self.node, "height",
+            max(self.node.image.height(), linespace(self.font)), zoom)
+
+        if self.previous:
+            space = self.previous.font.measureText(" ")
+            self.x = self.previous.x + space + self.previous.width
+        else:
+            self.x = self.parent.x
+
+    def __repr__(self):
+        return ("ImageLayout(src={}, x={}, y={}, width={}," +
+            "height={})").format(self.node.attributes["src"],
+                self.x, self.y, self.width, self.height)
+```
+
+Painting the image is quite straightforward, and uses a new `DrawImage type`.
+There's not much to say, because Skia supports drawing images. The only
+somewhat complicated thing here is the difference between `src_rect` and
+`dst_rect`. The `src_rect` varible indicates a rectangle within the coordinate
+space of the *image* to raster (in our case we're rastering the whole image,
+so it'd be `(0, 0, width, height)`). The `dst_rect` variable is a rectangle
+in the coordinates of the web page---the position and sizing on the page
+of the final image. (For now, assume theis rectangle has the same width and
+height, but later we'll see that they can differ.)
+
+``` {.python expected=False}
+class DrawImage(DisplayItem):
+    def __init__(self, image, src_rect, dst_rect, image_rendering):
+        super().__init__(dst_rect)
+        self.image = image
+        self.src_rect = src_rect
+        self.dst_rect = dst_rect
+
+    def execute(self, canvas):
+        canvas.drawImageRect(
+            self.image, self.src_rect, self.dst_rect)
+```
+
+Finally, the `paint` method of `ImageLayout` emits a single `DrawImage`:
+
+``` {.python}
+class ImageLayout:
+    def paint(self, display_list):
+        cmds = []
+
+        src_rect = skia.Rect.MakeLTRB(
+            0, 0, self.node.image.width(), self.node.image.height())
+
+        dst_rect = skia.Rect.MakeLTRB(
+            self.x, self.y, self.x + self.width,
+            self.y + self.height)
+
+        cmds.append(DrawImage(self.node.image, src_rect, dst_rect,
+            self.node.style.get("image-rendering", "auto")))
+
+        display_list.extend(cmds)
 ```
 
 Now let's define a method that decodes a response body that we know is an image
