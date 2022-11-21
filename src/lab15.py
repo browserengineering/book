@@ -396,7 +396,7 @@ class InlineLayout:
 
     def image(self, node, zoom):
         w = style_length(
-            node, "width", node.image.width(), zoom)
+            node, "width", device_px(node.image.width(), zoom), zoom)
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
@@ -588,9 +588,11 @@ class ImageLayout:
         self.font = get_font(size, weight, style)
 
         self.width = style_length(
-            self.node, "width", self.node.image.width(), zoom)
+            self.node, "width",
+            device_px(self.node.image.width(), zoom), zoom)
         self.height = style_length(self.node, "height",
-            max(self.node.image.height(), linespace(self.font)), zoom)
+            max(device_px(self.node.image.height(), zoom),
+                linespace(self.font)), zoom)
 
         if self.previous:
             space = self.previous.font.measureText(" ")
