@@ -2262,7 +2262,7 @@ a main thread animation.[^main-thread-scroll] You'll need to implement a new
 the [transform transition](examples/example13-transform-transition.html)
 example should now be smooth, as that example uses `scroll-behavior`. (You'll
 have to have done the width/height exercise to see a scroll, because of the
-spacer div.)
+spacer divs.)
 
 [scroll-behavior]: https://developer.mozilla.org/en-US/docs/Web/CSS/scroll-behavior
 
