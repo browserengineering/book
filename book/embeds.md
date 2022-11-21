@@ -26,6 +26,24 @@ Images
 Images are everywhere on the web. They are relatively easy to implement in their
 simplest form. Well, they are easy to implement if you have convenient
 libraries to decode and render them. So let's just get to it.[^img-history]
+We'll implement the `<img` tag, which works like this:
+
+    <img src="https://pavpanchekha.com/im/me-square.jpg">
+
+An `<img>` is a leaf element of the DOM. In some ways, it's similar to a single
+font glyph that has to paint in a single rectangle (sized to the image instead
+of the glyph), takes up space in a `LineLayout`, and causes line breaking when
+it reaches the end of the available space. But it's different than a text node,
+because the text in a text node is not just one glyph, but an entire run of
+text of a potentially arbitrary length, and that can be split into words and
+lines across multiple lines.
+
+An image, on the other hand is *atomic*---it doesn't make sense to split it.
+This is why images are defined in the layout specification as a
+[atomic inline][atomic-inline].^[There are other things that can be atomic
+inlines, and we'll encounter more later in this chapter.]
+
+[atomic-inline]: https://drafts.csswg.org/css-display-3/#atomic-inline
 
 [^img-history]: In fact, images have been around (almost) since the
 beginning, being proposed in [early 1993][img-email]. This makes it ironic that
@@ -40,7 +58,7 @@ There are three steps to displaying images:
 1. Download it from a URL.
 2. Decode it into a buffer in memory.^[I'll get into how this works in a bit;
 for now just think of it like decompressing a zip file.]
-3. Layout the image.
+3. Lay it out on the page.
 4. Paint it in the right place in the display list.
 
 Skia doesn't come with built-in image decoding, so first download and install
@@ -140,8 +158,7 @@ def decode_image(image_bytes):
         colorType=skia.kRGBA_8888_ColorType)
 ```
 
-Let's now load images found in a web page. Images appear in the `<img>` tag,
-and the URL of the image is in the `src` attribute. In `load` we need to
+Let's now load `<img>` tags found in a web page.In `load` we need to
 first find all of the images in the document:
 
 ``` {.python expected=False}
@@ -175,7 +192,8 @@ on the `Element` object for each image.
 ```
 
 Images have inline layout, so we'll need to add a new value in `InlineLayout`
-and a new `ImageLayout` class.
+and a new `ImageLayout` class. In this case, the width contributed to the line
+is the width of the image.
 
 ``` {.python}
 class InlineLayout:
@@ -186,8 +204,7 @@ class InlineLayout:
                 self.image(node, zoom)
     
     def image(self, node, zoom):
-        w = style_length(
-            node, "width", node.image.width(), zoom)
+        w = device_px(node.image.width(), zoom)
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
@@ -203,13 +220,15 @@ class InlineLayout:
 
 `ImageLayout` is almost exactly the same as other kinds of inline layout. Notice
 in particular how the positioning of an image depends on the font size of the
-element. That's unexpected---there is no font in an image, why does this
-happen? The reason is that, as a type of inline layout, images are designed to
-flow along with related text. For example, the baseline of the image should
-line up with the baseline of the text next to it. And so the font of that text
-affects the layout of the image.
-
-TODO: discussion about width and height.
+element (the `image` function has some code for that also). That's at first
+unexpected---there is no font in an image, why does this happen? The reason is
+that, as a type of inline layout, images are designed to flow along with
+related text. For example, the baseline of the image should line up with the
+baseline of the text next to it. And so the font of that text affects the
+layout of the image.^[In fact, a page with only a single image and no text at
+all still has a font size (e.g. the default font size of a web page), and the
+image's layout depends on it. This is a very common source of confusion for web
+developers.]
 
 ``` {.python}
 class ImageLayout:
@@ -240,7 +259,8 @@ class ImageLayout:
         self.width = style_length(
             self.node, "width", self.node.image.width(), zoom)
         self.height = style_length(self.node, "height",
-            max(self.node.image.height(), linespace(self.font)), zoom)
+            max(device_px(self.node.image.height(), zoom),
+            linespace(self.font)), zoom)
 
         if self.previous:
             space = self.previous.font.measureText(" ")
@@ -254,27 +274,19 @@ class ImageLayout:
                 self.x, self.y, self.width, self.height)
 ```
 
-Painting the image is quite straightforward, and uses a new `DrawImage type`.
-There's not much to say, because Skia supports drawing images. The only
-somewhat complicated thing here is the difference between `src_rect` and
-`dst_rect`. The `src_rect` variable indicates a rectangle within the coordinate
-space of the *image* to raster (in our case we're rastering the whole image, so
-it'd be `(0, 0, width-of-image, height-of-image)`). The `dst_rect` variable is
-a rectangle in the coordinates of the web page---the position and sizing on the
-page of the final image. (For now, assume this rectangle has the same width
-and height, but later we'll see that they can differ.)
+Painting the image is quite straightforward, and uses a new `DrawImage type`
+and the Skipa `drawImage` API method.
 
 ``` {.python expected=False}
 class DrawImage(DisplayItem):
-    def __init__(self, image, src_rect, dst_rect, image_rendering):
+    def __init__(self, image, rect, image_rendering):
         super().__init__(dst_rect)
         self.image = image
-        self.src_rect = src_rect
-        self.dst_rect = dst_rect
+        self.rect = rect
 
     def execute(self, canvas):
-        canvas.drawImageRect(
-            self.image, self.src_rect, self.dst_rect)
+        canvas.drawImage(
+            self.image, self.rect.left(), self.rect.top()
 ```
 
 Finally, the `paint` method of `ImageLayout` emits a single `DrawImage`:
@@ -285,37 +297,63 @@ class ImageLayout:
     def paint(self, display_list):
         cmds = []
 
-        src_rect = skia.Rect.MakeLTRB(
-            0, 0, self.node.image.width(), self.node.image.height())
-
-        dst_rect = skia.Rect.MakeLTRB(
+        rect = skia.Rect.MakeLTRB(
             self.x, self.y, self.x + self.width,
             self.y + self.height)
-
-        cmds.append(DrawImage(self.node.image, src_rect, dst_rect)
+        cmds.append(DrawImage(self.node.image, dst_rect)
 
         display_list.extend(cmds)
 ```
 
-Now it's time to dig into what decoding actually does. *Decoding* is the process
-of converting an *encoded* image from a binary form optimized for quick
-download over a network into a *decoded* one suitable for rendering, typically
-a raw bitmap in memory that's suitable for direct input into rasterization on
-the GPU. It's called "decoding" and not "decompression" because many encoded
-image formats are [*lossy*][lossy], meaning that they "cheat": they don't
-faithfully represent all of the information in the original picture, in cases
-where it's unlikely that a human viewing the decoded image will notice the
-difference.
+Image should now work and display on the page. But our implementation is
+very basic and missing several important features for layout and rendering
+quality.
+
+Image sizing and
+================
+
+Images are expensive relative to text content. To start with, they take a
+long time to download. But decoding is even more expensive in some ways, in
+particular how it can slow down the rendering pipeline and use up a lot of
+memory. 
+
+To understand why, it's time to dig into what decoding actually does. *Decoding*
+is the process of converting an *encoded* image from a binary form optimized
+for quick download over a network into a *decoded* one suitable for rendering,
+typically a raw bitmap in memory that's suitable for direct input into
+rasterization on the GPU. It's called "decoding" and not "decompression"
+because many encoded image formats are [*lossy*][lossy], meaning that
+they "cheat": they don't faithfully represent all of the information in the
+original picture, in cases where it's unlikely that a human viewing the decoded
+image will notice the difference.
 
 [lossy]: https://en.wikipedia.org/wiki/Lossy_compression
 
-Many encoded image formats are very good at compression. This means that when
-a browser decodes it, the image may take up quite a bit of memory, even if
-the downloaded file size is not so big. As a result, it's very important
-for browsers to do as little decoding and use as little memory as possible.
-Two ways they achieve that are by avoiding decode for images not currently
-on the screen, and decoding directly to the size of the image. I've left the
-first technique to an exercise, but let's dig into the second one here.
+Many encoded image formats are very good at compression. This means that when a
+browser decodes it, the image may take up quite a bit of memory, even if the
+downloaded file size is not so big. As a result, it's very important for
+browsers to do as little decoding and use as little memory as possible. Two
+ways they achieve that are by avoiding decode for images not currently on the
+screen, and decoding directly to the size actually needed to draw pixels on the
+screen. I've left the first technique to an exercise, but let's dig into the
+second one here.
+
+At the moment, our browser can only draw an `<img` element at its
+[intrinsic size][intrinsic-size], i.e. the size of the source image data. But
+that's only because we don't support and CSS properties that can change this
+size. If the image was much bigger than the desired rendered pixel size, then
+it'd be much more efficient to decode into a smaller buffer.^[[And if it was
+much bigger, it'd be convenient to somehow store only up to its intrinsic
+size. I don't know if any browsers implement this optimization, and I won't
+implement it.]
+
+There are of course several properties to chnage an image's rendered size
+(for example, the `width` and `height` CSS properties, which were an exercise
+in Chapter 13). However, the `<img>`
+tag comes with two attributes of the same name that have a similar
+effect; let's implement those.
+
+[intrinsic-size]: https://developer.mozilla.org/en-US/docs/Glossary/Intrinsic_Size#
 
 Embedded content layout
 =======================
