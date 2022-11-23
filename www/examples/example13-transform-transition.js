@@ -10,7 +10,7 @@ function frame() {
 requestAnimationFrame(frame);
 
 var go_up = false;
-var div = document.querySelectorAll("div")[1];
+var div = document.querySelectorAll("div")[0];
 function go() {
 	go_up = !go_up;
 	if (go_up)
