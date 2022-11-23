@@ -309,8 +309,85 @@ Image should now work and display on the page. But our implementation is
 very basic and missing several important features for layout and rendering
 quality.
 
-Image sizing and
-================
+Image sizing
+============
+
+At the moment, our browser can only draw an `<img` element at its
+[intrinsic size][intrinsic-size], i.e. the size of the source image data. But
+that's only because we don't support and CSS properties that can change this
+size. If the image was much bigger than the desired rendered pixel size, then
+it'd be much more efficient to decode into a smaller buffer.^[[And if it was
+much bigger, it'd be convenient to somehow store only up to its intrinsic
+size. I don't know if any browsers implement this optimization, and I won't
+implement it.]
+
+There are of course several properties to chnage an image's rendered size ^
+[For example, the `width` and `height` CSS properties, which were an exercise
+in Chapter 13]. But images have, mostly for historical reasons (because these
+attributes were invented before CSS existed), ended up with `width` and
+`height` that override the intrinsic size. Let's implement those.
+
+[intrinsic-size]: https://developer.mozilla.org/en-US/docs/Glossary/Intrinsic_Size#
+
+It's pretty easy: every place we deduce the width or height of an image layout
+object from its intrinsic size, first consult the corresponding attribute and
+use it instead if present. First, in `image` on `InlineLayout`. The width
+and height attributes are in CSS pixels without unit suffixes, so parsing is
+easy, and we need to multiply by zoom to get device pixels:
+
+``` {.pythhon}
+class InlineLayout:
+    # ...
+    def image(self, node, zoom):
+        if "width" in node.attributes:
+            w = device_px(int(node.attributes["width"]), zoom)
+        else:
+            w = device_px(node.image.width(), zoom)
+```
+
+And in `ImageLayout`:
+
+``` {.python}
+class ImageLayout:
+    # ...
+    def layout(self, zoom):
+        # ...
+        if "width" in self.node.attributes:
+            self.width = device_px(int(self.node.attributes["width"]), zoom)
+        else:
+            # ...
+
+        if "height" in self.node.attributes:
+            self.height = \
+                device_px(int(self.node.attributes["height"]), zoom)
+        else:
+            # ...        
+```
+
+This works great to draw the image at a different size, if the web page wants
+to scale it up or down from the intrinsic size it happened to be encoded with.
+But it also allows the web page to screw up the image pretty badly if the
+*aspect ratio* (ratio of width to height) of the width and height attributes
+ chosen are not the same as the intrinsic ones. If the ratio of them is double
+ the intrinsic sizing, for example, then the image on the screen will look
+ stretched horizontally.
+
+ We can avoid this problem by only providing a *scale* for the image rather than
+ new width and heights. One way to achieve it is, if the web page happens only
+ to specify `width` and not `height`, to infer the correct height from the aspect
+ ratio of the original image. Let's implement that.
+
+ TODO: implementation.
+
+::: {further}
+Discuss placeholder images while they are loading, and the need to avoid layout
+shift or changes of aspect ratio. Describe the aspect-ratio CSS property.
+
+object-fit.
+:::
+
+Image quality and performance
+=============================
 
 Images are expensive relative to text content. To start with, they take a
 long time to download. But decoding is even more expensive in some ways, in
@@ -337,23 +414,6 @@ ways they achieve that are by avoiding decode for images not currently on the
 screen, and decoding directly to the size actually needed to draw pixels on the
 screen. I've left the first technique to an exercise, but let's dig into the
 second one here.
-
-At the moment, our browser can only draw an `<img` element at its
-[intrinsic size][intrinsic-size], i.e. the size of the source image data. But
-that's only because we don't support and CSS properties that can change this
-size. If the image was much bigger than the desired rendered pixel size, then
-it'd be much more efficient to decode into a smaller buffer.^[[And if it was
-much bigger, it'd be convenient to somehow store only up to its intrinsic
-size. I don't know if any browsers implement this optimization, and I won't
-implement it.]
-
-There are of course several properties to chnage an image's rendered size
-(for example, the `width` and `height` CSS properties, which were an exercise
-in Chapter 13). However, the `<img>`
-tag comes with two attributes of the same name that have a similar
-effect; let's implement those.
-
-[intrinsic-size]: https://developer.mozilla.org/en-US/docs/Glossary/Intrinsic_Size#
 
 Embedded content layout
 =======================

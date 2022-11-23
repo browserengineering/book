@@ -388,7 +388,7 @@ class InlineLayout:
 
     def image(self, node, zoom):
         if "width" in node.attributes:
-            w = int(node.attributes["width"])
+            w = device_px(int(node.attributes["width"]), zoom)
         else:
             w = device_px(node.image.width(), zoom)
         if self.cursor_x + w > self.x + self.width:
@@ -581,12 +581,14 @@ class ImageLayout:
         self.font = get_font(size, weight, style)
 
         if "width" in self.node.attributes:
-            self.width = int(self.node.attributes["width"])
+            self.width = \
+                device_px(int(self.node.attributes["width"]), zoom)
         else:
             self.width = device_px(self.node.image.width(), zoom)
     
         if "height" in self.node.attributes:
-            self.height = int(self.node.attributes["height"])
+            self.height = \
+                device_px(int(self.node.attributes["height"]), zoom)
         else:
             self.height = max(
                 device_px(self.node.image.height(), zoom),
