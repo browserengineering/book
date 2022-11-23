@@ -2260,9 +2260,7 @@ and use it to cause animated scroll in `handle_down`, by delegating scroll to
 a main thread animation.[^main-thread-scroll] You'll need to implement a new
 `ScrollAnimation` class and some logic in `run_animation_frame`. Scrolling in
 the [transform transition](examples/example13-transform-transition.html)
-example should now be smooth, as that example uses `scroll-behavior`. (You'll
-have to have done the width/height exercise to see a scroll, because of the
-spacer divs.)
+example should now be smooth, as that example uses `scroll-behavior`. 
 
 [scroll-behavior]: https://developer.mozilla.org/en-US/docs/Web/CSS/scroll-behavior
 
