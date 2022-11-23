@@ -199,8 +199,7 @@ class BlockLayout:
             self.children.append(next)
             previous = next
 
-        self.width = style_length(
-            self.node, "width", self.parent.width, zoom)
+        self.width = self.parent.width
         self.x = self.parent.x
 
         if self.previous:
@@ -211,9 +210,7 @@ class BlockLayout:
         for child in self.children:
             child.layout(zoom)
 
-        self.height = style_length(
-            self.node, "height",
-            sum([child.height for child in self.children]), zoom)
+        self.height = sum([child.height for child in self.children])
 
     def paint(self, display_list):
         cmds = []
@@ -265,10 +262,8 @@ class InputLayout:
         size = device_px(float(self.node.style["font-size"][:-2]), zoom)
         self.font = get_font(size, weight, style)
 
-        self.width = style_length(
-            self.node, "width", device_px(INPUT_WIDTH_PX, zoom), zoom)
-        self.height = style_length(
-            self.node, "height", linespace(self.font), zoom)
+        self.width = sdevice_px(INPUT_WIDTH_PX, zoom)
+        self.height = linespace(self.font)
 
         if self.previous:
             space = self.previous.font.measureText(" ")
@@ -322,8 +317,7 @@ class InlineLayout:
         self.tab = tab
 
     def layout(self, zoom):
-        self.width = style_length(
-            self.node, "width", self.parent.width, zoom)
+        self.width = self.parent.width
 
         self.x = self.parent.x
 
@@ -338,9 +332,7 @@ class InlineLayout:
         for line in self.children:
             line.layout(zoom)
 
-        self.height = style_length(
-            self.node, "height",
-            sum([line.height for line in self.children]), zoom)
+        self.height = sum([line.height for line in self.children])
 
     def recurse(self, node, zoom):
         if isinstance(node, Text):
@@ -395,8 +387,10 @@ class InlineLayout:
         self.cursor_x += w + font.measureText(" ")
 
     def image(self, node, zoom):
-        w = style_length(
-            node, "width", node.image.width(), zoom)
+        if "width" in node.attributes:
+            w = device_px(int(node.attributes["width"]), zoom)
+        else:
+            w = device_px(node.image.width(), zoom)
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
@@ -410,8 +404,7 @@ class InlineLayout:
         self.cursor_x += w + font.measureText(" ")
 
     def iframe(self, node, zoom):
-        w = style_length(
-            node, "width", IFRAME_WIDTH_PX, zoom)
+        w = IFRAME_WIDTH_PX
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
@@ -587,10 +580,19 @@ class ImageLayout:
             float(self.node.style["font-size"][:-2]), zoom)
         self.font = get_font(size, weight, style)
 
-        self.width = style_length(
-            self.node, "width", self.node.image.width(), zoom)
-        self.height = style_length(self.node, "height",
-            max(self.node.image.height(), linespace(self.font)), zoom)
+        if "width" in self.node.attributes:
+            self.width = \
+                device_px(int(self.node.attributes["width"]), zoom)
+        else:
+            self.width = device_px(self.node.image.width(), zoom)
+    
+        if "height" in self.node.attributes:
+            self.height = \
+                device_px(int(self.node.attributes["height"]), zoom)
+        else:
+            self.height = max(
+                device_px(self.node.image.height(), zoom),
+                linespace(self.font))
 
         if self.previous:
             space = self.previous.font.measureText(" ")
@@ -645,10 +647,8 @@ class IframeLayout:
         size = float(self.node.style["font-size"][:-2])
         self.font = get_font(size, weight, style)
 
-        self.width = style_length(
-            self.node, "width", IFRAME_WIDTH_PX, zoom)
-        self.height = style_length(self.node, "height",
-            IFRAME_HEIGHT_PX, zoom)
+        self.width = device_px(IFRAME_WIDTH_PX, zoom)
+        self.height = device_px(IFRAME_HEIGHT_PX, zoom)
 
         if self.previous:
             space = self.previous.font.measureText(" ")
