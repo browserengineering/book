@@ -230,7 +230,7 @@ all still has a font size (e.g. the default font size of a web page), and the
 image's layout depends on it. This is a very common source of confusion for web
 developers.]
 
-``` {.python}
+``` {.python expected=False}
 class ImageLayout:
     def __init__(self, node, parent, previous):
         self.node = node
@@ -353,7 +353,8 @@ class ImageLayout:
     def layout(self, zoom):
         # ...
         if "width" in self.node.attributes:
-            self.width = device_px(int(self.node.attributes["width"]), zoom)
+            self.width = \
+            device_px(int(self.node.attributes["width"]), zoom)
         else:
             # ...
 
