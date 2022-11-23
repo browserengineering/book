@@ -1,0 +1,763 @@
+<figure style="opacity:.9">
+  <button>Grow</button>
+  <button>Shrink</button>
+<div style="background-color:lightblue;width:100px" id="thing">
+		This is a test line of text for a width animation.
+</div>
+</figure>
+<script src="example13-width-raf.js"></script>
+
+<header>
+<h1 class="title">Downloading Web Pages</h1>
+<a href="https://twitter.com/browserbook">Twitter</a> ·
+<a href="https://browserbook.substack.com/">Blog</a> ·
+<a href="https://patreon.com/browserengineering">Patreon</a> ·
+<a href="https://github.com/browserengineering/book/discussions">Discussions</a>
+</header>
+
+<nav class="links">
+  Chapter 1 of <a href="index.html" title="Table of Contents">Web Browser Engineering</a>.
+  <a rel="prev" title="Previous chapter" href="history.html">&lt;</a>
+  <a rel="next" title="Next chapter" href="graphics.html">&gt;</a>
+</nav>
+
+<nav id="toc">
+<ul>
+<li><a href="#connecting-to-a-server"
+id="toc-connecting-to-a-server">Connecting to a server</a></li>
+<li><a href="#requesting-information"
+id="toc-requesting-information">Requesting information</a></li>
+<li><a href="#the-servers-response" id="toc-the-servers-response">The
+server’s response</a></li>
+<li><a href="#telnet-in-python" id="toc-telnet-in-python">Telnet in
+Python</a></li>
+<li><a href="#request-and-response"
+id="toc-request-and-response">Request and response</a></li>
+<li><a href="#displaying-the-html"
+id="toc-displaying-the-html">Displaying the HTML</a></li>
+<li><a href="#encrypted-connections"
+id="toc-encrypted-connections">Encrypted connections</a></li>
+<li><a href="#summary" id="toc-summary">Summary</a></li>
+<li><a href="#outline" id="toc-outline">Outline</a></li>
+<li><a href="#exercises" id="toc-exercises">Exercises</a></li>
+</ul>
+</nav>
+
+<p>A web browser displays information identified by a URL. And the first
+step is to use that URL to connect to and download that information from
+a server somewhere on the Internet.</p>
+<h1 id="connecting-to-a-server">Connecting to a server</h1>
+<p>To display a web page, the browser first needs to get a copy of it.
+So, it asks the OS to put it in touch with a <em>server</em> somewhere
+on the internet; the first part of the web page’s URL (before the first
+<code>/</code>) tells it the server’s <em>host name</em>. The OS then
+talks to a <em>DNS</em> server which converts<span
+class="note-container"><span class="note">On some systems, you can run
+<code>dig +short example.org</code> to do this conversion
+yourself.</span></span> a host name like <code>example.org</code> into a
+<em>destination IP address</em> like <code>93.184.216.34</code>.<span
+class="note-container"><span class="note">Today there are two versions
+of IP: IPv4 and IPv6. IPv6 addresses are a lot longer and are usually in
+hex, but otherwise the differences don’t matter here.</span></span> Then
+the OS decides which hardware is best for communicating with that
+destination IP address (say, wireless or wired) using what is called a
+<em>routing table</em>, and then uses device drivers to send signals
+over a wire or over the air.<span class="note-container"><span
+class="note">I’m skipping steps here. On wires you first have to wrap
+communications in ethernet frames, on wireless you have to do even more.
+I’m trying to be brief.</span></span> Those signals are picked up and
+transmitted by a series of <em>routers</em><span
+class="note-container"><span class="note">Or a switch, or an access
+point, there are a lot of possibilities, but eventually there is a
+router.</span></span> which each choose the best direction to send your
+message so that it eventually gets to the destination.<span
+class="note-container"><span class="note">They may also record where the
+message came from so they can forward the reply back, especially in the
+case of NATs.</span></span> When the message reaches the server, a
+connection is created. Anyway, the point of this is that the browser
+tells the OS, “Hey, put me in touch with <code>example.org</code>”, and
+it does.</p>
+<p>On many systems, you can set up this kind of connection using the
+<code>telnet</code> program, like this:<span
+class="note-container"><span class="note">The “80” is the port,
+discussed below.</span></span></p>
+<pre class="example"><code>telnet example.org 80</code></pre>
+<div class="installation">
+<p>You might need to install <code>telnet</code>; it is often disabled
+by default. On Windows, <a
+href="https://www.lifewire.com/what-is-telnet-2626026">go to Programs
+and Features / Turn Windows features on or off</a> in the Control panel;
+you’ll need to reboot. When you run it, it’ll clear the screen instead
+of printing something, but other than that works normally. On macOS, you
+can use the <code>nc -v</code> command as a replacement for
+<code>telnet</code>:</p>
+<pre class="example"><code>nc -v example.org 80</code></pre>
+<p>The output is a little different but it works in the same way. On
+most Linux systems, you can install <code>telnet</code> from the package
+manager; plus, the <code>nc</code> command is usually available from a
+package called <code>netcat</code>.</p>
+</div>
+<p>You’ll get output that looks like this:</p>
+<pre><code>Trying 93.184.216.34...
+Connected to example.org.
+Escape character is &#39;^]&#39;.</code></pre>
+<p>This means that the OS converted the host name
+<code>example.org</code> into the IP address <code>93.184.216.34</code>
+and was able to connect to it.<span class="note-container"><span
+class="note">The line about escape characters is just instructions on
+using obscure <code>telnet</code> features.</span></span> You can now
+talk to <code>example.org</code>.</p>
+<div class="further">
+<p>The syntax of URLs is defined in <a
+href="https://tools.ietf.org/html/rfc3986">RFC 3987</a>, which is pretty
+readable. Try to implement the full URL standard, including encodings
+for reserved characters.</p>
+</div>
+<h1 id="requesting-information">Requesting information</h1>
+<p>Once it’s connected, the browser requests information from the server
+by giving its <em>path</em>, the path being the part of a URL that comes
+after the host name, like <code>/index.html</code>. The request looks
+like this; you should type it into <code>telnet</code>:</p>
+<div class="cmd">
+<pre class='highlight-region'>
+<mark>GET<label class='above left'>Method</label></mark> <mark>/index.html<label class='above right'>Path</label></mark> <mark>HTTP/1.0<label class='above left'>HTTP Version</label></mark>
+<mark>Host<label class='below left'>Header</label></mark>: <mark>example.org<label class='below left'>Value</label></mark>
+
+</pre>
+
+</div>
+<p>Make sure to type a blank line after the <code>Host</code> line.</p>
+<p>Here, the word <code>GET</code> means that the browser would like to
+receive information,<span class="note-container"><span class="note">It
+could say <code>POST</code> if it intended to send information, plus
+there are some other, more obscure options.</span></span> then comes the
+path, and finally there is the word <code>HTTP/1.0</code> which tells
+the host that the browser speaks version 1.0 of HTTP.<span
+class="note-container"><span class="note">Why not 1.1? You can use 1.1,
+but then you need another header (<code>Connection</code>) to handle a
+feature called “keep-alive”. Using 1.0 avoids this
+complexity.</span></span> There are several versions of HTTP (<a
+href="https://medium.com/platform-engineer/evolution-of-http-69cfe6531ba0">0.9,
+1.0, 1.1, and 2.0</a>). The HTTP 1.1 standard adds a variety of useful
+features, like keep-alive, but in the interest of simplicity our browser
+won’t use them. We’re also not implementing HTTP 2.0; HTTP 2.0 is much
+more complex than the 1.X series, and is intended for large and complex
+web applications, which our browser can’t run anyway.</p>
+<p>After the first line, each line contains a <em>header</em>, which has
+a name (like <code>Host</code>) and a value (like
+<code>example.org</code>). Different headers mean different things; the
+<code>Host</code> header, for example, tells the server who you think it
+is.<span class="note-container"><span class="note">This is useful when
+the same IP address corresponds to multiple host names and hosts
+multiple websites (for example, <code>example.com</code> and
+<code>example.org</code>). The <code>Host</code> header tells the server
+which of multiple websites you want. These websites basically require
+the <code>Host</code> header to function properly. Hosting multiple
+domains on a single computer is very common.</span></span> There are
+lots of other headers one could send, but let’s stick to just
+<code>Host</code> for now.</p>
+<p>Finally, after the headers comes a single blank line; that tells the
+host that you are done with headers. So type a blank line into
+<code>telnet</code> (hit Enter twice after typing the two lines of
+request above) and you should get a response from
+<code>example.org</code>.</p>
+<div class="further">
+<p>The HTTP/1.0 standard is also known as <a
+href="https://tools.ietf.org/html/rfc1945">RFC 1945</a>. The HTTP/1.1
+standard is <a href="https://tools.ietf.org/html/rfc2616">RFC 2616</a>,
+so if you’re interested in <code>Connection</code> and keep-alive, look
+there.</p>
+</div>
+<h1 id="the-servers-response">The server’s response</h1>
+<p>The server’s response starts with this line:</p>
+<div class="cmd">
+<pre class='highlight-region'>
+<mark>HTTP/1.0<label class='above right'>HTTP Version</label></mark> <mark>200<label class='below left'>Response Code</label></mark> <mark>OK<label class='above left'>Response Description</label></mark>
+</pre>
+
+</div>
+<p>That tells you that the host confirms that it, too, speaks
+<code>HTTP/1.0</code>, and that it found your request to be “OK” (which
+has a numeric code of 200). You may be familiar with
+<code>404 Not Found</code>; that’s another numeric code and response, as
+are <code>403 Forbidden</code> or <code>500 Server Error</code>. There
+are lots of these codes,<span class="note-container"><span
+class="note">As any look at a <a
+href="https://github.com/for-GET/http-decision-diagram">flow chart</a>
+will show.</span></span> and they have a pretty neat organization
+scheme:<span class="note-container"><span class="note">The status text
+like <code>OK</code> can actually be anything and is just there for
+humans, not for machines.</span></span></p>
+<ul>
+<li>The 100s are informational messages</li>
+<li>The 200s mean you were successful</li>
+<li>The 300s request follow-up action (usually a redirect)</li>
+<li>The 400s mean you sent a bad request</li>
+<li>The 500s mean the server handled the request badly</li>
+</ul>
+<p>Note the genius of having two sets of error codes (400s and 500s),
+which tells you who is at fault, the server or the browser.<span
+class="note-container"><span class="note">More precisely, who the server
+thinks is at fault.</span></span> You can find a full list of the
+different codes <a
+href="https://en.wikipedia.org/wiki/List_of_HTTP_status_codes">on
+Wikipedia</a>, and new ones do get added here and there.</p>
+<p>After the <code>200 OK</code> line, the server sends its own headers.
+When I did this, I got these headers (but yours will differ):</p>
+<pre class="example"><code>Age: 545933
+Cache-Control: max-age=604800
+Content-Type: text/html; charset=UTF-8
+Date: Mon, 25 Feb 2019 16:49:28 GMT
+Etag: &quot;1541025663+gzip+ident&quot;
+Expires: Mon, 04 Mar 2019 16:49:28 GMT
+Last-Modified: Fri, 09 Aug 2013 23:54:35 GMT
+Server: ECS (sec/96EC)
+Vary: Accept-Encoding
+X-Cache: HIT
+Content-Length: 1270
+Connection: close</code></pre>
+<p>There is <em>a lot</em> here, about the information you are
+requesting (<code>Content-Type</code>, <code>Content-Length</code>, and
+<code>Last-Modified</code>), about the server (<code>Server</code>,
+<code>X-Cache</code>), about how long the browser should cache this
+information (<code>Cache-Control</code>, <code>Expires</code>,
+<code>Etag</code>), about all sorts of other stuff. Let’s move on for
+now.</p>
+<p>After the headers there is a blank line followed by a bunch of HTML
+code. This is called the <em>body</em> of the server’s response, and
+your browser knows that it is HTML because of the
+<code>Content-Type</code> header, which says that it is
+<code>text/html</code>. It’s this HTML code that contains the content of
+the web page itself.</p>
+<p>Let’s now switch gears from manual connections to Python.</p>
+<div class="further">
+<p>Many common (and uncommon) HTTP headers are described <a
+href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">on
+Wikipedia</a>.</p>
+</div>
+<h1 id="telnet-in-python">Telnet in Python</h1>
+<p>So far we’ve communicated with another computer using
+<code>telnet</code>. But it turns out that <code>telnet</code> is quite
+a simple program, and we can do the same programmatically. It’ll require
+extracting host name and path from the URL, creating a <em>socket</em>,
+sending a request, and receiving a response.</p>
+<p>A URL looks like this:</p>
+<div class="cmd">
+<pre class='highlight-region'>
+<mark>http<label class='above left'>Scheme</label></mark>://<mark>example.org<label class='below left'>Hostname</label></mark><mark>/index.html<label class='above left'>Path</label></mark>
+</pre>
+
+</div>
+<p>This URL has three parts: the scheme explains <em>how</em> to get the
+information; the host explains <em>where</em> to get it; and the path
+explains <em>what</em> information to get.</p>
+<p>There are also optional parts to the URL. Sometimes, like in
+<code>http://localhost:8080/</code>, there is a <em>port</em> that comes
+after the host, and there can be something tacked onto the end, a
+<em>fragment</em> like <code>#section</code> or a <em>query</em> like
+<code>?s=term</code>. We’ll come back to ports later in this chapter,
+and some other URL components appear in exercises.</p>
+<p>In Python, there’s a library called <code>urllib.parse</code> that
+splits a URL into these pieces, but let’s write our own.<span
+class="note-container"><span class="note">There’s nothing wrong with
+using libraries, but implementing our own is good for learning. Plus, it
+makes this book easier to follow in a language besides
+Python.</span></span> We’ll start with the scheme—our browser only
+supports <code>http</code>, so we just need to check that the URL starts
+with <code>http://</code> and then strip that off:</p>
+<div class="sourceCode" id="cb5" data-expected="False"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> url.startswith(<span class="st">&quot;http://&quot;</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>url <span class="op">=</span> url[<span class="bu">len</span>(<span class="st">&quot;http://&quot;</span>):]</span></code></pre></div>
+<p>Now we must separate the host from the path. The host comes before
+the first <code>/</code>, while the path is that slash and everything
+after it:</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>host, path <span class="op">=</span> url.split(<span class="st">&quot;/&quot;</span>, <span class="dv">1</span>)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>path <span class="op">=</span> <span class="st">&quot;/&quot;</span> <span class="op">+</span> path</span></code></pre></div>
+<p>The <code>split(s, n)</code> method splits a string at the first
+<code>n</code> copies of <code>s</code>. The path is supposed to include
+the separating slash, so I make sure to add it back after splitting on
+it.</p>
+<p>With the host and path identified, the next step is to connect to the
+host. The operating system provides a feature called “sockets” for this.
+When you want to talk to other computers (either to tell them something,
+or to wait for them to tell you something), you create a socket, and
+then that socket can be used to send information back and forth. Sockets
+come in a few different kinds, because there are multiple ways to talk
+to other computers:</p>
+<ul>
+<li>A socket has an <em>address family</em>, which tells you how to find
+the other computer. Address families have names that begin with
+<code>AF</code>. We want <code>AF_INET</code>, but for example
+<code>AF_BLUETOOTH</code> is another.</li>
+<li>A socket has a <em>type</em>, which describes the sort of
+conversation that’s going to happen. Types have names that begin with
+<code>SOCK</code>. We want <code>SOCK_STREAM</code>, which means each
+computer can send arbitrary amounts of data over, but there’s also
+<code>SOCK_DGRAM</code>, in which case they send each other packets of
+some fixed size.<span class="note-container"><span class="note">The
+<code>DGRAM</code> stands for “datagram” and think of it like a
+postcard.</span></span></li>
+<li>A socket has a <em>protocol</em>, which describes the steps by which
+the two computers will establish a connection. Protocols have names that
+depend on the address family, but we want <code>IPPROTO_TCP</code>.<span
+class="note-container"><span class="note">Nowadays some browsers support
+protocols that don’t use TCP, like Google Chrome’s <a
+href="https://en.wikipedia.org/wiki/QUIC">QUIC
+protocol</a>.</span></span></li>
+</ul>
+<p>By picking all of these options, we can create a socket like so:<span
+class="note-container"><span class="note">While this code uses the
+Python <code>socket</code> library, your favorite language likely
+contains a very similar library. This API is basically standardized. In
+Python, the flags we pass are defaults, so you can actually call
+<code>socket.socket()</code>; I’m keeping the flags here in case you’re
+following along in another language.</span></span></p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> socket</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>s <span class="op">=</span> socket.socket(</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    family<span class="op">=</span>socket.AF_INET,</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    <span class="bu">type</span><span class="op">=</span>socket.SOCK_STREAM,</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    proto<span class="op">=</span>socket.IPPROTO_TCP,</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<p>Once you have a socket, you need to tell it to connect to the other
+computer. For that, you need the host and a <em>port</em>. The port
+depends on the type of server you’re connecting to; for now it should be
+80.</p>
+<div class="sourceCode" id="cb8" data-replace="80/port"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>s.<span class="ex">connect</span>((host, <span class="dv">80</span>))</span></code></pre></div>
+<p>This talks to <code>example.org</code> to set up the connection and
+ready both computers to exchange data.</p>
+<div class="quirk">
+<p>Naturally this won’t work if you’re offline. It also might not work
+if you’re behind a proxy, or in a variety of more complex networking
+environments. The workaround will depend on your setup—it might be as
+simple as disabling your proxy, or it could be much more complex.</p>
+</div>
+<p>Note that there are two parentheses in the <code>connect</code> call:
+<code>connect</code> takes a single argument, and that argument is a
+pair of a host and a port. This is because different address families
+have different numbers of arguments.</p>
+<div class="further">
+<p>You can find out more about the “sockets” API on <a
+href="https://en.wikipedia.org/wiki/Berkeley_sockets">Wikipedia</a>.
+Python more or less implements that API directly.</p>
+</div>
+<h1 id="request-and-response">Request and response</h1>
+<p>Now that we have a connection, we make a request to the other server.
+To do so, we send it some data using the <code>send</code> method:</p>
+<div class="sourceCode" id="cb9" data-expected="False"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>s.send(<span class="st">&quot;GET </span><span class="sc">{}</span><span class="st"> HTTP/1.0</span><span class="ch">\r\n</span><span class="st">&quot;</span>.<span class="bu">format</span>(path).encode(<span class="st">&quot;utf8&quot;</span>) <span class="op">+</span> </span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>       <span class="st">&quot;Host: </span><span class="sc">{}</span><span class="ch">\r\n\r\n</span><span class="st">&quot;</span>.<span class="bu">format</span>(host).encode(<span class="st">&quot;utf8&quot;</span>))</span></code></pre></div>
+<p>There are a few things to be careful of here. First, it’s very
+important to use <code>\r\n</code> instead of <code>\n</code> for
+newlines. It’s also essential that you put <em>two</em> newlines
+<code>\r\n</code> at the end, so that you send that blank line at the
+end of the request. If you forget that, the other computer will keep
+waiting on you to send that newline, and you’ll keep waiting on its
+response.<span class="note-container"><span class="note">Computers are
+endlessly literal-minded.</span></span></p>
+<p>And finally, note the <code>encode</code> call. When you send data,
+it’s important to remember that you are sending raw bits and bytes; they
+could form text or an image or video. But a Python string is
+specifically for representing text. The <code>encode</code> method
+converts text into bytes, and there’s a corresponding
+<code>decode</code> method that goes the other way.<span
+class="note-container"><span class="note">When you call
+<code>encode</code> and <code>decode</code> you need to tell the
+computer what <em>character encoding</em> you want it to use. This is a
+complicated topic. I’m using <code>utf8</code> here, which is a common
+character encoding and will work on many pages, but in the real world
+you would need to be more careful.</span></span> Python reminds you to
+be careful by giving different types to text and to bytes:</p>
+<div class="sourceCode" id="cb10"><pre
+class="sourceCode python example"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> <span class="bu">type</span>(<span class="st">&quot;text&quot;</span>)</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="op">&lt;</span><span class="kw">class</span> <span class="st">&#39;str&#39;</span><span class="op">&gt;</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> <span class="bu">type</span>(<span class="st">&quot;text&quot;</span>.encode(<span class="st">&quot;utf8&quot;</span>))</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="op">&lt;</span><span class="kw">class</span> <span class="st">&#39;bytes&#39;</span><span class="op">&gt;</span></span></code></pre></div>
+<p>If you see an error about <code>str</code> versus <code>bytes</code>,
+it’s because you forgot to call <code>encode</code> or
+<code>decode</code> somewhere.</p>
+<p>If you run this, you’ll notice that the <code>send</code> call
+returns a number, in this case <code>47</code>. That tells you how many
+bytes of data you sent to the other computer; if, say, your network
+connection failed midway through sending the data, you might want to
+know how much you sent before the connection failed.</p>
+<p>To read the response, you’d generally use the <code>read</code>
+function on sockets, which gives whatever bits of the response have
+already arrived. Then you write a loop that collects bits of the
+response as they arrive. However, in Python you can use the
+<code>makefile</code> helper function, which hides the loop:<span
+class="note-container"><span class="note">If you’re in another language,
+you might only have <code>socket.read</code> available. You’ll need to
+write the loop, checking the socket status, yourself.</span></span></p>
+<div class="sourceCode" id="cb11"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>response <span class="op">=</span> s.makefile(<span class="st">&quot;r&quot;</span>, encoding<span class="op">=</span><span class="st">&quot;utf8&quot;</span>, newline<span class="op">=</span><span class="st">&quot;</span><span class="ch">\r\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<p>Here <code>makefile</code> returns a file-like object containing
+every byte we receive from the server. I am instructing Python to turn
+those bytes into a string using the <code>utf8</code> <em>encoding</em>,
+or method of associating bytes to letters.<span
+class="note-container"><span class="note">Hard-coding <code>utf8</code>
+is not correct, but it’s a shortcut that will work alright on most
+English-language websites. In fact, the <code>Content-Type</code> header
+usually contains a <code>charset</code> declaration that specifies
+encoding of the body. If it’s absent, browsers still won’t default to
+<code>utf8</code>; they’ll guess, based on letter frequencies, and you
+see ugly � strange áççêñ£ß when they guess wrong. Incorrect-but-common
+<code>utf8</code> skips all that complexity.</span></span> I’m also
+informing Python of HTTP’s weird line endings.</p>
+<p>Let’s now split the response into pieces. The first line is the
+status line:</p>
+<div class="sourceCode" id="cb12"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>statusline <span class="op">=</span> response.readline()</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>version, status, explanation <span class="op">=</span> statusline.split(<span class="st">&quot; &quot;</span>, <span class="dv">2</span>)</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> status <span class="op">==</span> <span class="st">&quot;200&quot;</span>, <span class="st">&quot;</span><span class="sc">{}</span><span class="st">: </span><span class="sc">{}</span><span class="st">&quot;</span>.<span class="bu">format</span>(status, explanation)</span></code></pre></div>
+<p>Note that I do <em>not</em> check that the server’s version of HTTP
+is the same as mine; this might sound like a good idea, but there are a
+lot of misconfigured servers out there that respond in HTTP 1.1 even
+when you talk to them in HTTP 1.0.<span class="note-container"><span
+class="note">Luckily the protocols are similar enough to not cause
+confusion.</span></span></p>
+<p>After the status line come the headers:</p>
+<div class="sourceCode" id="cb13"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>headers <span class="op">=</span> {}</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="cf">while</span> <span class="va">True</span>:</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>    line <span class="op">=</span> response.readline()</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> line <span class="op">==</span> <span class="st">&quot;</span><span class="ch">\r\n</span><span class="st">&quot;</span>: <span class="cf">break</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>    header, value <span class="op">=</span> line.split(<span class="st">&quot;:&quot;</span>, <span class="dv">1</span>)</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>    headers[header.lower()] <span class="op">=</span> value.strip()</span></code></pre></div>
+<p>For the headers, I split each line at the first colon and fill in a
+map of header names to header values. Headers are case-insensitive, so I
+normalize them to lower case. Also, white-space is insignificant in HTTP
+header values, so I strip off extra whitespace at the beginning and
+end.</p>
+<p>Headers can describe all sorts of information, but a couple of
+headers are especially important because they tell us that the data
+we’re trying to access is being sent in an unusual way. Let’s make sure
+none of those are present:<span class="note-container"><span
+class="note">The “compression” exercise at the end of this chapter
+describes how your browser should handle these headers if they are
+present.</span></span></p>
+<div class="sourceCode" id="cb14"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="st">&quot;transfer-encoding&quot;</span> <span class="kw">not</span> <span class="kw">in</span> headers</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="st">&quot;content-encoding&quot;</span> <span class="kw">not</span> <span class="kw">in</span> headers</span></code></pre></div>
+<p>The usual way to send the data, then, is everything after the
+headers:</p>
+<div class="sourceCode" id="cb15"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>body <span class="op">=</span> response.read()</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>s.close()</span></code></pre></div>
+<p>It’s that body that we’re going to display. Before we do that, let’s
+gather up all of the connection, request, and response code into a
+<code>request</code> function:</p>
+<div class="sourceCode" id="cb16"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> request(url):</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>    <span class="co"># ...</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> headers, body</span></code></pre></div>
+<p>Now let’s display the text in the body.</p>
+<div class="further">
+<p>The <a
+href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Encoding"><code>Content-Encoding</code></a>
+header lets the server compress web pages before sending them. Large,
+text-heavy web pages compress well, and as a result the page loads
+faster. The browser needs to send an <a
+href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding"><code>Accept-Encoding</code>
+header</a> in its request to list compression algorithms it supports. <a
+href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding"><code>Transfer-Encoding</code></a>
+is similar and also allows the data to be “chunked”, which many servers
+seem to use together with compression.</p>
+</div>
+<h1 id="displaying-the-html">Displaying the HTML</h1>
+<p>The HTML code in the body defines the content you see in your browser
+window when you go to <a href="http://example.org/index.html"
+class="uri">http://example.org/index.html</a>. I’ll be talking much,
+much more about HTML in future chapters, but for now let me keep it very
+simple.</p>
+<p>In HTML, there are <em>tags</em> and <em>text</em>. Each tag starts
+with a <code>&lt;</code> and ends with a <code>&gt;</code>; generally
+speaking, tags tell you what kind of thing some content is, while text
+is the actual content.<span class="note-container"><span
+class="note">That said, some tags, like <code>img</code>, are content,
+not information about it.</span></span> Most tags come in pairs of a
+start and an end tag; for example, the title of the page is enclosed a
+pair of tags: <code>&lt;title&gt;</code> and
+<code>&lt;/title&gt;</code>. Each tag, inside the angle brackets, has a
+tag name (like <code>title</code> here), and then optionally a space
+followed by <em>attributes</em>, and its pair has a <code>/</code>
+followed by the tag name (and no attributes). Some tags do not have
+pairs, because they don’t surround text, they just carry information.
+For example, on <a href="http://example.org/index.html"
+class="uri">http://example.org/index.html</a>, there is the tag:</p>
+<pre class="example"><code>&lt;meta charset=&quot;utf-8&quot; /&gt;</code></pre>
+<p>This tag explains that the character set with which to interpret the
+page body is <code>utf-8</code>. Sometimes, tags that don’t contain
+information end in a slash, but not always; it’s a matter of
+preference.</p>
+<p>The most important HTML tag is called <code>&lt;body&gt;</code> (with
+its pair, <code>&lt;/body&gt;</code>). Between these tags is the content
+of the page; outside of these tags is various information about the
+page, like the aforementioned title, information about how the page
+should look (<code>&lt;style&gt;</code> and
+<code>&lt;/style&gt;</code>), and metadata (the aforementioned
+<code>&lt;meta&gt;</code> tag).</p>
+<p>So, to create our very, very simple web browser, let’s take the page
+HTML and print all the text, but not the tags, in it:<span
+class="note-container"><span class="note">If this example causes Python
+to produce a <code>SyntaxError</code> pointing to the <code>end</code>
+on the last line, it is likely because you are running Python 2 instead
+of Python 3. These chapters assume Python 3.</span></span></p>
+<div class="sourceCode" id="cb18"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>in_angle <span class="op">=</span> <span class="va">False</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> c <span class="kw">in</span> body:</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> c <span class="op">==</span> <span class="st">&quot;&lt;&quot;</span>:</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>        in_angle <span class="op">=</span> <span class="va">True</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">elif</span> c <span class="op">==</span> <span class="st">&quot;&gt;&quot;</span>:</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>        in_angle <span class="op">=</span> <span class="va">False</span></span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">elif</span> <span class="kw">not</span> in_angle:</span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>        <span class="bu">print</span>(c, end<span class="op">=</span><span class="st">&quot;&quot;</span>)</span></code></pre></div>
+<p>This code is pretty complex. It goes through the request body
+character by character, and it has two states: <code>in_angle</code>,
+when it is currently between a pair of angle brackets, and
+<code>not in_angle</code>. When the current character is an angle
+bracket, it changes between those states; normal characters not inside a
+tag, are printed.<span class="note-container"><span class="note">The
+<code>end</code> argument tells Python not to print a newline after the
+character, which it otherwise would.</span></span></p>
+<p>Let’s put this code into a new function, <code>show</code>:</p>
+<div class="sourceCode" id="cb19"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> show(body):</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>    <span class="co"># ...</span></span></code></pre></div>
+<p>We can now load a web page just by stringing together
+<code>request</code> and <code>show</code>:</p>
+<div class="sourceCode" id="cb20"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> load(url):</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>    headers, body <span class="op">=</span> request(url)</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>    show(body)</span></code></pre></div>
+<p>Add the following code to run <code>load</code> from the command
+line:</p>
+<div class="sourceCode" id="cb21"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="va">__name__</span> <span class="op">==</span> <span class="st">&quot;__main__&quot;</span>:</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>    <span class="im">import</span> sys</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>    load(sys.argv[<span class="dv">1</span>])</span></code></pre></div>
+<p>This is Python’s version of a <code>main</code> function—it reads the
+first argument (<code>sys.argv[1]</code>) from the command line and uses
+it as a URL. Try running this code on the URL
+<code>http://example.org/</code>:</p>
+<pre><code>python3 browser.py http://example.org/</code></pre>
+<p>You should see some short text welcoming you to the official example
+web page. You can also try using it on this chapter!</p>
+<h1 id="encrypted-connections">Encrypted connections</h1>
+<p>So far, our browser supports the <code>http</code> scheme. That’s
+pretty good: it’s the most common scheme on the web today. But more and
+more, websites are migrating to the <code>https</code> scheme. I’d like
+this toy browser to support <code>https</code> because many websites
+today require it.</p>
+<p>The difference between <code>http</code> and <code>https</code> is
+that <code>https</code> is more secure—but let’s be a little more
+specific. The <code>https</code> scheme, or more formally HTTP over TLS,
+is identical to the normal <code>http</code> scheme, except that all
+communication between the browser and the host is encrypted. There are
+quite a few details to how this works: which encryption algorithms are
+used, how a common encryption key is agreed to, and of course how to
+make sure that the browser is connecting to the correct host.</p>
+<p>Luckily, the Python <code>ssl</code> library implements all of these
+details for us, so making an encrypted connection is almost as easy as
+making a regular connection. That ease of use comes with accepting some
+default settings which could be inappropriate for some situations, but
+for teaching purposes they are fine.</p>
+<p>Making an encrypted connection with <code>ssl</code> is pretty easy.
+Suppose you’ve already created a socket, <code>s</code>, and connected
+it to <code>example.org</code>. To encrypt the connection, you use
+<code>ssl.create_default_context</code> to create a <em>context</em>
+<code>ctx</code> and use that context to <em>wrap</em> the socket
+<code>s</code>. That produces a new socket, <code>s</code>:</p>
+<div class="sourceCode" id="cb23"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> ssl</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>ctx <span class="op">=</span> ssl.create_default_context()</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>s <span class="op">=</span> ctx.wrap_socket(s, server_hostname<span class="op">=</span>host)</span></code></pre></div>
+<p>When you wrap <code>s</code>, you pass a <code>server_hostname</code>
+argument, and it should match the argument you passed to
+<code>s.connect</code>. Note that I save the new socket back into the
+<code>s</code> variable. That’s because you don’t want to send over the
+original socket; it would be unencrypted and also confusing.</p>
+<div class="installation">
+<p>On macOS, you’ll need to <a
+href="https://stackoverflow.com/questions/52805115/certificate-verify-failed-unable-to-get-local-issuer-certificate">run
+a program called “Install Certificates”</a> before you can use Python’s
+<code>ssl</code> package on most websites.</p>
+</div>
+<p>Let’s try to take this code and add it to <code>request</code>.
+First, we need to detect which scheme is being used:</p>
+<div class="sourceCode" id="cb24"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>scheme, url <span class="op">=</span> url.split(<span class="st">&quot;://&quot;</span>, <span class="dv">1</span>)</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> scheme <span class="kw">in</span> [<span class="st">&quot;http&quot;</span>, <span class="st">&quot;https&quot;</span>], <span class="op">\</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;Unknown scheme </span><span class="sc">{}</span><span class="st">&quot;</span>.<span class="bu">format</span>(scheme)</span></code></pre></div>
+<p>Encrypted HTTP connections usually use port 443 instead of port
+80:</p>
+<div class="sourceCode" id="cb25"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>port <span class="op">=</span> <span class="dv">80</span> <span class="cf">if</span> scheme <span class="op">==</span> <span class="st">&quot;http&quot;</span> <span class="cf">else</span> <span class="dv">443</span></span></code></pre></div>
+<p>Next, we’ll wrap the socket with the <code>ssl</code> library:</p>
+<div class="sourceCode" id="cb26"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> scheme <span class="op">==</span> <span class="st">&quot;https&quot;</span>:</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>    ctx <span class="op">=</span> ssl.create_default_context()</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>    s <span class="op">=</span> ctx.wrap_socket(s, server_hostname<span class="op">=</span>host)</span></code></pre></div>
+<p>Your browser should now be able to connect to HTTPS sites.</p>
+<p>While we’re at it, let’s add support for custom ports, which are
+specified in a URL by putting a colon after the host name:</p>
+<div class="cmd">
+<pre class='highlight-region'>
+http://example.org:<mark>8080<label class='above left'>Port</label></mark>/index.html
+</pre>
+
+</div>
+<p>If the URL has a port we can parse it out and use it:</p>
+<div class="sourceCode" id="cb27"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="st">&quot;:&quot;</span> <span class="kw">in</span> host:</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>    host, port <span class="op">=</span> host.split(<span class="st">&quot;:&quot;</span>, <span class="dv">1</span>)</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>    port <span class="op">=</span> <span class="bu">int</span>(port)</span></code></pre></div>
+<p>Custom ports are handy for debugging. Python has a built-in web
+server you can use to serve files on your computer. For example, if you
+run</p>
+<pre><code>python3 -m http.server 8000</code></pre>
+<p>from some directory, then going to
+<code>http://localhost:8000/</code> should show you all the files in
+that directory. This is going to be a good way to test your browser.</p>
+<div class="further">
+<p>TLS is pretty complicated. You can read the details in <a
+href="https://tools.ietf.org/html/rfc8446">RFC 8446</a>, but
+implementing your own is not recommended. It’s very difficult to write a
+custom TLS implementation that is not only correct but secure.</p>
+</div>
+<h1 id="summary">Summary</h1>
+<p>This chapter went from an empty file to a rudimentary web browser
+that can:</p>
+<ul>
+<li>Parse a URL into a scheme, host, port and path.</li>
+<li>Connect to that host using the <code>sockets</code> and
+<code>ssl</code> libraries</li>
+<li>Send an HTTP request to that host, including a <code>Host</code>
+header</li>
+<li>Split the HTTP response into a status line, headers, and a body</li>
+<li>Print the text (and not the tags) in the body</li>
+</ul>
+<p>Yes, this is still more of a command-line tool than a web browser,
+but it already has some of the core capabilities of a browser.</p>
+<div id="signup">
+<iframe src="https://browserbook.substack.com/embed" width="350" height="180" frameborder="0" scrolling="no"></iframe>
+<a href="#" id="signup-close">Close</a>
+</div>
+
+<h1 id="outline">Outline</h1>
+<p>The complete set of functions, classes, and methods in our browser
+should look something like this:</p>
+<div class="cmd python outline">
+<code class=line><span class=kw>def</span> request(url)
+</code>
+<code class=line><span class=kw>def</span> show(body)
+</code>
+<code class=line><span class=kw>def</span> load(url)
+</code>
+<code class=line><span class=cf>if</span> __name__ <span class=op>==</span> <span class=st>"__main__"</span>
+</code>
+
+</div>
+<h1 id="exercises">Exercises</h1>
+<p><em>HTTP/1.1:</em> Along with <code>Host</code>, send the
+<code>Connection</code> header in the <code>request</code> function with
+the value <code>close</code>. Your browser can now declare that it is
+using <code>HTTP/1.1</code>. Also add a <code>User-Agent</code> header.
+Its value can be whatever you want—it identifies your browser to the
+host. Make it easy to add further headers in the future.</p>
+<p><em>File URLs</em>: Add support for the <code>file</code> scheme,
+which allows the browser to open local files. For example,
+<code>file:///path/goes/here</code> should refer to the file on your
+computer at location <code>/path/goes/here</code>. Also make it so that,
+if your browser is started without a URL being given, some specific file
+on your computer is opened. You can use that file for quick testing.</p>
+<p><em>data:</em> Yet another scheme is <em>data</em>, which allow
+inlining HTML content into the URL itself. Try navigating to
+<code>data:text/html,Hello world!</code> in a real browser to see what
+happens. Add support for this scheme to your browser. The <em>data</em>
+scheme is especially convenient for making tests without having to put
+them in separate files.</p>
+<p><em>Body tag:</em> Only show text in an HTML document if it is
+between <code>&lt;body&gt;</code> and <code>&lt;/body&gt;</code>. This
+avoids printing the title and style information. Try to do this in a
+single pass through the document—that means not using string methods
+like <code>split</code> or similar. The loop in <code>show</code> will
+need more variables to track tag names.</p>
+<p><em>Entities:</em> Implement support for the less-than
+(<code>&amp;lt;</code>) and greater-than (<code>&amp;gt;</code>)
+entities. These should be printed as <code>&lt;</code> and
+<code>&gt;</code>, respectively. For example, if the HTML response was
+<code>&amp;lt;div&amp;gt;</code>, the <code>show</code> method of your
+browser should print <code>&lt;div&gt;</code>. Entities allow web pages
+to include these special characters without the browser interpreting
+them as tags.</p>
+<p><em>view-source:</em> In addition to HTTP and HTTPS, there are other
+schemes, such as <em>view-source</em>; navigating in a real browser to
+<code>view-source:http://browser.engineering/http.html</code> shows the
+HTML source of this chapter rather than its rendered output. Add support
+for the view-source scheme. Your browser should print the entire HTML
+file as if it was text. <em>Hint</em>: To do so, you can utilize the
+entities from the previous exercise, and add an extra
+<code>transform()</code> method that adjusts the input to
+<code>show()</code> when in view-source mode, like this:
+<code>show(transform(body))</code>.</p>
+<p><em>Compression:</em> Add support for HTTP compression, in which the
+browser <a
+href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Content_negotiation">informs
+the server</a> that compressed data is acceptable. Your browser must
+send the <code>Accept-Encoding</code> header with the value
+<code>gzip</code>. If the server supports compression, its response will
+have a <code>Content-Encoding</code> header with value
+<code>gzip</code>. The body is then compressed. Add support for this
+case. To decompress the data, you can use the <code>decompress</code>
+method in the <code>gzip</code> module. Calling <code>makefile</code>
+with the <code>encoding</code> argument will no longer work, because
+compressed data is not <code>utf8</code>-encoded. You can change the
+first argument <code>"rb"</code> to work with raw bytes instead of
+encoded text. Most web servers send compressed data in a
+<code>Transfer-Encoding</code> called <a
+href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding"><code>chunked</code></a>.
+You’ll need to add support for that, too, to access most web servers
+that support compressed data.<span class="note-container"><span
+class="note">There’s also a couple of <code>Transfer-Encoding</code>s
+that compress the data. Those aren’t commonly used.</span></span></p>
+<p><em>Redirects:</em> Error codes in the 300 range request a redirect.
+When your browser encounters one, it should make a new request to the
+URL given in the <code>Location</code> header. Sometimes the
+<code>Location</code> header is a full URL, but sometimes it skips the
+host and scheme and just starts with a <code>/</code> (meaning the same
+host and scheme as the original request). The new URL might itself be a
+redirect, so make sure to handle that case. You don’t, however, want to
+get stuck in a redirect loop, so make sure limit how many redirects your
+browser can follow in a row. You can test this with with the URL <a
+href="http://browser.engineering/redirect"
+class="uri">http://browser.engineering/redirect</a>, which redirects
+back to this page.</p>
+<p><em>Caching:</em> Typically the same images, styles, and scripts are
+used on multiple pages; downloading them repeatedly is a waste. It’s
+generally valid to cache any HTTP response, as long as it was requested
+with <code>GET</code> and received a <code>200</code> response.<span
+class="note-container"><span class="note">Some other status codes like
+<code>301</code> and <code>404</code> can also be cached.</span></span>
+Implement a cache in your browser and test it by requesting the same
+file multiple times. Servers control caches using the
+<code>Cache-Control</code> header. Add support for this header,
+specifically for <code>no-store</code> and <code>max-age</code> values.
+If the <code>Cache-Control</code> header contains any other value than
+these two, it’s best not to cache the response.</p>
+
+
+
+<nav class="links">
+  Chapter 1 of <a href="index.html" title="Table of Contents">Web Browser Engineering</a>.
+  <a rel="prev" title="Previous chapter" href="history.html">&lt;</a>
+  <a rel="next" title="Next chapter" href="graphics.html">&gt;</a>
+</nav>
+
+<p>Did you find this chapter useful? <button id=feedback-button>Send us feedback!</button></p>
+
+<footer>
+  &copy; 2018&ndash;2021 <a href="https://pavpanchekha.com">Pavel Panchekha</a> &amp; <a href="https://twitter.com/chrishtr">Chris Harrelson</a>
+</footer>
