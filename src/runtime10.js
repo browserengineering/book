@@ -36,6 +36,12 @@ Object.defineProperty(Node.prototype, 'innerHTML', {
     }
 });
 
+Object.defineProperty(Node.prototype, 'style', {
+    set: function(s) {
+        call_python("style_set", this.handle, s.toString());
+    }
+});
+
 Node.prototype.dispatchEvent = function(evt) {
     var type = evt.type;
     var handle = this.handle
@@ -57,4 +63,22 @@ XMLHttpRequest.prototype.open = function(method, url, is_async) {
 XMLHttpRequest.prototype.send = function(body) {
     this.responseText = call_python("XMLHttpRequest_send",
         this.method, this.url, body);
+}
+
+RAF_LISTENERS = [];
+
+function requestAnimationFrame(fn) {
+    RAF_LISTENERS.push(fn);
+    call_python("requestAnimationFrame");
+}
+
+function __runRAFHandlers() {
+    var handlers_copy = [];
+    for (var i = 0; i < RAF_LISTENERS.length; i++) {
+        handlers_copy.push(RAF_LISTENERS[i]);
+    }
+    RAF_LISTENERS = [];
+    for (var i = 0; i < handlers_copy.length; i++) {
+        handlers_copy[i]();
+    }
 }

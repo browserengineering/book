@@ -9,6 +9,7 @@ import tkinter
 import tkinter.font
 import urllib.parse
 import dukpy
+import time
 WIDTH = 800
 HEIGHT = 600
 HSTEP = 13
@@ -27,8 +28,9 @@ def propogate_dirty(node):
     bit = False
     for child in node.children:
         propogate_dirty(child)
-        bit = bit or child.dirty or child.dirty_descendant
-    self.dirty_descendant = bit
+        bit = bit or child.dirty_descendant \
+            or child.node.dirty or child.dirty_xyw or child.dirty_h
+    node.dirty_descendant = bit
 
 class Text:
 
@@ -38,7 +40,6 @@ class Text:
         self.parent = parent
         self.style = None
         self.dirty = True
-        self.dirty_style = True
 
     def __repr__(self):
         return repr(self.text)
@@ -51,7 +52,6 @@ class Element:
         self.children = []
         self.parent = parent
         self.dirty = True
-        self.dirty_style = True
 
         self.style = None
 
@@ -387,11 +387,17 @@ class LineLayout:
         self.node = node
         self.parent = parent
         self.previous = previous
+        self.next = None
+        if previous: previous.next = self
         self.children = []
         self.x = None
         self.y = None
         self.width = None
         self.height = None
+
+        self.dirty_xyw = True
+        self.dirty_h = True
+        self.dirty_descendant = False
 
     def layout(self):
         self.width = self.parent.width
@@ -404,6 +410,7 @@ class LineLayout:
             word.layout()
         if not self.children:
             self.height = 0
+            self.parent.dirty_h = True
             return
         max_ascent = max([word.font.metrics('ascent') for word in self.children])
         baseline = self.y + 1.25 * max_ascent
@@ -411,15 +418,19 @@ class LineLayout:
             word.y = baseline - word.font.metrics('ascent')
         max_descent = max([word.font.metrics('descent') for word in self.children])
         self.height = 1.25 * (max_ascent + max_descent)
+        self.parent.dirty_h = True
         self.dirty_xyw = False
         self.dirty_h = False
+        self.dirty_descendant = False
 
     def paint(self, display_list):
         for child in self.children:
             child.paint(display_list)
 
     def __repr__(self):
-        return 'LineLayout(x={}, y={}, width={}, height={})'.format(self.x, self.y, self.width, self.height)
+        return 'LineLayout(x={}, y={}, width={}, height={}) d: {}, dd: {}'.format(self.x, self.y, self.width, self.height, 
+            self.node.dirty or self.dirty_xyw or self.dirty_h,
+            self.dirty_descendant)
 
 class TextLayout:
 
@@ -429,11 +440,17 @@ class TextLayout:
         self.children = []
         self.parent = parent
         self.previous = previous
+        self.next = None
+        if previous: previous.next = self
         self.x = None
         self.y = None
         self.width = None
         self.height = None
         self.font = None
+
+        self.dirty_xyw = True
+        self.dirty_h = True
+        self.dirty_descendant = False
 
     def layout(self):
         weight = self.node.style['font-weight']
@@ -449,13 +466,21 @@ class TextLayout:
         else:
             self.x = self.parent.x
         self.height = self.font.metrics('linespace')
+        self.parent.dirty_h = True
+        self.dirty_xyw = False
+        self.dirty_h = False
+        self.parent.dirty_h = True
+        self.dirty_descendant = False
+        self.node.dirty = False
 
     def paint(self, display_list):
         color = self.node.style['color']
         display_list.append(DrawText(self.x, self.y, self.word, self.font, color))
 
     def __repr__(self):
-        return ('TextLayout(x={}, y={}, width={}, height={}, ' + 'node={}, word={})').format(self.x, self.y, self.width, self.height, self.node, self.word)
+        return ('TextLayout(x={}, y={}, width={}, height={}, ' + 'node={}, word={}) d: {}, dd: {}').format(self.x, self.y, self.width, self.height, self.node, self.word,
+            self.node.dirty or self.dirty_xyw or self.dirty_h,
+            self.dirty_descendant)
 CHROME_PX = 100
 
 class DocumentLayout:
@@ -464,15 +489,18 @@ class DocumentLayout:
         self.node = node
         self.parent = None
         self.previous = None
+        self.next = None
         self.children = []
 
         self.dirty_xyw = True
         self.dirty_h = True
+        self.dirty_descendant = False
 
     def layout(self):
         if self.node.dirty:
             child = BlockLayout(self.node, self, None)
             self.children.append(child)
+            self.dirty_descendant = True
         else:
             child = self.children[0]
 
@@ -483,7 +511,9 @@ class DocumentLayout:
             child.dirty_xyw = True
             self.dirty_xyw = False
 
-        child.layout()
+        if self.dirty_descendant:
+            child.layout()
+            self.dirty_descendant = False
 
         if self.dirty_h:
             assert not child.dirty_h
@@ -495,7 +525,10 @@ class DocumentLayout:
         self.children[0].paint(display_list)
 
     def __repr__(self):
-        return 'DocumentLayout()'
+        return 'DocumentLayout() d: {}, dd: {}'.format(
+            self.node.dirty or self.dirty_xyw or self.dirty_h,
+            self.dirty_descendant
+        )
 
 class BlockLayout:
 
@@ -503,6 +536,8 @@ class BlockLayout:
         self.node = node
         self.parent = parent
         self.previous = previous
+        self.next = None
+        if previous: previous.next = self
         self.children = []
         self.x = None
         self.y = None
@@ -512,22 +547,35 @@ class BlockLayout:
 
         self.dirty_xyw = True
         self.dirty_h = True
+        self.dirty_descendant = False
 
     def layout(self):
-        if self.dirty_xyw:
+        if self.dirty_xyw or self.node.dirty:
+            print(f"BL[{self.node}].xyw")
+            old = (self.x, self.y, self.width)
+
             assert not self.parent.dirty_xyw
-            self.width = self.parent.width
+            if self.node.style.get("width"):
+                self.width = float(self.node.style["width"][:-2])
+            else:
+                self.width = self.parent.width
             self.x = self.parent.x
             if self.previous:
                 assert not self.previous.dirty_xyw and not self.previous.dirty_h
                 self.y = self.previous.y + self.previous.height
             else:
                 self.y = self.parent.y
-            for child in self.children:
-                child.dirty_xyw = True
+
+            if old != (self.x, self.y, self.width):
+                self.node.dirty = True
+                for child in self.children:
+                    child.dirty_xyw = True
+                if self.next: self.next.dirty_xyw = True
             self.dirty_xyw = False
 
         if self.node.dirty:
+            print(f"BL[{self.node}].children")
+            old = (self.layout_mode, self.children)
             self.layout_mode = layout_mode(self.node)
             self.children = []
             if self.layout_mode == "block":
@@ -539,15 +587,26 @@ class BlockLayout:
             elif self.layout_mode == "inline":
                 self.new_line()
                 self.recurse(self.node)
+
+            if old != (self.layout_mode, self.children):
+                self.dirty_descendant = True
+                self.dirty_h = True
             self.node.dirty = False
 
-        for child in self.children:
-            child.layout()
+        if self.dirty_descendant:
+            for child in self.children:
+                if child.dirty_descendant or child.node.dirty or child.dirty_xyw or child.dirty_h:
+                    child.layout()
+            self.dirty_descendant = False
 
         if self.dirty_h:
+            print(f"BL[{self.node}].h")
+            old = (self.height,)
             assert not any([child.dirty_h for child in self.children])
             self.height = sum([child.height for child in self.children])
-            self.parent.dirty_h = True
+            if old != (self.height,):
+                self.parent.dirty_h = True
+                if self.next: self.next.dirty_xyw = True
             self.dirty_h = False
 
     def recurse(self, node):
@@ -613,9 +672,12 @@ class BlockLayout:
             child.paint(display_list)
 
     def __repr__(self):
-        return 'BlockLayout[{}](x={}, y={}, width={}, height={}, node={})'.format(
+        return 'BlockLayout[{}](x={}, y={}, width={}, height={}, node={}) d: {}, dd: {}'.format(
             self.layout_mode,
-            self.x, self.y, self.width, self.height, self.node)
+            self.x, self.y, self.width, self.height, self.node,
+            self.node.dirty or self.dirty_xyw or self.dirty_h,
+            self.dirty_descendant
+        )
 
 class InputLayout:
 
@@ -624,10 +686,16 @@ class InputLayout:
         self.children = []
         self.parent = parent
         self.previous = previous
+        self.next = None
+        if previous: previous.next = self
         self.x = None
         self.y = None
         self.width = None
         self.height = None
+
+        self.dirty_xyw = True
+        self.dirty_h = True
+        self.dirty_descendant = False
 
     def layout(self):
         weight = self.node.style['font-weight']
@@ -643,6 +711,11 @@ class InputLayout:
         else:
             self.x = self.parent.x
         self.height = self.font.metrics('linespace')
+        self.parent.dirty_h = True
+        self.dirty_xyw = False
+        self.dirty_h = False
+        self.dirty_descendant = False
+        self.node.dirty = False
 
     def paint(self, display_list):
         bgcolor = self.node.style.get('background-color', 'transparent')
@@ -662,7 +735,9 @@ class InputLayout:
             extra = 'type=input'
         else:
             extra = 'type=button text={}'.format(self.node.children[0].text)
-        return 'InputLayout(x={}, y={}, width={}, height={}, {})'.format(self.x, self.y, self.width, self.height, extra)
+        return 'InputLayout(x={}, y={}, width={}, height={}, {}) d: {}, dd: {}'.format(self.x, self.y, self.width, self.height, extra,
+            self.node.dirty or self.dirty_xyw or self.dirty_h,
+            self.dirty_descendant)
 INPUT_WIDTH_PX = 200
 
 def layout_mode(node):
@@ -680,6 +755,7 @@ def layout_mode(node):
     else:
         return 'block'
 EVENT_DISPATCH_CODE = 'new Node(dukpy.handle).dispatchEvent(new Event(dukpy.type))'
+RAF_DISPATCH_CODE = '__runRAFHandlers()'
 
 def url_origin(url):
     (scheme_colon, _, host, _) = url.split('/', 3)
@@ -757,7 +833,9 @@ class JSContext:
         self.interp.export_function('querySelectorAll', self.querySelectorAll)
         self.interp.export_function('getAttribute', self.getAttribute)
         self.interp.export_function('innerHTML_set', self.innerHTML_set)
+        self.interp.export_function('style_set', self.style_set)
         self.interp.export_function('XMLHttpRequest_send', self.XMLHttpRequest_send)
+        self.interp.export_function('requestAnimationFrame', self.requestAnimationFrame)
         with open('runtime10.js') as f:
             self.interp.evaljs(f.read())
         self.node_to_handle = {}
@@ -770,6 +848,9 @@ class JSContext:
         handle = self.node_to_handle.get(elt, -1)
         do_default = self.interp.evaljs(EVENT_DISPATCH_CODE, type=type, handle=handle)
         return not do_default
+
+    def dispatch_raf(self):
+        self.interp.evaljs(RAF_DISPATCH_CODE)
 
     def get_handle(self, elt):
         if elt not in self.node_to_handle:
@@ -799,6 +880,11 @@ class JSContext:
         elt.dirty = True
         self.tab.render()
 
+    def style_set(self, handle, s):
+        elt = self.handle_to_node[handle]
+        elt.attributes["style"] = s;
+        self.tab.render()
+
     def XMLHttpRequest_send(self, method, url, body):
         full_url = resolve_url(url, self.tab.url)
         if not self.tab.allowed_request(full_url):
@@ -808,14 +894,18 @@ class JSContext:
             raise Exception('Cross-origin XHR request not allowed')
         return out
 
+    def requestAnimationFrame(self):
+        self.tab.browser.window.after(100, self.tab.browser.raf)
+
 class Tab:
 
-    def __init__(self):
+    def __init__(self, browser):
         self.history = []
         self.focus = None
         self.url = None
         with open('browser8.css') as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
+        self.browser = browser
 
     def allowed_request(self, url):
         return self.allowed_origins == None or url_origin(url) in self.allowed_origins
@@ -859,11 +949,25 @@ class Tab:
         self.document = DocumentLayout(self.nodes)
         self.render()
 
+    def raf(self):
+        self.js.dispatch_raf()
+        self.render()
+
     def render(self):
+        start = time.time()
         style(self.nodes, sorted(self.rules, key=cascade_priority))
+        print("Style: {:.3f}".format((time.time() - start)*1000))
+
+        start = time.time()
+        propogate_dirty(self.document)
         self.document.layout()
+        print("Layout: {:.3f}".format((time.time() - start)*1000))
+
+        start = time.time()
         self.display_list = []
         self.document.paint(self.display_list)
+        print("Paint: {:.3f}".format((time.time() - start)*1000))
+        print()
 
     def draw(self, canvas):
         for cmd in self.display_list:
@@ -956,6 +1060,10 @@ class Browser:
         self.tabs[self.active_tab].scrolldown()
         self.draw()
 
+    def raf(self):
+        self.tabs[self.active_tab].raf()
+        self.draw()
+
     def handle_click(self, e):
         if e.y < CHROME_PX:
             self.focus = None
@@ -992,7 +1100,7 @@ class Browser:
             self.draw()
 
     def load(self, url):
-        new_tab = Tab()
+        new_tab = Tab(self)
         new_tab.load(url)
         self.active_tab = len(self.tabs)
         self.tabs.append(new_tab)
@@ -1025,6 +1133,7 @@ class Browser:
             self.canvas.create_text(55, 55, anchor='nw', text=url, font=buttonfont, fill='black')
         self.canvas.create_rectangle(10, 50, 35, 90, outline='black', width=1)
         self.canvas.create_polygon(15, 70, 30, 55, 30, 85, fill='black')
+        self.window.update_idletasks()
 
 if __name__ == '__main__':
     import sys
