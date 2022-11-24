@@ -133,23 +133,15 @@ def request(url, top_level_url, payload=None):
     return headers, body
 
 class DrawImage(DisplayItem):
-    def __init__(self, image, src_rect, dst_rect, image_rendering):
+    def __init__(self, image, src_rect, dst_rect):
         super().__init__(dst_rect)
         self.image = image
         self.src_rect = src_rect
         self.dst_rect = dst_rect
-        self.quality = DrawImage.quality(image_rendering)
-
-    def quality(image_rendering):
-        if image_rendering == "crisp-edges":
-            return skia.kNone_FilterQuality
-        else:
-            return skia.kLow_FilterQuality
 
     def execute(self, canvas):
         canvas.drawImageRect(
-            self.image, self.src_rect, self.dst_rect,
-            skia.Paint(FilterQuality=self.quality))
+            self.image, self.src_rect, self.dst_rect)
 
 class DocumentLayout:
     def __init__(self, node, tab):
@@ -390,7 +382,7 @@ class InlineLayout:
         if "width" in node.attributes:
             w = device_px(int(node.attributes["width"]), zoom)
         else:
-            w = device_px(node.image.width(), zoom)
+            w = device_px(node.image.width, zoom)
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
@@ -584,14 +576,14 @@ class ImageLayout:
             self.width = \
                 device_px(int(self.node.attributes["width"]), zoom)
         else:
-            self.width = device_px(self.node.image.width(), zoom)
+            self.width = device_px(self.node.image.width, zoom)
     
         if "height" in self.node.attributes:
             self.height = \
                 device_px(int(self.node.attributes["height"]), zoom)
         else:
             self.height = max(
-                device_px(self.node.image.height(), zoom),
+                device_px(self.node.image.height, zoom),
                 linespace(self.font))
 
         if self.previous:
@@ -603,15 +595,18 @@ class ImageLayout:
     def paint(self, display_list):
         cmds = []
 
+        decoded_image = decode_image(self.node.image,
+            self.width, self.height,
+            self.node.style.get("image-rendering", "auto"))
+
         src_rect = skia.Rect.MakeLTRB(
-            0, 0, self.node.image.width(), self.node.image.height())
+            0, 0, decoded_image.width(), decoded_image.height())
 
         dst_rect = skia.Rect.MakeLTRB(
             self.x, self.y, self.x + self.width,
             self.y + self.height)
 
-        cmds.append(DrawImage(self.node.image, src_rect, dst_rect,
-            self.node.style.get("image-rendering", "auto")))
+        cmds.append(DrawImage(decoded_image, src_rect, dst_rect))
 
         display_list.extend(cmds)
 
@@ -685,9 +680,13 @@ class IframeLayout:
         return "IframeLayout(src={}, x={}, y={}, width={}, height={})".format(
             self.node.attributes["src"], self.x, self.y, self.width, self.height)
 
-def decode_image(image_bytes):
-    picture_stream = io.BytesIO(image_bytes)
-    pil_image = PIL.Image.open(picture_stream)
+def decode_image(encoded_image, width, height, image_quality):
+    resample=None
+    # TODO: How do I reference PIL.Image.Resizing.LANCZOS?
+    # https://pillow.readthedocs.io/en/stable/reference/Image.html#PIL.Image.Resampling.LANCZOS
+    if image_quality == "crisp-edges":
+        resample = PIL.Image.ANTIALIAS
+    pil_image = encoded_image.resize((int(width), int(height)), resample)
     if pil_image.mode == "RGBA":
         pil_image_bytes = pil_image.tobytes()
     else:
@@ -950,7 +949,7 @@ class Document:
                 continue
             try:
                 header, body = request(image_url, url)
-                img.image = decode_image(body)
+                img.image = PIL.Image.open(io.BytesIO(body))
             except:
                 continue
 
@@ -1478,11 +1477,12 @@ class Browser:
         for cmd in self.active_tab_display_list:
             all_commands = \
                 tree_to_list(cmd, all_commands)
+
         non_composited_commands = [cmd
             for cmd in all_commands
-            if not cmd.needs_compositing() and \
+            if not cmd.needs_compositing and \
                 (not cmd.parent or \
-                 cmd.parent.needs_compositing())
+                 cmd.parent.needs_compositing)
         ]
         for cmd in non_composited_commands:
             for layer in reversed(self.composited_layers):
