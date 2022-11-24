@@ -144,7 +144,7 @@ it to RGBA format (the same RGBA in
 (which performs the decode and puts the result in a raw byte array), and wrap
 the result in a Skia `Image` object.
 
-``` {.python}
+``` {.python expected=False}
 def decode_image(image_bytes):
     picture_stream = io.BytesIO(image_bytes)
     pil_image = PIL.Image.open(picture_stream)
@@ -161,7 +161,7 @@ def decode_image(image_bytes):
 Let's now load `<img>` tags found in a web page.In `load` we need to
 first find all of the images in the document:
 
-``` {.python expected=False}
+``` {.python replace=Tab/Document}
 class Tab:
     # ...
     def load(self, url, body=None):
@@ -176,7 +176,7 @@ class Tab:
 and then request them from the network and decode them, placing the result
 on the `Element` object for each image.
 
-``` {.python}
+``` {.python expected=False}
         # ...
         for img in images:
             link = img.attributes["src"]
@@ -195,7 +195,7 @@ Images have inline layout, so we'll need to add a new value in `InlineLayout`
 and a new `ImageLayout` class. In this case, the width contributed to the line
 is the width of the image.
 
-``` {.python}
+``` {.python expected=False}
 class InlineLayout:
     # ...
     def recurse(self, node, zoom):
@@ -393,7 +393,9 @@ Image quality and performance
 Images are expensive relative to text content. To start with, they take a
 long time to download. But decoding is even more expensive in some ways, in
 particular how it can slow down the rendering pipeline and use up a lot of
-memory. 
+memory. On top of this, if the image is sized to a non-intrinsic size on
+screen, there are several different algorithms to choose how to do it. Some
+of the algorithms are more expensive than others to run.
 
 To understand why, it's time to dig into what decoding actually does. *Decoding*
 is the process of converting an *encoded* image from a binary form optimized
@@ -415,6 +417,70 @@ ways they achieve that are by avoiding decode for images not currently on the
 screen, and decoding directly to the size actually needed to draw pixels on the
 screen. I've left the first technique to an exercise, but let's dig into the
 second one here.
+
+Let's optimize to take advantage of these new observations. The first is to
+decode directly the painted size rather than intrinsic. But what about the
+algorithm to resize? For that we'll obey the[`image-rendering`]
+[image-rendering] CSS property.
+
+[image-rendering]: https://developer.mozilla.org/en-US/docs/Web/CSS/image-rendering
+
+This is not too hard, but requires doing the decode during paint rather than
+load. So first store the *encoded* image instead during load:
+
+``` {.python replace=Tab/Document}
+class Tab:
+    # ...
+    def load(self, url, body=None):
+        # ...
+        for img in images:
+            # ...
+                header, body = request(image_url, url)
+                img.image = PIL.Image.open(io.BytesIO(body))
+```
+
+Then in layout, since use that image for sizing.^[It's the same as the previous
+code but on a `PIL` image instead of a Skia one, and now it's an attribute
+access, so the only change is to remove some parentheses. I won't show the code
+here since it's trivial.]
+
+And `decode_image` will also need to change:
+
+TODO: figure out if PIL.Image actually saves any bytes doing this.
+
+``` {.python}
+def decode_image(encoded_image, width, height, image_quality):
+    resample=None
+    if image_quality == "crisp-edges":
+        resample = PIL.Image.ANTIALIAS
+    pil_image = encoded_image.resize((int(width), int(height)), resample)
+    # ...
+```
+
+And then in `paint` on `ImageLayout`:
+
+``` {.python}
+class ImageLayout:
+    # ...
+    def paint(self, display_list):
+        # ...
+
+        decoded_image = decode_image(self.node.image,
+            self.width, self.height,
+            self.node.style.get("image-rendering", "auto"))
+```
+
+::: {.further}
+All the same resize quality options are present in Skia. That's because
+resizing may occur during raster, just as it does during decode. One way
+for this to happen is via a scale transform (which our toy browser doesn't
+support, but real ones do.
+
+Real browsers push the image decoding step even further the rendering pipeline
+(e.g. in the raster phase for this reason---to avoid a double resize or worse
+image quality. Yet another reason to do so is because raster happens on another
+thread, and so that way image decoding won't block the main thread.
+:::
 
 Embedded content layout
 =======================
