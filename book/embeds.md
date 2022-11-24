@@ -469,7 +469,6 @@ class ImageLayout:
             self.width, self.height,
             self.node.style.get("image-rendering", "auto"))
 ```
-TODO: device scale factor??
 
 ::: {.further}
 All the same resize quality options are present in Skia. That's because
