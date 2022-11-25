@@ -15,9 +15,8 @@ This file contains tests for Chapter 14 (Accessibility).
     >>> import threading
     >>> import math
     >>> lab14.USE_BROWSER_THREAD = False
-    >>> lab14.USE_GPU = False
     >>> lab13.USE_GPU = False
-    >>> lab14.TaskRunner = test.MockTaskRunner
+    >>> lab14.USE_GPU = False
 
 Outlines
 ========
