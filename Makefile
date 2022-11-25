@@ -81,7 +81,7 @@ test:
 	python3 -m doctest infra/compiler.md
 	python3 -m doctest infra/annotate_code.md
 	set -e; \
-	for i in $$(seq 1 14); do \
+	for i in $$(seq 1 15); do \
 		(cd src/ && python3 -m doctest lab$$i-tests.md); \
 	done
 
