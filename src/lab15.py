@@ -143,6 +143,10 @@ class DrawImage(DisplayItem):
         canvas.drawImageRect(
             self.image, self.src_rect, self.dst_rect)
 
+    def __repr__(self):
+        return "DrawImage(src_rect={},dst_rect{})".format(
+            self.src_rect, self.dst_rect)
+
 class DocumentLayout:
     def __init__(self, node, tab):
         self.node = node
@@ -951,6 +955,7 @@ class Document:
                 header, body = request(image_url, url)
                 img.image = PIL.Image.open(io.BytesIO(body))
             except:
+                print('exception')
                 continue
 
         iframes = [node
