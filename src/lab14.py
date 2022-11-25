@@ -41,7 +41,6 @@ from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
 from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import DisplayItem, DrawText, DrawCompositedLayer, SaveLayer
 from lab13 import ClipRRect, Transform, DrawLine, DrawRRect, draw_rect
-from lab13 import USE_GPU
 
 @wbetools.patch(Element)
 class Element:
