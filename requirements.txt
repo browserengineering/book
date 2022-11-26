@@ -33,4 +33,4 @@ pyobjc==8.5; sys_platform == "darwin"
 pyobjc-core==8.5; sys_platform == "darwin"
 
 # PIL is used in Chapter 15 for image decoding and resizing
-pillow==8.3.1
+pillow==9.3.0
