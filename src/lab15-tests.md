@@ -44,13 +44,25 @@ Let's verify that a basic image loads and has the correct dimensions
 
 Now let's test setting a different width and height:
 
-    >>> size_url = 'http://test.test/'
+    >>> size_url = 'http://test.test/size'
     >>> test.socket.respond(size_url, b'HTTP/1.0 200 OK\r\n' +
     ... b'content-type: text/html\r\n\r\n' +
     ... b'<img width=10 height=20 src="http://test.test/img.png">')
 
     >>> browser = lab15.Browser()
     >>> browser.load(size_url)
+    >>> browser.tabs[0].advance_tab()
+    >>> browser.render()
+    >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
+     DrawImage(src_rect=Rect(0, 0, 10, 20),dst_rectRect(13, 18, 23, 38))
+
+    >>> iframe_url = 'http://test.test/iframe'
+    >>> test.socket.respond(iframe_url, b'HTTP/1.0 200 OK\r\n' +
+    ... b'content-type: text/html\r\n\r\n' +
+    ... b'<iframe src="http://test.test/">')
+
+    >>> browser = lab15.Browser()
+    >>> browser.load(iframe_url)
     >>> browser.tabs[0].advance_tab()
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
