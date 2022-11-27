@@ -56,6 +56,11 @@ Now let's test setting a different width and height:
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
      DrawImage(src_rect=Rect(0, 0, 10, 20),dst_rectRect(13, 18, 23, 38))
 
+Iframes
+=======
+
+Let's load the original image in an iframe.
+
     >>> iframe_url = 'http://test.test/iframe'
     >>> test.socket.respond(iframe_url, b'HTTP/1.0 200 OK\r\n' +
     ... b'content-type: text/html\r\n\r\n' +
@@ -66,4 +71,44 @@ Now let's test setting a different width and height:
     >>> browser.tabs[0].advance_tab()
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
-     DrawImage(src_rect=Rect(0, 0, 10, 20),dst_rectRect(13, 18, 23, 38))
+     SaveLayer(alpha=1.0)
+       ClipRRect(RRect(13, 18, 313, 168, 1))
+         Transform(translate(13.0, 18.0))
+           DrawImage(src_rect=Rect(0, 0, 5, 16),dst_rectRect(13, 18, 18, 34))
+         DrawOutline(top=18.0 left=13.0 bottom=168.0 right=313.0 border_color=black thickness=2)
+
+And the sized one:
+
+    >>> iframe_size_url = 'http://test.test/iframe_of_sized'
+    >>> test.socket.respond(iframe_size_url, b'HTTP/1.0 200 OK\r\n' +
+    ... b'content-type: text/html\r\n\r\n' +
+    ... b'<iframe src="http://test.test/size">')
+
+    >>> browser = lab15.Browser()
+    >>> browser.load(iframe_size_url)
+    >>> browser.tabs[0].advance_tab()
+    >>> browser.render()
+    >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
+     SaveLayer(alpha=1.0)
+       ClipRRect(RRect(13, 18, 313, 168, 1))
+         Transform(translate(13.0, 18.0))
+           DrawImage(src_rect=Rect(0, 0, 10, 20),dst_rectRect(13, 18, 23, 38))
+         DrawOutline(top=18.0 left=13.0 bottom=168.0 right=313.0 border_color=black thickness=2)
+
+Iframes can be sized too:
+
+    >>> sized_iframe_url = 'http://test.test/iframe_sized'
+    >>> test.socket.respond(sized_iframe_url, b'HTTP/1.0 200 OK\r\n' +
+    ... b'content-type: text/html\r\n\r\n' +
+    ... b'<iframe width=50 height=60 src="http://test.test/">')
+
+    >>> browser = lab15.Browser()
+    >>> browser.load(sized_iframe_url)
+    >>> browser.tabs[0].advance_tab()
+    >>> browser.render()
+    >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
+     SaveLayer(alpha=1.0)
+       ClipRRect(RRect(13, 18, 63, 78, 1))
+         Transform(translate(13.0, 18.0))
+           DrawImage(src_rect=Rect(0, 0, 5, 16),dst_rectRect(13, 18, 18, 34))
+         DrawOutline(top=18.0 left=13.0 bottom=78.0 right=63.0 border_color=black thickness=2)

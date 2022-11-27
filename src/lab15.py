@@ -400,7 +400,10 @@ class InlineLayout:
         self.cursor_x += w + font.measureText(" ")
 
     def iframe(self, node, zoom):
-        w = IFRAME_WIDTH_PX
+        if "width" in self.node.attributes:
+            w = device_px(int(self.node.attributes["width"]), zoom)
+        else:
+            w = IFRAME_WIDTH_PX
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
@@ -646,8 +649,17 @@ class IframeLayout:
         size = float(self.node.style["font-size"][:-2])
         self.font = get_font(size, weight, style)
 
-        self.width = device_px(IFRAME_WIDTH_PX, zoom)
-        self.height = device_px(IFRAME_HEIGHT_PX, zoom)
+        if "width" in self.node.attributes:
+            self.width = \
+                device_px(int(self.node.attributes["width"]), zoom)
+        else:
+            self.width = device_px(IFRAME_WIDTH_PX, zoom)
+
+        if "height" in self.node.attributes:
+            self.height = \
+                device_px(int(self.node.attributes["height"]), zoom)
+        else:
+            self.height = device_px(IFRAME_HEIGHT_PX, zoom)
 
         if self.previous:
             space = self.previous.font.measureText(" ")
