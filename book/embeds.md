@@ -482,24 +482,21 @@ image quality. Yet another reason to do so is because raster happens on another
 thread, and so that way image decoding won't block the main thread.
 :::
 
-Animated images
-===============
-
-TODO
-
-
 Video & other embedded content
 ==============================
 
-If a website can load an image, and the image can be animated, then that image
-is something very close to a *video*. But in practice, videos need very
-advanced encoding and encoding formats to minimize network and
-CPU costs, *and* these formats incure a lot of other complications, chief
-among them [Digital Rights Mangement][drm]. On top of which, videos need
-built-in *media controls*, such as play and pause buttons, and volume
-controls. The `<video>` tag supported by real browsers provide built-in
-support for several common video [*codecs*][codec].^[In video, it's called a
-codec, but in images it's called a *format*--go figure.]
+Animations can also be animated.[^animated-gif] So if a website can load an
+image, and the image can be animated, then that image is something very close
+to a *video*. But in practice, videos need very advanced encoding and encoding
+formats to minimize network and CPU costs, *and* these formats incure a lot of
+other complications, chief among them [Digital Rights Mangement][drm]. On top
+of which, videos need built-in *media controls*, such as play and pause
+buttons, and volume controls. The `<video>` tag supported by real browsers
+provide built-in support for several common video [*codecs*][codec].^[In video,
+it's called a codec, but in images it's called a *format*--go figure.]
+
+[^animated-gif]: See the exercise for animated images at the end of this
+chapter.
 
 [drm]: https://en.wikipedia.org/wiki/Digital_rights_management
 [codec]: https://en.wikipedia.org/wiki/Video_codec
@@ -612,3 +609,10 @@ disable downloading of images until the usre expresssly asked for them.]
 
 [lli]: https://developer.mozilla.org/en-US/docs/Web/Performance/Lazy_loading
 
+*Animated images*: Add support for animated GIFs. Pillow supports this via the
+ `is_animated` and `n_frames` property, and the `seek()` (switch to a different
+ animation frame) and `tell()` (find out the current animation frame) methods
+ on a `PIL.Image`. (Hint: assume it runs at 60 Hz and integrate it with the 
+ `run_animation_frame` method.) If you want an additional challenge, try
+ running the animations on the browser thread.^[Real browsers do this as
+ an important performance optimization.]
