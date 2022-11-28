@@ -482,15 +482,67 @@ image quality. Yet another reason to do so is because raster happens on another
 thread, and so that way image decoding won't block the main thread.
 :::
 
-Embedded content layout
-=======================
+Video & other embedded content
+==============================
 
-TODO
+Animations can also be animated.[^animated-gif] So if a website can load an
+image, and the image can be animated, then that image is something very close
+to a *video*. But in practice, videos need very advanced encoding and encoding
+formats to minimize network and CPU costs, *and* these formats incure a lot of
+other complications, chief among them [Digital Rights Mangement][drm]. On top
+of which, videos need built-in *media controls*, such as play and pause
+buttons, and volume controls. The `<video>` tag supported by real browsers
+provide built-in support for several common video [*codecs*][codec].^[In video,
+it's called a codec, but in images it's called a *format*--go figure.]
 
-Image sizing and quality
-==========================
+[^animated-gif]: See the exercise for animated images at the end of this
+chapter.
 
-TODO
+[drm]: https://en.wikipedia.org/wiki/Digital_rights_management
+[codec]: https://en.wikipedia.org/wiki/Video_codec
+
+But what if the web page author wants to display a UI that is more than just an
+image or a video? Well, one thing they can do is simply put text or other
+content next to the video in the DOM. But if the video is supplied by a *third
+party* such as YouTube, or some other external source, the external source will
+want to control the UI of their videos, in such a way that other sites can't
+mess it up (or violate the privacy and security of user data). It'd be nice to
+be able to reserve a portion of the layout for this content, and delegate
+rendering of that content to the external provider, in such a way that the
+provider can customize their UI and the web page author need not worry about
+the details.
+
+There are two possible ways to achieve this:
+* External content that is "outside the web", meaning it's not HTML. Audio
+and video are types of external content.
+
+* External content that is "inside the web": HTML, CSS.
+
+The first type is a *plugin*. There have been many attempts at plugins on the
+web over the years. Some provided a programming language and mechanism for
+interactive UI, such as [Java applets][java-applets] or [Flash]. Others
+provided a way to embed other content types into a web page, such as
+[PDF]. These days, PDF plugins are pretty much the only "non-web" embedded
+content type, and is referenced with the `<object>` or `<embed>` tag.^[You
+might ask: why? The short answer is that the web is already a fully functional
+UI system that should be general enough for any UI (and if it isn't,
+the web should be extended to support it). So why have the complication
+(security issues, compatibility problems, proprietary overhead) of
+yet another such system?]
+
+[java-applets]: https://en.wikipedia.org/wiki/Java_applet
+[Flash]: https://en.wikipedia.org/wiki/Adobe_Flash
+[PDF]: https://developer.mozilla.org/en-US/docs/Learn/HTML/Multimedia_and_embedding/Other_embedding_technologies#the_embed_and_object_elements
+
+
+But what about the other option: "inside the web" external content? Well,
+that's an iframe.
+
+::: {.further}
+
+Discuss ads as a form of embedded content.
+
+:::
 
 Iframes
 =======
@@ -557,3 +609,10 @@ disable downloading of images until the usre expresssly asked for them.]
 
 [lli]: https://developer.mozilla.org/en-US/docs/Web/Performance/Lazy_loading
 
+*Animated images*: Add support for animated GIFs. Pillow supports this via the
+ `is_animated` and `n_frames` property, and the `seek()` (switch to a different
+ animation frame) and `tell()` (find out the current animation frame) methods
+ on a `PIL.Image`. (Hint: assume it runs at 60 Hz and integrate it with the 
+ `run_animation_frame` method.) If you want an additional challenge, try
+ running the animations on the browser thread.^[Real browsers do this as
+ an important performance optimization.]
