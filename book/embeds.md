@@ -513,6 +513,7 @@ provider can customize their UI and the web page author need not worry about
 the details.
 
 There are two possible ways to achieve this:
+
 * External content that is "outside the web", meaning it's not HTML. Audio
 and video are types of external content.
 
@@ -546,6 +547,134 @@ Discuss ads as a form of embedded content.
 
 Iframes
 =======
+
+Iframes are websites embedded within other websites. The `<iframe>` tag is a
+lot like the `<img>` tag: it has the `src` attribute and `width` and `height`
+attributes. Beyond that, there is one small difference and one big one.
+The big one, of course, is that it somehow contains an entire webpage. That's
+a lot of work, so let's start instead with the small difference: unlike images,
+iframes have no intrnisic size. So their layout is defined entirely by the
+attributes and CSS of the `iframe` element, and not at all by the content of
+the iframe.
+
+For iframes, if the `width`or `height` is not specified, it has a default
+value.^[These numbers were chosen by someone a long time ago as reasonable
+defaults based on average screen sizes of the day.]
+
+``` {.python}
+IFRAME_DEFAULT_WIDTH_PX = 300
+IFRAME_DEFAULT_HEIGHT_PX = 150
+```
+
+So let's get to it. Iframe layout looks like this in `InlineLayout` (pretty
+much the only difference from images is the width and height calculation).
+
+``` {.python}
+class InlineLayout:
+    # ...
+    def recurse(self, node, zoom):
+        # ...
+            elif node.tag == "iframe":
+                self.iframe(node, zoom)
+    # ...
+    def iframe(self, node, zoom):
+        if "width" in self.node.attributes:
+            w = device_px(int(self.node.attributes["width"]), zoom)
+        else:
+            w = IFRAME_WIDTH_PX
+        if self.cursor_x + w > self.x + self.width:
+            self.new_line()
+        line = self.children[-1]
+        input = IframeLayout(
+            node, line, self.previous_word, self.tab)
+        line.children.append(input)
+        self.previous_word = input
+        weight = node.style["font-weight"]
+        style = node.style["font-style"]
+        size = device_px(float(node.style["font-size"][:-2]), zoom)
+        font = get_font(size, weight, size)
+        self.cursor_x += w + font.measureText(" ")
+```
+
+And the `IframeLayout` layout code is also similar:
+
+
+```
+class IframeLayout:
+    def __init__(self, node, parent, previous, tab):
+        self.node = node
+        self.node.layout_object = self
+        self.children = []
+        self.parent = parent
+        self.previous = previous
+        self.x = None
+        self.y = None
+        self.tab = tab
+
+    def get_ascent(self, font_multiplier=1.0):
+        return -self.height
+
+    def get_descent(self, font_multiplier=1.0):
+        return 0
+
+    def layout(self, zoom):
+        weight = self.node.style["font-weight"]
+        style = self.node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = float(self.node.style["font-size"][:-2])
+        self.font = get_font(size, weight, style)
+
+        if "width" in self.node.attributes:
+            self.width = \
+                device_px(int(self.node.attributes["width"]), zoom)
+        else:
+            self.width = device_px(IFRAME_DEFAULT_WIDTH_PX, zoom)
+
+        if "height" in self.node.attributes:
+            self.height = \
+                device_px(int(self.node.attributes["height"]), zoom)
+        else:
+            self.height = device_px(IFRAME_DEFAULT_HEIGHT_PX, zoom)
+
+        if self.previous:
+            space = self.previous.font.measureText(" ")
+            self.x = self.previous.x + space + self.previous.width
+        else:
+            self.x = self.parent.x
+
+        self.node.document.style()
+        self.node.document.layout(zoom, self.width)
+```
+
+Iframes by default have a border around their content when painted.
+
+``` {.python}
+    def paint(self, display_list):
+        cmds = []
+
+        rect = skia.Rect.MakeLTRB(
+            self.x, self.y,
+            self.x + self.width, self.y + self.height)
+        bgcolor = self.node.style.get("background-color",
+                                 "transparent")
+        if bgcolor != "transparent":
+            radius = float(
+                self.node.style.get("border-radius", "0px")[:-2])
+            cmds.append(DrawRRect(rect, radius, bgcolor))
+
+        # ...
+
+        cmds = [Transform((self.x, self.y), rect, self.node, cmds)]
+
+        paint_outline(self.node, cmds, rect)
+
+        cmds = paint_visual_effects(self.node, cmds, rect)
+        display_list.extend(cmds)
+```
+
+So that's everything, except for the actual hard part, which is the entire
+document contained within.
+
 
 TODO: make all JS APIs and keyboard events properly target iframes in lab15.py.
 

@@ -622,8 +622,8 @@ class ImageLayout:
             "height={})").format(self.node.attributes["src"],
                 self.x, self.y, self.width, self.height)
 
-IFRAME_WIDTH_PX = 300
-IFRAME_HEIGHT_PX = 150
+IFRAME_DEFAULT_WIDTH_PX = 300
+IFRAME_DEFAULT_HEIGHT_PX = 150
 
 class IframeLayout:
     def __init__(self, node, parent, previous, tab):
@@ -653,13 +653,13 @@ class IframeLayout:
             self.width = \
                 device_px(int(self.node.attributes["width"]), zoom)
         else:
-            self.width = device_px(IFRAME_WIDTH_PX, zoom)
+            self.width = device_px(IFRAME_DEFAULT_WIDTH_PX, zoom)
 
         if "height" in self.node.attributes:
             self.height = \
                 device_px(int(self.node.attributes["height"]), zoom)
         else:
-            self.height = device_px(IFRAME_HEIGHT_PX, zoom)
+            self.height = device_px(IFRAME_DEFAULT_HEIGHT_PX, zoom)
 
         if self.previous:
             space = self.previous.font.measureText(" ")
