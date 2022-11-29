@@ -599,7 +599,7 @@ class InlineLayout:
 And the `IframeLayout` layout code is also similar:
 
 
-```
+``` {.python}
 class IframeLayout:
     def __init__(self, node, parent, previous, tab):
         self.node = node
@@ -650,7 +650,7 @@ Iframes by default have a border around their content when painted.
 Here I have one line of code not yet implemented, the one that calls `paint`
 on a `document` object that doesn't yet exist.
 
-``` {.python expected=False}
+``` {.python}
 class IframeLayout:
     # ...
     def paint(self, display_list):
