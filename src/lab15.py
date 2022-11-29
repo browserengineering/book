@@ -403,7 +403,7 @@ class InlineLayout:
         if "width" in self.node.attributes:
             w = device_px(int(self.node.attributes["width"]), zoom)
         else:
-            w = IFRAME_WIDTH_PX
+            w = IFRAME_DEFAULT_WIDTH_PX
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
