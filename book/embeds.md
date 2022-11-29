@@ -650,7 +650,7 @@ Iframes by default have a border around their content when painted.
 Here I have one line of code not yet implemented, the one that calls `paint`
 on a `document` object that doesn't yet exist.
 
-``` {.python}
+``` {.python expected=false}
 class IframeLayout:
     # ...
     def paint(self, display_list):
