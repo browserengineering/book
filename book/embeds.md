@@ -647,8 +647,12 @@ class IframeLayout:
 ```
 
 Iframes by default have a border around their content when painted.
+Here I have one line of code not yet implemented, the one that calls `paint`
+on a `document` object that doesn't yet exist.
 
-``` {.python}
+``` {.python expected=False}
+class IframeLayout:
+    # ...
     def paint(self, display_list):
         cmds = []
 
@@ -662,7 +666,7 @@ Iframes by default have a border around their content when painted.
                 self.node.style.get("border-radius", "0px")[:-2])
             cmds.append(DrawRRect(rect, radius, bgcolor))
 
-        # ...
+        self.node.document.paint(cmds)
 
         cmds = [Transform((self.x, self.y), rect, self.node, cmds)]
 
