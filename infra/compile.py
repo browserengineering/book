@@ -296,6 +296,12 @@ def compile_function(name, args, ctx):
     elif name == "len":
         assert len(args) == 1
         return args_js[0] + ".length"
+    elif name == "any":
+        assert len(args) == 1
+        return args_js[0] + ".some((x) => x)"
+    elif name == "all":
+        assert len(args) == 1
+        return args_js[0] + ".every((x) => x)"
     elif name == "ord":
         assert len(args) == 1
         return args_js[0] + ".charCodeAt(0)"
