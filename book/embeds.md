@@ -551,11 +551,142 @@ Iframes
 Iframes are websites embedded within other websites. The `<iframe>` tag is a
 lot like the `<img>` tag: it has the `src` attribute and `width` and `height`
 attributes. Beyond that, there is one small difference and one big one.
-The big one, of course, is that it somehow contains an entire webpage. That's
-a lot of work, so let's start instead with the small difference: unlike images,
-iframes have no intrnisic size. So their layout is defined entirely by the
-attributes and CSS of the `iframe` element, and not at all by the content of
-the iframe.
+The big one, of course, is that it somehow contains an entire webpage. 
+
+An iframe is almost exactly the same as a `Tab` within a `Tab`---it has its
+own HTML document, CSS, and scripts. There are two big differences though:
+
+* *Iframes have no browser chrome*. So any page navigation has to happen from
+   within the page (either through an `<a>` element or script), or as a side
+   effect of navigation on the web page that *contains* the `<iframe>`
+   element.
+
+* Iframes do not necessarily have their own rendering event
+loop. [^iframe-event-loop] In real browsers, [cross-origin] iframes are often
+"site isolated", meaning that the iframe has its own CPU process for
+[security reasons][site-isolation]. In our toy browser we'll just make all
+iframes (even nested ones---yes, iframes can include iframes!) use the same
+rendering event loop.
+
+* Cross-origin iframes are *script-isolated* from their containing web page.
+That means that a script in the iframe [can't access][cant-access] variables
+or DOM in the containing page, nor can scripts in the containing page access
+the iframe's variables or DOM.
+
+[^iframe-event-loop]: For example, if an iframe has the same origin as the web
+page that embeds it, then scripts in the iframe can synchronously access the
+parent DOM. That means that it'd be basically impossible to put that iframe in
+a different thread or CPU process, and in practice it ends up in the same
+rendering event loop as a result.
+
+[cross-origin]: https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy
+
+[site-isolation]: https://www.chromium.org/Home/chromium-security/site-isolation/
+
+[cant-access]: https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy#cross-origin_script_api_access
+
+Since iframes can contain iframes, in general each `Tab` has a tree of HTML
+documents nested within each other. Each node in this tree will be a `Frame`
+object. We'll use one rendering event loop for all `Frame`s, which as you see
+won't be *too* much work (it's mostly code refactoring). Let's get started on
+that.
+
+Basically, we'll want to refactor `Tab` so that it's a container for a new
+`Frame` class. The `Frame` will do most of what the `Tab` used to do.
+More specfically, the `Tab` class will take care of the following:
+
+* Running animation frames and rendering
+* Accessibility
+* Glue code between `Browser` and the documents to implement event handling
+* Proxying communication between frame documents
+* Own the display list for all frames in the tab
+* Commit to the browser thread
+
+And the `Frame` class will:
+
+* Own the DOM and tree layout trees, and scroll offset, for its frame
+* Own a `JSContext` if it is cross-origin to its parent (but let's ignore that
+for now and use a single context for all frames)>
+* Run style, layout and paint on the its DOM and layout tree
+* Implement loadin and event handlling (focus, hit testing, etc) its own HTML
+  document
+
+A `Frame` will also recurse into child frames for additional rendering and hit
+testing. 
+
+The `Tab`'s load method, for example, now simply manages history state and asks
+its root frame to load:
+
+``` {.python}
+class Tab:
+    def __init__(self, browser):
+        self.root_frame = None
+
+    def load(self, url, body=None):
+        self.history.append(url)
+        # ...
+        self.root_frame = Frame(self, None, None)
+        self.root_frame.load(url, body)
+```
+as do various event handlers, here's `click` for example:
+
+``` {.python}
+    def click(self, x, y):
+        self.render()
+        self.root_frame.click(x, y)
+```
+
+The `Frame` class has all of the rest of loading and event handling
+that used to be in `Tab`. I won't go into those details except the part where
+a `Frame` can load subframes via the `<iframe>` tag. In the code below, we
+collect all of the `<iframe>` elements in the DOM in just the same way as we
+did for `<img>`, but instead of loading the one resource and caching it,
+we create a new `Frame` object, store it on the iframe element, and call
+`load` recursively.
+
+
+``` {.python}
+class Frame:
+    def load(self, url, body=None):
+        # ...
+        iframes = [node
+                   for node in tree_to_list(self.nodes, [])
+                   if isinstance(node, Element)
+                   and node.tag == "iframe"
+                   and "src" in node.attributes]
+        for iframe in iframes:
+            document_url = resolve_url(iframe.attributes["src"],
+                self.tab.root_frame.url)
+            iframe.document = Frame(self.tab, self, iframe)
+            iframe.document.load(document_url)
+```
+
+That's pretty much it for loading, now let's investigate rendering.
+
+Iframe layout and rendering
+===========================
+
+Just like with loading, a `Tab` delegates rendering to its root frame:
+
+``` {.python}
+    # ...
+    def render(self):
+        # ...
+            self.root_frame.style()
+            # ...
+            self.root_frame.layout(self.zoom, WIDTH)
+            # ...
+            self.root_frame.build_accessibility_tree()
+            # ...
+            self.root_frame.paint(self.display_list)
+```
+
+The most interesting part here is layout, because that is where we'll end up
+connecting a `Frame`'s rendering to the rendering of subframes. For layout,
+et's start with the small difference between `<iframe>` layout and `<img>`:
+unlike images, iframes have no intrnisic size. So their layout is defined
+entirely by the attributes and CSS of the `iframe` element, and not at all by
+the content of the iframe.
 
 For iframes, if the `width`or `height` is not specified, it has a default
 value.^[These numbers were chosen by someone a long time ago as reasonable
@@ -641,14 +772,22 @@ class IframeLayout:
             self.x = self.previous.x + space + self.previous.width
         else:
             self.x = self.parent.x
+```
 
+Pay particular attention to the last lines of `layout`: here we're recursing
+into the child frame and calling style *and* layout. 
+
+TODO: can we move style to the style phase? And then mention that real browsers
+can't actually do that.
+
+``` {.python}
         self.node.document.style()
         self.node.document.layout(zoom, self.width)
 ```
 
-Iframes by default have a border around their content when painted.
-Here I have one line of code not yet implemented, the one that calls `paint`
-on a `document` object that doesn't yet exist.
+As for painting, iframes by default have a border around their content when
+painted. They also clip the iframe painted content to the bounds of the 
+`<iframe>` element.
 
 ``` {.python expected=false}
 class IframeLayout:
@@ -676,8 +815,6 @@ class IframeLayout:
         display_list.extend(cmds)
 ```
 
-So that's everything, except for the actual hard part, which is the entire
-document contained within.
 
 
 TODO: make all JS APIs and keyboard events properly target iframes in lab15.py.
@@ -749,3 +886,8 @@ disable downloading of images until the usre expresssly asked for them.]
  `run_animation_frame` method.) If you want an additional challenge, try
  running the animations on the browser thread.^[Real browsers do this as
  an important performance optimization.]
+
+*Same-origin frame tree*: same-origin iframes can access each others' variables
+  and DOM, even if they are not adjacent in the frame tree. Implement this.
+
+*Iframe media queries*. Implement.

@@ -774,7 +774,7 @@ class JSContext:
         return handle
 
     def querySelectorAll(self, selector_text, window_id):
-        document = self.tab.window_id_to_document[window_id]
+        document = self.tab.window_id_to_frame[window_id]
         selector = CSSParser(selector_text).selector()
         nodes = [node for node
                  in tree_to_list(document.nodes, [])
@@ -786,7 +786,7 @@ class JSContext:
         return elt.attributes.get(attr, None)
 
     def parent(self, window_id):
-        parent_document = self.tab.window_id_to_document[window_id].parent_document
+        parent_document = self.tab.window_id_to_frame[window_id].parent_document
         if not parent_document:
             return None
         return parent_document.window_id
@@ -877,6 +877,7 @@ class Frame:
         with open("browser15.css") as f:
             self.default_style_sheet = \
                 CSSParser(f.read(), internal=True).parse()
+
     def allowed_request(self, url):
         return self.allowed_origins == None or \
             url_origin(url) in self.allowed_origins
@@ -912,7 +913,7 @@ class Frame:
 
         js.add_window(self)
 
-        self.tab.window_id_to_document[self.window_id] = self
+        self.tab.window_id_to_frame[self.window_id] = self
 
         with open("runtime15.js") as f:
             wrapped = wrap_in_window(f.read(), self.window_id)
@@ -977,7 +978,7 @@ class Frame:
                    and "src" in node.attributes]
         for iframe in iframes:
             document_url = resolve_url(iframe.attributes["src"],
-                self.tab.document.url)
+                self.tab.root_frame.url)
             iframe.document = Frame(self.tab, self, iframe)
             iframe.document.load(document_url)
 
@@ -1083,7 +1084,6 @@ class Frame:
             self.apply_focus(elt)
             self.focus_applied = True
 
-
 class Tab:
     def __init__(self, browser):
         self.history = []
@@ -1094,7 +1094,7 @@ class Tab:
         self.needs_layout = False
         self.needs_accessibility = False
         self.needs_paint = False
-        self.document = None
+        self.root_frame = None
         self.dark_mode = browser.dark_mode
         self.scroll = 0
 
@@ -1116,14 +1116,14 @@ class Tab:
         self.pending_hover = None
         self.hovered_node = None
 
-        self.window_id_to_document = {}
+        self.window_id_to_frame = {}
 
     def load(self, url, body=None):
         self.history.append(url)
         self.task_runner.clear_pending_tasks()
         self.scroll_changed_in_tab = True
-        self.document = Frame(self, None, None)
-        self.document.load(url, body)
+        self.root_frame = Frame(self, None, None)
+        self.root_frame.load(url, body)
 
         self.set_needs_render()
 
@@ -1146,11 +1146,11 @@ class Tab:
     def run_animation_frame(self, scroll):
         if not self.scroll_changed_in_tab:
             self.scroll = scroll
-        for (window_id, document) in self.window_id_to_document.items():
-            document.get_js().interp.evaljs(
+        for (window_id, frame) in self.window_id_to_frame.items():
+            frame.get_js().interp.evaljs(
                 wrap_in_window("__runRAFHandlers()", window_id))
 
-        for node in tree_to_list(self.document.nodes, []):
+        for node in tree_to_list(self.root_frame.nodes, []):
             for (property_name, animation) in \
                 node.animations.items():
                 value = animation.animate()
@@ -1166,7 +1166,7 @@ class Tab:
         needs_composite = self.needs_style or self.needs_layout
         self.render()
 
-        document_height = math.ceil(self.document.document.height)
+        document_height = math.ceil(self.root_frame.document.height)
         clamped_scroll = clamp_scroll(self.scroll, document_height)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
@@ -1185,7 +1185,7 @@ class Tab:
         self.composited_updates.clear()
 
         commit_data = CommitData(
-            url=self.document.url,
+            url=self.root_frame.url,
             scroll=scroll,
             height=document_height,
             display_list=self.display_list,
@@ -1241,12 +1241,12 @@ class Tab:
                 INHERITED_PROPERTIES["color"] = "white"
             else:
                 INHERITED_PROPERTIES["color"] = "black"
-            self.document.style()
+            self.root_frame.style()
             self.needs_layout = True
             self.needs_style = False
 
         if self.needs_layout:
-            self.document.layout(self.zoom, WIDTH)
+            self.root_frame.layout(self.zoom, WIDTH)
             if self.accessibility_is_on:
                 self.needs_accessibility = True
             else:
@@ -1254,7 +1254,7 @@ class Tab:
             self.needs_layout = False
 
         if self.needs_accessibility:
-            self.document.build_accessibility_tree()
+            self.root_frame.build_accessibility_tree()
             self.needs_accessibility = False
             self.needs_paint = True
 
@@ -1278,14 +1278,14 @@ class Tab:
         if self.needs_paint:
             self.display_list = []
 
-            self.document.paint(self.display_list)
+            self.root_frame.paint(self.display_list)
             self.needs_paint = False
 
         self.measure_render.stop()
 
     def click(self, x, y):
         self.render()
-        self.document.click(x, y)
+        self.root_frame.click(x, y)
 
     def submit_form(self, elt):
         if self.js.dispatch_event("submit", elt): return
@@ -1320,7 +1320,7 @@ class Tab:
         return int(node.attributes.get("tabindex", 9999999))
 
     def advance_tab(self):
-        self.document.advance_focus()
+        self.root_frame.advance_focus()
 
     def zoom_by(self, increment):
         if increment > 0:
@@ -1352,7 +1352,7 @@ class Tab:
         self.set_needs_render()
 
     def post_message(self, message, window_id):
-        document = self.window_id_to_document[window_id]
+        document = self.window_id_to_frame[window_id]
         document.get_js().dispatch_post_message(message, window_id)
 
 def draw_line(canvas, x1, y1, x2, y2, color):
