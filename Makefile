@@ -57,19 +57,22 @@ www/onepage.html: $(patsubst %,www/onepage/%.html,$(CHAPTERS))
 www/onepage.html: book/onepage.md infra/template.html infra/filter.lua config.json
 	$(PANDOC) --metadata=mode:onepage --template infra/template.html -c book.css $< -o $@
 
+bottle.py:
+	curl -O https://raw.githubusercontent.com/bottlepy/bottle/0.12.23/bottle.py
+
 wc:
 	@ printf " Words  Code  File\n"; awk -f infra/wc.awk book/*.md | sort -rn
 
 publish:
-	rsync -rtu --exclude=db.json --exclude=*.hash www/ server:/home/www/browseng/
-	ssh server chmod -Rf a+r /home/www/browseng/ || true
+	rsync -rtu --exclude=db.json --exclude=*.hash www/ server:/var/www/wbe/
+	ssh server chmod -Rf a+r /var/www/wbe/ || true
 
 restart:
-	rsync infra/api.py server:/home/www/browseng/
+	rsync infra/api.py server:/var/www/wbe/
 	ssh server sudo systemctl restart browser-engineering.service
 
 backup:
-	rsync server:/home/www/browseng/db.json infra/db.$(shell date +%Y-%m-%d).pickle
+	rsync server:/var/www/wbe/db.json infra/db.$(shell date +%Y-%m-%d).pickle
 
 test-server:
 	(cd www/ && python3 ../infra/server.py)
@@ -78,7 +81,7 @@ test:
 	python3 -m doctest infra/compiler.md
 	python3 -m doctest infra/annotate_code.md
 	set -e; \
-	for i in $$(seq 1 14); do \
+	for i in $$(seq 1 15); do \
 		(cd src/ && python3 -m doctest lab$$i-tests.md); \
 	done
 

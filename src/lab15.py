@@ -93,7 +93,7 @@ def request(url, top_level_url, payload=None):
     body += "\r\n" + (payload or "")
     s.send(body.encode("utf8"))
 
-    response = s.makefile("b")
+    response = s.makefile("b", newline="\r\n")
 
     statusline = response.readline().decode("utf8")
     version, status, explanation = statusline.split(" ", 2)
@@ -132,25 +132,20 @@ def request(url, top_level_url, payload=None):
 
     return headers, body
 
-
 class DrawImage(DisplayItem):
-    def __init__(self, image, src_rect, dst_rect, image_rendering):
+    def __init__(self, image, src_rect, dst_rect):
         super().__init__(dst_rect)
         self.image = image
         self.src_rect = src_rect
         self.dst_rect = dst_rect
-        self.quality = DrawImage.quality(image_rendering)
-
-    def quality(image_rendering):
-        if image_rendering == "crisp-edges":
-            return skia.kNone_FilterQuality
-        else:
-            return skia.kLow_FilterQuality
 
     def execute(self, canvas):
         canvas.drawImageRect(
-            self.image, self.src_rect, self.dst_rect,
-            skia.Paint(FilterQuality=self.quality))
+            self.image, self.src_rect, self.dst_rect)
+
+    def __repr__(self):
+        return "DrawImage(src_rect={},dst_rect{})".format(
+            self.src_rect, self.dst_rect)
 
 class DocumentLayout:
     def __init__(self, node, tab):
@@ -200,8 +195,7 @@ class BlockLayout:
             self.children.append(next)
             previous = next
 
-        self.width = style_length(
-            self.node, "width", self.parent.width, zoom)
+        self.width = self.parent.width
         self.x = self.parent.x
 
         if self.previous:
@@ -212,9 +206,7 @@ class BlockLayout:
         for child in self.children:
             child.layout(zoom)
 
-        self.height = style_length(
-            self.node, "height",
-            sum([child.height for child in self.children]), zoom)
+        self.height = sum([child.height for child in self.children])
 
     def paint(self, display_list):
         cmds = []
@@ -266,10 +258,8 @@ class InputLayout:
         size = device_px(float(self.node.style["font-size"][:-2]), zoom)
         self.font = get_font(size, weight, style)
 
-        self.width = style_length(
-            self.node, "width", device_px(INPUT_WIDTH_PX, zoom), zoom)
-        self.height = style_length(
-            self.node, "height", linespace(self.font), zoom)
+        self.width = sdevice_px(INPUT_WIDTH_PX, zoom)
+        self.height = linespace(self.font)
 
         if self.previous:
             space = self.previous.font.measureText(" ")
@@ -323,8 +313,7 @@ class InlineLayout:
         self.tab = tab
 
     def layout(self, zoom):
-        self.width = style_length(
-            self.node, "width", self.parent.width, zoom)
+        self.width = self.parent.width
 
         self.x = self.parent.x
 
@@ -339,9 +328,7 @@ class InlineLayout:
         for line in self.children:
             line.layout(zoom)
 
-        self.height = style_length(
-            self.node, "height",
-            sum([line.height for line in self.children]), zoom)
+        self.height = sum([line.height for line in self.children])
 
     def recurse(self, node, zoom):
         if isinstance(node, Text):
@@ -396,8 +383,10 @@ class InlineLayout:
         self.cursor_x += w + font.measureText(" ")
 
     def image(self, node, zoom):
-        w = style_length(
-            node, "width", node.image.width(), zoom)
+        if "width" in node.attributes:
+            w = device_px(int(node.attributes["width"]), zoom)
+        else:
+            w = device_px(node.image.width, zoom)
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
@@ -411,8 +400,10 @@ class InlineLayout:
         self.cursor_x += w + font.measureText(" ")
 
     def iframe(self, node, zoom):
-        w = style_length(
-            node, "width", IFRAME_WIDTH_PX, zoom)
+        if "width" in self.node.attributes:
+            w = device_px(int(self.node.attributes["width"]), zoom)
+        else:
+            w = IFRAME_DEFAULT_WIDTH_PX
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
@@ -584,13 +575,23 @@ class ImageLayout:
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
         if style == "normal": style = "roman"
-        size = device_px(float(self.node.style["font-size"][:-2]), zoom)
+        size = device_px(
+            float(self.node.style["font-size"][:-2]), zoom)
         self.font = get_font(size, weight, style)
 
-        self.width = style_length(
-            self.node, "width", self.node.image.width(), zoom)
-        self.height = style_length(self.node, "height",
-            max(self.node.image.height(), linespace(self.font)), zoom)
+        if "width" in self.node.attributes:
+            self.width = \
+                device_px(int(self.node.attributes["width"]), zoom)
+        else:
+            self.width = device_px(self.node.image.width, zoom)
+    
+        if "height" in self.node.attributes:
+            self.height = \
+                device_px(int(self.node.attributes["height"]), zoom)
+        else:
+            self.height = max(
+                device_px(self.node.image.height, zoom),
+                linespace(self.font))
 
         if self.previous:
             space = self.previous.font.measureText(" ")
@@ -601,24 +602,28 @@ class ImageLayout:
     def paint(self, display_list):
         cmds = []
 
+        decoded_image = decode_image(self.node.image,
+            self.width, self.height,
+            self.node.style.get("image-rendering", "auto"))
+
         src_rect = skia.Rect.MakeLTRB(
-            0, 0, self.node.image.width(), self.node.image.height())
+            0, 0, decoded_image.width(), decoded_image.height())
 
         dst_rect = skia.Rect.MakeLTRB(
             self.x, self.y, self.x + self.width,
             self.y + self.height)
 
-        cmds.append(DrawImage(self.node.image, src_rect, dst_rect,
-            self.node.style.get("image-rendering", "auto")))
+        cmds.append(DrawImage(decoded_image, src_rect, dst_rect))
 
         display_list.extend(cmds)
 
     def __repr__(self):
-        return "ImageLayout(src={}, x={}, y={}, width={}, height={})".format(
-            self.node.attributes["src"], self.x, self.y, self.width, self.height)
+        return ("ImageLayout(src={}, x={}, y={}, width={}," +
+            "height={})").format(self.node.attributes["src"],
+                self.x, self.y, self.width, self.height)
 
-IFRAME_WIDTH_PX = 300
-IFRAME_HEIGHT_PX = 150
+IFRAME_DEFAULT_WIDTH_PX = 300
+IFRAME_DEFAULT_HEIGHT_PX = 150
 
 class IframeLayout:
     def __init__(self, node, parent, previous, tab):
@@ -644,10 +649,17 @@ class IframeLayout:
         size = float(self.node.style["font-size"][:-2])
         self.font = get_font(size, weight, style)
 
-        self.width = style_length(
-            self.node, "width", IFRAME_WIDTH_PX, zoom)
-        self.height = style_length(self.node, "height",
-            IFRAME_HEIGHT_PX, zoom)
+        if "width" in self.node.attributes:
+            self.width = \
+                device_px(int(self.node.attributes["width"]), zoom)
+        else:
+            self.width = device_px(IFRAME_DEFAULT_WIDTH_PX, zoom)
+
+        if "height" in self.node.attributes:
+            self.height = \
+                device_px(int(self.node.attributes["height"]), zoom)
+        else:
+            self.height = device_px(IFRAME_DEFAULT_HEIGHT_PX, zoom)
 
         if self.previous:
             space = self.previous.font.measureText(" ")
@@ -684,9 +696,13 @@ class IframeLayout:
         return "IframeLayout(src={}, x={}, y={}, width={}, height={})".format(
             self.node.attributes["src"], self.x, self.y, self.width, self.height)
 
-def decode_image(image_bytes):
-    picture_stream = io.BytesIO(image_bytes)
-    pil_image = PIL.Image.open(picture_stream)
+def decode_image(encoded_image, width, height, image_quality):
+    resample=None
+    # TODO: How do I reference PIL.Image.Resizing.LANCZOS?
+    # https://pillow.readthedocs.io/en/stable/reference/Image.html#PIL.Image.Resampling.LANCZOS
+    if image_quality == "crisp-edges":
+        resample = PIL.Image.ANTIALIAS
+    pil_image = encoded_image.resize((int(width), int(height)), resample)
     if pil_image.mode == "RGBA":
         pil_image_bytes = pil_image.tobytes()
     else:
@@ -758,7 +774,7 @@ class JSContext:
         return handle
 
     def querySelectorAll(self, selector_text, window_id):
-        document = self.tab.window_id_to_document[window_id]
+        document = self.tab.window_id_to_frame[window_id]
         selector = CSSParser(selector_text).selector()
         nodes = [node for node
                  in tree_to_list(document.nodes, [])
@@ -770,7 +786,7 @@ class JSContext:
         return elt.attributes.get(attr, None)
 
     def parent(self, window_id):
-        parent_document = self.tab.window_id_to_document[window_id].parent_document
+        parent_document = self.tab.window_id_to_frame[window_id].parent_document
         if not parent_document:
             return None
         return parent_document.window_id
@@ -845,10 +861,10 @@ class JSContext:
 
 WINDOW_COUNT = 0
 
-class Document:
+class Frame:
     def __init__(self, tab, parent_document, frame_element):
         self.tab = tab
-        self.document_layout = None
+        self.document = None
         self.nodes = None
         self.url = None
         self.parent_document = parent_document
@@ -861,6 +877,7 @@ class Document:
         with open("browser15.css") as f:
             self.default_style_sheet = \
                 CSSParser(f.read(), internal=True).parse()
+
     def allowed_request(self, url):
         return self.allowed_origins == None or \
             url_origin(url) in self.allowed_origins
@@ -896,7 +913,7 @@ class Document:
 
         js.add_window(self)
 
-        self.tab.window_id_to_document[self.window_id] = self
+        self.tab.window_id_to_frame[self.window_id] = self
 
         with open("runtime15.js") as f:
             wrapped = wrap_in_window(f.read(), self.window_id)
@@ -941,7 +958,6 @@ class Document:
                  if isinstance(node, Element)
                  and node.tag == "img"
                  and "src" in node.attributes]
-
         for img in images:
             link = img.attributes["src"]
             image_url = resolve_url(link, url)
@@ -950,8 +966,9 @@ class Document:
                 continue
             try:
                 header, body = request(image_url, url)
-                img.image = decode_image(body)
+                img.image = PIL.Image.open(io.BytesIO(body))
             except:
+                print('exception')
                 continue
 
         iframes = [node
@@ -961,8 +978,8 @@ class Document:
                    and "src" in node.attributes]
         for iframe in iframes:
             document_url = resolve_url(iframe.attributes["src"],
-                self.tab.document.url)
-            iframe.document = Document(self.tab, self, iframe)
+                self.tab.root_frame.url)
+            iframe.document = Frame(self.tab, self, iframe)
             iframe.document.load(document_url)
 
         self.tab.set_needs_render()
@@ -973,18 +990,18 @@ class Document:
                 key=cascade_priority), self.tab)
 
     def layout(self, zoom, width):
-        self.document_layout = DocumentLayout(self.nodes, self.tab)
-        self.document_layout.layout(zoom, width)
+        self.document = DocumentLayout(self.nodes, self.tab)
+        self.document.layout(zoom, width)
 
     def build_accessibility_tree(self):
         self.accessibility_tree = AccessibilityNode(self.nodes)
         self.accessibility_tree.build()
 
     def paint(self, display_list):
-        self.document_layout.paint(display_list, self.tab.dark_mode)
+        self.document.paint(display_list, self.tab.dark_mode)
 
         if self.tab.focus and self.tab.focus.tag == "input":
-            obj = [obj for obj in tree_to_list(self.document_layout, [])
+            obj = [obj for obj in tree_to_list(self.document, [])
                if obj.node == self.focus and \
                     isinstance(obj, InputLayout)][0]
             text = self.focus.attributes.get("value", "")
@@ -1037,7 +1054,7 @@ class Document:
     def click(self, x, y):
         self.apply_focus(None)
         y += self.scroll
-        objs = [obj for obj in tree_to_list(self.document_layout, [])
+        objs = [obj for obj in tree_to_list(self.document, [])
                 if obj.x <= x < obj.x + obj.width
                 and obj.y <= y < obj.y + obj.height]
         if not objs: return
@@ -1067,7 +1084,6 @@ class Document:
             self.apply_focus(elt)
             self.focus_applied = True
 
-
 class Tab:
     def __init__(self, browser):
         self.history = []
@@ -1078,7 +1094,7 @@ class Tab:
         self.needs_layout = False
         self.needs_accessibility = False
         self.needs_paint = False
-        self.document = None
+        self.root_frame = None
         self.dark_mode = browser.dark_mode
         self.scroll = 0
 
@@ -1100,14 +1116,14 @@ class Tab:
         self.pending_hover = None
         self.hovered_node = None
 
-        self.window_id_to_document = {}
+        self.window_id_to_frame = {}
 
     def load(self, url, body=None):
         self.history.append(url)
         self.task_runner.clear_pending_tasks()
         self.scroll_changed_in_tab = True
-        self.document = Document(self, None, None)
-        self.document.load(url, body)
+        self.root_frame = Frame(self, None, None)
+        self.root_frame.load(url, body)
 
         self.set_needs_render()
 
@@ -1130,11 +1146,11 @@ class Tab:
     def run_animation_frame(self, scroll):
         if not self.scroll_changed_in_tab:
             self.scroll = scroll
-        for (window_id, document) in self.window_id_to_document.items():
-            document.get_js().interp.evaljs(
+        for (window_id, frame) in self.window_id_to_frame.items():
+            frame.get_js().interp.evaljs(
                 wrap_in_window("__runRAFHandlers()", window_id))
 
-        for node in tree_to_list(self.document.nodes, []):
+        for node in tree_to_list(self.root_frame.nodes, []):
             for (property_name, animation) in \
                 node.animations.items():
                 value = animation.animate()
@@ -1150,7 +1166,7 @@ class Tab:
         needs_composite = self.needs_style or self.needs_layout
         self.render()
 
-        document_height = math.ceil(self.document.document_layout.height)
+        document_height = math.ceil(self.root_frame.document.height)
         clamped_scroll = clamp_scroll(self.scroll, document_height)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
@@ -1169,7 +1185,7 @@ class Tab:
         self.composited_updates.clear()
 
         commit_data = CommitData(
-            url=self.document.url,
+            url=self.root_frame.url,
             scroll=scroll,
             height=document_height,
             display_list=self.display_list,
@@ -1225,12 +1241,12 @@ class Tab:
                 INHERITED_PROPERTIES["color"] = "white"
             else:
                 INHERITED_PROPERTIES["color"] = "black"
-            self.document.style()
+            self.root_frame.style()
             self.needs_layout = True
             self.needs_style = False
 
         if self.needs_layout:
-            self.document.layout(self.zoom, WIDTH)
+            self.root_frame.layout(self.zoom, WIDTH)
             if self.accessibility_is_on:
                 self.needs_accessibility = True
             else:
@@ -1238,7 +1254,7 @@ class Tab:
             self.needs_layout = False
 
         if self.needs_accessibility:
-            self.document.build_accessibility_tree()
+            self.root_frame.build_accessibility_tree()
             self.needs_accessibility = False
             self.needs_paint = True
 
@@ -1262,14 +1278,14 @@ class Tab:
         if self.needs_paint:
             self.display_list = []
 
-            self.document.paint(self.display_list)
+            self.root_frame.paint(self.display_list)
             self.needs_paint = False
 
         self.measure_render.stop()
 
     def click(self, x, y):
         self.render()
-        self.document.click(x, y)
+        self.root_frame.click(x, y)
 
     def submit_form(self, elt):
         if self.js.dispatch_event("submit", elt): return
@@ -1304,7 +1320,7 @@ class Tab:
         return int(node.attributes.get("tabindex", 9999999))
 
     def advance_tab(self):
-        self.document.advance_focus()
+        self.root_frame.advance_focus()
 
     def zoom_by(self, increment):
         if increment > 0:
@@ -1336,7 +1352,7 @@ class Tab:
         self.set_needs_render()
 
     def post_message(self, message, window_id):
-        document = self.window_id_to_document[window_id]
+        document = self.window_id_to_frame[window_id]
         document.get_js().dispatch_post_message(message, window_id)
 
 def draw_line(canvas, x1, y1, x2, y2, color):
@@ -1478,11 +1494,12 @@ class Browser:
         for cmd in self.active_tab_display_list:
             all_commands = \
                 tree_to_list(cmd, all_commands)
+
         non_composited_commands = [cmd
             for cmd in all_commands
-            if not cmd.needs_compositing() and \
+            if not cmd.needs_compositing and \
                 (not cmd.parent or \
-                 cmd.parent.needs_compositing())
+                 cmd.parent.needs_compositing)
         ]
         for cmd in non_composited_commands:
             for layer in reversed(self.composited_layers):

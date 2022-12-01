@@ -64,6 +64,9 @@ class DisplayItem:
         self.rect = rect
         self.children = children
         self.node = node
+        self.needs_compositing = any([
+            child.needs_compositing for child in self.children
+        ])
 
     def is_paint_command(self):
         return False
@@ -75,10 +78,6 @@ class DisplayItem:
         rect.join(self.rect)
         for cmd in self.children:
             cmd.add_composited_bounds(rect)
-
-    def needs_compositing(self):
-        return any([child.needs_compositing() \
-            for child in self.children])
 
 def map_translation(rect, translation):
     if not translation:
@@ -248,6 +247,9 @@ class SaveLayer(DisplayItem):
         self.should_save = should_save
         self.sk_paint = sk_paint
 
+        if USE_COMPOSITING and self.should_save:
+            self.needs_compositing = True
+
     def execute(self, canvas):
         if self.should_save:
             canvas.saveLayer(paint=self.sk_paint)
@@ -255,11 +257,6 @@ class SaveLayer(DisplayItem):
                 cmd.execute(canvas)
         if self.should_save:
             canvas.restore()
-
-    def needs_compositing(self):
-        return USE_COMPOSITING and self.should_save or \
-            any([child.needs_compositing() \
-                for child in self.children])
 
     def clone(self, children):
         return SaveLayer(self.sk_paint, self.node, children, \
@@ -418,7 +415,8 @@ class BlockLayout:
         else:
             self.y = self.parent.y
 
-        if layout_mode(self.node) == "block":
+        mode = layout_mode(self.node)
+        if mode == "block":
             previous = None
             for child in self.node.children:
                 next = BlockLayout(child, self, previous)
@@ -1442,9 +1440,9 @@ class Browser:
                 tree_to_list(cmd, all_commands)
         non_composited_commands = [cmd
             for cmd in all_commands
-            if not cmd.needs_compositing() and \
+            if not cmd.needs_compositing and \
                 (not cmd.parent or \
-                 cmd.parent.needs_compositing())
+                 cmd.parent.needs_compositing)
         ]
         for cmd in non_composited_commands:
             for layer in reversed(self.composited_layers):

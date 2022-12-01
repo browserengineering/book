@@ -1610,7 +1610,7 @@ some visual effects in the raster phase, reducing the number of
 composited layers even more.
 
 To implement this, replace the `is_paint_command` method on
-`DisplayItem`s with a new `needs_compositing` method, which is `True`
+`DisplayItem`s with a new `needs_compositing` field, which is `True`
 when a visual effect should go in the draw display list and `False`
 when it should go into a composited layer. As a simple heuristic,
 we'll always set it to `True` for `SaveLayer`s (when they actually do
@@ -1618,27 +1618,26 @@ something, not for no-ops), regardless of whether they are animating,
 but we'll set it to `False` for `ClipRRect` commands, since those
 can't animate in our browser.
 
+``` {.python replace=self.should_save/USE_COMPOSITING%20and%20self.should_save}
+class SaveLayer(DisplayItem):
+    def __init__(self, sk_paint, node, children, should_save=True):
+        # ...
+        if self.should_save:
+            self.needs_compositing = True
+```
+
 We'll *also* need to mark a visual effect as needing compositing if any of its
 descendants do (even if it's a `ClipRRect`). That's because if one effect is
 run on the GPU, then one way or another the ones above it will have to be as
-well:[^needs-inefficient]
+well:
 
-[^needs-inefficient]: As written, our use of `needs_compositing` is quite
-inefficient, because it walks the entire subtree each time it's called. In a
-real browser, this property would be computed by walking the entire display
-list once and setting boolean attributes on each tree node.
-
-``` {.python replace=self.should_save/USE_COMPOSITING%20and%20self.should_save}
+``` {.python}
 class DisplayItem:
-    def needs_compositing(self):
-        return any([child.needs_compositing() \
-            for child in self.children])
-
-class SaveLayer(DisplayItem):
-    def needs_compositing(self):
-        return self.should_save or \
-            any([child.needs_compositing() \
-                for child in self.children])
+    def __init__(self, rect, children=[], node=None):
+        # ...
+        self.needs_compositing = any([
+            child.needs_compositing for child in self.children
+        ])
 ```
 
 Now, instead of layers containing bare paint commands, they can
@@ -1650,9 +1649,9 @@ class Browser:
         # ...
         non_composited_commands = [cmd
             for cmd in all_commands
-            if not cmd.needs_compositing() and \
+            if not cmd.needs_compositing and \
                 (not cmd.parent or \
-                 cmd.parent.needs_compositing())
+                 cmd.parent.needs_compositing)
         ]
         # ...
         for cmd in non_composited_commands:
@@ -1737,7 +1736,7 @@ class CompositedLayer:
 ```
 
 I also recommend you add a mode to your browser that disables compositing
-(i.e. return `False` from `needs_compositing` for every `DisplayItem`), and
+(i.e. set `needs_compositing` to `False` for every `DisplayItem`), and
 disables use of the GPU (i.e. go back to the old way of making Skia surfaces).
 Everything should still work (albeit more slowly) in all of the modes, and you
 can use these additional modes to debug your browser more fully and benchmark

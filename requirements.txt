@@ -31,3 +31,6 @@ certifi==2022.6.15
 playsound==1.3.0
 pyobjc==8.5; sys_platform == "darwin"
 pyobjc-core==8.5; sys_platform == "darwin"
+
+# PIL is used in Chapter 15 for image decoding and resizing
+pillow==9.3.0

@@ -220,7 +220,8 @@ class BlockLayout:
         else:
             self.y = self.parent.y
 
-        if layout_mode(self.node) == "block":
+        mode = layout_mode(self.node)
+        if mode == "block":
             previous = None
             for child in self.node.children:
                 next = BlockLayout(child, self, previous)
