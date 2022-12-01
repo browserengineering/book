@@ -161,7 +161,7 @@ def decode_image(image_bytes):
 Let's now load `<img>` tags found in a web page.In `load` we need to
 first find all of the images in the document:
 
-``` {.python replace=Tab/Document}
+``` {.python replace=Tab/Frame}
 class Tab:
     # ...
     def load(self, url, body=None):
@@ -428,7 +428,7 @@ algorithm to resize? For that we'll obey the[`image-rendering`]
 This is not too hard, but requires doing the decode during paint rather than
 load. So first store the *encoded* image instead during load:
 
-``` {.python replace=Tab/Document}
+``` {.python replace=Tab/Frame}
 class Tab:
     # ...
     def load(self, url, body=None):
