@@ -27,11 +27,12 @@ def layout_mode(node):
     if isinstance(node, Text):
         return "inline"
     elif node.children:
-        for child in node.children:
-            if isinstance(child, Text): continue
-            if child.tag in BLOCK_ELEMENTS:
-                return "block"
-        return "inline"
+        if any([isinstance(child, Element) and \
+                child.tag in BLOCK_ELEMENTS
+                for child in node.children]):
+            return "block"
+        else:
+            return "inline"
     else:
         return "block"
 
@@ -57,39 +58,35 @@ class BlockLayout:
         else:
             self.y = self.parent.y
 
-        if layout_mode(self.node) == "block":
-            self.layout_block()
+        mode = layout_mode(self.node)
+        if mode == "block":
+            previous = None
+            for child in self.node.children:
+                next = BlockLayout(child, self, previous)
+                self.children.append(next)
+                previous = next
         else:
-            self.layout_inline()
+            self.display_list = []
 
-        wbetools.record("layout_post", self)
+            self.cursor_x = 0
+            self.cursor_y = 0
+            self.weight = "normal"
+            self.style = "roman"
+            self.size = 16
 
-    def layout_block(self):
-        previous = None
-        for child in self.node.children:
-            next = BlockLayout(child, self, previous)
-            self.children.append(next)
-            previous = next
+            self.line = []
+            self.recurse(self.node)
+            self.flush()
 
         for child in self.children:
             child.layout()
 
-        self.height = sum([child.height for child in self.children])
+        if mode == "block":
+            self.height = sum([child.height for child in self.children])
+        else:
+            self.height = self.cursor_y
 
-    def layout_inline(self):
-        self.display_list = []
-
-        self.cursor_x = 0
-        self.cursor_y = 0
-        self.weight = "normal"
-        self.style = "roman"
-        self.size = 16
-
-        self.line = []
-        self.recurse(self.node)
-        self.flush()
-
-        self.height = self.cursor_y
+        wbetools.record("layout_post", self)
 
     def recurse(self, node):
         if isinstance(node, Text):
@@ -139,8 +136,9 @@ class BlockLayout:
         metrics = [font.metrics() for x, word, font in self.line]
         max_ascent = max([metric["ascent"] for metric in metrics])
         baseline = self.cursor_y + 1.25 * max_ascent
-        for x, word, font in self.line:
-            y = baseline - font.metrics("ascent")
+        for rel_x, word, font in self.line:
+            x = self.x + rel_x
+            y = self.y + baseline - font.metrics("ascent")
             self.display_list.append((x, y, word, font))
         self.cursor_x = 0
         self.line = []
@@ -155,8 +153,7 @@ class BlockLayout:
 
         if layout_mode(self.node) == "inline":
             for x, y, word, font in self.display_list:
-                display_list.append(DrawText(self.x + x, self.y + y,
-                                             word, font))
+                display_list.append(DrawText(x, y, word, font))
 
         for child in self.children:
             child.paint(display_list)

@@ -64,6 +64,12 @@ def replace(block, *cmds):
         block = block.replace(find, replace)
     return block
 
+def dropline(block, pattern):
+    return "\n".join([
+        line for line in block.split("\n")
+        if pattern not in line
+    ])
+
 def tangle(file):
     with open("/tmp/test", "wb") as f:
         f.write(FILTER.encode("utf8"))
@@ -113,6 +119,7 @@ def compare_files(book, code, language, file):
         if name.get("file") != file: continue
         block = indent(block, name.get("indent", "0"))
         block = replace(block, *[item.split("/", 1) for item in name.get("replace", "/").split(",")])
+        block = dropline(block, name["dropline"]) if "dropline" in name else block
         cng = find_block(block, src)
         expected = name.get("expected", "True") == "True"
         count += 1
