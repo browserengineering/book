@@ -12,7 +12,7 @@ time in layout, not graphics. Yet just like compositing enabled smooth
 animations by avoiding redundant raster work, we can avoid redundant
 layout work using a technique called invalidation.
 
-Idempotency
+Idempotence
 ===========
 
 Invalidation is a pretty simple idea: don't redo redundant layout
@@ -128,14 +128,15 @@ for example, typing into an `<input>` element will trigger layout,
 create the duplicate `children` entries, and end up duplicating the
 web page on your screen.
 
-The core issue here is what's called *idempotency*: if we're keeping
+The core issue here is what's called *idempotence*: if we're keeping
 the layout tree around instead of rebuilding it from scratch each
 time, we're going to be calling `layout` multiple times, and we need
 repeated calls not to make any extra changes. More formally, a
 function is idempotent if calling it twice in a row with the same
-arguments yields the same result. Assignments to fields are
-idempotent---if you assign a field the same value twice, it's gets the
-same value as assigning it once---but methods like `append` aren't.
+inputs and dependencies yields the same result. Assignments to fields
+are idempotent---if you assign a field the same value twice, it's gets
+the same value as assigning it once---but methods like `append`
+aren't.
 
 Here, the issue is easy to fix by replacing the `children` array
 instead of just modifying it:
@@ -176,7 +177,7 @@ idempotent. I found a few worrying causes:
   the `TextLayout` and `InputLayout` methods
 - Basically every layout method calls `display_px`
 
-Luckily, none of these break idempotency. The `new_line` method is
+Luckily, none of these break idempotence. The `new_line` method is
 only called through `layout`, which resets the `children` array.
 Similarly, `text` and `input` are also only called through `layout`,
 which means all of the `LineLayout` children are reset. And `get_font`
@@ -184,6 +185,13 @@ acts as a cache, so multiple calls return the same font object, while
 `display_px` just does some math so always returns the same result
 given the same inputs. This means the browser should now work
 correctly again.
+
+Idempotency is important because it means it doesn't matter _how many_
+times a function was called: one call, two calls, ten calls, no matter
+what the result is the same. And this means that avoiding redundant
+work is safe: if we find that we're calling the function twice with
+the same inputs and dependencies, we can just skip the second call
+without breaking anything else. So let's turn to that.
 
 ::: {.further}
 
@@ -220,15 +228,16 @@ node's `layout_mode` has to be `"block"`, and `layout_mode` itself
 also reads the node's `children`.[^and-tags]
 
 [^and-tags]: It also looks at the node's `tag` and the node's
-    childrens' `tag`s, but luckily in our browser a node's `tag` can't
-    change, so we don't need to worry about this. If our browser
-    supported changing a node's `tag`, that's something we would need
-    to worry about, but to my knowledge no real browser does that,
-    even in APIs like `outerHTML`.
+    childrens' `tag`s, but a node's `tag` can't change, so we don't
+    need to have a dirty flag for them.
+    
+We want to avoid redundant `BlockLayout` creation, but recall that
+idempotency means that calling a function again _with the same inputs
+and dependencies_ yields the same result. Here, because the inputs are
+more complicated, we need to know when these inputs, ultimately
+meaning the node's `children` array, changes.
 
-So to avoid redundant `BlockLayout` creation, we're going to have to
-know whether the `children` array has changed. To do that, let's add a
-boolean field called a "dirty flag":
+To do that, we're going to use a dirty flag:
 
 ``` {.python}
 class BlockLayout:
@@ -237,11 +246,14 @@ class BlockLayout:
         self.dirty_children = True
 ```
 
-Every dirty flag protects a certain set of fields; this one protects
-the `children` field for a `BlockLayout`. Every dirty flag is involved
-in three kinds of activities: it can be _set_ to `True`; _checked_
-before use; or _reset_ to `False`. It's crucially important to
-understand when each one happens.
+We've seen dirty flags before---like `needs_layout` and
+`needs_draw`---but layout is more complex and we're going to need to
+think about dirty flags a bit more rigorously. Every dirty flag
+protects a certain set of fields; this one protects the `children`
+field for a `BlockLayout`. Every dirty flag is involved in three kinds
+of activities: it can be _set_ to `True`; _checked_ before use; or
+_reset_ to `False`. It's crucially important to understand when each
+one happens.
 
 Let's start with setting the flag. Dirty flags start out set, just
 like in the code above, but they also have to be set if any
