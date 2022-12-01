@@ -221,31 +221,27 @@ class BlockLayout:
         else:
             self.y = self.parent.y
 
-        if layout_mode(self.node) == "block":
-            self.layout_block()
+        mode = layout_mode(self.node)
+        if mode == "block":
+            previous = None
+            for child in self.node.children:
+                next = BlockLayout(child, self, previous)
+                self.children.append(next)
+                previous = next
         else:
-            self.layout_inline()
-
-    def layout_block(self):
-        previous = None
-        for child in self.node.children:
-            next = BlockLayout(child, self, previous)
-            self.children.append(next)
-            previous = next
+            self.cursor_x = 0
+            self.cursor_y = 0
+            self.line = []
+            self.recurse(self.node)
+            self.flush()
 
         for child in self.children:
             child.layout()
 
-        self.height = sum([child.height for child in self.children])
-
-    def layout_inline(self):
-        self.cursor_x = 0
-        self.cursor_y = 0
-        self.line = []
-        self.recurse(self.node)
-        self.flush()
-
-        self.height = self.cursor_y
+        if mode == "block":
+            self.height = sum([child.height for child in self.children])
+        else:
+            self.height = self.cursor_y
 
     def recurse(self, node):
         if isinstance(node, Text):
