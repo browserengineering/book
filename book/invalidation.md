@@ -387,5 +387,198 @@ and a `dirty_width` flag before we can skip that code.
 
 :::
 
-Protecting layout values
-========================
+Recursive dirty bits
+====================
+
+Let's start with the `zoom` and `style` dependencies; we need to
+protect both of these with dirty flags.
+
+::: {.todo}
+I think this will be clearer if we go _back_ through Chapter 14 and
+change `zoom` to be a recursively computed field, not a flag. This
+will give us a chance to introduce recursive computation in the
+simplest possible case, and make all our discussions of dirty flags
+simpler.
+:::
+
+To determine whether the `zoom` argument changed, we can store the old
+value and compare:
+
+``` {.python}
+class BlockLayout:
+    def __init__(self):
+        # ...
+        self.dirty_zoom = True
+        self.zoom = None
+
+    def layout(self, zoom):
+        self.dirty_zoom = (zoom != self.zoom)
+        if self.dirty_zoom:
+            self.zoom = zoom
+        # ...
+```
+
+Before we reset the `dirty_zoom` field, we need to set any dirty flags
+that depend on `zoom`, like `dirty_children`:
+
+``` {.python}
+class BlockLayout:
+    def layout(self, zoom):
+        if self.dirty_zoom:
+            # ...
+            self.dirty_children = True
+            self.dirty_zoom = False
+```
+
+Similarly, every time we use `zoom` we should check the `dirty_zoom`
+flag:
+
+``` {.python}
+class BlockLayout:
+    def layout(self, zoom):
+        # ...
+        assert not self.dirty_zoom
+        self.width = display_px(self.parent.width, self.zoom)
+        # ...
+
+    def recurse(self):
+        assert not self.dirty_zoom
+        # ...
+```
+
+Now let's look at `dirty_style`:
+
+``` {.python}
+class BlockLayout:
+    def __init__(self):
+        # ...
+        self.dirty_style = True
+```
+
+We already have an `old_style` in the `style` function, which we can
+use to set the `dirty_style` flag:
+
+``` {.python}
+class BlockLayout:
+    def __init__(self):
+        # ...
+        self.dirty_style = True
+
+def style(node, rules, tab):
+    # ...
+    if node.style != old_style:
+        node.layout_object.dirty_style = True
+```
+
+Just like with `dirty_zoom`, we need to check this flag, set any flags
+that depend on it, and then reset it:
+
+``` {.python}
+class BlockLayout:
+    def layout(self, zoom):
+        if self.dirty_style:
+            self.dirty_children = True
+            self.dirty_style = False
+```
+
+Since `dirty_style` flag protects the `node.style` field, which is
+used in `recurse`, let's check it before we use it:
+
+``` {.python}
+class BlockLayout:
+    def recurse(self):
+        assert not self.dirty_style
+        # ...
+```
+
+We now have protected fields for `dirty_zoom` and `dirty_style`; to
+skip redundant re-allocations of layout objects, we just need to add
+`dirty_width`:
+
+``` {.python}
+class BlockLayout:
+    def __init__(self):
+        # ...
+        self.dirty_width = True
+```
+
+The width of a block is computed by a call to `display_px`. Since
+`display_px` is idempotent, its output changes when its inputs or
+dependencies do. The zoom argument changes when `dirty_zoom` is set,
+so before we reset `dirty_zoom` we need to set `dirty_width`
+
+``` {.python}
+class BlockLayout:
+    def layout(self, zoom):
+        if self.dirty_zoom:
+            # ...
+            self.dirty_width = True
+            self.dirty_zoom = False
+```
+
+Likewise, the `width` field depends on the parent's `width`, so when
+the parent's width is computed, it needs to set the child's
+`dirty_width` flag:
+
+``` {.python}
+class BlockLayout:
+    def layout(self, zoom):
+        # ...
+        if self.dirty_width:
+            assert not self.parent.dirty_width
+            self.width = display_px(self.parent.width, self.zoom)
+            self.dirty_children = True
+            for child in self.children:
+                self.dirty_width = True
+            self.dirty_width = False
+```
+
+There's also a very subtle strangeness in this code: when we set all
+the children's `dirty_width` flags, we need to read from `children`.
+Does that mean we now depend on `dirty_children`? Luckily, no. If the
+set of `children` changed, then we will create new layout objects, and
+because they are new they will have their `dirty_width` flag already
+set.
+
+One other subtlety you might notice: the parent of a `BlockLayout` can
+actually _also_ be a `DocumentLayout`. Does it also need to set its
+child's `dirty_width` field when it computes its width? Luckily, also
+no: a `DocumentLayout`'s width is a constant,[^unless-resize] so it
+never changes and so its child's `dirty_width` flag doesn't need to be
+set.
+
+[^unless-resize]: Of course, if you've implemented browser window
+    resizing, then you _do_ need to think about the `DocumentLayout`'s
+    `width` changing.
+
+So now we have `dirty_zoom`, `dirty_style`, and `dirty_width` flags,
+which protect the `zoom`, `style`, and `width` fields. And this means
+that if any of those fields change, `dirty_children` will get set.
+So if that flag isn't set, it's safe to skip the call to `new_line`
+and `recurse`:
+
+``` {.python}
+class BlockLayout:
+    def layout(self, zoom):
+        # ...
+        if self.needs_children:
+            mode = layout_mode(self.node)
+            if mode == "block":
+                # ...
+            else:
+                # ...
+        # ...
+```
+
+Try this out. Add a `print` statement to each layout object
+constructor and run your browser on some web page---maybe our guest
+book server, or some of the animation examples from previous
+chapters---where JavaScript makes changes to the page. You should see
+that after the initial layout during page load, JavaScript changes
+will only cause a few layout objects to be constructed at a time. This
+speeds up our browser somewhat, and thanks to the careful work we've
+done with dirty bits, the browser should otherwise behave identically.
+
+::: {.further}
+
+:::
