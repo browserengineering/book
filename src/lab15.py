@@ -861,10 +861,10 @@ class JSContext:
 
 WINDOW_COUNT = 0
 
-class Document:
+class Frame:
     def __init__(self, tab, parent_document, frame_element):
         self.tab = tab
-        self.document_layout = None
+        self.document = None
         self.nodes = None
         self.url = None
         self.parent_document = parent_document
@@ -978,7 +978,7 @@ class Document:
         for iframe in iframes:
             document_url = resolve_url(iframe.attributes["src"],
                 self.tab.document.url)
-            iframe.document = Document(self.tab, self, iframe)
+            iframe.document = Frame(self.tab, self, iframe)
             iframe.document.load(document_url)
 
         self.tab.set_needs_render()
@@ -989,18 +989,18 @@ class Document:
                 key=cascade_priority), self.tab)
 
     def layout(self, zoom, width):
-        self.document_layout = DocumentLayout(self.nodes, self.tab)
-        self.document_layout.layout(zoom, width)
+        self.document = DocumentLayout(self.nodes, self.tab)
+        self.document.layout(zoom, width)
 
     def build_accessibility_tree(self):
         self.accessibility_tree = AccessibilityNode(self.nodes)
         self.accessibility_tree.build()
 
     def paint(self, display_list):
-        self.document_layout.paint(display_list, self.tab.dark_mode)
+        self.document.paint(display_list, self.tab.dark_mode)
 
         if self.tab.focus and self.tab.focus.tag == "input":
-            obj = [obj for obj in tree_to_list(self.document_layout, [])
+            obj = [obj for obj in tree_to_list(self.document, [])
                if obj.node == self.focus and \
                     isinstance(obj, InputLayout)][0]
             text = self.focus.attributes.get("value", "")
@@ -1053,7 +1053,7 @@ class Document:
     def click(self, x, y):
         self.apply_focus(None)
         y += self.scroll
-        objs = [obj for obj in tree_to_list(self.document_layout, [])
+        objs = [obj for obj in tree_to_list(self.document, [])
                 if obj.x <= x < obj.x + obj.width
                 and obj.y <= y < obj.y + obj.height]
         if not objs: return
@@ -1122,7 +1122,7 @@ class Tab:
         self.history.append(url)
         self.task_runner.clear_pending_tasks()
         self.scroll_changed_in_tab = True
-        self.document = Document(self, None, None)
+        self.document = Frame(self, None, None)
         self.document.load(url, body)
 
         self.set_needs_render()
@@ -1166,7 +1166,7 @@ class Tab:
         needs_composite = self.needs_style or self.needs_layout
         self.render()
 
-        document_height = math.ceil(self.document.document_layout.height)
+        document_height = math.ceil(self.document.document.height)
         clamped_scroll = clamp_scroll(self.scroll, document_height)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
