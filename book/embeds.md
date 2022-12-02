@@ -2,7 +2,7 @@
 title: Supporting Embedded Content
 chapter: 15
 prev: accessibility
-next: skipped
+next: invalidation
 ...
 
 Our toy browser has a lot of rendering features, but is still missing a few
