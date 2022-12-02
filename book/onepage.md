@@ -20,12 +20,9 @@ main: true
 - [Running Interactive Scripts](#scripts)
 - [Keeping Data Private](#security)
 - [Adding Visual Effects](#visual-effects)
-- [Scheduling and Threading](#scheduling)
-- [Saving Partial Layouts](#reflow)
-- [What Wasn’t Covered](#skipped)
-- [A Changing Landscape](#change)
-- [Glossary](#glossary)
-- [Bibliography](#bibliography)
+- [Scheduling Tasks and Threads](#scheduling)
+- [Animating and Compositing](#animations)
+- [Making Content Accessible](#accessibility)
 
 ::: {.cmd html=True}
     cat www/onepage/preface.html
@@ -41,15 +38,11 @@ main: true
     cat www/onepage/chrome.html
     cat www/onepage/forms.html
     cat www/onepage/scripts.html
-    cat www/onepage/reflow.html
     cat www/onepage/security.html
 
     cat www/onepage/visual-effects.html
     cat www/onepage/scheduling.html
-
-    cat www/onepage/skipped.html
-    cat www/onepage/change.html
-
-    cat www/onepage/glossary.html
-    cat www/onepage/bibliography.html
+    cat www/onepage/compositing.html
+    cat www/onepage/animations.html
+    cat www/onepage/accessibility.html
 :::
