@@ -739,10 +739,10 @@ TODO: can we move style to the style phase? And then mention that real browsers
 can't actually do that.
 
 
-``` {.python}
+TODO: fix expected here.
+``` {.python expected=False}
 class IframeLayout:
     # ...
-
     def layout(self, zoom):
         # ...
         if "width" in self.node.attributes:
@@ -757,11 +757,7 @@ class IframeLayout:
         else:
             self.height = device_px(IFRAME_DEFAULT_HEIGHT_PX, zoom)
 
-        if self.previous:
-            space = self.previous.font.measureText(" ")
-            self.x = self.previous.x + space + self.previous.width
-        else:
-            self.x = self.parent.x
+        # ...
 
         self.node.document.style()
         self.node.document.layout(zoom, self.width)
