@@ -230,6 +230,16 @@ all still has a font size (e.g. the default font size of a web page), and the
 image's layout depends on it. This is a very common source of confusion for web
 developers.]
 
+In fact, now that you see images alongside input elements, notice how actually
+the input elements we defined in Chapter 8 are (also a form of embedded
+content*---after all, the way they are drawn to the screen is certainly not
+defined by HTML tags and CSS. So input, images and other embedded content are
+all types of [*replaced elements*][replaced-elements]---characterized by putting
+stuff "outside of HTML" into an inline HTML context, and delegating
+that "outside of HTML" thing to draw and size it.
+
+[replaced-elements]: https://developer.mozilla.org/en-US/docs/Web/CSS/Replaced_element
+
 ``` {.python expected=False}
 class ImageLayout:
     def __init__(self, node, parent, previous):
@@ -308,6 +318,10 @@ class ImageLayout:
 Image should now work and display on the page. But our implementation is
 very basic and missing several important features for layout and rendering
 quality.
+
+::: {.further}
+Discuss shadow DOM and "explaining input elements" in terms of HTML.
+:::
 
 Image sizing
 ============
