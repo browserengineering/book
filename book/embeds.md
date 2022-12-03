@@ -230,6 +230,16 @@ all still has a font size (e.g. the default font size of a web page), and the
 image's layout depends on it. This is a very common source of confusion for web
 developers.]
 
+In fact, now that you see images alongside input elements, notice how actually
+the input elements we defined in Chapter 8 are (also a form of embedded
+content*---after all, the way they are drawn to the screen is certainly not
+defined by HTML tags and CSS. So input, images and other embedded content are
+all types of [*replaced elements*][replaced-elements]---characterized by putting
+stuff "outside of HTML" into an inline HTML context, and delegating
+that "outside of HTML" thing to draw and size it.
+
+[replaced-elements]: https://developer.mozilla.org/en-US/docs/Web/CSS/Replaced_element
+
 ``` {.python expected=False}
 class ImageLayout:
     def __init__(self, node, parent, previous):
@@ -308,6 +318,10 @@ class ImageLayout:
 Image should now work and display on the page. But our implementation is
 very basic and missing several important features for layout and rendering
 quality.
+
+::: {.further}
+Discuss shadow DOM and "explaining input elements" in terms of HTML.
+:::
 
 Image sizing
 ============
@@ -585,33 +599,34 @@ rendering event loop as a result.
 
 [cant-access]: https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy#cross-origin_script_api_access
 
-Since iframes can contain iframes, in general each `Tab` has a tree of HTML
-documents nested within each other. Each node in this tree will be a `Frame`
-object. We'll use one rendering event loop for all `Frame`s, which as you see
-won't be *too* much work (it's mostly code refactoring). Let's get started on
-that.
+Since iframes are HTML documents, they can contain iframes. So in general each
+`Tab` has a tree of HTML documents---*frames*---nested within each other. Each
+node in this tree will be a `Frame` object. We'll use one rendering event loop
+for all `Frame`s.
 
-Basically, we'll want to refactor `Tab` so that it's a container for a new
-`Frame` class. The `Frame` will do most of what the `Tab` used to do.
-More specfically, the `Tab` class will take care of the following:
+In terms of code, basically, we'll want to refactor `Tab` so that it's a
+container for a new `Frame` class. The `Frame` will implement the rendreing
+work that the `Tab` used to do, and the `Tab` becomes a coordination and
+container class for the frame tree. More specfically, the `Tab` class will:
 
-* Running animation frames and rendering
-* Accessibility
-* Glue code between `Browser` and the documents to implement event handling
-* Proxying communication between frame documents
+* Kick off animation frames and rendering
+* Impement accessibility
+* Provide glue code between `Browser` and the documents to implement event
+  handling
+* Proxy communication between frame documents
 * Own the display list for all frames in the tab
 * Commit to the browser thread
 
-And the `Frame` class will:
+And the `Frame` class will be:
 
 * Own the DOM and tree layout trees, and scroll offset, for its frame
 * Own a `JSContext` if it is cross-origin to its parent (but let's ignore that
 for now and use a single context for all frames)>
 * Run style, layout and paint on the its DOM and layout tree
-* Implement loadin and event handlling (focus, hit testing, etc) its own HTML
+* Implement loading and event handling (focus, hit testing, etc) its own HTML
   document
 
-A `Frame` will also recurse into child frames for additional rendering and hit
+A `Frame` will also recurse into child `Frame`s for additional rendering and hit
 testing. 
 
 The `Tab`'s load method, for example, now simply manages history state and asks
@@ -642,7 +657,8 @@ a `Frame` can load subframes via the `<iframe>` tag. In the code below, we
 collect all of the `<iframe>` elements in the DOM in just the same way as we
 did for `<img>`, but instead of loading the one resource and caching it,
 we create a new `Frame` object, store it on the iframe element, and call
-`load` recursively.
+`load` recursively. Note that all the code in the "..." below is the same
+as what used to be on `Tab`'s `load`method.
 
 
 ``` {.python}
@@ -682,23 +698,35 @@ Just like with loading, a `Tab` delegates rendering to its root frame:
 ```
 
 The most interesting part here is layout, because that is where we'll end up
-connecting a `Frame`'s rendering to the rendering of subframes. For layout,
-et's start with the small difference between `<iframe>` layout and `<img>`:
-unlike images, iframes have no intrnisic size. So their layout is defined
-entirely by the attributes and CSS of the `iframe` element, and not at all by
-the content of the iframe.
+connecting a `Frame`'s rendering to the rendering of subframes. Let's start
+with the biggest layout difference between iframes and images: unlike
+images, *iframes have no intrinsic size*. So their layout is defined entirely
+by the attributes and CSS of the `iframe` element, and not at all by the
+content of the iframe.[^seamless-iframe]
 
-For iframes, if the `width`or `height` is not specified, it has a default
+[^seamless-iframe]: There were attempts to provide such an intrinsic sizing in
+the past, but it was[removed][seamless-removed] from the HTML specification
+when no browser implemented it. This may change [in the future]
+[seamless-back], as there are good use cases for a *seamless* iframe whose
+layout coordinates with its parent frame. 
+
+[seamless-removed]: https://github.com/whatwg/html/issues/331
+[seamless-back]: https://github.com/w3c/csswg-drafts/issues/1771
+
+For iframes, if the `width` or `height` is not specified, it has a default
 value.^[These numbers were chosen by someone a long time ago as reasonable
-defaults based on average screen sizes of the day.]
+[defaults][iframe-defaults] based on average screen sizes of the day.]
+
+[iframe-defaults]: https://www.w3.org/TR/CSS2/visudet.html#inline-replaced-width
 
 ``` {.python}
 IFRAME_DEFAULT_WIDTH_PX = 300
 IFRAME_DEFAULT_HEIGHT_PX = 150
 ```
 
-So let's get to it. Iframe layout looks like this in `InlineLayout` (pretty
-much the only difference from images is the width and height calculation).
+Iframe layout looks like this in `InlineLayout`. The only difference from images
+is the width and height calculation, so I've omitted that part with "..."
+instead.
 
 ``` {.python}
 class InlineLayout:
@@ -713,48 +741,24 @@ class InlineLayout:
             w = device_px(int(self.node.attributes["width"]), zoom)
         else:
             w = IFRAME_DEFAULT_WIDTH_PX
-        if self.cursor_x + w > self.x + self.width:
-            self.new_line()
-        line = self.children[-1]
-        input = IframeLayout(
-            node, line, self.previous_word, self.tab)
-        line.children.append(input)
-        self.previous_word = input
-        weight = node.style["font-weight"]
-        style = node.style["font-style"]
-        size = device_px(float(node.style["font-size"][:-2]), zoom)
-        font = get_font(size, weight, size)
-        self.cursor_x += w + font.measureText(" ")
+        # ...
 ```
 
-And the `IframeLayout` layout code is also similar:
+And the `IframeLayout` layout code is also similar; again, I've omitted the
+unchaged parts from images. Pay particular attention to the last lines of
+`layout`: here we're recursing into the child frame and calling style *and*
+layout. 
+
+TODO: can we move style to the style phase? And then mention that real browsers
+can't actually do that.
 
 
-``` {.python}
+TODO: fix expected here.
+``` {.python expected=False}
 class IframeLayout:
-    def __init__(self, node, parent, previous, tab):
-        self.node = node
-        self.node.layout_object = self
-        self.children = []
-        self.parent = parent
-        self.previous = previous
-        self.x = None
-        self.y = None
-        self.tab = tab
-
-    def get_ascent(self, font_multiplier=1.0):
-        return -self.height
-
-    def get_descent(self, font_multiplier=1.0):
-        return 0
-
+    # ...
     def layout(self, zoom):
-        weight = self.node.style["font-weight"]
-        style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
-        size = float(self.node.style["font-size"][:-2])
-        self.font = get_font(size, weight, style)
-
+        # ...
         if "width" in self.node.attributes:
             self.width = \
                 device_px(int(self.node.attributes["width"]), zoom)
@@ -767,20 +771,8 @@ class IframeLayout:
         else:
             self.height = device_px(IFRAME_DEFAULT_HEIGHT_PX, zoom)
 
-        if self.previous:
-            space = self.previous.font.measureText(" ")
-            self.x = self.previous.x + space + self.previous.width
-        else:
-            self.x = self.parent.x
-```
+        # ...
 
-Pay particular attention to the last lines of `layout`: here we're recursing
-into the child frame and calling style *and* layout. 
-
-TODO: can we move style to the style phase? And then mention that real browsers
-can't actually do that.
-
-``` {.python}
         self.node.document.style()
         self.node.document.layout(zoom, self.width)
 ```
