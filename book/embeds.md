@@ -464,9 +464,9 @@ TODO: figure out if PIL.Image actually saves any bytes doing this.
 
 ``` {.python}
 def decode_image(encoded_image, width, height, image_quality):
-    resample=None
+    resample = None
     if image_quality == "crisp-edges":
-        resample = PIL.Image.ANTIALIAS
+        resample = PIL.Image.Resampling.LANCZOS
     pil_image = encoded_image.resize((int(width), int(height)), resample)
     # ...
 ```
