@@ -464,9 +464,9 @@ TODO: figure out if PIL.Image actually saves any bytes doing this.
 
 ``` {.python}
 def decode_image(encoded_image, width, height, image_quality):
-    resample=None
+    resample = None
     if image_quality == "crisp-edges":
-        resample = PIL.Image.ANTIALIAS
+        resample = PIL.Image.Resampling.LANCZOS
     pil_image = encoded_image.resize((int(width), int(height)), resample)
     # ...
 ```
@@ -724,6 +724,25 @@ IFRAME_DEFAULT_WIDTH_PX = 300
 IFRAME_DEFAULT_HEIGHT_PX = 150
 ```
 
+During style, recurse into iframes when they are found:[^style-real-browsers]
+
+``` {.python}
+def style(node, rules, tab):
+    # ...
+
+    if isinstance(node, Element) and node.tag == "iframe" \
+        and node.document:
+        node.document.style()
+```
+
+[^style-real-browsers]: In real browsers this doesn't work, because the output
+of style for a frame can depend on *layout* of the parent frame. This 
+can happen due to [media queries][media-queries-15] that depend on its size.
+But we don't have this problem because our toy browser doesn't support media
+queries.
+
+[media-queries-15]: https://developer.mozilla.org/en-US/docs/Web/CSS/Media_Queries
+
 Iframe layout looks like this in `InlineLayout`. The only difference from images
 is the width and height calculation, so I've omitted that part with "..."
 instead.
@@ -747,11 +766,7 @@ class InlineLayout:
 And the `IframeLayout` layout code is also similar; again, I've omitted the
 unchaged parts from images. Pay particular attention to the last lines of
 `layout`: here we're recursing into the child frame and calling style *and*
-layout. 
-
-TODO: can we move style to the style phase? And then mention that real browsers
-can't actually do that.
-
+layout.
 
 TODO: fix expected here.
 ``` {.python expected=False}
@@ -815,6 +830,53 @@ Same-origin iframes: same interpreter, postMessage, parent
 
 caveat: bug in duktape regarding use of function() foo() {} syntax and the
     `with` operator
+
+Iframe scripts
+==============
+
+Now we need to implement script behavior for iframes. All frames in the frame
+tree have their own global script namespace. In fact, the `Window` class
+(and `window` variable object) represents the global object, and all global
+variables declared in a script are implicitly defined on this object. The
+simplest way to achieve this is by having each `Frame` object own its own
+`JSContext`, and by association its own DukPy interpreter. That's what `Tab`
+already did, and we can just copy all of its code for it.
+
+But that only works if we consider every frame *cross-origin* from all of the
+others. Two frames that have the same origin each get a global namespace
+for their scripts, but they can access each other's frames through the 
+[`parent` attribute][window-parent] on their `Window`. We need to implement
+that somehow. Unfortunately, DukPy doesn't natively support the feature of
+"evaluate this script under the given global variable". 
+
+[window-parent]: https://developer.mozilla.org/en-US/docs/Web/API/Window/parent
+
+Instead of switching to whole new JavaScript runtime, I'll just approximate the
+feature with two tricks: overwriting the `window` object and the `with`
+operator. The `with` operator is pretty obscure, but what it does is to
+evaluate the content of a block by looking up objects on the given 
+object.^[It's important to reiterate that this is a hack and doesn't actually
+do things correctly, but it suffices for our toy browser.]
+This example:
+
+    var win = {}
+    win.foo = 'bar'
+    with (win) { console.log(foo); }
+
+will print "bar", whereas without the "with" clause foo will not resolve
+to any variable.
+
+For each `JSContext`, we'll keep track of the set of frames that all use it, and
+store a `Window` object for each, associated with the frame it comes from, in
+variables called `window_0`, `window_1`, etc. Then whenever we need to evaluate
+a script from a particular frame, we'll wrap it in some code that overwrites
+the `window` object and evalutes via `with`. 
+
+``` {.python}
+def wrap_in_window(js, window_id):
+    return ("window = window_{window_id}; " + \
+    "with (window) {{ {js} }}").format(js=js, window_id=window_id)
+```
 
 Cross-origin iframes
 ====================
