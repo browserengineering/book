@@ -712,8 +712,8 @@ def decode_image(encoded_image, width, height, image_quality):
 INTERNAL_ACCESSIBILITY_HOVER = "-internal-accessibility-hover"
 
 def wrap_in_window(js, window_id):
-    return "window = window_{window_id}; " +
-    "with (window) {{ {js} }}".format(js=js, window_id=window_id)
+    return ("window = window_{window_id}; " + \
+    "with (window) {{ {js} }}").format(js=js, window_id=window_id)
 
 class JSContext:
     def __init__(self, document, tab):

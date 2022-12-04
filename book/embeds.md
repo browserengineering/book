@@ -874,8 +874,8 @@ the `window` object and evalutes via `with`.
 
 ``` {.python}
 def wrap_in_window(js, window_id):
-    return "window = window_{window_id}; " +
-    "with (window) {{ {js} }}".format(js=js, window_id=window_id)
+    return ("window = window_{window_id}; " + \
+    "with (window) {{ {js} }}").format(js=js, window_id=window_id)
 ```
 
 Cross-origin iframes
