@@ -667,7 +667,6 @@ class IframeLayout:
         else:
             self.x = self.parent.x
 
-        self.node.document.style()
         self.node.document.layout(zoom, self.width)
 
     def paint(self, display_list):
@@ -697,11 +696,9 @@ class IframeLayout:
             self.node.attributes["src"], self.x, self.y, self.width, self.height)
 
 def decode_image(encoded_image, width, height, image_quality):
-    resample=None
-    # TODO: How do I reference PIL.Image.Resizing.LANCZOS?
-    # https://pillow.readthedocs.io/en/stable/reference/Image.html#PIL.Image.Resampling.LANCZOS
+    resample = None
     if image_quality == "crisp-edges":
-        resample = PIL.Image.ANTIALIAS
+        resample = PIL.Image.Resampling.LANCZOS
     pil_image = encoded_image.resize((int(width), int(height)), resample)
     if pil_image.mode == "RGBA":
         pil_image_bytes = pil_image.tobytes()
@@ -715,8 +712,8 @@ def decode_image(encoded_image, width, height, image_quality):
 INTERNAL_ACCESSIBILITY_HOVER = "-internal-accessibility-hover"
 
 def wrap_in_window(js, window_id):
-    return "window = window_{window_id}; with (window) {{ {js} }}".format(
-        js=js, window_id=window_id)
+    return "window = window_{window_id}; " +
+    "with (window) {{ {js} }}".format(js=js, window_id=window_id)
 
 class JSContext:
     def __init__(self, document, tab):
@@ -859,6 +856,48 @@ class JSContext:
     def requestAnimationFrame(self):
         self.tab.browser.set_needs_animation_frame(self.tab)
 
+def style(node, rules, tab):
+    old_style = node.style
+
+    node.style = {}
+    for property, default_value in INHERITED_PROPERTIES.items():
+        if node.parent:
+            node.style[property] = node.parent.style[property]
+        else:
+            node.style[property] = default_value
+    for media, selector, body in rules:
+        if media:
+            if (media == "dark") != tab.dark_mode: continue
+        if not selector.matches(node): continue
+        for property, value in body.items():
+            computed_value = compute_style(node, property, value)
+            if not computed_value: continue
+            node.style[property] = computed_value
+    if isinstance(node, Element) and "style" in node.attributes:
+        pairs = CSSParser(node.attributes["style"]).body()
+        for property, value in pairs.items():
+            computed_value = compute_style(node, property, value)
+            node.style[property] = computed_value
+
+    if old_style:
+        transitions = diff_styles(old_style, node.style)
+        for property, (old_value, new_value, num_frames) \
+            in transitions.items():
+            if property in ANIMATED_PROPERTIES:
+                tab.set_needs_render()
+                AnimationClass = ANIMATED_PROPERTIES[property]
+                animation = AnimationClass(
+                    old_value, new_value, num_frames)
+                node.animations[property] = animation
+                node.style[property] = animation.animate()
+
+    for child in node.children:
+        style(child, rules, tab)
+
+    if isinstance(node, Element) and node.tag == "iframe" \
+        and node.document:
+        node.document.style()
+
 WINDOW_COUNT = 0
 
 class Frame:
@@ -968,7 +1007,6 @@ class Frame:
                 header, body = request(image_url, url)
                 img.image = PIL.Image.open(io.BytesIO(body))
             except:
-                print('exception')
                 continue
 
         iframes = [node
@@ -977,10 +1015,14 @@ class Frame:
                    and node.tag == "iframe"
                    and "src" in node.attributes]
         for iframe in iframes:
-            document_url = resolve_url(iframe.attributes["src"],
-                self.tab.root_frame.url)
-            iframe.document = Frame(self.tab, self, iframe)
-            iframe.document.load(document_url)
+            try:
+                document_url = resolve_url(iframe.attributes["src"],
+                    self.tab.root_frame.url)
+                iframe.document = Frame(self.tab, self, iframe)
+                iframe.document.load(document_url)
+            except:
+                iframe.document = None
+                continue
 
         self.tab.set_needs_render()
 
