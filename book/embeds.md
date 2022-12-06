@@ -673,8 +673,8 @@ class Frame:
         for iframe in iframes:
             document_url = resolve_url(iframe.attributes["src"],
                 self.tab.root_frame.url)
-            iframe.document = Frame(self.tab, self, iframe)
-            iframe.document.load(document_url)
+            iframe.frame = Frame(self.tab, self, iframe)
+            iframe.frame.load(document_url)
 ```
 
 That's pretty much it for loading, now let's investigate rendering.
@@ -731,8 +731,8 @@ def style(node, rules, tab):
     # ...
 
     if isinstance(node, Element) and node.tag == "iframe" \
-        and node.document:
-        node.document.style()
+        and node.frame:
+        node.frame.style()
 ```
 
 [^style-real-browsers]: In real browsers this doesn't work, because the output
@@ -887,24 +887,40 @@ def wrap_in_window(js, window_id):
 When multiple frames will have just one `JSContext`, we'll just store
 the `JSContext` on the "root" one---the frame closest to the frame tree root
 that has a particular origin, and reference it from descendant
-frames:[^disconnected]
+frames. This will also require passing the parent frame as a
+constructor parameter:[^disconnected]
+
+creating a JS context will also require defining the `Window`class.
+
+[^disconnected]: This isn't actually correct. Any frame with the same origin
+should be in the "same origin" set, even if they are in disconnected pieces
+of the frame tree. For example, if a root frame with origin A embeds an
+iframe with origin B, and the iframe embeds *another* iframe with origin A,
+then the two A frames can access each others' variables. I won't implement
+this complication and instead left it as an exercise.]
 
 ``` {.python replace=FOO/or%20CROSS_ORIGIN_IFRAMES}
 class Frame:
+    def __init__(self, tab, parent_frame, frame_element):
+        self.parent_frame = parent_frame
     # ...
     def get_js(self):
         if self.js:
             return self.js
         else:
-            return self.parent_document.get_js()
+            return self.parent_frame.get_js()
     # ...
     def load(self, url, body=None):
         # ...
-        if not self.parent_document FOO or \
-            url_origin(self.url) != url_origin(self.parent_document.url):
+        if not self.parent_frame FOO or \
+            url_origin(self.url) != url_origin(self.parent_frame.url):
             self.js = JSContext(self.tab)
             self.js.interp.evaljs("function Window(id) {{ this._id = id }};")
         js = self.get_js()
+        # ...
+        for iframe in iframes:
+            # ...
+                iframe.frame = Frame(self.tab, self, iframe)
 ```
 
 the frame needs to keep track of its window id:
@@ -924,7 +940,7 @@ The `JSContext` needs to create the `window_i` object, where i is the
 window id of the frame:
 
 ``` {.python}
-classs JSContext:
+class JSContext:
     def add_window(self, frame):
         self.interp.evaljs(
             "var window_{window_id} = new Window({window_id});".format(
@@ -951,33 +967,30 @@ And pass that argument from the `load` method:
 class Frame:
     def load(self, url, body=None):
         # ...
+        with open("runtime15.js") as f:
+            wrapped = wrap_in_window(f.read(), self.window_id)
+            js.interp.evaljs(wrapped)
+        # ...
         for script in scripts:
             # ...
             task = Task(self.get_js().run, script_url, body.decode('utf8)'),
                 self.window_id)
 ```
 
-Iframe script callbacks
-========================
+Iframe runtime APIs calls
+=========================
 
 With these changes, you should be able to load basic scripts in iframes. But
-none of the browser APIs work. There are two types of such APIs:
+none of the runtime browser APIs work. There are two types of such APIs:
 
 * Synchronous APIs that modify the DOM or query it (e.g. `getElementById`)
 
 * Event-driven APIs that execute JavaScript callbacks or event handlers
 (`requestAnimationFrame` and `addEventListener`).
 
-Let's first tacke the former. TODO!
+Let's first tackle the former. TODO!
 
 Next let's do callbacks. TODO!
-
-[^disconnected]: This isn't actually correct. Any frame with the same origin
-should be in the "same origin" set, even if they are in disconnected pieces
-of the frame tree. For example, if a root frame with origin A embeds an
-iframe with origin B, and the iframe embeds *another* iframe with origin A,
-then the two A frames can access each others' variables. I won't implement
-this complication and instead left it as an exercise.]
 
 
 Iframe message passing
