@@ -843,10 +843,16 @@ simplest way to achieve this is by having each `Frame` object own its own
 already did, and we can just copy all of its code for it.
 
 But that only works if we consider every frame *cross-origin* from all of the
-others. Two frames that have the same origin each get a global namespace
-for their scripts, but they can access each other's frames through the 
-[`parent` attribute][window-parent] on their `Window`. We need to implement
-that somehow. Unfortunately, DukPy doesn't natively support the feature of
+others. Two frames that have the same origin each get a global namespace for
+their scripts, but they can access each other's frames through the
+[`parent` attribute][window-parent] on their `Window`. For example, JavaScript
+in a same-origin child frame can access the `document` object for the DOM of
+parent frame like this:
+
+    console.log(window.parent.document)
+
+We need to implement that somehow. Unfortunately, DukPy doesn't natively support
+the feature of
 "evaluate this script under the given global variable". 
 
 [window-parent]: https://developer.mozilla.org/en-US/docs/Web/API/Window/parent
@@ -878,8 +884,104 @@ def wrap_in_window(js, window_id):
     "with (window) {{ {js} }}").format(js=js, window_id=window_id)
 ```
 
-Cross-origin iframes
-====================
+When multiple frames will have just one `JSContext`, we'll just store
+the `JSContext` on the "root" one---the frame closest to the frame tree root
+that has a particular origin, and reference it from descendant
+frames:[^disconnected]
+
+``` {.python replace=FOO/or%20CROSS_ORIGIN_IFRAMES}
+class Frame:
+    # ...
+    def get_js(self):
+        if self.js:
+            return self.js
+        else:
+            return self.parent_document.get_js()
+    # ...
+    def load(self, url, body=None):
+        # ...
+        if not self.parent_document FOO or \
+            url_origin(self.url) != url_origin(self.parent_document.url):
+            self.js = JSContext(self.tab)
+            self.js.interp.evaljs("function Window(id) {{ this._id = id }};")
+        js = self.get_js()
+```
+
+the frame needs to keep track of its window id:
+
+``` {.python}
+WINDOW_COUNT = 0
+
+class Frame:
+    def __init__(self, tab, parent_frame, frame_element):
+        # ...
+        global WINDOW_COUNT
+        self.window_id = WINDOW_COUNT
+        WINDOW_COUNT += 1
+```
+
+The `JSContext` needs to create the `window_i` object, where i is the
+window id of the frame:
+
+``` {.python}
+classs JSContext:
+    def add_window(self, frame):
+        self.interp.evaljs(
+            "var window_{window_id} = new Window({window_id});".format(
+                window_id=frame.window_id))
+```
+
+And whenever scripts are evaluated, they are wrapped (note the extra window
+id parameter):
+
+``` {.python}
+class JSContext:
+    def run(self, script, code, window_id):
+        try:
+            print("Script returned: ", self.interp.evaljs(
+               wrap_in_window(code, window_id)))
+        except dukpy.JSRuntimeError as e:
+            print("Script", script, "crashed", e)
+        self.current_window = None
+```
+
+And pass that argument from the `load` method:
+
+``` {.python}
+class Frame:
+    def load(self, url, body=None):
+        # ...
+        for script in scripts:
+            # ...
+            task = Task(self.get_js().run, script_url, body.decode('utf8)'),
+                self.window_id)
+```
+
+Iframe script callbacks
+========================
+
+With these changes, you should be able to load basic scripts in iframes. But
+none of the browser APIs work. There are two types of such APIs:
+
+* Synchronous APIs that modify the DOM or query it (e.g. `getElementById`)
+
+* Event-driven APIs that execute JavaScript callbacks or event handlers
+(`requestAnimationFrame` and `addEventListener`).
+
+Let's first tacke the former. TODO!
+
+Next let's do callbacks. TODO!
+
+[^disconnected]: This isn't actually correct. Any frame with the same origin
+should be in the "same origin" set, even if they are in disconnected pieces
+of the frame tree. For example, if a root frame with origin A embeds an
+iframe with origin B, and the iframe embeds *another* iframe with origin A,
+then the two A frames can access each others' variables. I won't implement
+this complication and instead left it as an exercise.]
+
+
+Iframe message passing
+======================
 
 Cross-origin iframes: postMessage
 
@@ -942,6 +1044,8 @@ disable downloading of images until the usre expresssly asked for them.]
  an important performance optimization.]
 
 *Same-origin frame tree*: same-origin iframes can access each others' variables
-  and DOM, even if they are not adjacent in the frame tree. Implement this.
+ and DOM, even if they are not adjacent in the frame tree. Implement this, and
+ also the ability for two same-origin frames to see each others' variables even
+ if they aren't adjacent in the frame tree.
 
 *Iframe media queries*. Implement.
