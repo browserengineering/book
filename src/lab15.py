@@ -667,7 +667,7 @@ class IframeLayout:
         else:
             self.x = self.parent.x
 
-        self.node.document.layout(zoom, self.width)
+        self.node.frame.layout(zoom, self.width)
 
     def paint(self, display_list):
         cmds = []
@@ -682,7 +682,7 @@ class IframeLayout:
                 self.node.style.get("border-radius", "0px")[:-2])
             cmds.append(DrawRRect(rect, radius, bgcolor))
 
-        self.node.document.paint(cmds)
+        self.node.frame.paint(cmds)
 
         cmds = [Transform((self.x, self.y), rect, self.node, cmds)]
 
@@ -716,8 +716,7 @@ def wrap_in_window(js, window_id):
     "with (window) {{ {js} }}").format(js=js, window_id=window_id)
 
 class JSContext:
-    def __init__(self, document, tab):
-        self.document = document
+    def __init__(self, tab):
         self.tab = tab
 
         self.interp = dukpy.JSInterpreter()
@@ -742,10 +741,10 @@ class JSContext:
         self.node_to_handle = {}
         self.handle_to_node = {}
 
-    def add_window(self, document):
+    def add_window(self, frame):
         self.interp.evaljs(
             "var window_{window_id} = new Window({window_id});".format(
-                window_id=document.window_id))
+                window_id=frame.window_id))
 
     def run(self, script, code, window_id):
         try:
@@ -771,10 +770,10 @@ class JSContext:
         return handle
 
     def querySelectorAll(self, selector_text, window_id):
-        document = self.tab.window_id_to_frame[window_id]
+        frame = self.tab.window_id_to_frame[window_id]
         selector = CSSParser(selector_text).selector()
         nodes = [node for node
-                 in tree_to_list(document.nodes, [])
+                 in tree_to_list(frame.nodes, [])
                  if selector.matches(node)]
         return [self.get_handle(node) for node in nodes]
 
@@ -783,10 +782,10 @@ class JSContext:
         return elt.attributes.get(attr, None)
 
     def parent(self, window_id):
-        parent_document = self.tab.window_id_to_frame[window_id].parent_document
-        if not parent_document:
+        parent_frame = self.tab.window_id_to_frame[window_id].parent_frame
+        if not parent_frame:
             return None
-        return parent_document.window_id
+        return parent_frame.window_id
 
     def dispatch_post_message(self, message, window_id):
         self.interp.evaljs(
@@ -895,18 +894,18 @@ def style(node, rules, tab):
         style(child, rules, tab)
 
     if isinstance(node, Element) and node.tag == "iframe" \
-        and node.document:
-        node.document.style()
+        and node.frame:
+        node.frame.style()
 
 WINDOW_COUNT = 0
 
 class Frame:
-    def __init__(self, tab, parent_document, frame_element):
+    def __init__(self, tab, parent_frame, frame_element):
         self.tab = tab
         self.document = None
         self.nodes = None
         self.url = None
-        self.parent_document = parent_document
+        self.parent_frame = parent_frame
         self.frame_element = frame_element
         self.js = None
         global WINDOW_COUNT
@@ -925,7 +924,7 @@ class Frame:
         if self.js:
             return self.js
         else:
-            return self.parent_document.get_js()
+            return self.parent_frame.get_js()
 
     def load(self, url, body=None):
         self.zoom = 1
@@ -944,9 +943,9 @@ class Frame:
 
         self.nodes = HTMLParser(body).parse()
 
-        if not self.parent_document or CROSS_ORIGIN_IFRAMES or \
-            url_origin(self.url) != url_origin(self.parent_document.url):
-            self.js = JSContext(self, self.tab)
+        if not self.parent_frame or CROSS_ORIGIN_IFRAMES or \
+            url_origin(self.url) != url_origin(self.parent_frame.url):
+            self.js = JSContext(self.tab)
             self.js.interp.evaljs("function Window(id) {{ this._id = id }};")
         js = self.get_js()
 
@@ -1018,10 +1017,10 @@ class Frame:
             try:
                 document_url = resolve_url(iframe.attributes["src"],
                     self.tab.root_frame.url)
-                iframe.document = Frame(self.tab, self, iframe)
-                iframe.document.load(document_url)
+                iframe.frame = Frame(self.tab, self, iframe)
+                iframe.frame.load(document_url)
             except:
-                iframe.document = None
+                iframe.frame = None
                 continue
 
         self.tab.set_needs_render()
