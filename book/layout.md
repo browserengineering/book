@@ -30,6 +30,11 @@ to produce the layout tree, then computes the size and position for
 each layout object, and finally draws each layout object to the
 screen.
 
+[^no-box]: Elements like `<script>` don't generate layout objects, and
+    some elements generate multiple (`<li>` elements have a layout
+    object for the bullet point!), but mostly it's one layout object
+    each.
+
 Let's start by looking how the existing `Layout` class is used:
 
 ``` {.python expected=False}
@@ -105,9 +110,9 @@ class DocumentLayout:
 ```
 
 Note an interesting thing about this new `layout` method: its role is
-to _create_ the child layout objects, and then _recursively_ calls
-its children's `layout` methods. This is a common pattern for
-constructing trees, and we'll be seeing it a lot throughout this book.
+to _create_ the child layout objects, and then _recursively_ call its
+children's `layout` methods. This is a common pattern for constructing
+trees, and we'll be seeing it a lot throughout this book.
 
 Now when we construct a `DocumentLayout` object inside `load`, we'll
 be building a tree! A very short tree, more of a stump for now, but
@@ -226,12 +231,12 @@ BLOCK_ELEMENTS = [
 ```
 
 Our `layout_mode` function has to handle one tricky case, where a node
-contains both block objects like a `<p>` element but also text objects
-like a text node or a `<b>` element. I've chosen to use block mode in
-this case, but it's probably best to think of this as a kind of error
-on the part of the web developer. And just like with implicit tags in
-[Chapter 4](html.md), we use a repair mechanism to make sense of the
-situation.[^anon-block]
+contains both block children like a `<p>` element but also text
+children like a text node or a `<b>` element. I've chosen to use block
+mode in this case, but it's probably best to think of this as a kind
+of error on the part of the web developer. And just like with implicit
+tags in [Chapter 4](html.md), we use a repair mechanism to make sense
+of the situation.[^anon-block]
 
 [^anon-block]: In real browsers, that repair mechanism is called
 "[anonymous block boxes][anon-block]" and is more complex than what's
@@ -282,6 +287,10 @@ in fact, if you add a `print_tree` call to `Browser`'s `load` method,
 you'll see that large web pages like this chapter produce large and
 complex layout trees!
 
+::: {.widget big-height=490px small-height=860px}
+    layout-container-example.html?embed=true
+:::
+
 Oh, you might also notice that the text on these web pages is now
 totally unreadable, because it's all overlapping at the top of the
 page. Let's fix that next.
@@ -302,13 +311,13 @@ Size and position
 =================
 
 In the [previous chapter](html.md), the `Layout` object was
-responsible for whole web page, so it just laid out its content
+responsible for the whole web page, so it just laid out its content
 starting at the top of the page. Now that we have multiple
 `BlockLayout` objects each containing a different paragraph of text,
 we're going to need to do things a little differently, computing a
 size and position for each layout object independently.
 
-Let's start with the `cursor_x` and `cursor_y`. Instead of having them
+Let's start with `cursor_x` and `cursor_y`. Instead of having them
 denote absolute positions on the page, let's make them relative to the
 `BlockLayout` itself; they now need to start from `0` instead of
 `HSTEP` and `VSTEP`, both in `layout` and `flush`:
@@ -423,7 +432,7 @@ instead, it needs to be tall enough to contain all its text, which we
 can conveniently read off of `cursor_y`:[^why-two-fields]
 
 [^why-two-fields]: Since the height is just equal to `cursor_y`, why
-    not renamed `cursor_y` to `height` instead? You could, it would
+    not rename `cursor_y` to `height` instead? You could, it would
     work fine, but I would rather not. As you can see from, say, the
     `y` computation, the `height` field is a public field, read by
     other layout objects to compute their positions. As such I'd
