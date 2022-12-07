@@ -394,7 +394,7 @@ Note that in each of these cases, to compute one block's `x` and `y`,
 the `x` and `y` of its parent block must _already_ have been computed.
 That means these computations have to go *before* the recursive
 `layout` call, so those children can compute their `x` and `y` based
-on this block's `x` and `y`. Simiarly, since the `y` position of a
+on this block's `x` and `y`. Similarly, since the `y` position of a
 block depends on its previous sibling's `y` position, the recursive
 `layout` calls have to start and the first sibling and iterate through
 the list forward---which is how we've already done it, but which will
@@ -450,14 +450,11 @@ class BlockLayout:
             self.height = self.cursor_y
 ```
 
-Let's think again about dependencies. While the `x`, `y`, and `width`
-fields depended on the parent's fields, the `height` field depends on
-the children's fields. This means that `x`, `y`, and `width` must be
-computed _before_ the recursive call, but `height` has to be computed
-_after_. I've chosen to compute `x`, `y`, and `width` at the very
-beginning of `layout`, and compute `height` at the very end, but the
-most important thing is making sure they're computed after their
-dependencies and before anyone who depends on them.
+Let's think again about dependencies. Height has the opposite
+dependencies compared to `x`, `y`, and `width`: the `height` of a
+block depends on its children's heights. While `x`, `y`, and `width`
+must be computed _before_ the recursive call, `height` has to be
+computed _after_, at the very end of `layout`.
 
 Finally, even `DocumentLayout` needs some layout code, though since the
 document always starts in the same place it's pretty simple:
