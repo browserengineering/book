@@ -89,6 +89,9 @@ class BlockLayout:
 
         wbetools.record("layout_post", self)
 
+        # For tests only
+        self.mode = mode
+
     def recurse(self, node):
         if isinstance(node, Text):
             self.text(node)
@@ -161,7 +164,7 @@ class BlockLayout:
 
     def __repr__(self):
         return "BlockLayout[{}](x={}, y={}, width={}, height={}, node={})".format(
-            layout_mode(self.node), self.x, self.y, self.width, self.height, self.node)
+            self.mode, self.x, self.y, self.width, self.height, self.node)
 
 class DocumentLayout:
     def __init__(self, node):

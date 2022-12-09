@@ -33,7 +33,7 @@
 <script type="module" src="rt.js"></script>
 <script type="module">
 import { http_textarea, rt_constants, Widget } from "./rt.js";
-import { BlockLayout, Browser, DocumentLayout, InlineLayout } from "./lab5.js";
+import { BlockLayout, Browser, DocumentLayout } from "./lab5.js";
 
 rt_constants.TKELEMENT = document.createElement("canvas");
 rt_constants.URLS = {
@@ -59,8 +59,6 @@ function tree_to_str(node, indent, current, status) {
     s += indent;
     if (node instanceof BlockLayout) {
         s += "Block";
-    } else if (node instanceof InlineLayout) {
-        s += "Inline";
     } else if (node instanceof DocumentLayout) {
         s += "Document";
     }
