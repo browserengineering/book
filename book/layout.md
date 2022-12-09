@@ -215,7 +215,7 @@ Here the list of `BLOCK_ELEMENTS` is basically what you expect, a list
 of all the tags that describe parts of a page instead of
 formatting:[^from-the-spec]
 
-[^from-the-spec]: Taken from the [HTML5 living standard][html5-elts].
+[^from-the-spec]: Taken from the [HTML living standard][html5-elts].
 
 [html5-elts]: https://html.spec.whatwg.org/multipage/#toc-semantics
 
@@ -241,6 +241,8 @@ of the situation.[^anon-block]
 [^anon-block]: In real browsers, that repair mechanism is called
 "[anonymous block boxes][anon-block]" and is more complex than what's
 described here.
+
+[anon-block]: https://developer.mozilla.org/en-US/docs/Web/CSS/Visual_formatting_model#anonymous_boxes
 
 So now `BlockLayout` can determine what kind of layout to do based on
 the `layout_mode` of its HTML node:
@@ -364,10 +366,10 @@ class BlockLayout:
             # ...
 ```
 
-So now that sets us the problem of computing these `x`, `y`, and
-`width` fields. Let's recall that `BlockLayout`s represent blocks of
-text like paragraphs or headings, and are stacked vertically one atop
-another. That means each one starts at its parent's left edge:
+So now that leaves us with the problem of computing these `x`, `y`,
+and `width` fields. Let's recall that `BlockLayout`s represent blocks
+of text like paragraphs or headings, and are stacked vertically one
+atop another. That means each one starts at its parent's left edge:
 
 ``` {.python}
 class BlockLayout:
@@ -424,7 +426,8 @@ class BlockLayout:
     def layout(self):
         # ...
         if mode == "block":
-            self.height = sum([child.height for child in self.children])
+            self.height = sum([
+                child.height for child in self.children])
 ```
 
 However, a `BlockLayout` that contains text doesn't have children;
@@ -548,8 +551,8 @@ class BlockLayout:
             child.paint(display_list)
 ```
 
-You can now delete the line that computes a `BlockLayout`'s
-`display_list` field by copying from child layout objects.
+Again, delete the line that computes a `BlockLayout`'s `display_list`
+field by copying from child layout objects.
 
 Finally for a `BlockLayout` object with text inside, we need to copy
 over the `display_list` field that it computes during `recurse` and

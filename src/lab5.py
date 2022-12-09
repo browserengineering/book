@@ -82,7 +82,8 @@ class BlockLayout:
             child.layout()
 
         if mode == "block":
-            self.height = sum([child.height for child in self.children])
+            self.height = sum([
+                child.height for child in self.children])
         else:
             self.height = self.cursor_y
 
