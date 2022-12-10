@@ -8,6 +8,7 @@ This file contains tests for Chapter 14 (Accessibility).
     >>> import test14 as test
     >>> _ = test.socket.patch().start()
     >>> _ = test.ssl.patch().start()
+    >>> _ = test.gtts.patch()
     >>> threading.Lock = test.MockLock
     >>> import lab13
     >>> import lab14
