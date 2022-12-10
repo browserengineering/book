@@ -98,6 +98,7 @@ class TextLayout:
         display_list.append(
             DrawText(self.x, self.y, self.word, self.font, color))
     
+    @wbetools.js_hide
     def __repr__(self):
         return ("TextLayout(x={}, y={}, width={}, height={}, " +
             "node={}, word={})").format(
