@@ -579,15 +579,25 @@ class ImageLayout:
             float(self.node.style["font-size"][:-2]), zoom)
         self.font = get_font(size, weight, style)
 
-        if "width" in self.node.attributes:
+        aspect_ratio = self.node.image.width / self.node.image.height
+        has_width = "width" in self.node.attributes
+        has_height = "height" in self.node.attributes
+
+        if has_width:
             self.width = \
                 device_px(int(self.node.attributes["width"]), zoom)
+        elif has_height:
+            self.width = aspect_ratio * \
+                device_px(int(self.node.attributes["height"]), zoom)
         else:
             self.width = device_px(self.node.image.width, zoom)
     
-        if "height" in self.node.attributes:
+        if has_height:
             self.height = \
                 device_px(int(self.node.attributes["height"]), zoom)
+        elif has_width:
+            self.height = (1 / aspect_ratio) * \
+                device_px(int(self.node.attributes["width"]), zoom)
         else:
             self.height = max(
                 device_px(self.node.image.height, zoom),
@@ -649,13 +659,16 @@ class IframeLayout:
         size = float(self.node.style["font-size"][:-2])
         self.font = get_font(size, weight, style)
 
-        if "width" in self.node.attributes:
+        has_width = "width" in self.node.attributes
+        has_height = "height" in self.node.attributes
+
+        if has_width:
             self.width = \
                 device_px(int(self.node.attributes["width"]), zoom)
         else:
             self.width = device_px(IFRAME_DEFAULT_WIDTH_PX, zoom)
 
-        if "height" in self.node.attributes:
+        if has_height:
             self.height = \
                 device_px(int(self.node.attributes["height"]), zoom)
         else:
@@ -699,7 +712,8 @@ def decode_image(encoded_image, width, height, image_quality):
     resample = None
     if image_quality == "crisp-edges":
         resample = PIL.Image.Resampling.LANCZOS
-    pil_image = encoded_image.resize((int(width), int(height)), resample)
+    pil_image = encoded_image.resize(\
+        (int(width), int(height)), resample)
     if pil_image.mode == "RGBA":
         pil_image_bytes = pil_image.tobytes()
     else:
@@ -743,7 +757,8 @@ class JSContext:
 
     def add_window(self, frame):
         self.interp.evaljs(
-            "var window_{window_id} = new Window({window_id});".format(
+            "var window_{window_id} = \
+                new Window({window_id});".format(
                 window_id=frame.window_id))
 
     def run(self, script, code, window_id):
@@ -946,7 +961,8 @@ class Frame:
         if not self.parent_frame or CROSS_ORIGIN_IFRAMES or \
             url_origin(self.url) != url_origin(self.parent_frame.url):
             self.js = JSContext(self.tab)
-            self.js.interp.evaljs("function Window(id) {{ this._id = id }};")
+            self.js.interp.evaljs(\
+                "function Window(id) {{ this._id = id }};")
         js = self.get_js()
 
         js.add_window(self)
@@ -969,7 +985,8 @@ class Frame:
                 continue
 
             header, body = request(script_url, url)
-            task = Task(self.get_js().run, script_url, body.decode('utf8)'),
+            task = Task(\
+                self.get_js().run, script_url, body.decode('utf8)'),
                 self.window_id)
             self.tab.task_runner.schedule_task(task)
 

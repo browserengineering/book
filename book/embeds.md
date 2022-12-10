@@ -26,7 +26,7 @@ Images
 Images are everywhere on the web. They are relatively easy to implement in their
 simplest form. Well, they are easy to implement if you have convenient
 libraries to decode and render them. So let's just get to it.[^img-history]
-We'll implement the `<img` tag, which works like this:
+We'll implement the `<img>` tag, which works like this:
 
     <img src="https://pavpanchekha.com/im/me-square.jpg">
 
@@ -105,9 +105,9 @@ noted that HTML web page responses have a value of `text/html` for this header.
 This value is a *MIME type*. MIME stands for Multipurpose Internet
 Mail Extensions, and was originally intended for enumerating all of the
 acceptable data formats for email attachments.^[Most email these days is
-actually HTML, and is encoded with the "text/html" MIME type. Gmail, for example,
+actually HTML, and is encoded with the `text/html` MIME type. Gmail, for example,
 by default uses this format, but can be put in a "plain text mode" that
-encodes the email in "text/plain".] We've actually encountered two more content
+encodes the email in `text/plain`.] We've actually encountered two more content
 types already: `text/css` and `application/javascript`, but since we assumed
 both were in `utf8` there was no need to differentiate in the code.^[That's
 not a correct thing to do in a real browser, and alternate character sets are
@@ -140,9 +140,18 @@ auto-detects the image format by peeking at the first few bytes of the binary
 image data, which varies for each image format.] First, reinterpret
 the image "file" as a `BytesIO` object and pass it to Pillow. Then convert
 it to RGBA format (the same RGBA in
-[Chapter 11](/visual-effects.html#sdl-creates-the-window), call `tobytes`
-(which performs the decode and puts the result in a raw byte array), and wrap
-the result in a Skia `Image` object.
+[Chapter 11](/visual-effects.html#sdl-creates-the-window)), call `tobytes`
+(which performs the decode and puts the result in a raw byte
+array[^maybe-decode]), and wrap the result in a Skia `Image` object.
+
+[^maybe-decode]: Maybe. As with Skia, Pillow tries to be lazy about when to
+decode, so probably the decode happens at this time. But there is nothing
+in the Pillow API that requires it to decode at this time, rather than say in
+the `open` call. For our toy browser it doesn't matter very much, but in a
+real browser the timing of a decode is important for performance. That's also
+why there is an [API in HTML][html-image-decode] to control decoding.
+
+[html-image-decode]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLImageElement/decoding
 
 ``` {.python expected=False}
 def decode_image(image_bytes):
@@ -158,7 +167,7 @@ def decode_image(image_bytes):
         colorType=skia.kRGBA_8888_ColorType)
 ```
 
-Let's now load `<img>` tags found in a web page.In `load` we need to
+Let's now load `<img>` tags found in a web page. In `load` we need to
 first find all of the images in the document:
 
 ``` {.python replace=Tab/Frame}
@@ -174,7 +183,7 @@ class Tab:
 ```
 
 and then request them from the network and decode them, placing the result
-on the `Element` object for each image.
+on the `Element` object for each image:
 
 ``` {.python expected=False}
         # ...
@@ -191,9 +200,8 @@ on the `Element` object for each image.
                 continue
 ```
 
-Images have inline layout, so we'll need to add a new value in `InlineLayout`
-and a new `ImageLayout` class. In this case, the width contributed to the line
-is the width of the image.
+Images have inline layout, so we'll need to add a new value in `InlineLayout`.
+In this case, the width contributed to the line is the width of the image.
 
 ``` {.python expected=False}
 class InlineLayout:
@@ -218,27 +226,8 @@ class InlineLayout:
         self.cursor_x += w + font.measureText(" ")
 ```
 
-`ImageLayout` is almost exactly the same as other kinds of inline layout. Notice
-in particular how the positioning of an image depends on the font size of the
-element (the `image` function has some code for that also). That's at first
-unexpected---there is no font in an image, why does this happen? The reason is
-that, as a type of inline layout, images are designed to flow along with
-related text. For example, the baseline of the image should line up with the
-baseline of the text next to it. And so the font of that text affects the
-layout of the image.^[In fact, a page with only a single image and no text at
-all still has a font size (e.g. the default font size of a web page), and the
-image's layout depends on it. This is a very common source of confusion for web
-developers.]
-
-In fact, now that you see images alongside input elements, notice how actually
-the input elements we defined in Chapter 8 are (also a form of embedded
-content*---after all, the way they are drawn to the screen is certainly not
-defined by HTML tags and CSS. So input, images and other embedded content are
-all types of [*replaced elements*][replaced-elements]---characterized by putting
-stuff "outside of HTML" into an inline HTML context, and delegating
-that "outside of HTML" thing to draw and size it.
-
-[replaced-elements]: https://developer.mozilla.org/en-US/docs/Web/CSS/Replaced_element
+And a new `ImageLayout` class. The height of the object is defined by the
+height of the image.
 
 ``` {.python expected=False}
 class ImageLayout:
@@ -284,8 +273,36 @@ class ImageLayout:
                 self.x, self.y, self.width, self.height)
 ```
 
+
+The `image` function is almost exactly the same as other kinds of inline layout.
+Notice in particular how the positioning of an image depends on the font size
+of the element (the `ImageLayout` class coming up has some code for that also).
+That's at first unexpected---there is no font in an image, why does this
+happen? The reason is that, as a type of inline layout, images are designed to
+flow along with related text. For example, the baseline of the image should
+line up with the [baseline][baseline-ch3] of the text next to it. And so the
+font of that text affects the layout of the image.^[In fact, a page with only a
+single image and no text or CSS at all still has a font size (the default font
+size of a web page), and the image's layout depends on it. This is a very
+common source of confusion for web developers.]
+
+[baseline-ch3]: text.html#text-of-different-sizes
+
+In fact, now that you see images alongside input elements, notice how actually
+the input elements we defined in Chapter 8 *are also a form of embedded
+content*---after all, the way they are drawn to the screen is certainly not
+defined by HTML tags and CSS.
+
+The specifications call  input, images and other embedded content
+ [*replaced elements*][replaced-elements]---characterized by putting
+stuff "outside of HTML" into an inline HTML context, and delegating
+that "outside of HTML" thing to draw and size it.
+
+[replaced-elements]: https://developer.mozilla.org/en-US/docs/Web/CSS/Replaced_element
+
+
 Painting the image is quite straightforward, and uses a new `DrawImage type`
-and the Skipa `drawImage` API method.
+and the Skia `drawImage` API method.
 
 ``` {.python expected=False}
 class DrawImage(DisplayItem):
@@ -296,7 +313,7 @@ class DrawImage(DisplayItem):
 
     def execute(self, canvas):
         canvas.drawImage(
-            self.image, self.rect.left(), self.rect.top()
+            self.image, self.rect.left(), self.rect.top())
 ```
 
 Finally, the `paint` method of `ImageLayout` emits a single `DrawImage`:
@@ -315,7 +332,7 @@ class ImageLayout:
         display_list.extend(cmds)
 ```
 
-Image should now work and display on the page. But our implementation is
+Images should now work and display on the page. But our implementation is
 very basic and missing several important features for layout and rendering
 quality.
 
@@ -326,20 +343,18 @@ Discuss shadow DOM and "explaining input elements" in terms of HTML.
 Image sizing
 ============
 
-At the moment, our browser can only draw an `<img` element at its
+At the moment, our browser can only draw an `<img>` element at its
 [intrinsic size][intrinsic-size], i.e. the size of the source image data. But
 that's only because we don't support and CSS properties that can change this
-size. If the image was much bigger than the desired rendered pixel size, then
-it'd be much more efficient to decode into a smaller buffer.^[[And if it was
-much bigger, it'd be convenient to somehow store only up to its intrinsic
-size. I don't know if any browsers implement this optimization, and I won't
-implement it.]
+size.
 
-There are of course several properties to chnage an image's rendered size ^
-[For example, the `width` and `height` CSS properties, which were an exercise
-in Chapter 13]. But images have, mostly for historical reasons (because these
-attributes were invented before CSS existed), ended up with `width` and
-`height` that override the intrinsic size. Let's implement those.
+There are of course several ways for a web page to change an image's rendered
+size.^[For example, the `width` and `height` CSS properties )not to be
+confused with the `width` and `height` ttributes!), which were an
+exercise in Chapter 13.] But images *also* have, mostly for historical reasons
+(because these attributes were invented before CSS existed), special `width`
+and `height` attributes that override the intrinsic size. Let's implement
+those.
 
 [intrinsic-size]: https://developer.mozilla.org/en-US/docs/Glossary/Intrinsic_Size#
 
@@ -361,7 +376,7 @@ class InlineLayout:
 
 And in `ImageLayout`:
 
-``` {.python}
+``` {.python expected=False}
 class ImageLayout:
     # ...
     def layout(self, zoom):
@@ -387,14 +402,48 @@ But it also allows the web page to screw up the image pretty badly if the
  the intrinsic sizing, for example, then the image on the screen will look
  stretched horizontally.
 
- We can avoid this problem by only providing a *scale* for the image rather than
- new width and heights. One way to achieve it is, if the web page happens only
- to specify `width` and not `height`, to infer the correct height from the aspect
- ratio of the original image. Let's implement that.
+We can avoid this problem by only providing a *scale* for the image rather than
+new width and heights. One way to achieve it is, if the web page happens only
+to specify `width` and not `height`, to infer the correct height from the
+aspect ratio of the original image.
 
- TODO: implementation.
+Implementing this change is very easy:[^only-recently-aspect-ratio] it's
+just a few lines of edited code in `ImageLayout` to apply the aspect
+ratio when only one attribute is specified.
 
-::: {further}
+[^only-recently-aspect-ratio]: Despite it being easy to implement, this
+feature of real web browsers only appeared in 2021. Before that, developers
+resorted to things like the ["padding-top hack"][padding-top-hack]. Sometimes
+design oversights take a long time to fix.
+
+[padding-top-hack]: https://web.dev/aspect-ratio/#the-old-hack-maintaining-aspect-ratio-with-padding-top
+
+``` {.python}
+class ImageLayout:
+    def layout(self, zoom):
+        # ...
+        aspect_ratio = self.node.image.width / self.node.image.height
+        has_width = "width" in self.node.attributes
+        has_height = "height" in self.node.attributes
+
+        if has_width:
+            # ...
+        elif has_height:
+            self.width = aspect_ratio * \
+                device_px(int(self.node.attributes["height"]), zoom)
+        else:
+            # ...   
+
+        if has_height:
+            # ...
+        elif has_width:
+            self.height = (1 / aspect_ratio) * \
+                device_px(int(self.node.attributes["width"]), zoom)
+        else:
+            # ...
+```
+
+::: {.further}
 Discuss placeholder images while they are loading, and the need to avoid layout
 shift or changes of aspect ratio. Describe the aspect-ratio CSS property.
 
@@ -426,21 +475,30 @@ image will notice the difference.
 Many encoded image formats are very good at compression. This means that when a
 browser decodes it, the image may take up quite a bit of memory, even if the
 downloaded file size is not so big. As a result, it's very important for
-browsers to do as little decoding and use as little memory as possible. Two
-ways they achieve that are by avoiding decode for images not currently on the
-screen, and decoding directly to the size actually needed to draw pixels on the
-screen. I've left the first technique to an exercise, but let's dig into the
-second one here.
+browsers to do as little decoding as possible. Two ways they achieve that are
+by avoiding decode for images not currently on the screen, and decoding
+directly to the size actually needed to draw pixels on the screen. 
+
+In addition, there is a big question of the *quality* of the decoding, in cases
+where the decoded size is not the same as the intrinsic size. In this
+situation, there are more (or fewer) pixels of intrinsic content than pixels on
+the screen, and some algorithm is needed to decide which ones to pick and how
+to mix adjacent pixels together. There are a bunch of possible *image
+filtering* algorithms, such as choosing the "nearest" source image pixel,
+a "bilinear" mix of pixels adjacent to the desired source pixel location, and
+other fancier algorithms like
+[Lanczos](https://en.wikipedia.org/wiki/Lanczos_resampling).
 
 Let's optimize to take advantage of these new observations. The first is to
-decode directly the painted size rather than intrinsic. But what about the
-algorithm to resize? For that we'll obey the[`image-rendering`]
-[image-rendering] CSS property.
+decode directly the painted size rather than intrinsic. We'll use the
+[`image-rendering`][image-rendering] CSS property to decide which image filter
+algorithm to pick.
 
 [image-rendering]: https://developer.mozilla.org/en-US/docs/Web/CSS/image-rendering
 
 This is not too hard, but requires doing the decode during paint rather than
-load. So first store the *encoded* image instead during load:
+load. So first store the *encoded* image instead of the *decoded* one
+during load:
 
 ``` {.python replace=Tab/Frame}
 class Tab:
@@ -467,7 +525,8 @@ def decode_image(encoded_image, width, height, image_quality):
     resample = None
     if image_quality == "crisp-edges":
         resample = PIL.Image.Resampling.LANCZOS
-    pil_image = encoded_image.resize((int(width), int(height)), resample)
+    pil_image = encoded_image.resize(\
+        (int(width), int(height)), resample)
     # ...
 ```
 
@@ -488,10 +547,11 @@ class ImageLayout:
 All the same resize quality options are present in Skia. That's because
 resizing may occur during raster, just as it does during decode. One way
 for this to happen is via a scale transform (which our toy browser doesn't
-support, but real ones do.
+support, but real ones do). Another way is that an image may be animated from
+one size to another, and it doesn't make sense to re-decode it at every size.
 
 Real browsers push the image decoding step even further the rendering pipeline
-(e.g. in the raster phase for this reason---to avoid a double resize or worse
+(e.g. in the raster phase) for this reason---to avoid a double resize or worse
 image quality. Yet another reason to do so is because raster happens on another
 thread, and so that way image decoding won't block the main thread.
 :::
@@ -499,15 +559,16 @@ thread, and so that way image decoding won't block the main thread.
 Video & other embedded content
 ==============================
 
-Animations can also be animated.[^animated-gif] So if a website can load an
-image, and the image can be animated, then that image is something very close
-to a *video*. But in practice, videos need very advanced encoding and encoding
+Images can also be animated.[^animated-gif] So if a website can load an image,
+and the image can be animated, then that image is something very close to
+a *video*. But in practice, videos need very advanced encoding and encoding
 formats to minimize network and CPU costs, *and* these formats incure a lot of
-other complications, chief among them [Digital Rights Mangement][drm]. On top
-of which, videos need built-in *media controls*, such as play and pause
-buttons, and volume controls. The `<video>` tag supported by real browsers
-provide built-in support for several common video [*codecs*][codec].^[In video,
-it's called a codec, but in images it's called a *format*--go figure.]
+other complications, chief among them [Digital Rights Mangement][drm]. To
+support all this, the `<video>` tag supported by real browsers provide built-in
+support for several common video [*codecs*][codec].^[In video, it's called a
+codec, but in images it's called a *format*--go figure.] And on top of all
+this, videos need built-in *media controls*, such as play and pause buttons,
+and volume controls.
 
 [^animated-gif]: See the exercise for animated images at the end of this
 chapter.
@@ -528,22 +589,22 @@ the details.
 
 There are two possible ways to achieve this:
 
-* External content that is "outside the web", meaning it's not HTML. Audio
-and video are types of external content.
+* External content that is "outside the web", meaning it's not HTML+CSS.
 
-* External content that is "inside the web": HTML, CSS.
+* External content that is "inside the web".
 
 The first type is a *plugin*. There have been many attempts at plugins on the
 web over the years. Some provided a programming language and mechanism for
-interactive UI, such as [Java applets][java-applets] or [Flash]. Others
+interactive UI, such as [Java applets][java-applets] or [Flash].^[YouTube
+originally used Flash for videos.] Others
 provided a way to embed other content types into a web page, such as
-[PDF]. These days, PDF plugins are pretty much the only "non-web" embedded
+[PDF]. These days, PDF rendering is pretty much the only plugin-style embedded
 content type, and is referenced with the `<object>` or `<embed>` tag.^[You
-might ask: why? The short answer is that the web is already a fully functional
-UI system that should be general enough for any UI (and if it isn't,
-the web should be extended to support it). So why have the complication
-(security issues, compatibility problems, proprietary overhead) of
-yet another such system?]
+might ask: why is it the only one left? The short answer is that the web is
+already a fully functional UI system that should be general enough for any UI
+(and if it isn't, the web should be extended to support it). So why have the
+all the complications (security issues, compatibility, bugs, etc) of
+yet another UI system that duplicates HTML?]
 
 [java-applets]: https://en.wikipedia.org/wiki/Java_applet
 [Flash]: https://en.wikipedia.org/wiki/Adobe_Flash
@@ -564,11 +625,11 @@ Iframes
 
 Iframes are websites embedded within other websites. The `<iframe>` tag is a
 lot like the `<img>` tag: it has the `src` attribute and `width` and `height`
-attributes. Beyond that, there is one small difference and one big one.
-The big one, of course, is that it somehow contains an entire webpage. 
+attributes.
 
-An iframe is almost exactly the same as a `Tab` within a `Tab`---it has its
-own HTML document, CSS, and scripts. There are two big differences though:
+An iframe is almost exactly the same as a `Tab` within a `Tab`---it has its own
+HTML document, CSS, and scripts. There are three significant differences
+though:
 
 * *Iframes have no browser chrome*. So any page navigation has to happen from
    within the page (either through an `<a>` element or script), or as a side
@@ -601,8 +662,8 @@ rendering event loop as a result.
 
 Since iframes are HTML documents, they can contain iframes. So in general each
 `Tab` has a tree of HTML documents---*frames*---nested within each other. Each
-node in this tree will be a `Frame` object. We'll use one rendering event loop
-for all `Frame`s.
+node in this tree will be an object from a new `Frame` class. We'll use one
+rendering event loop for all `Frame`s.
 
 In terms of code, basically, we'll want to refactor `Tab` so that it's a
 container for a new `Frame` class. The `Frame` will implement the rendreing
@@ -617,13 +678,12 @@ container class for the frame tree. More specfically, the `Tab` class will:
 * Own the display list for all frames in the tab
 * Commit to the browser thread
 
-And the `Frame` class will be:
+And the `Frame` class will:
 
-* Own the DOM and tree layout trees, and scroll offset, for its frame
-* Own a `JSContext` if it is cross-origin to its parent (but let's ignore that
-for now and use a single context for all frames)>
+* Own the DOM, layout trees, and scroll offset for its HTML document
+* Own a `JSContext` if it is cross-origin to its parent
 * Run style, layout and paint on the its DOM and layout tree
-* Implement loading and event handling (focus, hit testing, etc) its own HTML
+* Implement loading and event handling (focus, hit testing, etc) for its HTML
   document
 
 A `Frame` will also recurse into child `Frame`s for additional rendering and hit
@@ -658,7 +718,7 @@ collect all of the `<iframe>` elements in the DOM in just the same way as we
 did for `<img>`, but instead of loading the one resource and caching it,
 we create a new `Frame` object, store it on the iframe element, and call
 `load` recursively. Note that all the code in the "..." below is the same
-as what used to be on `Tab`'s `load`method.
+as what used to be on `Tab`'s `load` method.
 
 
 ``` {.python}
@@ -705,10 +765,10 @@ by the attributes and CSS of the `iframe` element, and not at all by the
 content of the iframe.[^seamless-iframe]
 
 [^seamless-iframe]: There were attempts to provide such an intrinsic sizing in
-the past, but it was[removed][seamless-removed] from the HTML specification
-when no browser implemented it. This may change [in the future]
-[seamless-back], as there are good use cases for a *seamless* iframe whose
-layout coordinates with its parent frame. 
+the past, but it was [removed][seamless-removed] from the HTML specification
+when no browser implemented it. This may change
+[in the future][seamless-back], as there are good use cases for a *seamless*
+iframe whose layout coordinates with its parent frame. 
 
 [seamless-removed]: https://github.com/whatwg/html/issues/331
 [seamless-back]: https://github.com/w3c/csswg-drafts/issues/1771
@@ -736,10 +796,10 @@ def style(node, rules, tab):
 ```
 
 [^style-real-browsers]: In real browsers this doesn't work, because the output
-of style for a frame can depend on *layout* of the parent frame. This 
-can happen due to [media queries][media-queries-15] that depend on its size.
-But we don't have this problem because our toy browser doesn't support media
-queries.
+of style for a frame depends on *layout* of the parent frame. That happens when
+the child frame has [media queries][media-queries-15] that depend on the
+iframe's size. But we don't have this problem because our toy browser doesn't
+support media queries.
 
 [media-queries-15]: https://developer.mozilla.org/en-US/docs/Web/CSS/Media_Queries
 
@@ -764,32 +824,30 @@ class InlineLayout:
 ```
 
 And the `IframeLayout` layout code is also similar; again, I've omitted the
-unchaged parts from images. Pay particular attention to the last lines of
-`layout`: here we're recursing into the child frame and calling style *and*
-layout.
+unchanged parts from images. (Note however that there is no code regarding
+aspect ratio, because iframes don't have an intrinsic one.) Pay particular
+attention to the last lines of `layout`: here we're recursing into the child
+frame and calling style *and* layout.
 
 TODO: fix expected here.
-``` {.python expected=False}
+``` {.python}
 class IframeLayout:
     # ...
     def layout(self, zoom):
         # ...
-        if "width" in self.node.attributes:
-            self.width = \
-                device_px(int(self.node.attributes["width"]), zoom)
+        if has_width:
+            # ...
         else:
             self.width = device_px(IFRAME_DEFAULT_WIDTH_PX, zoom)
 
-        if "height" in self.node.attributes:
-            self.height = \
-                device_px(int(self.node.attributes["height"]), zoom)
+        if has_height:
+            # ...
         else:
             self.height = device_px(IFRAME_DEFAULT_HEIGHT_PX, zoom)
 
         # ...
 
-        self.node.document.style()
-        self.node.document.layout(zoom, self.width)
+        self.node.frame.layout(zoom, self.width)
 ```
 
 As for painting, iframes by default have a border around their content when
@@ -836,11 +894,13 @@ Iframe scripts
 
 Now we need to implement script behavior for iframes. All frames in the frame
 tree have their own global script namespace. In fact, the `Window` class
-(and `window` variable object) represents the global object, and all global
-variables declared in a script are implicitly defined on this object. The
-simplest way to achieve this is by having each `Frame` object own its own
-`JSContext`, and by association its own DukPy interpreter. That's what `Tab`
-already did, and we can just copy all of its code for it.
+(and `window` variable object) represents the [global object][global-object],
+and all global variables declared in a script are implicitly defined on this
+object. The simplest way to achieve this is by having each `Frame` object own
+its own `JSContext`, and by association its own DukPy interpreter. That's what
+`Tab` already did, and we can just copy all of its code for it.
+
+[global-object]: https://developer.mozilla.org/en-US/docs/Glossary/Global_object
 
 But that only works if we consider every frame *cross-origin* from all of the
 others. Two frames that have the same origin each get a global namespace for
@@ -859,7 +919,7 @@ the feature of
 
 Instead of switching to whole new JavaScript runtime, I'll just approximate the
 feature with two tricks: overwriting the `window` object and the `with`
-operator. The `with` operator is pretty obscure, but what it does is to
+operator. The `with` operator is pretty obscure, but what it does is
 evaluate the content of a block by looking up objects on the given 
 object.^[It's important to reiterate that this is a hack and doesn't actually
 do things correctly, but it suffices for our toy browser.]
@@ -887,10 +947,10 @@ def wrap_in_window(js, window_id):
 When multiple frames will have just one `JSContext`, we'll just store
 the `JSContext` on the "root" one---the frame closest to the frame tree root
 that has a particular origin, and reference it from descendant
-frames. This will also require passing the parent frame as a
-constructor parameter:[^disconnected]
+frames.[^disconnected]
 
-creating a JS context will also require defining the `Window`class.
+All this will require passing the parent frame as a
+constructor parameter and keeping track of window ids:
 
 [^disconnected]: This isn't actually correct. Any frame with the same origin
 should be in the "same origin" set, even if they are in disconnected pieces
@@ -899,23 +959,34 @@ iframe with origin B, and the iframe embeds *another* iframe with origin A,
 then the two A frames can access each others' variables. I won't implement
 this complication and instead left it as an exercise.]
 
-``` {.python replace=FOO/or%20CROSS_ORIGIN_IFRAMES}
+``` {.python}
+WINDOW_COUNT = 0
+
 class Frame:
     def __init__(self, tab, parent_frame, frame_element):
         self.parent_frame = parent_frame
+        # ...
+        global WINDOW_COUNT
+        self.window_id = WINDOW_COUNT
+        WINDOW_COUNT += 1
     # ...
     def get_js(self):
         if self.js:
             return self.js
         else:
             return self.parent_frame.get_js()
-    # ...
+```
+
+And then initializing the `JSContext` for the root:
+
+``` {.python replace=%20or%20/%20or%20CROSS_ORIGIN_IFRAMES%20or%20}
     def load(self, url, body=None):
         # ...
-        if not self.parent_frame FOO or \
+        if not self.parent_frame or \
             url_origin(self.url) != url_origin(self.parent_frame.url):
             self.js = JSContext(self.tab)
-            self.js.interp.evaljs("function Window(id) {{ this._id = id }};")
+            self.js.interp.evaljs(\
+                "function Window(id) {{ this._id = id }};")
         js = self.get_js()
         # ...
         for iframe in iframes:
@@ -923,27 +994,14 @@ class Frame:
                 iframe.frame = Frame(self.tab, self, iframe)
 ```
 
-the frame needs to keep track of its window id:
-
-``` {.python}
-WINDOW_COUNT = 0
-
-class Frame:
-    def __init__(self, tab, parent_frame, frame_element):
-        # ...
-        global WINDOW_COUNT
-        self.window_id = WINDOW_COUNT
-        WINDOW_COUNT += 1
-```
-
-The `JSContext` needs to create the `window_i` object, where i is the
-window id of the frame:
+The `JSContext` needs to create the `window_*` objects:
 
 ``` {.python}
 class JSContext:
     def add_window(self, frame):
         self.interp.evaljs(
-            "var window_{window_id} = new Window({window_id});".format(
+            "var window_{window_id} = \
+                new Window({window_id});".format(
                 window_id=frame.window_id))
 ```
 
@@ -973,7 +1031,8 @@ class Frame:
         # ...
         for script in scripts:
             # ...
-            task = Task(self.get_js().run, script_url, body.decode('utf8)'),
+            task = Task(\
+                self.get_js().run, script_url, body.decode('utf8)'),
                 self.window_id)
 ```
 
@@ -1062,3 +1121,9 @@ disable downloading of images until the usre expresssly asked for them.]
  if they aren't adjacent in the frame tree.
 
 *Iframe media queries*. Implement.
+
+*Iframe aspect ratio*. Implement the [`aspect-ratio`][aspect-ratio] CSS
+property and use it to provide an implicit sizing to iframes and images
+when only one of `width` or `height` is specified.
+
+[aspect-ratio]: https://developer.mozilla.org/en-US/docs/Web/CSS/aspect-ratio
