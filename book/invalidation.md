@@ -547,6 +547,10 @@ no: a `DocumentLayout`'s width is a constant,[^unless-resize] so it
 never changes and so its child's `dirty_width` flag doesn't need to be
 set.
 
+::: {.todo}
+Not true, the padding increases when you zoom.
+:::
+
 [^unless-resize]: Of course, if you've implemented browser window
     resizing, then you _do_ need to think about the `DocumentLayout`'s
     `width` changing.
@@ -582,3 +586,67 @@ done with dirty bits, the browser should otherwise behave identically.
 ::: {.further}
 
 :::
+
+
+Grouping layout fields
+======================
+
+Now our layout objects are not recreated needlessly, and we're even
+not recomputing the width of an object unless we need to. But we're
+still recomputing the `x`, `y`, and `height` parameters repeatedly,
+which takes a lot of time. Let's speed up layout further by avoiding
+redundant recomputations of these three fields.
+
+Here we again need to think about dependencies. The computations for
+these three fields look like this:
+
+``` {.python}
+class BlockLayout:
+    def layout(self):
+        # ...
+        self.x = self.parent.x
+        if self.previous:
+            self.y = self.previous.y + self.previous.height
+        else:
+            self.y = self.parent.y
+        # ...
+        self.height = sum([
+            child.height for child in self.children])
+```
+
+Thus, the dependencies of each field are:
+
+- A node's `x` field depends on its parent's `x` field;
+- A node's `y` field depends on its parent's `y` and its previous
+  node's `y` and `height`;
+- A node's `height` field depends on its childrens' `height`s.
+
+Therefore we can introduce new `dirty_x`, `dirty_y`, and
+`dirty_height` fields. For `dirty_x`, we must:
+
+- Set all children's `dirty_x` fields when `x` changes
+- Check the parent's `dirty_x` when `x` is recomputed
+- Reset `dirty_x` by computing `x`.
+
+Similarly, for `dirty_y`:
+
+- Set the first child's and next sibling's `dirty_y` when `y` is
+  recomputed;
+- Also, set the next sibling's `dirty_y` when `height` is recomputed;
+- Check the previous sibling's `dirty_y` and `dirty_height`, or the
+  parent's `dirty_y`, when `y` is recomputed;
+- And reset `dirty_y` by computing `y`.
+
+Finally, for `dirty_height`:
+
+- Set the parent's `dirty_height` when `height` is recomputed;
+- Check all children's `dirty_height` when computing `height`;
+- Reset `dirty_height` by computing `height`.
+
+
+Avoid redundant recursion
+=========================
+
+
+Skipping no-op updates
+======================
