@@ -977,7 +977,11 @@ class Frame:
             return self.parent_frame.get_js()
 ```
 
-And then initializing the `JSContext` for the root:
+And then initializing the `JSContext` for the root. Here we need to evaluate
+definition of the Window class separately from `runtime.js`, because
+`runtime.js` needs to be passed to `wrap_in_window`. And `wrap_in_window`
+needs `Window` defined exactly once, not each time it's called. The `Window`
+constructor stores its id, which will be useful later.
 
 ``` {.python replace=%20or%20/%20or%20CROSS_ORIGIN_IFRAMES%20or%20}
     def load(self, url, body=None):
@@ -1042,12 +1046,107 @@ Iframe runtime APIs calls
 With these changes, you should be able to load basic scripts in iframes. But
 none of the runtime browser APIs work. There are two types of such APIs:
 
-* Synchronous APIs that modify the DOM or query it (e.g. `getElementById`)
+* Synchronous APIs that modify the DOM or query it (e.g. `querySelectorAll`)
 
 * Event-driven APIs that execute JavaScript callbacks or event handlers
 (`requestAnimationFrame` and `addEventListener`).
 
-Let's first tackle the former. TODO!
+Let's first tackle the former. We'll start by implementing the 
+`parent` attribute on the `Window` object. It isn't too hard, but it does
+require passing the window id to Python so that it knows
+on which frame to run the API.
+
+On the Python side, the `parent` `JSContext` method will be passed the
+id of the window that wants its parent computed. We'll need to convert that
+id into a `Frame` object; if the parent `Frame` is same-origin to the given
+one, return its id, and otherwise return `None`.
+
+To convert from window id to `Frame`, we'll need a mapping on `Tab` that does
+so:
+
+``` {.python}
+class Tab:
+    def __init__(self, browser):
+        self.window_id_to_frame = {}
+```
+
+And in each `Frame`, adding itself to the mapping:
+
+``` {.python}
+class Frame:
+    def __init__(self, tab, parent_frame, frame_element):
+        # ...
+        self.tab.window_id_to_frame[self.window_id] = self
+```
+
+And now we can use it. Note how we made use of the `parent_frame` `Frame` member
+variable we defined earlier.
+
+``` {.python}
+class JSContext:
+    # ...
+    def parent(self, window_id):
+        parent_frame = \
+            self.tab.window_id_to_frame[window_id].parent_frame
+        if not parent_frame:
+            return None
+        return parent_frame.window_id
+```
+
+On the JavaScript side, the most interesting bit is what to do with the
+id returned from Python. What it will do is to find the "`window_<id>`"
+object, which we can obtain via the `eval` JavaScript function^[If
+you don't know about it, does the same thing as the DukPy `evaljs` method.]
+And if the eval fails, that means the window object is not defined, which
+can only be the case if the parent is cross-origin to the current window.
+In that case, return a fresh `Window` object with the fake id `-1`.
+
+``` {.html}
+Object.defineProperty(Window.prototype, 'parent', {
+  configurable: true,
+  get: function() {
+    parent_id = call_python('parent', window._id);
+    if (parent_id != undefined) {
+        try {
+            target_window = eval("window_" + parent_id);
+            // Same-origin
+            return target_window;
+        } catch (e) {
+            // Cross-origin
+            return new Window(-1)
+        }
+
+    }
+    return undefined;
+  }
+});
+```
+
+The same technique works for other runtime APIs, such as `querySelectorAll`.
+
+Python:
+
+``` {.python}
+class JSContext:
+    def querySelectorAll(self, selector_text, window_id):
+        frame = self.tab.window_id_to_frame[window_id]
+        selector = CSSParser(selector_text).selector()
+        nodes = [node for node
+                 in tree_to_list(frame.nodes, [])
+                 if selector.matches(node)]
+        return [self.get_handle(node) for node in nodes]
+```
+
+JavaScript:
+
+``` {.javascript}
+window.document = { querySelectorAll: function(s) {
+    var handles = call_python("querySelectorAll", s, window._id);
+    return handles.map(function(h) { return new Node(h) });
+}}
+```
+
+I'll skip showing the rest.
 
 Next let's do callbacks. TODO!
 
