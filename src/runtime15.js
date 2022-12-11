@@ -5,7 +5,6 @@ window.document = { querySelectorAll: function(s) {
     return handles.map(function(h) { return new Node(h) });
 }}
 
-
 window.Node = function(handle) { this.handle = handle; }
 
 Node.prototype.getAttribute = function(attr) {
@@ -147,18 +146,17 @@ Window.prototype.dispatchEvent = function(evt) {
 }
 
 Object.defineProperty(Window.prototype, 'parent', {
-  enumerable: true,
   configurable: true,
   get: function() {
-    handle = call_python('parent', window._id);
-    if (handle != undefined) {
+    parent_id = call_python('parent', window._id);
+    if (parent_id != undefined) {
         try {
-            target_window = eval("window_" + handle);
+            target_window = eval("window_" + parent_id);
             // Same-origin
             return target_window;
         } catch (e) {
             // Cross-origin
-            return new Window(handle)
+            return new Window(-1)
         }
 
     }

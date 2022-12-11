@@ -797,7 +797,8 @@ class JSContext:
         return elt.attributes.get(attr, None)
 
     def parent(self, window_id):
-        parent_frame = self.tab.window_id_to_frame[window_id].parent_frame
+        parent_frame = \
+            self.tab.window_id_to_frame[window_id].parent_frame
         if not parent_frame:
             return None
         return parent_frame.window_id
@@ -927,6 +928,8 @@ class Frame:
         self.window_id = WINDOW_COUNT
         WINDOW_COUNT += 1
 
+        self.tab.window_id_to_frame[self.window_id] = self
+
         with open("browser15.css") as f:
             self.default_style_sheet = \
                 CSSParser(f.read(), internal=True).parse()
@@ -966,8 +969,6 @@ class Frame:
         js = self.get_js()
 
         js.add_window(self)
-
-        self.tab.window_id_to_frame[self.window_id] = self
 
         with open("runtime15.js") as f:
             wrapped = wrap_in_window(f.read(), self.window_id)
