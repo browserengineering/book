@@ -1144,8 +1144,6 @@ window.document = { querySelectorAll: function(s) {
 }}
 ```
 
-I'll skip showing the rest.
-
 Next let's do callback-based APIs, starting with `requestAnimationFrame`.
 On the JavaScript side, the only change needed is to store `RAF_LISTENERS`
 on the `window` object instead of the global scope, so that each
@@ -1156,16 +1154,16 @@ operator to reference the current window).
 window.RAF_LISTENERS = [];
 
 window.requestAnimationFrame = function(fn) {
-    this.RAF_LISTENERS.push(fn);
+    window.RAF_LISTENERS.push(fn);
     call_python("requestAnimationFrame");
 }
 
 window.__runRAFHandlers = function() {
     # ...
-    for (var i = 0; i < this.RAF_LISTENERS.length; i++) {
-        handlers_copy.push(this.RAF_LISTENERS[i]);
+    for (var i = 0; i < window.RAF_LISTENERS.length; i++) {
+        handlers_copy.push(window.RAF_LISTENERS[i]);
     }
-    this.RAF_LISTENERS = [];
+    window.RAF_LISTENERS = [];
 }
 
 ```
@@ -1217,15 +1215,29 @@ class JSContext:
             type=type, handle=handle)
 ```
 
-And that's it!
+And that's it! I've omitted several other APIs, but each of them uses
+one or both of the above techniques. As an exercise, migrate each of them
+to the new pattern. For completeness, the APIs that need work are:
+`setTimeout` and `XMLHTTPRequest`.
+
+On the other hand, the rest work as-is: `getAttribute`, `innerHTML`, `style` and
+`Date`.^[Another good exercise: can you explain why these don't need any
+changes?]
+
 
 ::: {.quirk}
 
-DukPy seems to have a bug in the interaction between functions defined with the
-`function foo() { ... } ` syntax and the `with` operator. To work around it and
-run the animation tests from Chapter 13 with the runtime changes from this
-chapter, you'll probably need to edit the examples from that chapter to use the
-`foo = function() { ... } ` syntax instead.
+Demos from previous chapters might not work, because the `with` operator hack
+doesn't always work. To fix them you'll have to replace some global variable
+references with one on `window`. For example, `setTimeout` might need to change
+to `window.setTimeout`, etc.
+
+The DukPy version oyu're using might also have a bug in the interaction between
+functions defined with the `function foo() { ... } ` syntax and the `with`
+operator. To work around it and run the animation tests from Chapter 13 with
+the runtime changes from this chapter, you'll probably need to edit the
+examples from that chapter to use the `foo = function() { ... } ` syntax
+instead.
 
 :::
 
