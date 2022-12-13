@@ -1241,13 +1241,17 @@ instead.
 
 :::
 
-Event handlers are 
-
 
 Iframe message passing
 ======================
 
-Cross-origin iframes: postMessage
+Cross-origin iframes can't access each others' variables, but that doesn't
+mean they can't communicate. Instead they communicate via
+[*message passing*][message-passing], a technique for structured communication
+between two different event loops that doesn't require any shared variable
+state or locks.
+
+[message-passing]: https://en.wikipedia.org/wiki/Message_passing
 
 Iframe security
 ===============
