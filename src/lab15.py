@@ -40,7 +40,7 @@ from lab13 import USE_BROWSER_THREAD, diff_styles, \
     DisplayItem, DrawText, \
     DrawLine, paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, \
     REFRESH_RATE_SEC, HSTEP, VSTEP, SETTIMEOUT_CODE, XHR_ONLOAD_CODE, \
-    Transform
+    Transform, ANIMATED_PROPERTIES, SaveLayer
 from lab14 import parse_color, parse_outline, draw_rect, DrawRRect, \
     is_focused, paint_outline, has_outline, \
     device_px, style_length, cascade_priority, style, \
@@ -258,7 +258,7 @@ class InputLayout:
         size = device_px(float(self.node.style["font-size"][:-2]), zoom)
         self.font = get_font(size, weight, style)
 
-        self.width = sdevice_px(INPUT_WIDTH_PX, zoom)
+        self.width = device_px(INPUT_WIDTH_PX, zoom)
         self.height = linespace(self.font)
 
         if self.previous:
@@ -772,7 +772,8 @@ class JSContext:
     def dispatch_event(self, type, elt, window_id):
         handle = self.node_to_handle.get(elt, -1)
         do_default = self.interp.evaljs(
-            wrap_in_window(EVENT_DISPATCH_CODE, window_id), type=type, handle=handle)
+            wrap_in_window(EVENT_DISPATCH_CODE, window_id),
+            type=type, handle=handle)
         return not do_default
 
     def get_handle(self, elt):

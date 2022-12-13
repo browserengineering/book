@@ -27,7 +27,7 @@
 
         "accessibility.md": { "disabled": false, "lab": "lab14.py", "stylesheet": "browser14.css",
             "runtime": "runtime14.js" },
-        "embeds.md": { "disabled": true, "lab": "lab15.py" },
+        "embeds.md": { "disabled": true, "lab": "lab15.py", "runtime": "runtime15.js"},
 
         "skipped.md": { "disabled": true },
         "change.md": { "disabled": true },
