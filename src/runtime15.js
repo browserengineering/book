@@ -23,11 +23,22 @@ Event.prototype.preventDefault = function() {
 }
 
 Node.prototype.addEventListener = function(type, listener) {
-    if (!LISTENERS[this.handle]) LISTENERS[this.handle] = {};
-    var dict = LISTENERS[this.handle];
+    if (!window.LISTENERS[this.handle]) window.LISTENERS[this.handle] = {};
+    var dict = window.LISTENERS[this.handle];
     if (!dict[type]) dict[type] = [];
     var list = dict[type];
     list.push(listener);
+}
+
+Node.prototype.dispatchEvent = function(evt) {
+    var type = evt.type;
+    var handle = this.handle
+    var list = (window.LISTENERS[handle] &&
+        LISTENERS[handle][type]) || [];
+    for (var i = 0; i < list.length; i++) {
+        list[i].call(this, evt);
+    }
+    return evt.do_default;
 }
 
 Object.defineProperty(Node.prototype, 'innerHTML', {
@@ -41,16 +52,6 @@ Object.defineProperty(Node.prototype, 'style', {
         call_python("style_set", this.handle, s.toString());
     }
 });
-
-Node.prototype.dispatchEvent = function(evt) {
-    var type = evt.type;
-    var handle = this.handle
-    var list = (LISTENERS[handle] && LISTENERS[handle][type]) || [];
-    for (var i = 0; i < list.length; i++) {
-        list[i].call(this, evt);
-    }
-    return evt.do_default;
-}
 
 window.SET_TIMEOUT_REQUESTS = {}
 

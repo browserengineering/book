@@ -886,9 +886,6 @@ TODO: make all JS APIs and keyboard events properly target iframes in lab15.py.
 
 Same-origin iframes: same interpreter, postMessage, parent
 
-caveat: bug in duktape regarding use of function() foo() {} syntax and the
-    `with` operator
-
 Iframe scripts
 ==============
 
@@ -1051,15 +1048,15 @@ none of the runtime browser APIs work. There are two types of such APIs:
 * Event-driven APIs that execute JavaScript callbacks or event handlers
 (`requestAnimationFrame` and `addEventListener`).
 
-Let's first tackle the former. We'll start by implementing the 
-`parent` attribute on the `Window` object. It isn't too hard, but it does
-require passing the window id to Python so that it knows
-on which frame to run the API.
+Let's first tackle the former. We'll start by implementing the `parent`
+attribute on the `Window` object. It isn't too hard---mostly passing the window
+id to Python so that it knows on which frame to run the API.
 
-On the Python side, the `parent` `JSContext` method will be passed the
-id of the window that wants its parent computed. We'll need to convert that
-id into a `Frame` object; if the parent `Frame` is same-origin to the given
-one, return its id, and otherwise return `None`.
+On the Python side, the `parent` method on `JSContext` will be passed the id of
+the window that wants its parent computed. We'll need to convert that id into a
+`Frame` object, and then return the `parent_frame` of that object.
+(The `parent_frame` `Frame` member variable was implemented earlier in the
+chapter.)
 
 To convert from window id to `Frame`, we'll need a mapping on `Tab` that does
 so:
@@ -1079,8 +1076,7 @@ class Frame:
         self.tab.window_id_to_frame[self.window_id] = self
 ```
 
-And now we can use it. Note how we made use of the `parent_frame` `Frame` member
-variable we defined earlier.
+And now we can use it:
 
 ``` {.python}
 class JSContext:
@@ -1093,13 +1089,16 @@ class JSContext:
         return parent_frame.window_id
 ```
 
-On the JavaScript side, the most interesting bit is what to do with the
-id returned from Python. What it will do is to find the "`window_<id>`"
-object, which we can obtain via the `eval` JavaScript function^[If
-you don't know about it, does the same thing as the DukPy `evaljs` method.]
-And if the eval fails, that means the window object is not defined, which
-can only be the case if the parent is cross-origin to the current window.
-In that case, return a fresh `Window` object with the fake id `-1`.
+On the JavaScript side, the most interesting bit is what to do with the id
+returned from Python. What it will do is to find the "`window_<id>`" object,
+which we can obtain via the `eval` JavaScript function.^[If you don't know
+about it, does the same thing as the DukPy `evaljs` method.] And if the eval
+throws a "variable not defined" exception, that means the window object is not
+defined, which can only be the case if the parent is cross-origin to the
+current window. In that case, return a fresh `Window` object with the fake id
+`-1`.^[Which is also correct, because cross-oriign frames can't access each
+others' variables. However, in a real browser this `Window` object is not
+totally fake---see the related exercise at the end of the chapter.]
 
 ``` {.html}
 Object.defineProperty(Window.prototype, 'parent', {
@@ -1123,8 +1122,7 @@ Object.defineProperty(Window.prototype, 'parent', {
 ```
 
 The same technique works for other runtime APIs, such as `querySelectorAll`.
-
-Python:
+The Python for that API is:
 
 ``` {.python}
 class JSContext:
@@ -1137,7 +1135,7 @@ class JSContext:
         return [self.get_handle(node) for node in nodes]
 ```
 
-JavaScript:
+And JavaScript:
 
 ``` {.javascript}
 window.document = { querySelectorAll: function(s) {
@@ -1148,7 +1146,90 @@ window.document = { querySelectorAll: function(s) {
 
 I'll skip showing the rest.
 
-Next let's do callbacks. TODO!
+Next let's do callback-based APIs, starting with `requestAnimationFrame`.
+On the JavaScript side, the only change needed is to store `RAF_LISTENERS`
+on the `window` object instead of the global scope, so that each
+window gets its own separate listeners (note the new use of the `this`
+operator to reference the current window).
+
+``` {.javascript}
+window.RAF_LISTENERS = [];
+
+window.requestAnimationFrame = function(fn) {
+    this.RAF_LISTENERS.push(fn);
+    call_python("requestAnimationFrame");
+}
+
+window.__runRAFHandlers = function() {
+    # ...
+    for (var i = 0; i < this.RAF_LISTENERS.length; i++) {
+        handlers_copy.push(this.RAF_LISTENERS[i]);
+    }
+    this.RAF_LISTENERS = [];
+}
+
+```
+
+The Python side will just cause the `Tab` to run an animation frame, just like
+before, so no change there. But we do need to change `run_animation_frame`
+to loop over all frames and call callbacks registered. Because each one
+uses `wrap_in_window`, the correct `Window` object is bound to the `window`
+variable and `RAF_LISTENERS` resolves to the correct variable for each frame.
+
+``` {.python}
+class Tab:
+    def run_animation_frame(self, scroll):
+        # ...
+        for (window_id, frame) in self.window_id_to_frame.items():
+            frame.get_js().interp.evaljs(
+                wrap_in_window("__runRAFHandlers()", window_id))
+```
+
+Event listeners are similar. Registering one is now stored on the window:
+
+``` {.javascript}
+window.LISTENERS = {}
+# ...
+Node.prototype.addEventListener = function(type, listener) {
+    if (!window.LISTENERS[this.handle])
+        window.LISTENERS[this.handle] = {};
+    var dict = window.LISTENERS[this.handle];
+    # ...
+}
+
+Node.prototype.dispatchEvent = function(evt) {
+    # ...
+    var list = (window.LISTENERS[handle] &&
+        window.LISTENERS[handle][type]) || [];
+    # ...
+}
+
+```
+
+Dispatching the event requires `wrap_in_window`:
+
+``` {.python}
+class JSContext:
+    def dispatch_event(self, type, elt, window_id):
+        # ...
+        do_default = self.interp.evaljs(
+            wrap_in_window(EVENT_DISPATCH_CODE, window_id),
+            type=type, handle=handle)
+```
+
+And that's it!
+
+::: {.quirk}
+
+DukPy seems to have a bug in the interaction between functions defined with the
+`function foo() { ... } ` syntax and the `with` operator. To work around it and
+run the animation tests from Chapter 13 with the runtime changes from this
+chapter, you'll probably need to edit the examples from that chapter to use the
+`foo = function() { ... } ` syntax instead.
+
+:::
+
+Event handlers are 
 
 
 Iframe message passing

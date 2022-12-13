@@ -772,7 +772,8 @@ class JSContext:
     def dispatch_event(self, type, elt, window_id):
         handle = self.node_to_handle.get(elt, -1)
         do_default = self.interp.evaljs(
-            wrap_in_window(EVENT_DISPATCH_CODE, window_id), type=type, handle=handle)
+            wrap_in_window(EVENT_DISPATCH_CODE, window_id),
+            type=type, handle=handle)
         return not do_default
 
     def get_handle(self, elt):
