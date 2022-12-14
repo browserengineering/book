@@ -124,13 +124,14 @@ window.PostMessageEvent = function(data) {
     this.data = data;
 }
 
-Window.prototype.postMessage = function(message, domain) {
-    call_python("postMessage", this._id, message, domain)
+Window.prototype.postMessage = function(message, origin) {
+    call_python("postMessage", this._id, message, origin)
 }
 
 Window.prototype.addEventListener = function(type, listener) {
-    if (!WINDOW_LISTENERS[this.handle]) WINDOW_LISTENERS[this.handle] = {};
-    var dict = WINDOW_LISTENERS[this.handle];
+    if (!window.WINDOW_LISTENERS[this.handle])
+        window.WINDOW_LISTENERS[this.handle] = {};
+    var dict = window.WINDOW_LISTENERS[this.handle];
     if (!dict[type]) dict[type] = [];
     var list = dict[type];
     list.push(listener);
@@ -139,7 +140,8 @@ Window.prototype.addEventListener = function(type, listener) {
 Window.prototype.dispatchEvent = function(evt) {
     var type = evt.type;
     var handle = this.handle
-    var list = (WINDOW_LISTENERS[handle] && WINDOW_LISTENERS[handle][type]) || [];
+    var list = (window.WINDOW_LISTENERS[handle] &&
+        window.WINDOW_LISTENERS[handle][type]) || [];
     for (var i = 0; i < list.length; i++) {
         list[i].call(this, evt);
     }
