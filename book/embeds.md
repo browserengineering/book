@@ -1253,6 +1253,135 @@ state or locks.
 
 [message-passing]: https://en.wikipedia.org/wiki/Message_passing
 
+Message-passing in JavaScript works like this: you call the
+[`postMessage` API][postmessage], with the message itself as the first
+parameter, and `*` as the second.^[The second parameter has to do with
+origin restrictions, see the accompanying exercise.] Calling:
+
+    window.postMessage("message contents", '*')
+
+will broadcast "message contents" to all other frames that choose to listen to
+it. A frame can listen to it by adding an event listener on its window.
+A "message" event will fire on all other windows, which can be listened to as
+follows. Note that in this case `window` is *not* the same object! It's the
+window object for some other frame.
+
+    window.addEventListener("message", function(e) {
+        console.log(e.data);
+    });
+
+You can also pass data that is not a string---numbers and objects can also be
+sent across. This works via a *serialization* algorithm called
+[structured cloning][structured-clone]. The algorithm converts a JavaScript
+object of arbitrary^[Mostly. For example, DOM notes cannot be sent across,
+because it's not OK to access the DOM in multiple threads, and that's something
+that is possible when there are different event loops in different frames.]
+structure to a sequence of raw bytes, which are *deserialized* on the other end
+into a new object that has the same structure.
+
+[structured-clone]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm
+
+Let's implement `postMessage`.^[I won't provide support for cloning anything
+other than basic types like string and number, because DukPy doesn't support
+structured cloning natively.]
+
+In the JavaScript runtime, we'll need a new `WINDOW_LISTENERS` array
+to keep track of event listeners for messages (the old `LISTENERS` was only
+for events on `Node` objects).
+
+``` {.javascript}
+    window.WINDOW_LISTENERS = {}
+```
+
+Then we need a way to structure the event object passed to the listener:
+
+``` {.javascript}
+window.PostMessageEvent = function(data) {
+    this.type = "message";
+    this.data = data;
+}
+```
+
+The event listener and dispatching code is the same as for `Node`, except
+it's on `Window`:
+
+``` {.javascript}
+Window.prototype.addEventListener = function(type, listener) {
+    if (!window.WINDOW_LISTENERS[this.handle])
+        window.WINDOW_LISTENERS[this.handle] = {};
+    var dict = window.WINDOW_LISTENERS[this.handle];
+    if (!dict[type]) dict[type] = [];
+    var list = dict[type];
+    list.push(listener);
+}
+
+Window.prototype.dispatchEvent = function(evt) {
+    var type = evt.type;
+    var handle = this.handle
+    var list = (window.WINDOW_LISTENERS[handle] &&
+        window.WINDOW_LISTENERS[handle][type]) || [];
+    for (var i = 0; i < list.length; i++) {
+        list[i].call(this, evt);
+    }
+
+    return evt.do_default;
+}
+```
+
+And finally, there is the `postMessage` method itself. It has to pass `self._id`
+because the post message is broadcast to all windows *except* the current one:
+
+``` {.javascript}
+Window.prototype.postMessage = function(message, origin) {
+    call_python("postMessage", this._id, message, origin)
+}
+```
+
+Over in Python land, `postMessage` schedules a `post_message` task on the
+`Tab`. Why schedule a task instead of sending the messages synchrously, you
+might ask? It's because `postMessage` is an *async* API that expressly does
+not allow synchronous bi-directly (or uni-directional, for that matter)
+communication. Asynchrony, callbacks and message-passing are inherent
+features of the JavaScript+event loop programming model.
+
+``` {.python}
+class JSContext:
+    def postMessage(self, window_id, message, origin):
+        task = Task(self.tab.post_message, message, window_id)
+        self.tab.task_runner.schedule_task(task)    
+```
+
+Which then runs this code, that loops over all other frames and dispatches
+an event;
+
+``` {.python}
+class Tab:
+    def post_message(self, message, sender_window_id):
+        for (window_id, frame) in self.window_id_to_frame.items():
+            if window_id != sender_window_id:
+                frame.get_js().dispatch_post_message(
+                    message, window_id)
+
+```
+
+The event happens in the usual way:
+
+``` {.python}
+class JSContext:
+    def dispatch_post_message(self, message, window_id):
+        self.interp.evaljs(
+            wrap_in_window(
+                "dispatchEvent(new PostMessageEvent(dukpy.data))",
+                window_id),
+            data=message)    
+```
+
+TODO: why doesn't it work in a real browser?
+    console.log('mom')
+
+Try it out on [this demo](examples/example15-iframe.html). You should see
+"This is the contents of postMessage." printed to the console.
+
 Iframe security
 ===============
 
@@ -1323,3 +1452,8 @@ property and use it to provide an implicit sizing to iframes and images
 when only one of `width` or `height` is specified.
 
 [aspect-ratio]: https://developer.mozilla.org/en-US/docs/Web/CSS/aspect-ratio
+
+*Target origin for `postMessage`*: implement the second parameter of
+[`postMssage`][postmessage}: `targetOrigin`. This parameter is a protocol,
+hostname and port string that indicates which origin is allowed to receive
+the message.
