@@ -1258,6 +1258,8 @@ Message-passing in JavaScript works like this: you call the
 parameter, and `*` as the second.^[The second parameter has to do with
 origin restrictions, see the accompanying exercise.] Calling:
 
+[postmessage]: https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage
+
     window.postMessage("message contents", '*')
 
 will broadcast "message contents" to all other frames that choose to listen to
@@ -1385,10 +1387,69 @@ Try it out on [this demo](examples/example15-iframe.html). You should see
 Iframe security
 ===============
 
-TODO
+I've already discussed security in Chapter 10, but iframes cause new classes
+of security problem that are worth briefly covering here. However, there
+isn't anything new to implement in our browser for this section, so consider
+it optional reading.
 
-Other embedded content
-======================
+Iframes are very powerful, because they allow a web page to embed another one.
+But they are also a big security risk in cases where the embedded web page is
+cross-origin to the main page. After all, it's literally a website controlled
+by someone else that renders into the same page as yours. And since it's
+unlikely that you really trust that other web page, you want to be protected
+from any security or privacy risks that page may represent.
+
+The fact that cross-origin iframes can't access their parents directly already
+provides a reasonable starting point. But this doesn't protect you if a
+browser bug allows JavaScript in an iframe to cause a buffer overrun in the
+browser that lets an attacker run arbitrary code. All browsers these days
+load webpages in a security [*sandbox*][sandbox], which prevents arbitrary
+code from such an attack from escaping the sandbox, thus protecting your
+computer, cookies, personal data and so on from being compromised.
+But we'd also like to separate the frames in a web page from each other,
+because there is also of plenty of user data embedded directly in each page.
+
+That's the reason many browsers these days place each iframe in its own CPU
+process sandbox; this technique is called
+[*site isolation*][site-isolation]. Implementing site isolation seems
+conceptually "straightforward", in the same sense that the browser thread we
+added in chapter 13 is "straightforward". In practice, there are so many
+browser APIs and subtleties that both features are extremely complex and subtle
+in their full glory. That's why it took many years for Chrome to ship the
+first implementation of site isolation.
+
+[sandbox]: https://en.wikipedia.org/wiki/Sandbox_(computer_security)
+
+[site-isolation]: https://www.chromium.org/Home/chromium-security/site-isolation/
+
+The importance of site isolation has greatly increased in recent years, due to
+the discovery of certain CPU cache timing attacks called *spectre*
+and *meltdown*.^[There's even a
+[website devoted to them][spectre-meltdown]---check out the videos and links on
+the website to see itin action!] In short, these attacks allow an attacker to
+read arbitrary locations in a CPU processes's memory (e.g., the user's data!)
+as long as you have access to a high-precision timer. They do so by exploiting
+the timing of various features in modern CPUs. Placing sensitive content
+in different CPU processes is a pretty good protection against these attacks,
+and that's just what site isolation does.
+
+[spectre-meltdown]: https://meltdownattack.com/
+
+But that's not the only protection needed. It's also important to 
+*remove high-precision timers*^[Anything that can measure duration of execution
+of code very accurately.] from the platform. So browsers did things like
+reducing the accuracy of APIs like `Date.now` or `setTimeout`. But
+there are some APIs that don't seem like timers yet still are, such as
+[SharedArrayBuffer]. Check out [this explanation][sab-attack] if you want
+to learn more. Since this API is still useful, browsers now require
+[certain optional HTTP headers][sab-headers] to be present in order to allow
+use of `SharedArrayBuffer`.
+
+[SharedArrayBuffer]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer
+
+[sab-attack]: https://security.stackexchange.com/questions/177033/how-can-sharedarraybuffer-be-used-for-timing-attacks
+
+[sab-headers]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer#security_requirements
 
 Summary
 =======
@@ -1454,6 +1515,6 @@ when only one of `width` or `height` is specified.
 [aspect-ratio]: https://developer.mozilla.org/en-US/docs/Web/CSS/aspect-ratio
 
 *Target origin for `postMessage`*: implement the second parameter of
-[`postMssage`][postmessage}: `targetOrigin`. This parameter is a protocol,
+[`postMssage`][postmessage]: `targetOrigin`. This parameter is a protocol,
 hostname and port string that indicates which origin is allowed to receive
 the message.
