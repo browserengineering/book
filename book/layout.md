@@ -398,7 +398,7 @@ That means these computations have to go *before* the recursive
 `layout` call, so those children can compute their `x` and `y` based
 on this block's `x` and `y`. Similarly, since the `y` position of a
 block depends on its previous sibling's `y` position, the recursive
-`layout` calls have to start and the first sibling and iterate through
+`layout` calls have to start at the first sibling and iterate through
 the list forward---which is how we've already done it, but which will
 be an important constraint in [later chapters](invalidation.md).
 
