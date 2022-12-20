@@ -19,7 +19,7 @@ from lab6 import INHERITED_PROPERTIES, style, cascade_priority, compute_style
 from lab6 import DrawText, resolve_url, tree_to_list
 from lab7 import LineLayout, TextLayout, CHROME_PX
 from lab8 import request, layout_mode
-from lab8 import DocumentLayout, BlockLayout, InlineLayout, InputLayout, INPUT_WIDTH_PX
+from lab8 import DocumentLayout, BlockLayout, InputLayout, INPUT_WIDTH_PX
 
 EVENT_DISPATCH_CODE = \
     "new Node(dukpy.handle).dispatchEvent(new Event(dukpy.type))"

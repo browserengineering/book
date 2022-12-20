@@ -543,7 +543,7 @@ class Tab:
 ```
 
 There are also `measure` calls in `DrawText`, in the `draw` method on
-`Browser`, in the `text` method in `InlineLayout`, and in the `layout`
+`Browser`, in the `text` method in `BlockLayout`, and in the `layout`
 method in `TextLayout`. Update all of them to use `measureText`.
 
 Also, in the `layout` method of `LineLayout` and in `DrawText` we make
@@ -615,13 +615,14 @@ rectangles for the background:
 ``` {.python replace=display_list./cmds.}
 class BlockLayout:
     def paint(self, display_list):
-        if bgcolor != "transparent":
-            radius = float(
-                self.node.style.get("border-radius", "0px")[:-2])
-            cmds.append(DrawRRect(rect, radius, bgcolor))
+        if not is_atomic:
+            if bgcolor != "transparent":
+                radius = float(
+                    self.node.style.get("border-radius", "0px")[:-2])
+                display_list.append(DrawRRect(rect, radius, bgcolor))
 ```
 
-Similar changes should be made to `InputLayout` and `InlineLayout`.
+Similar changes should be made to `InputLayout`.
 
 ::: {.further}
 [Font rasterization](https://en.wikipedia.org/wiki/Font_rasterization)

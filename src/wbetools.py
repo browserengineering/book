@@ -11,3 +11,6 @@ def patch(existing_cls):
                 setattr(existing_cls, attr, obj)
         return existing_cls
     return decorator
+
+def js_hide(f):
+    return f

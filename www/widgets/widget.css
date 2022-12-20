@@ -3,7 +3,9 @@ html, body, #widget, fieldset { border: none; margin: 0; padding: 0; }
 #controls {
     box-sizing: border-box; padding: .5em; font-size: 20px;
     background: navy; color: white; z-index: 10;
+    position: absolute; top: 0;
 }
+#widget { position: relative; top: 3em; }
 
 #input-controls { margin: .5em 0 0; overflow: hidden; }
 @media (max-height: 400px) {
