@@ -611,8 +611,29 @@ yet another UI system that duplicates HTML?]
 [PDF]: https://developer.mozilla.org/en-US/docs/Learn/HTML/Multimedia_and_embedding/Other_embedding_technologies#the_embed_and_object_elements
 
 
-But what about the other option: "inside the web" external content? Well,
-that's an iframe.
+But what about the other option: "inside the web" external content? One approach
+for that is to provide a way for JavaScript to dynamically draw its own
+content within an image. That approach is supported via the
+[`<canvas>`][canvas-elt] element, which is an element that has all the same
+layout features as an image,^[Except that canvases have no intrinsic sizing, so 
+the `width` & `height` attributes, or their CSS equivalents, are necessary to
+size the canvas.] plus an API that allows the developer to draw to it with
+an API very similar to Skia. This element is not too hard to implement in a
+basic form, so I've left it to an exercise.
+
+Canvas is a handy way to do a lot of things, but it comes with some pretty big
+downsides. In particular, any content drawn inside of a `<canvas>` gets none of
+the nice browser features such as accessibility, non-trivial^[It does have APIs
+for drawing text, but no line breaking or block layout.] layout, automatic
+rendering, or [navigation](chrome.md).
+
+So the web has a second approach that retains all of those features: let the
+developer embed one webpage inside another, via the `<iframe` element. Notice
+how approach neatly solves all of these problems---accessibility, etc come "for
+free". And as it turns out, iframes are a great way to include untrusted
+cross-origin content.
+
+[canvas-elt]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas
 
 ::: {.further}
 
@@ -620,12 +641,33 @@ Discuss ads as a form of embedded content.
 
 :::
 
+
 Iframes
 =======
 
-Iframes are websites embedded within other websites. The `<iframe>` tag is a
-lot like the `<img>` tag: it has the `src` attribute and `width` and `height`
-attributes.
+Iframes are websites embedded within other websites. With sufficient APIs
+present[^extensible-web], they are just as powerful as any plugin system, but
+come with all of the security, accessibility, code reuse,
+performance[^yes-performance] and open standards benefits of the web.
+
+[^extensible-web]: In other words, over time APIs have been added that close
+the gap between the use cases supported by iframes and "non-web" plugin
+systems like Flash. For example, in the last decade the `<canvas>` element
+(which can of course be placed within an iframe) supports hardware-accelerated
+3D content, and [near-native-speed][webassembly] code.
+
+[webassembly]: https://en.wikipedia.org/wiki/WebAssembly
+
+[^yes-performance]: Yes, performance! While it's true that in principle
+a non-web plugin can have higher peak performance, in practice they usually
+have worse overall performance when embedded within a web plage, especially
+on lower-end computers or mobile devices. That's because the plugin has its
+own, entirely different, rendering and execution system, which leads to more
+code and memory use, and worse performance coordination with the web page that
+embeds it.
+
+The `<iframe>` tag is a lot like the `<img>` tag: it has the `src` attribute and
+`width` and `height` attributes.
 
 An iframe is almost exactly the same as a `Tab` within a `Tab`---it has its own
 HTML document, CSS, and scripts. There are three significant differences
@@ -738,6 +780,12 @@ class Frame:
 ```
 
 That's pretty much it for loading, now let's investigate rendering.
+
+::: {.further}
+Expand on the security, performance, and open standards reasons iframes are
+preferrable to plugins.
+:::
+
 
 Iframe layout and rendering
 ===========================
@@ -1384,6 +1432,11 @@ TODO: why doesn't it work in a real browser?
 Try it out on [this demo](examples/example15-iframe.html). You should see
 "This is the contents of postMessage." printed to the console.
 
+Iframe navigation
+=================
+
+What happens when you click a link on an iframe?
+
 Iframe security
 ===============
 
@@ -1455,10 +1508,60 @@ Summary
 =======
 
 This chapter introduced embedded content, via the examples of images and
-iframes.
+iframes. Reiterating the main points:
+
+* Embedded content allows "non-HTML" content to be added to a webpage, such
+as images, video, canvas or plugins of various kinds.
+
+* Canvas is just like an image or video, except that its implementation is
+defined 
+
+* Over time, plugins that are not PDF viewers, images or video have been
+  replaced with the more general-purpose *iframe* element, which over time has
+  become just as powerful as any plugin, and benefits from all the hard-won
+  attributes of a browser such as its rendering pipeline, accessibility, and
+  open standards.
+
+* Because iframes contain an entire web page and all its
+complexities---rendering, event handling, navigation, security---as well as
+the ability to embed other iframes, they add quite a lot of complexity to
+a browser implementation. However, this complexity is justified, because they
+enable many important cross-origin use cases, such as ads, video, and social
+media references, to be safely added to web sites.
+
+* On the whole, canvases^[Try the exercise about the `<canvas>` element to see
+  for yourself!], and even iframes, are not *that* hard to implement in a very
+  basic form, because they reuse a lot of the code and concepts I've explained
+  in earlier chapters. But implementing them really well---as with all good
+  things in this life---takes a lot of effort and attention to detail.
 
 Exercises
 =========
+
+*Canvas element*: Implement the [`<canvas>`][canvas-elt] element, the 2D aspect
+ of the [`getContext`][getcontext] API, and some of the drawing commands on
+ [`CanvasRenderingContext2D`][crc2d]. Canvas layout is just like an iframe, but
+ doesn't have nearly as much internal complexity. Instead you just need to
+ allocate a Skia canvas of an appropriate size when `getContext("2d")` is
+ called, and implement some of the APIs that draw to the canvas.
+ [^eager-canvas] It should be straightforward to translate these to Skia
+ methods.
+
+ [crc2d]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D
+
+[^eager-canvas]: Note that once JavaScript draws to a canvas, the drawing
+persists forever until [`reset`][canvas-reset] or similar is called. This
+allows a web developer to build up a display list with a sequence of commands,
+but also places the burden on them to decide when to do so, and also when to
+clear it when needed. This approach is called an *immediate mode* of rendering,
+as opposed to the[*retained mode*][retained-mode] used by HTML.
+
+[retained-mode]: https://en.wikipedia.org/wiki/Retained_mode
+
+
+[canvas-reset]: https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-reset
+
+[getcontext]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/getContext
 
 *Background images*: elements can have not just `background-color`, but also
 [`background-image`][bg-img]. Implement this CSS property for images loaded
