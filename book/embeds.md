@@ -6,29 +6,38 @@ next: invalidation
 ...
 
 Our toy browser has a lot of rendering features, but is still missing a few
-present on pretty much every website. The most obvious is *images*. So
-we can and should add support for images to our browser to make it feel more
-complete. But images are actually the simplest form of *embedded content*
-within a web page, a much bigger topic, and one that has a lot of interesting
-implications for how browser engines work.[^images-interesting] That's mostly
-due to how powerful *iframes* are, since they allow you to embed one website
-in another. We'll go through two aspects of embedded content in this chapter:
-how to render them, and their impact on the rendering event loop.
+present on pretty much every website. The most obvious is *images*---given how
+ubiquitous they are, it seems silly to have even a toy browser without images.
+But images are actually the simplest form of *embedded content* within a web
+page, a much bigger topic, and one that has a lot of interesting implications
+for how browser engines work.[^images-interesting] That's mostly due to how
+powerful *iframes* are, since they allow you to embed one website in another.
+A toy browser without iframes simply wouldn't cover some very important
+architectural aspects of real browsers.^[And in keeping with the pattern you've
+already seen, basic support for iframes is easy enough to implement in one 
+chapter.]
 
-[^images-interesting]: Actually, if I were to describe all aspects of images
-in browsers, it would take up an entire chapter by itself. But many
-of these details are quite specialized, or stray outside the
-core tasks of a browser engine, so I've left them to footnotes.
+[^images-interesting]: If I were to describe every single aspect
+of *just images* in browsers, it would take up an entire chapter by itself. But
+many of these details are quite specialized, or stray outside the core tasks of
+a browser engine, so I've omitted or left them to footnotes.
 
 Images
 ======
 
-Images are everywhere on the web. They are relatively easy to implement in their
-simplest form. Well, they are easy to implement if you have convenient
-libraries to decode and render them. So let's just get to it.[^img-history]
-We'll implement the `<img>` tag, which works like this:
+Images are relatively easy to implement in their simplest form (well, they are
+"easy" if you have convenient libraries to decode and render them). So let's
+ just get to it.[^img-history] We'll implement the `<img>` tag, which works
+ like this:
 
     <img src="https://pavpanchekha.com/im/me-square.jpg">
+
+
+[^img-history]: In fact, images have been around (almost) since the
+beginning, being proposed in [early 1993][img-email]. This makes it ironic that
+images only make their appearance in chapter 15 of the book. My excuse is that
+Tkinter doesn't support proper image sizing and clipping, and doesn't support
+very many image formats, so we had to wait for the introduction of Skia.
 
 An `<img>` is a leaf element of the DOM. In some ways, it's similar to a single
 font glyph that has to paint in a single rectangle (sized to the image instead
@@ -38,18 +47,13 @@ because the text in a text node is not just one glyph, but an entire run of
 text of a potentially arbitrary length, and that can be split into words and
 lines across multiple lines.
 
-An image, on the other hand is *atomic*---it doesn't make sense to split it.
-This is why images are defined in the layout specification as a
-[atomic inline][atomic-inline].^[There are other things that can be atomic
-inlines, and we'll encounter more later in this chapter.]
+An image, on the other hand, is an [atomic inline][atomic-inline]---it doesn't
+make sense to split it across multiple lines.^[There are other things that can
+be atomic inlines, and we'll encounter more later in this chapter.]
+
 
 [atomic-inline]: https://drafts.csswg.org/css-display-3/#atomic-inline
 
-[^img-history]: In fact, images have been around (almost) since the
-beginning, being proposed in [early 1993][img-email]. This makes it ironic that
-images only make their appearance in chapter 15 of the book. My excuse is that
-Tkinter doesn't support proper image sizing and clipping, and doesn't support
-very many image formats, so we had to wait for the introduction of Skia.
 
 [img-email]: http://1997.webhistory.org/www.lists/www-talk.1993q1/0182.html
 
@@ -86,7 +90,7 @@ def request(url, top_level_url, payload=None):
     response = s.makefile("b", newline="\r\n")
 ```
 Now each time we read a line we need to decode it individually; for image
-responses, all lines will be `utf8` except for the body, which be raw
+responses, all lines will be `utf8` except for the body, which is raw
 encoded image data.
 
 ``` {.python}
@@ -99,19 +103,22 @@ def request(url, top_level_url, payload=None):
         # ...    
 ```
 
-Then when we get to the body, check for the `content-type` header. We encountered
-this header briefly in [Chapter 1](/http.html#the-servers-response), where I
-noted that HTML web page responses have a value of `text/html` for this header.
-This value is a *MIME type*. MIME stands for Multipurpose Internet
-Mail Extensions, and was originally intended for enumerating all of the
-acceptable data formats for email attachments.^[Most email these days is
-actually HTML, and is encoded with the `text/html` MIME type. Gmail, for example,
-by default uses this format, but can be put in a "plain text mode" that
-encodes the email in `text/plain`.] We've actually encountered two more content
-types already: `text/css` and `application/javascript`, but since we assumed
-both were in `utf8` there was no need to differentiate in the code.^[That's
-not a correct thing to do in a real browser, and alternate character sets are
-an exercise in chapter 1.]
+Then when we get to the body, check for the `content-type` header, which will
+tell us how to decode the body of the HTTP response. We encountered this header
+briefly in [Chapter 1](/http.html#the-servers-response), where I noted that
+HTML web page responses have a value of `text/html` for this header. This value
+is a [MIME type][mime-type]. MIME stands for Multipurpose Internet Mail
+Extensions, and was originally intended for enumerating all of the acceptable
+data formats for email attachments.^[Most email these days is actually HTML,
+and is encoded with the `text/html` MIME type. Gmail, for example, by default
+uses this format, but can be put in a "plain text mode" that encodes the email
+in `text/plain`.] We've actually encountered two more content types already:
+`text/css` and `application/javascript`, but since we assumed both were in
+`utf8` there was no need to differentiate in the code.^[That's not a correct
+thing to do in a real browser, and alternate character sets are an exercise in
+chapter 1.]
+
+[mime-type]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types
 
 The `content-type` of an image depends on its format. For example, JPEG is
 `image/jpeg`; PNG is `image/png`. Arbitrary binary data with no specific
@@ -137,19 +144,19 @@ Now let's define a method that decodes a response body that we know is an image
 (even if we don't know its format).^[Interestingly, to make it work for our toy
 browser we don't need to consult `content-type`. That's because Pillow already
 auto-detects the image format by peeking at the first few bytes of the binary
-image data, which varies for each image format.] First, reinterpret
+data, which varies for each image format.] First, reinterpret
 the image "file" as a `BytesIO` object and pass it to Pillow. Then convert
-it to RGBA format (the same RGBA in
+it to RGBA format (the same RGBA as in
 [Chapter 11](/visual-effects.html#sdl-creates-the-window)), call `tobytes`
 (which performs the decode and puts the result in a raw byte
 array[^maybe-decode]), and wrap the result in a Skia `Image` object.
 
 [^maybe-decode]: Maybe. As with Skia, Pillow tries to be lazy about when to
 decode, so probably the decode happens at this time. But there is nothing
-in the Pillow API that requires it to decode at this time, rather than say in
+in the Pillow API that requires it to decode right then, rather than say in
 the `open` call. For our toy browser it doesn't matter very much, but in a
 real browser the timing of a decode is important for performance. That's also
-why there is an [API in HTML][html-image-decode] to control decoding.
+why there is an [HTML API][html-image-decode] to control decoding.
 
 [html-image-decode]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLImageElement/decoding
 
@@ -200,8 +207,9 @@ on the `Element` object for each image:
                 continue
 ```
 
-Images have inline layout, so we'll need to add a new value in `InlineLayout`.
-In this case, the width contributed to the line is the width of the image.
+Images have inline layout, so we'll need to add a new `image` method in
+`InlineLayout`. In this case, the width contributed to the line is the width of
+the image; otherwise it's the same as the existing `input` method.
 
 ``` {.python expected=False}
 class InlineLayout:
@@ -227,7 +235,8 @@ class InlineLayout:
 ```
 
 And a new `ImageLayout` class. The height of the object is defined by the
-height of the image.
+height of the image. Again, this class is almost the same as `InputLayout`,
+except for that height.
 
 ``` {.python expected=False}
 class ImageLayout:
@@ -273,43 +282,46 @@ class ImageLayout:
                 self.x, self.y, self.width, self.height)
 ```
 
+Notice how the positioning of an image depends on the font size of the element
+(the `ImageLayout` class coming up has some code for that also). Input elements
+already had that, but those elements generally have text in them, but images do
+not. That means that a "line" consisting of only an image still has has an
+implicit font affecting its layout somehow.^[In fact, a page with only a single
+image and no text or CSS at all still has a font size (the default font size of
+a web page), and the image's layout depends on it. This is a very common source
+of confusion for web developers. In a real browser, it can be fixed by forcing
+an image into a block or other layout mode via the `display` CSS property.]
 
-The `image` function is almost exactly the same as other kinds of inline layout.
-Notice in particular how the positioning of an image depends on the font size
-of the element (the `ImageLayout` class coming up has some code for that also).
-That's at first unexpected---there is no font in an image, why does this
-happen? The reason is that, as a type of inline layout, images are designed to
-flow along with related text. For example, the baseline of the image should
-line up with the [baseline][baseline-ch3] of the text next to it. And so the
-font of that text affects the layout of the image.^[In fact, a page with only a
-single image and no text or CSS at all still has a font size (the default font
-size of a web page), and the image's layout depends on it. This is a very
-common source of confusion for web developers.]
+That's unintuitive---there is no font in an image, why does this happen?
+The reason is that, as a type of inline layout, images are designed to flow
+along with related text. For example, the baseline of the image should line up
+with the [baseline][baseline-ch3] of the text next to it. And so the font of
+that text affects the layout of the image. Rather than special-case situations
+where there happens to be no adjacent text, the layout algorithm simply lays
+out the same as no text at all---similar to how `<br>` also implicitly has
+an associated font.
 
 [baseline-ch3]: text.html#text-of-different-sizes
 
 In fact, now that you see images alongside input elements, notice how actually
 the input elements we defined in Chapter 8 *are also a form of embedded
 content*---after all, the way they are drawn to the screen is certainly not
-defined by HTML tags and CSS.
-
-The specifications call  input, images and other embedded content
- [*replaced elements*][replaced-elements]---characterized by putting
-stuff "outside of HTML" into an inline HTML context, and delegating
-that "outside of HTML" thing to draw and size it.
+defined by HTML tags and CSS. The web specifications call input, images and
+other embedded content
+[*replaced elements*][replaced-elements]---characterized by putting stuff
+"outside of HTML" into an inline HTML context, and "replacing" what HTML might
+have drawn.
 
 [replaced-elements]: https://developer.mozilla.org/en-US/docs/Web/CSS/Replaced_element
 
-
-Painting the image is quite straightforward, and uses a new `DrawImage type`
+Painting an image is quite straightforward, and uses a new `DrawImage type`
 and the Skia `drawImage` API method.
 
-``` {.python expected=False}
+``` {.python}
 class DrawImage(DisplayItem):
-    def __init__(self, image, rect, image_rendering):
-        super().__init__(dst_rect)
+    def __init__(self, image, rect):
+        super().__init__(rect)
         self.image = image
-        self.rect = rect
 
     def execute(self, canvas):
         canvas.drawImage(
@@ -323,11 +335,12 @@ class ImageLayout:
     # ...
     def paint(self, display_list):
         cmds = []
-
+        # ...
         rect = skia.Rect.MakeLTRB(
             self.x, self.y, self.x + self.width,
             self.y + self.height)
-        cmds.append(DrawImage(self.node.image, dst_rect)
+
+        cmds.append(DrawImage(self.node.image, rect)
 
         display_list.extend(cmds)
 ```
@@ -345,12 +358,11 @@ Image sizing
 
 At the moment, our browser can only draw an `<img>` element at its
 [intrinsic size][intrinsic-size], i.e. the size of the source image data. But
-that's only because we don't support and CSS properties that can change this
-size.
+that's only because we don't support any way to change it.
 
 There are of course several ways for a web page to change an image's rendered
-size.^[For example, the `width` and `height` CSS properties )not to be
-confused with the `width` and `height` ttributes!), which were an
+size.^[For example, the `width` and `height` CSS properties (not to be
+confused with the `width` and `height` attributes!), which were an
 exercise in Chapter 13.] But images *also* have, mostly for historical reasons
 (because these attributes were invented before CSS existed), special `width`
 and `height` attributes that override the intrinsic size. Let's implement
@@ -360,7 +372,7 @@ those.
 
 It's pretty easy: every place we deduce the width or height of an image layout
 object from its intrinsic size, first consult the corresponding attribute and
-use it instead if present. First, in `image` on `InlineLayout`. The width
+use it instead if present. Let's start with `image` on `InlineLayout`. The width
 and height attributes are in CSS pixels without unit suffixes, so parsing is
 easy, and we need to multiply by zoom to get device pixels:
 
@@ -457,13 +469,13 @@ Images are expensive relative to text content. To start with, they take a
 long time to download. But decoding is even more expensive in some ways, in
 particular how it can slow down the rendering pipeline and use up a lot of
 memory. On top of this, if the image is sized to a non-intrinsic size on
-screen, there are several different algorithms to choose how to do it. Some
-of the algorithms are more expensive than others to run.
+screen, there are several different algorithms available for how to do it.
+Decoding and resizing are both expensive.
 
 To understand why, it's time to dig into what decoding actually does. *Decoding*
 is the process of converting an *encoded* image from a binary form optimized
 for quick download over a network into a *decoded* one suitable for rendering,
-typically a raw bitmap in memory that's suitable for direct input into
+typically a raw bitmap in memory that can be a direct input into
 rasterization on the GPU. It's called "decoding" and not "decompression"
 because many encoded image formats are [*lossy*][lossy], meaning that
 they "cheat": they don't faithfully represent all of the information in the
@@ -473,8 +485,8 @@ image will notice the difference.
 [lossy]: https://en.wikipedia.org/wiki/Lossy_compression
 
 Many encoded image formats are very good at compression. This means that when a
-browser decodes it, the image may take up quite a bit of memory, even if the
-downloaded file size is not so big. As a result, it's very important for
+browser decodes it, the resuting bitmap may take up quite a bit of memory, even
+if the downloaded file size is not so big. As a result, it's very important for
 browsers to do as little decoding as possible. Two ways they achieve that are
 by avoiding decode for images not currently on the screen, and decoding
 directly to the size actually needed to draw pixels on the screen. 
@@ -489,16 +501,16 @@ a "bilinear" mix of pixels adjacent to the desired source pixel location, and
 other fancier algorithms like
 [Lanczos](https://en.wikipedia.org/wiki/Lanczos_resampling).
 
-Let's optimize to take advantage of these new observations. The first is to
-decode directly the painted size rather than intrinsic. We'll use the
+Let's optimize to take advantage of these new observations. We'll
+decode directly the painted size rather than intrinsic, and utilize the
 [`image-rendering`][image-rendering] CSS property to decide which image filter
-algorithm to pick.
+algorithm to use.
 
 [image-rendering]: https://developer.mozilla.org/en-US/docs/Web/CSS/image-rendering
 
 This is not too hard, but requires doing the decode during paint rather than
-load. So first store the *encoded* image instead of the *decoded* one
-during load:
+load (because we don't know the painted size until after layout!). So first
+store the *encoded* image instead of the *decoded* one during load:
 
 ``` {.python replace=Tab/Frame}
 class Tab:
@@ -511,14 +523,12 @@ class Tab:
                 img.image = PIL.Image.open(io.BytesIO(body))
 ```
 
-Then in layout, since use that image for sizing.^[It's the same as the previous
-code but on a `PIL` image instead of a Skia one, and now it's an attribute
-access, so the only change is to remove some parentheses. I won't show the code
-here since it's trivial.]
-
-And `decode_image` will also need to change:
-
-TODO: figure out if PIL.Image actually saves any bytes doing this.
+Then in layout, use that image for sizing.^[It's the same as the previous code
+but on a `PIL` image instead of a Skia one, and now it's an attribute access,
+so the only change is to remove some parentheses. I won't show the code here
+since it's trivial.] And `decode_image` will also need to change:^[Note: Pillow
+may not actually save any memory by doing this; nevertheless it should be clear
+that it *can*. Real browsers optimize such things whenever possible.]
 
 ``` {.python}
 def decode_image(encoded_image, width, height, image_quality):
@@ -589,7 +599,7 @@ the details.
 
 There are two possible ways to achieve this:
 
-* External content that is "outside the web", meaning it's not HTML+CSS.
+* External content that is "outside the web", meaning it's not HTML & CSS.
 
 * External content that is "inside the web".
 
@@ -604,12 +614,14 @@ might ask: why is it the only one left? The short answer is that the web is
 already a fully functional UI system that should be general enough for any UI
 (and if it isn't, the web should be extended to support it). So why have the
 all the complications (security issues, compatibility, bugs, etc) of
-yet another UI system that duplicates HTML?]
+yet another UI system that duplicates HTML? (Another reason is that plugins
+tend to be proprietery. Note that PDF, originally developed as a proprietary
+format, is [now an open standard][pdf-standard].)]
 
 [java-applets]: https://en.wikipedia.org/wiki/Java_applet
 [Flash]: https://en.wikipedia.org/wiki/Adobe_Flash
 [PDF]: https://developer.mozilla.org/en-US/docs/Learn/HTML/Multimedia_and_embedding/Other_embedding_technologies#the_embed_and_object_elements
-
+[pdf-standard]: https://en.wikipedia.org/wiki/PDF
 
 But what about the other option: "inside the web" external content? One approach
 for that is to provide a way for JavaScript to dynamically draw its own
@@ -618,8 +630,8 @@ content within an image. That approach is supported via the
 layout features as an image,^[Except that canvases have no intrinsic sizing, so 
 the `width` & `height` attributes, or their CSS equivalents, are necessary to
 size the canvas.] plus an API that allows the developer to draw to it with
-an API very similar to Skia. This element is not too hard to implement in a
-basic form, so I've left it to an exercise.
+an API very similar to Skia.^[This element is not too hard to implement in a
+basic form, so I've left it to an exercise.]
 
 Canvas is a handy way to do a lot of things, but it comes with some pretty big
 downsides. In particular, any content drawn inside of a `<canvas>` gets none of
@@ -628,10 +640,10 @@ for drawing text, but no line breaking or block layout.] layout, automatic
 rendering, or [navigation](chrome.md).
 
 So the web has a second approach that retains all of those features: let the
-developer embed one webpage inside another, via the `<iframe` element. Notice
-how approach neatly solves all of these problems---accessibility, etc come "for
-free". And as it turns out, iframes are a great way to include untrusted
-cross-origin content.
+developer embed one webpage inside another, via the `<iframe>` element. As
+you'll see, this approach neatly solves all of these problems---accessibility,
+etc come "for free". And as it turns out, iframes are a great way to include
+"untrusted" content.
 
 [canvas-elt]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas
 
@@ -646,7 +658,7 @@ Iframes
 =======
 
 Iframes are websites embedded within other websites. With sufficient APIs
-present[^extensible-web], they are just as powerful as any plugin system, but
+present,[^extensible-web] they are just as powerful as any plugin system, but
 come with all of the security, accessibility, code reuse,
 performance[^yes-performance] and open standards benefits of the web.
 
@@ -667,11 +679,9 @@ code and memory use, and worse performance coordination with the web page that
 embeds it.
 
 The `<iframe>` tag is a lot like the `<img>` tag: it has the `src` attribute and
-`width` and `height` attributes.
-
-An iframe is almost exactly the same as a `Tab` within a `Tab`---it has its own
-HTML document, CSS, and scripts. There are three significant differences
-though:
+`width` and `height` attributes. And an iframe is almost exactly the same as a
+`Tab` within a `Tab`---it has its own HTML document, CSS, and scripts. There
+are three significant differences though:
 
 * *Iframes have no browser chrome*. So any page navigation has to happen from
    within the page (either through an `<a>` element or script), or as a side
@@ -708,25 +718,25 @@ node in this tree will be an object from a new `Frame` class. We'll use one
 rendering event loop for all `Frame`s.
 
 In terms of code, basically, we'll want to refactor `Tab` so that it's a
-container for a new `Frame` class. The `Frame` will implement the rendreing
+container for a new `Frame` class. The `Frame` will implement the rendering
 work that the `Tab` used to do, and the `Tab` becomes a coordination and
-container class for the frame tree. More specfically, the `Tab` class will:
+container class for the frame tree. More specifically, the `Tab` class will:
 
-* Kick off animation frames and rendering
-* Impement accessibility
+* Kick off animation frames and rendering.
+* Impement accessibility.
 * Provide glue code between `Browser` and the documents to implement event
-  handling
-* Proxy communication between frame documents
-* Own the display list for all frames in the tab
-* Commit to the browser thread
+  handling.
+* Proxy communication between frame documents.
+* Own the display list for all frames in the tab.
+* Commit to the browser thread.
 
 And the `Frame` class will:
 
-* Own the DOM, layout trees, and scroll offset for its HTML document
-* Own a `JSContext` if it is cross-origin to its parent
-* Run style, layout and paint on the its DOM and layout tree
+* Own the DOM, layout trees, and scroll offset for its HTML document.
+* Own a `JSContext` if it is cross-origin to its parent.
+* Run style, layout and paint on the its DOM and layout tree.
 * Implement loading and event handling (focus, hit testing, etc) for its HTML
-  document
+  document.
 
 A `Frame` will also recurse into child `Frame`s for additional rendering and hit
 testing. 
@@ -805,12 +815,29 @@ Just like with loading, a `Tab` delegates rendering to its root frame:
             self.root_frame.paint(self.display_list)
 ```
 
-The most interesting part here is layout, because that is where we'll end up
-connecting a `Frame`'s rendering to the rendering of subframes. Let's start
-with the biggest layout difference between iframes and images: unlike
-images, *iframes have no intrinsic size*. So their layout is defined entirely
-by the attributes and CSS of the `iframe` element, and not at all by the
-content of the iframe.[^seamless-iframe]
+During style, recurse into iframes when they are found:[^style-real-browsers]
+
+``` {.python}
+def style(node, rules, tab):
+    # ...
+
+    if isinstance(node, Element) and node.tag == "iframe" \
+        and node.frame:
+        node.frame.style()
+```
+
+[^style-real-browsers]: In real browsers this doesn't work, because the output
+of style for a frame depends on *layout* of the parent frame. That happens when
+the child frame has [media queries][media-queries-15] that depend on the
+iframe's size. But we don't have this problem because our toy browser doesn't
+support media queries.
+
+[media-queries-15]: https://developer.mozilla.org/en-US/docs/Web/CSS/Media_Queries
+
+Now for layout. Let's start with the biggest layout difference between iframes
+and images: unlike images, *iframes have no intrinsic size*. So their layout is
+defined entirely by the attributes and CSS of the `iframe` element, and not at
+all by the content of the iframe.[^seamless-iframe]
 
 [^seamless-iframe]: There were attempts to provide such an intrinsic sizing in
 the past, but it was [removed][seamless-removed] from the HTML specification
@@ -832,24 +859,6 @@ IFRAME_DEFAULT_WIDTH_PX = 300
 IFRAME_DEFAULT_HEIGHT_PX = 150
 ```
 
-During style, recurse into iframes when they are found:[^style-real-browsers]
-
-``` {.python}
-def style(node, rules, tab):
-    # ...
-
-    if isinstance(node, Element) and node.tag == "iframe" \
-        and node.frame:
-        node.frame.style()
-```
-
-[^style-real-browsers]: In real browsers this doesn't work, because the output
-of style for a frame depends on *layout* of the parent frame. That happens when
-the child frame has [media queries][media-queries-15] that depend on the
-iframe's size. But we don't have this problem because our toy browser doesn't
-support media queries.
-
-[media-queries-15]: https://developer.mozilla.org/en-US/docs/Web/CSS/Media_Queries
 
 Iframe layout looks like this in `InlineLayout`. The only difference from images
 is the width and height calculation, so I've omitted that part with "..."
@@ -873,9 +882,8 @@ class InlineLayout:
 
 And the `IframeLayout` layout code is also similar; again, I've omitted the
 unchanged parts from images. (Note however that there is no code regarding
-aspect ratio, because iframes don't have an intrinsic one.) Pay particular
-attention to the last lines of `layout`: here we're recursing into the child
-frame and calling style *and* layout.
+aspect ratio, because iframes don't have an intrinsic size.) And at the end,
+recurse into the layout method of the child frame.
 
 TODO: fix expected here.
 ``` {.python}
@@ -929,10 +937,20 @@ class IframeLayout:
 ```
 
 
+::: {.further}
 
-TODO: make all JS APIs and keyboard events properly target iframes in lab15.py.
+Before iframes, there were the [`<frameset>` and `<frame>`][frameset] elements.
+These elements define a special layout of multiple web pages in a single
+browser window; if present, a `<frameset` replaces the
+`<body>` tag and splits the screen among the `<frame>`s specified. In the early
+days of the web, this was an alternate model to the CSS-based model I've
+presented in this book. The old model had confusing navigation and
+accessibility, and was strictly less flexible than use of `<iframe>`, so
+although all real browsers support them for legacy reasons, this feature is
+obsolete.
+:::
 
-Same-origin iframes: same interpreter, postMessage, parent
+[frameset]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/frameset
 
 Iframe scripts
 ==============
@@ -949,10 +967,11 @@ its own `JSContext`, and by association its own DukPy interpreter. That's what
 
 But that only works if we consider every frame *cross-origin* from all of the
 others. Two frames that have the same origin each get a global namespace for
-their scripts, but they can access each other's frames through the
-[`parent` attribute][window-parent] on their `Window`. For example, JavaScript
-in a same-origin child frame can access the `document` object for the DOM of
-parent frame like this:
+their scripts, but they can access each other's frames through, for example,
+the [`parent` attribute][window-parent] on their `Window`.^[There are various
+other APIs; see the related exercise.] For example, JavaScript in a same-origin
+child frame can access the `document` object for the DOM of its parent frame
+like this:
 
     console.log(window.parent.document)
 
@@ -974,8 +993,11 @@ This example:
     win.foo = 'bar'
     with (win) { console.log(foo); }
 
-will print "bar", whereas without the "with" clause foo will not resolve
-to any variable.
+will print "bar", whereas without the "with" clause foo will not resolve to any
+variable.^[The `with` hack is only needed to support "unqualified" global
+variable access; if instead, you change all the example web pages we've been
+testing with this book to replace globals references such as `foo` with
+`window.foo`, then the hack will be unnecessary to make those examples work.]
 
 For each `JSContext`, we'll keep track of the set of frames that all use it, and
 store a `Window` object for each, associated with the frame it comes from, in
@@ -1002,7 +1024,7 @@ should be in the "same origin" set, even if they are in disconnected pieces
 of the frame tree. For example, if a root frame with origin A embeds an
 iframe with origin B, and the iframe embeds *another* iframe with origin A,
 then the two A frames can access each others' variables. I won't implement
-this complication and instead left it as an exercise.]
+this complication and instead left it as an exercise.
 
 ``` {.python}
 WINDOW_COUNT = 0
@@ -1022,8 +1044,19 @@ class Frame:
             return self.parent_frame.get_js()
 ```
 
+The `JSContext` needs a way to create the `window_*` objects:
+
+``` {.python}
+class JSContext:
+    def add_window(self, frame):
+        self.interp.evaljs(
+            "var window_{window_id} = \
+                new Window({window_id});".format(
+                window_id=frame.window_id))
+```
+
 And then initializing the `JSContext` for the root. Here we need to evaluate
-definition of the Window class separately from `runtime.js`, because
+definition of the `Window` class separately from `runtime.js`, because
 `runtime.js` needs to be passed to `wrap_in_window`. And `wrap_in_window`
 needs `Window` defined exactly once, not each time it's called. The `Window`
 constructor stores its id, which will be useful later.
@@ -1035,24 +1068,15 @@ constructor stores its id, which will be useful later.
             url_origin(self.url) != url_origin(self.parent_frame.url):
             self.js = JSContext(self.tab)
             self.js.interp.evaljs(\
-                "function Window(id) {{ this._id = id }};")
+                "function Window(id) { this._id = id };")
         js = self.get_js()
+        js.add_window(self)
         # ...
         for iframe in iframes:
             # ...
                 iframe.frame = Frame(self.tab, self, iframe)
 ```
 
-The `JSContext` needs to create the `window_*` objects:
-
-``` {.python}
-class JSContext:
-    def add_window(self, frame):
-        self.interp.evaljs(
-            "var window_{window_id} = \
-                new Window({window_id});".format(
-                window_id=frame.window_id))
-```
 
 And whenever scripts are evaluated, they are wrapped (note the extra window
 id parameter):
@@ -1085,13 +1109,14 @@ class Frame:
                 self.window_id)
 ```
 
-Iframe runtime APIs calls
-=========================
+Iframe script APIs
+==================
 
 With these changes, you should be able to load basic scripts in iframes. But
-none of the runtime browser APIs work. There are two types of such APIs:
+none of the runtime browser APIs work yet, because they don't know which
+`Window` to reference. There are two types of such APIs:
 
-* Synchronous APIs that modify the DOM or query it (e.g. `querySelectorAll`)
+* Synchronous APIs that modify the DOM or query it (e.g. `querySelectorAll`).
 
 * Event-driven APIs that execute JavaScript callbacks or event handlers
 (`requestAnimationFrame` and `addEventListener`).
@@ -1140,9 +1165,9 @@ class JSContext:
 On the JavaScript side, the most interesting bit is what to do with the id
 returned from Python. What it will do is to find the "`window_<id>`" object,
 which we can obtain via the `eval` JavaScript function.^[If you don't know
-about it, does the same thing as the DukPy `evaljs` method.] And if the eval
-throws a "variable not defined" exception, that means the window object is not
-defined, which can only be the case if the parent is cross-origin to the
+about `eval`,, it does the same thing as the DukPy `evaljs` method.] And if the
+eval throws a "variable not defined" exception, that means the window object is
+not defined, which can only be the case if the parent is cross-origin to the
 current window. In that case, return a fresh `Window` object with the fake id
 `-1`.^[Which is also correct, because cross-oriign frames can't access each
 others' variables. However, in a real browser this `Window` object is not
@@ -1195,8 +1220,7 @@ window.document = { querySelectorAll: function(s) {
 Next let's do callback-based APIs, starting with `requestAnimationFrame`.
 On the JavaScript side, the only change needed is to store `RAF_LISTENERS`
 on the `window` object instead of the global scope, so that each
-window gets its own separate listeners (note the new use of the `this`
-operator to reference the current window).
+window gets its own separate listeners.
 
 ``` {.javascript}
 window.RAF_LISTENERS = [];
@@ -1252,7 +1276,9 @@ Node.prototype.dispatchEvent = function(evt) {
 
 ```
 
-Dispatching the event requires `wrap_in_window`:
+Dispatching the event requires `wrap_in_window`.^[All of the callsites of
+`dispatch_event` (`cick`, `submit_form`, and `keypress`) will need an additional
+parameter of the window id; I've omitted those code fragments.]
 
 ``` {.python}
 class JSContext:
@@ -1263,10 +1289,9 @@ class JSContext:
             type=type, handle=handle)
 ```
 
-And that's it! I've omitted several other APIs, but each of them uses
+And that's it! I've omitted `setTimeout` and `XMLHTTPRequest`, but each of them uses
 one or both of the above techniques. As an exercise, migrate each of them
-to the new pattern. For completeness, the APIs that need work are:
-`setTimeout` and `XMLHTTPRequest`.
+to the new pattern..
 
 On the other hand, the rest work as-is: `getAttribute`, `innerHTML`, `style` and
 `Date`.^[Another good exercise: can you explain why these don't need any
@@ -1274,21 +1299,39 @@ changes?]
 
 
 ::: {.quirk}
-
 Demos from previous chapters might not work, because the `with` operator hack
 doesn't always work. To fix them you'll have to replace some global variable
 references with one on `window`. For example, `setTimeout` might need to change
 to `window.setTimeout`, etc.
 
-The DukPy version oyu're using might also have a bug in the interaction between
+The DukPy version you're using might also have a bug in the interaction between
 functions defined with the `function foo() { ... } ` syntax and the `with`
 operator. To work around it and run the animation tests from Chapter 13 with
 the runtime changes from this chapter, you'll probably need to edit the
 examples from that chapter to use the `foo = function() { ... } ` syntax
 instead.
-
 :::
 
+
+::: {.further}
+Same-origin iframes can not only synchronously access each others' variables,
+they can also change their origin! That is done via the
+[`domain`][domain-prop] property on the `Document` object. If this sounds weird,
+hard to implement correctly, and a mis-feature of the web, then you're right.
+That's why this feature is gradually being removed from the web.
+There are also [various headers][origin-headers] available for sites to opt
+into iframes having fewer features along these lines, with the benefit being
+better security and performance (isolated iframes can run in their own thread
+or CPU process).
+
+[origin-headers]: https://html.spec.whatwg.org/multipage/browsers.html#origin-isolation
+
+You could also argue that it's questionable whether same-origin iframes should
+be able to access each others' variables. That may also be a
+mis-feature---what do you think?
+:::
+
+[domain-prop]: https://developer.mozilla.org/en-US/docs/Web/API/Document/domain
 
 Iframe message passing
 ======================
@@ -1621,3 +1664,11 @@ when only one of `width` or `height` is specified.
 [`postMssage`][postmessage]: `targetOrigin`. This parameter is a protocol,
 hostname and port string that indicates which origin is allowed to receive
 the message.
+
+*Iframe history*: when iframes navigate (e.g. via a click on an `<a>` element,
+it affects browser history. In other words, if an iframe navigates, then the
+user presses the back button, it should navigate the iframe back to where it
+was; a second back button press navigates the parent page to its previous state.
+Implement this feature.^[It's debatable whether this is a good feature of
+iframes, as it causes a lot of confusion for web developers who embed iframes
+they don't plan on navigating.]

@@ -133,19 +133,17 @@ def request(url, top_level_url, payload=None):
     return headers, body
 
 class DrawImage(DisplayItem):
-    def __init__(self, image, src_rect, dst_rect):
-        super().__init__(dst_rect)
+    def __init__(self, image, rect):
+        super().__init__(rect)
         self.image = image
-        self.src_rect = src_rect
-        self.dst_rect = dst_rect
 
     def execute(self, canvas):
-        canvas.drawImageRect(
-            self.image, self.src_rect, self.dst_rect)
+        canvas.drawImage(
+            self.image, self.rect.left(), self.rect.top())
 
     def __repr__(self):
-        return "DrawImage(src_rect={},dst_rect{})".format(
-            self.src_rect, self.dst_rect)
+        return "DrawImage(rect={})".format(
+            self.rect)
 
 class DocumentLayout:
     def __init__(self, node, tab):
@@ -616,14 +614,11 @@ class ImageLayout:
             self.width, self.height,
             self.node.style.get("image-rendering", "auto"))
 
-        src_rect = skia.Rect.MakeLTRB(
-            0, 0, decoded_image.width(), decoded_image.height())
-
-        dst_rect = skia.Rect.MakeLTRB(
+        rect = skia.Rect.MakeLTRB(
             self.x, self.y, self.x + self.width,
             self.y + self.height)
 
-        cmds.append(DrawImage(decoded_image, src_rect, dst_rect))
+        cmds.append(DrawImage(decoded_image, rect))
 
         display_list.extend(cmds)
 
@@ -966,9 +961,8 @@ class Frame:
             url_origin(self.url) != url_origin(self.parent_frame.url):
             self.js = JSContext(self.tab)
             self.js.interp.evaljs(\
-                "function Window(id) {{ this._id = id }};")
+                "function Window(id) { this._id = id };")
         js = self.get_js()
-
         js.add_window(self)
 
         with open("runtime15.js") as f:
