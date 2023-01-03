@@ -1354,21 +1354,21 @@ origin restrictions, see the accompanying exercise.] Calling:
     window.postMessage("message contents", '*')
 
 will broadcast "message contents" to all other frames that choose to listen to
-it. A frame can listen to it by adding an event listener on its window.
-A "message" event will fire on all other windows, which can be listened to as
+it. A frame can listen to it by adding an event listener on its `Window` object.
+A "message" event will fire on all other `Window`s, which can be listened to as
 follows. Note that in this case `window` is *not* the same object! It's the
-window object for some other frame.
+`Window` object for some other frame.
 
     window.addEventListener("message", function(e) {
         console.log(e.data);
     });
 
-You can also pass data that is not a string---numbers and objects can also be
-sent across. This works via a *serialization* algorithm called
-[structured cloning][structured-clone]. The algorithm converts a JavaScript
+You can also pass data that is not a string, such as numbers and objects.
+It works via a *serialization* algorithm called
+[structured cloning][structured-clone]. Structured cloning converts a JavaScript
 object of arbitrary^[Mostly. For example, DOM notes cannot be sent across,
-because it's not OK to access the DOM in multiple threads, and that's something
-that is possible when there are different event loops in different frames.]
+because it's not OK to access the DOM in multiple threads, and different event
+loops might be assigned different threads in a browser.]
 structure to a sequence of raw bytes, which are *deserialized* on the other end
 into a new object that has the same structure.
 
@@ -1445,7 +1445,7 @@ class JSContext:
 ```
 
 Which then runs this code, that loops over all other frames and dispatches
-an event;
+an event:
 
 ``` {.python}
 class Tab:
@@ -1469,8 +1469,7 @@ class JSContext:
             data=message)    
 ```
 
-TODO: why doesn't it work in a real browser?
-    console.log('mom')
+TODO: why doesn't the demo below work in a real browser?
 
 Try it out on [this demo](examples/example15-iframe.html). You should see
 "This is the contents of postMessage." printed to the console.
@@ -1479,6 +1478,12 @@ Iframe navigation
 =================
 
 What happens when you click a link on an iframe?
+
+Iframe input events
+===================
+
+Explain how input events delegate to the frame through recursion on the frame
+tree.
 
 Iframe security
 ===============
@@ -1489,21 +1494,24 @@ isn't anything new to implement in our browser for this section, so consider
 it optional reading.
 
 Iframes are very powerful, because they allow a web page to embed another one.
-But they are also a big security risk in cases where the embedded web page is
-cross-origin to the main page. After all, it's literally a website controlled
-by someone else that renders into the same page as yours. And since it's
-unlikely that you really trust that other web page, you want to be protected
-from any security or privacy risks that page may represent.
+But with that power comes a commensurate security risk in cases where the
+embedded web page is cross-origin to the main page. After all, it's literally a
+website controlled by someone else that renders into the same page as yours.
+And since it's unlikely that you really trust that other web page, you want to
+be protected from any security or privacy risks that page may represent.
 
 The fact that cross-origin iframes can't access their parents directly already
-provides a reasonable starting point. But this doesn't protect you if a
-browser bug allows JavaScript in an iframe to cause a buffer overrun in the
-browser that lets an attacker run arbitrary code. All browsers these days
+provides a reasonable starting point. But it doesn't protect you if a
+browser bug allows JavaScript in an iframe to cause a
+[buffer overrun][buffer-overrun], which an attacker exploints to run
+arbitrary code. To protect against such a situation, browsers these days
 load webpages in a security [*sandbox*][sandbox], which prevents arbitrary
-code from such an attack from escaping the sandbox, thus protecting your
-computer, cookies, personal data and so on from being compromised.
+code from such an attack from escaping the sandbox, thus (usually) protecting
+your OS, cookies, personal data and so on from being compromised.
 But we'd also like to separate the frames in a web page from each other,
 because there is also of plenty of user data embedded directly in each page.
+
+[buffer-overrun]: https://en.wikipedia.org/wiki/Buffer_overflow
 
 That's the reason many browsers these days place each iframe in its own CPU
 process sandbox; this technique is called
@@ -1511,7 +1519,7 @@ process sandbox; this technique is called
 conceptually "straightforward", in the same sense that the browser thread we
 added in chapter 13 is "straightforward". In practice, there are so many
 browser APIs and subtleties that both features are extremely complex and subtle
-in their full glory. That's why it took many years for Chrome to ship the
+in their full glory. That's why it took many years for Chromium to ship the
 first implementation of site isolation.
 
 [sandbox]: https://en.wikipedia.org/wiki/Sandbox_(computer_security)
@@ -1522,24 +1530,26 @@ The importance of site isolation has greatly increased in recent years, due to
 the discovery of certain CPU cache timing attacks called *spectre*
 and *meltdown*.^[There's even a
 [website devoted to them][spectre-meltdown]---check out the videos and links on
-the website to see itin action!] In short, these attacks allow an attacker to
-read arbitrary locations in a CPU processes's memory (e.g., the user's data!)
+the website to see it in action!] In short, these attacks allow an attacker to
+read arbitrary locations in memory (e.g., the user's data!)
 as long as you have access to a high-precision timer. They do so by exploiting
 the timing of various features in modern CPUs. Placing sensitive content
-in different CPU processes is a pretty good protection against these attacks,
-and that's just what site isolation does.
+in different CPU processes (which come with their own memory address spaces) is
+a good protection against these attacks, and that's just what site isolation
+does.
 
 [spectre-meltdown]: https://meltdownattack.com/
 
 But that's not the only protection needed. It's also important to 
-*remove high-precision timers*^[Anything that can measure duration of execution
-of code very accurately.] from the platform. So browsers did things like
-reducing the accuracy of APIs like `Date.now` or `setTimeout`. But
-there are some APIs that don't seem like timers yet still are, such as
-[SharedArrayBuffer]. Check out [this explanation][sab-attack] if you want
-to learn more. Since this API is still useful, browsers now require
-[certain optional HTTP headers][sab-headers] to be present in order to allow
-use of `SharedArrayBuffer`.
+*remove high-precision timers*^[A *high precision timer* is anything that can
+ measure duration of execution of code very accurately.] from the platform. So
+ browsers did things like reducing the accuracy of APIs like `Date.now` or
+ `setTimeout`. But there are some browser APIs that don't seem like timers yet
+ still are, such as [SharedArrayBuffer].^[Check out[this explanation]
+ [sab-attack] if you want to learn more.] Since this API is still useful, and
+ there is no good way to make it "less accurate", browsers now require
+ [certain optional HTTP headers][sab-headers] to be present on the parent *and*
+ child frames' HTTP responses in order to allow use of `SharedArrayBuffer`.
 
 [SharedArrayBuffer]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer
 
@@ -1547,17 +1557,33 @@ use of `SharedArrayBuffer`.
 
 [sab-headers]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer#security_requirements
 
+
+::: {.further}
+The required headers for `SharedArrayBuffer` also caused problems for
+the *Web Browser Engineering* website, when I [added JavaScript support][js-blog]
+to embedded widgets. These widgets use `SharedArrayBuffer` to polyfill the way
+that runtime JavaScript APIs talk to the browser. It worked, but in order
+to make it an embeded widget required setting the opt-in headers for that API.
+Unfortunaely, doing so broke an embedded YouTube video in Chapter 14,
+because YouTube does not (yet?) set this header.
+
+I worked around the issue by not embedding the widget as a sub-frame of the
+website in chapter 9, and instead [asking the reader](scripts.html#outline) to
+open a new browser window. This kind of complication---ensuring headers are set
+correctly on all frames, including third-party dependencies---is very common
+when trying to implement more advanced features on websites.
+:::
+
+[js-blog]: https://browserbook.substack.com/p/javascript-in-javascript
+
 Summary
 =======
 
 This chapter introduced embedded content, via the examples of images and
 iframes. Reiterating the main points:
 
-* Embedded content allows "non-HTML" content to be added to a webpage, such
-as images, video, canvas or plugins of various kinds.
-
-* Canvas is just like an image or video, except that its implementation is
-defined 
+* Embedded content is a way to allow "non-HTML" content---images, video, canvas,
+  iframes, input elements or plugins---to be added to a webpage.
 
 * Over time, plugins that are not PDF viewers, images or video have been
   replaced with the more general-purpose *iframe* element, which over time has
@@ -1572,8 +1598,8 @@ a browser implementation. However, this complexity is justified, because they
 enable many important cross-origin use cases, such as ads, video, and social
 media references, to be safely added to web sites.
 
-* On the whole, canvases^[Try the exercise about the `<canvas>` element to see
-  for yourself!], and even iframes, are not *that* hard to implement in a very
+* On the whole, canvases,^[Try the exercise about the `<canvas>` element to see
+  for yourself!] and even iframes, are not *that* hard to implement in a very
   basic form, because they reuse a lot of the code and concepts I've explained
   in earlier chapters. But implementing them really well---as with all good
   things in this life---takes a lot of effort and attention to detail.
@@ -1596,8 +1622,9 @@ Exercises
 persists forever until [`reset`][canvas-reset] or similar is called. This
 allows a web developer to build up a display list with a sequence of commands,
 but also places the burden on them to decide when to do so, and also when to
-clear it when needed. This approach is called an *immediate mode* of rendering,
-as opposed to the[*retained mode*][retained-mode] used by HTML.
+clear it when needed. This approach is called an *immediate mode* of
+rendering---as opposed to the [*retained mode*][retained-mode] used by HTML,
+which does not have this complexity.
 
 [retained-mode]: https://en.wikipedia.org/wiki/Retained_mode
 
@@ -1607,9 +1634,9 @@ as opposed to the[*retained mode*][retained-mode] used by HTML.
 [getcontext]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/getContext
 
 *Background images*: elements can have not just `background-color`, but also
-[`background-image`][bg-img]. Implement this CSS property for images loaded
-by URL. Also implement the [`background-size`][bg-size] CSS property so the
-image can be sized in various ways.
+[`background-image`][bg-img]. Implement the basics of this CSS property for
+images loaded by URL. Also implement the [`background-size`][bg-size] CSS
+property so the image can be sized in various ways.
 
 [bg-img]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-image
 
@@ -1622,10 +1649,13 @@ element.
 [obj-fit]: https://developer.mozilla.org/en-US/docs/Web/CSS/object-fit
 
 *Lazy decoding*: Decoding images can take time and use up a lot of memory.
-But some images, especially ones that are "below the fold"^[btf]---meaning they
+But some images, especially ones that are "below the fold"[^btf]---meaning they
 are further down in a web page and not visible and only exposed after some
 scrolling by the user. Implement an optimization in your browser that only
 decodes images that are visible on the screen.
+
+[^btf]: "Below the fold" is a term borrowed from newspapers, meaning content
+you can't see when the newspaper is folded in half.
 
 *Lazy loading*: Even though image compression works quite well these days,
 the encoded size can still be enough to noticeably slow down web page loads.
@@ -1648,15 +1678,14 @@ disable downloading of images until the usre expresssly asked for them.]
  an important performance optimization.]
 
 *Same-origin frame tree*: same-origin iframes can access each others' variables
- and DOM, even if they are not adjacent in the frame tree. Implement this, and
- also the ability for two same-origin frames to see each others' variables even
- if they aren't adjacent in the frame tree.
+ and DOM, even if they are not adjacent in the frame tree. Implement this.
 
 *Iframe media queries*. Implement.
 
 *Iframe aspect ratio*. Implement the [`aspect-ratio`][aspect-ratio] CSS
 property and use it to provide an implicit sizing to iframes and images
-when only one of `width` or `height` is specified.
+when only one of `width` or `height` is specified (or when the image is not
+yet loaded, if you did the lazy loading exercise).
 
 [aspect-ratio]: https://developer.mozilla.org/en-US/docs/Web/CSS/aspect-ratio
 
