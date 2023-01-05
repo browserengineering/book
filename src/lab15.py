@@ -287,11 +287,13 @@ class InputLayout:
         cmds.append(DrawText(self.x, self.y,
                              text, self.font, color))
 
-        paint_outline(self.node, cmds, rect)
+        if self.node.is_focused and self.node.tag == "input":
+            cx = rect.left() + self.font.measureText(text)
+            cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom()))
 
+        paint_outline(self.node, cmds, rect)
         cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
-
     def __repr__(self):
         return "InputLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
@@ -915,6 +917,8 @@ class Frame:
     def __init__(self, tab, parent_frame, frame_element):
         self.tab = tab
         self.document = None
+        self.scroll = 0
+        self.scroll_changed_in_frame = True
         self.nodes = None
         self.url = None
         self.parent_frame = parent_frame
@@ -942,9 +946,8 @@ class Frame:
 
     def load(self, url, body=None):
         self.zoom = 1
-        self.focus = None
         self.scroll = 0
-        self.scroll_changed_in_tab = True
+        self.scroll_changed_in_frame = True
         headers, body = request(url, self.url, payload=body)
         self.url = url
         self.accessibility_tree = None
@@ -1047,22 +1050,17 @@ class Frame:
         self.document = DocumentLayout(self.nodes, self.tab)
         self.document.layout(zoom, width)
 
+        document_height = math.ceil(self.document.height)
+        clamped_scroll = clamp_scroll(self.scroll, document_height)
+        if clamped_scroll != self.scroll:
+            self.scroll_changed_in_frame = True
+
     def build_accessibility_tree(self):
         self.accessibility_tree = AccessibilityNode(self.nodes)
         self.accessibility_tree.build()
 
     def paint(self, display_list):
         self.document.paint(display_list, self.tab.dark_mode)
-
-        if self.tab.focus and self.tab.focus.tag == "input":
-            obj = [obj for obj in tree_to_list(self.document, [])
-               if obj.node == self.focus and \
-                    isinstance(obj, InputLayout)][0]
-            text = self.focus.attributes.get("value", "")
-            x = obj.x + obj.font.measureText(text)
-            y = obj.y
-            self.display_list.append(
-                DrawLine(x, y, x, y + obj.height))
 
     def advance_focus(self):
         focusable_nodes = [node
@@ -1071,10 +1069,10 @@ class Frame:
         focusable_nodes.sort(key=Tab.get_tabindex)
         if not focusable_nodes:
             self.apply_focus(None)
-        elif not self.focus:
+        elif not self.tab.focus:
             self.apply_focus(focusable_nodes[0])
         else:
-            i = focusable_nodes.index(self.focus)
+            i = focusable_nodes.index(self.tab.focus)
             if i < len(focusable_nodes) - 1:
                 self.apply_focus(focusable_nodes[i+1])
             else:
@@ -1083,9 +1081,12 @@ class Frame:
         self.tab.set_needs_render()
 
     def apply_focus(self, node):
-        if self.focus:
-            self.focus.is_focused = False
-        self.focus = node
+        if node and node != self.tab.focus:
+            self.tab.needs_focus_scroll = True
+        if self.tab.focus:
+            self.tab.focus.is_focused = False
+        self.tab.focus = node
+        self.tab.focused_frame = self
         if node:
             if node.tag == "input":
                 node.attributes["value"] = ""
@@ -1121,11 +1122,11 @@ class Frame:
                 pass
             elif elt.tag == "iframe":
                 obj = elt.layout_object
-                elt.document.click(x - obj.x, y - obj.y)
+                elt.frame.click(x - obj.x, y - obj.y)
                 return
             elif elt.tag == "input":
                 elt.attributes["value"] = ""
-                if elt != self.focus:
+                if elt != self.tab.focus:
                     self.tab.set_needs_render()
                 if not focus_applied:
                     self.apply_focus(elt)
@@ -1142,7 +1143,8 @@ class Tab:
     def __init__(self, browser):
         self.history = []
         self.focus = None
-        self.scroll_changed_in_tab = False
+        self.focused_frame = None
+        self.needs_focus_scroll = False
         self.needs_raf_callbacks = False
         self.needs_style = False
         self.needs_layout = False
@@ -1150,7 +1152,6 @@ class Tab:
         self.needs_paint = False
         self.root_frame = None
         self.dark_mode = browser.dark_mode
-        self.scroll = 0
 
         self.accessibility_is_on = False
         self.accessibility_tree = None
@@ -1175,7 +1176,6 @@ class Tab:
     def load(self, url, body=None):
         self.history.append(url)
         self.task_runner.clear_pending_tasks()
-        self.scroll_changed_in_tab = True
         self.root_frame = Frame(self, None, None)
         self.root_frame.load(url, body)
 
@@ -1198,8 +1198,8 @@ class Tab:
         self.browser.set_needs_animation_frame(self)
 
     def run_animation_frame(self, scroll):
-        if not self.scroll_changed_in_tab:
-            self.scroll = scroll
+        if not self.root_frame.scroll_changed_in_frame:
+            self.root_frame.scroll = scroll
         for (window_id, frame) in self.window_id_to_frame.items():
             frame.get_js().interp.evaljs(
                 wrap_in_window("__runRAFHandlers()", window_id))
@@ -1220,16 +1220,12 @@ class Tab:
         needs_composite = self.needs_style or self.needs_layout
         self.render()
 
-        document_height = math.ceil(self.root_frame.document.height)
-        clamped_scroll = clamp_scroll(self.scroll, document_height)
-        if clamped_scroll != self.scroll:
-            self.scroll_changed_in_tab = True
-        if clamped_scroll != self.scroll:
-            self.scroll_changed_in_tab = True
-        self.scroll = clamped_scroll
+        if self.needs_focus_scroll and self.focus:
+            self.focused_frame.scroll_to(self.focus)
+        self.needs_focus_scroll = False
 
         scroll = None
-        if self.scroll_changed_in_tab:
+        if self.root_frame.scroll_changed_in_tab:
             scroll = self.scroll
 
         composited_updates = {}
@@ -1308,12 +1304,10 @@ class Tab:
             self.needs_layout = False
 
         if self.needs_accessibility:
-            self.root_frame.build_accessibility_tree()
+            self.accessibility_tree = AccessibilityNode(self.nodes)
+            self.accessibility_tree.build()
             self.needs_accessibility = False
             self.needs_paint = True
-
-            task = Task(self.speak_update)
-            self.task_runner.schedule_task(task)
 
         if self.pending_hover:
             if self.accessibility_tree:
@@ -1374,7 +1368,10 @@ class Tab:
         return int(node.attributes.get("tabindex", 9999999))
 
     def advance_tab(self):
-        self.root_frame.advance_focus()
+        frame = self.focused_frame
+        if not frame:
+            frame = self.root_frame
+        frame.advance_focus()
 
     def zoom_by(self, increment):
         if increment > 0:
