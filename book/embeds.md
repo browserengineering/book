@@ -802,7 +802,7 @@ Iframe layout and rendering
 
 Just like with loading, a `Tab` delegates rendering to its root frame:
 
-``` {.python}
+``` {.python replace=WIDTH/WIDTH%2C%20HEIGHT%20-%20CHROME_PX}
     # ...
     def render(self):
         # ...
@@ -886,7 +886,7 @@ aspect ratio, because iframes don't have an intrinsic size.) And at the end,
 recurse into the layout method of the child frame.
 
 TODO: fix expected here.
-``` {.python}
+``` {.python replace=%2C%20self.width/%2C%20self.width%2C%20self.height}
 class IframeLayout:
     # ...
     def layout(self, zoom):
@@ -1482,8 +1482,164 @@ What happens when you click a link on an iframe?
 Iframe input events
 ===================
 
-Explain how input events delegate to the frame through recursion on the frame
-tree.
+Scripts and events now function properly in iframes, but user input does not.
+It's not (yet) possible to click on a element in an iframe, rotate through
+its focusable elements, scroll it, or generate an acccessibility tree.
+
+Let's fix that. Clicking requires checking for an `<iframe>` element:
+
+TODO: logic for click moved to `Frame`.
+
+``` {.python}
+class Frame:
+    def click(self, x, y):
+        # ...
+        while elt:
+            # ...
+            elif elt.tag == "iframe":
+                obj = elt.layout_object
+                elt.frame.click(x - obj.x, y - obj.y)
+                return
+```
+
+Focusing an element now also needs to store the frame the focused element is
+on (the `focus` value will still be stored on the `Tab`, not the `Frame`:
+
+``` {.python}
+class Tab:
+    def __init__(self, browser):
+        self.focus = None
+        self.focused_frame = None
+```
+
+``` {.python}
+class Frame:
+    def focus_element(self, node):
+        if node and node != self.tab.focus:
+            self.needs_focus_scroll = True
+        if self.tab.focus:
+            self.tab.focus.is_focused = False
+        self.tab.focus = node
+        self.tab.focused_frame = self
+        if node:
+            node.is_focused = True
+        self.tab.set_needs_render()
+```
+
+Advancing a tab will use the focused frame (and move the rest of the business
+logic for `advance_tab` to `Frame`:
+
+``` {.python}
+class Tab:
+    def advance_tab(self):
+        frame = self.focused_frame
+        if not frame:
+            frame = self.root_frame
+        frame.advance_tab()
+```
+
+Now for scrolling. This will require moving scrolling onto `Frame` instead of
+`Browser` or `Tab`. TODO: explain nuances
+
+``` {.python}
+class Frame:
+    def __init__(self, tab, parent_frame, frame_element):
+        self.scroll = 0
+```
+
+Clamping will now happen differently, because non-root frames have a height
+that is not defined by the size of the browser window, but rather their
+containing `<iframe>` element. To handle this let's add a paramter to `layout`
+indicating this height, and record it in `frame_height`:
+
+``` {.python}
+class Frame:
+    def __init__(self, tab, parent_frame, frame_element):
+        self.frame_height = 0
+    # ...
+    def layout(self, zoom, width, height):
+        self.frame_height = height
+```
+
+The root frame will have a browser window-based height:
+
+``` {.python}
+class Tab:
+    def render(self):
+        # ...
+            self.root_frame.layout(self.zoom, WIDTH, HEIGHT - CHROME_PX)
+```
+
+And in `IframeLayout`, the height of the `<iframe>` element:
+
+``` {.python}
+class IframeLayout:
+    def layout(self, zoom):
+        # ...
+        self.node.frame.layout(zoom, self.width, self.height)
+```
+
+We'll use this to do clamping based on this height:
+
+``` {.python}
+class Frame:
+    def clamp_scroll(self, scroll):
+        return max(0, min(
+            scroll,
+            math.ceil(
+                self.document.height) - self.frame_height))
+```
+
+Now change all callsites of `clamp_scroll` to use the method rather than the
+global function:
+
+``` {.python}
+class Frame:
+    def scroll_to(self, elt):
+        # ...
+        self.scroll = self.clamp_scroll(new_scroll)
+```
+
+``` {.python}
+class Frame:
+    def layout(self, zoom, width, height):
+        # ...
+        clamped_scroll = self.clamp_scroll(self.scroll)
+        if clamped_scroll != self.scroll:
+            self.scroll_changed_in_frame = True
+```
+
+Keyboard scrolling from the browser can no longer be done directly, and has
+to be delegated to the focused frame:
+
+``` {.python}
+class Browser:
+    def handle_down(self):
+        self.lock.acquire(blocking=True)
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.scrolldown)
+        active_tab.task_runner.schedule_task(task)
+        self.lock.release()        
+```
+
+``` {.python}
+class Tab:
+    def scrolldown(self):
+        frame = self.focused_frame
+        if not frame: frame = self.root_frame
+        self.focused_frame.scrolldown()
+        self.set_needs_paint()
+```
+
+``` {.python}
+class Frame:
+    def scrolldown(self):
+        self.scroll = self.clamp_scroll(self.scroll + SCROLL_STEP)
+```
+
+TODO: re-implement composited scrolling
+
+TODO: a11y
 
 Iframe security
 ===============
@@ -1701,3 +1857,8 @@ was; a second back button press navigates the parent page to its previous state.
 Implement this feature.^[It's debatable whether this is a good feature of
 iframes, as it causes a lot of confusion for web developers who embed iframes
 they don't plan on navigating.]
+
+*Multi-frame focus*: in our toy browser, pressing `tab` repeatedly goes through
+ the elemnts in a single frame. But this is bad for accessibility, because
+ it doesn't allow a user of the keyboard to obtain access to focusable elements
+ in other frames.
