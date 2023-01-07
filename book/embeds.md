@@ -802,7 +802,7 @@ Iframe layout and rendering
 
 Just like with loading, a `Tab` delegates rendering to its root frame:
 
-``` {.python}
+``` {.python replace=WIDTH/WIDTH%2C%20HEIGHT%20-%20CHROME_PX}
     # ...
     def render(self):
         # ...
@@ -886,7 +886,7 @@ aspect ratio, because iframes don't have an intrinsic size.) And at the end,
 recurse into the layout method of the child frame.
 
 TODO: fix expected here.
-``` {.python}
+``` {.python replace=%2C%20self.width/%2C%20self.width%2C%20self.height}
 class IframeLayout:
     # ...
     def layout(self, zoom):
