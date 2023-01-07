@@ -167,7 +167,7 @@ class DocumentLayout:
     def paint(self, display_list, dark_mode, scroll):
         cmds = []
         self.children[0].paint(cmds)
-        if scroll != None:
+        if scroll != None and scroll != 0:
             rect = skia.Rect.MakeLTRB(
                 self.x, self.y,
                 self.x + self.width, self.y + self.height)
