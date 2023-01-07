@@ -1705,4 +1705,4 @@ they don't plan on navigating.]
 *Multi-frame focus*: in our toy browser, pressing `tab` repeatedly goes through
  the elemnts in a single frame. But this is bad for accessibility, because
  it doesn't allow a user of the keyboard to obtain access to focusable elements
- in other frames. TODO: what do real browsers do for this situation?
+ in other frames.

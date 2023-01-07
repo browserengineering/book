@@ -1123,6 +1123,9 @@ class Frame:
             math.ceil(
                 self.document.height) - self.frame_height))
 
+    def scrolldown(self):
+        self.scroll = self.clamp_scroll(self.scroll + SCROLL_STEP)
+
     def scroll_to(self, elt):
         assert not (self.tab.needs_style or self.tab.needs_layout)
         objs = [
@@ -1383,6 +1386,12 @@ class Tab:
             if self.js.dispatch_event("keydown", self.focus): return
             self.focus.attributes["value"] += char
             self.set_needs_render()
+
+    def scrolldown(self):
+        frame = self.focused_frame
+        if not frame: frame = self.root_frame
+        self.focused_frame.scrolldown()
+        self.set_needs_paint()
 
     def enter(self):
         if self.focus:
@@ -1663,14 +1672,10 @@ class Browser:
 
     def handle_down(self):
         self.lock.acquire(blocking=True)
-        if not self.active_tab_height:
-            self.lock.release()
-            return
-        scroll = self.root_frame.clamp_scroll(
-            self.scroll + SCROLL_STEP)
-        self.root_frame.scroll = scroll
-        self.set_needs_draw()
-        self.lock.release()
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.scrolldown)
+        active_tab.task_runner.schedule_task(task)
+        self.lock.release()        
 
     def handle_tab(self):
         self.focus = "content"
