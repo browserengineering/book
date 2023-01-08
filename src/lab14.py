@@ -436,7 +436,7 @@ class InputLayout:
         self.x = None
         self.y = None
         self.width = None
-        self.height = None
+        self.height = Nonew
         self.font = None
 
     def layout(self, zoom):

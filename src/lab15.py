@@ -44,7 +44,7 @@ from lab13 import USE_BROWSER_THREAD, diff_styles, \
 from lab14 import parse_color, parse_outline, draw_rect, DrawRRect, \
     is_focused, paint_outline, has_outline, \
     device_px, cascade_priority, style, \
-    is_focusable, get_tabindex, announce_text, AccessibilityNode, speak_text, \
+    is_focusable, get_tabindex, announce_text, speak_text, \
     CSSParser
 
 def request(url, top_level_url, payload=None):
@@ -919,6 +919,99 @@ def style(node, rules, tab):
         and node.frame:
         node.frame.style()
 
+class AccessibilityNode:
+    def __init__(self, node):
+        self.node = node
+        self.children = []
+        self.text = None
+
+        if node.layout_object:
+            self.bounds = absolute_bounds_for_obj(node.layout_object)
+        else:
+            self.bounds = None
+
+        if isinstance(node, Text):
+            if is_focusable(node.parent):
+                self.role = "focusable text"
+            else:
+                self.role = "StaticText"
+        else:
+            if "role" in node.attributes:
+                self.role = node.attributes["role"]
+            elif node.tag == "a":
+                self.role = "link"
+            elif node.tag == "input":
+                self.role = "textbox"
+            elif node.tag == "button":
+                self.role = "button"
+            elif node.tag == "html":
+                self.role = "document"
+            elif node.tag == "iframe":
+                self.role = "iframe"
+            elif is_focusable(node):
+                self.role = "focusable"
+            else:
+                self.role = "none"
+
+    def build(self):
+        if isinstance(self.node, Element) and self.node.tag == "iframe":
+            self.build_internal(self.node.frame.nodes)
+
+        for child_node in self.node.children:
+            self.build_internal(child_node)
+
+        if self.role == "StaticText":
+            self.text = self.node.text
+        elif self.role == "focusable text":
+            self.text = "Focusable text: " + self.node.text
+        elif self.role == "focusable":
+            self.text = "Focusable"
+        elif self.role == "textbox":
+            if "value" in self.node.attributes:
+                value = self.node.attributes["value"]
+            elif self.node.tag != "input" and self.node.children and \
+                 isinstance(self.node.children[0], Text):
+                value = self.node.children[0].text
+            else:
+                value = ""
+            self.text = "Input box: " + value
+        elif self.role == "button":
+            self.text = "Button"
+        elif self.role == "link":
+            self.text = "Link"
+        elif self.role == "alert":
+            self.text = "Alert"
+        elif self.role == "document":
+            self.text = "Document"
+
+        if is_focused(self.node):
+            self.text += " is focused"
+
+    def build_internal(self, child_node):
+        child = AccessibilityNode(child_node)
+        if child.role != "none":
+            self.children.append(child)
+            child.build()
+        else:
+            for grandchild_node in child_node.children:
+                self.build_internal(grandchild_node)
+    def intersects(self, x, y):
+        if self.bounds:
+            return skia.Rect.Intersects(self.bounds,
+                skia.Rect.MakeXYWH(x, y, 1, 1))
+        return False
+
+    def hit_test(self, x, y):
+        nodes = [node for node in tree_to_list(self, [])
+            if node.intersects(x, y)]
+        if nodes:
+            return nodes[-1]
+
+    def __repr__(self):
+        return "AccessibilityNode(node={} role={} text={}".format(
+            str(self.node), self.role, self.text)
+
+
 WINDOW_COUNT = 0
 
 class Frame:
@@ -937,6 +1030,7 @@ class Frame:
         self.window_id = WINDOW_COUNT
         WINDOW_COUNT += 1
         self.frame_height = 0
+        self.accessibility_tree = None
 
         self.tab.window_id_to_frame[self.window_id] = self
 
@@ -1271,48 +1365,13 @@ class Tab:
             height=math.ceil(self.root_frame.document.height),
             display_list=self.display_list,
             composited_updates=composited_updates,
+            accessibility_tree=self.root_frame.accessibility_tree,
+            focus=self.focus
         )
         self.display_list = None
         self.root_frame.scroll_changed_in_frame = False
 
         self.browser.commit(self, commit_data)
-
-    def speak_node(self, node, text):
-        text += announce_text(node)
-        if text and node.children and \
-            isinstance(node.children[0], Text):
-            text += " " + announce_text(node.children[0])
-        print(text)
-        if text:
-            if not self.browser.is_muted():
-                speak_text(text)
-
-    def speak_focus(self, node):
-        self.speak_node(node, "element focused ")
-
-    def speak_hit_test(self, node):
-        self.speak_node(node, "hit test ")
-
-    def speak_document(self):
-        text = "Here are the document contents: "
-        tree_list = tree_to_list(self.accessibility_tree, [])
-        for accessibility_node in tree_list:
-            new_text = announce_text(accessibility_node.node)
-            if new_text:
-                text += "\n"  + new_text
-        print(text)
-        if not self.browser.is_muted():
-            speak_text(text)
-
-    def speak_update(self):
-        if not self.has_spoken_document:
-            self.speak_document()
-            self.has_spoken_document = True
-
-        if self.focus and \
-            self.focus != self.accessibility_focus:
-            self.accessibility_focus = self.focus
-            self.speak_focus(self.focus)
 
     def render(self):
         self.measure_render.start()
@@ -1453,14 +1512,16 @@ def draw_line(canvas, x1, y1, x2, y2, color):
     canvas.drawPath(path, paint)
 
 class CommitData:
-    def __init__(self, url, scroll, root_frame_focused, height,
-        display_list, composited_updates):
+    def __init__(self, url, scroll, root_frame_focused, height, display_list,
+                 composited_updates, accessibility_tree, focus):
         self.url = url
         self.scroll = scroll
         self.root_frame_focused = root_frame_focused
         self.height = height
         self.display_list = display_list
         self.composited_updates = composited_updates
+        self.accessibility_tree = accessibility_tree
+        self.focus = focus
 
 class Browser:
     def __init__(self):
@@ -1533,6 +1594,7 @@ class Browser:
         self.needs_composite = False
         self.needs_raster = False
         self.needs_draw = False
+        self.needs_accessibility = False
 
         self.active_tab_height = 0
         self.active_tab_display_list = None
@@ -1543,6 +1605,17 @@ class Browser:
         self.accessibility_is_on = False
         self.muted = True
         self.dark_mode = False
+
+        self.accessibility_is_on = False
+        self.has_spoken_document = False
+        self.pending_hover = None
+        self.hovered_a11y_node = None
+        self.focus_a11y_node = None
+        self.needs_speak_hovered_node = False
+        self.tab_focus = None
+        self.last_tab_focus = None
+        self.active_alerts = []
+        self.spoken_alerts = []
 
     def render(self):
         assert not USE_BROWSER_THREAD
@@ -1561,6 +1634,9 @@ class Browser:
                 self.active_tab_display_list = data.display_list
             self.animation_timer = None
             self.composited_updates = data.composited_updates
+            self.accessibility_tree = data.accessibility_tree
+            if self.accessibility_tree:
+                self.set_needs_accessibility()
             if not self.composited_updates:
                 self.composited_updates = {}
                 self.set_needs_composite()
@@ -1582,6 +1658,12 @@ class Browser:
     def set_needs_composite(self):
         self.needs_composite = True
         self.needs_raster = True
+        self.needs_draw = True
+
+    def set_needs_accessibility(self):
+        if not self.accessibility_is_on:
+            return
+        self.needs_accessibility = True
         self.needs_draw = True
 
     def set_needs_draw(self):
@@ -1644,6 +1726,51 @@ class Browser:
                 parent = parent.parent
             self.draw_list.append(current_effect)
 
+    def update_accessibility(self):
+        if not self.accessibility_tree: return
+
+        if not self.has_spoken_document:
+            self.speak_document()
+            self.has_spoken_document = True
+
+        self.active_alerts = [
+            node for node in tree_to_list(
+                self.accessibility_tree, [])
+            if node.role == "alert"
+        ]
+
+        for alert in self.active_alerts:
+            if alert not in self.spoken_alerts:
+                self.speak_node(alert, "New alert")
+                self.spoken_alerts.append(alert)
+
+        new_spoken_alerts = []
+        for old_node in self.spoken_alerts:
+            new_nodes = [
+                node for node in tree_to_list(
+                    self.accessibility_tree, [])
+                if node.node == old_node.node
+                and node.role == "alert"
+            ]
+            if new_nodes:
+                new_spoken_alerts.append(new_nodes[0])
+        self.spoken_alerts = new_spoken_alerts
+
+        if self.tab_focus and \
+            self.tab_focus != self.last_tab_focus:
+            nodes = [node for node in tree_to_list(
+                self.accessibility_tree, [])
+                        if node.node == self.tab_focus]
+            if nodes:
+                self.focus_a11y_node = nodes[0]
+                self.speak_node(
+                    self.focus_a11y_node, "element focused ")
+            self.last_tab_focus = self.tab_focus
+
+        if self.needs_speak_hovered_node:
+            self.speak_node(self.hovered_a11y_node, "Hit test ")
+        self.needs_speak_hovered_node = False
+
     def composite_raster_and_draw(self):
         self.lock.acquire(blocking=True)
         if not self.needs_composite and \
@@ -1661,7 +1788,12 @@ class Browser:
         if self.needs_draw:
             self.paint_draw_list()
             self.draw()
+
         self.measure_composite_raster_and_draw.stop()
+
+        if self.needs_accessibility:
+            self.update_accessibility()
+
         self.needs_composite = False
         self.needs_raster = False
         self.needs_draw = False
@@ -1750,6 +1882,30 @@ class Browser:
         active_tab = self.tabs[self.active_tab]
         task = Task(active_tab.toggle_accessibility)
         active_tab.task_runner.schedule_task(task)
+
+    def speak_node(self, node, text):
+        text += node.text
+        if text and node.children and \
+            node.children[0].role == "StaticText":
+            text += " " + \
+            node.children[0].text
+
+        if text:
+            print(text)
+            if not self.is_muted():
+                speak_text(text)
+
+    def speak_document(self):
+        text = "Here are the document contents: "
+        tree_list = tree_to_list(self.accessibility_tree, [])
+        for accessibility_node in tree_list:
+            new_text = accessibility_node.text
+            if new_text:
+                text += "\n"  + new_text
+
+        print(text)
+        if not self.is_muted():
+            speak_text(text)
 
     def toggle_mute(self):
         self.muted = not self.muted
