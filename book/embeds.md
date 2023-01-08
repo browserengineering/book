@@ -1614,8 +1614,8 @@ To handle both cases, we'll need a new commit parameter:
 
 ``` {.python}
 class CommitData:
-    def __init__(self, url, scroll, root_frame_focused, height,
-        display_list, composited_updates):
+    def __init__(self, url, scroll, root_frame_focused, height, display_list,
+                 composited_updates, accessibility_tree, focus):
         # ...
         self.root_frame_focused = root_frame_focused
 ```
@@ -1668,7 +1668,27 @@ class Frame:
         self.scroll = self.clamp_scroll(self.scroll + SCROLL_STEP)
 ```
 
-TODO: a11y
+Accessibility trees for iframes are also relatively simple to get the basics
+working. There will be only one tree for all frames, and so we just need
+a role for iframes:
+
+``` {.python}
+class AccessibilityNode:
+    def __init__(self, node):
+            elif node.tag == "iframe":
+                self.role = "iframe"
+```
+
+And to recurse into them in `build`:
+
+``` {.python}
+class AccessibilityNode:
+   def build(self):
+        if isinstance(self.node, Element) and self.node.tag == "iframe":
+            self.build_internal(self.node.frame.nodes)
+        # ... 
+```
+
 
 ::: {.further}
 Describe universal accelerated overflow scrolling.
