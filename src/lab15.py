@@ -36,7 +36,7 @@ from lab12 import MeasureTime
 from lab13 import USE_BROWSER_THREAD, diff_styles, \
     CompositedLayer, absolute_bounds, absolute_bounds_for_obj, \
     DrawCompositedLayer, Task, TaskRunner, SingleThreadedTaskRunner, \
-    CommitData, add_parent_pointers, \
+    clamp_scroll, add_parent_pointers, \
     DisplayItem, DrawText, \
     DrawLine, paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, \
     REFRESH_RATE_SEC, HSTEP, VSTEP, SETTIMEOUT_CODE, XHR_ONLOAD_CODE, \
@@ -1125,6 +1125,7 @@ class Frame:
 
     def scrolldown(self):
         self.scroll = self.clamp_scroll(self.scroll + SCROLL_STEP)
+        self.scroll_changed_in_frame = True
 
     def scroll_to(self, elt):
         assert not (self.tab.needs_style or self.tab.needs_layout)
@@ -1265,6 +1266,8 @@ class Tab:
         commit_data = CommitData(
             url=self.root_frame.url,
             scroll=scroll,
+            root_frame_focused=not self.focused_frame or \
+                (self.focused_frame == self.root_frame),
             height=math.ceil(self.root_frame.document.height),
             display_list=self.display_list,
             composited_updates=composited_updates,
@@ -1390,7 +1393,7 @@ class Tab:
     def scrolldown(self):
         frame = self.focused_frame
         if not frame: frame = self.root_frame
-        self.focused_frame.scrolldown()
+        frame.scrolldown()
         self.set_needs_paint()
 
     def enter(self):
@@ -1448,6 +1451,16 @@ def draw_line(canvas, x1, y1, x2, y2, color):
     paint.setStyle(skia.Paint.kStroke_Style)
     paint.setStrokeWidth(1)
     canvas.drawPath(path, paint)
+
+class CommitData:
+    def __init__(self, url, scroll, root_frame_focused, height,
+        display_list, composited_updates):
+        self.url = url
+        self.scroll = scroll
+        self.root_frame_focused = root_frame_focused
+        self.height = height
+        self.display_list = display_list
+        self.composited_updates = composited_updates
 
 class Browser:
     def __init__(self):
@@ -1542,6 +1555,7 @@ class Browser:
             self.url = data.url
             if data.scroll != None:
                 self.scroll = data.scroll
+            self.root_frame_focused = data.root_frame_focused
             self.active_tab_height = data.height
             if data.display_list:
                 self.active_tab_display_list = data.display_list
@@ -1672,6 +1686,17 @@ class Browser:
 
     def handle_down(self):
         self.lock.acquire(blocking=True)
+        if self.root_frame_focused:
+            if not self.active_tab_height:
+                self.lock.release()
+                return
+            scroll = clamp_scroll(
+                self.scroll + SCROLL_STEP,
+                self.active_tab_height)
+            self.scroll = scroll
+            self.set_needs_draw()
+            self.lock.release()
+            return
         active_tab = self.tabs[self.active_tab]
         task = Task(active_tab.scrolldown)
         active_tab.task_runner.schedule_task(task)

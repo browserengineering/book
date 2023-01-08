@@ -1609,13 +1609,44 @@ class Frame:
             self.scroll_changed_in_frame = True
 ```
 
-Keyboard scrolling from the browser can no longer be done directly, and has
-to be delegated to the focused frame:
+Our browser supports browser-thread scrolling, but only for the root frame.
+To handle both cases, we'll need a new commit parameter:
+
+``` {.python}
+class CommitData:
+    def __init__(self, url, scroll, root_frame_focused, height,
+        display_list, composited_updates):
+        # ...
+        self.root_frame_focused = root_frame_focused
+```
+
+``` {.python}
+class Tab:
+    def run_animation_frame(self, scroll):
+        commit_data = CommitData(
+            # ...
+            root_frame_focused=not self.focused_frame or \
+                (self.focused_frame == self.root_frame),
+            # ...
+        )
+```
+
+``` {.python}
+class Browser:
+    def commit(self, tab, data):
+        # ...
+            self.root_frame_focused = data.root_frame_focused
+
+```
+
+And now we can use this parameter to keep browser scrolling for the root frame.
 
 ``` {.python}
 class Browser:
     def handle_down(self):
         self.lock.acquire(blocking=True)
+        if self.root_frame_focused:
+            # ...
         active_tab = self.tabs[self.active_tab]
         task = Task(active_tab.scrolldown)
         active_tab.task_runner.schedule_task(task)
@@ -1627,7 +1658,7 @@ class Tab:
     def scrolldown(self):
         frame = self.focused_frame
         if not frame: frame = self.root_frame
-        self.focused_frame.scrolldown()
+        frame.scrolldown()
         self.set_needs_paint()
 ```
 
@@ -1640,6 +1671,10 @@ class Frame:
 TODO: re-implement composited scrolling
 
 TODO: a11y
+
+::: {.further}
+Describe universal accelerated overflow scrolling.
+:::
 
 Iframe security
 ===============
