@@ -1474,11 +1474,6 @@ TODO: why doesn't the demo below work in a real browser?
 Try it out on [this demo](examples/example15-iframe.html). You should see
 "This is the contents of postMessage." printed to the console.
 
-Iframe navigation
-=================
-
-What happens when you click a link on an iframe?
-
 Iframe input events
 ===================
 
@@ -1501,6 +1496,11 @@ class Frame:
                 elt.frame.click(x - obj.x, y - obj.y)
                 return
 ```
+
+And now that clicking works, clicking on `<a>` elements will work. Which means
+that you can now cause a frame to navigate to a new page. And because a
+`Frame` has all the loading and navigation logic that `Tab` used to have, it
+just works without any more changes! That's satisfying.
 
 Focusing an element now also needs to store the frame the focused element is
 on (the `focus` value will still be stored on the `Tab`, not the `Frame`:
@@ -1667,8 +1667,6 @@ class Frame:
     def scrolldown(self):
         self.scroll = self.clamp_scroll(self.scroll + SCROLL_STEP)
 ```
-
-TODO: re-implement composited scrolling
 
 TODO: a11y
 
