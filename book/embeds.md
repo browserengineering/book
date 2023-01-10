@@ -1684,15 +1684,32 @@ And to recurse into them in `build`:
 ``` {.python}
 class AccessibilityNode:
    def build(self):
-        if isinstance(self.node, Element) and self.node.tag == "iframe":
+        if isinstance(self.node, Element) \
+            and self.node.tag == "iframe":
             self.build_internal(self.node.frame.nodes)
         # ... 
 ```
 
-
 ::: {.further}
-Describe universal accelerated overflow scrolling.
+While our toy browser only has threaded scrolling of the root frame, a real
+browser should aim to make scrolling threaded (and composited) for all
+the other frames, and via all the ways you can scroll---keyboard, touch,
+mouse wheel, scrollbars of different types, and so on.
+(And of course, due to the [`overflow`][overflow-css]
+CSS property, there can be any number of nested scrollers within each 
+other in a single frame.)
+
+Getting this right in all the corner cases
+is pretty hard, and it took each major browser quite a while to get it right.
+Only [in 2016][renderingng-scrolling], for example, was Chromium able to
+achieve it, and even then, there turned out be a very long tail of more or
+less obscure bugs to fix involving different combinations of complex
+containing blocks, stacking order, scrolbars, transforms and other visual
+effects.
 :::
+
+[overflow-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow
+[renderingng-scrolling]: https://developer.chrome.com/articles/renderingng/#threaded-scrolling-animations-and-decode
 
 Iframe security
 ===============

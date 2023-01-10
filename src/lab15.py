@@ -954,7 +954,8 @@ class AccessibilityNode:
                 self.role = "none"
 
     def build(self):
-        if isinstance(self.node, Element) and self.node.tag == "iframe":
+        if isinstance(self.node, Element) \
+            and self.node.tag == "iframe":
             self.build_internal(self.node.frame.nodes)
 
         for child_node in self.node.children:
