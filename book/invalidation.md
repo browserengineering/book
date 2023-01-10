@@ -588,8 +588,8 @@ done with dirty bits, the browser should otherwise behave identically.
 :::
 
 
-Grouping layout fields
-======================
+Invalidating layout fields
+==========================
 
 Now our layout objects are not recreated needlessly, and we're even
 not recomputing the width of an object unless we need to. But we're
@@ -617,35 +617,206 @@ class BlockLayout:
 Thus, the dependencies of each field are:
 
 - A node's `x` field depends on its parent's `x` field;
+- A node's `height` field depends on its childrens' `height`s.
 - A node's `y` field depends on its parent's `y` and its previous
   node's `y` and `height`;
-- A node's `height` field depends on its childrens' `height`s.
 
-Therefore we can introduce new `dirty_x`, `dirty_y`, and
-`dirty_height` fields. For `dirty_x`, we must:
+Therefore we can introduce new `dirty_x`, `dirty_height`, and
+`dirty_y` fields. For each of these new dirty flags, we need to set
+them when a dependency changes, check them before computing the field
+they protect, and reset them afterwards.
 
-- Set all children's `dirty_x` fields when `x` changes
+For `dirty_x`, we must:
+
 - Check the parent's `dirty_x` when `x` is recomputed
 - Reset `dirty_x` by computing `x`.
+- Set all children's `dirty_x` fields when `x` changes
 
-Similarly, for `dirty_y`:
+Putting that into code, we get the following code:
 
-- Set the first child's and next sibling's `dirty_y` when `y` is
-  recomputed;
-- Also, set the next sibling's `dirty_y` when `height` is recomputed;
+``` {.python}
+class BlockLayout:
+    def layout(self):
+        # ...
+        if self.dirty_x:
+            assert not self.parent.dirty_x
+            self.x = self.parent.x
+            for child in self.children:
+                child.dirty_x = True
+            self.dirty_x = False
+        # ...
+```
+
+Here we need to be a little careful, because we are modifying the
+`BlockLayout` class, but the parent of a `BlockLayout` can be a
+`DocumentLayout`, and its children can be `LineLayout`s. We therefore
+need those layout objects to also support dirty flags. For now, we're
+not doing any kind of invalidation on those elements, so just reset
+their dirty flags at the end of their `layout` method:
+
+``` {.python}
+class LineLayout:
+    def __init__(self, node, parent, previous):
+        # ...
+        self.dirty_width = True
+        self.dirty_height = True
+        self.dirty_x = True
+        self.dirty_y = True
+
+    def layout(self):
+        # ...
+        self.dirty_width = False
+        self.dirty_height = False
+        self.dirty_x = False
+        self.dirty_y = False
+```
+
+The `assert` here should never fire, because we always compute the `x`
+position in a top-down traversal of the layout tree, which means we
+would always recompute the parent's `x`, and reset its `dirty_x`,
+before recursing to its children. But invalidation code like this can
+be _very_ bug-prone, and what's worse, the bugs are often difficult to
+find, because often they rely on a precise sequence of modifications
+that cause a stale value to affect a user-visible computation. Being
+vigilant and defensive in code like this pays for itself.
+
+The `dirty_height` flag is kind of similar; for that we must:
+
+- Check all children's `dirty_height` when computing `height`;
+- Reset `dirty_height` by computing `height`.
+- Set the parent's `dirty_height` when `height` is recomputed;
+
+That code looks like this:
+
+``` {.python}
+class BlockLayout:
+    def layout(self):
+        # ...
+        if self.dirty_height:
+            for child in self.children:
+                assert not child.dirty_height
+            self.height = sum([child.height for child in self.children])
+            self.parent.dirty_height = True
+            self.dirty_height = False
+```
+
+The code is very similar to the `dirty_x` code, and that's good,
+because for tricky code like this, having a rigid style with clear
+roles for each line of code helps avoid bugs. But do note a key
+difference: since `x` position is computed top-down, that code checked
+the parent's `dirty_x` flag, and set its children's `dirty_x`. Height,
+on the other hand, is computed bottom-up, so it checks its children's
+`dirty_height` flag and sets its parent's `dirty_height`.
+
+::: {.further}
+
+:::
+
+Dirty flags for *y* positions
+=============================
+
+Finally, let's tackle the `dirty_y` flag. This one is trickier than
+the others, because the `y` position depends not only on the _parent_
+element's `y` position, but also the _previous_ element's `y` and
+`height`. To handle `dirty_y` properly, we'll need to:
+
 - Check the previous sibling's `dirty_y` and `dirty_height`, or the
   parent's `dirty_y`, when `y` is recomputed;
 - And reset `dirty_y` by computing `y`.
+- Set the children's and next sibling's `dirty_y` when `y` is
+  recomputed;
+- Also, set the next sibling's `dirty_y` when `height` is recomputed;
 
-Finally, for `dirty_height`:
+The corresponding code looks like this; note that we need to add code
+to the `dirty_height` block which sets `dirty_y`:
 
-- Set the parent's `dirty_height` when `height` is recomputed;
-- Check all children's `dirty_height` when computing `height`;
-- Reset `dirty_height` by computing `height`.
+``` {.python}
+class BlockLayout:
+    def layout(self):
+        if self.dirty_y:
+            assert not self.previous or not self.previous.dirty_y
+            assert not self.previous or not self.previous.dirty_height
+            assert not self.parent.dirty_y
+            if self.previous:
+                self.y = self.previous.y + self.previous.height
+            else:
+                self.y = self.parent.y
+            for child in self.children:
+                child.dirty_y = True
+            if self.next: self.next.dirty_y = True
+            self.dirty_y = False
+        # ...
+        if self.dirty_height:
+            # ...
+            self.next.dirty_y = True
+```
+
+Since we need to access the next sibling, we will also need to save
+that:
+
+``` {.python}
+class BlockLayout:
+    def __init__(self, node, parent, previous):
+        # ...
+        self.next = None
+        previous.next = self
+```
+
+Note a couple of interesting things about this `dirty_y` code. First
+off, both when checking dirty flags and when setting them, we need to
+make sure the relevant element exists. This wasn't an issue before
+because `BlockLayout` elements always have parents.
+
+Second, note that the `y` computation uses _either_ the previous
+node's `y` position and `height`, _or_ the parent node's `y` position.
+Yet the code checks that _both_ of those nodes have their dirty bits
+cleared. This makes the assertions a little stricter than they need to
+be; we're acting as if every node depends on its parent's `dirty_y`
+flag, but in fact only the some nodes will. Similarly, when the `y`
+position of a node is recomputed, we set all its children's `dirty_y`
+flags, even though only the first child will actually read the new `y`
+position.
+
+Being overly strict is preferable to trying to write overly clever
+code that is then incorrect. It is sometimes important to use careful
+logic to set fewer dirty bits, so that less invalidation has to happen
+and so the browser can therefore be faster, but these kind of
+optimizations get complicated quickly: the logic to determine which
+dirty flags to set often end up reading data that itself needs to be
+invalidated. Getting this kind of code right is very challenging, and
+even if it is written correctly, this kind of subtle flag-setting
+logic is extremely brittle as the code changes. Typically it's best to
+keep "clever" flag setting logic to a minimum, justifying each
+departure from setting all the flags with detailed profiling.
 
 
 Avoid redundant recursion
 =========================
+
+All of the layout fields in `BlockLayout` are now wrapped in careful
+invalidation logic, ensuring that we only compute `x`, `y`, `width`,
+or `height` values when absolutely necessary. That's good: it causes
+faster layout updates on complex web pages.
+
+For example, consider the following web page, which contains a `width`
+animation from [Chapter 13](animations.md#compositing), followed by
+the complete text of Chapter 13 itself:
+
+In this example, the animation changes the `width` of an element, and
+therefore forces a layout update to compute the new size of the
+animated element. But since Chapter 13 itself is pretty long, and has
+a lot of text, recomputing layout takes a lot of time, with almost all
+of that time spent updating the layout of the text, not the animating
+element.
+
+With our invalidation code, layout updates are somewhat faster, since
+usually the actual layout values aren't being recomputed. But they
+still take a long time---dozens or hundreds of milliseconds, depending
+on your computer---because the browser still needs to traverse the
+layout tree, diligently checking that it has no work to do at each
+node.
+
+
 
 
 Skipping no-op updates
