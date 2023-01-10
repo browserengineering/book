@@ -814,9 +814,18 @@ usually the actual layout values aren't being recomputed. But they
 still take a long time---dozens or hundreds of milliseconds, depending
 on your computer---because the browser still needs to traverse the
 layout tree, diligently checking that it has no work to do at each
-node.
+node. There's a solution to this problem, and it involves pushing our
+invalidation approach one step further.
 
-
+So far, we've thought about the *data* dependencies of a particular
+layout computation, for example with a node's `height` depending on
+the `height` of its children. But computations also have *control*
+dependencies, which refers to the sequence of steps needed to actually
+run a certain piece of code. For example, computing a node's `height`
+depends on calling that node's `layout` method, which depends on
+calling its parent's `layout` method, and so on. We can apply
+invalidation to control dependencies just like we do to data
+dependencies.
 
 
 Skipping no-op updates
