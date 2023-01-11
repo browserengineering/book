@@ -101,15 +101,75 @@ Iframes can be sized too:
     >>> sized_iframe_url = 'http://test.test/iframe_sized'
     >>> test.socket.respond(sized_iframe_url, b'HTTP/1.0 200 OK\r\n' +
     ... b'content-type: text/html\r\n\r\n' +
-    ... b'<iframe width=50 height=60 src="http://test.test/">')
+    ... b'.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.' +
+    ... b'<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.' +
+    ... b'<iframe width=50 height=30 src="http://test.test/">')
 
     >>> browser = lab15.Browser()
     >>> browser.load(sized_iframe_url)
     >>> browser.tabs[0].advance_tab()
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
      SaveLayer(alpha=1.0)
-       ClipRRect(RRect(13, 18, 63, 78, 1))
-         Transform(translate(13.0, 18.0))
+       ClipRRect(RRect(45, 478, 95, 508, 1))
+         Transform(translate(45.0, 478.0))
            DrawImage(rect=Rect(13, 18, 18, 34))
-         DrawOutline(top=18.0 left=13.0 bottom=78.0 right=63.0 border_color=black thickness=2)
+         DrawOutline(top=478.0 left=45.0 bottom=508.0 right=95.0 border_color=black thickness=2)
+
+Now let's test scrolling of the root frame:
+
+    >>> browser.scroll > 0
+    False
+    >>> browser.handle_down()
+    >>> browser.scroll > 0
+    True
+
+Clicking the sub-frame focuses it:
+
+    >>> browser = lab15.Browser()
+    >>> browser.load(sized_iframe_url)
+    >>> browser.tabs[0].advance_tab()
+    >>> browser.render()
+    >>> e = Event(50, 600)
+    >>> browser.handle_click(e)
+    >>> browser.render()
+    >>> child_frame = browser.tabs[0].root_frame.nodes.children[0].children[47].frame
+
+    >>> browser.tabs[0].focused_frame == child_frame
+    True
+    >>> browser.root_frame_focused
+    False
+
+And now scrolling affects just the child frame:
+
+    >>> browser.tabs[0].root_frame.nodes.children[0].children[47].frame.scroll
+    0
+    >>> browser.handle_down()
+    >>> browser.scroll > 0
+    False
+    >>> browser.tabs[0].root_frame.nodes.children[0].children[47].frame.scroll
+    22.0
