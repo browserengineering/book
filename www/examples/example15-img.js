@@ -6,5 +6,5 @@ document.querySelectorAll("img")[0].addEventListener("click", function(e) {
 var parentWindow = window.parent;
 
 if (parentWindow)
-	postMessage("This is the contents of postMessage.", "*");
+	parentWindow.postMessage("This is the contents of postMessage.", "*");
 
