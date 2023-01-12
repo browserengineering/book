@@ -816,8 +816,8 @@ class JSContext:
                 window_id),
             data=message)
 
-    def postMessage(self, window_id, message, origin):
-        task = Task(self.tab.post_message, message, window_id)
+    def postMessage(self, target_window_id, message, origin):
+        task = Task(self.tab.post_message, message, target_window_id)
         self.tab.task_runner.schedule_task(task)
 
     def innerHTML_set(self, handle, s):
@@ -1387,7 +1387,8 @@ class Tab:
             self.needs_style = False
 
         if self.needs_layout:
-            self.root_frame.layout(self.zoom, WIDTH, HEIGHT - CHROME_PX)
+            self.root_frame.layout(
+                self.zoom, WIDTH, HEIGHT - CHROME_PX)
             if self.accessibility_is_on:
                 self.needs_accessibility = True
             else:
@@ -1498,11 +1499,10 @@ class Tab:
         self.pending_hover = (x, y)
         self.set_needs_render()
 
-    def post_message(self, message, sender_window_id):
-        for (window_id, frame) in self.window_id_to_frame.items():
-            if window_id != sender_window_id:
-                frame.get_js().dispatch_post_message(
-                    message, window_id)
+    def post_message(self, message, target_window_id):
+        frame = self.window_id_to_frame[target_window_id]
+        frame.get_js().dispatch_post_message(
+            message, target_window_id)
 
 def draw_line(canvas, x1, y1, x2, y2, color):
     sk_color = parse_color(color)

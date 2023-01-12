@@ -1345,30 +1345,30 @@ state or locks.
 [message-passing]: https://en.wikipedia.org/wiki/Message_passing
 
 Message-passing in JavaScript works like this: you call the
-[`postMessage` API][postmessage], with the message itself as the first
-parameter, and `*` as the second.^[The second parameter has to do with
+[`postMessage` API][postmessage] on the `Window` object you'd like to talk to,
+with the message itself as the first parameter, and `*` as the
+second.^[The second parameter has to do with
 origin restrictions, see the accompanying exercise.] Calling:
 
 [postmessage]: https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage
 
-    window.postMessage("message contents", '*')
+    window.parent.postMessage("message contents", '*')
 
-will broadcast "message contents" to all other frames that choose to listen to
-it. A frame can listen to it by adding an event listener on its `Window` object.
-A "message" event will fire on all other `Window`s, which can be listened to as
-follows. Note that in this case `window` is *not* the same object! It's the
-`Window` object for some other frame.
+will broadcast "message contents" to the parent frame. A frame can listen to
+the message by adding an event listener on its `Window` object for the
+"message" event. Note that in this case `window` is *not* the same object! It's
+ the `Window` object for some other frame.
 
     window.addEventListener("message", function(e) {
         console.log(e.data);
     });
 
-You can also pass data that is not a string, such as numbers and objects.
-It works via a *serialization* algorithm called
-[structured cloning][structured-clone]. Structured cloning converts a JavaScript
-object of arbitrary^[Mostly. For example, DOM notes cannot be sent across,
-because it's not OK to access the DOM in multiple threads, and different event
-loops might be assigned different threads in a browser.]
+In a real browser, you can also pass data that is not a string, such as numbers
+and objects. It works via a *serialization* algorithm called
+[structured cloning][structured-clone]. Structured cloning converts a
+JavaScript object of arbitrary^[Mostly. For example, DOM notes cannot be sent
+across, because it's not OK to access the DOM in multiple threads, and
+different event loops might be assigned different threads in a browser.]
 structure to a sequence of raw bytes, which are *deserialized* on the other end
 into a new object that has the same structure.
 
@@ -1439,9 +1439,9 @@ features of the JavaScript+event loop programming model.
 
 ``` {.python}
 class JSContext:
-    def postMessage(self, window_id, message, origin):
-        task = Task(self.tab.post_message, message, window_id)
-        self.tab.task_runner.schedule_task(task)    
+    def postMessage(self, target_window_id, message, origin):
+        task = Task(self.tab.post_message, message, target_window_id)
+        self.tab.task_runner.schedule_task(task)
 ```
 
 Which then runs this code, that loops over all other frames and dispatches
@@ -1449,12 +1449,10 @@ an event:
 
 ``` {.python}
 class Tab:
-    def post_message(self, message, sender_window_id):
-        for (window_id, frame) in self.window_id_to_frame.items():
-            if window_id != sender_window_id:
-                frame.get_js().dispatch_post_message(
-                    message, window_id)
-
+    def post_message(self, message, target_window_id):
+        frame = self.window_id_to_frame[target_window_id]
+        frame.get_js().dispatch_post_message(
+            message, target_window_id)
 ```
 
 The event happens in the usual way:
@@ -1469,10 +1467,9 @@ class JSContext:
             data=message)    
 ```
 
-TODO: why doesn't the demo below work in a real browser?
-
 Try it out on [this demo](examples/example15-iframe.html). You should see
-"This is the contents of postMessage." printed to the console.
+"Message received from iframe: This is the contents of postMessage." printed to
+ the console.
 
 Iframe input events
 ===================
@@ -1567,7 +1564,8 @@ The root frame will have a browser window-based height:
 class Tab:
     def render(self):
         # ...
-            self.root_frame.layout(self.zoom, WIDTH, HEIGHT - CHROME_PX)
+            self.root_frame.layout(
+                self.zoom, WIDTH, HEIGHT - CHROME_PX)
 ```
 
 And in `IframeLayout`, the height of the `<iframe>` element:
