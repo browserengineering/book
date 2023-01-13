@@ -42,14 +42,14 @@ very many image formats, so we had to wait for the introduction of Skia.
 An `<img>` is a leaf element of the DOM. In some ways, it's similar to a single
 font glyph that has to paint in a single rectangle (sized to the image instead
 of the glyph), takes up space in a `LineLayout`, and causes line breaking when
-it reaches the end of the available space. But it's different than a text node,
-because the text in a text node is not just one glyph, but an entire run of
-text of a potentially arbitrary length, and that can be split into words and
-lines across multiple lines.
+it reaches the end of the available space.
 
-An image, on the other hand, is an [atomic inline][atomic-inline]---it doesn't
-make sense to split it across multiple lines.^[There are other things that can
-be atomic inlines, and we'll encounter more later in this chapter.]
+But it's different than a text node, because the text in a text node is not just
+one glyph, but an entire run of text of a potentially arbitrary length, and
+that can be split into words and lines across multiple lines. An image, on the
+other hand, is an [atomic inline][atomic-inline]---it doesn't make sense to
+split it across multiple lines.^[There are other things that can be atomic
+inlines, and we'll encounter more later in this chapter.]
 
 
 [atomic-inline]: https://drafts.csswg.org/css-display-3/#atomic-inline
@@ -350,9 +350,17 @@ very basic and missing several important features for layout and rendering
 quality.
 
 ::: {.further}
-Discuss shadow DOM and "explaining input elements" in terms of HTML.
+The `<img>` tag uses a `src` attribute and not `href`. Why is that? And
+why is the tag name `img` and not `image`? The answer to the first is
+apparently that an image is not a "hyperlink reference" (which
+is what "href" stands for), but instead a page subresource. However,
+subresources actually have inconsistent naming. For example, the `<link>`
+tag can refer to a style sheet with `href`, but the `<script>` tag
+uses `src`. The true reason may simply be [design disagreements][srcname]
+before such things were mediated by a standards organization.
 :::
 
+[srcname]: http://1997.webhistory.org/www.lists/www-talk.1993q1/0196.html
 Image sizing
 ============
 
