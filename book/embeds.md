@@ -8,14 +8,16 @@ next: invalidation
 Our toy browser has a lot of rendering features, but is still missing a few
 present on pretty much every website. The most obvious is *images*---given how
 ubiquitous they are, it seems silly to have even a toy browser without images.
-But images are actually the simplest form of *embedded content* within a web
+But images are only the simplest form of *embedded content* within a web
 page, a much bigger topic, and one that has a lot of interesting implications
 for how browser engines work.[^images-interesting] That's mostly due to how
 powerful *iframes* are, since they allow you to embed one website in another.
-A toy browser without iframes simply wouldn't cover some very important
-architectural aspects of real browsers.^[And in keeping with the pattern you've
-already seen, basic support for iframes is easy enough to implement in one 
-chapter.]
+
+The fact is, a toy browser without images or iframes simply wouldn't cover some
+very important architectural aspects of real browsers with important
+performance, security and open information access implications. So let's now
+implement them to see. And in keeping with the pattern you've already seen,
+basic support for these features is easy enough to implement in one chapter!
 
 [^images-interesting]: If I were to describe every single aspect
 of *just images* in browsers, it would take up an entire chapter by itself. But
@@ -433,7 +435,7 @@ ratio when only one attribute is specified.
 
 [^only-recently-aspect-ratio]: Despite it being easy to implement, this
 feature of real web browsers only appeared in 2021. Before that, developers
-resorted to things like the ["padding-top hack"][padding-top-hack]. Sometimes
+resorted to things like the [padding-top hack][padding-top-hack]. Sometimes
 design oversights take a long time to fix.
 
 [padding-top-hack]: https://web.dev/aspect-ratio/#the-old-hack-maintaining-aspect-ratio-with-padding-top
@@ -464,11 +466,23 @@ class ImageLayout:
 ```
 
 ::: {.further}
-Discuss placeholder images while they are loading, and the need to avoid layout
-shift or changes of aspect ratio. Describe the aspect-ratio CSS property.
+I discussed preserving aspect ratio for a loaded image, but what about before
+it loads? In our toy browser, images are loaded synchronously during `load`,
+but real browsers don't do that because it would slow down page load
+accordingly. So what should a browser render if the image hasn't loaded?
+It doesn't have the image intrinsic sizing, so it has to use other available
+information such as `width` and `height` to size it (and also style it---see
+the corresponding exercise at the end of the chapter).
 
-object-fit.
+This is another reason why the inferred aspect ratio feature I implemented in
+this section is important, because in cases where the size of an image depends
+on [responsive design][resp-design] parameters, it's important to preserve the
+aspect ratio accordingly. Otherwise the page layout will look bad and cause
+[layout shift][cls] when the image loads.
 :::
+
+[resp-design]: https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Responsive_Design
+[cls]: https://web.dev/cls/
 
 Image quality and performance
 =============================
@@ -493,7 +507,7 @@ image will notice the difference.
 [lossy]: https://en.wikipedia.org/wiki/Lossy_compression
 
 Many encoded image formats are very good at compression. This means that when a
-browser decodes it, the resuting bitmap may take up quite a bit of memory, even
+browser decodes it, the resulting bitmap may take up quite a bit of memory, even
 if the downloaded file size is not so big. As a result, it's very important for
 browsers to do as little decoding as possible. Two ways they achieve that are
 by avoiding decode for images not currently on the screen, and decoding
@@ -518,7 +532,9 @@ algorithm to use.
 
 This is not too hard, but requires doing the decode during paint rather than
 load (because we don't know the painted size until after layout!). So first
-store the *encoded* image instead of the *decoded* one during load:
+store the *encoded* image instead of the *decoded* one during load:^[Speaking
+of performance, synchronously loading the image during `load` is also not
+good. I've left fixing this to an exercise.]
 
 ``` {.python replace=Tab/Frame}
 class Tab:
@@ -580,8 +596,8 @@ Video & other embedded content
 Images can also be animated.[^animated-gif] So if a website can load an image,
 and the image can be animated, then that image is something very close to
 a *video*. But in practice, videos need very advanced encoding and encoding
-formats to minimize network and CPU costs, *and* these formats incure a lot of
-other complications, chief among them [Digital Rights Mangement][drm]. To
+formats to minimize network and CPU costs, *and* these formats incur a lot of
+other complications, chief among them [Digital Rights Management][drm]. To
 support all this, the `<video>` tag supported by real browsers provide built-in
 support for several common video [*codecs*][codec].^[In video, it's called a
 codec, but in images it's called a *format*--go figure.] And on top of all
@@ -596,14 +612,14 @@ chapter.
 
 But what if the web page author wants to display a UI that is more than just an
 image or a video? Well, one thing they can do is simply put text or other
-content next to the video in the DOM. But if the video is supplied by a *third
-party* such as YouTube, or some other external source, the external source will
-want to control the UI of their videos, in such a way that other sites can't
-mess it up (or violate the privacy and security of user data). It'd be nice to
-be able to reserve a portion of the layout for this content, and delegate
-rendering of that content to the external provider, in such a way that the
-provider can customize their UI and the web page author need not worry about
-the details.
+content next to the video in the DOM. But if the video is supplied by
+a *third-party* such as YouTube, or some other external source, the external
+source will want to control the UI of their videos, in such a way that other
+sites can't mess it up (or violate the privacy and security of user data). It'd
+be nice to be able to reserve a portion of the layout for this content, and
+delegate rendering of that content to the external provider, in such a way that
+the provider can customize their UI and the web page author need not worry
+about the details.
 
 There are two possible ways to achieve this:
 
@@ -623,7 +639,7 @@ already a fully functional UI system that should be general enough for any UI
 (and if it isn't, the web should be extended to support it). So why have the
 all the complications (security issues, compatibility, bugs, etc) of
 yet another UI system that duplicates HTML? (Another reason is that plugins
-tend to be proprietery. Note that PDF, originally developed as a proprietary
+tend to be proprietary. Note that PDF, originally developed as a proprietary
 format, is [now an open standard][pdf-standard].)]
 
 [java-applets]: https://en.wikipedia.org/wiki/Java_applet
@@ -648,7 +664,7 @@ for drawing text, but no line breaking or block layout.] layout, automatic
 rendering, or [navigation](chrome.md).
 
 So the web has a second approach that retains all of those features: let the
-developer embed one webpage inside another, via the `<iframe>` element. As
+developer embed one web page inside another, via the `<iframe>` element. As
 you'll see, this approach neatly solves all of these problems---accessibility,
 etc come "for free". And as it turns out, iframes are a great way to include
 "untrusted" content.
@@ -656,11 +672,28 @@ etc come "for free". And as it turns out, iframes are a great way to include
 [canvas-elt]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas
 
 ::: {.further}
+Perhaps the most common use case for embedded content other than images and
+video is ads. Inline ads on web pages have been around since the beginning
+of the web, and are often (for good reasons or bad depending on your
+perspective) big users of third-party embedding and whatever
+animation/attention-drawing features the web has.
 
-Discuss ads as a form of embedded content.
+From a browser engineering perspective, ads are also a very challenging source
+of performance and [user experience][ux] problems. For example, ads often load
+a lot of data, run a lot of code to measure various kinds of
+[analytics]---such as "was this ad viewed by the user and for how long?"---and
+are delay-loaded (similar to an async-loaded image) and so cause layout shift.
 
+A lot of browser engineering has gone into ways to improve or mitigate these
+problems---everything from ad blocker [browser extensions][extensions] to APIs
+such as [Intersection Observer][io] that make analytics computation more
+efficient.
 :::
 
+[ux]: https://en.wikipedia.org/wiki/User_experience
+[analytics]: https://en.wikipedia.org/wiki/Web_analytics
+[extensions]: https://en.wikipedia.org/wiki/Browser_extension
+[io]: https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API
 
 Iframes
 =======
@@ -680,7 +713,7 @@ systems like Flash. For example, in the last decade the `<canvas>` element
 
 [^yes-performance]: Yes, performance! While it's true that in principle
 a non-web plugin can have higher peak performance, in practice they usually
-have worse overall performance when embedded within a web plage, especially
+have worse overall performance when embedded within a web page, especially
 on lower-end computers or mobile devices. That's because the plugin has its
 own, entirely different, rendering and execution system, which leads to more
 code and memory use, and worse performance coordination with the web page that
@@ -731,7 +764,7 @@ work that the `Tab` used to do, and the `Tab` becomes a coordination and
 container class for the frame tree. More specifically, the `Tab` class will:
 
 * Kick off animation frames and rendering.
-* Impement accessibility.
+* Implement accessibility.
 * Provide glue code between `Browser` and the documents to implement event
   handling.
 * Proxy communication between frame documents.
@@ -800,8 +833,20 @@ class Frame:
 That's pretty much it for loading, now let's investigate rendering.
 
 ::: {.further}
-Expand on the security, performance, and open standards reasons iframes are
-preferrable to plugins.
+I should say a bit more here about the importance of open standards for embedded
+content. Recall that the core goal of the web is to make information accessible
+to everyone. This naturally extends to everything in a web page, not just its
+HTML. Therefore it's important for images and video to have open,
+non-proprietary formats and codecs. That way, all browsers (or other software,
+for that matter) can load those images and videos without legal or economic
+restrictions.
+
+The same goes for other embedded content. Which is another reason iframes are
+much preferable to plugins, because while making a particular "non-HTML"
+plugin format fully open is possible, it's extremely expensive to do so because
+it would end up duplicating all of the technology of the web. Therefore it
+doesn't really make sense to do so, and instead it's better to spend effort
+making web technology itself better.
 :::
 
 
@@ -1012,7 +1057,7 @@ For each `JSContext`, we'll keep track of the set of frames that all use it, and
 store a `Window` object for each, associated with the frame it comes from, in
 variables called `window_0`, `window_1`, etc. Then whenever we need to evaluate
 a script from a particular frame, we'll wrap it in some code that overwrites
-the `window` object and evalutes via `with`. 
+the `window` object and evaluates via `with`. 
 
 ``` {.python}
 def wrap_in_window(js, window_id):
@@ -1118,6 +1163,14 @@ class Frame:
                 self.window_id)
 ```
 
+::: {.further}
+There are proposals to add the concept of different global namespaces natively
+to the JavaScript language. One current proposal is the
+[ShadowRealm API](https://github.com/tc39/proposal-shadowrealm). This
+API would allow obtaining similar code modularity benefits that you get from
+putting a script in an iframe, without the use of an iframe.
+:::
+
 Iframe script APIs
 ==================
 
@@ -1178,7 +1231,7 @@ about `eval`,, it does the same thing as the DukPy `evaljs` method.] And if the
 eval throws a "variable not defined" exception, that means the window object is
 not defined, which can only be the case if the parent is cross-origin to the
 current window. In that case, return a fresh `Window` object with the fake id
-`-1`.^[Which is also correct, because cross-oriign frames can't access each
+`-1`.^[Which is also correct, because cross-origin frames can't access each
 others' variables. However, in a real browser this `Window` object is not
 totally fake---see the related exercise at the end of the chapter.]
 
@@ -1285,8 +1338,8 @@ Node.prototype.dispatchEvent = function(evt) {
 
 ```
 
-Dispatching the event requires `wrap_in_window`.^[All of the callsites of
-`dispatch_event` (`cick`, `submit_form`, and `keypress`) will need an additional
+Dispatching the event requires `wrap_in_window`.^[All of the call sites of
+`dispatch_event` (`click`, `submit_form`, and `keypress`) will need an additional
 parameter of the window id; I've omitted those code fragments.]
 
 ``` {.python}
@@ -1440,9 +1493,9 @@ Window.prototype.postMessage = function(message, origin) {
 ```
 
 Over in Python land, `postMessage` schedules a `post_message` task on the
-`Tab`. Why schedule a task instead of sending the messages synchrously, you
+`Tab`. Why schedule a task instead of sending the messages synchronously, you
 might ask? It's because `postMessage` is an *async* API that expressly does
-not allow synchronous bi-directly (or uni-directional, for that matter)
+not allow synchronous bi-directional (or uni-directional, for that matter)
 communication. Asynchrony, callbacks and message-passing are inherent
 features of the JavaScript+event loop programming model.
 
@@ -1480,16 +1533,35 @@ Try it out on [this demo](examples/example15-iframe.html). You should see
 "Message received from iframe: This is the contents of postMessage." printed to
  the console.
 
+::: {.further}
+Message-passing between event loops is by no means a JavaScript invention. Other
+languages, going back to [SmallTalk][smalltalk] or even earlier, have used this
+model of computing for many years. And more recently, even systems languages
+like[Rust][rust] have message-passing as a core language feature.
+:::
+
+[smalltalk]: https://en.wikipedia.org/wiki/Smalltalk
+[rust]: https://en.wikipedia.org/wiki/Rust_(programming_language)
+
 Iframe input events
 ===================
 
 Scripts and events now function properly in iframes, but user input does not.
 It's not (yet) possible to click on a element in an iframe, rotate through
-its focusable elements, scroll it, or generate an acccessibility tree.
+its focusable elements, scroll it, or generate an accessibility tree.
 
-Let's fix that. Clicking requires checking for an `<iframe>` element:
+Let's fix that. First, as usual, delegate click logic from `Tab` to the root
+`Frame`. (I haven't shown the `click` method on `Frame` because it's otherwise
+the same as what used to beg on `Tab.`)
 
-TODO: logic for click moved to `Frame`.
+``` {.python}
+class Tab:
+    def click(self, x, y):
+        self.render()
+        self.root_frame.click(x, y)
+```
+
+Clicking requires checking for an `<iframe>` element:
 
 ``` {.python}
 class Frame:
@@ -1555,7 +1627,7 @@ class Frame:
 
 Clamping will now happen differently, because non-root frames have a height
 that is not defined by the size of the browser window, but rather their
-containing `<iframe>` element. To handle this let's add a paramter to `layout`
+containing `<iframe>` element. To handle this let's add a parameter to `layout`
 indicating this height, and record it in `frame_height`:
 
 ``` {.python}
@@ -1597,7 +1669,7 @@ class Frame:
                 self.document.height) - self.frame_height))
 ```
 
-Now change all callsites of `clamp_scroll` to use the method rather than the
+Now change all call sites of `clamp_scroll` to use the method rather than the
 global function:
 
 ``` {.python}
@@ -1621,8 +1693,8 @@ To handle both cases, we'll need a new commit parameter:
 
 ``` {.python}
 class CommitData:
-    def __init__(self, url, scroll, root_frame_focused, height, display_list,
-                 composited_updates, accessibility_tree, focus):
+    def __init__(self, url, scroll, root_frame_focused, height,
+        display_list, composited_updates, accessibility_tree, focus):
         # ...
         self.root_frame_focused = root_frame_focused
 ```
@@ -1711,7 +1783,7 @@ is pretty hard, and it took each major browser quite a while to get it right.
 Only [in 2016][renderingng-scrolling], for example, was Chromium able to
 achieve it, and even then, there turned out be a very long tail of more or
 less obscure bugs to fix involving different combinations of complex
-containing blocks, stacking order, scrolbars, transforms and other visual
+containing blocks, stacking order, scrollbars, transforms and other visual
 effects.
 :::
 
@@ -1736,9 +1808,9 @@ be protected from any security or privacy risks that page may represent.
 The fact that cross-origin iframes can't access their parents directly already
 provides a reasonable starting point. But it doesn't protect you if a
 browser bug allows JavaScript in an iframe to cause a
-[buffer overrun][buffer-overrun], which an attacker exploints to run
+[buffer overrun][buffer-overrun], which an attacker exploits to run
 arbitrary code. To protect against such a situation, browsers these days
-load webpages in a security [*sandbox*][sandbox], which prevents arbitrary
+load web pages in a security [*sandbox*][sandbox], which prevents arbitrary
 code from such an attack from escaping the sandbox, thus (usually) protecting
 your OS, cookies, personal data and so on from being compromised.
 But we'd also like to separate the frames in a web page from each other,
@@ -1796,8 +1868,8 @@ The required headers for `SharedArrayBuffer` also caused problems for
 the *Web Browser Engineering* website, when I [added JavaScript support][js-blog]
 to embedded widgets. These widgets use `SharedArrayBuffer` to polyfill the way
 that runtime JavaScript APIs talk to the browser. It worked, but in order
-to make it an embeded widget required setting the opt-in headers for that API.
-Unfortunaely, doing so broke an embedded YouTube video in Chapter 14,
+to make it an embedded widget required setting the opt-in headers for that API.
+Unfortunately, doing so broke an embedded YouTube video in Chapter 14,
 because YouTube does not (yet?) set this header.
 
 I worked around the issue by not embedding the widget as a sub-frame of the
@@ -1816,7 +1888,10 @@ This chapter introduced embedded content, via the examples of images and
 iframes. Reiterating the main points:
 
 * Embedded content is a way to allow "non-HTML" content---images, video, canvas,
-  iframes, input elements or plugins---to be added to a webpage.
+  iframes, input elements or plugins---to be added to a web page.
+
+* Images are relatively easy to add as long as you have a good decoding library
+  at hand, but need some care for layout and decoding optimizations.
 
 * Over time, plugins that are not PDF viewers, images or video have been
   replaced with the more general-purpose *iframe* element, which over time has
@@ -1825,17 +1900,20 @@ iframes. Reiterating the main points:
   open standards.
 
 * Because iframes contain an entire web page and all its
-complexities---rendering, event handling, navigation, security---as well as
-the ability to embed other iframes, they add quite a lot of complexity to
-a browser implementation. However, this complexity is justified, because they
-enable many important cross-origin use cases, such as ads, video, and social
-media references, to be safely added to web sites.
+  complexities---rendering, event handling, navigation, security---as well as
+  the ability to embed other iframes, they add quite a lot of complexity to a
+  browser implementation. However, this complexity is justified, because they
+  enable many important cross-origin use cases, such as ads, video, and social
+  media references, to be safely added to web sites.
 
-* On the whole, canvases,^[Try the exercise about the `<canvas>` element to see
-  for yourself!] and even iframes, are not *that* hard to implement in a very
-  basic form, because they reuse a lot of the code and concepts I've explained
-  in earlier chapters. But implementing them really well---as with all good
-  things in this life---takes a lot of effort and attention to detail.
+* On the whole, images, canvases,^[Try the exercise about the `<canvas>` element
+  to see for yourself! Video was not really covered at all in this chapter;
+  depending on what you consider "basic", implementing them could be relatively
+  simple or quite hard.] and even iframes, are not *that* hard to implement in
+  a very basic form, because they reuse a lot of the code and concepts I've
+  explained in earlier chapters. But implementing them really well---as with
+  all good things in this life---takes a lot of effort and attention to
+  detail.
 
 Exercises
 =========
@@ -1897,10 +1975,16 @@ within a certain number of pixels of the being visible on the
 screen.^[Real browsers have special [APIs][lli] and optimizations for this
 purpose; they don't actually lazy-load images by default, because otherwise
 some web sites would break or look ugly. In the early days of the web,
-computer networks were slow enought that browsers had a user setting to
-disable downloading of images until the usre expresssly asked for them.]
+computer networks were slow enough that browsers had a user setting to
+disable downloading of images until the user expressly asked for them.]
 
 [lli]: https://developer.mozilla.org/en-US/docs/Web/Performance/Lazy_loading
+
+*Image placeholders*: Building on top of lazy loading, implement placeholder
+styling of images that haven't loaded yet. This is typically done by putting
+an icon representing an unloaded image in its place. If `width` or
+`height` is not specified, the resulting size in that dimension should be sized
+to fit the icon.
 
 *Animated images*: Add support for animated GIFs. Pillow supports this via the
  `is_animated` and `n_frames` property, and the `seek()` (switch to a different
@@ -1936,6 +2020,6 @@ iframes, as it causes a lot of confusion for web developers who embed iframes
 they don't plan on navigating.]
 
 *Multi-frame focus*: in our toy browser, pressing `tab` repeatedly goes through
- the elemnts in a single frame. But this is bad for accessibility, because
+ the elements in a single frame. But this is bad for accessibility, because
  it doesn't allow a user of the keyboard to obtain access to focusable elements
  in other frames.
