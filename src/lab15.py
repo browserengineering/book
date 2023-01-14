@@ -1513,8 +1513,8 @@ def draw_line(canvas, x1, y1, x2, y2, color):
     canvas.drawPath(path, paint)
 
 class CommitData:
-    def __init__(self, url, scroll, root_frame_focused, height, display_list,
-                 composited_updates, accessibility_tree, focus):
+    def __init__(self, url, scroll, root_frame_focused, height,
+        display_list, composited_updates, accessibility_tree, focus):
         self.url = url
         self.scroll = scroll
         self.root_frame_focused = root_frame_focused
