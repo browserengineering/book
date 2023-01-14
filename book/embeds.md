@@ -484,8 +484,8 @@ aspect ratio accordingly. Otherwise the page layout will look bad and cause
 [resp-design]: https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Responsive_Design
 [cls]: https://web.dev/cls/
 
-Image quality and performance
-=============================
+Image performance
+=================
 
 Images are expensive relative to text content. To start with, they take a
 long time to download. But decoding is even more expensive in some ways, in
@@ -590,8 +590,8 @@ image quality. Yet another reason to do so is because raster happens on another
 thread, and so that way image decoding won't block the main thread.
 :::
 
-Video & other embedded content
-==============================
+Other embedded content
+=====================
 
 Images can also be animated.[^animated-gif] So if a website can load an image,
 and the image can be animated, then that image is something very close to
@@ -850,8 +850,8 @@ making web technology itself better.
 :::
 
 
-Iframe layout and rendering
-===========================
+Iframe rendering
+================
 
 Just like with loading, a `Tab` delegates rendering to its root frame:
 
