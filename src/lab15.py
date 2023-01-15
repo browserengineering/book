@@ -411,7 +411,7 @@ class InlineLayout:
         if "width" in self.node.attributes:
             w = device_px(int(self.node.attributes["width"]), zoom)
         else:
-            w = IFRAME_DEFAULT_WIDTH_PX
+            w = IFRAME_DEFAULT_WIDTH_PX + 2
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
@@ -671,13 +671,15 @@ class IframeLayout:
             self.width = \
                 device_px(int(self.node.attributes["width"]), zoom)
         else:
-            self.width = device_px(IFRAME_DEFAULT_WIDTH_PX, zoom)
+            self.width = device_px(
+                IFRAME_DEFAULT_WIDTH_PX + 2, zoom)
 
         if has_height:
             self.height = \
                 device_px(int(self.node.attributes["height"]), zoom)
         else:
-            self.height = device_px(IFRAME_DEFAULT_HEIGHT_PX, zoom)
+            self.height = device_px(
+                IFRAME_DEFAULT_HEIGHT_PX + 2, zoom)
 
         if self.previous:
             space = self.previous.font.measureText(" ")

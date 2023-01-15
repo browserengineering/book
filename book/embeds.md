@@ -8,10 +8,10 @@ next: invalidation
 Our toy browser has a lot of rendering features, but is still missing a few
 present on pretty much every website. The most obvious is *images*---given how
 ubiquitous they are, it seems silly to have even a toy browser without images.
-But images are only the simplest form of *embedded content* within a web
-page, a much bigger topic, and one that has a lot of interesting implications
-for how browser engines work.[^images-interesting] That's mostly due to how
-powerful *iframes* are, since they allow you to embed one website in another.
+But images are only the simplest form of *embedded content* within a web page,
+a much bigger topic, and one that has a lot of interesting implications for how
+browser engines work. That's mostly due to how powerful *iframes* are, since
+they allow you to embed one website in another.
 
 The fact is, a toy browser without images or iframes simply wouldn't cover some
 very important architectural aspects of real browsers with important
@@ -19,23 +19,17 @@ performance, security and open information access implications. So let's now
 implement them to see. And in keeping with the pattern you've already seen,
 basic support for these features is easy enough to implement in one chapter!
 
-[^images-interesting]: If I were to describe every single aspect
-of *just images* in browsers, it would take up an entire chapter by itself. But
-many of these details are quite specialized, or stray outside the core tasks of
-a browser engine, so I've omitted or left them to footnotes.
 
 Images
 ======
 
-Images are relatively easy to implement in their simplest form (well, they are
-"easy" if you have convenient libraries to decode and render them). So let's
- just get to it.[^img-history] We'll implement the `<img>` tag, which works
- like this:
+Let's start with images, which are not too hard to get going (certainly if you
+have convenient libraries to decode and render them). So let's just get to
+it.[^img-history] We'll implement the `<img>` tag, which works like this:
 
     <img src="https://pavpanchekha.com/im/me-square.jpg">
 
-
-[^img-history]: In fact, images have been around (almost) since the
+[^img-history]: mages have been around (almost) since the
 beginning, being proposed in [early 1993][img-email]. This makes it ironic that
 images only make their appearance in chapter 15 of the book. My excuse is that
 Tkinter doesn't support proper image sizing and clipping, and doesn't support
@@ -46,11 +40,11 @@ font glyph that has to paint in a single rectangle (sized to the image instead
 of the glyph), takes up space in a `LineLayout`, and causes line breaking when
 it reaches the end of the available space.
 
-But it's different than a text node, because the text in a text node is not just
-one glyph, but an entire run of text of a potentially arbitrary length, and
-that can be split into words and lines across multiple lines. An image, on the
-other hand, is an [atomic inline][atomic-inline]---it doesn't make sense to
-split it across multiple lines.^[There are other things that can be atomic
+But it's different than a text *node*, because the text in a text node is not
+just one glyph, but an entire run of text of a potentially arbitrary length,
+and that can be split into words and lines across multiple lines. An image, on
+the other hand, is an [atomic inline][atomic-inline]---it doesn't make sense to
+split it across multiple lines.^[There are other elements that can be atomic
 inlines, and we'll encounter more later in this chapter.]
 
 
@@ -613,8 +607,9 @@ chapter.
 But what if the web page author wants to display a UI that is more than just an
 image or a video? Well, one thing they can do is simply put text or other
 content next to the video in the DOM. But if the video is supplied by
-a *third-party* such as YouTube, or some other external source, the external
-source will want to control the UI of their videos, in such a way that other
+a *third-party*^[The embedding website is the *first party*, and the user is
+the *second party*.] such as YouTube, or some other external source, thethird
+party will want to control the UI of their videos, in such a way that other
 sites can't mess it up (or violate the privacy and security of user data). It'd
 be nice to be able to reserve a portion of the layout for this content, and
 delegate rendering of that content to the external provider, in such a way that
@@ -913,10 +908,10 @@ IFRAME_DEFAULT_WIDTH_PX = 300
 IFRAME_DEFAULT_HEIGHT_PX = 150
 ```
 
-
 Iframe layout looks like this in `InlineLayout`. The only difference from images
 is the width and height calculation, so I've omitted that part with "..."
-instead.
+instead. I've added 2 to the width and height in these calculations to provide
+room for the painted border to come.
 
 ``` {.python}
 class InlineLayout:
@@ -930,7 +925,7 @@ class InlineLayout:
         if "width" in self.node.attributes:
             w = device_px(int(self.node.attributes["width"]), zoom)
         else:
-            w = IFRAME_DEFAULT_WIDTH_PX
+            w = IFRAME_DEFAULT_WIDTH_PX + 2
         # ...
 ```
 
@@ -939,7 +934,6 @@ unchanged parts from images. (Note however that there is no code regarding
 aspect ratio, because iframes don't have an intrinsic size.) And at the end,
 recurse into the layout method of the child frame.
 
-TODO: fix expected here.
 ``` {.python replace=%2C%20self.width/%2C%20self.width%2C%20self.height}
 class IframeLayout:
     # ...
@@ -948,12 +942,14 @@ class IframeLayout:
         if has_width:
             # ...
         else:
-            self.width = device_px(IFRAME_DEFAULT_WIDTH_PX, zoom)
+            self.width = device_px(
+                IFRAME_DEFAULT_WIDTH_PX + 2, zoom)
 
         if has_height:
             # ...
         else:
-            self.height = device_px(IFRAME_DEFAULT_HEIGHT_PX, zoom)
+            self.height = device_px(
+                IFRAME_DEFAULT_HEIGHT_PX + 2, zoom)
 
         # ...
 
@@ -961,13 +957,18 @@ class IframeLayout:
 ```
 
 As for painting, iframes by default have a border around their content when
-painted. They also clip the iframe painted content to the bounds of the 
-`<iframe>` element.
+painted.^[Which, again, is why I added 2 to the width and height. This book
+doesn't go into the details of the [CSS box model][box-model], but the `width`
+and `height` attributes of an iframe refer to the *content box*, and adding 2
+yields the *border box*.] They also clip the iframe painted content to the
+bounds of the `<iframe>` element.
+
+[box-model]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Box_Model/Introduction_to_the_CSS_box_model
 
 ``` {.python expected=false}
 class IframeLayout:
     # ...
-    def paint(self, display_list):
+    def paint(self, displ\ay_list):
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
@@ -1537,7 +1538,7 @@ Try it out on [this demo](examples/example15-iframe.html). You should see
 Message-passing between event loops is by no means a JavaScript invention. Other
 languages, going back to [SmallTalk][smalltalk] or even earlier, have used this
 model of computing for many years. And more recently, even systems languages
-like[Rust][rust] have message-passing as a core language feature.
+like [Rust][rust] have message-passing as a core language feature.
 :::
 
 [smalltalk]: https://en.wikipedia.org/wiki/Smalltalk
@@ -1547,8 +1548,9 @@ Iframe input events
 ===================
 
 Scripts and events now function properly in iframes, but user input does not.
-It's not (yet) possible to click on a element in an iframe, rotate through
-its focusable elements, scroll it, or generate an accessibility tree.
+It's not (yet) possible to click on a element in an iframe in our toy browser,
+rotate through its focusable elements, scroll it, or generate an accessibility
+tree.
 
 Let's fix that. First, as usual, delegate click logic from `Tab` to the root
 `Frame`. (I haven't shown the `click` method on `Frame` because it's otherwise
@@ -1617,7 +1619,7 @@ class Tab:
 ```
 
 Now for scrolling. This will require moving scrolling onto `Frame` instead of
-`Browser` or `Tab`. TODO: explain nuances
+`Browser` or `Tab`.
 
 ``` {.python}
 class Frame:
@@ -1904,7 +1906,7 @@ iframes. Reiterating the main points:
   the ability to embed other iframes, they add quite a lot of complexity to a
   browser implementation. However, this complexity is justified, because they
   enable many important cross-origin use cases, such as ads, video, and social
-  media references, to be safely added to web sites.
+  media references, to be safely added to websites.
 
 * On the whole, images, canvases,^[Try the exercise about the `<canvas>` element
   to see for yourself! Video was not really covered at all in this chapter;
@@ -1974,7 +1976,7 @@ Implement an optimization in your browser that only loads images that are
 within a certain number of pixels of the being visible on the
 screen.^[Real browsers have special [APIs][lli] and optimizations for this
 purpose; they don't actually lazy-load images by default, because otherwise
-some web sites would break or look ugly. In the early days of the web,
+some websites would break or look ugly. In the early days of the web,
 computer networks were slow enough that browsers had a user setting to
 disable downloading of images until the user expressly asked for them.]
 
@@ -2023,3 +2025,8 @@ they don't plan on navigating.]
  the elements in a single frame. But this is bad for accessibility, because
  it doesn't allow a user of the keyboard to obtain access to focusable elements
  in other frames.
+
+*Iframes under transforms*: painting an iframe that has a CSS `transform` on it
+or an ancestor should already work, but event targeting for clicks doesn't work,
+because `click` doesn't account for that transform. Fix this. Also check if
+accessibility handles iframes under transform correctly in all cases.

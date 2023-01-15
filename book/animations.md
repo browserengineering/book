@@ -71,7 +71,7 @@ each frame.
 is exactly 1, so real-world websites often start and end animations at
 0.999 so that each frame is drawn the same way and the animation is
 smooth. Starting and ending animations at 0.999 is also a common trick
-used on web sites that want to avoid visual popping of the content as
+used on websites that want to avoid visual popping of the content as
 it goes in and out of GPU-accelerated mode. I chose 0.999 because the
 visual difference from 1.0 is imperceptible.
 
