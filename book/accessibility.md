@@ -2365,7 +2365,7 @@ Summary
 =======
 
 This chapter introduces accessibility---features to ensure *all* users can
-access and interact with web sites---then shows how to solve several of
+access and interact with websites---then shows how to solve several of
 the most common accessibility problems in browsers. The key takeaways are:
 
 * Built-in accessibility is possible because of the semantic and declarative
