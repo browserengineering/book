@@ -687,7 +687,7 @@ class IframeLayout:
         else:
             self.x = self.parent.x
 
-        self.node.frame.layout(zoom, self.width, self.height)
+        self.node.frame.layout(zoom, self.width - 2, self.height - 2)
 
     def paint(self, display_list):
         cmds = []
@@ -704,7 +704,7 @@ class IframeLayout:
 
         self.node.frame.paint(cmds)
 
-        cmds = [Transform((self.x, self.y), rect, self.node, cmds)]
+        cmds = [Transform((self.x + 1, self.y + 1), rect, self.node, cmds)]
 
         paint_outline(self.node, cmds, rect)
 

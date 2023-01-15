@@ -957,7 +957,8 @@ class IframeLayout:
 ```
 
 As for painting, iframes by default have a border around their content when
-painted.^[Which, again, is why I added 2 to the width and height. This book
+painted.^[Which, again, is why I added 2 to the width and height. It's
+also why I added 1 to the `Transform`  in `paint`. This book
 doesn't go into the details of the [CSS box model][box-model], but the `width`
 and `height` attributes of an iframe refer to the *content box*, and adding 2
 yields the *border box*.] They also clip the iframe painted content to the
@@ -983,7 +984,7 @@ class IframeLayout:
 
         self.node.document.paint(cmds)
 
-        cmds = [Transform((self.x, self.y), rect, self.node, cmds)]
+        cmds = [Transform((self.x + 1 , self.y + 1), rect, self.node, cmds)]
 
         paint_outline(self.node, cmds, rect)
 
@@ -1657,7 +1658,7 @@ And in `IframeLayout`, the height of the `<iframe>` element:
 class IframeLayout:
     def layout(self, zoom):
         # ...
-        self.node.frame.layout(zoom, self.width, self.height)
+        self.node.frame.layout(zoom, self.width - 2, self.height - 2)
 ```
 
 We'll use this to do clamping based on this height:
