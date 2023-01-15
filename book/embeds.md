@@ -934,7 +934,7 @@ unchanged parts from images. (Note however that there is no code regarding
 aspect ratio, because iframes don't have an intrinsic size.) And at the end,
 recurse into the layout method of the child frame.
 
-``` {.python replace=%2C%20self.width/%2C%20self.width%2C%20self.height}
+``` {.python replace=%2C%20self.width%20-%202/%2C%20self.width%20-%202%2C%20self.height%20-%202}
 class IframeLayout:
     # ...
     def layout(self, zoom):
@@ -953,7 +953,7 @@ class IframeLayout:
 
         # ...
 
-        self.node.frame.layout(zoom, self.width)
+        self.node.frame.layout(zoom, self.width - 2)
 ```
 
 As for painting, iframes by default have a border around their content when
