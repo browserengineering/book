@@ -714,10 +714,10 @@ own, entirely different, rendering and execution system, which leads to more
 code and memory use, and worse performance coordination with the web page that
 embeds it.
 
-The `<iframe>` tag is a lot like the `<img>` tag: it has the `src` attribute and
-`width` and `height` attributes. And an iframe is almost exactly the same as a
-`Tab` within a `Tab`---it has its own HTML document, CSS, and scripts. There
-are three significant differences though:
+The `<iframe>` tag's layout is a lot like the `<img>` tag: it has the `src`
+attribute and `width` and `height` attributes. And an iframe is almost exactly
+the same as a `Tab` within a `Tab`---it has its own HTML document, CSS, and
+scripts. There are three significant differences though:
 
 * *Iframes have no browser chrome*. So any page navigation has to happen from
    within the page (either through an `<a>` element or script), or as a side
@@ -749,9 +749,9 @@ rendering event loop as a result.
 [cant-access]: https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy#cross-origin_script_api_access
 
 Since iframes are HTML documents, they can contain iframes. So in general each
-`Tab` has a tree of HTML documents---*frames*---nested within each other. Each
-node in this tree will be an object from a new `Frame` class. We'll use one
-rendering event loop for all `Frame`s.
+`Tab` has a tree of objects---*frames*---containing HTML documents nested
+within each other. Each node in this tree will be an object from a new `Frame`
+class. We'll use one rendering event loop for all `Frame`s.
 
 In terms of code, basically, we'll want to refactor `Tab` so that it's a
 container for a new `Frame` class. The `Frame` will implement the rendering
@@ -799,14 +799,14 @@ as do various event handlers, here's `click` for example:
         self.root_frame.click(x, y)
 ```
 
-The `Frame` class has all of the rest of loading and event handling
-that used to be in `Tab`. I won't go into those details except the part where
-a `Frame` can load subframes via the `<iframe>` tag. In the code below, we
+The `Frame` class has all of the rest of loading and event handling that used to
+be in `Tab`. I won't go into those details right now,  except the part where a
+`Frame` can load subframes via the `<iframe>` tag. In the code below, we
 collect all of the `<iframe>` elements in the DOM in just the same way as we
-did for `<img>`, but instead of loading the one resource and caching it,
-we create a new `Frame` object, store it on the iframe element, and call
-`load` recursively. Note that all the code in the "..." below is the same
-as what used to be on `Tab`'s `load` method.
+did for `<img>`, but instead of loading the one resource and caching it, we
+create a new `Frame` object, store it on the iframe element, and call `load`
+recursively. Note that all the code in the "..." below is the same as what used
+to be on `Tab`'s `load` method.
 
 
 ``` {.python}
@@ -984,7 +984,8 @@ class IframeLayout:
 
         self.node.document.paint(cmds)
 
-        cmds = [Transform((self.x + 1 , self.y + 1), rect, self.node, cmds)]
+        cmds = [Transform(
+            (self.x + 1 , self.y + 1), rect, self.node, cmds)]
 
         paint_outline(self.node, cmds, rect)
 
@@ -1021,13 +1022,13 @@ its own `JSContext`, and by association its own DukPy interpreter. That's what
 
 [global-object]: https://developer.mozilla.org/en-US/docs/Glossary/Global_object
 
-But that only works if we consider every frame *cross-origin* from all of the
-others. Two frames that have the same origin each get a global namespace for
-their scripts, but they can access each other's frames through, for example,
-the [`parent` attribute][window-parent] on their `Window`.^[There are various
-other APIs; see the related exercise.] For example, JavaScript in a same-origin
-child frame can access the `document` object for the DOM of its parent frame
-like this:
+But that only works if we consider every frame *cross-origin* to all of the
+others. That's not right, becuase two frames that have the same origin each get
+a global namespace for their scripts, but they can access each other's frames
+through, for example, the [`parent` attribute][window-parent] on their
+`Window`.^[There are various other APIs; see the related exercise.] For
+example, JavaScript in a same-origin child frame can access the `document`
+object for the DOM of its parent frame like this:
 
     console.log(window.parent.document)
 
@@ -1039,11 +1040,11 @@ the feature of
 
 Instead of switching to whole new JavaScript runtime, I'll just approximate the
 feature with two tricks: overwriting the `window` object and the `with`
-operator. The `with` operator is pretty obscure, but what it does is
-evaluate the content of a block by looking up objects on the given 
-object.^[It's important to reiterate that this is a hack and doesn't actually
-do things correctly, but it suffices for our toy browser.]
-This example:
+operator. The `with` operator is pretty obscure, but what it does is evaluate
+the content of a block by looking up objects on the given object first, and
+only after falling back to the global scope.^[It's important to reiterate that
+this is a hack and doesn't actually do things correctly, but it suffices for
+our toy browser.] This example:
 
     var win = {}
     win.foo = 'bar'
@@ -1113,9 +1114,9 @@ class JSContext:
 
 And then initializing the `JSContext` for the root. Here we need to evaluate
 definition of the `Window` class separately from `runtime.js`, because
-`runtime.js` needs to be passed to `wrap_in_window`. And `wrap_in_window`
-needs `Window` defined exactly once, not each time it's called. The `Window`
-constructor stores its id, which will be useful later.
+`runtime.js` ifself needs to be evaluated by `wrap_in_window`. And
+`wrap_in_window` needs `Window` defined exactly once, not each time it's
+called. The `Window` constructor stores its id, which will be useful later.
 
 ``` {.python replace=%20or%20/%20or%20CROSS_ORIGIN_IFRAMES%20or%20}
     def load(self, url, body=None):
@@ -1169,8 +1170,9 @@ class Frame:
 There are proposals to add the concept of different global namespaces natively
 to the JavaScript language. One current proposal is the
 [ShadowRealm API](https://github.com/tc39/proposal-shadowrealm). This
-API would allow obtaining similar code modularity benefits that you get from
-putting a script in an iframe, without the use of an iframe.
+API would have helped me implement this chapter, but it's aimed at various
+use cases where code modularity or isolation (e.g. for injected testing code)
+is desired.
 :::
 
 Iframe script APIs
@@ -1281,7 +1283,7 @@ window.document = { querySelectorAll: function(s) {
 }}
 ```
 
-Next let's do callback-based APIs, starting with `requestAnimationFrame`.
+Next let's implement callback-based APIs, starting with `requestAnimationFrame`.
 On the JavaScript side, the only change needed is to store `RAF_LISTENERS`
 on the `window` object instead of the global scope, so that each
 window gets its own separate listeners.
@@ -1319,7 +1321,8 @@ class Tab:
                 wrap_in_window("__runRAFHandlers()", window_id))
 ```
 
-Event listeners are similar. Registering one is now stored on the window:
+Event listeners are similar. Registering one is now stores a reference on the
+window:
 
 ``` {.javascript}
 window.LISTENERS = {}
@@ -1401,7 +1404,7 @@ Iframe message passing
 ======================
 
 Cross-origin iframes can't access each others' variables, but that doesn't
-mean they can't communicate. Instead they communicate via
+mean they can't communicate. Instead of direct access, they use
 [*message passing*][message-passing], a technique for structured communication
 between two different event loops that doesn't require any shared variable
 state or locks.
@@ -1420,12 +1423,15 @@ origin restrictions, see the accompanying exercise.] Calling:
 
 will broadcast "message contents" to the parent frame. A frame can listen to
 the message by adding an event listener on its `Window` object for the
-"message" event. Note that in this case `window` is *not* the same object! It's
- the `Window` object for some other frame.
+"message" event.
 
     window.addEventListener("message", function(e) {
         console.log(e.data);
     });
+
+
+Note that in this case `window` is *not* the same object! It's the `Window`
+object for some other frame (e.g. the parent frame in the example above).
 
 In a real browser, you can also pass data that is not a string, such as numbers
 and objects. It works via a *serialization* algorithm called
@@ -1508,8 +1514,8 @@ class JSContext:
         self.tab.task_runner.schedule_task(task)
 ```
 
-Which then runs this code, that loops over all other frames and dispatches
-an event:
+Which then runs this code, which finds the frame for the given window id and
+dispatches an event on it:
 
 ``` {.python}
 class Tab:
@@ -1553,18 +1559,7 @@ It's not (yet) possible to click on a element in an iframe in our toy browser,
 rotate through its focusable elements, scroll it, or generate an accessibility
 tree.
 
-Let's fix that. First, as usual, delegate click logic from `Tab` to the root
-`Frame`. (I haven't shown the `click` method on `Frame` because it's otherwise
-the same as what used to beg on `Tab.`)
-
-``` {.python}
-class Tab:
-    def click(self, x, y):
-        self.render()
-        self.root_frame.click(x, y)
-```
-
-Clicking requires checking for an `<iframe>` element:
+Let's fix that. Clicking requires checking for an `<iframe>` element:
 
 ``` {.python}
 class Frame:
@@ -1607,8 +1602,8 @@ class Frame:
         self.tab.set_needs_render()
 ```
 
-Advancing a tab will use the focused frame (and move the rest of the business
-logic for `advance_tab` to `Frame`:
+Advancing a tab will use the focused frame (and you should move the rest of the
+business logic for `advance_tab` to `Frame`):
 
 ``` {.python}
 class Tab:
@@ -1722,6 +1717,7 @@ class Browser:
 ```
 
 And now we can use this parameter to keep browser scrolling for the root frame.
+The part in "..." is what used to be in `handle_down`.
 
 ``` {.python}
 class Browser:
@@ -1772,6 +1768,9 @@ class AccessibilityNode:
         # ... 
 ```
 
+See how easy it is to add accessibility for iframes? That's a great reason
+not to use a plugin.
+
 ::: {.further}
 While our toy browser only has threaded scrolling of the root frame, a real
 browser should aim to make scrolling threaded (and composited) for all
@@ -1796,10 +1795,10 @@ effects.
 Iframe security
 ===============
 
-I've already discussed security in Chapter 10, but iframes cause new classes
-of security problem that are worth briefly covering here. However, there
-isn't anything new to implement in our browser for this section, so consider
-it optional reading.
+I've already discussed security in Chapter 10, but iframes cause new classes of
+serious security problem that are worth briefly covering here. However, there
+isn't anything new to implement in our browser for this section, so consider it
+optional reading.
 
 Iframes are very powerful, because they allow a web page to embed another one.
 But with that power comes a commensurate security risk in cases where the
@@ -1853,11 +1852,12 @@ But that's not the only protection needed. It's also important to
  measure duration of execution of code very accurately.] from the platform. So
  browsers did things like reducing the accuracy of APIs like `Date.now` or
  `setTimeout`. But there are some browser APIs that don't seem like timers yet
- still are, such as [SharedArrayBuffer].^[Check out[this explanation]
- [sab-attack] if you want to learn more.] Since this API is still useful, and
- there is no good way to make it "less accurate", browsers now require
- [certain optional HTTP headers][sab-headers] to be present on the parent *and*
- child frames' HTTP responses in order to allow use of `SharedArrayBuffer`.
+ still are, such as [SharedArrayBuffer].^[Check out
+ [this explanation][sab-attack] if you want to learn more.] Since this API
+ is still useful, and there is no good way to make it "less accurate", browsers
+ now require [certain optional HTTP headers][sab-headers] to be present on the
+ parent *and* child frames' HTTP responses in order to allow use of
+ `SharedArrayBuffer`.
 
 [SharedArrayBuffer]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer
 
@@ -1890,14 +1890,15 @@ Summary
 This chapter introduced embedded content, via the examples of images and
 iframes. Reiterating the main points:
 
-* Embedded content is a way to allow "non-HTML" content---images, video, canvas,
-  iframes, input elements or plugins---to be added to a web page.
+* Embedded content is a way to allow (potentially non-HTML) content---images,
+  video, canvas, iframes, input elements or plugins---to be added to a web
+  page.
 
 * Images are relatively easy to add as long as you have a good decoding library
   at hand, but need some care for layout and decoding optimizations.
 
 * Over time, plugins that are not PDF viewers, images or video have been
-  replaced with the more general-purpose *iframe* element, which over time has
+  replaced with the more general-purpose *iframe* element, which has evolved
   become just as powerful as any plugin, and benefits from all the hard-won
   attributes of a browser such as its rendering pipeline, accessibility, and
   open standards.
@@ -1963,7 +1964,7 @@ element.
 [obj-fit]: https://developer.mozilla.org/en-US/docs/Web/CSS/object-fit
 
 *Lazy decoding*: Decoding images can take time and use up a lot of memory.
-But some images, especially ones that are "below the fold"[^btf]---meaning they
+But some images, especially ones that are "below the fold"[^btf]---they
 are further down in a web page and not visible and only exposed after some
 scrolling by the user. Implement an optimization in your browser that only
 decodes images that are visible on the screen.
@@ -2000,7 +2001,9 @@ to fit the icon.
 *Same-origin frame tree*: same-origin iframes can access each others' variables
  and DOM, even if they are not adjacent in the frame tree. Implement this.
 
-*Iframe media queries*. Implement.
+*Iframe media queries*. Implement the [width][width-mq] media query.
+
+[width-mq]: https://developer.mozilla.org/en-US/docs/Web/CSS/@media/width
 
 *Iframe aspect ratio*. Implement the [`aspect-ratio`][aspect-ratio] CSS
 property and use it to provide an implicit sizing to iframes and images
@@ -2023,9 +2026,10 @@ iframes, as it causes a lot of confusion for web developers who embed iframes
 they don't plan on navigating.]
 
 *Multi-frame focus*: in our toy browser, pressing `tab` repeatedly goes through
- the elements in a single frame. But this is bad for accessibility, because
- it doesn't allow a user of the keyboard to obtain access to focusable elements
- in other frames.
+the elements in a single frame. But this is bad for accessibility, because it
+doesn't allow a user of the keyboard to obtain access to focusable elements in
+other frames. Fix it to move between frames after iterating through all
+focusable elements in one frame.
 
 *Iframes under transforms*: painting an iframe that has a CSS `transform` on it
 or an ancestor should already work, but event targeting for clicks doesn't work,

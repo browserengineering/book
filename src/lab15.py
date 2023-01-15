@@ -704,7 +704,8 @@ class IframeLayout:
 
         self.node.frame.paint(cmds)
 
-        cmds = [Transform((self.x + 1, self.y + 1), rect, self.node, cmds)]
+        cmds = [Transform(
+            (self.x + 1, self.y + 1), rect, self.node, cmds)]
 
         paint_outline(self.node, cmds, rect)
 
