@@ -529,7 +529,7 @@ class BlockLayout:
             self.width = display_px(self.parent.width, self.zoom)
             self.dirty_children = True
             for child in self.children:
-                self.dirty_width = True
+                child.dirty_width = True
             self.dirty_width = False
 ```
 
@@ -748,7 +748,7 @@ class BlockLayout:
         # ...
         if self.dirty_height:
             # ...
-            self.next.dirty_y = True
+            if self.next: self.next.dirty_y = True
 ```
 
 Since we need to access the next sibling, we will also need to save
@@ -777,6 +777,9 @@ position of a node is recomputed, we set all its children's `dirty_y`
 flags, even though only the first child will actually read the new `y`
 position.
 
+Skipping no-op updates
+======================
+
 Being overly strict is preferable to trying to write overly clever
 code that is then incorrect. It is sometimes important to use careful
 logic to set fewer dirty bits, so that less invalidation has to happen
@@ -789,6 +792,38 @@ logic is extremely brittle as the code changes. Typically it's best to
 keep "clever" flag setting logic to a minimum, justifying each
 departure from setting all the flags with detailed profiling.
 
+But one optimization is pretty straightforward and can lead to big
+wins. Right now, when we set a field like `width`, we immediately set
+dirty flags for all fields that depend on it. This is the right thing
+to do, but it's a big of a waste if we set the `width` to its previous
+value. Recomputing a field and getting the same value as before is
+quite common, especially for the `height` field, where it's common to
+add or remove text from a single line without changing the height of
+the line.
+
+We can skip setting dirty flags in this case: merely compute the new
+height and compare it to the old value before setting dirty flags:
+
+``` {.python}
+class BlockLayout:
+    def layout(self):
+        if self.dirty_height:
+            for child in self.children:
+                assert not child.dirty_height
+            new_height = sum([child.height for child in self.children])
+            if self.height != new_height:
+                self.height = new_height
+                self.parent.dirty_height = True
+                if self.next: self.next.dirty_y = True
+            self.dirty_height = False
+```
+
+The value of this optimization isn't that it avoids setting one or two
+dirty flags---it's that it also avoids setting the dirty flags that
+would be set by those dirty flags, and so on. For `height`, which ends
+up influencing the `height` of every later layout object, this is
+especially important, though it's worth adding this optimization for
+every layout field.
 
 Avoid redundant recursion
 =========================
@@ -827,6 +862,77 @@ calling its parent's `layout` method, and so on. We can apply
 invalidation to control dependencies just like we do to data
 dependencies.
 
+So---in what cases do we need to make sure we call a particular
+`layout` method? Well, the `layout` method does three things: create
+layout objects, modify their layout properties, and recurse into more
+calls to `layout`. If a layout object's dirty flags are all unset, the
+`layout` object won't create layout objects or modify layout
+properties, and if that's true for all its descendants as well, their
+calls to `layout` won't do anything either and recursing won't matter.
+So we should be able to skip the recursive `layout` calls.
 
-Skipping no-op updates
+To track this property, let's add a new `dirty_descendants` field to
+each `BlockLayout`:
+
+``` {.python}
+class BlockLayout:
+    def __init__(self, node, parent, previous):
+        # ...
+        self.dirty_descendants = True
+```
+
+We'll want this flag to be set if any other dirty flag is set. So, any
+time a dirty flag is set, we'll want to set the `dirty_descendants`
+flag on all ancestors:
+
+``` {.python}
+class BlockLayout:
+    def mark_dirty(self)
+        if isinstance(self.parent, BlockLayout) and \
+            not self.parent.dirty_descendants:
+            self.parent.dirty_descendants = True
+            self.parent.mark_dirty()
+```
+
+Now we'll call this any time we set a dirty flag. The best way to make
+this change in your code is to search it for `dirty_.* = True`, but
+here's the full list of layout objects that need to be marked dirty in
+my browser:
+
+ - In the `innerHTML_set` method in `JSContext`, the `elt.layout_object`
+ - In the `style` function if `node.style != old_style`, the `node.layout_object`
+ - In the `layout` method if `dirty_zoom`, `self`
+ - In the `layout` method if `dirty_width`, `child` for each child
+ - In the `layout` method if `dirty_x`, `child` for each child
+ - In the `layout` method if `dirty_y`, `child` for each child and
+   also `self.next` if it exists
+ - In the `layout` method if `dirty_height`, `self.parent` and also
+   `self.next` if it exists
+
+It's important to call `mark_dirty` any time a dirty flag is set,
+because that's the only way to guarantee that if it is _not_ set, all
+of the element's descendants are clean and we can skip the recursive
+call.
+
+Finally, we can make use of the flag around the recursive `layout`
+call:
+
+``` {.python}
+class BlockLayout:
+    def layout(self):
+        # ... 
+        if self.dirty_descendants:
+            for child in self.children:
+                child.layout()
+        # ... 
+```
+
+With this change, your browser should now be skipping traversals of
+most of the tree for most updates, but still doing whatever
+recomputations are necessary.
+
+Relative *y* positions
 ======================
+
+There's still one case, however, where the browser has to traverse the
+whole layout tree to update layout computations.
