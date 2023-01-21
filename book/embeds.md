@@ -600,7 +600,7 @@ the current image formats can't provide, you're stuck.
 
 Well, one way to allow "customized" images is by providing an API to draw
 arbitrary pixels to a rectangle on the screen. That approach is supported via
-the[`<canvas>`][canvas-elt] element, which is an element that has all the same
+the [`<canvas>`][canvas-elt] element, which has all the same
 layout features as an image,^[Except that canvases have no intrinsic sizing, so
 the `width` & `height` attributes, or their CSS equivalents, are necessary to
 size the canvas.] plus an API that allows the developer to draw to it with an
@@ -645,26 +645,21 @@ web over the years. Some provided a programming language and mechanism for
 interactive UI, such as [Java applets][java-applets] or [Flash].^[YouTube
 originally used Flash for videos.] Others
 provided a way to embed other content types into a web page, such as
-[PDF]. These days, PDF rendering is pretty much the only plugin-style embedded
-content type, and is referenced with the `<object>` or `<embed>` tag.^[You
-might ask: why is it the only one left? The short answer is that the web is
-already a fully functional UI system that should be general enough for any UI
-(and if it isn't, the web should be extended to support it). So why have the
-all the complications (security issues, compatibility, bugs, etc) of
-yet another UI system that duplicates HTML? (Another reason is that plugins
-tend to be proprietary. Note that PDF, originally developed as a proprietary
-format, is [now an open standard][pdf-standard].)]
+[PDF]. But plugins suffer from a lot of the same accessibility and other
+"platform integration" drawbacks of `<canvas>`, and also have to provide
+ duplicate solutions to all of the UI rendering problems we've already solved
+ for browsers in the first place.
+
 
 [java-applets]: https://en.wikipedia.org/wiki/Java_applet
 [Flash]: https://en.wikipedia.org/wiki/Adobe_Flash
 [PDF]: https://developer.mozilla.org/en-US/docs/Learn/HTML/Multimedia_and_embedding/Other_embedding_technologies#the_embed_and_object_elements
-[pdf-standard]: https://en.wikipedia.org/wiki/PDF
 
-So the web has a second approach that retains all of those features: let the
-developer embed one web page inside another, via the `<iframe>` element. As
+So the web has a second approach that solves all of these problems at once: let
+the developer embed one web page inside another, via the `<iframe>` element. As
 you'll see, this approach neatly solves all of these problems---accessibility,
-etc come "for free". And as it turns out, iframes are a great way to include
-"untrusted" content.
+input, etc come "for free". And iframes are a great way to
+include third-party content content.
 
 [canvas-elt]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas
 
