@@ -357,6 +357,7 @@ before such things were mediated by a standards organization.
 :::
 
 [srcname]: http://1997.webhistory.org/www.lists/www-talk.1993q1/0196.html
+
 Image sizing
 ============
 
@@ -584,9 +585,85 @@ image quality. Yet another reason to do so is because raster happens on another
 thread, and so that way image decoding won't block the main thread.
 :::
 
-Other embedded content
-=====================
+Interactive widgets
+===================
 
+So far, our browser has two kinds of embedded content: images and input
+elements. Images are, well images, and as such are super important and
+ubiquitous. And input elements are the way to gather various kinds of
+information from the user and do something with it. But how do you customize
+them? After all, our browser has no way to do anything other than display a
+certain list of specified image formats, and browser-defined input elements.
+In our toy browser at least, if you don't like how those inputs are
+rendered you have no choice but to roll your own. And if you want something
+the current image formats can't provide, you're stuck.
+
+Well, one way to allow "customized" images is by providing an API to draw
+arbitrary pixels to a rectangle on the screen. That approach is supported via
+the [`<canvas>`][canvas-elt] element, which has all the same
+layout features as an image,^[Except that canvases have no intrinsic sizing, so
+the `width` & `height` attributes, or their CSS equivalents, are necessary to
+size the canvas.] plus an API that allows the developer to draw to it with an
+API very similar to Skia.^[This element is not too hard to implement in a basic
+form, so I've left it to an exercise.]
+
+And for input elements, there needs to be some way to customize the rendering
+of them while at the same time hooking up to all of the accessibility goodness
+of the browser. Interestingly enough, this problem has to date only partially
+been solved by real browsers, and is an
+ [active area of development](https://open-ui.org/).^[Some technologies
+ that help to get there *have* been developed, such as
+ [Shadow DOM][shadow-dom] and [form-associated custom elements][form-el].]
+
+[shadow-dom]: https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_shadow_DOM
+[form-el]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/attachInternals
+
+Canvas is a handy way to do a lot of things, but it comes with some pretty big
+downsides. In particular, any content drawn inside of a `<canvas>` gets none of
+the nice browser features such as accessibility, non-trivial^[It does have APIs
+for drawing text, but no line breaking or block layout.] layout, automatic
+rendering, or [navigation](chrome.md).
+
+And a custom-rendered input element is great for that use case, but what about
+more complex widgets like embedded maps, videos, social media buttons, ads and
+so on? Especially since such use cases often come from some third-party source,
+it would be weird to try to mix all the code for an embedded ad, video or map
+diretly into your web page (and weird for the company providing the widget to
+trust your site enough to do so). In these cases we need a technology
+that "embeds" an externally-rendered widget into a web page in a modularized
+and secure way, but *also* allows interactions that coordinate well with the
+embedding web page.
+
+There are two possible ways to achieve this:
+
+* External content that is "outside the web", meaning it's not HTML & CSS.
+
+* External content that is "inside the web".
+
+The first type is a *plugin*. There have been many attempts at plugins on the
+web over the years. Some provided a programming language and mechanism for
+interactive UI, such as [Java applets][java-applets] or [Flash].^[YouTube
+originally used Flash for videos.] Others
+provided a way to embed other content types into a web page, such as
+[PDF]. But plugins suffer from a lot of the same accessibility and other
+"platform integration" drawbacks of `<canvas>`, and also have to provide
+ duplicate solutions to all of the UI rendering problems we've already solved
+ for browsers in the first place.
+
+
+[java-applets]: https://en.wikipedia.org/wiki/Java_applet
+[Flash]: https://en.wikipedia.org/wiki/Adobe_Flash
+[PDF]: https://developer.mozilla.org/en-US/docs/Learn/HTML/Multimedia_and_embedding/Other_embedding_technologies#the_embed_and_object_elements
+
+So the web has a second approach that solves all of these problems at once: let
+the developer embed one web page inside another, via the `<iframe>` element. As
+you'll see, this approach neatly solves all of these problems---accessibility,
+input, etc come "for free". And iframes are a great way to
+include third-party content content.
+
+[canvas-elt]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas
+
+::: {.further}
 Images can also be animated.[^animated-gif] So if a website can load an image,
 and the image can be animated, then that image is something very close to
 a *video*. But in practice, videos need very advanced encoding and encoding
@@ -604,69 +681,6 @@ chapter.
 [drm]: https://en.wikipedia.org/wiki/Digital_rights_management
 [codec]: https://en.wikipedia.org/wiki/Video_codec
 
-But what if the web page author wants to display a UI that is more than just an
-image or a video? Well, one thing they can do is simply put text or other
-content next to the video in the DOM. But if the video is supplied by
-a *third-party*^[The embedding website is the *first party*, and the user is
-the *second party*.] such as YouTube, or some other external source, thethird
-party will want to control the UI of their videos, in such a way that other
-sites can't mess it up (or violate the privacy and security of user data). It'd
-be nice to be able to reserve a portion of the layout for this content, and
-delegate rendering of that content to the external provider, in such a way that
-the provider can customize their UI and the web page author need not worry
-about the details.
-
-There are two possible ways to achieve this:
-
-* External content that is "outside the web", meaning it's not HTML & CSS.
-
-* External content that is "inside the web".
-
-The first type is a *plugin*. There have been many attempts at plugins on the
-web over the years. Some provided a programming language and mechanism for
-interactive UI, such as [Java applets][java-applets] or [Flash].^[YouTube
-originally used Flash for videos.] Others
-provided a way to embed other content types into a web page, such as
-[PDF]. These days, PDF rendering is pretty much the only plugin-style embedded
-content type, and is referenced with the `<object>` or `<embed>` tag.^[You
-might ask: why is it the only one left? The short answer is that the web is
-already a fully functional UI system that should be general enough for any UI
-(and if it isn't, the web should be extended to support it). So why have the
-all the complications (security issues, compatibility, bugs, etc) of
-yet another UI system that duplicates HTML? (Another reason is that plugins
-tend to be proprietary. Note that PDF, originally developed as a proprietary
-format, is [now an open standard][pdf-standard].)]
-
-[java-applets]: https://en.wikipedia.org/wiki/Java_applet
-[Flash]: https://en.wikipedia.org/wiki/Adobe_Flash
-[PDF]: https://developer.mozilla.org/en-US/docs/Learn/HTML/Multimedia_and_embedding/Other_embedding_technologies#the_embed_and_object_elements
-[pdf-standard]: https://en.wikipedia.org/wiki/PDF
-
-But what about the other option: "inside the web" external content? One approach
-for that is to provide a way for JavaScript to dynamically draw its own
-content within an image. That approach is supported via the
-[`<canvas>`][canvas-elt] element, which is an element that has all the same
-layout features as an image,^[Except that canvases have no intrinsic sizing, so 
-the `width` & `height` attributes, or their CSS equivalents, are necessary to
-size the canvas.] plus an API that allows the developer to draw to it with
-an API very similar to Skia.^[This element is not too hard to implement in a
-basic form, so I've left it to an exercise.]
-
-Canvas is a handy way to do a lot of things, but it comes with some pretty big
-downsides. In particular, any content drawn inside of a `<canvas>` gets none of
-the nice browser features such as accessibility, non-trivial^[It does have APIs
-for drawing text, but no line breaking or block layout.] layout, automatic
-rendering, or [navigation](chrome.md).
-
-So the web has a second approach that retains all of those features: let the
-developer embed one web page inside another, via the `<iframe>` element. As
-you'll see, this approach neatly solves all of these problems---accessibility,
-etc come "for free". And as it turns out, iframes are a great way to include
-"untrusted" content.
-
-[canvas-elt]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas
-
-::: {.further}
 Perhaps the most common use case for embedded content other than images and
 video is ads. Inline ads on web pages have been around since the beginning
 of the web, and are often (for good reasons or bad depending on your
@@ -1008,6 +1022,247 @@ obsolete.
 :::
 
 [frameset]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/frameset
+
+Iframe input events
+===================
+
+Rendering now functions properly in iframes, but user input does not.
+It's not (yet) possible to click on a element in an iframe in our toy browser,
+rotate through its focusable elements, scroll it, or generate an accessibility
+tree.
+
+Let's fix that. Clicking requires checking for an `<iframe>` element:
+
+``` {.python}
+class Frame:
+    def click(self, x, y):
+        # ...
+        while elt:
+            # ...
+            elif elt.tag == "iframe":
+                obj = elt.layout_object
+                elt.frame.click(x - obj.x, y - obj.y)
+                return
+```
+
+And now that clicking works, clicking on `<a>` elements will work. Which means
+that you can now cause a frame to navigate to a new page. And because a
+`Frame` has all the loading and navigation logic that `Tab` used to have, it
+just works without any more changes! That's satisfying.
+
+Focusing an element now also needs to store the frame the focused element is
+on (the `focus` value will still be stored on the `Tab`, not the `Frame`:
+
+``` {.python}
+class Tab:
+    def __init__(self, browser):
+        self.focus = None
+        self.focused_frame = None
+```
+
+``` {.python}
+class Frame:
+    def focus_element(self, node):
+        if node and node != self.tab.focus:
+            self.needs_focus_scroll = True
+        if self.tab.focus:
+            self.tab.focus.is_focused = False
+        self.tab.focus = node
+        self.tab.focused_frame = self
+        if node:
+            node.is_focused = True
+        self.tab.set_needs_render()
+```
+
+Advancing a tab will use the focused frame (and you should move the rest of the
+business logic for `advance_tab` to `Frame`):
+
+``` {.python}
+class Tab:
+    def advance_tab(self):
+        frame = self.focused_frame
+        if not frame:
+            frame = self.root_frame
+        frame.advance_tab()
+```
+
+Now for scrolling. This will require moving scrolling onto `Frame` instead of
+`Browser` or `Tab`.
+
+``` {.python}
+class Frame:
+    def __init__(self, tab, parent_frame, frame_element):
+        self.scroll = 0
+```
+
+Clamping will now happen differently, because non-root frames have a height
+that is not defined by the size of the browser window, but rather their
+containing `<iframe>` element. To handle this let's add a parameter to `layout`
+indicating this height, and record it in `frame_height`:
+
+``` {.python}
+class Frame:
+    def __init__(self, tab, parent_frame, frame_element):
+        self.frame_height = 0
+    # ...
+    def layout(self, zoom, width, height):
+        self.frame_height = height
+```
+
+The root frame will have a browser window-based height:
+
+``` {.python}
+class Tab:
+    def render(self):
+        # ...
+            self.root_frame.layout(
+                self.zoom, WIDTH, HEIGHT - CHROME_PX)
+```
+
+And in `IframeLayout`, the height of the `<iframe>` element:
+
+``` {.python}
+class IframeLayout:
+    def layout(self, zoom):
+        # ...
+        self.node.frame.layout(zoom, self.width - 2, self.height - 2)
+```
+
+We'll use this to do clamping based on this height:
+
+``` {.python}
+class Frame:
+    def clamp_scroll(self, scroll):
+        return max(0, min(
+            scroll,
+            math.ceil(
+                self.document.height) - self.frame_height))
+```
+
+Now change all call sites of `clamp_scroll` to use the method rather than the
+global function:
+
+``` {.python}
+class Frame:
+    def scroll_to(self, elt):
+        # ...
+        self.scroll = self.clamp_scroll(new_scroll)
+```
+
+``` {.python}
+class Frame:
+    def layout(self, zoom, width, height):
+        # ...
+        clamped_scroll = self.clamp_scroll(self.scroll)
+        if clamped_scroll != self.scroll:
+            self.scroll_changed_in_frame = True
+```
+
+Our browser supports browser-thread scrolling, but only for the root frame.
+To handle both cases, we'll need a new commit parameter:
+
+``` {.python}
+class CommitData:
+    def __init__(self, url, scroll, root_frame_focused, height,
+        display_list, composited_updates, accessibility_tree, focus):
+        # ...
+        self.root_frame_focused = root_frame_focused
+```
+
+``` {.python}
+class Tab:
+    def run_animation_frame(self, scroll):
+        commit_data = CommitData(
+            # ...
+            root_frame_focused=not self.focused_frame or \
+                (self.focused_frame == self.root_frame),
+            # ...
+        )
+```
+
+``` {.python}
+class Browser:
+    def commit(self, tab, data):
+        # ...
+            self.root_frame_focused = data.root_frame_focused
+
+```
+
+And now we can use this parameter to keep browser scrolling for the root frame.
+The part in "..." is what used to be in `handle_down`.
+
+``` {.python}
+class Browser:
+    def handle_down(self):
+        self.lock.acquire(blocking=True)
+        if self.root_frame_focused:
+            # ...
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.scrolldown)
+        active_tab.task_runner.schedule_task(task)
+        self.lock.release()        
+```
+
+``` {.python}
+class Tab:
+    def scrolldown(self):
+        frame = self.focused_frame
+        if not frame: frame = self.root_frame
+        frame.scrolldown()
+        self.set_needs_paint()
+```
+
+``` {.python}
+class Frame:
+    def scrolldown(self):
+        self.scroll = self.clamp_scroll(self.scroll + SCROLL_STEP)
+```
+
+Accessibility trees for iframes are also relatively simple to get the basics
+working. There will be only one tree for all frames, and so we just need
+a role for iframes:
+
+``` {.python}
+class AccessibilityNode:
+    def __init__(self, node):
+            elif node.tag == "iframe":
+                self.role = "iframe"
+```
+
+And to recurse into them in `build`:
+
+``` {.python}
+class AccessibilityNode:
+   def build(self):
+        if isinstance(self.node, Element) \
+            and self.node.tag == "iframe":
+            self.build_internal(self.node.frame.nodes)
+        # ... 
+```
+
+See how easy it is to add accessibility for iframes? That's a great reason
+not to use a plugin.
+
+::: {.further}
+While our toy browser only has threaded scrolling of the root frame, a real
+browser should aim to make scrolling threaded (and composited) for all
+the other frames, and via all the ways you can scroll---keyboard, touch,
+mouse wheel, scrollbars of different types, and so on.
+(And of course, due to the [`overflow`][overflow-css]
+CSS property, there can be any number of nested scrollers within each 
+other in a single frame.)
+
+Getting this right in all the corner cases
+is pretty hard, and it took each major browser quite a while to get it right.
+Only [in 2016][renderingng-scrolling], for example, was Chromium able to
+achieve it, and even then, there turned out be a very long tail of more or
+less obscure bugs to fix involving different combinations of complex
+containing blocks, stacking order, scrollbars, transforms and other visual
+effects.
+:::
+
+[overflow-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow
+[renderingng-scrolling]: https://developer.chrome.com/articles/renderingng/#threaded-scrolling-animations-and-decode
 
 Iframe scripts
 ==============
@@ -1551,246 +1806,6 @@ like [Rust][rust] have message-passing as a core language feature.
 [smalltalk]: https://en.wikipedia.org/wiki/Smalltalk
 [rust]: https://en.wikipedia.org/wiki/Rust_(programming_language)
 
-Iframe input events
-===================
-
-Scripts and events now function properly in iframes, but user input does not.
-It's not (yet) possible to click on a element in an iframe in our toy browser,
-rotate through its focusable elements, scroll it, or generate an accessibility
-tree.
-
-Let's fix that. Clicking requires checking for an `<iframe>` element:
-
-``` {.python}
-class Frame:
-    def click(self, x, y):
-        # ...
-        while elt:
-            # ...
-            elif elt.tag == "iframe":
-                obj = elt.layout_object
-                elt.frame.click(x - obj.x, y - obj.y)
-                return
-```
-
-And now that clicking works, clicking on `<a>` elements will work. Which means
-that you can now cause a frame to navigate to a new page. And because a
-`Frame` has all the loading and navigation logic that `Tab` used to have, it
-just works without any more changes! That's satisfying.
-
-Focusing an element now also needs to store the frame the focused element is
-on (the `focus` value will still be stored on the `Tab`, not the `Frame`:
-
-``` {.python}
-class Tab:
-    def __init__(self, browser):
-        self.focus = None
-        self.focused_frame = None
-```
-
-``` {.python}
-class Frame:
-    def focus_element(self, node):
-        if node and node != self.tab.focus:
-            self.needs_focus_scroll = True
-        if self.tab.focus:
-            self.tab.focus.is_focused = False
-        self.tab.focus = node
-        self.tab.focused_frame = self
-        if node:
-            node.is_focused = True
-        self.tab.set_needs_render()
-```
-
-Advancing a tab will use the focused frame (and you should move the rest of the
-business logic for `advance_tab` to `Frame`):
-
-``` {.python}
-class Tab:
-    def advance_tab(self):
-        frame = self.focused_frame
-        if not frame:
-            frame = self.root_frame
-        frame.advance_tab()
-```
-
-Now for scrolling. This will require moving scrolling onto `Frame` instead of
-`Browser` or `Tab`.
-
-``` {.python}
-class Frame:
-    def __init__(self, tab, parent_frame, frame_element):
-        self.scroll = 0
-```
-
-Clamping will now happen differently, because non-root frames have a height
-that is not defined by the size of the browser window, but rather their
-containing `<iframe>` element. To handle this let's add a parameter to `layout`
-indicating this height, and record it in `frame_height`:
-
-``` {.python}
-class Frame:
-    def __init__(self, tab, parent_frame, frame_element):
-        self.frame_height = 0
-    # ...
-    def layout(self, zoom, width, height):
-        self.frame_height = height
-```
-
-The root frame will have a browser window-based height:
-
-``` {.python}
-class Tab:
-    def render(self):
-        # ...
-            self.root_frame.layout(
-                self.zoom, WIDTH, HEIGHT - CHROME_PX)
-```
-
-And in `IframeLayout`, the height of the `<iframe>` element:
-
-``` {.python}
-class IframeLayout:
-    def layout(self, zoom):
-        # ...
-        self.node.frame.layout(zoom, self.width - 2, self.height - 2)
-```
-
-We'll use this to do clamping based on this height:
-
-``` {.python}
-class Frame:
-    def clamp_scroll(self, scroll):
-        return max(0, min(
-            scroll,
-            math.ceil(
-                self.document.height) - self.frame_height))
-```
-
-Now change all call sites of `clamp_scroll` to use the method rather than the
-global function:
-
-``` {.python}
-class Frame:
-    def scroll_to(self, elt):
-        # ...
-        self.scroll = self.clamp_scroll(new_scroll)
-```
-
-``` {.python}
-class Frame:
-    def layout(self, zoom, width, height):
-        # ...
-        clamped_scroll = self.clamp_scroll(self.scroll)
-        if clamped_scroll != self.scroll:
-            self.scroll_changed_in_frame = True
-```
-
-Our browser supports browser-thread scrolling, but only for the root frame.
-To handle both cases, we'll need a new commit parameter:
-
-``` {.python}
-class CommitData:
-    def __init__(self, url, scroll, root_frame_focused, height,
-        display_list, composited_updates, accessibility_tree, focus):
-        # ...
-        self.root_frame_focused = root_frame_focused
-```
-
-``` {.python}
-class Tab:
-    def run_animation_frame(self, scroll):
-        commit_data = CommitData(
-            # ...
-            root_frame_focused=not self.focused_frame or \
-                (self.focused_frame == self.root_frame),
-            # ...
-        )
-```
-
-``` {.python}
-class Browser:
-    def commit(self, tab, data):
-        # ...
-            self.root_frame_focused = data.root_frame_focused
-
-```
-
-And now we can use this parameter to keep browser scrolling for the root frame.
-The part in "..." is what used to be in `handle_down`.
-
-``` {.python}
-class Browser:
-    def handle_down(self):
-        self.lock.acquire(blocking=True)
-        if self.root_frame_focused:
-            # ...
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.scrolldown)
-        active_tab.task_runner.schedule_task(task)
-        self.lock.release()        
-```
-
-``` {.python}
-class Tab:
-    def scrolldown(self):
-        frame = self.focused_frame
-        if not frame: frame = self.root_frame
-        frame.scrolldown()
-        self.set_needs_paint()
-```
-
-``` {.python}
-class Frame:
-    def scrolldown(self):
-        self.scroll = self.clamp_scroll(self.scroll + SCROLL_STEP)
-```
-
-Accessibility trees for iframes are also relatively simple to get the basics
-working. There will be only one tree for all frames, and so we just need
-a role for iframes:
-
-``` {.python}
-class AccessibilityNode:
-    def __init__(self, node):
-            elif node.tag == "iframe":
-                self.role = "iframe"
-```
-
-And to recurse into them in `build`:
-
-``` {.python}
-class AccessibilityNode:
-   def build(self):
-        if isinstance(self.node, Element) \
-            and self.node.tag == "iframe":
-            self.build_internal(self.node.frame.nodes)
-        # ... 
-```
-
-See how easy it is to add accessibility for iframes? That's a great reason
-not to use a plugin.
-
-::: {.further}
-While our toy browser only has threaded scrolling of the root frame, a real
-browser should aim to make scrolling threaded (and composited) for all
-the other frames, and via all the ways you can scroll---keyboard, touch,
-mouse wheel, scrollbars of different types, and so on.
-(And of course, due to the [`overflow`][overflow-css]
-CSS property, there can be any number of nested scrollers within each 
-other in a single frame.)
-
-Getting this right in all the corner cases
-is pretty hard, and it took each major browser quite a while to get it right.
-Only [in 2016][renderingng-scrolling], for example, was Chromium able to
-achieve it, and even then, there turned out be a very long tail of more or
-less obscure bugs to fix involving different combinations of complex
-containing blocks, stacking order, scrollbars, transforms and other visual
-effects.
-:::
-
-[overflow-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow
-[renderingng-scrolling]: https://developer.chrome.com/articles/renderingng/#threaded-scrolling-animations-and-decode
 
 Iframe security
 ===============
