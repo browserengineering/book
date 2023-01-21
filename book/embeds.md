@@ -302,11 +302,16 @@ an associated font.
 In fact, now that you see images alongside input elements, notice how actually
 the input elements we defined in Chapter 8 *are also a form of embedded
 content*---after all, the way they are drawn to the screen is certainly not
-defined by HTML tags and CSS. The web specifications call input, images and
-other embedded content
+defined by HTML tags and CSS in our toy browser.^[The details are complicated
+in a real browser, but input elements are usually called *widgets* instead,
+and have a lot of
+[special rendering rules][widget-rendering] that sometimes involve CSS.] The
+web specifications call images
 [*replaced elements*][replaced-elements]---characterized by putting stuff
 "outside of HTML" into an inline HTML context, and "replacing" what HTML might
 have drawn.
+
+[widget-rendering]: https://html.spec.whatwg.org/multipage/rendering.html#widgets
 
 [replaced-elements]: https://developer.mozilla.org/en-US/docs/Web/CSS/Replaced_element
 
@@ -609,30 +614,33 @@ form, so I've left it to an exercise.]
 
 And for input elements, there needs to be some way to customize the rendering
 of them while at the same time hooking up to all of the accessibility goodness
-of the browser. Interestingly enough, this problem has to date only partially
-been solved by real browsers, and is an
- [active area of development](https://open-ui.org/).^[Some technologies
- that help to get there *have* been developed, such as
- [Shadow DOM][shadow-dom] and [form-associated custom elements][form-el].]
+of the browser. Interestingly enough, this problem has to date been only
+partially solved by real browsers, and is an
+[active area of development](https://open-ui.org/).^[Some technologies
+that help to get there *have* been developed, such as
+[Shadow DOM][shadow-dom] and [form-associated custom elements][form-el].
+It may be that eventually, all input elements will have rendering defined
+fully by HTML and CSS.]
 
 [shadow-dom]: https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_shadow_DOM
 [form-el]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/attachInternals
 
-Canvas is a handy way to do a lot of things, but it comes with some pretty big
-downsides. In particular, any content drawn inside of a `<canvas>` gets none of
-the nice browser features such as accessibility, non-trivial^[It does have APIs
-for drawing text, but no line breaking or block layout.] layout, automatic
+So does this solve the problem fully? Well, not really. For example, canvas is a
+handy way to do a lot of things, but it comes with some pretty big downsides.
+In particular, any content drawn inside of a `<canvas>` gets none of the nice
+browser features such as accessibility, non-trivial^[It does have APIs for
+drawing text, but no line breaking or block layout.] layout, automatic
 rendering, or [navigation](chrome.md).
 
 And a custom-rendered input element is great for that use case, but what about
 more complex widgets like embedded maps, videos, social media buttons, ads and
 so on? Especially since such use cases often come from some third-party source,
 it would be weird to try to mix all the code for an embedded ad, video or map
-diretly into your web page (and weird for the company providing the widget to
+directly into your web page (and weird for the company providing the widget to
 trust your site enough to do so). In these cases we need a technology
-that "embeds" an externally-rendered widget into a web page in a modularized
-and secure way, but *also* allows interactions that coordinate well with the
-embedding web page.
+that "embeds" an externally-rendered widget into a web page in a modularized,
+flexible and secure way, but *also* allows interactions that coordinate well
+with the embedding web page and browser features.
 
 There are two possible ways to achieve this:
 
@@ -649,7 +657,6 @@ provided a way to embed other content types into a web page, such as
 "platform integration" drawbacks of `<canvas>`, and also have to provide
  duplicate solutions to all of the UI rendering problems we've already solved
  for browsers in the first place.
-
 
 [java-applets]: https://en.wikipedia.org/wiki/Java_applet
 [Flash]: https://en.wikipedia.org/wiki/Adobe_Flash

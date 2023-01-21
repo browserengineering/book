@@ -42,7 +42,6 @@ main: true
 
     cat www/onepage/visual-effects.html
     cat www/onepage/scheduling.html
-    cat www/onepage/compositing.html
     cat www/onepage/animations.html
     cat www/onepage/accessibility.html
 :::
