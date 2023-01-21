@@ -665,7 +665,7 @@ provided a way to embed other content types into a web page, such as
 So the web has a second approach that solves all of these problems at once: let
 the developer embed one web page inside another, via the `<iframe>` element. As
 you'll see, this approach neatly solves all of these problems---accessibility,
-input, etc come "for free". And iframes are a great way to safely
+input, etc come "for free". And iframes are a great way to
 include third-party content content.
 
 [canvas-elt]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas
