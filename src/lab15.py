@@ -1093,7 +1093,7 @@ class Frame:
 
             header, body = request(script_url, url)
             task = Task(\
-                self.get_js().run, script_url, body.decode('utf8)'),
+                self.get_js().run, script_url, body,
                 self.window_id)
             self.tab.task_runner.schedule_task(task)
 
@@ -1220,6 +1220,33 @@ class Frame:
             scroll,
             math.ceil(
                 self.document.height) - self.frame_height))
+
+    def submit_form(self, elt):
+        if self.get_js().dispatch_event(
+            "submit", elt, self.window_id): return
+        inputs = [node for node in tree_to_list(elt, [])
+                  if isinstance(node, Element)
+                  and node.tag == "input"
+                  and "name" in node.attributes]
+
+        body = ""
+        for input in inputs:
+            name = input.attributes["name"]
+            value = input.attributes.get("value", "")
+            name = urllib.parse.quote(name)
+            value = urllib.parse.quote(value)
+            body += "&" + name + "=" + value
+        body = body [1:]
+
+        url = resolve_url(elt.attributes["action"], self.url)
+        self.load(url, body)
+
+    def keypress(self, char):
+        if self.tab.focus:
+            if self.get_js().dispatch_event(
+                "keydown", self.tab.focus, self.window_id): return
+            self.tab.focus.attributes["value"] += char
+            self.tab.set_needs_render()
 
     def scrolldown(self):
         self.scroll = self.clamp_scroll(self.scroll + SCROLL_STEP)
@@ -1429,33 +1456,10 @@ class Tab:
         self.render()
         self.root_frame.click(x, y)
 
-    def submit_form(self, elt):
-        if self.js.dispatch_event("submit", elt): return
-        inputs = [node for node in tree_to_list(elt, [])
-                  if isinstance(node, Element)
-                  and node.tag == "input"
-                  and "name" in node.attributes]
-
-        body = ""
-        for input in inputs:
-            name = input.attributes["name"]
-            value = input.attributes.get("value", "")
-            name = urllib.parse.quote(name)
-            value = urllib.parse.quote(value)
-            body += "&" + name + "=" + value
-        body = body [1:]
-
-        url = resolve_url(elt.attributes["action"], self.url)
-        self.load(url, body)
-
     def keypress(self, char):
         frame = self.focused_frame
         if not frame: frame = self.root_frame
-        if self.focus:
-            if frame.get_js().dispatch_event(
-                "keydown", self.focus, frame.window_id): return
-            self.focus.attributes["value"] += char
-            self.set_needs_render()
+        frame.keypress(char)
 
     def scrolldown(self):
         frame = self.focused_frame
