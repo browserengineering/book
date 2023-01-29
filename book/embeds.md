@@ -1631,7 +1631,7 @@ On the other hand, the rest work as-is: `getAttribute`, `innerHTML`, `style` and
 `Date`.^[Another good exercise: can you explain why these don't need any
 changes?] However, `innerHTML` can cause an iframe to be added to or removed
 from the document. Our browser does not handle that correctly, and I've left
-solving this problem to an exercise.
+a solution to the problem to an exercise.
 
 ::: {.quirk}
 Demos from previous chapters might not work, because the `with` operator hack
@@ -2065,5 +2065,5 @@ because `click` doesn't account for that transform. Fix this. Also check if
 accessibility handles iframes under transform correctly in all cases.
 
 *Iframes added or removed by script*: the `innerHTML` API can cause iframes
-to be added or removed, but our browser doesn't do that. Implement this
-behavior.
+to be added or removed, but our browser incorrectly fails to load or unload
+them. Implement this behavior.
