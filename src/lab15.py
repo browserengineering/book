@@ -121,9 +121,11 @@ def request(url, top_level_url, payload=None):
     assert "transfer-encoding" not in headers
     assert "content-encoding" not in headers
 
-    if headers.get(
+    content_type = headers.get(
         'content-type',
-        'application/octet-stream').startswith("text"):
+        'application/octet-stream')
+    if content_type.startswith("text") or \
+        content_type.find('javascript') >= 0:
         body = response.read().decode("utf8")
     else:
         body = response.read()
@@ -770,6 +772,7 @@ class JSContext:
                 window_id=frame.window_id))
 
     def run(self, script, code, window_id):
+        print('run')
         try:
             print("Script returned: ", self.interp.evaljs(
                wrap_in_window(code, window_id)))
@@ -1093,7 +1096,7 @@ class Frame:
 
             header, body = request(script_url, url)
             task = Task(\
-                self.get_js().run, script_url, body.decode('utf8)'),
+                self.get_js().run, script_url, body,
                 self.window_id)
             self.tab.task_runner.schedule_task(task)
 
@@ -1130,6 +1133,8 @@ class Frame:
                 header, body = request(image_url, url)
                 img.image = PIL.Image.open(io.BytesIO(body))
             except:
+                img.image = None
+                print("Failed to load image: " + image_url)
                 continue
 
         iframes = [node
@@ -1145,6 +1150,7 @@ class Frame:
                 iframe.frame.load(document_url)
             except:
                 iframe.frame = None
+                print("Failed to load iframe: " + image_url)
                 continue
 
         self.tab.set_needs_render()
@@ -1220,6 +1226,33 @@ class Frame:
             scroll,
             math.ceil(
                 self.document.height) - self.frame_height))
+
+    def submit_form(self, elt):
+        if self.get_js().dispatch_event(
+            "submit", elt, self.window_id): return
+        inputs = [node for node in tree_to_list(elt, [])
+                  if isinstance(node, Element)
+                  and node.tag == "input"
+                  and "name" in node.attributes]
+
+        body = ""
+        for input in inputs:
+            name = input.attributes["name"]
+            value = input.attributes.get("value", "")
+            name = urllib.parse.quote(name)
+            value = urllib.parse.quote(value)
+            body += "&" + name + "=" + value
+        body = body [1:]
+
+        url = resolve_url(elt.attributes["action"], self.url)
+        self.load(url, body)
+
+    def keypress(self, char):
+        if self.tab.focus:
+            if self.get_js().dispatch_event(
+                "keydown", self.tab.focus, self.window_id): return
+            self.tab.focus.attributes["value"] += char
+            self.tab.set_needs_render()
 
     def scrolldown(self):
         self.scroll = self.clamp_scroll(self.scroll + SCROLL_STEP)
@@ -1330,19 +1363,19 @@ class Tab:
         for (window_id, frame) in self.window_id_to_frame.items():
             frame.get_js().interp.evaljs(
                 wrap_in_window("__runRAFHandlers()", window_id))
-
-        for node in tree_to_list(self.root_frame.nodes, []):
-            for (property_name, animation) in \
-                node.animations.items():
-                value = animation.animate()
-                if value:
-                    node.style[property_name] = value
-                    if USE_COMPOSITING and \
-                        property_name == "opacity":
-                        self.composited_updates.append(node)
-                        self.set_needs_paint()
-                    else:
-                        self.set_needs_layout()
+    
+            for node in tree_to_list(frame.nodes, []):
+                for (property_name, animation) in \
+                    node.animations.items():
+                    value = animation.animate()
+                    if value:
+                        node.style[property_name] = value
+                        if USE_COMPOSITING and \
+                            property_name == "opacity":
+                            self.composited_updates.append(node)
+                            self.set_needs_paint()
+                        else:
+                            self.set_needs_layout()
 
         needs_composite = self.needs_style or self.needs_layout
         self.render()
@@ -1429,30 +1462,10 @@ class Tab:
         self.render()
         self.root_frame.click(x, y)
 
-    def submit_form(self, elt):
-        if self.js.dispatch_event("submit", elt): return
-        inputs = [node for node in tree_to_list(elt, [])
-                  if isinstance(node, Element)
-                  and node.tag == "input"
-                  and "name" in node.attributes]
-
-        body = ""
-        for input in inputs:
-            name = input.attributes["name"]
-            value = input.attributes.get("value", "")
-            name = urllib.parse.quote(name)
-            value = urllib.parse.quote(value)
-            body += "&" + name + "=" + value
-        body = body [1:]
-
-        url = resolve_url(elt.attributes["action"], self.url)
-        self.load(url, body)
-
     def keypress(self, char):
-        if self.focus:
-            if self.js.dispatch_event("keydown", self.focus): return
-            self.focus.attributes["value"] += char
-            self.set_needs_render()
+        frame = self.focused_frame
+        if not frame: frame = self.root_frame
+        frame.keypress(char)
 
     def scrolldown(self):
         frame = self.focused_frame
