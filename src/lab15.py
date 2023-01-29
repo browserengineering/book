@@ -1449,8 +1449,11 @@ class Tab:
         self.load(url, body)
 
     def keypress(self, char):
+        frame = self.focused_frame
+        if not frame: frame = self.root_frame
         if self.focus:
-            if self.js.dispatch_event("keydown", self.focus): return
+            if frame.get_js().dispatch_event(
+                "keydown", self.focus, frame.window_id): return
             self.focus.attributes["value"] += char
             self.set_needs_render()
 
