@@ -121,9 +121,11 @@ def request(url, top_level_url, payload=None):
     assert "transfer-encoding" not in headers
     assert "content-encoding" not in headers
 
-    if headers.get(
+    content_type = headers.get(
         'content-type',
-        'application/octet-stream').startswith("text"):
+        'application/octet-stream')
+    if content_type.startswith("text") or \
+        content_type.find('javascript') >= 0:
         body = response.read().decode("utf8")
     else:
         body = response.read()
@@ -770,11 +772,13 @@ class JSContext:
                 window_id=frame.window_id))
 
     def run(self, script, code, window_id):
+        print('run')
         try:
             print("Script returned: ", self.interp.evaljs(
                wrap_in_window(code, window_id)))
         except dukpy.JSRuntimeError as e:
             print("Script", script, "crashed", e)
+            print('oops')
         self.current_window = None
 
     def dispatch_event(self, type, elt, window_id):
@@ -1130,6 +1134,8 @@ class Frame:
                 header, body = request(image_url, url)
                 img.image = PIL.Image.open(io.BytesIO(body))
             except:
+                img.image = None
+                print("Failed to load image: " + image_url)
                 continue
 
         iframes = [node
@@ -1145,6 +1151,7 @@ class Frame:
                 iframe.frame.load(document_url)
             except:
                 iframe.frame = None
+                print("Failed to load iframe: " + image_url)
                 continue
 
         self.tab.set_needs_render()
