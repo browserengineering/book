@@ -120,15 +120,18 @@ The `content-type` of an image depends on its format. For example, JPEG is
 `image/jpeg`; PNG is `image/png`. Arbitrary binary data with no specific
 format is `application/octet-stream`.^[An "octet" is a number with 8 bits,
 hence "oct" from the Latin root "octo".] So as a cheat, we'll look at
-`content-type` and assume that if it starts with `text` the content is
+`content-type` and assume that if it starts with `text` or contains
+`javascript`, the content is
 `utf8`, and otherwise return it as undecoded data:
 
 ``` {.python}
 def request(url, top_level_url, payload=None):
     # ...
-    if headers.get(
+    content_type = headers.get(
         'content-type',
-        'application/octet-stream').startswith("text"):
+        'application/octet-stream')
+    if content_type.startswith("text") or \
+        content_type.find('javascript') >= 0:
         body = response.read().decode("utf8")
     else:
         body = response.read()
@@ -1424,7 +1427,7 @@ class Frame:
         for script in scripts:
             # ...
             task = Task(\
-                self.get_js().run, script_url, body.decode('utf8)'),
+                self.get_js().run, script_url, body,
                 self.window_id)
 ```
 
@@ -1581,6 +1584,8 @@ class Tab:
         for (window_id, frame) in self.window_id_to_frame.items():
             frame.get_js().interp.evaljs(
                 wrap_in_window("__runRAFHandlers()", window_id))
+            for node in tree_to_list(frame.nodes, []):
+                 #...
 ```
 
 Event listeners are similar. Registering one is now stores a reference on the

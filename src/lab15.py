@@ -778,7 +778,6 @@ class JSContext:
                wrap_in_window(code, window_id)))
         except dukpy.JSRuntimeError as e:
             print("Script", script, "crashed", e)
-            print('oops')
         self.current_window = None
 
     def dispatch_event(self, type, elt, window_id):
