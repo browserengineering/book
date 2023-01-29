@@ -1357,19 +1357,19 @@ class Tab:
         for (window_id, frame) in self.window_id_to_frame.items():
             frame.get_js().interp.evaljs(
                 wrap_in_window("__runRAFHandlers()", window_id))
-
-        for node in tree_to_list(self.root_frame.nodes, []):
-            for (property_name, animation) in \
-                node.animations.items():
-                value = animation.animate()
-                if value:
-                    node.style[property_name] = value
-                    if USE_COMPOSITING and \
-                        property_name == "opacity":
-                        self.composited_updates.append(node)
-                        self.set_needs_paint()
-                    else:
-                        self.set_needs_layout()
+    
+            for node in tree_to_list(frame.nodes, []):
+                for (property_name, animation) in \
+                    node.animations.items():
+                    value = animation.animate()
+                    if value:
+                        node.style[property_name] = value
+                        if USE_COMPOSITING and \
+                            property_name == "opacity":
+                            self.composited_updates.append(node)
+                            self.set_needs_paint()
+                        else:
+                            self.set_needs_layout()
 
         needs_composite = self.needs_style or self.needs_layout
         self.render()
