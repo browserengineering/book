@@ -241,8 +241,8 @@ class BlockLayout:
         return "BlockLayout(x={}, y={}, width={}, height={}, node={})".format(
             self.x, self.x, self.width, self.height, self.node)
 
-class InputLayout:
-    def __init__(self, node, parent, previous):
+class Widget:
+    def __init__(self, node, parent=None, previous=None):
         self.node = node
         self.children = []
         self.parent = parent
@@ -252,6 +252,10 @@ class InputLayout:
         self.width = None
         self.height = None
         self.font = None
+
+class InputLayout(Widget):
+    def __init__(self, node, parent, previous):
+        super().__init__(node, parent, previous)
 
     def get_ascent(self, font_multiplier=1.0):
         return -self.height
@@ -397,7 +401,7 @@ class InlineLayout:
         if "width" in node.attributes:
             w = device_px(int(node.attributes["width"]), zoom)
         else:
-            w = device_px(img.image.width, zoom)
+            w = device_px(node.image.width, zoom)
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
@@ -565,17 +569,11 @@ class TextLayout:
             "node={}, word={})").format(
             self.x, self.y, self.width, self.height, self.node, self.word)
 
-class ImageLayout:
+class ImageLayout(Widget):
     def __init__(self, node, frame):
-        self.node = node
-        self.children = []
-        self.parent = None
-        self.previous = None
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-        self.load(frame)
+        super().__init__(node)
+        if not hasattr(self.node, "image"):
+            self.load(frame)
 
     def load(self, frame):
         assert "src" in self.node.attributes
@@ -586,9 +584,9 @@ class ImageLayout:
             return
         try:
             header, body = request(image_url, frame.url)
-            self.image = PIL.Image.open(io.BytesIO(body))
+            self.node.image = PIL.Image.open(io.BytesIO(body))
         except:
-            self.image = None
+            self.node.image = None
             print("Failed to load image: " + image_url)
 
     def init(self, parent, previous):
@@ -609,7 +607,7 @@ class ImageLayout:
             float(self.node.style["font-size"][:-2]), zoom)
         self.font = get_font(size, weight, style)
 
-        aspect_ratio = self.image.width / self.image.height
+        aspect_ratio = self.node.image.width / self.node.image.height
         has_width = "width" in self.node.attributes
         has_height = "height" in self.node.attributes
 
@@ -620,7 +618,7 @@ class ImageLayout:
             self.width = aspect_ratio * \
                 device_px(int(self.node.attributes["height"]), zoom)
         else:
-            self.width = device_px(self.image.width, zoom)
+            self.width = device_px(self.node.image.width, zoom)
     
         if has_height:
             self.height = \
@@ -630,7 +628,7 @@ class ImageLayout:
                 device_px(int(self.node.attributes["width"]), zoom)
         else:
             self.height = max(
-                device_px(self.image.height, zoom),
+                device_px(self.node.image.height, zoom),
                 linespace(self.font))
 
         if self.previous:
@@ -642,7 +640,7 @@ class ImageLayout:
     def paint(self, display_list):
         cmds = []
 
-        decoded_image = decode_image(self.image,
+        decoded_image = decode_image(self.node.image,
             self.width, self.height,
             self.node.style.get("image-rendering", "auto"))
 
@@ -662,15 +660,9 @@ class ImageLayout:
 IFRAME_DEFAULT_WIDTH_PX = 300
 IFRAME_DEFAULT_HEIGHT_PX = 150
 
-class IframeLayout:
+class IframeLayout(Widget):
     def __init__(self, node, parent, previous, parent_frame):
-        self.node = node
-        self.node.layout_object = self
-        self.children = []
-        self.parent = parent
-        self.previous = previous
-        self.x = None
-        self.y = None
+        super().__init__(node, parent, previous)
         if not hasattr(self.node, "frame"):
             self.load(parent_frame)
 
