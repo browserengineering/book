@@ -253,10 +253,6 @@ class Widget:
         self.height = None
         self.font = None
 
-class InputLayout(Widget):
-    def __init__(self, node, parent, previous):
-        super().__init__(node, parent, previous)
-
     def get_ascent(self, font_multiplier=1.0):
         return -self.height
 
@@ -267,8 +263,17 @@ class InputLayout(Widget):
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
         if style == "normal": style = "roman"
-        size = device_px(float(self.node.style["font-size"][:-2]), zoom)
+        size = device_px(
+            float(self.node.style["font-size"][:-2]), zoom)
         self.font = get_font(size, weight, style)
+
+
+class InputLayout(Widget):
+    def __init__(self, node, parent, previous):
+        super().__init__(node, parent, previous)
+
+    def layout(self, zoom):
+        super().layout(zoom)
 
         self.width = device_px(INPUT_WIDTH_PX, zoom)
         self.height = linespace(self.font)
@@ -593,19 +598,8 @@ class ImageLayout(Widget):
         self.parent = parent
         self.previous = previous
 
-    def get_ascent(self, font_multiplier=1.0):
-        return -self.height
-
-    def get_descent(self, font_multiplier=1.0):
-        return 0
-
     def layout(self, zoom):
-        weight = self.node.style["font-weight"]
-        style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
-        size = device_px(
-            float(self.node.style["font-size"][:-2]), zoom)
-        self.font = get_font(size, weight, style)
+        super().layout(zoom)
 
         aspect_ratio = self.node.image.width / self.node.image.height
         has_width = "width" in self.node.attributes
@@ -678,20 +672,10 @@ class IframeLayout(Widget):
             self.frame = None
             print("Failed to load iframe: " + document_url)
 
-    def get_ascent(self, font_multiplier=1.0):
-        return -self.height
-
-    def get_descent(self, font_multiplier=1.0):
-        return 0
-
     def layout(self, zoom):
         self.node.frame.style()
 
-        weight = self.node.style["font-weight"]
-        style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
-        size = float(self.node.style["font-size"][:-2])
-        self.font = get_font(size, weight, style)
+        super().layout(zoom)
 
         has_width = "width" in self.node.attributes
         has_height = "height" in self.node.attributes
