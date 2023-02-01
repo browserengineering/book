@@ -663,6 +663,7 @@ IFRAME_DEFAULT_HEIGHT_PX = 150
 class IframeLayout(Widget):
     def __init__(self, node, parent, previous, parent_frame):
         super().__init__(node, parent, previous)
+        node.layout_object = self
         if not hasattr(self.node, "frame"):
             self.load(parent_frame)
 
