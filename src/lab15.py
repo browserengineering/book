@@ -267,6 +267,11 @@ class Widget:
             float(self.node.style["font-size"][:-2]), zoom)
         self.font = get_font(size, weight, style)
 
+        if self.previous:
+            space = self.previous.font.measureText(" ")
+            self.x = self.previous.x + space + self.previous.width
+        else:
+            self.x = self.parent.x
 
 class InputLayout(Widget):
     def __init__(self, node, parent, previous):
@@ -277,12 +282,6 @@ class InputLayout(Widget):
 
         self.width = device_px(INPUT_WIDTH_PX, zoom)
         self.height = linespace(self.font)
-
-        if self.previous:
-            space = self.previous.font.measureText(" ")
-            self.x = self.previous.x + space + self.previous.width
-        else:
-            self.x = self.parent.x
 
     def paint(self, display_list):
         cmds = []
@@ -313,6 +312,7 @@ class InputLayout(Widget):
         paint_outline(self.node, cmds, rect)
         cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
+
     def __repr__(self):
         return "InputLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
@@ -625,12 +625,6 @@ class ImageLayout(Widget):
                 device_px(self.node.image.height, zoom),
                 linespace(self.font))
 
-        if self.previous:
-            space = self.previous.font.measureText(" ")
-            self.x = self.previous.x + space + self.previous.width
-        else:
-            self.x = self.parent.x
-
     def paint(self, display_list):
         cmds = []
 
@@ -693,12 +687,6 @@ class IframeLayout(Widget):
         else:
             self.height = device_px(
                 IFRAME_DEFAULT_HEIGHT_PX + 2, zoom)
-
-        if self.previous:
-            space = self.previous.font.measureText(" ")
-            self.x = self.previous.x + space + self.previous.width
-        else:
-            self.x = self.parent.x
 
         self.node.frame.layout(zoom, self.width - 2, self.height - 2)
 
