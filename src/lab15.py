@@ -668,7 +668,6 @@ class IframeLayout(Widget):
 
     def layout(self, zoom):
         self.node.frame.style()
-
         super().layout(zoom)
 
         has_width = "width" in self.node.attributes
