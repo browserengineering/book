@@ -173,73 +173,16 @@ def decode_image(image_bytes):
         colorType=skia.kRGBA_8888_ColorType)
 ```
 
-Let's now load `<img>` tags found in a web page. In `load` we need to
-first find all of the images in the document:
-
-``` {.python replace=Tab/Frame}
-class Tab:
-    # ...
-    def load(self, url, body=None):
-        # ...
-        images = [node
-                 for node in tree_to_list(self.nodes, [])
-                 if isinstance(node, Element)
-                 and node.tag == "img"
-                 and "src" in node.attributes]
-```
-
-and then request them from the network and decode them, placing the result
-on the `Element` object for each image:
-
-``` {.python expected=False}
-        # ...
-        for img in images:
-            link = img.attributes["src"]
-            image_url = resolve_url(link, url)
-            if not self.allowed_request(image_url):
-                print("Blocked image", link, "due to CSP")
-                continue
-            try:
-                header, body = request(image_url, url)
-                img.image = decode_image(body)
-            except:
-                continue
-```
-
-Images have inline layout, so we'll need to add a new `image` method in
-`InlineLayout`. In this case, the width contributed to the line is the width of
-the image; otherwise it's the same as the existing `input` method.
-
-``` {.python expected=False}
-class InlineLayout:
-    # ...
-    def recurse(self, node, zoom):
-            # ...
-            elif node.tag == "img":
-                self.image(node, zoom)
-    
-    def image(self, node, zoom):
-        w = device_px(node.image.width(), zoom)
-        if self.cursor_x + w > self.x + self.width:
-            self.new_line()
-        line = self.children[-1]
-        input = ImageLayout(node, line, self.previous_word)
-        line.children.append(input)
-        self.previous_word = input
-        weight = node.style["font-weight"]
-        style = node.style["font-style"]
-        size = device_px(float(node.style["font-size"][:-2]), zoom)
-        font = get_font(size, weight, size)
-        self.cursor_x += w + font.measureText(" ")
-```
+Let's now load `<img>` tags found in a web page.
 
 And a new `ImageLayout` class. The height of the object is defined by the
 height of the image. Again, this class is almost the same as `InputLayout`,
-except for that height.
+except for that height. In fact, so similar that let's make them inherit from
+a new `Widget` base class to share a lot of code about inline layout and fonts:
 
-``` {.python expected=False}
-class ImageLayout:
-    def __init__(self, node, parent, previous):
+``` {.python}
+class Widget:
+    def __init__(self, node, parent=None, previous=None):
         self.node = node
         self.children = []
         self.parent = parent
@@ -248,6 +191,7 @@ class ImageLayout:
         self.y = None
         self.width = None
         self.height = None
+        self.font = None
 
     def get_ascent(self, font_multiplier=1.0):
         return -self.height
@@ -263,22 +207,100 @@ class ImageLayout:
             float(self.node.style["font-size"][:-2]), zoom)
         self.font = get_font(size, weight, style)
 
-        self.width = style_length(
-            self.node, "width", self.node.image.width(), zoom)
-        self.height = style_length(self.node, "height",
-            max(device_px(self.node.image.height(), zoom),
-            linespace(self.font)), zoom)
-
         if self.previous:
             space = self.previous.font.measureText(" ")
             self.x = self.previous.x + space + self.previous.width
         else:
             self.x = self.parent.x
+```
 
-    def __repr__(self):
-        return ("ImageLayout(src={}, x={}, y={}, width={}," +
-            "height={})").format(self.node.attributes["src"],
-                self.x, self.y, self.width, self.height)
+Now `InputLayout` looks like this:
+
+``` {.python}
+class InputLayout(Widget):
+    def __init__(self, node, parent, previous):
+        super().__init__(node, parent, previous)
+
+    def layout(self, zoom):
+        super().layout(zoom)
+
+        self.width = device_px(INPUT_WIDTH_PX, zoom)
+        self.height = linespace(self.font)
+```
+
+And `ImageLayout` is almost the same. The two key differences
+are the need to actually load the image off the network, and then use
+the size of the image to size the `ImageLayout`. Let's start with loading.
+After loading, the image is stored on the `node`. But this adds some complexity
+in the `image` function we need to add on `InlineLayout`, because first it needs
+to laod the image and only then set its `parent` and `previous` fields. That'll
+be via a new `init` method call.
+
+``` {.python}
+class InlineLayout:
+    # ...
+    def recurse(self, node, zoom):
+            # ...
+            elif node.tag == "img":
+                self.image(node, zoom)
+    
+    def image(self, node, zoom):
+        img = ImageLayout(node, self.frame)
+        w = device_px(node.image.width, zoom)
+        if self.cursor_x + w > self.x + self.width:
+            self.new_line()
+        line = self.children[-1]
+        img.init(line, self.previous_word)
+        line.children.append(img)
+        self.previous_word = img
+        weight = node.style["font-weight"]
+        style = node.style["font-style"]
+        size = device_px(float(node.style["font-size"][:-2]), zoom)
+        font = get_font(size, weight, size)
+        self.cursor_x += w + font.measureText(" ")
+```
+
+And here is `ImageLayout`:
+
+``` {.python expected=False}
+class ImageLayout(Widget):
+    def __init__(self, node, frame):
+        super().__init__(node)
+        if not hasattr(self.node, "image"):
+            self.load(frame)
+
+    def load(self, frame):
+        assert "src" in self.node.attributes
+        link = self.node.attributes["src"]
+        image_url = resolve_url(link, frame.url)
+        if not frame.allowed_request(image_url):
+            print("Blocked image", link, "due to CSP")
+            return
+        try:
+            header, body = request(image_url, frame.url)
+            self.node.image = decode_image(body)
+        except:
+            self.node.image = None
+            print("Failed to load image: " + image_url)
+
+    def init(self, parent, previous):
+        self.parent = parent
+        self.previous = previous
+    # ...
+```
+
+Then there is layout, which shares all the code except sizing:
+
+``` {.python expected=False}
+class ImageLayout(Widget):
+
+    def layout(self, zoom):
+        super().layout(zoom)
+        
+        self.width = device_px(self.node.image.width, zoom)
+        self.height = max(
+                device_px(self.node.image.height, zoom),
+                linespace(self.font))
 ```
 
 Notice how the positioning of an image depends on the font size of the element
@@ -335,7 +357,7 @@ class DrawImage(DisplayItem):
 Finally, the `paint` method of `ImageLayout` emits a single `DrawImage`:
 
 ``` {.python expected=False}
-class ImageLayout:
+class ImageLayout(Widget):
     # ...
     def paint(self, display_list):
         cmds = []
@@ -402,7 +424,7 @@ class InlineLayout:
 And in `ImageLayout`:
 
 ``` {.python expected=False}
-class ImageLayout:
+class ImageLayout(Widget):
     # ...
     def layout(self, zoom):
         # ...
@@ -444,7 +466,8 @@ design oversights take a long time to fix.
 [padding-top-hack]: https://web.dev/aspect-ratio/#the-old-hack-maintaining-aspect-ratio-with-padding-top
 
 ``` {.python}
-class ImageLayout:
+class ImageLayout(Widget):
+    # ...
     def layout(self, zoom):
         # ...
         aspect_ratio = self.node.image.width / self.node.image.height
@@ -539,15 +562,13 @@ store the *encoded* image instead of the *decoded* one during load:^[Speaking
 of performance, synchronously loading the image during `load` is also not
 good. I've left fixing this to an exercise.]
 
-``` {.python replace=Tab/Frame}
-class Tab:
+``` {.python}
+class ImageLayout(Widget):
     # ...
-    def load(self, url, body=None):
+    def load(self, frame):
         # ...
-        for img in images:
-            # ...
-                header, body = request(image_url, url)
-                img.image = PIL.Image.open(io.BytesIO(body))
+            header, body = request(image_url, frame.url)
+            self.node.image = PIL.Image.open(io.BytesIO(body))
 ```
 
 Then in layout, use that image for sizing.^[It's the same as the previous code
@@ -570,7 +591,7 @@ def decode_image(encoded_image, width, height, image_quality):
 And then in `paint` on `ImageLayout`:
 
 ``` {.python}
-class ImageLayout:
+class ImageLayout(Widget):
     # ...
     def paint(self, display_list):
         # ...
@@ -825,31 +846,7 @@ as do various event handlers, here's `click` for example:
 
 The `Frame` class has all of the rest of loading and event handling that used to
 be in `Tab`. I won't go into those details right now,  except the part where a
-`Frame` can load subframes via the `<iframe>` tag. In the code below, we
-collect all of the `<iframe>` elements in the DOM in just the same way as we
-did for `<img>`, but instead of loading the one resource and caching it, we
-create a new `Frame` object, store it on the iframe element, and call `load`
-recursively. Note that all the code in the "..." below is the same as what used
-to be on `Tab`'s `load` method.
-
-
-``` {.python}
-class Frame:
-    def load(self, url, body=None):
-        # ...
-        iframes = [node
-                   for node in tree_to_list(self.nodes, [])
-                   if isinstance(node, Element)
-                   and node.tag == "iframe"
-                   and "src" in node.attributes]
-        for iframe in iframes:
-            document_url = resolve_url(iframe.attributes["src"],
-                self.tab.root_frame.url)
-            iframe.frame = Frame(self.tab, self, iframe)
-            iframe.frame.load(document_url)
-```
-
-That's pretty much it for loading, now let's investigate rendering.
+`Frame` can load subframes via the `<iframe>` tag.
 
 ::: {.further}
 I should say a bit more here about the importance of open standards for embedded
@@ -888,15 +885,15 @@ Just like with loading, a `Tab` delegates rendering to its root frame:
             self.root_frame.paint(self.display_list)
 ```
 
-During style, recurse into iframes when they are found:[^style-real-browsers]
+TODO: explain and refactor further.
+
+During layout, recurse into iframes when they are found:[^style-real-browsers]
 
 ``` {.python}
-def style(node, rules, tab):
-    # ...
-
-    if isinstance(node, Element) and node.tag == "iframe" \
-        and node.frame:
-        node.frame.style()
+class IframeLayout(Widget):
+    def layout(self, zoom):
+        self.node.frame.style()
+        # ...
 ```
 
 [^style-real-browsers]: In real browsers this doesn't work, because the output
@@ -953,13 +950,38 @@ class InlineLayout:
         # ...
 ```
 
-And the `IframeLayout` layout code is also similar; again, I've omitted the
-unchanged parts from images. (Note however that there is no code regarding
+And the `IframeLayout` layout code is also similar, and also inherits from
+`Widget`. (Note however that there is no code regarding
 aspect ratio, because iframes don't have an intrinsic size.) And at the end,
 recurse into the layout method of the child frame.
 
+First there is loading. Instead of storing a decoded or encoded image, we
+create a new `Frame` object and ask it to load.
+
+``` {.python}
+class IframeLayout(Widget):
+    def __init__(self, node, parent, previous, parent_frame):
+        super().__init__(node, parent, previous)
+        node.layout_object = self
+        if not hasattr(self.node, "frame"):
+            self.load(parent_frame)
+
+    def load(self, parent_frame):
+        assert "src" in self.node.attributes
+        document_url = resolve_url(self.node.attributes["src"],
+            parent_frame.url)
+        try:
+            self.node.frame = Frame(parent_frame.tab, parent_frame, self.node)
+            self.node.frame.load(document_url)
+        except:
+            self.frame = None
+            print("Failed to load iframe: " + document_url)
+```
+
+And also layout:
+
 ``` {.python replace=%2C%20self.width%20-%202/%2C%20self.width%20-%202%2C%20self.height%20-%202}
-class IframeLayout:
+class IframeLayout(Widget):
     # ...
     def layout(self, zoom):
         # ...
@@ -990,10 +1012,10 @@ bounds of the `<iframe>` element.
 
 [box-model]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Box_Model/Introduction_to_the_CSS_box_model
 
-``` {.python expected=false}
-class IframeLayout:
+``` {.python expected=False}
+class IframeLayout(Widget):
     # ...
-    def paint(self, displ\ay_list):
+    def paint(self, display_list):
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
@@ -1132,7 +1154,7 @@ class Tab:
 And in `IframeLayout`, the height of the `<iframe>` element:
 
 ``` {.python}
-class IframeLayout:
+class IframeLayout(Widget):
     def layout(self, zoom):
         # ...
         self.node.frame.layout(zoom, self.width - 2, self.height - 2)
@@ -1393,10 +1415,6 @@ called. The `Window` constructor stores its id, which will be useful later.
                 "function Window(id) { this._id = id };")
         js = self.get_js()
         js.add_window(self)
-        # ...
-        for iframe in iframes:
-            # ...
-                iframe.frame = Frame(self.tab, self, iframe)
 ```
 
 

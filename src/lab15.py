@@ -148,16 +148,16 @@ class DrawImage(DisplayItem):
             self.rect)
 
 class DocumentLayout:
-    def __init__(self, node, tab):
+    def __init__(self, node, frame):
         self.node = node
         node.layout_object = self
         self.parent = None
         self.previous = None
         self.children = []
-        self.tab = tab
+        self.frame = frame
 
     def layout(self, zoom, width):
-        child = BlockLayout(self.node, self, None, self.tab)
+        child = BlockLayout(self.node, self, None, self.frame)
         self.children.append(child)
 
         self.width = width - 2 * device_px(HSTEP, zoom)
@@ -181,7 +181,7 @@ class DocumentLayout:
         return "DocumentLayout()"
 
 class BlockLayout:
-    def __init__(self, node, parent, previous, tab):
+    def __init__(self, node, parent, previous, frame):
         self.node = node
         node.layout_object = self
         self.parent = parent
@@ -191,15 +191,15 @@ class BlockLayout:
         self.y = None
         self.width = None
         self.height = None
-        self.tab = tab
+        self.frame = frame
 
     def layout(self, zoom):
         previous = None
         for child in self.node.children:
             if layout_mode(child) == "inline":
-                next = InlineLayout(child, self, previous, self.tab)
+                next = InlineLayout(child, self, previous, self.frame)
             else:
-                next = BlockLayout(child, self, previous, self.tab)
+                next = BlockLayout(child, self, previous, self.frame)
             self.children.append(next)
             previous = next
 
@@ -241,8 +241,8 @@ class BlockLayout:
         return "BlockLayout(x={}, y={}, width={}, height={}, node={})".format(
             self.x, self.x, self.width, self.height, self.node)
 
-class InputLayout:
-    def __init__(self, node, parent, previous):
+class Widget:
+    def __init__(self, node, parent=None, previous=None):
         self.node = node
         self.children = []
         self.parent = parent
@@ -263,17 +263,25 @@ class InputLayout:
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
         if style == "normal": style = "roman"
-        size = device_px(float(self.node.style["font-size"][:-2]), zoom)
+        size = device_px(
+            float(self.node.style["font-size"][:-2]), zoom)
         self.font = get_font(size, weight, style)
-
-        self.width = device_px(INPUT_WIDTH_PX, zoom)
-        self.height = linespace(self.font)
 
         if self.previous:
             space = self.previous.font.measureText(" ")
             self.x = self.previous.x + space + self.previous.width
         else:
             self.x = self.parent.x
+
+class InputLayout(Widget):
+    def __init__(self, node, parent, previous):
+        super().__init__(node, parent, previous)
+
+    def layout(self, zoom):
+        super().layout(zoom)
+
+        self.width = device_px(INPUT_WIDTH_PX, zoom)
+        self.height = linespace(self.font)
 
     def paint(self, display_list):
         cmds = []
@@ -304,12 +312,13 @@ class InputLayout:
         paint_outline(self.node, cmds, rect)
         cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
+
     def __repr__(self):
         return "InputLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
 
 class InlineLayout:
-    def __init__(self, node, parent, previous, tab):
+    def __init__(self, node, parent, previous, frame):
         self.node = node
         node.layout_object = self
         self.parent = parent
@@ -320,7 +329,7 @@ class InlineLayout:
         self.width = None
         self.height = None
         self.display_list = None
-        self.tab = tab
+        self.frame = frame
 
     def layout(self, zoom):
         self.width = self.parent.width
@@ -393,6 +402,7 @@ class InlineLayout:
         self.cursor_x += w + font.measureText(" ")
 
     def image(self, node, zoom):
+        img = ImageLayout(node, self.frame)
         if "width" in node.attributes:
             w = device_px(int(node.attributes["width"]), zoom)
         else:
@@ -400,9 +410,9 @@ class InlineLayout:
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
-        input = ImageLayout(node, line, self.previous_word)
-        line.children.append(input)
-        self.previous_word = input
+        img.init(line, self.previous_word)
+        line.children.append(img)
+        self.previous_word = img
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         size = device_px(float(node.style["font-size"][:-2]), zoom)
@@ -418,7 +428,7 @@ class InlineLayout:
             self.new_line()
         line = self.children[-1]
         input = IframeLayout(
-            node, line, self.previous_word, self.tab)
+            node, line, self.previous_word, self.frame)
         line.children.append(input)
         self.previous_word = input
         weight = node.style["font-weight"]
@@ -564,30 +574,32 @@ class TextLayout:
             "node={}, word={})").format(
             self.x, self.y, self.width, self.height, self.node, self.word)
 
-class ImageLayout:
-    def __init__(self, node, parent, previous):
-        self.node = node
-        self.children = []
+class ImageLayout(Widget):
+    def __init__(self, node, frame):
+        super().__init__(node)
+        if not hasattr(self.node, "image"):
+            self.load(frame)
+
+    def load(self, frame):
+        assert "src" in self.node.attributes
+        link = self.node.attributes["src"]
+        image_url = resolve_url(link, frame.url)
+        if not frame.allowed_request(image_url):
+            print("Blocked image", link, "due to CSP")
+            return
+        try:
+            header, body = request(image_url, frame.url)
+            self.node.image = PIL.Image.open(io.BytesIO(body))
+        except:
+            self.node.image = None
+            print("Failed to load image: " + image_url)
+
+    def init(self, parent, previous):
         self.parent = parent
         self.previous = previous
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-
-    def get_ascent(self, font_multiplier=1.0):
-        return -self.height
-
-    def get_descent(self, font_multiplier=1.0):
-        return 0
 
     def layout(self, zoom):
-        weight = self.node.style["font-weight"]
-        style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
-        size = device_px(
-            float(self.node.style["font-size"][:-2]), zoom)
-        self.font = get_font(size, weight, style)
+        super().layout(zoom)
 
         aspect_ratio = self.node.image.width / self.node.image.height
         has_width = "width" in self.node.attributes
@@ -613,12 +625,6 @@ class ImageLayout:
                 device_px(self.node.image.height, zoom),
                 linespace(self.font))
 
-        if self.previous:
-            space = self.previous.font.measureText(" ")
-            self.x = self.previous.x + space + self.previous.width
-        else:
-            self.x = self.parent.x
-
     def paint(self, display_list):
         cmds = []
 
@@ -642,29 +648,27 @@ class ImageLayout:
 IFRAME_DEFAULT_WIDTH_PX = 300
 IFRAME_DEFAULT_HEIGHT_PX = 150
 
-class IframeLayout:
-    def __init__(self, node, parent, previous, tab):
-        self.node = node
-        self.node.layout_object = self
-        self.children = []
-        self.parent = parent
-        self.previous = previous
-        self.x = None
-        self.y = None
-        self.tab = tab
+class IframeLayout(Widget):
+    def __init__(self, node, parent, previous, parent_frame):
+        super().__init__(node, parent, previous)
+        node.layout_object = self
+        if not hasattr(self.node, "frame"):
+            self.load(parent_frame)
 
-    def get_ascent(self, font_multiplier=1.0):
-        return -self.height
-
-    def get_descent(self, font_multiplier=1.0):
-        return 0
+    def load(self, parent_frame):
+        assert "src" in self.node.attributes
+        document_url = resolve_url(self.node.attributes["src"],
+            parent_frame.url)
+        try:
+            self.node.frame = Frame(parent_frame.tab, parent_frame, self.node)
+            self.node.frame.load(document_url)
+        except:
+            self.frame = None
+            print("Failed to load iframe: " + document_url)
 
     def layout(self, zoom):
-        weight = self.node.style["font-weight"]
-        style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
-        size = float(self.node.style["font-size"][:-2])
-        self.font = get_font(size, weight, style)
+        self.node.frame.style()
+        super().layout(zoom)
 
         has_width = "width" in self.node.attributes
         has_height = "height" in self.node.attributes
@@ -682,12 +686,6 @@ class IframeLayout:
         else:
             self.height = device_px(
                 IFRAME_DEFAULT_HEIGHT_PX + 2, zoom)
-
-        if self.previous:
-            space = self.previous.font.measureText(" ")
-            self.x = self.previous.x + space + self.previous.width
-        else:
-            self.x = self.parent.x
 
         self.node.frame.layout(zoom, self.width - 2, self.height - 2)
 
@@ -772,7 +770,6 @@ class JSContext:
                 window_id=frame.window_id))
 
     def run(self, script, code, window_id):
-        print('run')
         try:
             print("Script returned: ", self.interp.evaljs(
                wrap_in_window(code, window_id)))
@@ -858,7 +855,8 @@ class JSContext:
     def XMLHttpRequest_send(
         self, method, url, body, isasync, handle, window_id):
         full_url = resolve_url(url, self.tab.url)
-        if not self.tab.allowed_request(full_url):
+        frame = self.tab.window_id_to_frame[window_id]        
+        if not frame.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
         if url_origin(full_url) != url_origin(self.tab.url):
             raise Exception(
@@ -920,10 +918,6 @@ def style(node, rules, tab):
 
     for child in node.children:
         style(child, rules, tab)
-
-    if isinstance(node, Element) and node.tag == "iframe" \
-        and node.frame:
-        node.frame.style()
 
 class AccessibilityNode:
     def __init__(self, node):
@@ -1118,41 +1112,6 @@ class Frame:
                 continue
             self.rules.extend(CSSParser(body).parse())
 
-        images = [node
-                 for node in tree_to_list(self.nodes, [])
-                 if isinstance(node, Element)
-                 and node.tag == "img"
-                 and "src" in node.attributes]
-        for img in images:
-            link = img.attributes["src"]
-            image_url = resolve_url(link, url)
-            if not self.allowed_request(image_url):
-                print("Blocked image", link, "due to CSP")
-                continue
-            try:
-                header, body = request(image_url, url)
-                img.image = PIL.Image.open(io.BytesIO(body))
-            except:
-                img.image = None
-                print("Failed to load image: " + image_url)
-                continue
-
-        iframes = [node
-                   for node in tree_to_list(self.nodes, [])
-                   if isinstance(node, Element)
-                   and node.tag == "iframe"
-                   and "src" in node.attributes]
-        for iframe in iframes:
-            try:
-                document_url = resolve_url(iframe.attributes["src"],
-                    self.tab.root_frame.url)
-                iframe.frame = Frame(self.tab, self, iframe)
-                iframe.frame.load(document_url)
-            except:
-                iframe.frame = None
-                print("Failed to load iframe: " + image_url)
-                continue
-
         self.tab.set_needs_render()
 
     def style(self):
@@ -1162,7 +1121,7 @@ class Frame:
 
     def layout(self, zoom, width, height):
         self.frame_height = height
-        self.document = DocumentLayout(self.nodes, self.tab)
+        self.document = DocumentLayout(self.nodes, self)
         self.document.layout(zoom, width)
 
         clamped_scroll = self.clamp_scroll(self.scroll)
