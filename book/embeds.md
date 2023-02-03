@@ -1631,7 +1631,7 @@ On the other hand, the rest work as-is: `getAttribute`, `innerHTML`, `style` and
 `Date`.^[Another good exercise: can you explain why these don't need any
 changes?] However, `innerHTML` can cause an iframe to be added to or removed
 from the document. Our browser does not handle that correctly, and I've left
-a solution to the problem to an exercise.
+a solution for this problem to an exercise.
 
 ::: {.quirk}
 Demos from previous chapters might not work, because the `with` operator hack
