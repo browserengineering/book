@@ -40,7 +40,9 @@ from lab13 import USE_BROWSER_THREAD, diff_styles, \
     DisplayItem, DrawText, \
     DrawLine, paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, \
     REFRESH_RATE_SEC, HSTEP, VSTEP, SETTIMEOUT_CODE, XHR_ONLOAD_CODE, \
-    Transform, ANIMATED_PROPERTIES, SaveLayer
+    Transform, ANIMATED_PROPERTIES, SaveLayer, \
+    SHOW_COMPOSITED_LAYER_BORDERS
+
 from lab14 import parse_color, parse_outline, draw_rect, DrawRRect, \
     is_focused, paint_outline, has_outline, \
     device_px, cascade_priority, style, \
@@ -810,7 +812,7 @@ class JSContext:
         task = Task(self.tab.post_message, message, target_window_id)
         self.tab.task_runner.schedule_task(task)
 
-    def innerHTML_set(self, handle, s):
+    def innerHTML_set(self, handle, s, window_id):
         doc = HTMLParser(
             "<html><body>" + s + "</body></html>").parse()
         new_nodes = doc.children[0].children
@@ -818,12 +820,14 @@ class JSContext:
         elt.children = new_nodes
         for child in elt.children:
             child.parent = elt
-        self.tab.set_needs_render()
+        frame = self.tab.window_id_to_frame[window_id]        
+        frame.set_needs_render()
 
-    def style_set(self, handle, s):
+    def style_set(self, handle, s, window_id):
         elt = self.handle_to_node[handle]
         elt.attributes["style"] = s;
-        self.tab.set_needs_render()
+        frame = self.tab.window_id_to_frame[window_id]        
+        frame.set_needs_render()
 
     def dispatch_settimeout(self, handle, window_id):
         self.interp.evaljs(
@@ -868,7 +872,7 @@ class JSContext:
     def requestAnimationFrame(self):
         self.tab.browser.set_needs_animation_frame(self.tab)
 
-def style(node, rules, tab):
+def style(node, rules, frame):
     old_style = node.style
 
     node.style = {}
@@ -879,7 +883,7 @@ def style(node, rules, tab):
             node.style[property] = default_value
     for media, selector, body in rules:
         if media:
-            if (media == "dark") != tab.dark_mode: continue
+            if (media == "dark") != frame.tab.dark_mode: continue
         if not selector.matches(node): continue
         for property, value in body.items():
             computed_value = compute_style(node, property, value)
@@ -896,7 +900,7 @@ def style(node, rules, tab):
         for property, (old_value, new_value, num_frames) \
             in transitions.items():
             if property in ANIMATED_PROPERTIES:
-                tab.set_needs_render()
+                frame.set_needs_render()
                 AnimationClass = ANIMATED_PROPERTIES[property]
                 animation = AnimationClass(
                     old_value, new_value, num_frames)
@@ -904,7 +908,7 @@ def style(node, rules, tab):
                 node.style[property] = animation.animate()
 
     for child in node.children:
-        style(child, rules, tab)
+        style(child, rules, frame)
 
 class AccessibilityNode:
     def __init__(self, node):
@@ -1148,7 +1152,7 @@ class Frame:
     def style(self):
         style(self.nodes,
             sorted(self.rules,
-                key=cascade_priority), self.tab)
+                key=cascade_priority), self)
 
     def layout(self, zoom):
         self.document = DocumentLayout(self.nodes, self)
