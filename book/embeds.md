@@ -1417,7 +1417,6 @@ called. The `Window` constructor stores its id, which will be useful later.
         js.add_window(self)
 ```
 
-
 And whenever scripts are evaluated, they are wrapped (note the extra window
 id parameter):
 

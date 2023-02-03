@@ -652,22 +652,8 @@ class IframeLayout(Widget):
     def __init__(self, node, parent, previous, parent_frame):
         super().__init__(node, parent, previous)
         node.layout_object = self
-        if not hasattr(self.node, "frame"):
-            self.load(parent_frame)
-
-    def load(self, parent_frame):
-        assert "src" in self.node.attributes
-        document_url = resolve_url(self.node.attributes["src"],
-            parent_frame.url)
-        try:
-            self.node.frame = Frame(parent_frame.tab, parent_frame, self.node)
-            self.node.frame.load(document_url)
-        except:
-            self.frame = None
-            print("Failed to load iframe: " + document_url)
 
     def layout(self, zoom):
-        self.node.frame.style()
         super().layout(zoom)
 
         has_width = "width" in self.node.attributes
@@ -687,7 +673,8 @@ class IframeLayout(Widget):
             self.height = device_px(
                 IFRAME_DEFAULT_HEIGHT_PX + 2, zoom)
 
-        self.node.frame.layout(zoom, self.width - 2, self.height - 2)
+        self.node.frame.frame_height = self.height - 2
+        self.node.frame.frame_width = self.width - 2
 
     def paint(self, display_list):
         cmds = []
@@ -1030,14 +1017,28 @@ class Frame:
         global WINDOW_COUNT
         self.window_id = WINDOW_COUNT
         WINDOW_COUNT += 1
+        self.frame_width = 0
         self.frame_height = 0
         self.accessibility_tree = None
+
+        self.needs_style = False
+        self.needs_layout = False
 
         self.tab.window_id_to_frame[self.window_id] = self
 
         with open("browser15.css") as f:
             self.default_style_sheet = \
                 CSSParser(f.read(), internal=True).parse()
+
+    def set_needs_render(self):
+        self.needs_style = True
+        self.tab.set_needs_accessibility()
+        self.tab.set_needs_paint()
+
+    def set_needs_layout(self):
+        self.needs_layout = True
+        self.tab.set_needs_accessibility()
+        self.tab.set_needs_paint()
 
     def allowed_request(self, url):
         return self.allowed_origins == None or \
@@ -1112,17 +1113,46 @@ class Frame:
                 continue
             self.rules.extend(CSSParser(body).parse())
 
-        self.tab.set_needs_render()
+        iframes = [node
+                   for node in tree_to_list(self.nodes, [])
+                   if isinstance(node, Element)
+                   and node.tag == "iframe"
+                   and "src" in node.attributes]
+        for iframe in iframes:
+            document_url = resolve_url(iframe.attributes["src"],
+                self.tab.root_frame.url)
+            iframe.frame = Frame(self.tab, self, iframe)
+            iframe.frame.load(document_url)
+
+        self.set_needs_render()
+
+    def render(self):
+        if self.needs_style:
+            if self.tab.dark_mode:
+                INHERITED_PROPERTIES["color"] = "white"
+            else:
+                INHERITED_PROPERTIES["color"] = "black"
+            self.style()
+            self.needs_layout = True
+            self.needs_style = False
+
+        if self.needs_layout:
+            self.layout(
+                self.tab.zoom)
+            if self.tab.accessibility_is_on:
+                self.tab.needs_accessibility = True
+            else:
+                self.needs_paint = True
+            self.needs_layout = False
 
     def style(self):
         style(self.nodes,
             sorted(self.rules,
                 key=cascade_priority), self.tab)
 
-    def layout(self, zoom, width, height):
-        self.frame_height = height
+    def layout(self, zoom):
         self.document = DocumentLayout(self.nodes, self)
-        self.document.layout(zoom, width)
+        self.document.layout(zoom, self.frame_width)
 
         clamped_scroll = self.clamp_scroll(self.scroll)
         if clamped_scroll != self.scroll:
@@ -1153,7 +1183,7 @@ class Frame:
         else:
             self.focus_element(None)
             self.tab.browser.focus_addressbar()
-        self.tab.set_needs_render()
+        self.set_needs_render()
 
     def focus_element(self, node):
         if node and node != self.tab.focus:
@@ -1164,12 +1194,12 @@ class Frame:
         self.tab.focused_frame = self
         if node:
             node.is_focused = True
-        self.tab.set_needs_render()
+        self.set_needs_render()
 
     def activate_element(self, elt):
         if elt.tag == "input":
             elt.attributes["value"] = ""
-            self.tab.set_needs_render()
+            self.set_needs_render()
         elif elt.tag == "a" and "href" in elt.attributes:
             url = resolve_url(elt.attributes["href"], self.url)
             self.load(url)
@@ -1211,7 +1241,7 @@ class Frame:
             if self.get_js().dispatch_event(
                 "keydown", self.tab.focus, self.window_id): return
             self.tab.focus.attributes["value"] += char
-            self.tab.set_needs_render()
+            self.set_needs_render()
 
     def scrolldown(self):
         self.scroll = self.clamp_scroll(self.scroll + SCROLL_STEP)
@@ -1231,7 +1261,7 @@ class Frame:
         new_scroll = obj.y - SCROLL_STEP
         self.scroll = self.clamp_scroll(new_scroll)
         self.scroll_changed_in_frame = True
-        self.tab.set_needs_render()
+        self.set_needs_render()
 
     def click(self, x, y):
         self.focus_element(None)
@@ -1254,10 +1284,9 @@ class Frame:
             elif is_focusable(elt):
                 self.focus_element(elt)
                 self.activate_element(elt)
-                self.tab.set_needs_render()
+                self.set_needs_render()
                 return
             elt = elt.parent
-
 
 class Tab:
     def __init__(self, browser):
@@ -1265,8 +1294,6 @@ class Tab:
         self.focus = None
         self.focused_frame = None
         self.needs_raf_callbacks = False
-        self.needs_style = False
-        self.needs_layout = False
         self.needs_accessibility = False
         self.needs_paint = False
         self.root_frame = None
@@ -1297,15 +1324,15 @@ class Tab:
         self.task_runner.clear_pending_tasks()
         self.root_frame = Frame(self, None, None)
         self.root_frame.load(url, body)
+        self.root_frame.frame_width = WIDTH
+        self.root_frame.frame_height = HEIGHT - CHROME_PX
 
-        self.set_needs_render()
+    def set_needs_render_all_frames(self):
+        for frame in self.window_id_to_frame.values():
+            frame.set_needs_render()
 
-    def set_needs_render(self):
-        self.needs_style = True
-        self.browser.set_needs_animation_frame(self)
-
-    def set_needs_layout(self):
-        self.needs_layout = True
+    def set_needs_accessibility(self):
+        self.needs_accessibility = True
         self.browser.set_needs_animation_frame(self)
 
     def set_needs_paint(self):
@@ -1319,6 +1346,8 @@ class Tab:
     def run_animation_frame(self, scroll):
         if not self.root_frame.scroll_changed_in_frame:
             self.root_frame.scroll = scroll
+
+        needs_composite = False
         for (window_id, frame) in self.window_id_to_frame.items():
             frame.get_js().interp.evaljs(
                 wrap_in_window("__runRAFHandlers()", window_id))
@@ -1334,9 +1363,10 @@ class Tab:
                             self.composited_updates.append(node)
                             self.set_needs_paint()
                         else:
-                            self.set_needs_layout()
+                            frame.set_needs_layout()
+            if frame.needs_style or frame.needs_layout:
+                needs_composite = True
 
-        needs_composite = self.needs_style or self.needs_layout
         self.render()
 
         if self.focus and self.focused_frame.needs_focus_scroll:
@@ -1372,23 +1402,8 @@ class Tab:
     def render(self):
         self.measure_render.start()
 
-        if self.needs_style:
-            if self.dark_mode:
-                INHERITED_PROPERTIES["color"] = "white"
-            else:
-                INHERITED_PROPERTIES["color"] = "black"
-            self.root_frame.style()
-            self.needs_layout = True
-            self.needs_style = False
-
-        if self.needs_layout:
-            self.root_frame.layout(
-                self.zoom, WIDTH, HEIGHT - CHROME_PX)
-            if self.accessibility_is_on:
-                self.needs_accessibility = True
-            else:
-                self.needs_paint = True
-            self.needs_layout = False
+        for frame in self.window_id_to_frame.values():
+            frame.render()
 
         if self.needs_accessibility:
             self.root_frame.build_accessibility_tree()
@@ -1447,14 +1462,14 @@ class Tab:
 
     def zoom_by(self, increment):
         if increment > 0:
-            self.zoom *= 1.1;
+            self.zoom *= 1.1
         else:
-            self.zoom *= 1/1.1;
-        self.set_needs_render()
+            self.zoom *= 1/1.1
+        self.set_needs_render_all_frames()
 
     def reset_zoom(self):
         self.zoom = 1
-        self.set_needs_render()
+        self.set_needs_render_all_frames()
 
     def go_back(self):
         if len(self.history) > 1:
@@ -1464,15 +1479,15 @@ class Tab:
 
     def toggle_accessibility(self):
         self.accessibility_is_on = not self.accessibility_is_on
-        self.set_needs_render()
+        self.set_needs_accessibility()
 
     def toggle_dark_mode(self):
         self.dark_mode = not self.dark_mode
-        self.set_needs_render()
+        self.set_needs_render_all_frames()
 
     def hover(self, x, y):
         self.pending_hover = (x, y)
-        self.set_needs_render()
+        self.set_needs_render_all_frames()
 
     def post_message(self, message, target_window_id):
         frame = self.window_id_to_frame[target_window_id]
