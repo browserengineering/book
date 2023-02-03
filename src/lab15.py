@@ -243,7 +243,7 @@ class BlockLayout:
         return "BlockLayout(x={}, y={}, width={}, height={}, node={})".format(
             self.x, self.x, self.width, self.height, self.node)
 
-class Widget:
+class LayoutEmbed:
     def __init__(self, node, parent=None, previous=None):
         self.node = node
         self.children = []
@@ -275,7 +275,7 @@ class Widget:
         else:
             self.x = self.parent.x
 
-class InputLayout(Widget):
+class InputLayout(LayoutEmbed):
     def __init__(self, node, parent, previous):
         super().__init__(node, parent, previous)
 
@@ -576,7 +576,7 @@ class TextLayout:
             "node={}, word={})").format(
             self.x, self.y, self.width, self.height, self.node, self.word)
 
-class ImageLayout(Widget):
+class ImageLayout(LayoutEmbed):
     def __init__(self, node, frame):
         super().__init__(node)
         if not hasattr(self.node, "image"):
@@ -650,7 +650,7 @@ class ImageLayout(Widget):
 IFRAME_DEFAULT_WIDTH_PX = 300
 IFRAME_DEFAULT_HEIGHT_PX = 150
 
-class IframeLayout(Widget):
+class IframeLayout(LayoutEmbed):
     def __init__(self, node, parent, previous, parent_frame):
         super().__init__(node, parent, previous)
         node.layout_object = self
