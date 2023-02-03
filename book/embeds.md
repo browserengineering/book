@@ -2065,5 +2065,5 @@ because `click` doesn't account for that transform. Fix this. Also check if
 accessibility handles iframes under transform correctly in all cases.
 
 *Iframes added or removed by script*: the `innerHTML` API can cause iframes
-to be added or removed, but our browser incorrectly fails to load or unload
-them. Implement this behavior.
+to be added or removed, but our browser doesn't load or unload them
+when this happens. Fix this: new Iframes should be loaded and old ones unloaded.
