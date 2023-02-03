@@ -1428,7 +1428,7 @@ class Tab:
                     self.hovered_node.is_hovered = True
             self.pending_hover = None
 
-        if self.pending_hover:
+        if self.needs_paint:
             self.display_list = []
 
             self.root_frame.paint(self.display_list)
