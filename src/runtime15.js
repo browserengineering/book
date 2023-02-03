@@ -44,13 +44,13 @@ Node.prototype.dispatchEvent = function(evt) {
 
 Object.defineProperty(Node.prototype, 'innerHTML', {
     set: function(s) {
-        call_python("innerHTML_set", this.handle, s.toString());
+        call_python("innerHTML_set", this.handle, s.toString(), window._id);
     }
 });
 
 Object.defineProperty(Node.prototype, 'style', {
     set: function(s) {
-        call_python("style_set", this.handle, s.toString());
+        call_python("style_set", this.handle, s.toString(), window._id);
     }
 });
 

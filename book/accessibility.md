@@ -226,9 +226,9 @@ class Tab:
 	# ...
     def zoom_by(self, increment):
         if increment > 0:
-            self.zoom *= 1.1;
+            self.zoom *= 1.1
         else:
-            self.zoom *= 1/1.1;
+            self.zoom *= 1/1.1
         self.set_needs_render()
 
     def reset_zoom(self):

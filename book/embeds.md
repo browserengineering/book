@@ -846,7 +846,30 @@ as do various event handlers, here's `click` for example:
 
 The `Frame` class has all of the rest of loading and event handling that used to
 be in `Tab`. I won't go into those details right now,  except the part where a
-`Frame` can load subframes via the `<iframe>` tag.
+`Frame` can load subframes via the `<iframe>` tag. In the code below, we
+collect all of the `<iframe>` elements in the DOM in just the same way as we
+did for `<img>`, but instead of loading the one resource and caching it, we
+create a new `Frame` object, store it on the iframe element, and call `load`
+recursively. Note that all the code in the "..." below is the same as what used
+to be on `Tab`'s `load` method.
+
+``` {.python}
+class Frame:
+    def load(self, url, body=None):
+        # ...
+        iframes = [node
+                   for node in tree_to_list(self.nodes, [])
+                   if isinstance(node, Element)
+                   and node.tag == "iframe"
+                   and "src" in node.attributes]
+        for iframe in iframes:
+            document_url = resolve_url(iframe.attributes["src"],
+                self.tab.root_frame.url)
+            iframe.frame = Frame(self.tab, self, iframe)
+            iframe.frame.load(document_url)
+```
+
+That's pretty much it for loading, now let's investigate rendering.
 
 ::: {.further}
 I should say a bit more here about the importance of open standards for embedded
@@ -869,40 +892,36 @@ making web technology itself better.
 Iframe rendering
 ================
 
-Just like with loading, a `Tab` delegates rendering to its root frame:
-
-``` {.python replace=WIDTH/WIDTH%2C%20HEIGHT%20-%20CHROME_PX}
-    # ...
-    def render(self):
-        # ...
-            self.root_frame.style()
-            # ...
-            self.root_frame.layout(
-                self.zoom, WIDTH)
-            # ...
-            self.root_frame.build_accessibility_tree()
-            # ...
-            self.root_frame.paint(self.display_list)
-```
-
-TODO: explain and refactor further.
-
-During layout, recurse into iframes when they are found:[^style-real-browsers]
+A `Tab` will delegate style and layout to each frame, and each frame will
+maintain its own dirty bits. Accessibility and paint will still be done at the
+`Tab` level, because the output of each of them is a combined result across
+all frames---a single display list, and a single accessibility tree. So that
+code doesn't change.
 
 ``` {.python}
-class IframeLayout(Widget):
-    def layout(self, zoom):
-        self.node.frame.style()
-        # ...
+class Tab:
+    def render(self):
+        self.measure_render.start()
+
+        for frame in self.window_id_to_frame.values():
+            frame.render()
+
+        if self.needs_accessibility:
+            # ...
+
+        if self.pending_hover:
+            # ...
 ```
 
-[^style-real-browsers]: In real browsers this doesn't work, because the output
-of style for a frame depends on *layout* of the parent frame. That happens when
-the child frame has [media queries][media-queries-15] that depend on the
-iframe's size. But we don't have this problem because our toy browser doesn't
-support media queries.
+``` {.python}
+class Frame:
+    def render(self):
+        if self.needs_style:
+            # ...
 
-[media-queries-15]: https://developer.mozilla.org/en-US/docs/Web/CSS/Media_Queries
+        if self.needs_layout:
+            # ...
+```
 
 Now for layout. Let's start with the biggest layout difference between iframes
 and images: unlike images, *iframes have no intrinsic size*. So their layout is
@@ -952,37 +971,16 @@ class InlineLayout:
 
 And the `IframeLayout` layout code is also similar, and also inherits from
 `Widget`. (Note however that there is no code regarding
-aspect ratio, because iframes don't have an intrinsic size.) And at the end,
-recurse into the layout method of the child frame.
-
-First there is loading. Instead of storing a decoded or encoded image, we
-create a new `Frame` object and ask it to load.
-
-``` {.python}
-class IframeLayout(Widget):
-    def __init__(self, node, parent, previous, parent_frame):
-        super().__init__(node, parent, previous)
-        node.layout_object = self
-        if not hasattr(self.node, "frame"):
-            self.load(parent_frame)
-
-    def load(self, parent_frame):
-        assert "src" in self.node.attributes
-        document_url = resolve_url(self.node.attributes["src"],
-            parent_frame.url)
-        try:
-            self.node.frame = Frame(parent_frame.tab, parent_frame, self.node)
-            self.node.frame.load(document_url)
-        except:
-            self.frame = None
-            print("Failed to load iframe: " + document_url)
-```
+aspect ratio, because iframes don't have an intrinsic size.)
 
 And also layout:
 
 ``` {.python replace=%2C%20self.width%20-%202/%2C%20self.width%20-%202%2C%20self.height%20-%202}
 class IframeLayout(Widget):
-    # ...
+    def __init__(self, node, parent, previous, parent_frame):
+        super().__init__(node, parent, previous)
+        node.layout_object = self
+
     def layout(self, zoom):
         # ...
         if has_width:
@@ -999,7 +997,27 @@ class IframeLayout(Widget):
 
         # ...
 
-        self.node.frame.layout(zoom, self.width - 2)
+        self.node.frame.frame_height = self.height - 2
+        self.node.frame.frame_width = self.width - 2
+```
+
+Each `Frame` will also needs its width and height, as an input to layout:
+
+``` {.python}
+class Frame:
+    def __init__(self, tab, parent_frame, frame_element):
+        self.frame_width = 0
+        self.frame_height = 0
+```
+
+The root frame is sized to the window:
+
+``` {.python}
+class Tab:
+    def load(self, url, body=None):
+        # ...
+        self.root_frame.frame_width = WIDTH
+        self.root_frame.frame_height = HEIGHT - CHROME_PX
 ```
 
 As for painting, iframes by default have a border around their content when
@@ -1103,7 +1121,7 @@ class Frame:
         self.tab.focused_frame = self
         if node:
             node.is_focused = True
-        self.tab.set_needs_render()
+        self.set_needs_render()
 ```
 
 Advancing a tab will use the focused frame (and you should move the rest of the
@@ -1129,36 +1147,7 @@ class Frame:
 
 Clamping will now happen differently, because non-root frames have a height
 that is not defined by the size of the browser window, but rather their
-containing `<iframe>` element. To handle this let's add a parameter to `layout`
-indicating this height, and record it in `frame_height`:
-
-``` {.python}
-class Frame:
-    def __init__(self, tab, parent_frame, frame_element):
-        self.frame_height = 0
-    # ...
-    def layout(self, zoom, width, height):
-        self.frame_height = height
-```
-
-The root frame will have a browser window-based height:
-
-``` {.python}
-class Tab:
-    def render(self):
-        # ...
-            self.root_frame.layout(
-                self.zoom, WIDTH, HEIGHT - CHROME_PX)
-```
-
-And in `IframeLayout`, the height of the `<iframe>` element:
-
-``` {.python}
-class IframeLayout(Widget):
-    def layout(self, zoom):
-        # ...
-        self.node.frame.layout(zoom, self.width - 2, self.height - 2)
-```
+containing `<iframe>` element.
 
 We'll use this to do clamping based on this height:
 
@@ -1183,8 +1172,10 @@ class Frame:
 
 ``` {.python}
 class Frame:
-    def layout(self, zoom, width, height):
-        # ...
+    def layout(self, zoom):
+        self.document = DocumentLayout(self.nodes, self)
+        self.document.layout(zoom, self.frame_width)
+
         clamped_scroll = self.clamp_scroll(self.scroll)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_frame = True
@@ -1416,7 +1407,6 @@ called. The `Window` constructor stores its id, which will be useful later.
         js = self.get_js()
         js.add_window(self)
 ```
-
 
 And whenever scripts are evaluated, they are wrapped (note the extra window
 id parameter):
