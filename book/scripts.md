@@ -1245,7 +1245,7 @@ element itself, not just its children.
 
 *Script-added scripts and style sheets*: the `innerHTML` API could cause
 `<script>` or `<link>`  elements to be added to the document, but currently
-our browser does not load them when this happens. Implement this behavior.
+our browser does not load them when this happens. Fix this.
 Likewise, when a `<link>` element is removed from the document, its style
 sheet should be removed from the global list; implement that as well.^[Note
 that, unlike a style sheet, a removed `<script>`'s evaluated code still exists
