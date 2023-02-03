@@ -2075,4 +2075,4 @@ accessibility handles iframes under transform correctly in all cases.
 
 *Iframes added or removed by script*: the `innerHTML` API can cause iframes
 to be added or removed, but our browser doesn't load or unload them
-when this happens. Fix this: new Iframes should be loaded and old ones unloaded.
+when this happens. Fix this: new iframes should be loaded and old ones unloaded.
