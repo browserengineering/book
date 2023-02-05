@@ -1110,27 +1110,27 @@ By default, the tree walk is not stopped:
 
 ``` {.python}
 class LayoutObject:
-    def click(self, x, y):
+    def dispatch(self, x, y):
         return False
 ```
 
 For an inline element it stops if focusable:
 
 ``` {.python}
-class InlineLayout:
+class InlineLayout(LayoutObject):
    def dispatch(self, x, y):
         if is_focusable(self.node):
             self.frame.focus_element(self.node)
             self.frame.activate_element(self.node)
             self.frame.set_needs_render()
-            return true
-        return false:
+            return True
+        return False
 ```
 
 While for inputs, they are always focusable:
 
 ``` {.python}
-class InputLayout:
+class InputLayout(EmbedLayout):
    def dispatch(self, x, y):
         self.frame.focus_element(self.node)
         self.frame.activate_element(self.node)
@@ -1144,7 +1144,7 @@ coordinate space, and then stop the tree walk:
 
 
 ``` {.python}
-class IframeLayout:
+class IframeLayout(EmbedLayout):
     def dispatch(self, x, y):
         self.node.frame.click(x - self.x, y - self.y)
         return True
