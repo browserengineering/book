@@ -149,8 +149,16 @@ class DrawImage(DisplayItem):
         return "DrawImage(rect={})".format(
             self.rect)
 
-class DocumentLayout:
+class LayoutObject:
+    def __init__(self):
+        pass
+
+    def dispatch(self, x, y):
+        return False
+
+class DocumentLayout(LayoutObject):
     def __init__(self, node, frame):
+        super().__init__()
         self.node = node
         node.layout_object = self
         self.parent = None
@@ -182,8 +190,9 @@ class DocumentLayout:
     def __repr__(self):
         return "DocumentLayout()"
 
-class BlockLayout:
+class BlockLayout(LayoutObject):
     def __init__(self, node, parent, previous, frame):
+        super().__init__()
         self.node = node
         node.layout_object = self
         self.parent = parent
@@ -243,8 +252,9 @@ class BlockLayout:
         return "BlockLayout(x={}, y={}, width={}, height={}, node={})".format(
             self.x, self.x, self.width, self.height, self.node)
 
-class LayoutEmbed:
+class EmbedLayout(LayoutObject):
     def __init__(self, node, parent=None, previous=None):
+        super().__init__()
         self.node = node
         self.children = []
         self.parent = parent
@@ -275,7 +285,7 @@ class LayoutEmbed:
         else:
             self.x = self.parent.x
 
-class InputLayout(LayoutEmbed):
+class InputLayout(EmbedLayout):
     def __init__(self, node, parent, previous):
         super().__init__(node, parent, previous)
 
@@ -315,12 +325,19 @@ class InputLayout(LayoutEmbed):
         cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
 
+    def dispatch(self, x, y):
+        self.frame.focus_element(self.node)
+        self.frame.activate_element(self.node)
+        self.frame.set_needs_render()
+        return True
+
     def __repr__(self):
         return "InputLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
 
-class InlineLayout:
+class InlineLayout(LayoutObject):
     def __init__(self, node, parent, previous, frame):
+        super().__init__()
         self.node = node
         node.layout_object = self
         self.parent = parent
@@ -450,10 +467,11 @@ class InlineLayout:
             (self.node.tag == "input" or self.node.tag == "button")
 
         if not is_atomic:
-            bgcolor = self.node.style.get("background-color",
-                                     "transparent")
+            bgcolor = self.node.style.get(
+                "background-color", "transparent")
             if bgcolor != "transparent":
-                radius = float(self.node.style.get("border-radius", "0px")[:-2])
+                radius = float(self.node.style.get(
+                    "border-radius", "0px")[:-2])
                 cmds.append(DrawRRect(rect, radius, bgcolor))
  
         for child in self.children:
@@ -462,6 +480,14 @@ class InlineLayout:
         if not is_atomic:
             cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
+
+    def dispatch(self, x, y):
+        if is_focusable(self.node):
+            self.frame.focus_element(self.node)
+            self.frame.activate_element(self.node)
+            self.frame.set_needs_render()
+            return True
+        return False
 
     def __repr__(self):
         return "InlineLayout(x={}, y={}, width={}, height={}, node={})".format(
@@ -576,7 +602,7 @@ class TextLayout:
             "node={}, word={})").format(
             self.x, self.y, self.width, self.height, self.node, self.word)
 
-class ImageLayout(LayoutEmbed):
+class ImageLayout(EmbedLayout):
     def __init__(self, node, frame):
         super().__init__(node)
         if not hasattr(self.node, "image"):
@@ -650,7 +676,7 @@ class ImageLayout(LayoutEmbed):
 IFRAME_DEFAULT_WIDTH_PX = 300
 IFRAME_DEFAULT_HEIGHT_PX = 150
 
-class IframeLayout(LayoutEmbed):
+class IframeLayout(EmbedLayout):
     def __init__(self, node, parent, previous, parent_frame):
         super().__init__(node, parent, previous)
         node.layout_object = self
@@ -700,6 +726,10 @@ class IframeLayout(LayoutEmbed):
 
         cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
+
+    def dispatch(self, x, y):
+        self.node.frame.click(x - self.x, y - self.y)
+        return True
 
     def __repr__(self):
         return "IframeLayout(src={}, x={}, y={}, width={}, height={})".format(
@@ -1252,7 +1282,7 @@ class Frame:
         self.scroll_changed_in_frame = True
 
     def scroll_to(self, elt):
-        assert not (self.tab.needs_style or self.tab.needs_layout)
+        assert not (self.needs_style or self.needs_layout)
         objs = [
             obj for obj in tree_to_list(self.document, [])
             if obj.node == self.tab.focus
@@ -1279,16 +1309,7 @@ class Frame:
         if elt and self.get_js().dispatch_event(
             "click", elt, self.window_id): return
         while elt:
-            if isinstance(elt, Text):
-                pass
-            elif elt.tag == "iframe":
-                obj = elt.layout_object
-                elt.frame.click(x - obj.x, y - obj.y)
-                return
-            elif is_focusable(elt):
-                self.focus_element(elt)
-                self.activate_element(elt)
-                self.set_needs_render()
+            if elt.layout_object and elt.layout_object.dispatch(x, y):
                 return
             elt = elt.parent
 

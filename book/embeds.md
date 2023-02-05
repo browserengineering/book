@@ -19,7 +19,6 @@ performance, security and open information access implications. So let's now
 implement them to see. And in keeping with the pattern you've already seen,
 basic support for these features is easy enough to implement in one chapter!
 
-
 Images
 ======
 
@@ -178,12 +177,15 @@ Let's now load `<img>` tags found in a web page.
 And a new `ImageLayout` class. The height of the object is defined by the height
 of the image. Again, this class is almost the same as `InputLayout`, except for
 that height. In fact, so similar that let's make them inherit from a new
-`LayoutEmbed` base class to share a lot of code about inline layout and
-fonts:
+`EmbedLayout` base class to share a lot of code about inline layout and fonts.
+(And for completeness, let's make a new `LayoutObject` root class for all
+types of object, and make `BlockLayout`, `InlineLayout` and `DocumentLayout`
+inherit from it. I haven't shown that code though.)
 
 ``` {.python}
-class LayoutEmbed:
+class EmbedLayout(LayoutObject):
     def __init__(self, node, parent=None, previous=None):
+        super().__init__()
         self.node = node
         self.children = []
         self.parent = parent
@@ -218,7 +220,7 @@ class LayoutEmbed:
 Now `InputLayout` looks like this:
 
 ``` {.python}
-class InputLayout(LayoutEmbed):
+class InputLayout(EmbedLayout):
     def __init__(self, node, parent, previous):
         super().__init__(node, parent, previous)
 
@@ -238,7 +240,7 @@ to laod the image and only then set its `parent` and `previous` fields. That'll
 be via a new `init` method call.
 
 ``` {.python}
-class InlineLayout:
+class InlineLayout(LayoutObject):
     # ...
     def recurse(self, node, zoom):
             # ...
@@ -264,7 +266,7 @@ class InlineLayout:
 And here is `ImageLayout`:
 
 ``` {.python expected=False}
-class ImageLayout(LayoutEmbed):
+class ImageLayout(EmbedLayout):
     def __init__(self, node, frame):
         super().__init__(node)
         if not hasattr(self.node, "image"):
@@ -293,7 +295,7 @@ class ImageLayout(LayoutEmbed):
 Then there is layout, which shares all the code except sizing:
 
 ``` {.python expected=False}
-class ImageLayout(LayoutEmbed):
+class ImageLayout(EmbedLayout):
 
     def layout(self, zoom):
         super().layout(zoom)
@@ -358,7 +360,7 @@ class DrawImage(DisplayItem):
 Finally, the `paint` method of `ImageLayout` emits a single `DrawImage`:
 
 ``` {.python expected=False}
-class ImageLayout(LayoutEmbed):
+class ImageLayout(EmbedLayout):
     # ...
     def paint(self, display_list):
         cmds = []
@@ -413,7 +415,7 @@ and height attributes are in CSS pixels without unit suffixes, so parsing is
 easy, and we need to multiply by zoom to get device pixels:
 
 ``` {.pythhon}
-class InlineLayout:
+class InlineLayout(LayoutObject):
     # ...
     def image(self, node, zoom):
         if "width" in node.attributes:
@@ -425,7 +427,7 @@ class InlineLayout:
 And in `ImageLayout`:
 
 ``` {.python expected=False}
-class ImageLayout(LayoutEmbed):
+class ImageLayout(EmbedLayout):
     # ...
     def layout(self, zoom):
         # ...
@@ -467,7 +469,7 @@ design oversights take a long time to fix.
 [padding-top-hack]: https://web.dev/aspect-ratio/#the-old-hack-maintaining-aspect-ratio-with-padding-top
 
 ``` {.python}
-class ImageLayout(LayoutEmbed):
+class ImageLayout(EmbedLayout):
     # ...
     def layout(self, zoom):
         # ...
@@ -564,7 +566,7 @@ of performance, synchronously loading the image during `load` is also not
 good. I've left fixing this to an exercise.]
 
 ``` {.python}
-class ImageLayout(LayoutEmbed):
+class ImageLayout(EmbedLayout):
     # ...
     def load(self, frame):
         # ...
@@ -592,7 +594,7 @@ def decode_image(encoded_image, width, height, image_quality):
 And then in `paint` on `ImageLayout`:
 
 ``` {.python}
-class ImageLayout(LayoutEmbed):
+class ImageLayout(EmbedLayout):
     # ...
     def paint(self, display_list):
         # ...
@@ -955,7 +957,7 @@ instead. I've added 2 to the width and height in these calculations to provide
 room for the painted border to come.
 
 ``` {.python}
-class InlineLayout:
+class InlineLayout(LayoutObject):
     # ...
     def recurse(self, node, zoom):
         # ...
@@ -971,13 +973,13 @@ class InlineLayout:
 ```
 
 And the `IframeLayout` layout code is also similar, and also inherits from
-`LayoutEmbed`. (Note however that there is no code regarding
+`EmbedLayout`. (Note however that there is no code regarding
 aspect ratio, because iframes don't have an intrinsic size.)
 
 And also layout:
 
 ``` {.python replace=%2C%20self.width%20-%202/%2C%20self.width%20-%202%2C%20self.height%20-%202}
-class IframeLayout(LayoutEmbed):
+class IframeLayout(EmbedLayout):
     def __init__(self, node, parent, previous, parent_frame):
         super().__init__(node, parent, previous)
         node.layout_object = self
@@ -1032,7 +1034,7 @@ bounds of the `<iframe>` element.
 [box-model]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Box_Model/Introduction_to_the_CSS_box_model
 
 ``` {.python expected=False}
-class IframeLayout(LayoutEmbed):
+class IframeLayout(EmbedLayout):
     # ...
     def paint(self, display_list):
         cmds = []
@@ -1082,21 +1084,73 @@ It's not (yet) possible to click on a element in an iframe in our toy browser,
 rotate through its focusable elements, scroll it, or generate an accessibility
 tree.
 
-Let's fix that. Clicking requires checking for an `<iframe>` element:
+Let's fix that. But all this code in `click` is getting a little unwieldly,
+first some refactoring: we'll push object-type-specific behavior down into the
+various `LayoutObject` subclasses, via a new `dispatch` method that does any
+special behavior and then returns `True` if the element tree walk should
+stop.^[In our toy browser, we never implemented event bubbling. So all we're
+trying to do is walk up the tree until one or more special element is found.
+To see how bubbling affects this code, try the related exercise in chapter 9.]
+
+The existing `click` method will now simply walk up the element tree until
+`dispatch` returns true:
 
 ``` {.python}
 class Frame:
     def click(self, x, y):
         # ...
         while elt:
-            # ...
-            elif elt.tag == "iframe":
-                obj = elt.layout_object
-                elt.frame.click(x - obj.x, y - obj.y)
+            if elt.layout_object and elt.layout_object.dispatch(x, y):
                 return
+            elt = elt.parent
+
 ```
 
-And now that clicking works, clicking on `<a>` elements will work. Which means
+By default, the tree walk is not stopped:
+
+``` {.python}
+class LayoutObject:
+    def dispatch(self, x, y):
+        return False
+```
+
+For an inline element it stops if focusable:
+
+``` {.python}
+class InlineLayout(LayoutObject):
+   def dispatch(self, x, y):
+        if is_focusable(self.node):
+            self.frame.focus_element(self.node)
+            self.frame.activate_element(self.node)
+            self.frame.set_needs_render()
+            return True
+        return False
+```
+
+While for inputs, they are always focusable:
+
+``` {.python}
+class InputLayout(EmbedLayout):
+   def dispatch(self, x, y):
+        self.frame.focus_element(self.node)
+        self.frame.activate_element(self.node)
+        self.frame.set_needs_render()
+        return True
+```
+
+And now we're ready to implement `dispatch` for iframe elements. In this
+case, we should retarget the click to the iframe, after adjusting for its local
+coordinate space, and then stop the tree walk:
+
+
+``` {.python}
+class IframeLayout(EmbedLayout):
+    def dispatch(self, x, y):
+        self.node.frame.click(x - self.x, y - self.y)
+        return True
+```
+
+Now that clicking works, clicking on `<a>` elements will work. Which means
 that you can now cause a frame to navigate to a new page. And because a
 `Frame` has all the loading and navigation logic that `Tab` used to have, it
 just works without any more changes! That's satisfying.
