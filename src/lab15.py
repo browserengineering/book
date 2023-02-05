@@ -153,7 +153,7 @@ class LayoutObject:
     def __init__(self):
         pass
 
-    def click(self, x, y):
+    def dispatch(self, x, y):
         return False
 
 class DocumentLayout(LayoutObject):
@@ -248,10 +248,6 @@ class BlockLayout(LayoutObject):
         cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
 
-    def click(self, x, y):
-        if self.node.tag == "a":
-            return True
-
     def __repr__(self):
         return "BlockLayout(x={}, y={}, width={}, height={}, node={})".format(
             self.x, self.x, self.width, self.height, self.node)
@@ -329,7 +325,10 @@ class InputLayout(EmbedLayout):
         cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
 
-    def click(self, x, y):
+    def dispatch(self, x, y):
+        self.frame.focus_element(self.node)
+        self.frame.activate_element(self.node)
+        self.frame.set_needs_render()
         return True
 
     def __repr__(self):
@@ -482,8 +481,13 @@ class InlineLayout(LayoutObject):
             cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
 
-    def click(self, x, y):
-        return is_focusable(self.node)
+    def dispatch(self, x, y):
+        if is_focusable(self.node):
+            self.frame.focus_element(self.node)
+            self.frame.activate_element(self.node)
+            self.frame.set_needs_render()
+            return True
+        return False
 
     def __repr__(self):
         return "InlineLayout(x={}, y={}, width={}, height={}, node={})".format(
@@ -723,7 +727,7 @@ class IframeLayout(EmbedLayout):
         cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
 
-    def click(self, x, y):
+    def dispatch(self, x, y):
         self.node.frame.click(x - self.x, y - self.y)
         return True
 
@@ -1305,12 +1309,8 @@ class Frame:
         if elt and self.get_js().dispatch_event(
             "click", elt, self.window_id): return
         while elt:
-            if elt.layout_object and elt.layout_object.click(x, y):
-                if is_focusable(elt):
-                    self.focus_element(elt)
-                    self.activate_element(elt)
-                    self.set_needs_render()
-                    return
+            if elt.layout_object and elt.layout_object.dispatch(x, y):
+                return
             elt = elt.parent
 
 class Tab:

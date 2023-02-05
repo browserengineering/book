@@ -177,12 +177,15 @@ Let's now load `<img>` tags found in a web page.
 And a new `ImageLayout` class. The height of the object is defined by the height
 of the image. Again, this class is almost the same as `InputLayout`, except for
 that height. In fact, so similar that let's make them inherit from a new
-`EmbedLayout` base class to share a lot of code about inline layout and
-fonts:
+`EmbedLayout` base class to share a lot of code about inline layout and fonts.
+(And for completeness, let's make a new `LayoutObject` root class for all
+types of object, and make `BlockLayout`, `InlineLayout` and `DocumentLayout`
+inherit from it. I haven't shown that code though.)
 
 ``` {.python}
 class EmbedLayout(LayoutObject):
     def __init__(self, node, parent=None, previous=None):
+        super().__init__()
         self.node = node
         self.children = []
         self.parent = parent
@@ -1081,23 +1084,73 @@ It's not (yet) possible to click on a element in an iframe in our toy browser,
 rotate through its focusable elements, scroll it, or generate an accessibility
 tree.
 
-Let's fix that. Clicking requires checking for an `<iframe>` element:
+Let's fix that. But all this code in `click` is getting a little unwieldly,
+first some refactoring: we'll push object-type-specific behavior down into the
+various `LayoutObject` subclasses, via a new `dispatch` method that does any
+special behavior and then returns `True` if the element tree walk should
+stop.^[In our toy browser, we never implemented event bubbling. So all we're
+trying to do is walk up the tree until one or more special element is found.
+To see how bubbling affects this code, try the related exercise in chapter 9.]
+
+The existing `click` method will now simply walk up the element tree until
+`dispatch` returns true:
 
 ``` {.python}
 class Frame:
     def click(self, x, y):
         # ...
         while elt:
-            if elt.layout_object and elt.layout_object.click(x, y):
-                if is_focusable(elt):
-                    self.focus_element(elt)
-                    self.activate_element(elt)
-                    self.set_needs_render()
-                    return
+            if elt.layout_object and elt.layout_object.dispatch(x, y):
+                return
             elt = elt.parent
+
 ```
 
-And now that clicking works, clicking on `<a>` elements will work. Which means
+By default, the tree walk is not stopped:
+
+``` {.python}
+class LayoutObject:
+    def click(self, x, y):
+        return False
+```
+
+For an inline element it stops if focusable:
+
+``` {.python}
+class InlineLayout:
+   def dispatch(self, x, y):
+        if is_focusable(self.node):
+            self.frame.focus_element(self.node)
+            self.frame.activate_element(self.node)
+            self.frame.set_needs_render()
+            return true
+        return false:
+```
+
+While for inputs, they are always focusable:
+
+``` {.python}
+class InputLayout:
+   def dispatch(self, x, y):
+        self.frame.focus_element(self.node)
+        self.frame.activate_element(self.node)
+        self.frame.set_needs_render()
+        return True
+```
+
+And now we're ready to implement `dispatch` for iframe elements. In this
+case, we should retarget the click to the iframe, after adjusting for its local
+coordinate space, and then stop the tree walk:
+
+
+``` {.python}
+class IframeLayout:
+    def dispatch(self, x, y):
+        self.node.frame.click(x - self.x, y - self.y)
+        return True
+```
+
+Now that clicking works, clicking on `<a>` elements will work. Which means
 that you can now cause a frame to navigate to a new page. And because a
 `Frame` has all the loading and navigation logic that `Tab` used to have, it
 just works without any more changes! That's satisfying.
