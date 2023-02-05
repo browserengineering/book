@@ -19,7 +19,6 @@ performance, security and open information access implications. So let's now
 implement them to see. And in keeping with the pattern you've already seen,
 basic support for these features is easy enough to implement in one chapter!
 
-
 Images
 ======
 
@@ -178,11 +177,11 @@ Let's now load `<img>` tags found in a web page.
 And a new `ImageLayout` class. The height of the object is defined by the height
 of the image. Again, this class is almost the same as `InputLayout`, except for
 that height. In fact, so similar that let's make them inherit from a new
-`LayoutEmbed` base class to share a lot of code about inline layout and
+`EmbedLayout` base class to share a lot of code about inline layout and
 fonts:
 
 ``` {.python}
-class LayoutEmbed:
+class EmbedLayout(LayoutObject):
     def __init__(self, node, parent=None, previous=None):
         self.node = node
         self.children = []
@@ -218,7 +217,7 @@ class LayoutEmbed:
 Now `InputLayout` looks like this:
 
 ``` {.python}
-class InputLayout(LayoutEmbed):
+class InputLayout(EmbedLayout):
     def __init__(self, node, parent, previous):
         super().__init__(node, parent, previous)
 
@@ -238,7 +237,7 @@ to laod the image and only then set its `parent` and `previous` fields. That'll
 be via a new `init` method call.
 
 ``` {.python}
-class InlineLayout:
+class InlineLayout(LayoutObject):
     # ...
     def recurse(self, node, zoom):
             # ...
@@ -264,7 +263,7 @@ class InlineLayout:
 And here is `ImageLayout`:
 
 ``` {.python expected=False}
-class ImageLayout(LayoutEmbed):
+class ImageLayout(EmbedLayout):
     def __init__(self, node, frame):
         super().__init__(node)
         if not hasattr(self.node, "image"):
@@ -293,7 +292,7 @@ class ImageLayout(LayoutEmbed):
 Then there is layout, which shares all the code except sizing:
 
 ``` {.python expected=False}
-class ImageLayout(LayoutEmbed):
+class ImageLayout(EmbedLayout):
 
     def layout(self, zoom):
         super().layout(zoom)
@@ -358,7 +357,7 @@ class DrawImage(DisplayItem):
 Finally, the `paint` method of `ImageLayout` emits a single `DrawImage`:
 
 ``` {.python expected=False}
-class ImageLayout(LayoutEmbed):
+class ImageLayout(EmbedLayout):
     # ...
     def paint(self, display_list):
         cmds = []
@@ -413,7 +412,7 @@ and height attributes are in CSS pixels without unit suffixes, so parsing is
 easy, and we need to multiply by zoom to get device pixels:
 
 ``` {.pythhon}
-class InlineLayout:
+class InlineLayout(LayoutObject):
     # ...
     def image(self, node, zoom):
         if "width" in node.attributes:
@@ -425,7 +424,7 @@ class InlineLayout:
 And in `ImageLayout`:
 
 ``` {.python expected=False}
-class ImageLayout(LayoutEmbed):
+class ImageLayout(EmbedLayout):
     # ...
     def layout(self, zoom):
         # ...
@@ -467,7 +466,7 @@ design oversights take a long time to fix.
 [padding-top-hack]: https://web.dev/aspect-ratio/#the-old-hack-maintaining-aspect-ratio-with-padding-top
 
 ``` {.python}
-class ImageLayout(LayoutEmbed):
+class ImageLayout(EmbedLayout):
     # ...
     def layout(self, zoom):
         # ...
@@ -564,7 +563,7 @@ of performance, synchronously loading the image during `load` is also not
 good. I've left fixing this to an exercise.]
 
 ``` {.python}
-class ImageLayout(LayoutEmbed):
+class ImageLayout(EmbedLayout):
     # ...
     def load(self, frame):
         # ...
@@ -592,7 +591,7 @@ def decode_image(encoded_image, width, height, image_quality):
 And then in `paint` on `ImageLayout`:
 
 ``` {.python}
-class ImageLayout(LayoutEmbed):
+class ImageLayout(EmbedLayout):
     # ...
     def paint(self, display_list):
         # ...
@@ -955,7 +954,7 @@ instead. I've added 2 to the width and height in these calculations to provide
 room for the painted border to come.
 
 ``` {.python}
-class InlineLayout:
+class InlineLayout(LayoutObject):
     # ...
     def recurse(self, node, zoom):
         # ...
@@ -971,13 +970,13 @@ class InlineLayout:
 ```
 
 And the `IframeLayout` layout code is also similar, and also inherits from
-`LayoutEmbed`. (Note however that there is no code regarding
+`EmbedLayout`. (Note however that there is no code regarding
 aspect ratio, because iframes don't have an intrinsic size.)
 
 And also layout:
 
 ``` {.python replace=%2C%20self.width%20-%202/%2C%20self.width%20-%202%2C%20self.height%20-%202}
-class IframeLayout(LayoutEmbed):
+class IframeLayout(EmbedLayout):
     def __init__(self, node, parent, previous, parent_frame):
         super().__init__(node, parent, previous)
         node.layout_object = self
@@ -1032,7 +1031,7 @@ bounds of the `<iframe>` element.
 [box-model]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Box_Model/Introduction_to_the_CSS_box_model
 
 ``` {.python expected=False}
-class IframeLayout(LayoutEmbed):
+class IframeLayout(EmbedLayout):
     # ...
     def paint(self, display_list):
         cmds = []
@@ -1089,11 +1088,13 @@ class Frame:
     def click(self, x, y):
         # ...
         while elt:
-            # ...
-            elif elt.tag == "iframe":
-                obj = elt.layout_object
-                elt.frame.click(x - obj.x, y - obj.y)
-                return
+            if elt.layout_object and elt.layout_object.click(x, y):
+                if is_focusable(elt):
+                    self.focus_element(elt)
+                    self.activate_element(elt)
+                    self.set_needs_render()
+                    return
+            elt = elt.parent
 ```
 
 And now that clicking works, clicking on `<a>` elements will work. Which means
