@@ -26,7 +26,14 @@ Let's start with images, which are not too hard to get going (certainly if you
 have convenient libraries to decode and render them). So let's just get to
 it.[^img-history] We'll implement the `<img>` tag, which works like this:
 
-    <img src="https://pavpanchekha.com/im/me-square.jpg">
+    <img src="https://browser.engineering/im/hes.jpg">
+
+And of course renders something like this:
+
+<figure>
+    <img src="im/hes.jpg">
+    <figcaption>Hypertext Editing System <br/> (Gregory Lloyd from <a href="https://commons.wikimedia.org/wiki/File:HypertextEditingSystemConsoleBrownUniv1969.jpg">Wikipedia</a>, <a href="https://creativecommons.org/licenses/by/2.0/legalcode" rel="license">CC BY 2.0</a>)</figcaption>
+</figure>
 
 [^img-history]: mages have been around (almost) since the
 beginning, being proposed in [early 1993][img-email]. This makes it ironic that
@@ -56,7 +63,7 @@ There are three steps to displaying images:
 
 1. Download it from a URL.
 2. Decode it into a buffer in memory.^[I'll get into how this works in a bit;
-for now just think of it like decompressing a zip file.]
+for now just think of decoding as something like decompressing a zip file.]
 3. Lay it out on the page.
 4. Paint it in the right place in the display list.
 
@@ -174,13 +181,14 @@ def decode_image(image_bytes):
 
 Let's now load `<img>` tags found in a web page.
 
-And a new `ImageLayout` class. The height of the object is defined by the height
-of the image. Again, this class is almost the same as `InputLayout`, except for
-that height. In fact, so similar that let's make them inherit from a new
-`EmbedLayout` base class to share a lot of code about inline layout and fonts.
-(And for completeness, let's make a new `LayoutObject` root class for all
-types of object, and make `BlockLayout`, `InlineLayout` and `DocumentLayout`
-inherit from it. I haven't shown that code though.)
+Images will be laid out by a new `ImageLayout` class. The height and width of
+the object is defined by the height of the image, but other aspects of it will be almost
+the same as `InputLayout`. In fact, so similar that
+let's make them inherit from a new `EmbedLayout` base class to share a lot of
+code about inline layout and fonts. (And for completeness, let's make a new
+`LayoutObject` root class for all types of object, and make `BlockLayout`,
+`InlineLayout` and `DocumentLayout` inherit from it.^[I haven't shown that code
+though, because it's just an empty class definition.])
 
 ``` {.python}
 class EmbedLayout(LayoutObject):
@@ -236,12 +244,11 @@ are the need to actually load the image off the network, and then use
 the size of the image to size the `ImageLayout`. Let's start with loading.
 After loading, the image is stored on the `node`. But this adds some complexity
 in the `image` function we need to add on `InlineLayout`, because first it needs
-to laod the image and only then set its `parent` and `previous` fields. That'll
+to load the image and only then set its `parent` and `previous` fields. That'll
 be via a new `init` method call.
 
 ``` {.python}
 class InlineLayout(LayoutObject):
-    # ...
     def recurse(self, node, zoom):
             # ...
             elif node.tag == "img":
@@ -296,25 +303,24 @@ Then there is layout, which shares all the code except sizing:
 
 ``` {.python expected=False}
 class ImageLayout(EmbedLayout):
-
     def layout(self, zoom):
         super().layout(zoom)
-        
         self.width = device_px(self.node.image.width, zoom)
         self.height = max(
                 device_px(self.node.image.height, zoom),
                 linespace(self.font))
 ```
 
-Notice how the positioning of an image depends on the font size of the element
-(the `ImageLayout` class coming up has some code for that also). Input elements
-already had that, but those elements generally have text in them, but images do
-not. That means that a "line" consisting of only an image still has has an
-implicit font affecting its layout somehow.^[In fact, a page with only a single
-image and no text or CSS at all still has a font size (the default font size of
-a web page), and the image's layout depends on it. This is a very common source
-of confusion for web developers. In a real browser, it can be fixed by forcing
-an image into a block or other layout mode via the `display` CSS property.]
+Notice how the positioning of an image depends on the font size of the element,
+via the call to the the layout method of `EmbedLayout` in the superclass. Input
+elements already had that, but those elements generally have text in them, but
+images do not. That means that a "line" consisting of only an image still has
+has an implicit font affecting its layout somehow.^[In fact, a page with only a
+single image and no text or CSS at all still has a font size (the default font
+size of a web page), and the image's layout depends on it. This is a very
+common source of confusion for web developers. In a real browser, it can be
+avoided by forcing an image into a block or other layout mode via the `display`
+CSS property.]
 
 That's unintuitive---there is no font in an image, why does this happen?
 The reason is that, as a type of inline layout, images are designed to flow
@@ -330,14 +336,17 @@ an associated font.
 In fact, now that you see images alongside input elements, notice how actually
 the input elements we defined in Chapter 8 *are also a form of embedded
 content*---after all, the way they are drawn to the screen is certainly not
-defined by HTML tags and CSS in our toy browser.^[The details are complicated
+defined by HTML tags and CSS in our toy browser. That's why I called the
+superclass `EmbedLayout`.^[The details are complicated
 in a real browser, but input elements are usually called *widgets* instead,
 and have a lot of
-[special rendering rules][widget-rendering] that sometimes involve CSS.] The
-web specifications call images
-[*replaced elements*][replaced-elements]---characterized by putting stuff
+[special rendering rules][widget-rendering] that sometimes involve CSS.]
+
+The web specifications call images[*replaced elements*]
+[replaced-elements]---characterized by putting stuff
 "outside of HTML" into an inline HTML context, and "replacing" what HTML might
-have drawn.
+have drawn. In real browsers, input elements are some sort of hybrid between
+a replaced element and a regular element.
 
 [widget-rendering]: https://html.spec.whatwg.org/multipage/rendering.html#widgets
 
@@ -453,8 +462,8 @@ But it also allows the web page to screw up the image pretty badly if the
  stretched horizontally.
 
 We can avoid this problem by only providing a *scale* for the image rather than
-new width and heights. One way to achieve it is, if the web page happens only
-to specify `width` and not `height`, to infer the correct height from the
+new width and heights. One way to represent scale is, if the web page happens
+only to specify `width` and not `height`, to infer the correct height from the
 aspect ratio of the original image.
 
 Implementing this change is very easy:[^only-recently-aspect-ratio] it's
@@ -603,6 +612,11 @@ class ImageLayout(EmbedLayout):
             self.width, self.height,
             self.node.style.get("image-rendering", "auto"))
 ```
+
+Images are now present in our browser, with several nice features to control
+their layout and quality. Your browser should now be able to render
+<a href="/examples/example15-img.html">this
+example page</a> correctly.
 
 ::: {.further}
 All the same resize quality options are present in Skia. That's because
@@ -772,14 +786,14 @@ scripts. There are three significant differences though:
    effect of navigation on the web page that *contains* the `<iframe>`
    element.
 
-* Iframes do not necessarily have their own rendering event
-loop. [^iframe-event-loop] In real browsers, [cross-origin] iframes are often
+* *Iframes do not necessarily have their own rendering event
+loop.* [^iframe-event-loop] In real browsers, [cross-origin] iframes are often
 "site isolated", meaning that the iframe has its own CPU process for
 [security reasons][site-isolation]. In our toy browser we'll just make all
 iframes (even nested ones---yes, iframes can include iframes!) use the same
 rendering event loop.
 
-* Cross-origin iframes are *script-isolated* from their containing web page.
+* *Cross-origin iframes are *script-isolated *from their containing web page.*
 That means that a script in the iframe [can't access][cant-access] variables
 or DOM in the containing page, nor can scripts in the containing page access
 the iframe's variables or DOM.
@@ -807,18 +821,18 @@ work that the `Tab` used to do, and the `Tab` becomes a coordination and
 container class for the frame tree. More specifically, the `Tab` class will:
 
 * Kick off animation frames and rendering.
+* Paint and own the display list for all frames in the tab.
 * Implement accessibility.
 * Provide glue code between `Browser` and the documents to implement event
   handling.
 * Proxy communication between frame documents.
-* Own the display list for all frames in the tab.
 * Commit to the browser thread.
 
 And the `Frame` class will:
 
 * Own the DOM, layout trees, and scroll offset for its HTML document.
 * Own a `JSContext` if it is cross-origin to its parent.
-* Run style, layout and paint on the its DOM and layout tree.
+* Run style and layout on the its DOM and layout tree.
 * Implement loading and event handling (focus, hit testing, etc) for its HTML
   document.
 
@@ -952,7 +966,7 @@ IFRAME_DEFAULT_HEIGHT_PX = 150
 ```
 
 Iframe layout looks like this in `InlineLayout`. The only difference from images
-is the width and height calculation, so I've omitted that part with "..."
+is the width calculation, so I've omitted that part with "..."
 instead. I've added 2 to the width and height in these calculations to provide
 room for the painted border to come.
 
@@ -978,7 +992,7 @@ aspect ratio, because iframes don't have an intrinsic size.)
 
 And also layout:
 
-``` {.python replace=%2C%20self.width%20-%202/%2C%20self.width%20-%202%2C%20self.height%20-%202}
+``` {.python}
 class IframeLayout(EmbedLayout):
     def __init__(self, node, parent, previous, parent_frame):
         super().__init__(node, parent, previous)
@@ -987,21 +1001,18 @@ class IframeLayout(EmbedLayout):
     def layout(self, zoom):
         # ...
         if has_width:
-            # ...
+            self.width = \
+                device_px(int(self.node.attributes["width"]), zoom)
         else:
             self.width = device_px(
                 IFRAME_DEFAULT_WIDTH_PX + 2, zoom)
 
         if has_height:
-            # ...
+            self.height = \
+                device_px(int(self.node.attributes["height"]), zoom)
         else:
             self.height = device_px(
                 IFRAME_DEFAULT_HEIGHT_PX + 2, zoom)
-
-        # ...
-
-        self.node.frame.frame_height = self.height - 2
-        self.node.frame.frame_width = self.width - 2
 ```
 
 Each `Frame` will also needs its width and height, as an input to layout:
@@ -1011,6 +1022,16 @@ class Frame:
     def __init__(self, tab, parent_frame, frame_element):
         self.frame_width = 0
         self.frame_height = 0
+```
+
+And set here:
+
+``` {.python}
+class IframeLayout(EmbedLayout):
+    def layout(self, zoom):
+        # ...
+        self.node.frame.frame_height = self.height - 2
+        self.node.frame.frame_width = self.width - 2
 ```
 
 The root frame is sized to the window:
@@ -1079,8 +1100,8 @@ obsolete.
 Iframe input events
 ===================
 
-Rendering now functions properly in iframes, but user input does not.
-It's not (yet) possible to click on a element in an iframe in our toy browser,
+Rendering now functions properly in iframes, but user input does not:
+it's not (yet) possible to click on a element in an iframe in our toy browser,
 rotate through its focusable elements, scroll it, or generate an accessibility
 tree.
 
@@ -1089,8 +1110,9 @@ first some refactoring: we'll push object-type-specific behavior down into the
 various `LayoutObject` subclasses, via a new `dispatch` method that does any
 special behavior and then returns `True` if the element tree walk should
 stop.^[In our toy browser, we never implemented event bubbling. So all we're
-trying to do is walk up the tree until one or more special element is found.
-To see how bubbling affects this code, try the related exercise in chapter 9.]
+trying to do is walk up the tree until an element with special behavior is
+found. To see how bubbling affects this code, try the related exercise in
+chapter 9.]
 
 The existing `click` method will now simply walk up the element tree until
 `dispatch` returns true:
