@@ -42,7 +42,7 @@ Tkinter doesn't support proper image sizing and clipping, and doesn't support
 very many image formats, so we had to wait for the introduction of Skia.
 
 An `<img>` is a leaf element of the DOM. In some ways, it's similar to a single
-font glyph that has to paint in a single rectangle (sized to the image instead
+font glyph that has to paint in a single rectangle sized to the image (instead
 of the glyph), takes up space in a `LineLayout`, and causes line breaking when
 it reaches the end of the available space.
 
@@ -81,9 +81,9 @@ Python Image Library---which is why the import says PIL.]
 import PIL.Image
 ```
 
-For step 1 (download), we'll need to make some changes to the `request`
+For step 1 (download), make some changes to the `request`
 function to add support for binary data formats; currently it assumes an HTTP
-response is always `utf8`. We'll start by creating a binary file object
+response is always `utf8`. Start by creating a binary file object
 from the response instead of `utf8`:
 
 ``` {.python}
@@ -91,7 +91,7 @@ def request(url, top_level_url, payload=None):
     # ...
     response = s.makefile("b", newline="\r\n")
 ```
-Now each time we read a line we need to decode it individually; for image
+Now each time we read a line, decode it individually; for image
 responses, all lines will be `utf8` except for the body, which is raw
 encoded image data.
 
@@ -105,20 +105,21 @@ def request(url, top_level_url, payload=None):
         # ...    
 ```
 
-Then when we get to the body, check for the `content-type` header, which will
-tell us how to decode the body of the HTTP response. We encountered this header
-briefly in [Chapter 1](/http.html#the-servers-response), where I noted that
-HTML web page responses have a value of `text/html` for this header. This value
-is a [MIME type][mime-type]. MIME stands for Multipurpose Internet Mail
-Extensions, and was originally intended for enumerating all of the acceptable
-data formats for email attachments.^[Most email these days is actually HTML,
-and is encoded with the `text/html` MIME type. Gmail, for example, by default
-uses this format, but can be put in a "plain text mode" that encodes the email
-in `text/plain`.] We've actually encountered two more content types already:
-`text/css` and `application/javascript`, but since we assumed both were in
-`utf8` there was no need to differentiate in the code.^[That's not a correct
-thing to do in a real browser, and alternate character sets are an exercise in
-chapter 1.]
+Then when processing the body body, check for the `content-type` header, which
+will tell the browser how to decode the body of the HTTP response. I discussed
+this header briefly in [Chapter 1](/http.html#the-servers-response), where I
+noted that HTML web page responses have a value of `text/html` for this header.
+This value is a [MIME type][mime-type]. MIME stands for Multipurpose Internet
+Mail Extensions, and was originally intended for enumerating all of the
+acceptable data formats for email attachments.^[Most email these days is
+actually HTML, and is encoded with the `text/html` MIME type. Gmail, for
+example, by default uses this format, but can be put in a "plain text mode"
+that encodes the email in `text/plain`.] We've actually encountered two more
+content types already:`text/css` and `application/javascript`,^[The MIME
+type of javascript is `application/javascript`.] but since
+it assumed both were in `utf8` there was no need to differentiate in the
+code.^[That's not a correct thing to do in a real browser, and alternate
+character sets are an exercise in chapter 1.]
 
 [mime-type]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types
 
@@ -145,7 +146,7 @@ def request(url, top_level_url, payload=None):
     return headers, body
 ```
 
-Now let's define a method that decodes a response body that we know is an image
+Now define a method that decodes a response body that we know is an image
 (even if we don't know its format).^[Interestingly, to make it work for our toy
 browser we don't need to consult `content-type`. That's because Pillow already
 auto-detects the image format by peeking at the first few bytes of the binary
@@ -185,7 +186,7 @@ Images will be laid out by a new `ImageLayout` class. The height and width of
 the object is defined by the height of the image, but other aspects of it will be almost
 the same as `InputLayout`. In fact, so similar that
 let's make them inherit from a new `EmbedLayout` base class to share a lot of
-code about inline layout and fonts. (And for completeness, let's make a new
+code about inline layout and fonts. (And for completeness, make a new
 `LayoutObject` root class for all types of object, and make `BlockLayout`,
 `InlineLayout` and `DocumentLayout` inherit from it.^[I haven't shown that code
 though, because it's just an empty class definition.])
@@ -342,8 +343,8 @@ in a real browser, but input elements are usually called *widgets* instead,
 and have a lot of
 [special rendering rules][widget-rendering] that sometimes involve CSS.]
 
-The web specifications call images[*replaced elements*]
-[replaced-elements]---characterized by putting stuff
+The web specifications call images
+[*replaced elements*][replaced-elements]---characterized by putting stuff
 "outside of HTML" into an inline HTML context, and "replacing" what HTML might
 have drawn. In real browsers, input elements are some sort of hybrid between
 a replaced element and a regular element.
@@ -462,9 +463,8 @@ But it also allows the web page to screw up the image pretty badly if the
  stretched horizontally.
 
 We can avoid this problem by only providing a *scale* for the image rather than
-new width and heights. One way to represent scale is, if the web page happens
-only to specify `width` and not `height`, to infer the correct height from the
-aspect ratio of the original image.
+new width and heights. One way to represent scale is to infer it if the web
+page happens only to specify only one of the `width` or `height`.
 
 Implementing this change is very easy:[^only-recently-aspect-ratio] it's
 just a few lines of edited code in `ImageLayout` to apply the aspect
@@ -657,8 +657,8 @@ And for input elements, there needs to be some way to customize the rendering
 of them while at the same time hooking up to all of the accessibility goodness
 of the browser. Interestingly enough, this problem has to date been only
 partially solved by real browsers, and is an
-[active area of development](https://open-ui.org/).^[Some technologies
-that help to get there *have* been developed, such as
+[active area of development](https://open-ui.org/).^[Some technologies *have*
+been developed that help to get there, such as
 [Shadow DOM][shadow-dom] and [form-associated custom elements][form-el].
 It may be that eventually, all input elements will have rendering defined
 fully by HTML and CSS.]
@@ -692,7 +692,7 @@ There are two possible ways to achieve this:
 The first type is a *plugin*. There have been many attempts at plugins on the
 web over the years. Some provided a programming language and mechanism for
 interactive UI, such as [Java applets][java-applets] or [Flash].^[YouTube
-originally used Flash for videos.] Others
+originally used Flash for videos, for exmaple.] Others
 provided a way to embed other content types into a web page, such as
 [PDF]. But plugins suffer from a lot of the same accessibility and other
 "platform integration" drawbacks of `<canvas>`, and also have to provide
@@ -716,12 +716,12 @@ Images can also be animated.[^animated-gif] So if a website can load an image,
 and the image can be animated, then that image is something very close to
 a *video*. But in practice, videos need very advanced encoding and encoding
 formats to minimize network and CPU costs, *and* these formats incur a lot of
-other complications, chief among them [Digital Rights Management][drm]. To
-support all this, the `<video>` tag supported by real browsers provide built-in
-support for several common video [*codecs*][codec].^[In video, it's called a
-codec, but in images it's called a *format*--go figure.] And on top of all
-this, videos need built-in *media controls*, such as play and pause buttons,
-and volume controls.
+other complications, chief among them [Digital Rights Management (DRM)][drm]. To
+support all this, the `<video>` tag supported by real browsers provides
+built-in support for several common video [*codecs*][codec] with DRM and
+hardware acceleration.^[In video, it's called a codec, but in images it's
+called a *format*--go figure.] And on top of all this, videos need built-in
+*media controls*, such as play and pause buttons, and volume controls.
 
 [^animated-gif]: See the exercise for animated images at the end of this
 chapter.
@@ -730,7 +730,7 @@ chapter.
 [codec]: https://en.wikipedia.org/wiki/Video_codec
 
 Perhaps the most common use case for embedded content other than images and
-video is ads. Inline ads on web pages have been around since the beginning
+video is ads. Inline ads have been around since the beginning
 of the web, and are often (for good reasons or bad depending on your
 perspective) big users of third-party embedding and whatever
 animation/attention-drawing features the web has.
