@@ -292,7 +292,7 @@ class BlockLayout:
         self.height = display_px(
             sum([child.height for child in self.children]), zoom)
 
-    def paint(self):
+    def paint(self, display_list):
         assert not self.dirty_children
         # ...
 ```
@@ -437,12 +437,9 @@ flag:
 class BlockLayout:
     def layout(self, zoom):
         # ...
-        assert not self.dirty_zoom
-        self.width = display_px(self.parent.width, self.zoom)
-        # ...
-
-    def recurse(self):
-        assert not self.dirty_zoom
+        else:
+            assert not self.dirty_zoom
+            self.recurse(self.node, zoom)           
         # ...
 ```
 
@@ -693,6 +690,7 @@ class BlockLayout:
     def layout(self):
         # ...
         if self.dirty_height:
+            assert not self.dirty_children
             for child in self.children:
                 assert not child.dirty_height
             self.height = sum([child.height for child in self.children])
