@@ -1039,24 +1039,23 @@ WINDOW_COUNT = 0
 class Frame:
     def __init__(self, tab, parent_frame, frame_element):
         self.tab = tab
+        self.parent_frame = parent_frame
+        self.frame_element = frame_element
+        self.needs_style = False
+        self.needs_layout = False
+
         self.document = None
         self.scroll = 0
         self.scroll_changed_in_frame = True
         self.needs_focus_scroll = False
         self.nodes = None
         self.url = None
-        self.parent_frame = parent_frame
-        self.frame_element = frame_element
         self.js = None
         global WINDOW_COUNT
         self.window_id = WINDOW_COUNT
         WINDOW_COUNT += 1
         self.frame_width = 0
         self.frame_height = 0
-        self.accessibility_tree = None
-
-        self.needs_style = False
-        self.needs_layout = False
 
         self.tab.window_id_to_frame[self.window_id] = self
 
@@ -1090,7 +1089,6 @@ class Frame:
         self.scroll_changed_in_frame = True
         headers, body = request(url, self.url, payload=body)
         self.url = url
-        self.accessibility_tree = None
 
         self.allowed_origins = None
         if "content-security-policy" in headers:
@@ -1416,7 +1414,7 @@ class Tab:
             height=math.ceil(self.root_frame.document.height),
             display_list=self.display_list,
             composited_updates=composited_updates,
-            accessibility_tree=self.root_frame.accessibility_tree,
+            accessibility_tree=self.accessibility_tree,
             focus=self.focus
         )
         self.display_list = None

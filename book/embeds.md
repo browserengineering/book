@@ -755,7 +755,7 @@ efficient.
 Iframes
 =======
 
-Iframes are websites embedded within other websites. With sufficient APIs
+Iframes are web pages embedded within other web pages. With sufficient APIs
 present,[^extensible-web] they are just as powerful as any plugin system, but
 come with all of the security, accessibility, code reuse,
 performance[^yes-performance] and open standards benefits of the web.
@@ -811,7 +811,7 @@ rendering event loop as a result.
 [cant-access]: https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy#cross-origin_script_api_access
 
 Since iframes are HTML documents, they can contain iframes. So in general each
-`Tab` has a tree of objects---*frames*---containing HTML documents nested
+`Tab` has a tree of objects---*frames* containing HTML documents---nested
 within each other. Each node in this tree will be an object from a new `Frame`
 class. We'll use one rendering event loop for all `Frame`s.
 
@@ -836,8 +836,8 @@ And the `Frame` class will:
 * Implement loading and event handling (focus, hit testing, etc) for its HTML
   document.
 
-A `Frame` will also recurse into child `Frame`s for additional rendering and hit
-testing. 
+A `Frame` will also recurse into child `Frame`s for additional painting,
+accessibility and hit testing. 
 
 The `Tab`'s load method, for example, now simply manages history state and asks
 its root frame to load:
@@ -864,11 +864,10 @@ as do various event handlers, here's `click` for example:
 The `Frame` class has all of the rest of loading and event handling that used to
 be in `Tab`. I won't go into those details right now,  except the part where a
 `Frame` can load subframes via the `<iframe>` tag. In the code below, we
-collect all of the `<iframe>` elements in the DOM in just the same way as we
-did for `<img>`, but instead of loading the one resource and caching it, we
-create a new `Frame` object, store it on the iframe element, and call `load`
-recursively. Note that all the code in the "..." below is the same as what used
-to be on `Tab`'s `load` method.
+collect all of the `<iframe>` elements in the DOM, load them, create a new
+`Frame` object, store it on the iframe element, and call `load` recursively.
+Note that all the code in the "..." below is the same as what used to be on
+`Tab`'s `load` method.
 
 ``` {.python}
 class Frame:
@@ -930,8 +929,28 @@ class Tab:
             # ...
 ```
 
+Style and layout dirty bits are stored on `Frame` and control that part of
+rendering:
+
 ``` {.python}
 class Frame:
+    def __init__(self, tab, parent_frame, frame_element):
+        self.tab = tab
+        self.parent_frame = parent_frame
+        self.frame_element = frame_element
+        self.needs_style = False
+        self.needs_layout = False
+
+    def set_needs_render(self):
+        self.needs_style = True
+        self.tab.set_needs_accessibility()
+        self.tab.set_needs_paint()
+
+    def set_needs_layout(self):
+        self.needs_layout = True
+        self.tab.set_needs_accessibility()
+        self.tab.set_needs_paint()
+
     def render(self):
         if self.needs_style:
             # ...
@@ -940,10 +959,11 @@ class Frame:
             # ...
 ```
 
-Now for layout. Let's start with the biggest layout difference between iframes
-and images: unlike images, *iframes have no intrinsic size*. So their layout is
-defined entirely by the attributes and CSS of the `iframe` element, and not at
-all by the content of the iframe.[^seamless-iframe]
+Now for `<iframe>` layout. Let's start with the biggest layout difference
+between iframes and images: unlike images, *an `<iframe>` element has no
+intrinsic size*. So its layout is defined entirely by the attributes and CSS of
+the `iframe` element, and not at all by the content of the iframe.
+[^seamless-iframe]
 
 [^seamless-iframe]: There were attempts to provide such an intrinsic sizing in
 the past, but it was [removed][seamless-removed] from the HTML specification
@@ -965,8 +985,8 @@ IFRAME_DEFAULT_WIDTH_PX = 300
 IFRAME_DEFAULT_HEIGHT_PX = 150
 ```
 
-Iframe layout looks like this in `InlineLayout`. The only difference from images
-is the width calculation, so I've omitted that part with "..."
+Iframe layout in `InlineLayout` is a lot like images. The only difference
+is the width calculation, so I've omitted the rest with "..."
 instead. I've added 2 to the width and height in these calculations to provide
 room for the painted border to come.
 
@@ -989,8 +1009,6 @@ class InlineLayout(LayoutObject):
 And the `IframeLayout` layout code is also similar, and also inherits from
 `EmbedLayout`. (Note however that there is no code regarding
 aspect ratio, because iframes don't have an intrinsic size.)
-
-And also layout:
 
 ``` {.python}
 class IframeLayout(EmbedLayout):
@@ -1105,14 +1123,16 @@ it's not (yet) possible to click on a element in an iframe in our toy browser,
 rotate through its focusable elements, scroll it, or generate an accessibility
 tree.
 
-Let's fix that. But all this code in `click` is getting a little unwieldly,
-first some refactoring: we'll push object-type-specific behavior down into the
+Let's fix that. But all this code in `click` is getting a little unwieldly, so
+first some refactoring. We'll push object-type-specific behavior down into the
 various `LayoutObject` subclasses, via a new `dispatch` method that does any
 special behavior and then returns `True` if the element tree walk should
-stop.^[In our toy browser, we never implemented event bubbling. So all we're
-trying to do is walk up the tree until an element with special behavior is
-found. To see how bubbling affects this code, try the related exercise in
-chapter 9.]
+stop.^[In our toy browser, we never implemented [event bubbling][bubbling]. So
+all we're trying to do is walk up the tree until an element with special
+behavior is found. To see how bubbling affects this code, try the related
+exercise in chapter 9.]
+
+[bubbling]: https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Building_blocks/Events#event_bubbling
 
 The existing `click` method will now simply walk up the element tree until
 `dispatch` returns true:
@@ -1178,7 +1198,8 @@ that you can now cause a frame to navigate to a new page. And because a
 just works without any more changes! That's satisfying.
 
 Focusing an element now also needs to store the frame the focused element is
-on (the `focus` value will still be stored on the `Tab`, not the `Frame`:
+on (the `focus` value will still be stored on the `Tab`, not the `Frame`,
+though, since there is only one focus at a time in the tab):
 
 ``` {.python}
 class Tab:
@@ -1398,8 +1419,8 @@ feature with two tricks: overwriting the `window` object and the `with`
 operator. The `with` operator is pretty obscure, but what it does is evaluate
 the content of a block by looking up objects on the given object first, and
 only after falling back to the global scope.^[It's important to reiterate that
-this is a hack and doesn't actually do things correctly, but it suffices for
-our toy browser.] This example:
+this is a hack and doesn't actually do things correctly, but it suffices to
+show the concept in our toy browser.] This example:
 
     var win = {}
     win.foo = 'bar'
@@ -1469,7 +1490,7 @@ class JSContext:
 
 And then initializing the `JSContext` for the root. Here we need to evaluate
 definition of the `Window` class separately from `runtime.js`, because
-`runtime.js` ifself needs to be evaluated by `wrap_in_window`. And
+`runtime.js` itself needs to be evaluated by `wrap_in_window`. And
 `wrap_in_window` needs `Window` defined exactly once, not each time it's
 called. The `Window` constructor stores its id, which will be useful later.
 
@@ -1581,7 +1602,7 @@ class JSContext:
 On the JavaScript side, the most interesting bit is what to do with the id
 returned from Python. What it will do is to find the "`window_<id>`" object,
 which we can obtain via the `eval` JavaScript function.^[If you don't know
-about `eval`,, it does the same thing as the DukPy `evaljs` method.] And if the
+about `eval`, it does the same thing as the DukPy `evaljs` method.] And if the
 eval throws a "variable not defined" exception, that means the window object is
 not defined, which can only be the case if the parent is cross-origin to the
 current window. In that case, return a fresh `Window` object with the fake id
@@ -1605,7 +1626,6 @@ Object.defineProperty(Window.prototype, 'parent', {
         }
 
     }
-    return undefined;
   }
 });
 ```
@@ -1799,11 +1819,9 @@ into a new object that has the same structure.
 
 Let's implement `postMessage`.^[I won't provide support for cloning anything
 other than basic types like string and number, because DukPy doesn't support
-structured cloning natively.]
-
-In the JavaScript runtime, we'll need a new `WINDOW_LISTENERS` array
-to keep track of event listeners for messages (the old `LISTENERS` was only
-for events on `Node` objects).
+structured cloning natively.] In the JavaScript runtime, we'll need a new
+`WINDOW_LISTENERS` array to keep track of event listeners for messages (the old
+`LISTENERS` was only for events on `Node` objects).
 
 ``` {.javascript}
     window.WINDOW_LISTENERS = {}
@@ -1860,6 +1878,8 @@ not allow synchronous bi-directional (or uni-directional, for that matter)
 communication. Asynchrony, callbacks and message-passing are inherent
 features of the JavaScript+event loop programming model.
 
+In any event, here is `postMessage`:
+
 ``` {.python}
 class JSContext:
     def postMessage(self, target_window_id, message, origin):
@@ -1909,14 +1929,14 @@ Iframe security
 ===============
 
 I've already discussed security in Chapter 10, but iframes cause new classes of
-serious security problem that are worth briefly covering here. However, there
+serious security problems that are worth briefly covering here. However, there
 isn't anything new to implement in our browser for this section, so consider it
 optional reading.
 
 Iframes are very powerful, because they allow a web page to embed another one.
 But with that power comes a commensurate security risk in cases where the
 embedded web page is cross-origin to the main page. After all, it's literally a
-website controlled by someone else that renders into the same page as yours.
+web page controlled by someone else that renders into the same tab as yours.
 And since it's unlikely that you really trust that other web page, you want to
 be protected from any security or privacy risks that page may represent.
 
@@ -2011,7 +2031,7 @@ iframes. Reiterating the main points:
   at hand, but need some care for layout and decoding optimizations.
 
 * Over time, plugins that are not PDF viewers, images or video have been
-  replaced with the more general-purpose *iframe* element, which has evolved
+  replaced with the more general-purpose *iframe* element, which has evolved to
   become just as powerful as any plugin, and benefits from all the hard-won
   attributes of a browser such as its rendering pipeline, accessibility, and
   open standards.
@@ -2037,12 +2057,11 @@ Exercises
 
 *Canvas element*: Implement the [`<canvas>`][canvas-elt] element, the 2D aspect
  of the [`getContext`][getcontext] API, and some of the drawing commands on
- [`CanvasRenderingContext2D`][crc2d]. Canvas layout is just like an iframe, but
- doesn't have nearly as much internal complexity. Instead you just need to
- allocate a Skia canvas of an appropriate size when `getContext("2d")` is
- called, and implement some of the APIs that draw to the canvas.
- [^eager-canvas] It should be straightforward to translate these to Skia
- methods.
+ [`CanvasRenderingContext2D`][crc2d]. Canvas layout is just like an iframe,
+ including its default width and height. You should allocate a Skia canvas of
+ an appropriate size when `getContext("2d")` is called, and implement some of
+ the APIs that draw to the canvas.[^eager-canvas] It should be straightforward
+ to translate these to Skia methods.
 
  [crc2d]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D
 
@@ -2052,7 +2071,8 @@ allows a web developer to build up a display list with a sequence of commands,
 but also places the burden on them to decide when to do so, and also when to
 clear it when needed. This approach is called an *immediate mode* of
 rendering---as opposed to the [*retained mode*][retained-mode] used by HTML,
-which does not have this complexity.
+which does not have this complexity for developers. (Instead, the complexity
+is borne by the browser.)
 
 [retained-mode]: https://en.wikipedia.org/wiki/Retained_mode
 
@@ -2077,7 +2097,7 @@ element.
 [obj-fit]: https://developer.mozilla.org/en-US/docs/Web/CSS/object-fit
 
 *Lazy decoding*: Decoding images can take time and use up a lot of memory.
-But some images, especially ones that are "below the fold"[^btf]---they
+But some images, especially ones that are "below the fold":[^btf] they
 are further down in a web page and not visible and only exposed after some
 scrolling by the user. Implement an optimization in your browser that only
 decodes images that are visible on the screen.

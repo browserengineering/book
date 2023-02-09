@@ -164,6 +164,5 @@ Object.defineProperty(Window.prototype, 'parent', {
         }
 
     }
-    return undefined;
   }
 });
