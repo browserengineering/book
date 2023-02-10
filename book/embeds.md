@@ -180,6 +180,87 @@ def decode_image(image_bytes):
         colorType=skia.kRGBA_8888_ColorType)
 ```
 
+Now, images are expensive relative to text content. To start with, they take a
+long time to download. But decoding is even more expensive in some ways, in
+particular how it can slow down the rendering pipeline and use up a lot of
+memory. On top of this, if the image is sized to a non-intrinsic size on
+screen, there are several different algorithms available for how to do it.
+Decoding and resizing are both expensive.
+
+To understand why, it's time to dig into what decoding actually does. *Decoding*
+is the process of converting an *encoded* image from a binary form optimized
+for quick download over a network into a *decoded* one suitable for rendering,
+typically a raw bitmap in memory that can be a direct input into
+rasterization on the GPU. It's called "decoding" and not "decompression"
+because many encoded image formats are [*lossy*][lossy], meaning that
+they "cheat": they don't faithfully represent all of the information in the
+original picture, in cases where it's unlikely that a human viewing the decoded
+image will notice the difference.
+
+[lossy]: https://en.wikipedia.org/wiki/Lossy_compression
+
+Many encoded image formats are very good at compression. This means that when a
+browser decodes it, the resulting bitmap may take up quite a bit of memory, even
+if the downloaded file size is not so big. As a result, it's very important for
+browsers to do as little decoding as possible. Two ways they achieve that are
+by avoiding decode for images not currently on the screen, and decoding
+directly to the size actually needed to draw pixels on the screen. 
+
+In addition, there is a big question of the *quality* of the decoding, in cases
+where the decoded size is not the same as the intrinsic size. In this
+situation, there are more (or fewer) pixels of intrinsic content than pixels on
+the screen, and some algorithm is needed to decide which ones to pick and how
+to mix adjacent pixels together. There are a bunch of possible *image
+filtering* algorithms, such as choosing the "nearest" source image pixel,
+a "bilinear" mix of pixels adjacent to the desired source pixel location, and
+other fancier algorithms like
+[Lanczos](https://en.wikipedia.org/wiki/Lanczos_resampling).
+
+At the moment, we can only decode to the [intrinsic size][intrinsic-size] of the
+image, i.e. the size of the source image data. But that's only because we don't
+support any way to change it. Let's optimize that, by decoding directly to the
+painted size rather than intrinsic, and utilize the
+[`image-rendering`][image-rendering] CSS property to decide which image filter
+algorithm to use:
+
+
+[intrinsic-size]: https://developer.mozilla.org/en-US/docs/Glossary/Intrinsic_Size#
+
+``` {.python}
+def decode_image(encoded_image, width, height, image_quality):
+    resample = None
+    if image_quality == "crisp-edges":
+        resample = PIL.Image.Resampling.LANCZOS
+    pil_image = encoded_image.resize(\
+        (int(width), int(height)), resample)
+    # ...
+```
+
+Now, of course, the `width` and `height` have to be specified to the
+"painted" size on the screen. Which means it's now time to figure out image
+layout and painted sizing.
+
+[image-rendering]: https://developer.mozilla.org/en-US/docs/Web/CSS/image-rendering
+
+
+
+
+::: {.further}
+All the same resize quality options are present in Skia. That's because
+resizing may occur during raster, just as it does during decode. One way
+for this to happen is via a scale transform (which our toy browser doesn't
+support, but real ones do). Another way is that an image may be animated from
+one size to another, and it doesn't make sense to re-decode it at every size.
+
+Real browsers push the image decoding step even further the rendering pipeline
+(e.g. in the raster phase) for this reason---to avoid a double resize or worse
+image quality. Yet another reason to do so is because raster happens on another
+thread, and so that way image decoding won't block the main thread.
+:::
+
+Embedded layout
+===============
+
 Let's now load `<img>` tags found in a web page.
 
 Images will be laid out by a new `ImageLayout` class. The height and width of
@@ -271,9 +352,10 @@ class InlineLayout(LayoutObject):
         self.cursor_x += w + font.measureText(" ")
 ```
 
-And here is `ImageLayout`:
+And here is `ImageLayout`. Note how we're loading the image, but not
+yet decodig it, because we don't know the painted size until layout is done.
 
-``` {.python expected=False}
+``` {.python}
 class ImageLayout(EmbedLayout):
     def __init__(self, node, frame):
         super().__init__(node)
@@ -289,7 +371,7 @@ class ImageLayout(EmbedLayout):
             return
         try:
             header, body = request(image_url, frame.url)
-            self.node.image = decode_image(body)
+            self.node.image = PIL.Image.open(io.BytesIO(body))
         except:
             self.node.image = None
             print("Failed to load image: " + image_url)
@@ -367,26 +449,28 @@ class DrawImage(DisplayItem):
             self.image, self.rect.left(), self.rect.top())
 ```
 
-Finally, the `paint` method of `ImageLayout` emits a single `DrawImage`:
+Finally, the `paint` method of `ImageLayout` finally decodes the image, and
+emits a single `DrawImage`:
 
 ``` {.python expected=False}
 class ImageLayout(EmbedLayout):
     # ...
     def paint(self, display_list):
         cmds = []
-        # ...
+
+        decoded_image = decode_image(self.node.image,
+            self.width, self.height,
+            self.node.style.get("image-rendering", "auto"))
+
         rect = skia.Rect.MakeLTRB(
             self.x, self.y, self.x + self.width,
             self.y + self.height)
 
-        cmds.append(DrawImage(self.node.image, rect)
+        cmds.append(DrawImage(decoded_image, rect))
 
         display_list.extend(cmds)
 ```
 
-Images should now work and display on the page. But our implementation is
-very basic and missing several important features for layout and rendering
-quality.
 
 ::: {.further}
 The `<img>` tag uses a `src` attribute and not `href`. Why is that? And
@@ -401,22 +485,15 @@ before such things were mediated by a standards organization.
 
 [srcname]: http://1997.webhistory.org/www.lists/www-talk.1993q1/0196.html
 
-Image sizing
-============
-
-At the moment, our browser can only draw an `<img>` element at its
-[intrinsic size][intrinsic-size], i.e. the size of the source image data. But
-that's only because we don't support any way to change it.
-
-There are of course several ways for a web page to change an image's rendered
-size.^[For example, the `width` and `height` CSS properties (not to be
-confused with the `width` and `height` attributes!), which were an
+Images should now work and display on the page. But our implementation is very
+basic and actually has no way for the image's painted size to differ from its
+decoded size. There are of course several ways for a web page to change an
+image's rendered size.^[For example, the `width` and `height` CSS properties
+(not to be confused with the `width` and `height` attributes!), which were an
 exercise in Chapter 13.] But images *also* have, mostly for historical reasons
 (because these attributes were invented before CSS existed), special `width`
 and `height` attributes that override the intrinsic size. Let's implement
 those.
-
-[intrinsic-size]: https://developer.mozilla.org/en-US/docs/Glossary/Intrinsic_Size#
 
 It's pretty easy: every place we deduce the width or height of an image layout
 object from its intrinsic size, first consult the corresponding attribute and
@@ -503,6 +580,12 @@ class ImageLayout(EmbedLayout):
             # ...
 ```
 
+Images are now present in our browser, with several nice features to control
+their layout and quality. Your browser should now be able to render
+<a href="/examples/example15-img.html">this
+example page</a> correctly.
+
+
 ::: {.further}
 I discussed preserving aspect ratio for a loaded image, but what about before
 it loads? In our toy browser, images are loaded synchronously during `load`,
@@ -521,115 +604,6 @@ aspect ratio accordingly. Otherwise the page layout will look bad and cause
 
 [resp-design]: https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Responsive_Design
 [cls]: https://web.dev/cls/
-
-Image performance
-=================
-
-Images are expensive relative to text content. To start with, they take a
-long time to download. But decoding is even more expensive in some ways, in
-particular how it can slow down the rendering pipeline and use up a lot of
-memory. On top of this, if the image is sized to a non-intrinsic size on
-screen, there are several different algorithms available for how to do it.
-Decoding and resizing are both expensive.
-
-To understand why, it's time to dig into what decoding actually does. *Decoding*
-is the process of converting an *encoded* image from a binary form optimized
-for quick download over a network into a *decoded* one suitable for rendering,
-typically a raw bitmap in memory that can be a direct input into
-rasterization on the GPU. It's called "decoding" and not "decompression"
-because many encoded image formats are [*lossy*][lossy], meaning that
-they "cheat": they don't faithfully represent all of the information in the
-original picture, in cases where it's unlikely that a human viewing the decoded
-image will notice the difference.
-
-[lossy]: https://en.wikipedia.org/wiki/Lossy_compression
-
-Many encoded image formats are very good at compression. This means that when a
-browser decodes it, the resulting bitmap may take up quite a bit of memory, even
-if the downloaded file size is not so big. As a result, it's very important for
-browsers to do as little decoding as possible. Two ways they achieve that are
-by avoiding decode for images not currently on the screen, and decoding
-directly to the size actually needed to draw pixels on the screen. 
-
-In addition, there is a big question of the *quality* of the decoding, in cases
-where the decoded size is not the same as the intrinsic size. In this
-situation, there are more (or fewer) pixels of intrinsic content than pixels on
-the screen, and some algorithm is needed to decide which ones to pick and how
-to mix adjacent pixels together. There are a bunch of possible *image
-filtering* algorithms, such as choosing the "nearest" source image pixel,
-a "bilinear" mix of pixels adjacent to the desired source pixel location, and
-other fancier algorithms like
-[Lanczos](https://en.wikipedia.org/wiki/Lanczos_resampling).
-
-Let's optimize to take advantage of these new observations. We'll
-decode directly the painted size rather than intrinsic, and utilize the
-[`image-rendering`][image-rendering] CSS property to decide which image filter
-algorithm to use.
-
-[image-rendering]: https://developer.mozilla.org/en-US/docs/Web/CSS/image-rendering
-
-This is not too hard, but requires doing the decode during paint rather than
-load (because we don't know the painted size until after layout!). So first
-store the *encoded* image instead of the *decoded* one during load:^[Speaking
-of performance, synchronously loading the image during `load` is also not
-good. I've left fixing this to an exercise.]
-
-``` {.python}
-class ImageLayout(EmbedLayout):
-    # ...
-    def load(self, frame):
-        # ...
-            header, body = request(image_url, frame.url)
-            self.node.image = PIL.Image.open(io.BytesIO(body))
-```
-
-Then in layout, use that image for sizing.^[It's the same as the previous code
-but on a `PIL` image instead of a Skia one, and now it's an attribute access,
-so the only change is to remove some parentheses. I won't show the code here
-since it's trivial.] And `decode_image` will also need to change:^[Note: Pillow
-may not actually save any memory by doing this; nevertheless it should be clear
-that it *can*. Real browsers optimize such things whenever possible.]
-
-``` {.python}
-def decode_image(encoded_image, width, height, image_quality):
-    resample = None
-    if image_quality == "crisp-edges":
-        resample = PIL.Image.Resampling.LANCZOS
-    pil_image = encoded_image.resize(\
-        (int(width), int(height)), resample)
-    # ...
-```
-
-And then in `paint` on `ImageLayout`:
-
-``` {.python}
-class ImageLayout(EmbedLayout):
-    # ...
-    def paint(self, display_list):
-        # ...
-
-        decoded_image = decode_image(self.node.image,
-            self.width, self.height,
-            self.node.style.get("image-rendering", "auto"))
-```
-
-Images are now present in our browser, with several nice features to control
-their layout and quality. Your browser should now be able to render
-<a href="/examples/example15-img.html">this
-example page</a> correctly.
-
-::: {.further}
-All the same resize quality options are present in Skia. That's because
-resizing may occur during raster, just as it does during decode. One way
-for this to happen is via a scale transform (which our toy browser doesn't
-support, but real ones do). Another way is that an image may be animated from
-one size to another, and it doesn't make sense to re-decode it at every size.
-
-Real browsers push the image decoding step even further the rendering pipeline
-(e.g. in the raster phase) for this reason---to avoid a double resize or worse
-image quality. Yet another reason to do so is because raster happens on another
-thread, and so that way image decoding won't block the main thread.
-:::
 
 Interactive widgets
 ===================
