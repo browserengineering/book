@@ -1345,6 +1345,9 @@ we did this just for the root frame.)
 bounds. (Before iframes, we didn't need to do that, because the SDL
 window system already did it for us.)
 
+Also, notice how frame-based `click` already works correctly, because we don't
+recurse into iframes unless the click intersects the `iframe` element's bounds.
+
 Fixing it requires some rejiggering of the accessibility hit testing code to
 track scroll and iframe bounds, and apply them when recursing into child
 frames. We'll make a new `AccessibilityTree` class and create one for each
@@ -1445,6 +1448,18 @@ class AccessibilityNode:
                 nodes.append(child_node)
         for child in self.children:
             child.hit_test(x, y, nodes)
+```
+
+Finally, the call site needs to no longer adjust for scroll and just call
+`hit_test`:
+
+``` {.python}
+class Browser:
+    def paint_draw_list(self):
+        # ...
+        if self.pending_hover:
+            (x, y) = self.pending_hover
+            a11y_node = self.accessibility_tree.hit_test(x, y)
 ```
 
 See how easy it is to add accessibility for iframes? That's a great reason
