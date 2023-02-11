@@ -482,7 +482,7 @@ class InlineLayout(LayoutObject):
         display_list.extend(cmds)
 
     def dispatch(self, x, y):
-        if is_focusable(self.node):
+        if isinstance(self.node, Element) and is_focusable(self.node):
             self.frame.focus_element(self.node)
             self.frame.activate_element(self.node)
             self.frame.set_needs_render()
