@@ -1076,7 +1076,6 @@ class AccessibilityNode:
             child.to_list(list)
         return list
 
-
     def __repr__(self):
         return "AccessibilityNode(node={} role={} text={}".format(
             str(self.node), self.role, self.text)

@@ -1429,7 +1429,7 @@ class Browser:
             return save_layer.clone(current_effect)
         return visual_effect.clone(current_effect)
 
-    def paint_draw_list(self):
+def paint_draw_list(self):
         self.draw_list = []
         for composited_layer in self.composited_layers:
             current_effect = \
@@ -1444,6 +1444,7 @@ class Browser:
 
         if self.pending_hover:
             (x, y) = self.pending_hover
+            y += self.scroll
             a11y_node = self.accessibility_tree.hit_test(x, y)
             if a11y_node:
                 if not self.hovered_a11y_node or \

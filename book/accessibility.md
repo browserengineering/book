@@ -2235,7 +2235,7 @@ When the user hovers over a node, we'll do two things. First, we'll
 draw its bounds on the screen; this helps users see what they're
 hovering over, plus it's also helpful for debugging. We'll do that in
 `paint_draw_list`; we'll start by finding the accessibility node the
-user is hovering over:
+user is hovering over (note the need to take scroll into account):
 
 ``` {.python}
 class Browser:
@@ -2247,6 +2247,7 @@ class Browser:
         # ...
         if self.pending_hover:
             (x, y) = self.pending_hover
+            y += scroll
             a11y_node = self.accessibility_tree.hit_test(x, y)
 ```
 
