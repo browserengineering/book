@@ -1331,7 +1331,9 @@ class AccessibilityNode:
    def build(self):
         if isinstance(self.node, Element) \
             and self.node.tag == "iframe":
-            self.build_internal(self.node.frame.nodes)
+            self.child_tree = AccessibilityTree(self.node.frame)
+            self.child_tree.build()
+            return
         # ... 
 ```
 

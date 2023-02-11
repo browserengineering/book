@@ -2247,7 +2247,7 @@ class Browser:
         # ...
         if self.pending_hover:
             (x, y) = self.pending_hover
-            y += scroll
+            y += self.scroll
             a11y_node = self.accessibility_tree.hit_test(x, y)
 ```
 
