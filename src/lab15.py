@@ -948,6 +948,7 @@ class AccessibilityNode:
         self.text = None
 
         if node.layout_object:
+
             self.bounds = absolute_bounds_for_obj(node.layout_object)
         else:
             self.bounds = None
@@ -1432,7 +1433,8 @@ class Tab:
             frame.render()
 
         if self.needs_accessibility:
-            self.accessibility_tree = AccessibilityNode(self.root_frame.nodes)
+            self.accessibility_tree = AccessibilityNode(
+                self.root_frame.nodes)
             self.accessibility_tree.build()
             self.needs_accessibility = False
             self.needs_paint = True
@@ -1458,6 +1460,7 @@ class Tab:
         frame = self.focused_frame
         if not frame: frame = self.root_frame
         frame.scrolldown()
+        self.set_needs_accessibility()
         self.set_needs_paint()
 
     def enter(self):
@@ -1907,9 +1910,10 @@ class Browser:
             node.children[0].text
 
         if text:
-            print(text)
             if not self.is_muted():
                 speak_text(text)
+            else:
+                print(text)
 
     def speak_document(self):
         text = "Here are the document contents: "

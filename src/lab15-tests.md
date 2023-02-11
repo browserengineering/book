@@ -173,3 +173,27 @@ And now scrolling affects just the child frame:
     False
     >>> browser.tabs[0].root_frame.nodes.children[0].children[47].frame.scroll
     24.0
+
+Accessibility
+=============
+
+Let's verify that it still works.
+
+    >>> focus_url = 'http://test.test/focus'
+    >>> test.socket.respond(focus_url, b"HTTP/1.0 200 OK\r\n" +
+    ... b"content-type: text/html\r\n\r\n" +
+    ... b'<input><a href="/dest">Link</a>')
+
+    >>> browser = lab15.Browser()
+    >>> browser.load(focus_url)
+    >>> browser.toggle_accessibility()
+
+Rendering will read out the accessibility instructions:
+
+    >>> browser.render()
+    >>> browser.composite_raster_and_draw()
+    Here are the document contents: 
+    Document
+    Input box: 
+    Link
+    Focusable text: Link
