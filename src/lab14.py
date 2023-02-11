@@ -1444,6 +1444,7 @@ class Browser:
 
         if self.pending_hover:
             (x, y) = self.pending_hover
+            y += self.scroll
             a11y_node = self.accessibility_tree.hit_test(x, y)
             if a11y_node:
                 if not self.hovered_a11y_node or \

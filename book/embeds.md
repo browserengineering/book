@@ -1331,8 +1331,137 @@ class AccessibilityNode:
    def build(self):
         if isinstance(self.node, Element) \
             and self.node.tag == "iframe":
-            self.build_internal(self.node.frame.nodes)
+            self.child_tree = AccessibilityTree(self.node.frame)
+            self.child_tree.build()
+            return
         # ... 
+```
+
+But actually, accessibility still doesn't work for hover hit testing. That's
+for two reasons:
+
+* It doesn't properly take into account scroll of iframes. (In Chapter 14,
+we did this just for the root frame.)
+
+* It doesn't know how to apply clipping when hovering outside of an iframe's
+bounds. (Before iframes, we didn't need to do that, because the SDL
+window system already did it for us.)
+
+Also, notice how frame-based `click` already works correctly, because we don't
+recurse into iframes unless the click intersects the `iframe` element's bounds.
+
+Fixing it requires some rejiggering of the accessibility hit testing code to
+track scroll and iframe bounds, and apply them when recursing into child
+frames. We'll make a new `AccessibilityTree` class and create one for each
+frame and store on it the useful information:^[Real browsers such as Chromium
+also do this, for similar reasons.]
+
+``` {.python}
+class AccessibilityTree:
+    def __init__(self, frame):
+        self.root_node = AccessibilityNode(frame.nodes)
+        self.width = frame.frame_width
+        self.height = frame.frame_height
+        self.scroll = frame.scroll
+
+    def build(self):
+        self.root_node.build()
+```
+
+And `AccessibilityNode` will create subtrees:
+
+``` {.python}
+class AccessibilityNode:
+    def __init__(self, node):
+        # ...
+        self.child_tree = None
+
+    def build(self):
+        if isinstance(self.node, Element) \
+            and self.node.tag == "iframe":
+            self.child_tree = AccessibilityTree(self.node.frame)
+            self.child_tree.build()
+            return
+
+        # ...
+```
+
+Then we'll add a `to_list` method that does the same thing as `tree_to_list`
+(including recursing into child frames), that is suitable for all call sites
+of accessibility `tree_to_list` that are not hit testing:
+
+``` {.python}
+class AccessibilityTree:
+    def to_list(self, list):
+        return self.root_node.to_list(list)
+```
+
+``` {.python}
+class AccessibilityNode:
+    def to_list(self, list):
+        list.append(self)
+        if self.child_tree:
+            self.child_tree.to_list(list)
+            return list
+        for child in self.children:
+            child.to_list(list)
+        return list
+```
+
+Hit testing will first need to check for hover outside the bounds, then apply
+scroll:
+
+``` {.python}
+class AccessibilityTree:
+    def hit_test(self, x, y):
+        if x > self.width or y > self.height:
+            return None
+        y += self.scroll
+        nodes = []
+        self.root_node.hit_test(x, y, nodes)
+        if nodes:
+            return nodes[-1]
+```
+
+And then ask the node tree to do its usual thing:
+
+``` {.python}
+class AccessibilityTree:
+    def hit_test(self, x, y):
+        # ...
+        nodes = []
+        self.root_node.hit_test(x, y, nodes)
+        if nodes:
+            return nodes[-1]
+```
+
+Except that `AccessibilityNode` will now have special code to recurse into
+child trees:
+
+``` {.python}
+class AccessibilityNode:
+    def hit_test(self, x, y, nodes):
+        if self.intersects(x, y):
+            nodes.append(self)
+        if self.child_tree:
+            child_node = self.child_tree.hit_test(
+                x - self.bounds.x(), y - self.bounds.y())
+            if child_node:
+                nodes.append(child_node)
+        for child in self.children:
+            child.hit_test(x, y, nodes)
+```
+
+Finally, the call site needs to no longer adjust for scroll and just call
+`hit_test`:
+
+``` {.python}
+class Browser:
+    def paint_draw_list(self):
+        # ...
+        if self.pending_hover:
+            (x, y) = self.pending_hover
+            a11y_node = self.accessibility_tree.hit_test(x, y)
 ```
 
 See how easy it is to add accessibility for iframes? That's a great reason
