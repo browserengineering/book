@@ -2030,14 +2030,14 @@ Exercises
 =========
 
 *Canvas element*: Implement the [`<canvas>`][canvas-elt] element, the 2D aspect
- of the [`getContext`][getcontext] API, and some of the drawing commands on
- [`CanvasRenderingContext2D`][crc2d]. Canvas layout is just like an iframe,
- including its default width and height. You should allocate a Skia canvas of
- an appropriate size when `getContext("2d")` is called, and implement some of
- the APIs that draw to the canvas.[^eager-canvas] It should be straightforward
- to translate these to Skia methods.
+of the [`getContext`][getcontext] API, and some of the drawing commands on
+[`CanvasRenderingContext2D`][crc2d]. Canvas layout is just like an iframe,
+including its default width and height. You should allocate a Skia canvas of
+an appropriate size when `getContext("2d")` is called, and implement some of
+the APIs that draw to the canvas.[^eager-canvas] It should be straightforward
+to translate these to Skia methods.
 
- [crc2d]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D
+[crc2d]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D
 
 [^eager-canvas]: Note that once JavaScript draws to a canvas, the drawing
 persists forever until [`reset`][canvas-reset] or similar is called. This
