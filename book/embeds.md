@@ -2039,6 +2039,7 @@ Exercises
 
  [crc2d]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D
 
+
 [^eager-canvas]: Note that once JavaScript draws to a canvas, the drawing
 persists forever until [`reset`][canvas-reset] or similar is called. This
 allows a web developer to build up a display list with a sequence of commands,
