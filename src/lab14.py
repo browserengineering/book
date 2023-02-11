@@ -1631,7 +1631,6 @@ class Browser:
             if new_text:
                 text += "\n"  + new_text
 
-        print(text)
         if not self.is_muted():
             speak_text(text)
 
