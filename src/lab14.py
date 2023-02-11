@@ -1619,9 +1619,10 @@ class Browser:
             node.children[0].text
 
         if text:
-            print(text)
             if not self.is_muted():
                 speak_text(text)
+            else:
+                print(text)
 
     def speak_document(self):
         text = "Here are the document contents: "
@@ -1631,9 +1632,10 @@ class Browser:
             if new_text:
                 text += "\n"  + new_text
 
-        print(text)
         if not self.is_muted():
             speak_text(text)
+        else:
+            print(text)
 
     def toggle_mute(self):
         self.lock.acquire(blocking=True)

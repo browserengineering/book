@@ -47,7 +47,7 @@ from lab14 import parse_color, parse_outline, draw_rect, DrawRRect, \
     is_focused, paint_outline, has_outline, \
     device_px, cascade_priority, style, \
     is_focusable, get_tabindex, announce_text, speak_text, \
-    CSSParser
+    CSSParser, DrawOutline
 
 def request(url, top_level_url, payload=None):
     scheme, url = url.split("://", 1)
@@ -256,6 +256,7 @@ class EmbedLayout(LayoutObject):
     def __init__(self, node, parent=None, previous=None):
         super().__init__()
         self.node = node
+        node.layout_object = self
         self.children = []
         self.parent = parent
         self.previous = previous
@@ -947,6 +948,7 @@ class AccessibilityNode:
         self.text = None
 
         if node.layout_object:
+
             self.bounds = absolute_bounds_for_obj(node.layout_object)
         else:
             self.bounds = None
@@ -967,6 +969,8 @@ class AccessibilityNode:
                 self.role = "button"
             elif node.tag == "html":
                 self.role = "document"
+            elif node.tag == "img":
+                self.role = "image"
             elif node.tag == "iframe":
                 self.role = "iframe"
             elif is_focusable(node):
@@ -1005,6 +1009,10 @@ class AccessibilityNode:
             self.text = "Alert"
         elif self.role == "document":
             self.text = "Document"
+        elif self.role == "iframe":
+            self.text = "Child document"
+        elif self.role == "image":
+            self.text = "Image"
 
         if is_focused(self.node):
             self.text += " is focused"
@@ -1190,10 +1198,6 @@ class Frame:
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_frame = True
 
-    def build_accessibility_tree(self):
-        self.accessibility_tree = AccessibilityNode(self.nodes)
-        self.accessibility_tree.build()
-
     def paint(self, display_list):
         self.document.paint(display_list, self.tab.dark_mode,
             self.scroll if self != self.tab.root_frame else None)
@@ -1337,8 +1341,6 @@ class Tab:
         self.measure_render = MeasureTime("render")
         self.composited_updates = []
         self.zoom = 1.0
-        self.pending_hover = None
-        self.hovered_node = None
 
         self.window_id_to_frame = {}
 
@@ -1355,6 +1357,8 @@ class Tab:
             frame.set_needs_render()
 
     def set_needs_accessibility(self):
+        if not self.accessibility_is_on:
+            return
         self.needs_accessibility = True
         self.browser.set_needs_animation_frame(self)
 
@@ -1429,23 +1433,11 @@ class Tab:
             frame.render()
 
         if self.needs_accessibility:
-            self.root_frame.build_accessibility_tree()
+            self.accessibility_tree = AccessibilityNode(
+                self.root_frame.nodes)
+            self.accessibility_tree.build()
             self.needs_accessibility = False
             self.needs_paint = True
-
-        if self.pending_hover:
-            if self.accessibility_tree:
-                (x, y) = self.pending_hover
-                a11y_node = self.accessibility_tree.hit_test(x, y)
-                if self.hovered_node:
-                    self.hovered_node.is_hovered = False
-
-                if a11y_node:
-                    if a11y_node.node != self.hovered_node:
-                        self.speak_hit_test(a11y_node.node)
-                    self.hovered_node = a11y_node.node
-                    self.hovered_node.is_hovered = True
-            self.pending_hover = None
 
         if self.needs_paint:
             self.display_list = []
@@ -1468,6 +1460,7 @@ class Tab:
         frame = self.focused_frame
         if not frame: frame = self.root_frame
         frame.scrolldown()
+        self.set_needs_accessibility()
         self.set_needs_paint()
 
     def enter(self):
@@ -1506,10 +1499,6 @@ class Tab:
 
     def toggle_dark_mode(self):
         self.dark_mode = not self.dark_mode
-        self.set_needs_render_all_frames()
-
-    def hover(self, x, y):
-        self.pending_hover = (x, y)
         self.set_needs_render_all_frames()
 
     def post_message(self, message, target_window_id):
@@ -1740,6 +1729,22 @@ class Browser:
                 parent = parent.parent
             self.draw_list.append(current_effect)
 
+        if self.pending_hover:
+            (x, y) = self.pending_hover
+            y += self.scroll
+            a11y_node = self.accessibility_tree.hit_test(x, y)
+            if a11y_node:
+                if not self.hovered_a11y_node or \
+                    a11y_node.node != self.hovered_a11y_node.node:
+                    self.needs_speak_hovered_node = True
+                self.hovered_a11y_node = a11y_node
+        self.pending_hover = None
+
+        if self.hovered_a11y_node:
+            self.draw_list.append(DrawOutline(
+                self.hovered_a11y_node.bounds,
+                "white" if self.dark_mode else "black", 2))
+
     def update_accessibility(self):
         if not self.accessibility_tree: return
 
@@ -1905,9 +1910,10 @@ class Browser:
             node.children[0].text
 
         if text:
-            print(text)
             if not self.is_muted():
                 speak_text(text)
+            else:
+                print(text)
 
     def speak_document(self):
         text = "Here are the document contents: "
@@ -1917,17 +1923,16 @@ class Browser:
             if new_text:
                 text += "\n"  + new_text
 
-        print(text)
         if not self.is_muted():
             speak_text(text)
+        else:
+            print(text)
 
     def toggle_mute(self):
         self.muted = not self.muted
 
     def is_muted(self):
-        self.lock.acquire(blocking=True)
         muted = self.muted
-        self.lock.release()
         return muted
 
     def toggle_dark_mode(self):
@@ -1958,9 +1963,11 @@ class Browser:
         self.lock.release()
 
     def handle_hover(self, event):
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.hover, event.x, event.y - CHROME_PX)
-        active_tab.task_runner.schedule_task(task)
+        if not self.accessibility_is_on or \
+            not self.accessibility_tree:
+            return
+        self.pending_hover = (event.x, event.y - CHROME_PX)
+        self.set_needs_accessibility()
 
     def handle_key(self, char):
         self.lock.acquire(blocking=True)
