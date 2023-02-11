@@ -941,11 +941,34 @@ def style(node, rules, frame):
     for child in node.children:
         style(child, rules, frame)
 
+class AccessibilityTree:
+    def __init__(self, frame):
+        self.root_node = AccessibilityNode(frame.nodes)
+        self.width = frame.frame_width
+        self.height = frame.frame_height
+        self.scroll = frame.scroll
+
+    def build(self):
+        self.root_node.build()
+
+    def to_list(self, list):
+        return self.root_node.to_list(list)
+
+    def hit_test(self, x, y):
+        if x > self.width or y > self.height:
+            return None
+        y += self.scroll
+        nodes = []
+        self.root_node.hit_test(x, y, nodes)
+        if nodes:
+            return nodes[-1]
+
 class AccessibilityNode:
     def __init__(self, node):
         self.node = node
         self.children = []
         self.text = None
+        self.child_tree = None
 
         if node.layout_object:
 
@@ -981,7 +1004,9 @@ class AccessibilityNode:
     def build(self):
         if isinstance(self.node, Element) \
             and self.node.tag == "iframe":
-            self.build_internal(self.node.frame.nodes)
+            self.child_tree = AccessibilityTree(self.node.frame)
+            self.child_tree.build()
+            return
 
         for child_node in self.node.children:
             self.build_internal(child_node)
@@ -1031,11 +1056,26 @@ class AccessibilityNode:
                 skia.Rect.MakeXYWH(x, y, 1, 1))
         return False
 
-    def hit_test(self, x, y):
-        nodes = [node for node in tree_to_list(self, [])
-            if node.intersects(x, y)]
-        if nodes:
-            return nodes[-1]
+    def hit_test(self, x, y, nodes):
+        if self.intersects(x, y):
+            nodes.append(self)
+        if self.child_tree:
+            child_node = self.child_tree.hit_test(
+                x - self.bounds.x(), y - self.bounds.y())
+            if child_node:
+                nodes.append(child_node)
+        for child in self.children:
+            child.hit_test(x, y, nodes)
+
+    def to_list(self, list):
+        list.append(self)
+        if self.child_tree:
+            self.child_tree.to_list(list)
+            return list
+        for child in self.children:
+            child.to_list(list)
+        return list
+
 
     def __repr__(self):
         return "AccessibilityNode(node={} role={} text={}".format(
@@ -1433,8 +1473,7 @@ class Tab:
             frame.render()
 
         if self.needs_accessibility:
-            self.accessibility_tree = AccessibilityNode(
-                self.root_frame.nodes)
+            self.accessibility_tree = AccessibilityTree(self.root_frame)
             self.accessibility_tree.build()
             self.needs_accessibility = False
             self.needs_paint = True
@@ -1731,7 +1770,6 @@ class Browser:
 
         if self.pending_hover:
             (x, y) = self.pending_hover
-            y += self.scroll
             a11y_node = self.accessibility_tree.hit_test(x, y)
             if a11y_node:
                 if not self.hovered_a11y_node or \
@@ -1753,8 +1791,7 @@ class Browser:
             self.has_spoken_document = True
 
         self.active_alerts = [
-            node for node in tree_to_list(
-                self.accessibility_tree, [])
+            node for node in self.accessibility_tree.to_list([])
             if node.role == "alert"
         ]
 
@@ -1766,8 +1803,8 @@ class Browser:
         new_spoken_alerts = []
         for old_node in self.spoken_alerts:
             new_nodes = [
-                node for node in tree_to_list(
-                    self.accessibility_tree, [])
+                node for node in \
+                    self.accessibility_tree.to_list([])
                 if node.node == old_node.node
                 and node.role == "alert"
             ]
@@ -1777,8 +1814,8 @@ class Browser:
 
         if self.tab_focus and \
             self.tab_focus != self.last_tab_focus:
-            nodes = [node for node in tree_to_list(
-                self.accessibility_tree, [])
+            nodes = [node for node in \
+                self.accessibility_tree.to_list([])
                         if node.node == self.tab_focus]
             if nodes:
                 self.focus_a11y_node = nodes[0]
@@ -1917,7 +1954,7 @@ class Browser:
 
     def speak_document(self):
         text = "Here are the document contents: "
-        tree_list = tree_to_list(self.accessibility_tree, [])
+        tree_list = self.accessibility_tree.to_list([])
         for accessibility_node in tree_list:
             new_text = accessibility_node.text
             if new_text:
