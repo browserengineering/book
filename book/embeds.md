@@ -277,6 +277,7 @@ class EmbedLayout(LayoutObject):
     def __init__(self, node, parent=None, previous=None):
         super().__init__()
         self.node = node
+        node.layout_object = self
         self.children = []
         self.parent = parent
         self.previous = previous
@@ -988,7 +989,6 @@ aspect ratio, because iframes don't have an intrinsic size.)
 class IframeLayout(EmbedLayout):
     def __init__(self, node, parent, previous, parent_frame):
         super().__init__(node, parent, previous)
-        node.layout_object = self
 
     def layout(self, zoom):
         # ...
