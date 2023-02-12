@@ -614,7 +614,8 @@ class AccessibilityNode:
 ```
 
 However, since alt text is generally a phrase or sentence, and those contain
-whitespace, `HTMLParser`'s attribute parsing will need to get better and look a
+whitespace, `HTMLParser`'s attribute parsing is not good enough (it can't
+handle quoting or whitespace in attribute values). It'll need to look a
 lot more like how `CSSParser` statefully handles whitespace and quoting. I
 won't include the code here since the concept for how to parse it is the same.
 
