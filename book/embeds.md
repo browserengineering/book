@@ -589,6 +589,35 @@ their layout and quality. Your browser should now be able to render
 <a href="/examples/example15-img.html">this
 example page</a> correctly.
 
+But what about accessibility? A screen reader can read out text, but how
+does it describe an image in words? That's what the `alt` attribute is for.
+It works like this:
+
+    <img src="https://browser.engineering/im/hes.jpg"
+    alt="A computer operator using a hypertext editing system in 1969">
+
+Implementing this in `AccessibilityNode` is very easy:
+
+``` {.python}
+class AccessibilityNode:
+    def __init__(self, node):
+            # ...
+            elif node.tag == "img":
+                self.role = "image"
+
+    def build(self):
+        elif self.role == "image":
+            if "alt" in self.node.attributes:
+                self.text = "Image: " + self.node.attributes["alt"]
+            else:
+                self.text = "Image"
+```
+
+However, since alt text is generally a phrase or sentence, and those contain
+whitespace, `HTMLParser`'s attribute parsing is not good enough (it can't
+handle quoting or whitespace in attribute values). It'll need to look a
+lot more like how `CSSParser` statefully handles whitespace and quoting. I
+won't include the code here since the concept for how to parse it is the same.
 
 ::: {.further}
 I discussed preserving aspect ratio for a loaded image, but what about before
