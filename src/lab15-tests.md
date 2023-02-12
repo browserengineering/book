@@ -212,3 +212,15 @@ Rendering will read out the accessibility instructions:
     Document
     Document
     Image
+
+    Alt text parsing from HTML works:
+
+    >>> parser = lab15.HTMLParser('<img src=my-url alt="This is alt text">')
+    >>> document = parser.parse()
+    >>> lab15.print_tree(document)
+     <html>
+       <body>
+         <img src="my-url" alt="This is alt text">
+    
+    >>> document.children[0].children[0].attributes
+    {'src': 'my-url', 'alt': 'This is alt text'}
