@@ -197,3 +197,18 @@ Rendering will read out the accessibility instructions:
     Input box: 
     Link
     Focusable text: Link
+
+It also works for iframes:
+
+    >>> browser = lab15.Browser()
+    >>> browser.load(iframe_url)
+    >>> browser.toggle_accessibility()
+
+Rendering will read out the accessibility instructions:
+
+    >>> browser.render()
+    >>> browser.composite_raster_and_draw()
+    Here are the document contents: 
+    Document
+    Document
+    Image

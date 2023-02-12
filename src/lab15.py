@@ -680,7 +680,6 @@ IFRAME_DEFAULT_HEIGHT_PX = 150
 class IframeLayout(EmbedLayout):
     def __init__(self, node, parent, previous, parent_frame):
         super().__init__(node, parent, previous)
-        node.layout_object = self
 
     def layout(self, zoom):
         super().layout(zoom)
@@ -971,7 +970,6 @@ class AccessibilityNode:
         self.child_tree = None
 
         if node.layout_object:
-
             self.bounds = absolute_bounds_for_obj(node.layout_object)
         else:
             self.bounds = None
