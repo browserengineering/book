@@ -115,8 +115,7 @@ acceptable data formats for email attachments.^[Most email these days is
 actually HTML, and is encoded with the `text/html` MIME type. Gmail, for
 example, by default uses this format, but can be put in a "plain text mode"
 that encodes the email in `text/plain`.] We've actually encountered two more
-content types already:`text/css` and `application/javascript`,^[The MIME
-type of javascript is `application/javascript`.] but since
+content types already: `text/css` and `application/javascript`, but since
 it assumed both were in `utf8` there was no need to differentiate in the
 code.^[That's not a correct thing to do in a real browser, and alternate
 character sets are an exercise in chapter 1.]
@@ -200,8 +199,8 @@ image will notice the difference.
 [lossy]: https://en.wikipedia.org/wiki/Lossy_compression
 
 Many encoded image formats are very good at compression. This means that when a
-browser decodes it, the resulting bitmap may take up quite a bit of memory, even
-if the downloaded file size is not so big. As a result, it's very important for
+browser decodes it, the resulting bitmap may take up 10x or even 100x as much
+memory as the downloaded file size. As a result, it's very important for
 browsers to do as little decoding as possible. Two ways they achieve that are
 by avoiding decode for images not currently on the screen, and decoding
 directly to the size actually needed to draw pixels on the screen. 
@@ -261,8 +260,6 @@ thread, and so that way image decoding won't block the main thread.
 Embedded layout
 ===============
 
-Let's now load `<img>` tags found in a web page.
-
 Images will be laid out by a new `ImageLayout` class. The height and width of
 the object is defined by the height of the image, but other aspects of it will be almost
 the same as `InputLayout`. In fact, so similar that
@@ -271,6 +268,12 @@ code about inline layout and fonts. (And for completeness, make a new
 `LayoutObject` root class for all types of object, and make `BlockLayout`,
 `InlineLayout` and `DocumentLayout` inherit from it.^[I haven't shown that code
 though, because it's just an empty class definition.])
+
+``` {.python}
+class LayoutObject:
+    def __init__(self):
+        pass
+```
 
 ``` {.python}
 class EmbedLayout(LayoutObject):
@@ -1094,7 +1097,7 @@ Iframe input events
 
 Rendering now functions properly in iframes, but user input does not:
 it's not (yet) possible to click on a element in an iframe in our toy browser,
-rotate through its focusable elements, scroll it, or generate an accessibility
+iterate through its focusable elements, scroll it, or generate an accessibility
 tree.
 
 Let's fix that. But all this code in `click` is getting a little unwieldly, so
@@ -1337,8 +1340,10 @@ class AccessibilityNode:
         # ... 
 ```
 
-But actually, accessibility still doesn't work for hover hit testing. That's
-for two reasons:
+But actually, accessibility still doesn't work for hover hit testing. That's for
+two reasons:^[Observe that frame-based `click` already works correctly, because
+we don't recurse into iframes unless the click intersects the `iframe`
+element's bounds.]
 
 * It doesn't properly take into account scroll of iframes. (In Chapter 14,
 we did this just for the root frame.)
@@ -1347,14 +1352,11 @@ we did this just for the root frame.)
 bounds. (Before iframes, we didn't need to do that, because the SDL
 window system already did it for us.)
 
-Also, notice how frame-based `click` already works correctly, because we don't
-recurse into iframes unless the click intersects the `iframe` element's bounds.
-
-Fixing it requires some rejiggering of the accessibility hit testing code to
-track scroll and iframe bounds, and apply them when recursing into child
-frames. We'll make a new `AccessibilityTree` class and create one for each
-frame and store on it the useful information:^[Real browsers such as Chromium
-also do this, for similar reasons.]
+Fixing these problems requires some rejiggering of the accessibility hit testing
+code to track scroll and iframe bounds, and appling them when recursing into
+child frames. We'll make a new `AccessibilityTree` class and create one for
+each frame and store on it the useful information:^[Real browsers such as
+Chromium also do this, for similar reasons.]
 
 ``` {.python}
 class AccessibilityTree:
@@ -1407,6 +1409,9 @@ class AccessibilityNode:
             child.to_list(list)
         return list
 ```
+
+Update all of the callsites of `tree_to_list` to call `to_list`; there are
+three in `update_accessibility` and one in `speak_document`.
 
 Hit testing will first need to check for hover outside the bounds, then apply
 scroll:
