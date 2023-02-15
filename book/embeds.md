@@ -623,11 +623,11 @@ media controls---requires. In modern browsers, these are handled by
 
 [canvas-elt]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas
     
-[^openui]: There's actually [ongoing work](https://open-ui.org/) on
-    [various][shadow-dom] [APIs][form-el] to allow web pages to
-    customize what input elements look like. Unfortunately this
-    problem is pretty challenging, interacting with platform
-    independence, accessibility, scripting, and styling.
+[^openui]: There's actually [ongoing work](https://open-ui.org/) aimed at
+    allowing web pages to customize what input elements look like, and it
+    builds on earlier work supporting [custom elements][shadow-dom] and
+    [forms][form-el]. This problem is quite challenging, interacting with
+    platform independence, accessibility, scripting, and styling.
 
 [shadow-dom]: https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_shadow_DOM
 [form-el]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/attachInternals
@@ -759,12 +759,13 @@ These days, plugins are less common---which I personally think is a
 good thing. The web is about making information accessible to
 everyone, and that requires open standards, including for embedded
 content. That means open formats and codecs for images and videos, but
-also open source plugins. Today, PDF and Flash are both standardized,
+also open source plugins. Today, PDF is [standardized][pdf-standard],
 but for most of their history as plugins, these formats were closed off.
 
 [java-applets]: https://en.wikipedia.org/wiki/Java_applet
 [Flash]: https://en.wikipedia.org/wiki/Adobe_Flash
 [PDF]: https://developer.mozilla.org/en-US/docs/Learn/HTML/Multimedia_and_embedding/Other_embedding_technologies#the_embed_and_object_elements
+[pdf-standard]: https://www.iso.org/standard/51502.html
 
 [^extensible-web]: In other words, over time APIs have been added that close
 the gap between the use cases supported by iframes and "non-web" plugin
