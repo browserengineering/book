@@ -609,7 +609,7 @@ Interactive widgets
 ===================
 
 So far, our browser has two kinds of embedded content: images and
-input elements. While both are important and widely-used[^variants]
+input elements. While both are important and widely-used,[^variants]
 they don't offer quite the customizability and flexibility[^openui]
 that more complex embedded content---like maps, PDFs, ads, and social
 media controls---requires. In modern browsers, these are handled by
