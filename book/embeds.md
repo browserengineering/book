@@ -641,147 +641,29 @@ aspect ratio accordingly. Otherwise the page layout will look bad and cause
 Interactive widgets
 ===================
 
-So far, our browser has two kinds of embedded content: images and input
-elements. Images are, well images, and as such are super important and
-ubiquitous. And input elements are the way to gather various kinds of
-information from the user and do something with it. But how do you customize
-them? After all, our browser has no way to do anything other than display a
-certain list of specified image formats, and browser-defined input elements.
-In our toy browser at least, if you don't like how those inputs are
-rendered you have no choice but to roll your own. And if you want something
-the current image formats can't provide, you're stuck.
+So far, our browser has two kinds of embedded content: images and
+input elements. While both are important and widely-used,[^variants]
+they don't offer quite the customizability and flexibility[^openui]
+that more complex embedded content---like maps, PDFs, ads, and social
+media controls---requires. In modern browsers, these are handled by
+*embeding one webpage within another* using the `<iframe>` element.
 
-Well, one way to allow "customized" images is by providing an API to draw
-arbitrary pixels to a rectangle on the screen. That approach is supported via
-the [`<canvas>`][canvas-elt] element, which has all the same
-layout features as an image,^[Except that canvases have no intrinsic sizing, so
-the `width` & `height` attributes, or their CSS equivalents, are necessary to
-size the canvas.] plus an API that allows the developer to draw to it with an
-API very similar to Skia.^[This element is not too hard to implement in a basic
-form, so I've left it to an exercise.]
+[^variants]: As are variations like the [`<canvas>`][canvas-elt]
+    element. Instead of loading an image from the network, JavaScript
+    can draw on a `<canvas>` element via an API. Unlike images,
+    `<canvas>` element's don't have intrinsic sizes, but besides that
+    they are pretty similar.
 
-And for input elements, there needs to be some way to customize the rendering
-of them while at the same time hooking up to all of the accessibility goodness
-of the browser. Interestingly enough, this problem has to date been only
-partially solved by real browsers, and is an
-[active area of development](https://open-ui.org/).^[Some technologies *have*
-been developed that help to get there, such as
-[Shadow DOM][shadow-dom] and [form-associated custom elements][form-el].
-It may be that eventually, all input elements will have rendering defined
-fully by HTML and CSS.]
+[canvas-elt]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas
+    
+[^openui]: There's actually [ongoing work](https://open-ui.org/) aimed at
+    allowing web pages to customize what input elements look like, and it
+    builds on earlier work supporting [custom elements][shadow-dom] and
+    [forms][form-el]. This problem is quite challenging, interacting with
+    platform independence, accessibility, scripting, and styling.
 
 [shadow-dom]: https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_shadow_DOM
 [form-el]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/attachInternals
-
-So does this solve the problem fully? Well, not really. For example, canvas is a
-handy way to do a lot of things, but it comes with some pretty big downsides.
-In particular, any content drawn inside of a `<canvas>` gets none of the nice
-browser features such as accessibility, non-trivial^[It does have APIs for
-drawing text, but no line breaking or block layout.] layout, automatic
-rendering, or [navigation](chrome.md).
-
-And a custom-rendered input element is great for that use case, but what about
-more complex widgets like embedded maps, videos, social media buttons, ads and
-so on? Especially since such use cases often come from some third-party source,
-it would be weird to try to mix all the code for an embedded ad, video or map
-directly into your web page (and weird for the company providing the widget to
-trust your site enough to do so). In these cases we need a technology
-that "embeds" an externally-rendered widget into a web page in a modularized,
-flexible and secure way, but *also* allows interactions that coordinate well
-with the embedding web page and browser features.
-
-There are two possible ways to achieve this:
-
-* External content that is "outside the web", meaning it's not HTML & CSS.
-
-* External content that is "inside the web".
-
-The first type is a *plugin*. There have been many attempts at plugins on the
-web over the years. Some provided a programming language and mechanism for
-interactive UI, such as [Java applets][java-applets] or [Flash].^[YouTube
-originally used Flash for videos, for exmaple.] Others
-provided a way to embed other content types into a web page, such as
-[PDF]. But plugins suffer from a lot of the same accessibility and other
-"platform integration" drawbacks of `<canvas>`, and also have to provide
- duplicate solutions to all of the UI rendering problems we've already solved
- for browsers in the first place.
-
-[java-applets]: https://en.wikipedia.org/wiki/Java_applet
-[Flash]: https://en.wikipedia.org/wiki/Adobe_Flash
-[PDF]: https://developer.mozilla.org/en-US/docs/Learn/HTML/Multimedia_and_embedding/Other_embedding_technologies#the_embed_and_object_elements
-
-So the web has a second approach that solves all of these problems at once: let
-the developer embed one web page inside another, via the `<iframe>` element. As
-you'll see, this approach neatly solves all of these problems---accessibility,
-input, etc come "for free". And iframes are a great way to
-include third-party content content.
-
-[canvas-elt]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas
-
-::: {.further}
-Images can also be animated.[^animated-gif] So if a website can load an image,
-and the image can be animated, then that image is something very close to
-a *video*. But in practice, videos need very advanced encoding and encoding
-formats to minimize network and CPU costs, *and* these formats incur a lot of
-other complications, chief among them [Digital Rights Management (DRM)][drm]. To
-support all this, the `<video>` tag supported by real browsers provides
-built-in support for several common video [*codecs*][codec] with DRM and
-hardware acceleration.^[In video, it's called a codec, but in images it's
-called a *format*--go figure.] And on top of all this, videos need built-in
-*media controls*, such as play and pause buttons, and volume controls.
-
-[^animated-gif]: See the exercise for animated images at the end of this
-chapter.
-
-[drm]: https://en.wikipedia.org/wiki/Digital_rights_management
-[codec]: https://en.wikipedia.org/wiki/Video_codec
-
-Perhaps the most common use case for embedded content other than images and
-video is ads. Inline ads have been around since the beginning
-of the web, and are often (for good reasons or bad depending on your
-perspective) big users of third-party embedding and whatever
-animation/attention-drawing features the web has.
-
-From a browser engineering perspective, ads are also a very challenging source
-of performance and [user experience][ux] problems. For example, ads often load
-a lot of data, run a lot of code to measure various kinds of
-[analytics]---such as "was this ad viewed by the user and for how long?"---and
-are delay-loaded (similar to an async-loaded image) and so cause layout shift.
-
-A lot of browser engineering has gone into ways to improve or mitigate these
-problems---everything from ad blocker [browser extensions][extensions] to APIs
-such as [Intersection Observer][io] that make analytics computation more
-efficient.
-:::
-
-[ux]: https://en.wikipedia.org/wiki/User_experience
-[analytics]: https://en.wikipedia.org/wiki/Web_analytics
-[extensions]: https://en.wikipedia.org/wiki/Browser_extension
-[io]: https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API
-
-Iframes
-=======
-
-Iframes are web pages embedded within other web pages. With sufficient APIs
-present,[^extensible-web] they are just as powerful as any plugin system, but
-come with all of the security, accessibility, code reuse,
-performance[^yes-performance] and open standards benefits of the web.
-
-[^extensible-web]: In other words, over time APIs have been added that close
-the gap between the use cases supported by iframes and "non-web" plugin
-systems like Flash. For example, in the last decade the `<canvas>` element
-(which can of course be placed within an iframe) supports hardware-accelerated
-3D content, and [near-native-speed][webassembly] code.
-
-[webassembly]: https://en.wikipedia.org/wiki/WebAssembly
-
-[^yes-performance]: Yes, performance! While it's true that in principle
-a non-web plugin can have higher peak performance, in practice they usually
-have worse overall performance when embedded within a web page, especially
-on lower-end computers or mobile devices. That's because the plugin has its
-own, entirely different, rendering and execution system, which leads to more
-code and memory use, and worse performance coordination with the web page that
-embeds it.
 
 The `<iframe>` tag's layout is a lot like the `<img>` tag: it has the `src`
 attribute and `width` and `height` attributes. And an iframe is almost exactly
@@ -895,21 +777,79 @@ class Frame:
 That's pretty much it for loading, now let's investigate rendering.
 
 ::: {.further}
-I should say a bit more here about the importance of open standards for embedded
-content. Recall that the core goal of the web is to make information accessible
-to everyone. This naturally extends to everything in a web page, not just its
-HTML. Therefore it's important for images and video to have open,
-non-proprietary formats and codecs. That way, all browsers (or other software,
-for that matter) can load those images and videos without legal or economic
-restrictions.
+For quite a while, browsers also supported another kind of embedded
+content: plugins. Some provided a programming language and mechanism
+for interactive UI, such as [Java applets][java-applets] or
+[Flash];^[YouTube originally used Flash for videos, for exmaple.]
+others provided support for new content types like [PDF]. But plugins
+suffer from accessibility, integration, and performance issues,
+because they must implement a separate rendering, sandboxing, and
+execution system, duplicating all of the browser's own subsystems.
+Improving the browser to allow richer UI, by contrast, benefits all
+pages, not just those using a particular plugin.[^extensible-web]
 
-The same goes for other embedded content. Which is another reason iframes are
-much preferable to plugins, because while making a particular "non-HTML"
-plugin format fully open is possible, it's extremely expensive to do so because
-it would end up duplicating all of the technology of the web. Therefore it
-doesn't really make sense to do so, and instead it's better to spend effort
-making web technology itself better.
+These days, plugins are less common---which I personally think is a
+good thing. The web is about making information accessible to
+everyone, and that requires open standards, including for embedded
+content. That means open formats and codecs for images and videos, but
+also open source plugins. Today, PDF is [standardized][pdf-standard],
+but for most of their history as plugins, these formats were closed off.
+
+[java-applets]: https://en.wikipedia.org/wiki/Java_applet
+[Flash]: https://en.wikipedia.org/wiki/Adobe_Flash
+[PDF]: https://developer.mozilla.org/en-US/docs/Learn/HTML/Multimedia_and_embedding/Other_embedding_technologies#the_embed_and_object_elements
+[pdf-standard]: https://www.iso.org/standard/51502.html
+
+[^extensible-web]: In other words, over time APIs have been added that close
+the gap between the use cases supported by iframes and "non-web" plugin
+systems like Flash. For example, in the last decade the `<canvas>` element
+(which can of course be placed within an iframe) supports hardware-accelerated
+3D content, and [near-native-speed][webassembly] code.
+
+[webassembly]: https://en.wikipedia.org/wiki/WebAssembly
+
 :::
+
+::: {.further}
+Images can also be animated.[^animated-gif] So if a website can load an image,
+and the image can be animated, then that image is something very close to
+a *video*. But in practice, videos need very advanced encoding and encoding
+formats to minimize network and CPU costs, *and* these formats incur a lot of
+other complications, chief among them [Digital Rights Management (DRM)][drm]. To
+support all this, the `<video>` tag supported by real browsers provides
+built-in support for several common video [*codecs*][codec] with DRM and
+hardware acceleration.^[In video, it's called a codec, but in images it's
+called a *format*--go figure.] And on top of all this, videos need built-in
+*media controls*, such as play and pause buttons, and volume controls.
+
+[^animated-gif]: See the exercise for animated images at the end of this
+chapter.
+
+[drm]: https://en.wikipedia.org/wiki/Digital_rights_management
+[codec]: https://en.wikipedia.org/wiki/Video_codec
+
+Perhaps the most common use case for embedded content other than images and
+video is ads. Inline ads have been around since the beginning
+of the web, and are often (for good reasons or bad depending on your
+perspective) big users of third-party embedding and whatever
+animation/attention-drawing features the web has.
+
+From a browser engineering perspective, ads are also a very challenging source
+of performance and [user experience][ux] problems. For example, ads often load
+a lot of data, run a lot of code to measure various kinds of
+[analytics]---such as "was this ad viewed by the user and for how long?"---and
+are delay-loaded (similar to an async-loaded image) and so cause layout shift.
+
+A lot of browser engineering has gone into ways to improve or mitigate these
+problems---everything from ad blocker [browser extensions][extensions] to APIs
+such as [Intersection Observer][io] that make analytics computation more
+efficient.
+:::
+
+[ux]: https://en.wikipedia.org/wiki/User_experience
+[analytics]: https://en.wikipedia.org/wiki/Web_analytics
+[extensions]: https://en.wikipedia.org/wiki/Browser_extension
+[io]: https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API
 
 
 Iframe rendering
