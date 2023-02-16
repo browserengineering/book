@@ -35,7 +35,7 @@ And of course renders something like this:
     <figcaption>Hypertext Editing System <br/> (Gregory Lloyd from <a href="https://commons.wikimedia.org/wiki/File:HypertextEditingSystemConsoleBrownUniv1969.jpg">Wikipedia</a>, <a href="https://creativecommons.org/licenses/by/2.0/legalcode" rel="license">CC BY 2.0</a>)</figcaption>
 </figure>
 
-[^img-history]: mages have been around (almost) since the
+[^img-history]: Images have been around (almost) since the
 beginning, being proposed in [early 1993][img-email]. This makes it ironic that
 images only make their appearance in chapter 15 of the book. My excuse is that
 Tkinter doesn't support proper image sizing and clipping, and doesn't support
@@ -105,12 +105,12 @@ def request(url, top_level_url, payload=None):
         # ...    
 ```
 
-Then when processing the body body, check for the `content-type` header, which
-will tell the browser how to decode the body of the HTTP response. I discussed
-this header briefly in [Chapter 1](/http.html#the-servers-response), where I
-noted that HTML web page responses have a value of `text/html` for this header.
-This value is a [MIME type][mime-type]. MIME stands for Multipurpose Internet
-Mail Extensions, and was originally intended for enumerating all of the
+Then when processing the response body, check for the `content-type` header,
+which will tell the browser how to decode that part of the HTTP response. I
+discussed this header briefly in [Chapter 1](/http.html#the-servers-response), 
+where I noted that HTML web page responses have a value of `text/html` for this
+header. This value is a [MIME type][mime-type], which stands for Multipurpose
+Internet Mail Extensions, and was originally intended for enumerating all of the
 acceptable data formats for email attachments.^[Most email these days is
 actually HTML, and is encoded with the `text/html` MIME type. Gmail, for
 example, by default uses this format, but can be put in a "plain text mode"
@@ -128,7 +128,7 @@ format is `application/octet-stream`.^[An "octet" is a number with 8 bits,
 hence "oct" from the Latin root "octo".] So as a cheat, we'll look at
 `content-type` and assume that if it starts with `text` or contains
 `javascript`, the content is
-`utf8`, and otherwise return it as undecoded data:
+`utf8`, and otherwise return it as un-decoded data:
 
 ``` {.python}
 def request(url, top_level_url, payload=None):
@@ -151,7 +151,7 @@ browser we don't need to consult `content-type`. That's because Pillow already
 auto-detects the image format by peeking at the first few bytes of the binary
 data, which varies for each image format.] First, reinterpret
 the image "file" as a `BytesIO` object and pass it to Pillow. Then convert
-it to RGBA format (the same RGBA as in
+it to RGBA (the same RGBA as in
 [Chapter 11](/visual-effects.html#sdl-creates-the-window)), call `tobytes`
 (which performs the decode and puts the result in a raw byte
 array[^maybe-decode]), and wrap the result in a Skia `Image` object.
@@ -266,8 +266,7 @@ the same as `InputLayout`. In fact, so similar that
 let's make them inherit from a new `EmbedLayout` base class to share a lot of
 code about inline layout and fonts. (And for completeness, make a new
 `LayoutObject` root class for all types of object, and make `BlockLayout`,
-`InlineLayout` and `DocumentLayout` inherit from it.^[I haven't shown that code
-though, because it's just an empty class definition.])
+`InlineLayout` and `DocumentLayout` inherit from it.
 
 ``` {.python}
 class LayoutObject:
@@ -357,7 +356,7 @@ class InlineLayout(LayoutObject):
 ```
 
 And here is `ImageLayout`. Note how we're loading the image, but not
-yet decodig it, because we don't know the painted size until layout is done.
+yet decoding it, because we don't know the painted size until layout is done.
 
 ``` {.python}
 class ImageLayout(EmbedLayout):
@@ -479,9 +478,9 @@ class ImageLayout(EmbedLayout):
 ::: {.further}
 The `<img>` tag uses a `src` attribute and not `href`. Why is that? And
 why is the tag name `img` and not `image`? The answer to the first is
-apparently that an image is not a "hyperlink reference" (which
-is what "href" stands for), but instead a page subresource. However,
-subresources actually have inconsistent naming. For example, the `<link>`
+apparently that an image is not a "hypertext reference" (which
+is what `href` stands for), but instead a page sub-resource. However,
+sub-resources actually have inconsistent naming. For example, the `<link>`
 tag can refer to a style sheet with `href`, but the `<script>` tag
 uses `src`. The true reason may simply be [design disagreements][srcname]
 before such things were mediated by a standards organization.
@@ -505,7 +504,7 @@ use it instead if present. Let's start with `image` on `InlineLayout`. The width
 and height attributes are in CSS pixels without unit suffixes, so parsing is
 easy, and we need to multiply by zoom to get device pixels:
 
-``` {.pythhon}
+``` {.python}
 class InlineLayout(LayoutObject):
     # ...
     def image(self, node, zoom):
@@ -615,7 +614,7 @@ class AccessibilityNode:
 
 However, since alt text is generally a phrase or sentence, and those contain
 whitespace, `HTMLParser`'s attribute parsing is not good enough (it can't
-handle quoting or whitespace in attribute values). It'll need to look a
+handle quoted whitespace in attribute values). It'll need to look a
 lot more like how `CSSParser` statefully handles whitespace and quoting. I
 won't include the code here since the concept for how to parse it is the same.
 
@@ -635,7 +634,7 @@ aspect ratio accordingly. Otherwise the page layout will look bad and cause
 [layout shift][cls] when the image loads.
 :::
 
-[resp-design]: https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Responsive_Design
+[resp-design]: https://developer.\mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Responsive_Design
 [cls]: https://web.dev/cls/
 
 Interactive widgets
@@ -646,7 +645,7 @@ input elements. While both are important and widely-used,[^variants]
 they don't offer quite the customizability and flexibility[^openui]
 that more complex embedded content---like maps, PDFs, ads, and social
 media controls---requires. In modern browsers, these are handled by
-*embeding one webpage within another* using the `<iframe>` element.
+*embedding one web page within another* using the `<iframe>` element.
 
 [^variants]: As are variations like the [`<canvas>`][canvas-elt]
     element. Instead of loading an image from the network, JavaScript
@@ -752,7 +751,7 @@ as do various event handlers, here's `click` for example:
 
 The `Frame` class has all of the rest of loading and event handling that used to
 be in `Tab`. I won't go into those details right now,  except the part where a
-`Frame` can load subframes via the `<iframe>` tag. In the code below, we
+`Frame` can load sub-frames via the `<iframe>` tag. In the code below, we
 collect all of the `<iframe>` elements in the DOM, load them, create a new
 `Frame` object, store it on the iframe element, and call `load` recursively.
 Note that all the code in the "..." below is the same as what used to be on
@@ -780,7 +779,7 @@ That's pretty much it for loading, now let's investigate rendering.
 For quite a while, browsers also supported another kind of embedded
 content: plugins. Some provided a programming language and mechanism
 for interactive UI, such as [Java applets][java-applets] or
-[Flash];^[YouTube originally used Flash for videos, for exmaple.]
+[Flash];^[YouTube originally used Flash for videos, for example.]
 others provided support for new content types like [PDF]. But plugins
 suffer from accessibility, integration, and performance issues,
 because they must implement a separate rendering, sandboxing, and
@@ -1069,7 +1068,7 @@ it's not (yet) possible to click on a element in an iframe in our toy browser,
 iterate through its focusable elements, scroll it, or generate an accessibility
 tree.
 
-Let's fix that. But all this code in `click` is getting a little unwieldly, so
+Let's fix that. But all this code in `click` is getting a little unwieldy, so
 first some refactoring. We'll push object-type-specific behavior down into the
 various `LayoutObject` subclasses, via a new `dispatch` method that does any
 special behavior and then returns `True` if the element tree walk should
@@ -1127,7 +1126,7 @@ class InputLayout(EmbedLayout):
 ```
 
 And now we're ready to implement `dispatch` for iframe elements. In this
-case, we should retarget the click to the iframe, after adjusting for its local
+case, we should re-target the click to the iframe, after adjusting for its local
 coordinate space, and then stop the tree walk:
 
 
@@ -1321,8 +1320,8 @@ we did this just for the root frame.)
 bounds. (Before iframes, we didn't need to do that, because the SDL
 window system already did it for us.)
 
-Fixing these problems requires some rejiggering of the accessibility hit testing
-code to track scroll and iframe bounds, and appling them when recursing into
+Fixing these problems requires some re-jiggering of the accessibility hit testing
+code to track scroll and iframe bounds, and applying them when recursing into
 child frames. We'll make a new `AccessibilityTree` class and create one for
 each frame and store on it the useful information:^[Real browsers such as
 Chromium also do this, for similar reasons.]
@@ -1476,7 +1475,7 @@ its own `JSContext`, and by association its own DukPy interpreter. That's what
 [global-object]: https://developer.mozilla.org/en-US/docs/Glossary/Global_object
 
 But that only works if we consider every frame *cross-origin* to all of the
-others. That's not right, becuase two frames that have the same origin each get
+others. That's not right, because two frames that have the same origin each get
 a global namespace for their scripts, but they can access each other's frames
 through, for example, the [`parent` attribute][window-parent] on their
 `Window`.^[There are various other APIs; see the related exercise.] For
