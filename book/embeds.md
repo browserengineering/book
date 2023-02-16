@@ -511,7 +511,7 @@ class InlineLayout(LayoutObject):
         if "width" in node.attributes:
             w = device_px(int(node.attributes["width"]), zoom)
         else:
-            w = device_px(node.image.width(), zoom)
+            w = device_px(node.image.width, zoom)
 ```
 
 And in `ImageLayout`:
