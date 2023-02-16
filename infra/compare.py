@@ -160,6 +160,7 @@ if __name__ == "__main__":
     import sys, argparse
     argparser = argparse.ArgumentParser(description="Compare book blocks to teacher's copy")
     argparser.add_argument("--config", type=str)
+    argparser.add_argument("--chapter", type=str)
     argparser.add_argument("--book", metavar="book.md", type=argparse.FileType("r"))
     argparser.add_argument("--code", metavar="code.py", type=argparse.FileType("r"))
     argparser.add_argument("--file", dest="file", help="Only consider code blocks from this file")
@@ -172,6 +173,7 @@ if __name__ == "__main__":
 
             chapters = data["chapters"]
             for chapter, metadata in data["chapters"].items():
+                if args.chapter and args.chapter != "all" and chapter != args.chapter: continue
                 for key in metadata:
                     value = metadata[key]
                     if key == "disabled":
