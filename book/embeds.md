@@ -5,19 +5,13 @@ prev: accessibility
 next: invalidation
 ...
 
-Our toy browser has a lot of rendering features, but is still missing a few
-present on pretty much every website. The most obvious is *images*---given how
-ubiquitous they are, it seems silly to have even a toy browser without images.
-But images are only the simplest form of *embedded content* within a web page,
-a much bigger topic, and one that has a lot of interesting implications for how
-browser engines work. That's mostly due to how powerful *iframes* are, since
-they allow you to embed one website in another.
-
-The fact is, a toy browser without images or iframes simply wouldn't cover some
-very important architectural aspects of real browsers with important
-performance, security and open information access implications. So let's now
-implement them to see. And in keeping with the pattern you've already seen,
-basic support for these features is easy enough to implement in one chapter!
+While our toy browser can render complex styles, visual effects, and
+animations, all of those apply basically just to text. Yet web pages
+contain a variety of non-text *embedded content*, from images through
+to iframes that embed one web page inside another. Embedded content of
+this sort has been essential throughout the web's history, and support
+for embedded content has powerful implications for browser
+architecture, performance, security, and open information access.
 
 Images
 ======
