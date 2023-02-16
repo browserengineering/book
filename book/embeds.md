@@ -1065,7 +1065,7 @@ And set here:
 class IframeLayout(EmbedLayout):
     def layout(self, zoom):
         # ...
-        self.node.frame.frame_height haelf.height - 2
+        self.node.frame.frame_height = self.height - 2
         self.node.frame.frame_width = self.width - 2
 ```
 
