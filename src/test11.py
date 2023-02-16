@@ -49,7 +49,6 @@ class socket:
             assert self.body == self.URLs[url][2], (self.body, self.URLs[url][2])
         stream = io.BytesIO(output)
         if encoding:
-            encoding = io.text_encoding(encoding)
             stream = io.TextIOWrapper(stream, encoding=encoding, newline=newline)
             stream.mode = mode
         else:
