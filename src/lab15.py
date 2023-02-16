@@ -94,7 +94,7 @@ def request(url, top_level_url, payload=None):
     body += "\r\n" + (payload or "")
     s.send(body.encode("utf8"))
 
-    response = s.makefile("b", newline="\r\n")
+    response = s.makefile("b")
 
     statusline = response.readline().decode("utf8")
     version, status, explanation = statusline.split(" ", 2)
@@ -122,17 +122,8 @@ def request(url, top_level_url, payload=None):
     assert "transfer-encoding" not in headers
     assert "content-encoding" not in headers
 
-    content_type = headers.get(
-        'content-type',
-        'application/octet-stream')
-    if content_type.startswith("text") or \
-        content_type.find('javascript') >= 0:
-        body = response.read().decode("utf8")
-    else:
-        body = response.read()
-
+    body = response.read()
     s.close()
-
     return headers, body
 
 class DrawImage(DisplayItem):
@@ -611,16 +602,7 @@ class ImageLayout(EmbedLayout):
     def load(self, frame):
         assert "src" in self.node.attributes
         link = self.node.attributes["src"]
-        image_url = resolve_url(link, frame.url)
-        if not frame.allowed_request(image_url):
-            print("Blocked image", link, "due to CSP")
-            return
-        try:
-            header, body = request(image_url, frame.url)
-            self.node.image = PIL.Image.open(io.BytesIO(body))
-        except:
-            self.node.image = None
-            print("Failed to load image: " + image_url)
+        self.node.image = download_image(link, frame)
 
     def init(self, parent, previous):
         self.parent = parent
@@ -643,25 +625,26 @@ class ImageLayout(EmbedLayout):
             self.width = device_px(self.node.image.width, zoom)
     
         if has_height:
-            self.height = \
+            self.img_height = \
                 device_px(int(self.node.attributes["height"]), zoom)
         elif has_width:
-            self.height = (1 / aspect_ratio) * \
+            self.img_height = (1 / aspect_ratio) * \
                 device_px(int(self.node.attributes["width"]), zoom)
         else:
-            self.height = max(
-                device_px(self.node.image.height, zoom),
-                linespace(self.font))
+            self.img_height = device_px(self.node.image.height, zoom)
+
+        self.height = max(self.img_height, linespace(self.font))
+
 
     def paint(self, display_list):
         cmds = []
 
         decoded_image = decode_image(self.node.image,
-            self.width, self.height,
+            self.width, self.img_height,
             self.node.style.get("image-rendering", "auto"))
 
         rect = skia.Rect.MakeLTRB(
-            self.x, self.y, self.x + self.width,
+            self.x, self.y + self.height - self.img_height, self.x + self.width,
             self.y + self.height)
 
         cmds.append(DrawImage(decoded_image, rect))
@@ -734,19 +717,32 @@ class IframeLayout(EmbedLayout):
         return "IframeLayout(src={}, x={}, y={}, width={}, height={})".format(
             self.node.attributes["src"], self.x, self.y, self.width, self.height)
 
-def decode_image(encoded_image, width, height, image_quality):
-    resample = None
+def download_image(image_src, frame):
+    image_url = resolve_url(image_src, frame.url)
+    if not frame.allowed_request(image_url):
+        print("Blocked image", link, "due to CSP")
+        return
+    try:
+        header, body = request(image_url, frame.url)
+        return PIL.Image.open(io.BytesIO(body))
+    except:
+        print("Failed to load image: " + image_url)
+        raise
+
+def decode_image(image, width, height, image_quality):
     if image_quality == "crisp-edges":
+        resample = PIL.Image.Resampling.NEAREST
+    elif image_quality == "high-quality":
         resample = PIL.Image.Resampling.LANCZOS
-    pil_image = encoded_image.resize(\
-        (int(width), int(height)), resample)
-    if pil_image.mode == "RGBA":
-        pil_image_bytes = pil_image.tobytes()
     else:
-        pil_image_bytes = pil_image.convert("RGBA").tobytes()
+        resample = PIL.Image.Resampling.BILINEAR
+    image = image.resize( \
+        (int(width), int(height)), resample)
+    if image.mode != "RGBA":
+        image = image.convert("RGBA")
     return skia.Image.frombytes(
-        array=pil_image_bytes,
-        dimensions=pil_image.size,
+        array=image.tobytes(),
+        dimensions=image.size,
         colorType=skia.kRGBA_8888_ColorType)
 
 class AttributeParser:
@@ -1026,6 +1022,7 @@ class JSContext:
         def run_load():
             headers, response = request(
                 full_url, self.tab.url, payload=body)
+            response = response.decode("utf8")
             task = Task(self.dispatch_xhr_onload, response, handle, window_id)
             self.tab.task_runner.schedule_task(task)
             if not isasync:
@@ -1276,6 +1273,7 @@ class Frame:
         self.scroll = 0
         self.scroll_changed_in_frame = True
         headers, body = request(url, self.url, payload=body)
+        body = body.decode("utf8")
         self.url = url
 
         self.allowed_origins = None
@@ -1310,6 +1308,7 @@ class Frame:
                 continue
 
             header, body = request(script_url, url)
+            body = body.decode("utf8")
             task = Task(\
                 self.get_js().run, script_url, body,
                 self.window_id)
@@ -1331,7 +1330,7 @@ class Frame:
                 header, body = request(style_url, url)
             except:
                 continue
-            self.rules.extend(CSSParser(body).parse())
+            self.rules.extend(CSSParser(body.decode("utf8")).parse())
 
         iframes = [node
                    for node in tree_to_list(self.nodes, [])
