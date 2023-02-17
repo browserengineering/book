@@ -67,20 +67,6 @@ for now just think of decoding as something like decompressing a zip file.]
 3. Lay it out on the page.
 4. Paint it in the right place in the display list.
 
-Skia doesn't come with built-in image decoding, so first download and install
-the [Pillow/PIL][pillow] library for this task:
-
-[pillow]: https://pillow.readthedocs.io/en/stable/reference/Image.html
-
-    pip3 install Pillow
-
-and include it:^[Pillow is a fork of a project called PIL---for
-Python Image Library---which is why the import says PIL.]
-
-``` {.python}
-import PIL.Image
-```
-
 For step 1 (download), make some changes to the `request`
 function to add support for binary data formats; currently it assumes an HTTP
 response is always `utf8`. Start by creating a binary file object
@@ -147,36 +133,19 @@ def request(url, top_level_url, payload=None):
 
 Now define a method that decodes a response body that we know is an image
 (even if we don't know its format).^[Interestingly, to make it work for our toy
-browser we don't need to consult `content-type`. That's because Pillow already
+browser we don't need to consult `content-type`. That's because Skia already
 auto-detects the image format by peeking at the first few bytes of the binary
-data, which varies for each image format.] First, reinterpret
-the image "file" as a `BytesIO` object and pass it to Pillow. Then convert
-it to RGBA (the same RGBA as in
-[Chapter 11](/visual-effects.html#sdl-creates-the-window)), call `tobytes`
-(which performs the decode and puts the result in a raw byte
-array[^maybe-decode]), and wrap the result in a Skia `Image` object.
+data, which varies for each image format.][^maybe-decode]
 
-[^maybe-decode]: Maybe. As with Skia, Pillow tries to be lazy about when to
-decode, so probably the decode happens at this time. But there is nothing
-in the Pillow API that requires it to decode right then, rather than say in
-the `open` call. For our toy browser it doesn't matter very much, but in a
+[^maybe-decode]: Skia will try not to decode the image until it's asked to
+draw it. For our toy browser it doesn't matter very much, but in a
 real browser the timing of a decode is important for performance. That's also
 why there is an [HTML API][html-image-decode] to control decoding.
 
 [html-image-decode]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLImageElement/decoding
 
 ``` {.python expected=False}
-def decode_image(image_bytes):
-    picture_stream = io.BytesIO(image_bytes)
-    pil_image = PIL.Image.open(picture_stream)
-    if pil_image.mode == "RGBA":
-        pil_image_bytes = pil_image.tobytes()
-    else:
-        pil_image_bytes = pil_image.convert("RGBA").tobytes()
-    return skia.Image.frombytes(
-        array=pil_image_bytes,
-        dimensions=pil_image.size,
-        colorType=skia.kRGBA_8888_ColorType)
+TODO: replace with download_image
 ```
 
 Now, images are expensive relative to text content. To start with, they take a
@@ -222,17 +191,17 @@ painted size rather than intrinsic, and utilize the
 [`image-rendering`][image-rendering] CSS property to decide which image filter
 algorithm to use:
 
-
 [intrinsic-size]: https://developer.mozilla.org/en-US/docs/Glossary/Intrinsic_Size#
 
 ``` {.python}
-def decode_image(encoded_image, width, height, image_quality):
-    resample = None
-    if image_quality == "crisp-edges":
-        resample = PIL.Image.Resampling.LANCZOS
-    pil_image = encoded_image.resize(\
-        (int(width), int(height)), resample)
-    # ...
+def filter_quality(node):
+    attr = node.style.get("image-rendering", "auto")
+    if attr == "high-quality":
+        return skia.FilterQuality.kHigh_FilterQuality
+    elif attr == "crisp-edges":
+        return skia.FilterQuality.kLow_FilterQuality
+    else:
+        return skia.FilterQuality.kMedium_FilterQuality
 ```
 
 Now, of course, the `width` and `height` have to be specified to the
@@ -341,7 +310,7 @@ class InlineLayout(LayoutObject):
     
     def image(self, node, zoom):
         img = ImageLayout(node, self.frame)
-        w = device_px(node.image.width, zoom)
+        w = device_px(node.image.width(), zoom)
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
@@ -374,7 +343,9 @@ class ImageLayout(EmbedLayout):
             return
         try:
             header, body = request(image_url, frame.url)
-            self.node.image = PIL.Image.open(io.BytesIO(body))
+            self.node.encoded_image = body
+            self.node.image = skia.Image.MakeFromEncoded(
+                skia.Data.MakeWithoutCopy(self.node.encoded_image))
         except:
             self.node.image = None
             print("Failed to load image: " + image_url)
@@ -391,9 +362,9 @@ Then there is layout, which shares all the code except sizing:
 class ImageLayout(EmbedLayout):
     def layout(self, zoom):
         super().layout(zoom)
-        self.width = device_px(self.node.image.width, zoom)
+        self.width = device_px(self.node.image.width(), zoom)
         self.height = max(
-                device_px(self.node.image.height, zoom),
+                device_px(self.node.image.height(), zoom),
                 linespace(self.font))
 ```
 
@@ -439,17 +410,20 @@ a replaced element and a regular element.
 [replaced-elements]: https://developer.mozilla.org/en-US/docs/Web/CSS/Replaced_element
 
 Painting an image is quite straightforward, and uses a new `DrawImage type`
-and the Skia `drawImage` API method.
+and the Skia `drawImageRect` API method that draws the image to be scaled and
+sized to the given rect.
 
 ``` {.python}
 class DrawImage(DisplayItem):
-    def __init__(self, image, rect):
+    def __init__(self, image, rect, quality):
         super().__init__(rect)
         self.image = image
+        self.quality = quality
 
     def execute(self, canvas):
-        canvas.drawImage(
-            self.image, self.rect.left(), self.rect.top())
+        canvas.drawImageRect(
+            self.image, self.rect,
+            skia.Paint(FilterQuality=self.quality))
 ```
 
 Finally, the `paint` method of `ImageLayout` finally decodes the image, and
@@ -511,7 +485,7 @@ class InlineLayout(LayoutObject):
         if "width" in node.attributes:
             w = device_px(int(node.attributes["width"]), zoom)
         else:
-            w = device_px(node.image.width, zoom)
+            w = device_px(node.image.width(), zoom)
 ```
 
 And in `ImageLayout`:
@@ -562,7 +536,7 @@ class ImageLayout(EmbedLayout):
     # ...
     def layout(self, zoom):
         # ...
-        aspect_ratio = self.node.image.width / self.node.image.height
+        aspect_ratio = self.node.image.width() / self.node.image.height()
         has_width = "width" in self.node.attributes
         has_height = "height" in self.node.attributes
 
@@ -2198,14 +2172,6 @@ styling of images that haven't loaded yet. This is typically done by putting
 an icon representing an unloaded image in its place. If `width` or
 `height` is not specified, the resulting size in that dimension should be sized
 to fit the icon.
-
-*Animated images*: Add support for animated GIFs. Pillow supports this via the
- `is_animated` and `n_frames` property, and the `seek()` (switch to a different
- animation frame) and `tell()` (find out the current animation frame) methods
- on a `PIL.Image`. (Hint: assume it runs at 60 Hz and integrate it with the 
- `run_animation_frame` method.) If you want an additional challenge, try
- running the animations on the browser thread.^[Real browsers do this as
- an important performance optimization.]
 
 *Same-origin frame tree*: same-origin iframes can access each others' variables
  and DOM, even if they are not adjacent in the frame tree. Implement this.

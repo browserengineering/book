@@ -10,7 +10,6 @@ import io
 import gtts
 import math
 import os
-import PIL.Image
 import playsound
 import sdl2
 import skia
@@ -136,13 +135,15 @@ def request(url, top_level_url, payload=None):
     return headers, body
 
 class DrawImage(DisplayItem):
-    def __init__(self, image, rect):
+    def __init__(self, image, rect, quality):
         super().__init__(rect)
         self.image = image
+        self.quality = quality
 
     def execute(self, canvas):
-        canvas.drawImage(
-            self.image, self.rect.left(), self.rect.top())
+        canvas.drawImageRect(
+            self.image, self.rect,
+            skia.Paint(FilterQuality=self.quality))
 
     def __repr__(self):
         return "DrawImage(rect={})".format(
@@ -425,7 +426,7 @@ class InlineLayout(LayoutObject):
         if "width" in node.attributes:
             w = device_px(int(node.attributes["width"]), zoom)
         else:
-            w = device_px(node.image.width, zoom)
+            w = device_px(node.image.width(), zoom)
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
@@ -602,6 +603,15 @@ class TextLayout:
             "node={}, word={})").format(
             self.x, self.y, self.width, self.height, self.node, self.word)
 
+def filter_quality(node):
+    attr = node.style.get("image-rendering", "auto")
+    if attr == "high-quality":
+        return skia.FilterQuality.kHigh_FilterQuality
+    elif attr == "crisp-edges":
+        return skia.FilterQuality.kLow_FilterQuality
+    else:
+        return skia.FilterQuality.kMedium_FilterQuality
+
 class ImageLayout(EmbedLayout):
     def __init__(self, node, frame):
         super().__init__(node)
@@ -617,7 +627,9 @@ class ImageLayout(EmbedLayout):
             return
         try:
             header, body = request(image_url, frame.url)
-            self.node.image = PIL.Image.open(io.BytesIO(body))
+            self.node.encoded_image = body
+            self.node.image = skia.Image.MakeFromEncoded(
+                skia.Data.MakeWithoutCopy(self.node.encoded_image))
         except:
             self.node.image = None
             print("Failed to load image: " + image_url)
@@ -629,7 +641,7 @@ class ImageLayout(EmbedLayout):
     def layout(self, zoom):
         super().layout(zoom)
 
-        aspect_ratio = self.node.image.width / self.node.image.height
+        aspect_ratio = self.node.image.width() / self.node.image.height()
         has_width = "width" in self.node.attributes
         has_height = "height" in self.node.attributes
 
@@ -640,7 +652,7 @@ class ImageLayout(EmbedLayout):
             self.width = aspect_ratio * \
                 device_px(int(self.node.attributes["height"]), zoom)
         else:
-            self.width = device_px(self.node.image.width, zoom)
+            self.width = device_px(self.node.image.width(), zoom)
     
         if has_height:
             self.height = \
@@ -650,21 +662,18 @@ class ImageLayout(EmbedLayout):
                 device_px(int(self.node.attributes["width"]), zoom)
         else:
             self.height = max(
-                device_px(self.node.image.height, zoom),
+                device_px(self.node.image.height(), zoom),
                 linespace(self.font))
 
     def paint(self, display_list):
         cmds = []
 
-        decoded_image = decode_image(self.node.image,
-            self.width, self.height,
-            self.node.style.get("image-rendering", "auto"))
-
         rect = skia.Rect.MakeLTRB(
             self.x, self.y, self.x + self.width,
             self.y + self.height)
 
-        cmds.append(DrawImage(decoded_image, rect))
+        cmds.append(DrawImage(self.node.image, rect,
+            filter_quality(self.node)))
 
         display_list.extend(cmds)
 
@@ -732,22 +741,9 @@ class IframeLayout(EmbedLayout):
 
     def __repr__(self):
         return "IframeLayout(src={}, x={}, y={}, width={}, height={})".format(
-            self.node.attributes["src"], self.x, self.y, self.width, self.height)
+            self.node.attributes["src"], self.x, self.y,
+            self.width, self.height)
 
-def decode_image(encoded_image, width, height, image_quality):
-    resample = None
-    if image_quality == "crisp-edges":
-        resample = PIL.Image.Resampling.LANCZOS
-    pil_image = encoded_image.resize(\
-        (int(width), int(height)), resample)
-    if pil_image.mode == "RGBA":
-        pil_image_bytes = pil_image.tobytes()
-    else:
-        pil_image_bytes = pil_image.convert("RGBA").tobytes()
-    return skia.Image.frombytes(
-        array=pil_image_bytes,
-        dimensions=pil_image.size,
-        colorType=skia.kRGBA_8888_ColorType)
 
 class AttributeParser:
     def __init__(self, s):
