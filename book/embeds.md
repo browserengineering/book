@@ -97,30 +97,50 @@ Make sure to make this change everywhere in your browser that you call
 places in `request`. When we download images, however, we _won't_ call
 `decode`, and just use the binary data directly:
 
-``` {.python replace=tab/frame}
-def download_image(image_src, tab):
-    image_url = resolve_url(image_src, tab.url)
-    assert tab.allowed_request(image_url), \
-        "Blocked load of " + image_url + " due to CSP"
-    header, body = request(image_url, tab.url)
-    data = skia.Data.MakeWithoutCopy(body)
-    img = skia.Image.MakeFromEncoded(data)
-    assert img, "Failed to recognize image format for " + image_url
-    return body, img
+``` {.python replace=Tab/Frame}
+class Tab:
+    def load(self, url, body=None):
+        # ...
+        imgs = [node
+                   for node in tree_to_list(self.nodes, [])
+                   if isinstance(node, Element)
+                   and node.tag == "img"
+                   and "src" in node.attributes]
+        for img in imgs:
+            img.image = None
+            image_url = resolve_url(img.attributes["src"], self.url)
+            if not self.allowed_request(image_url):
+                print("Blocked image", image_url, "due to CSP")
+                continue
+            try:
+                header, body = request(image_url, self.url)
+            except:
+                continue
+            # ...
+        # ...
 ```
 
-Let's look at the steps between `request` and `return` carefully.
-First, the requested data is turned into a Skia `Data` object using
-the `MakeWithoutCopy` method. Then that `Data` is used to create an
-`Image` using `MakeFromEncoded`.
+Once we've downloaded the image, we need to turn it into a Skia
+`Image` object. That requires the following code:
 
+``` {.python replace=Tab/Frame}
+class Tab:
+    def load(self, url, body=None):
+        for img in imgs:
+            # ...
+            img.encoded_data = body
+            data = skia.Data.MakeWithoutCopy(body)
+            img.image = skia.Image.MakeFromEncoded(data)
+```
+
+These two steps are tricky. First, the requested data is turned into a
+Skia `Data` object using the `MakeWithoutCopy` method.
 `MakeWithoutCopy` means that the `Data` object just stores a reference
 to the existing `body` and doesn't own that data. That's essential,
 because encoded image data can be large---maybe megabytes---and
 copying that data wastes memory and time. But that means that the
-`data` is invalid if `body` is ever garbage-collected, so we return
-the `body` from `download_image` and need to make sure to store it
-somewhere for at least as long as we're using the image.[^memoryview]
+`data` is invalid if `body` is ever garbage-collected, so we save the
+`body` in an `encoded_data` field.[^memoryview]
 
 [^memoryview]: This is a bit of a hack. Perhaps a better solution
     would be to write the request contents directly into a Skia `Data`
@@ -245,72 +265,34 @@ option to encode the email in `text/plain`, however.
 Embedded layout
 ===============
 
-An `<img>` is a leaf element of the DOM. In some ways, it's similar to a single
-font glyph that has to paint in a single rectangle sized to the image (instead
-of the glyph), takes up space in a `LineLayout`, and causes line breaking when
-it reaches the end of the available space.
+By now, you probably have a good sense of how to add images to our
+browser's layout and paint process. We'll need to create an
+`ImageLayout` method; add a new `image` case to `BlockLayout`'s
+`recurse` method; and make sure the `ImageLayout`'s `paint` method
+generates a `DrawImage` command.
 
-But it's different than a text *node*, because the text in a text node is not
-just one glyph, but an entire run of text of a potentially arbitrary length,
-and that can be split into words and lines across multiple lines. An image, on
-the other hand, is an [atomic inline][atomic-inline]---it doesn't make sense to
-split it across multiple lines.^[There are other elements that can be atomic
-inlines, and we'll encounter more later in this chapter.]
+As we do this, you might recall doing something very similar for
+`<input>` elements. In fact, text areas and buttons are very similar
+to images: both are leaf nodes of the DOM, placed into lines, affect
+the text baselines, and paint custom content.[^atomic-inline] Since
+they are so similar, let's try to reuse the same code for both.
 
+[^atomic-inline]: Images aren't quite like *text* because text node is
+potentially an entire run of text, split across multiple lines, while
+an image is an [atomic inline][atomic-inline]. The other types of
+embedded content in this chapter are also atomic inlines.
 
 [atomic-inline]: https://drafts.csswg.org/css-display-3/#atomic-inline
 
-Images will be laid out by a new `ImageLayout` class. The height and width of
-the object is defined by the height of the image, but other aspects of it will be almost
-the same as `InputLayout`. In fact, so similar that
-let's make them inherit from a new `EmbedLayout` base class to share a lot of
-code about inline layout and fonts. (And for completeness, make a new
-`LayoutObject` root class for all types of object, and make `BlockLayout`,
-`InlineLayout` and `DocumentLayout` inherit from it.
+Let's split the existing `InputLayout` into a superclass called
+`EmbedLayout`, containing most of the existing code, and a new
+subclass with the input-specific code, `InputLayout`:[^widgets]
 
-``` {.python}
-class LayoutObject:
-    def __init__(self):
-        pass
-```
+[^widgets]: In a real browser, input elements are usually called
+*widgets* because they have a lot of [special rendering
+rules][widget-rendering] that sometimes involve CSS.
 
-``` {.python}
-class EmbedLayout(LayoutObject):
-    def __init__(self, node, parent=None, previous=None):
-        super().__init__()
-        self.node = node
-        node.layout_object = self
-        self.children = []
-        self.parent = parent
-        self.previous = previous
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-        self.font = None
-
-    def get_ascent(self, font_multiplier=1.0):
-        return -self.height
-
-    def get_descent(self, font_multiplier=1.0):
-        return 0
-
-    def layout(self, zoom):
-        weight = self.node.style["font-weight"]
-        style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
-        size = device_px(
-            float(self.node.style["font-size"][:-2]), zoom)
-        self.font = get_font(size, weight, style)
-
-        if self.previous:
-            space = self.previous.font.measureText(" ")
-            self.x = self.previous.x + space + self.previous.width
-        else:
-            self.x = self.parent.x
-```
-
-Now `InputLayout` looks like this:
+[widget-rendering]: https://html.spec.whatwg.org/multipage/rendering.html#widgets
 
 ``` {.python}
 class InputLayout(EmbedLayout):
@@ -319,76 +301,34 @@ class InputLayout(EmbedLayout):
 
     def layout(self, zoom):
         super().layout(zoom)
+```
 
+Now, the idea is that `EmbedLayout` should provide common layout code
+for all kinds of embedded content, while its subclasses like
+`InputLayout` should provide the custom code needed to draw that specific
+kind of embedded content. Different types of embedded content might
+have different widths and heights, so that should happen in
+`InputLayout`. Likewise, `paint` should happen in `InputLayout`:
+
+``` {.python}
+class InputLayout(EmbedLayout):
+    def layout(self, zoom):
+        # ...
         self.width = device_px(INPUT_WIDTH_PX, zoom)
         self.height = linespace(self.font)
+
+    def paint(self, display_list):
+        # ...
 ```
 
-And `ImageLayout` is almost the same. The two key differences
-are the need to actually load the image off the network, and then use
-the size of the image to size the `ImageLayout`. Let's start with loading.
-After loading, the image is stored on the `node`. But this adds some complexity
-in the `image` function we need to add on `InlineLayout`, because first it needs
-to load the image and only then set its `parent` and `previous` fields. That'll
-be via a new `init` method call.
-
-``` {.python}
-class InlineLayout(LayoutObject):
-    def recurse(self, node, zoom):
-            # ...
-            elif node.tag == "img":
-                self.image(node, zoom)
-    
-    def image(self, node, zoom):
-        img = ImageLayout(node, self.frame)
-        w = device_px(node.image.width(), zoom)
-        if self.cursor_x + w > self.x + self.width:
-            self.new_line()
-        line = self.children[-1]
-        img.init(line, self.previous_word)
-        line.children.append(img)
-        self.previous_word = img
-        weight = node.style["font-weight"]
-        style = node.style["font-style"]
-        size = device_px(float(node.style["font-size"][:-2]), zoom)
-        font = get_font(size, weight, size)
-        self.cursor_x += w + font.measureText(" ")
-```
-
-And here is `ImageLayout`. Note how we're loading the image, but not
-yet decoding it, because we don't know the painted size until layout is done.
+Now it's easy to write `ImageLayout`. It'll take its width and height
+from the image itself:
 
 ``` {.python}
 class ImageLayout(EmbedLayout):
-    def __init__(self, node, frame):
-        super().__init__(node)
-        if not hasattr(self.node, "image"):
-            self.load(frame)
+    def __init__(self, node, parent, previous):
+        super().__init__(node, parent, previous)
 
-    def load(self, frame):
-        assert "src" in self.node.attributes
-        link = self.node.attributes["src"]
-        try:
-            data, image = download_image(link, frame)
-        except Exception as e:
-            print("Image error:", e)
-            data, image = None, None
-        self.node.encoded_data = data
-        self.node.image = image
-
-    def init(self, parent, previous):
-        self.parent = parent
-        self.previous = previous
-    # ...
-```
-
-Note that we save both the encoded data and the image, because of the
-`MakeWithoutCopy` optimizaion we used in `download_image`
-
-Then there is layout, which shares all the code except sizing:
-
-``` {.python expected=False}
-class ImageLayout(EmbedLayout):
     def layout(self, zoom):
         super().layout(zoom)
         self.width = device_px(self.node.image.width(), zoom)
@@ -396,48 +336,23 @@ class ImageLayout(EmbedLayout):
         self.height = max(self.img_height, linespace(self.font))
 ```
 
-Notice how the positioning of an image depends on the font size of the element,
-via the call to the the layout method of `EmbedLayout` in the superclass. Input
-elements already had that, but those elements generally have text in them, but
-images do not. That means that a "line" consisting of only an image still has
-has an implicit font affecting its layout somehow.^[In fact, a page with only a
-single image and no text or CSS at all still has a font size (the default font
-size of a web page), and the image's layout depends on it. This is a very
-common source of confusion for web developers. In a real browser, it can be
-avoided by forcing an image into a block or other layout mode via the `display`
-CSS property.]
-
-That's unintuitive---there is no font in an image, why does this happen?
-The reason is that, as a type of inline layout, images are designed to flow
-along with related text. For example, the baseline of the image should line up
-with the [baseline][baseline-ch3] of the text next to it. And so the font of
-that text affects the layout of the image. Rather than special-case situations
-where there happens to be no adjacent text, the layout algorithm simply lays
-out the same as no text at all---similar to how `<br>` also implicitly has
-an associated font.
+Notice that the height of the image depends on the font size of the
+element. Though odd, this is how image layout actually works: a line
+with a single, very small, image on it will still be tall enough to
+contain text.^[In fact, a page with only a single image and no text or
+CSS at all still has its layout affected by a font---the default font.
+This is a very common source of confusion for web developers. In a
+real browser, it can be avoided by forcing an image into a block or
+other layout mode via the `display` CSS property.] The underlying
+reason for this is because, as a type of inline layout, images are
+designed to flow along with related text, including the computation of
+[baselines][baseline-ch3]. So a font is involved somehow. For example,
+the baseline of the image should line up with the of the text next to
+it.
 
 [baseline-ch3]: text.html#text-of-different-sizes
 
-In fact, now that you see images alongside input elements, notice how actually
-the input elements we defined in Chapter 8 *are also a form of embedded
-content*---after all, the way they are drawn to the screen is certainly not
-defined by HTML tags and CSS in our toy browser. That's why I called the
-superclass `EmbedLayout`.^[The details are complicated
-in a real browser, but input elements are usually called *widgets* instead,
-and have a lot of
-[special rendering rules][widget-rendering] that sometimes involve CSS.]
-
-The web specifications call images
-[*replaced elements*][replaced-elements]---characterized by putting stuff
-"outside of HTML" into an inline HTML context, and "replacing" what HTML might
-have drawn. In real browsers, input elements are some sort of hybrid between
-a replaced element and a regular element.
-
-[widget-rendering]: https://html.spec.whatwg.org/multipage/rendering.html#widgets
-
-[replaced-elements]: https://developer.mozilla.org/en-US/docs/Web/CSS/Replaced_element
-
-Painting an image is quite straightforward:
+Painting an image is also straightforward:
 
 ``` {.python}
 class ImageLayout(EmbedLayout):
@@ -451,6 +366,66 @@ class ImageLayout(EmbedLayout):
         display_list.extend(cmds)
 ```
 
+Note that the saved `img_height` property is used to make sure the
+image is positioned with its bottom edge on the text baseline.
+
+Now we just need to hook up the new `ImageLayout` to `BlockLayout`:
+
+``` {.python expected=False}
+class BlockLayout:
+    def recurse(self, node, zoom):
+        else:
+            # ...
+            elif node.tag == "img":
+                self.image(node, zoom)
+    
+    def image(self, node, zoom):
+        w = device_px(node.image.width(), zoom)
+        if self.cursor_x + w > self.x + self.width:
+            self.new_line()
+        line = self.children[-1]
+        img = ImageLayout(node, self.frame, line, self.previous_word)
+        line.children.append(img)
+        self.previous_word = img
+        weight = node.style["font-weight"]
+        style = node.style["font-style"]
+        size = device_px(float(node.style["font-size"][:-2]), zoom)
+        font = get_font(size, weight, size)
+        self.cursor_x += w + font.measureText(" ")
+```
+
+This is basically a copy of the `input` method for `<input>` elements.
+Images now appear in the display list and can be seen on the screen.
+But what about our second output modality, screen readers? That's what
+the `alt` attribute is for. It works like this:
+
+    <img src="https://browser.engineering/im/hes.jpg"
+    alt="A computer operator using a hypertext editing system in 1969">
+
+Implementing this in `AccessibilityNode` is very easy:
+
+``` {.python}
+class AccessibilityNode:
+    def __init__(self, node):
+        else:
+            # ...
+            elif node.tag == "img":
+                self.role = "image"
+
+    def build(self):
+        # ...
+        elif self.role == "image":
+            if "alt" in self.node.attributes:
+                self.text = "Image: " + self.node.attributes["alt"]
+            else:
+                self.text = "Image"
+```
+
+In our browser, this `alt` handling code isn't too useful because our
+HTML attribute parser doesn't permit spaces in attribute
+values---unless you did that [exercise](html.md#exercises)---but
+very short `alt` text will now work.
+
 ::: {.further}
 The `<img>` tag uses a `src` attribute and not `href`. Why is that? And
 why is the tag name `img` and not `image`? The answer to the first is
@@ -463,6 +438,10 @@ before such things were mediated by a standards organization.
 :::
 
 [srcname]: http://1997.webhistory.org/www.lists/www-talk.1993q1/0196.html
+
+
+Modifying Image Sizes
+=====================
 
 Images should now work and display on the page. But our implementation is very
 basic and actually has no way for the image's painted size to differ from its
@@ -563,36 +542,6 @@ Images are now present in our browser, with several nice features to control
 their layout and quality. Your browser should now be able to render
 <a href="/examples/example15-img.html">this
 example page</a> correctly.
-
-But what about accessibility? A screen reader can read out text, but how
-does it describe an image in words? That's what the `alt` attribute is for.
-It works like this:
-
-    <img src="https://browser.engineering/im/hes.jpg"
-    alt="A computer operator using a hypertext editing system in 1969">
-
-Implementing this in `AccessibilityNode` is very easy:
-
-``` {.python}
-class AccessibilityNode:
-    def __init__(self, node):
-            # ...
-            elif node.tag == "img":
-                self.role = "image"
-
-    def build(self):
-        elif self.role == "image":
-            if "alt" in self.node.attributes:
-                self.text = "Image: " + self.node.attributes["alt"]
-            else:
-                self.text = "Image"
-```
-
-However, since alt text is generally a phrase or sentence, and those contain
-whitespace, `HTMLParser`'s attribute parsing is not good enough (it can't
-handle quoted whitespace in attribute values). It'll need to look a
-lot more like how `CSSParser` statefully handles whitespace and quoting. I
-won't include the code here since the concept for how to parse it is the same.
 
 ::: {.further}
 I discussed preserving aspect ratio for a loaded image, but what about before

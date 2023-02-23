@@ -417,7 +417,6 @@ class InlineLayout(LayoutObject):
         self.cursor_x += w + font.measureText(" ")
 
     def image(self, node, zoom):
-        img = ImageLayout(node, self.frame)
         if "width" in node.attributes:
             w = device_px(int(node.attributes["width"]), zoom)
         else:
@@ -425,7 +424,7 @@ class InlineLayout(LayoutObject):
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
-        img.init(line, self.previous_word)
+        img = ImageLayout(node, line, self.previous_word)
         line.children.append(img)
         self.previous_word = img
         weight = node.style["font-weight"]
@@ -608,25 +607,8 @@ def filter_quality(node):
         return skia.FilterQuality.kMedium_FilterQuality
 
 class ImageLayout(EmbedLayout):
-    def __init__(self, node, frame):
-        super().__init__(node)
-        if not hasattr(self.node, "image"):
-            self.load(frame)
-
-    def load(self, frame):
-        assert "src" in self.node.attributes
-        link = self.node.attributes["src"]
-        try:
-            data, image = download_image(link, frame)
-        except Exception as e:
-            print("Image error:", e)
-            data, image = None, None
-        self.node.encoded_data = data
-        self.node.image = image
-
-    def init(self, parent, previous):
-        self.parent = parent
-        self.previous = previous
+    def __init__(self, node, parent, previous):
+        super().__init__(node, parent, previous)
 
     def layout(self, zoom):
         super().layout(zoom)
@@ -729,16 +711,6 @@ class IframeLayout(EmbedLayout):
     def __repr__(self):
         return "IframeLayout(src={}, x={}, y={}, width={}, height={})".format(
             self.node.attributes["src"], self.x, self.y, self.width, self.height)
-
-def download_image(image_src, frame):
-    image_url = resolve_url(image_src, frame.url)
-    assert frame.allowed_request(image_url), \
-        "Blocked load of " + image_url + " due to CSP"
-    header, body = request(image_url, frame.url)
-    data = skia.Data.MakeWithoutCopy(body)
-    img = skia.Image.MakeFromEncoded(data)
-    assert img, "Failed to recognize image format for " + image_url
-    return body, img
 
 class AttributeParser:
     def __init__(self, s):
@@ -1326,6 +1298,25 @@ class Frame:
             except:
                 continue
             self.rules.extend(CSSParser(body.decode("utf8")).parse())
+
+        imgs = [node
+                   for node in tree_to_list(self.nodes, [])
+                   if isinstance(node, Element)
+                   and node.tag == "img"
+                   and "src" in node.attributes]
+        for img in imgs:
+            img.image = None
+            image_url = resolve_url(img.attributes["src"], self.url)
+            if not self.allowed_request(image_url):
+                print("Blocked image", image_url, "due to CSP")
+                continue
+            try:
+                header, body = request(image_url, self.url)
+            except:
+                continue
+            img.encoded_data = body
+            data = skia.Data.MakeWithoutCopy(body)
+            img.image = skia.Image.MakeFromEncoded(data)
 
         iframes = [node
                    for node in tree_to_list(self.nodes, [])
