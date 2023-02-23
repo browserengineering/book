@@ -226,9 +226,9 @@ class Tab:
 	# ...
     def zoom_by(self, increment):
         if increment > 0:
-            self.zoom *= 1.1;
+            self.zoom *= 1.1
         else:
-            self.zoom *= 1/1.1;
+            self.zoom *= 1/1.1
         self.set_needs_render()
 
     def reset_zoom(self):
@@ -259,16 +259,10 @@ class Tab:
 			self.document.layout(self.zoom)
 ```
 
-The `BlockLayout`, `LineLayout` and `DocumentLayout`, classes just
-pass on the zoom to their children:
+The `LineLayout` and `DocumentLayout` classes just pass on the zoom to
+their children:
 
 ``` {.python}
-class BlockLayout:
-	# ...
-    def layout(self, zoom):
-        for child in self.children:
-            child.layout(zoom)
-
 class LineLayout:
 	# ...
     def layout(self, zoom):
@@ -282,20 +276,20 @@ class DocumentLayout:
         child.layout(zoom)
 ```
 
-However, `InlineLayout`, `TextLayout`, and `InputLayout` have to
+However, `BlockLayout`, `TextLayout`, and `InputLayout` have to
 handle zoom specially, because the elements they represent have to be
 scaled by the `zoom` multiplier. First, pass the `zoom` argument into
 the `recurse` method and from there into `text` and `input`:
 
 ``` {.python}
-class InlineLayout:
+class BlockLayout:
 	# ...
     def layout(self, zoom):
     	# ...
         self.recurse(self.node, zoom)
         # ...
-        for line in self.children:
-            line.layout(zoom)
+        for child in self.children:
+            child.layout(zoom)
 
     def recurse(self, node, zoom):
         if isinstance(node, Text):
@@ -325,10 +319,10 @@ browser, this method could also account for differences like high-DPI
 displays.
 
 We'll do this conversion to adjust the font sizes in the `text` and
-`input` methods for `InlineLayout`, and in `InputLayout`:
+`input` methods for `BlockLayout`, and in `InputLayout`:
 
 ``` {.python}
-class InlineLayout:
+class BlockLayout:
 	# ....
     def text(self, node, zoom):
     	# ...
@@ -373,29 +367,11 @@ class TextLayout:
 And the fixed `INPUT_WIDTH_PX` for text boxes:
 
 ``` {.python }
-class InlineLayout:
+class BlockLayout:
 	# ...
     def input(self, node, zoom):
         w = device_px(INPUT_WIDTH_PX, zoom)	
 ```
-
-This handles text and text boxes, but that's not the only thing that
-needs to zoom in and out. CSS property values, like `width` and
-`height`, are also specified in CSS pixels, not device pixels, so they
-need to be scaled. The easiest way to do that is by passing the `zoom`
-value to `style_length`, which we already use for reading CSS lengths.
-Note that `default_value` is *not* multiplied by zoom, because it is
-assumed to already be zoomed by the caller.
-
-``` {.python}
-def style_length(node, style_name, default_value, zoom):
-    style_val = node.style.get(style_name)
-    return device_px(float(style_val[:-2]), zoom) if style_val \
-        else default_value
-```
-
-Now just pass in the `zoom` parameter to `style_length` inside
-`BlockLayout`, `InlineLayout`, and `InputLayout`.
 
 Finally, one tricky place we need to adjust for zoom is inside
 `DocumentLayout`. Here there are two sets of lengths: the overall
@@ -1164,9 +1140,8 @@ def paint_outline(node, cmds, rect):
         cmds.append(DrawOutline(rect, "black", 2))
 ```
 
-This is in a helper method so that we can call it in both
-`InputLayout` (for text entries and buttons) and in `InlineLayout`
-(for links). In `InputLayout` it looks like this:
+Call it in `InputLayout` to make sure text entries and buttons get
+outlines:
 
 ``` {.python}
 class InputLayout:
@@ -2260,7 +2235,7 @@ When the user hovers over a node, we'll do two things. First, we'll
 draw its bounds on the screen; this helps users see what they're
 hovering over, plus it's also helpful for debugging. We'll do that in
 `paint_draw_list`; we'll start by finding the accessibility node the
-user is hovering over:
+user is hovering over (note the need to take scroll into account):
 
 ``` {.python}
 class Browser:
@@ -2272,6 +2247,7 @@ class Browser:
         # ...
         if self.pending_hover:
             (x, y) = self.pending_hover
+            y += self.scroll
             a11y_node = self.accessibility_tree.hit_test(x, y)
 ```
 
@@ -2390,7 +2366,7 @@ Summary
 =======
 
 This chapter introduces accessibility---features to ensure *all* users can
-access and interact with web sites---then shows how to solve several of
+access and interact with websites---then shows how to solve several of
 the most common accessibility problems in browsers. The key takeaways are:
 
 * Built-in accessibility is possible because of the semantic and declarative

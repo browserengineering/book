@@ -5,7 +5,6 @@ window.document = { querySelectorAll: function(s) {
     return handles.map(function(h) { return new Node(h) });
 }}
 
-
 window.Node = function(handle) { this.handle = handle; }
 
 Node.prototype.getAttribute = function(attr) {
@@ -24,45 +23,47 @@ Event.prototype.preventDefault = function() {
 }
 
 Node.prototype.addEventListener = function(type, listener) {
-    if (!LISTENERS[this.handle]) LISTENERS[this.handle] = {};
-    var dict = LISTENERS[this.handle];
+    if (!window.LISTENERS[this.handle])
+        window.LISTENERS[this.handle] = {};
+    var dict = window.LISTENERS[this.handle];
     if (!dict[type]) dict[type] = [];
     var list = dict[type];
     list.push(listener);
 }
 
-Object.defineProperty(Node.prototype, 'innerHTML', {
-    set: function(s) {
-        call_python("innerHTML_set", this.handle, s.toString());
-    }
-});
-
-Object.defineProperty(Node.prototype, 'style', {
-    set: function(s) {
-        call_python("style_set", this.handle, s.toString());
-    }
-});
-
 Node.prototype.dispatchEvent = function(evt) {
     var type = evt.type;
     var handle = this.handle
-    var list = (LISTENERS[handle] && LISTENERS[handle][type]) || [];
+    var list = (window.LISTENERS[handle] &&
+        window.LISTENERS[handle][type]) || [];
     for (var i = 0; i < list.length; i++) {
         list[i].call(this, evt);
     }
     return evt.do_default;
 }
 
+Object.defineProperty(Node.prototype, 'innerHTML', {
+    set: function(s) {
+        call_python("innerHTML_set", this.handle, s.toString(), window._id);
+    }
+});
+
+Object.defineProperty(Node.prototype, 'style', {
+    set: function(s) {
+        call_python("style_set", this.handle, s.toString(), window._id);
+    }
+});
+
 window.SET_TIMEOUT_REQUESTS = {}
 
 window.setTimeout = function(callback, time_delta) {
-    var handle = Object.keys(SET_TIMEOUT_REQUESTS).length;
-    SET_TIMEOUT_REQUESTS[handle] = callback;
-    call_python("setTimeout", handle, time_delta, self._id)
+    var handle = Object.keys(window.SET_TIMEOUT_REQUESTS).length;
+    window.SET_TIMEOUT_REQUESTS[handle] = callback;
+    call_python("setTimeout", handle, time_delta, this._id)
 }
 
 window.__runSetTimeout = function(handle) {
-    var callback = SET_TIMEOUT_REQUESTS[handle]
+    var callback = window.SET_TIMEOUT_REQUESTS[handle]
     callback();
 }
 
@@ -101,16 +102,16 @@ Date.now = function() {
 window.RAF_LISTENERS = [];
 
 window.requestAnimationFrame = function(fn) {
-    RAF_LISTENERS.push(fn);
+    window.RAF_LISTENERS.push(fn);
     call_python("requestAnimationFrame");
 }
 
 window.__runRAFHandlers = function() {
     var handlers_copy = [];
-    for (var i = 0; i < RAF_LISTENERS.length; i++) {
-        handlers_copy.push(RAF_LISTENERS[i]);
+    for (var i = 0; i < window.RAF_LISTENERS.length; i++) {
+        handlers_copy.push(window.RAF_LISTENERS[i]);
     }
-    RAF_LISTENERS = [];
+    window.RAF_LISTENERS = [];
     for (var i = 0; i < handlers_copy.length; i++) {
         handlers_copy[i]();
     }
@@ -123,13 +124,14 @@ window.PostMessageEvent = function(data) {
     this.data = data;
 }
 
-Window.prototype.postMessage = function(message, domain) {
-    call_python("postMessage", this._id, message, domain)
+Window.prototype.postMessage = function(message, origin) {
+    call_python("postMessage", this._id, message, origin)
 }
 
 Window.prototype.addEventListener = function(type, listener) {
-    if (!WINDOW_LISTENERS[this.handle]) WINDOW_LISTENERS[this.handle] = {};
-    var dict = WINDOW_LISTENERS[this.handle];
+    if (!window.WINDOW_LISTENERS[this.handle])
+        window.WINDOW_LISTENERS[this.handle] = {};
+    var dict = window.WINDOW_LISTENERS[this.handle];
     if (!dict[type]) dict[type] = [];
     var list = dict[type];
     list.push(listener);
@@ -138,7 +140,8 @@ Window.prototype.addEventListener = function(type, listener) {
 Window.prototype.dispatchEvent = function(evt) {
     var type = evt.type;
     var handle = this.handle
-    var list = (WINDOW_LISTENERS[handle] && WINDOW_LISTENERS[handle][type]) || [];
+    var list = (window.WINDOW_LISTENERS[handle] &&
+        window.WINDOW_LISTENERS[handle][type]) || [];
     for (var i = 0; i < list.length; i++) {
         list[i].call(this, evt);
     }
@@ -147,21 +150,19 @@ Window.prototype.dispatchEvent = function(evt) {
 }
 
 Object.defineProperty(Window.prototype, 'parent', {
-  enumerable: true,
   configurable: true,
   get: function() {
-    handle = call_python('parent', window._id);
-    if (handle != undefined) {
+    parent_id = call_python('parent', window._id);
+    if (parent_id != undefined) {
         try {
-            target_window = eval("window_" + handle);
+            target_window = eval("window_" + parent_id);
             // Same-origin
             return target_window;
         } catch (e) {
             // Cross-origin
-            return new Window(handle)
+            return new Window(-1)
         }
 
     }
-    return undefined;
   }
 });

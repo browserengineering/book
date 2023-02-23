@@ -8,6 +8,7 @@ This file contains tests for Chapter 14 (Accessibility).
     >>> import test14 as test
     >>> _ = test.socket.patch().start()
     >>> _ = test.ssl.patch().start()
+    >>> _ = test.gtts.patch()
     >>> threading.Lock = test.MockLock
     >>> import lab13
     >>> import lab14
@@ -15,9 +16,8 @@ This file contains tests for Chapter 14 (Accessibility).
     >>> import threading
     >>> import math
     >>> lab14.USE_BROWSER_THREAD = False
-    >>> lab14.USE_GPU = False
     >>> lab13.USE_GPU = False
-    >>> lab14.TaskRunner = test.MockTaskRunner
+    >>> lab14.USE_GPU = False
 
 Outlines
 ========
@@ -36,7 +36,7 @@ An outline causes a `DrawOutline` with the given width and color:
     >>> styles = 'http://test.test/styles.css'
     >>> test.socket.respond(styles, b"HTTP/1.0 200 OK\r\n" +
     ... b"content-type: text/css\r\n\r\n" +
-    ... b"div { width: 30px; height: 40px; outline: 3px solid red; }")
+    ... b"div { outline: 3px solid red; }")
 
     >>> outline_url = 'http://test.test/'
     >>> test.socket.respond(outline_url, b"HTTP/1.0 200 OK\r\n" +
@@ -50,7 +50,7 @@ An outline causes a `DrawOutline` with the given width and color:
     >>> browser.render()
 
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
-     DrawOutline(top=18.0 left=13.0 bottom=58.0 right=43.0 border_color=red thickness=3)
+     DrawOutline(top=18.0 left=13.0 bottom=18.0 right=787.0 border_color=red thickness=3)
 
 Focus
 =====

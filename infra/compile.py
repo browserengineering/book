@@ -296,6 +296,12 @@ def compile_function(name, args, ctx):
     elif name == "len":
         assert len(args) == 1
         return args_js[0] + ".length"
+    elif name == "any":
+        assert len(args) == 1
+        return args_js[0] + ".some((x) => x)"
+    elif name == "all":
+        assert len(args) == 1
+        return args_js[0] + ".every((x) => x)"
     elif name == "ord":
         assert len(args) == 1
         return args_js[0] + ".charCodeAt(0)"
@@ -553,6 +559,13 @@ def flatten_ifs(tree):
         parts.append((None, tree.orelse))
     return parts
 
+def has_js_hide(decorator_list):
+    return any([
+        isinstance(dec, ast.Attribute) and dec.attr == "js_hide"
+        and isinstance(dec.value, ast.Name) and dec.value.id == "wbetools"
+        for dec in decorator_list
+    ])
+
 @catch_issues
 def compile(tree, ctx, indent=0):
     if isinstance(tree, ast.Import):
@@ -595,6 +608,8 @@ def compile(tree, ctx, indent=0):
         EXPORTS.append(tree.name)
         return " " * indent + "class " + tree.name + " {\n" + "\n\n".join(parts) + "\n}"
     elif isinstance(tree, ast.FunctionDef):
+        if has_js_hide(tree.decorator_list):
+            return ""
         assert not tree.decorator_list
         assert not tree.returns
         args = check_args(tree.args, ctx)

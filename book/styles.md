@@ -237,7 +237,7 @@ With the `style` information stored on each element, the browser can
 consult it for styling information:
 
 ``` {.python}
-class InlineLayout:
+class BlockLayout:
     def paint(self, display_list):
         bgcolor = self.node.style.get("background-color",
                                       "transparent")
@@ -871,11 +871,11 @@ small { font-size: 90%; }
 big { font-size: 110%; }
 ```
 
-The browser looks up font information in `InlineLayout`'s `text`
+The browser looks up font information in `BlockLayout`'s `text`
 method; we'll need to change it to use the node's `style` field:
 
 ``` {.python indent=4}
-class InlineLayout:
+class BlockLayout:
     def text(self, node):
         # ...
         weight = node.style["font-weight"]
@@ -922,7 +922,8 @@ That `display_list` is converted to drawing commands in `paint`:
 def paint(self, display_list):
     # ...
     for x, y, word, font, color in self.display_list:
-        display_list.append(DrawText(x, y, word, font, color))
+        display_list.append(DrawText(self.x + x, self.y + y,
+                                     word, font, color))
 ```
 
 `DrawText` now needs a `color` argument, and needs to pass it to
@@ -970,7 +971,7 @@ class Browser:
         # ...
 ```
 
-These changes obsolete all the code in `InlineLayout` that handles
+These changes obsolete all the code in `BlockLayout` that handles
 specific tags, like the `style`, `weight`, and `size` properties and
 the `open_tag` and `close_tag` methods. Let's refactor a bit to get
 rid of them:
@@ -1017,7 +1018,7 @@ files. That means we:
 - Wrote a CSS parser;
 - Added support for both `style` attributes and `link`ed CSS files;
 - Implemented cascading and inheritance;
-- Refactored `InlineLayout` to move the font properties to CSS;
+- Refactored `BlockLayout` to move the font properties to CSS;
 - Moved most tag-specific reasoning to a browser style sheet.
 
 Our styling engine is also relatively easy to extend with properties

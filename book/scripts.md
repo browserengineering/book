@@ -843,7 +843,10 @@ class JSContext:
         self.tab.render()
 ```
 
-JavaScript can now modify the web page!
+JavaScript can now modify the web page!^[Note that while rendering will
+update to account for the new HTML, any added scripts or style sheets
+will not properly load, and removed style sheets will (incorrectly) still
+apply. I've left fixing that to an exercise.]
 
 Let's try this out this in our guest book. To prevent long rants in my
 guest book, I want a 100-character limit on guest book entries.
@@ -1199,19 +1202,6 @@ from actually following the link.
 
 [eventBubbling]: https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Building_blocks/Events#event_bubbling_and_capture
 
-*Canvas*: The [`<canvas>`][canvas-tutorial] element allows scripts to
-draw shapes, very similar to the `tkinter.Canvas` we've been using to
-implement our browser. To draw to the `<canvas>`, you first select the
-element in JavaScript; then call `canvas.getContext("2d")` on it,
-which returns a thing called a "context"; and finally call methods
-like `fillRect` and `fillText` on that context to draw on the canvas.
-Implement the basics of `<canvas>`, including `fillRect` and
-`fillText`. Canvases will need a custom layout object that stores a
-list of drawing commands, and then injects those commands into the
-display list when `paint` is called.
-
-[canvas-tutorial]: https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial
-
 *Inline styling*: The `style` property of a JavaScript `Node` object
 contains a [`CSSStyleDeclaration`][cssstyle] object. Setting any
 property on this object should add or modify CSS properties from the
@@ -1239,3 +1229,11 @@ Implement this behavior for `innerHTML` as a getter. Also implement
 element itself, not just its children.
 
 [innerHTML]: https://developer.mozilla.org/en-US/docs/Web/API/Element/innerHTML
+
+*Script-added scripts and style sheets*: the `innerHTML` API could cause
+`<script>` or `<link>`  elements to be added to the document, but currently
+our browser does not load them when this happens. Fix this.
+Likewise, when a `<link>` element is removed from the document, its style
+sheet should be removed from the global list; implement that as well.^[Note
+that, unlike a style sheet, a removed `<script>`'s evaluated code still exists
+for the lifetime of the web page. Can you see why it has to be that way?]

@@ -165,10 +165,10 @@ glossing over these changes. The point is that new layout objects are
 one standard way to extend the browser.
 
 We now need to create some `InputLayout`s, which we can do in
-`InlineLayout`:
+`BlockLayout`:
 
 ``` {.python}
-class InlineLayout:
+class BlockLayout:
     def recurse(self, node):
         if isinstance(node, Text):
             self.text(node)
@@ -183,8 +183,8 @@ class InlineLayout:
 ```
 
 Note that I don't recurse into `button` elements, because the `button`
-element draws its own contents.[^but-exercise] `input` elements are
-self-closing, so they never have children.
+element draws its own contents.[^but-exercise] Since `input` elements
+are self-closing, they never have children.
 
 [^but-exercise]: Though you'll need to do this differently for one of
     the exercises below.
@@ -193,10 +193,10 @@ Finally, this new `input` method is similar to the `text` method,
 creating a new layout object and adding it to the current line:
 
 ``` {.python}
-class InlineLayout:
+class BlockLayout:
     def input(self, node):
         w = INPUT_WIDTH_PX
-        if self.cursor_x + w > self.x + self.width:
+        if self.cursor_x + w > self.width:
             self.new_line()
         line = self.children[-1]
         input = InputLayout(node, line, self.previous_word)
@@ -236,15 +236,14 @@ def layout_mode(node):
 ```
 
 The second problem is that, again due to having block siblings, sometimes an
-`InputLayout` will end up wrapped in a `InlineLayout` that refers to to the
-`<input>` or `<button>` node. But both `InlineLayout` and `InputLayout` have a
+`InputLayout` will end up wrapped in a `BlockLayout` that refers to to the
+`<input>` or `<button>` node. But both `BlockLayout` and `InputLayout` have a
 `paint` method, which means we're painting the node twice. We can fix that
-with some simple logic to skip painting them via `InlineLayout`
-in this case:
-[^atomic-inline-input]
+with some simple logic to skip painting them via `BlockLayout`
+in this case:[^atomic-inline-input]
 
 ``` {.python}
-class InlineLayout:
+class BlockLayout:
     # ...
     def paint(self, display_list):
         # ...

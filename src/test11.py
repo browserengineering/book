@@ -91,6 +91,20 @@ class ssl:
     def patch(cls):
         return mock.patch("ssl.create_default_context", wraps=cls)
 
+class gtts:
+    class gTTS:
+        def __init__(self, text):
+            pass
+        def save(self, file):
+            pass
+
+    @classmethod
+    def patch(cls):
+        import sys
+        sys.modules["gtts"] = cls()
+
+
+
 def SDL_GetWindowSurfacePatched(window):
     return None
 
