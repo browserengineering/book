@@ -46,25 +46,7 @@ started. There are four steps to displaying images in our browser:
 3. Lay the image out on the page.
 4. Paint the image in the display list.
 
-You probably know that there are lots of image formats (like JPG, PNG,
-and many more obscure ones), so for the decoding step^[I'll get into
-how this works in a bit; for now just think of decoding as something
-like decompressing a zip file.] we'll use the [Pillow/PIL][pillow]
-library. You can install it like so:
-
-[pillow]: https://pillow.readthedocs.io/en/stable/reference/Image.html
-
-    pip3 install Pillow
-
-Import it to make sure the installation worked:^[Pillow is a fork of a
-project called PIL---for Python Image Library---which is why the
-import says PIL.]
-
-``` {.python}
-import PIL.Image
-```
-
-Now let's start with downloading images from a URL. Naturally, that
+Let's start with downloading images from a URL. Naturally, that
 happens over HTTP, which we already have a `request` function for.
 However, all of the content we've downloaded so far---HTML, CSS, and
 JavaScript---has been textual, but images typically use binary data
@@ -96,7 +78,7 @@ def request(url, top_level_url, payload=None):
 ```
 
 Note that I _didn't_ add a `decode` call when we read the body; that's
-because the body actually might be binary data, and we want to return
+because the body might actually be binary data, and we want to return
 that binary data directly to the browser. Now, every existing call to
 `request`, which wants textual data, needs to `decode` the response.
 For example, in `load`, you'll want to do something like this:
@@ -123,26 +105,131 @@ def download_image(image_src, tab):
         return
     try:
         header, body = request(image_url, tab.url)
-        return PIL.Image.open(io.BytesIO(body))
+        data = skia.Data.MakeWithoutCopy(body)
+        img = skia.Image.MakeFromEncoded(img)
+        return body, img
     except:
         print("Failed to load image: " + image_url)
 ```
 
-This method wraps the image bytes as a `BytesIO` object, and then
-passes that to `open` to turn it into an Pillow `Image` object.
+Let's look at the steps between `request` and `return` carefully.
+First, the requested data is turned into a Skia `Data` object using
+the `MakeWithoutCopy` method. Then that `Data` is used to create an
+`Image` using `MakeFromEncoded`.
 
-::: {.todo}
+`MakeWithoutCopy` means that the `Data` object just stores a reference
+to the existing `body` and doesn't own that data. That's essential,
+because encoded image data can be large---maybe megabytes---and
+copying that data wastes memory and time. But that means that the
+`data` is invalid if `body` is ever garbage-collected, so we return
+the `body` from `download_image` and need to make sure to store it
+somewhere for at least as long as we're using the image.[^memoryview]
 
-Chris, do we actually need MIME types? It seems kind of dangerous the
-way we use them.
+[^memoryview]: This is a bit of a hack. Perhaps a better solution
+    would be to write the request contents directly into a Skia `Data`
+    object; the `writable_data` API could permit that, but it would
+    require some refactoring of the rest of the browser that I'm
+    choosing to avoid.
+    
+Once that `Data` object is created, it is passed to `MakeFromEncoded`.
+The name of this method hints that the image we've downloaded isn't
+raw image bytes: all of the image formats you know---JPG, PNG, and the
+many more obscure ones---encode the image data using various
+sophisticated algorithms. The image therefore needs to be *decoded*
+before it can be used. Luckily, Skia will automatically do that for
+us, so drawing the image is pretty simple:
 
-HTTP distinguishes between different types of data using what's called
-a [MIME type][mime-type][^mime-history], indicated via the
-`Content-Type` HTTP header. CSS stylesheets, for example, have MIME
-type `text/css`, JavaScript scripts have `application/javascript`, and
-HTML web pages have `text/html`. We haven't been using MIME types
-until now because CSS and JS don't need any special processing, but
-with images we will need to add MIME type support.[^text-decoding]
+``` {.python}
+class DrawImage(DisplayItem):
+    def __init__(self, image, rect):
+        super().__init__(rect)
+        self.image = image
+
+    def execute(self, canvas):
+        canvas.drawImageRect(self.image, self.rect)
+```
+
+Skia applies a variety of clever optimizations to decoding, such as
+directly decoding the image to its eventual size and caching the
+decoded image as long as possible.[^html-image-decode] That's because
+raw image data can be quite large:[^time-memory] a pixel is usually
+stored as four bytes, so a 12 megapixel camera (as you can find on
+phones these days) produces 48 megabytes of raw data.
+
+[^time-memory]: Decoding costs both a lot of memory and also a lot of
+    time, since just writing out all of those bytes can take a big
+    chunk of our render budget. More generally, images are more
+    expensive than text in a lot of ways. They take a long time to
+    download; decoding is slow; resizing is slow; and they can take up
+    a lot of both CPU and GPU memory. Optimizing image handling is
+    essential to a performant browser.
+    
+[^html-image-decode]: There's also is an [HTML API][html-image-decode]
+    to control decoding, so that the web page author can indicate when
+    to pay the cost of decoding.
+
+[html-image-decode]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLImageElement/decoding
+
+But because image decoding can be so expensive, Skia actually has
+several algorithms for decoding, some of which result in a
+worse-looking image but are faster than the default.[^lossy] For
+example, just for resizing an image, there's fast, simple, "nearest
+neighbor" resizing and the slower but higher-quality "bilinear" or
+even "[Lanczos][lanczos]" resizing algorithm.
+
+[lanczos]: https://en.wikipedia.org/wiki/Lanczos_resampling
+
+To give web page authors control over this performance bottleneck, can
+there's an [`image-rendering`][image-rendering] CSS property that
+indicates which algorithm to use. Let's add that as an argument to
+`DrawImage`:
+
+[image-rendering]: https://developer.mozilla.org/en-US/docs/Web/CSS/image-rendering
+
+``` {.python}
+class DrawImage(DisplayItem):
+    def __init__(self, image, rect, quality):
+        # ...
+        if quality == "high-quality":
+            self.quality = skia.FilterQuality.kHigh_FilterQuality
+        elif quality == "crisp-edges":
+            self.quality = skia.FilterQuality.kLow_FilterQuality
+        else:
+            self.quality = skia.FilterQuality.kMedium_FilterQuality
+
+    def execute(self, canvas):
+        paint = skia.Paint(FilterQuality=self.quality)
+        canvas.drawImageRect(self.image, self.rect, paint)
+```
+
+So we've now got the helper functions we need to downloading and
+decoding images. But to actually put images into web pages, we're
+going to need to add images into our browser's layout tree.
+
+[^lossy]: Image formats like JPEG are [*lossy*][lossy], meaning that
+    they don't faithfully represent all of the information in the
+    original picture, so there's a time/quality trade-off going on
+    before the file is saved. Typically these formats try to drop
+    "noisy details" that a human is unlikely to notice; different
+    decoding algorithms are making the same trade-off.
+
+[lossy]: https://en.wikipedia.org/wiki/Lossy_compression
+
+::: {.further}
+The HTTP `Content-Type` header lets the web server tell the browser
+whether a document contains text or binary data. The header contains a
+value called a [MIME type][mime-type]: `text/html`, `text/css`, and
+`text/javascript` for HTML, CSS, and JavaScript; `image/png` and
+`image/jpeg` for PNG and JPEG images; and [many others][mime-list] for
+different font, video, audio, and data formats.[^mime-history]
+Interestingly, when we used Skia's `MakeFromEncoded`, we didn't need
+to pass in the image format. That's because many image formats start
+with ["magic bytes"][magic-bytes]; for example, PNG files always start
+with byte 137 followed by the letters "PNG". These magic bytes are
+often more reliable than server-send MIME types, so this kind of
+"format sniffing" is common inside browsers and their supporting
+libraries.
+:::
 
 [mime-type]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types
 
@@ -154,175 +241,9 @@ accessed through your browser, and most emails are now HTML, encoded
 with the `text/html` MIME type. Many mail clients do still have an
 option to encode the email in `text/plain`, however.
 
-[^text-decoding]: Actually, we have been decoding the source code into
-text using the `utf8` encoding. In a real browser, we wouldn't always
-use `utf8`; instead, we'd use a `charset` property also specified in
-the `Content-Type` header; there's an exercise about this in [Chapter
-1](http.md).
+[mime-list]: https://www.iana.org/assignments/media-types/media-types.xhtml
 
-The `content-type` of an image depends on its format. For example, JPEG is
-`image/jpeg`; PNG is `image/png`. Arbitrary binary data with no specific
-format is `application/octet-stream`.^[An "octet" is a number with 8 bits,
-hence "oct" from the Latin root "octo".] So as a cheat, we'll look at
-`content-type` and assume that if it starts with `text` or contains
-`javascript`, the content is
-`utf8`, and otherwise return it as un-decoded data:
-
-``` {.python expected=False}
-def request(url, top_level_url, payload=None):
-    # ...
-    content_type = headers.get(
-        'content-type',
-        'application/octet-stream')
-    if content_type.startswith("text") or \
-        content_type.find('javascript') >= 0:
-        body = response.read().decode("utf8")
-    else:
-        body = response.read()
-    # ...
-    return headers, body
-```
-
-Interestingly, we don't consult `Content-Type` to decode images.
-That's because Pillow auto-detects the image format by peeking at the
-first few bytes of the binary data. Image formats typically include
-"magic bytes" that identify the image format at the beginning.
-
-:::
-
-Before we can use a downloaded image, we need to _decode_ it. That's
-because raw image data can be quite large: a pixel is usually stored
-as four bytes, so a 12 megapixel camera (as you can find on phones
-these days) produces 48 megabytes of raw data. Image formats therefore
-use sophisticated algorithms to compress that data, with different
-image formats using different compression algorithms. Luckily,
-Pillow's `tobytes` method lets us convert an encoded Pillow `Image` to
-a raw Skia `Image`:
-
-``` {.python replace=(image)/(image%2c%20width%2c%20height%2c%20image_quality)}
-def decode_image(image):
-    if image.mode != "RGBA":
-        image = image.convert("RGBA")
-    return skia.Image.frombytes(
-        array=image.tobytes(),
-        dimensions=image.size,
-        colorType=skia.kRGBA_8888_ColorType)
-```
-
-This method also converts the image to RGBA order[^rgba-order] before
-reading out the raw byte data with `tobytes`.[^maybe-decode]
-
-[^rgba-order]: Which we chose in [Chapter
-11](/visual-effects.html#sdl-creates-the-window) as the byte order of
-our SDL window.
-
-[^maybe-decode]: In principle, nothing in the Pillow API indicates
-_when_ Pillow actually performs the decoding: eagerly when we `open`
-the file or lazily when we call `tobytes`. This may seem like an
-obscure issue, but in a real browser the timing of a decode is
-important for performance. That's also why there is an [HTML
-API][html-image-decode] to control decoding.
-
-[html-image-decode]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLImageElement/decoding
-
-::: {.todo}
-I'm a little confused why we use PIL at all, seeing as Skia seems to
-have an [Image.MakeFromEncoded][make-from-encoded] method. Is it just
-so we have a chance to talk about the sub-steps like resizing and
-resizing algorithms? Is it to support more formats? Skia seems to
-have all the common ones:
-
-> Encoded streams supported include BMP, GIF, HEIF, ICO, JPEG, PNG,
-> WBMP, WebP.
-
-As a minor point, the Skia API lets us skip creating a `BytesIO`
-object or converting things to RGBA.
-
-[make-from-encoded]: https://kyamagu.github.io/skia-python/reference/skia.Image.html#skia.Image.MakeFromEncoded
-:::
-
-Because image formats use many clever and sophisticated algorithms,
-image decoding is slow and consumes a lot of memory.^[More generally,
-images are more expensive than text in a lot of ways. They take a long
-time to download; decoding is slow; resizing is slow; and they can
-take up a lot of both CPU and GPU memory. Optimizing image handling is
-essential to a performance browser.] Decoding might involve resolving
-palletted colors, converting data to and from frequency space,
-transforming colors between color spaces, and many other possible
-steps. The resulting raw bitmap can be quite a bit bigger than the
-downloaded data---in fact, it's called image "decoding" and not
-"decompression" because many encoded image formats are
-[*lossy*][lossy], meaning that they don't faithfully represent all of
-the information in the original picture, in cases where it's unlikely
-that a human viewing the decoded image will notice the difference.
-
-[lossy]: https://en.wikipedia.org/wiki/Lossy_compression
-
-All told, sophisticated and complex image compression algorithms are
-good, because they mean downloading images is faster. But we don't
-want our browser to run out of memory decoding a very large image! So
-an important optimization is to decode an image not to its [intrinsic
-size][intrinsic-size] but instead to the width and height at which it
-will be displayed on the page:
-
-[intrinsic-size]: https://developer.mozilla.org/en-US/docs/Glossary/Intrinsic_Size#
-
-``` {.python replace=(image%2c%20width%2c%20height)/(image%2c%20width%2c%20height%2c%20image_quality),int(height))/int(height))%2c%20resample}
-def decode_image(image, width, height):
-    # ...
-    image = image.resize( \
-        (int(width), int(height)))
-    # ...
-```
-
-This way, if a large image is displayed in a small size on the web
-page, only the small encoded image and the small final bitmap, and not
-the large raw image bitmap, are stored in the browser's
-memory.^[Another important optimization is to avoid decoding an image
-if that image is offscreen, for example due to scrolling. That can
-save memory _and_ decoding time.]
-
-However, now that we're doing image decoding, there's a question of
-the *quality* of the decoding. It turns out that there are many
-different resizing algorithms, from fast, simple, "nearest neighbor"
-resizing to the slower but higher-quality "bilinear" or even
-"[Lanczos][lanczos]" algorithms. Web page authors can choose the
-resizing algorithm via the [`image-rendering`][image-rendering] CSS
-property, so we'll need to pass that value into `decode_image`:
-
-[image-rendering]: https://developer.mozilla.org/en-US/docs/Web/CSS/image-rendering
-
-[lanczos]: https://en.wikipedia.org/wiki/Lanczos_resampling
-
-``` {.python}
-def decode_image(image, width, height, image_quality):
-    if image_quality == "crisp-edges":
-        resample = PIL.Image.Resampling.NEAREST
-    elif image_quality == "high-quality":
-        resample = PIL.Image.Resampling.LANCZOS
-    else:
-        resample = PIL.Image.Resampling.BILINEAR
-    image = image.resize( \
-        (int(width), int(height)), resample)
-    # ...
-```
-
-So we've now got the helper functions we need to downloading and
-decoding images. But to actually put images into web pages, we're
-going to need to add images into our browser's layout tree.
-
-::: {.further}
-All the same resize quality options are present in Skia. That's because
-resizing may occur during raster, just as it does during decode. One way
-for this to happen is via a scale transform (which our toy browser doesn't
-support, but real ones do). Another way is that an image may be animated from
-one size to another, and it doesn't make sense to re-decode it at every size.
-
-Real browsers push the image decoding step even further the rendering pipeline
-(e.g. in the raster phase) for this reason---to avoid a double resize or worse
-image quality. Yet another reason to do so is because raster happens on another
-thread, and so that way image decoding won't block the main thread.
-:::
+[magic-bytes]: https://www.netspi.com/blog/technical/web-application-penetration-testing/magic-bytes-identifying-common-file-formats-at-a-glance/
 
 Embedded layout
 ===============
@@ -464,8 +385,8 @@ Then there is layout, which shares all the code except sizing:
 class ImageLayout(EmbedLayout):
     def layout(self, zoom):
         super().layout(zoom)
-        self.width = device_px(self.node.image.width, zoom)
-        self.img_height = device_px(self.node.image.height, zoom)
+        self.width = device_px(self.node.image.width()), zoom)
+        self.img_height = device_px(self.node.image.height(), zoom)
         self.height = max(self.img_height, linespace(self.font))
 ```
 
@@ -634,7 +555,7 @@ class ImageLayout(EmbedLayout):
     # ...
     def layout(self, zoom):
         # ...
-        aspect_ratio = self.node.image.width / self.node.image.height
+        aspect_ratio = self.node.image.width() / self.node.image.height()
         has_width = "width" in self.node.attributes
         has_height = "height" in self.node.attributes
 
