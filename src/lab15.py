@@ -10,7 +10,6 @@ import io
 import gtts
 import math
 import os
-import PIL.Image
 import playsound
 import sdl2
 import skia
@@ -127,13 +126,19 @@ def request(url, top_level_url, payload=None):
     return headers, body
 
 class DrawImage(DisplayItem):
-    def __init__(self, image, rect):
+    def __init__(self, image, rect, quality):
         super().__init__(rect)
         self.image = image
+        if quality == "high-quality":
+            self.quality = skia.FilterQuality.kHigh_FilterQuality
+        elif quality == "crisp-edges":
+            self.quality = skia.FilterQuality.kLow_FilterQuality
+        else:
+            self.quality = skia.FilterQuality.kMedium_FilterQuality
 
     def execute(self, canvas):
-        canvas.drawImage(
-            self.image, self.rect.left(), self.rect.top())
+        paint = skia.Paint(FilterQuality=self.quality)
+        canvas.drawImageRect(self.image, self.rect, paint)
 
     def __repr__(self):
         return "DrawImage(rect={})".format(
@@ -416,7 +421,7 @@ class InlineLayout(LayoutObject):
         if "width" in node.attributes:
             w = device_px(int(node.attributes["width"]), zoom)
         else:
-            w = device_px(node.image.width, zoom)
+            w = device_px(node.image.width(), zoom)
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
@@ -593,6 +598,15 @@ class TextLayout:
             "node={}, word={})").format(
             self.x, self.y, self.width, self.height, self.node, self.word)
 
+def filter_quality(node):
+    attr = node.style.get("image-rendering", "auto")
+    if attr == "high-quality":
+        return skia.FilterQuality.kHigh_FilterQuality
+    elif attr == "crisp-edges":
+        return skia.FilterQuality.kLow_FilterQuality
+    else:
+        return skia.FilterQuality.kMedium_FilterQuality
+
 class ImageLayout(EmbedLayout):
     def __init__(self, node, frame):
         super().__init__(node)
@@ -602,7 +616,13 @@ class ImageLayout(EmbedLayout):
     def load(self, frame):
         assert "src" in self.node.attributes
         link = self.node.attributes["src"]
-        self.node.image = download_image(link, frame)
+        try:
+            data, image = download_image(link, frame)
+        except Exception as e:
+            print("Image error:", e)
+            data, image = None, None
+        self.node.encoded_data = data
+        self.node.image = image
 
     def init(self, parent, previous):
         self.parent = parent
@@ -611,7 +631,7 @@ class ImageLayout(EmbedLayout):
     def layout(self, zoom):
         super().layout(zoom)
 
-        aspect_ratio = self.node.image.width / self.node.image.height
+        aspect_ratio = self.node.image.width() / self.node.image.height()
         has_width = "width" in self.node.attributes
         has_height = "height" in self.node.attributes
 
@@ -622,7 +642,7 @@ class ImageLayout(EmbedLayout):
             self.width = aspect_ratio * \
                 device_px(int(self.node.attributes["height"]), zoom)
         else:
-            self.width = device_px(self.node.image.width, zoom)
+            self.width = device_px(self.node.image.width(), zoom)
     
         if has_height:
             self.img_height = \
@@ -631,24 +651,17 @@ class ImageLayout(EmbedLayout):
             self.img_height = (1 / aspect_ratio) * \
                 device_px(int(self.node.attributes["width"]), zoom)
         else:
-            self.img_height = device_px(self.node.image.height, zoom)
+            self.img_height = device_px(self.node.image.height(), zoom)
 
         self.height = max(self.img_height, linespace(self.font))
 
-
     def paint(self, display_list):
         cmds = []
-
-        decoded_image = decode_image(self.node.image,
-            self.width, self.img_height,
-            self.node.style.get("image-rendering", "auto"))
-
         rect = skia.Rect.MakeLTRB(
-            self.x, self.y + self.height - self.img_height, self.x + self.width,
-            self.y + self.height)
-
-        cmds.append(DrawImage(decoded_image, rect))
-
+            self.x, self.y + self.height - self.img_height,
+            self.x + self.width, self.y + self.height)
+        quality = self.node.style.get("image-rendering", "auto")
+        cmds.append(DrawImage(self.node.image, rect, quality))
         display_list.extend(cmds)
 
     def __repr__(self):
@@ -719,31 +732,13 @@ class IframeLayout(EmbedLayout):
 
 def download_image(image_src, frame):
     image_url = resolve_url(image_src, frame.url)
-    if not frame.allowed_request(image_url):
-        print("Blocked image", link, "due to CSP")
-        return
-    try:
-        header, body = request(image_url, frame.url)
-        return PIL.Image.open(io.BytesIO(body))
-    except:
-        print("Failed to load image: " + image_url)
-        raise
-
-def decode_image(image, width, height, image_quality):
-    if image_quality == "crisp-edges":
-        resample = PIL.Image.Resampling.NEAREST
-    elif image_quality == "high-quality":
-        resample = PIL.Image.Resampling.LANCZOS
-    else:
-        resample = PIL.Image.Resampling.BILINEAR
-    image = image.resize( \
-        (int(width), int(height)), resample)
-    if image.mode != "RGBA":
-        image = image.convert("RGBA")
-    return skia.Image.frombytes(
-        array=image.tobytes(),
-        dimensions=image.size,
-        colorType=skia.kRGBA_8888_ColorType)
+    assert frame.allowed_request(image_url), \
+        "Blocked load of " + image_url + " due to CSP"
+    header, body = request(image_url, frame.url)
+    data = skia.Data.MakeWithoutCopy(body)
+    img = skia.Image.MakeFromEncoded(data)
+    assert img, "Failed to recognize image format for " + image_url
+    return body, img
 
 class AttributeParser:
     def __init__(self, s):

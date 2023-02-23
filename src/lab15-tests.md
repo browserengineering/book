@@ -44,12 +44,12 @@ Let's verify that we can request the image:
 
 Moreover, the `download_image` method works directly:
 
-    >>> img = lab15.download_image("/img.png", frame)
+    >>> body, img = lab15.download_image("/img.png", frame)
     >>> img # doctest: +ELLIPSIS
-    <PIL.PngImagePlugin.PngImageFile image mode=P size=5x5 at ...>
-    >>> img.width
+    Image(5, 5, ColorType.kRGBA_8888_ColorType, AlphaType.kPremul_AlphaType)
+    >>> img.width()
     5
-    >>> img.height
+    >>> img.height()
     5
     
 Now let's make sure it actually renders:

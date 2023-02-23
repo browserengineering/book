@@ -100,16 +100,13 @@ places in `request`. When we download images, however, we _won't_ call
 ``` {.python replace=tab/frame}
 def download_image(image_src, tab):
     image_url = resolve_url(image_src, tab.url)
-    if not tab.allowed_request(image_url):
-        print("Blocked image", link, "due to CSP")
-        return
-    try:
-        header, body = request(image_url, tab.url)
-        data = skia.Data.MakeWithoutCopy(body)
-        img = skia.Image.MakeFromEncoded(img)
-        return body, img
-    except:
-        print("Failed to load image: " + image_url)
+    assert tab.allowed_request(image_url), \
+        "Blocked load of " + image_url + " due to CSP"
+    header, body = request(image_url, tab.url)
+    data = skia.Data.MakeWithoutCopy(body)
+    img = skia.Image.MakeFromEncoded(data)
+    assert img, "Failed to recognize image format for " + image_url
+    return body, img
 ```
 
 Let's look at the steps between `request` and `return` carefully.
@@ -139,7 +136,7 @@ sophisticated algorithms. The image therefore needs to be *decoded*
 before it can be used. Luckily, Skia will automatically do that for
 us, so drawing the image is pretty simple:
 
-``` {.python}
+``` {.python replace=%2c%20rect/%2c%20rect%2c%20quality,self.rect)/self.rect%2c%20paint)}
 class DrawImage(DisplayItem):
     def __init__(self, image, rect):
         super().__init__(rect)
@@ -344,7 +341,7 @@ class InlineLayout(LayoutObject):
     
     def image(self, node, zoom):
         img = ImageLayout(node, self.frame)
-        w = device_px(node.image.width, zoom)
+        w = device_px(node.image.width(), zoom)
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
@@ -371,7 +368,13 @@ class ImageLayout(EmbedLayout):
     def load(self, frame):
         assert "src" in self.node.attributes
         link = self.node.attributes["src"]
-        self.node.image = download_image(link, frame)
+        try:
+            data, image = download_image(link, frame)
+        except Exception as e:
+            print("Image error:", e)
+            data, image = None, None
+        self.node.encoded_data = data
+        self.node.image = image
 
     def init(self, parent, previous):
         self.parent = parent
@@ -379,13 +382,16 @@ class ImageLayout(EmbedLayout):
     # ...
 ```
 
+Note that we save both the encoded data and the image, because of the
+`MakeWithoutCopy` optimizaion we used in `download_image`
+
 Then there is layout, which shares all the code except sizing:
 
 ``` {.python expected=False}
 class ImageLayout(EmbedLayout):
     def layout(self, zoom):
         super().layout(zoom)
-        self.width = device_px(self.node.image.width()), zoom)
+        self.width = device_px(self.node.image.width(), zoom)
         self.img_height = device_px(self.node.image.height(), zoom)
         self.height = max(self.img_height, linespace(self.font))
 ```
@@ -431,42 +437,19 @@ a replaced element and a regular element.
 
 [replaced-elements]: https://developer.mozilla.org/en-US/docs/Web/CSS/Replaced_element
 
-Painting an image is quite straightforward, and uses a new `DrawImage type`
-and the Skia `drawImage` API method.
+Painting an image is quite straightforward:
 
 ``` {.python}
-class DrawImage(DisplayItem):
-    def __init__(self, image, rect):
-        super().__init__(rect)
-        self.image = image
-
-    def execute(self, canvas):
-        canvas.drawImage(
-            self.image, self.rect.left(), self.rect.top())
-```
-
-Finally, the `paint` method of `ImageLayout` finally decodes the image, and
-emits a single `DrawImage`:
-
-``` {.python expected=False}
 class ImageLayout(EmbedLayout):
-    # ...
     def paint(self, display_list):
         cmds = []
-
-        decoded_image = decode_image(self.node.image,
-            self.width, self.img_height,
-            self.node.style.get("image-rendering", "auto"))
-
         rect = skia.Rect.MakeLTRB(
             self.x, self.y + self.height - self.img_height,
             self.x + self.width, self.y + self.height)
-
-        cmds.append(DrawImage(decoded_image, rect))
-
+        quality = self.node.style.get("image-rendering", "auto")
+        cmds.append(DrawImage(self.node.image, rect, quality))
         display_list.extend(cmds)
 ```
-
 
 ::: {.further}
 The `<img>` tag uses a `src` attribute and not `href`. Why is that? And
@@ -504,7 +487,7 @@ class InlineLayout(LayoutObject):
         if "width" in node.attributes:
             w = device_px(int(node.attributes["width"]), zoom)
         else:
-            w = device_px(node.image.width, zoom)
+            w = device_px(node.image.width(), zoom)
 ```
 
 And in `ImageLayout`:
@@ -2191,14 +2174,6 @@ styling of images that haven't loaded yet. This is typically done by putting
 an icon representing an unloaded image in its place. If `width` or
 `height` is not specified, the resulting size in that dimension should be sized
 to fit the icon.
-
-*Animated images*: Add support for animated GIFs. Pillow supports this via the
- `is_animated` and `n_frames` property, and the `seek()` (switch to a different
- animation frame) and `tell()` (find out the current animation frame) methods
- on a `PIL.Image`. (Hint: assume it runs at 60 Hz and integrate it with the 
- `run_animation_frame` method.) If you want an additional challenge, try
- running the animations on the browser thread.^[Real browsers do this as
- an important performance optimization.]
 
 *Same-origin frame tree*: same-origin iframes can access each others' variables
  and DOM, even if they are not adjacent in the frame tree. Implement this.
