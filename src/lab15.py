@@ -205,15 +205,6 @@ class BlockLayout(LayoutObject):
         self.frame = frame
 
     def layout(self, zoom):
-        previous = None
-        for child in self.node.children:
-            if layout_mode(child) == "inline":
-                next = InlineLayout(child, self, previous, self.frame)
-            else:
-                next = BlockLayout(child, self, previous, self.frame)
-            self.children.append(next)
-            previous = next
-
         self.width = self.parent.width
         self.x = self.parent.x
 
@@ -221,153 +212,22 @@ class BlockLayout(LayoutObject):
             self.y = self.previous.y + self.previous.height
         else:
             self.y = self.parent.y
+
+        mode = layout_mode(self.node)
+        if mode == "block":
+            previous = None
+            for child in self.node.children:
+                next = BlockLayout(child, self, previous, self.frame)
+                self.children.append(next)
+                previous = next
+        else:
+            self.new_line()
+            self.recurse(self.node, zoom)
 
         for child in self.children:
             child.layout(zoom)
 
         self.height = sum([child.height for child in self.children])
-
-    def paint(self, display_list):
-        cmds = []
-
-        rect = skia.Rect.MakeLTRB(
-            self.x, self.y,
-            self.x + self.width, self.y + self.height)
-        bgcolor = self.node.style.get("background-color",
-                                 "transparent")
-        if bgcolor != "transparent":
-            radius = float(
-                self.node.style.get("border-radius", "0px")[:-2])
-            cmds.append(DrawRRect(rect, radius, bgcolor))
-
-        for child in self.children:
-            child.paint(cmds)
-
-        paint_outline(self.node, cmds, rect)
-
-        cmds = paint_visual_effects(self.node, cmds, rect)
-        display_list.extend(cmds)
-
-    def __repr__(self):
-        return "BlockLayout(x={}, y={}, width={}, height={}, node={})".format(
-            self.x, self.x, self.width, self.height, self.node)
-
-class EmbedLayout(LayoutObject):
-    def __init__(self, node, parent=None, previous=None):
-        super().__init__()
-        self.node = node
-        node.layout_object = self
-        self.children = []
-        self.parent = parent
-        self.previous = previous
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-        self.font = None
-
-    def get_ascent(self, font_multiplier=1.0):
-        return -self.height
-
-    def get_descent(self, font_multiplier=1.0):
-        return 0
-
-    def layout(self, zoom):
-        weight = self.node.style["font-weight"]
-        style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
-        size = device_px(
-            float(self.node.style["font-size"][:-2]), zoom)
-        self.font = get_font(size, weight, style)
-
-        if self.previous:
-            space = self.previous.font.measureText(" ")
-            self.x = self.previous.x + space + self.previous.width
-        else:
-            self.x = self.parent.x
-
-class InputLayout(EmbedLayout):
-    def __init__(self, node, parent, previous):
-        super().__init__(node, parent, previous)
-
-    def layout(self, zoom):
-        super().layout(zoom)
-
-        self.width = device_px(INPUT_WIDTH_PX, zoom)
-        self.height = linespace(self.font)
-
-    def paint(self, display_list):
-        cmds = []
-
-        rect = skia.Rect.MakeLTRB(
-            self.x, self.y, self.x + self.width,
-            self.y + self.height)
-
-        bgcolor = self.node.style.get("background-color",
-                                 "transparent")
-        if bgcolor != "transparent":
-            radius = float(self.node.style.get("border-radius", "0px")[:-2])
-            cmds.append(DrawRRect(rect, radius, bgcolor))
-
-        if self.node.tag == "input":
-            text = self.node.attributes.get("value", "")
-        elif self.node.tag == "button":
-            text = self.node.children[0].text
-
-        color = self.node.style["color"]
-        cmds.append(DrawText(self.x, self.y,
-                             text, self.font, color))
-
-        if self.node.is_focused and self.node.tag == "input":
-            cx = rect.left() + self.font.measureText(text)
-            cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom()))
-
-        paint_outline(self.node, cmds, rect)
-        cmds = paint_visual_effects(self.node, cmds, rect)
-        display_list.extend(cmds)
-
-    def dispatch(self, x, y):
-        self.frame.focus_element(self.node)
-        self.frame.activate_element(self.node)
-        self.frame.set_needs_render()
-        return True
-
-    def __repr__(self):
-        return "InputLayout(x={}, y={}, width={}, height={})".format(
-            self.x, self.y, self.width, self.height)
-
-class InlineLayout(LayoutObject):
-    def __init__(self, node, parent, previous, frame):
-        super().__init__()
-        self.node = node
-        node.layout_object = self
-        self.parent = parent
-        self.previous = previous
-        self.children = []
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-        self.display_list = None
-        self.frame = frame
-
-    def layout(self, zoom):
-        self.width = self.parent.width
-
-        self.x = self.parent.x
-
-        if self.previous:
-            self.y = self.previous.y + self.previous.height
-        else:
-            self.y = self.parent.y
-
-        self.new_line()
-        self.recurse(self.node, zoom)
-        
-        for line in self.children:
-            line.layout(zoom)
-
-        self.height = sum([line.height for line in self.children])
 
     def recurse(self, node, zoom):
         if isinstance(node, Text):
@@ -491,8 +351,97 @@ class InlineLayout(LayoutObject):
         return False
 
     def __repr__(self):
-        return "InlineLayout(x={}, y={}, width={}, height={}, node={})".format(
-            self.x, self.y, self.width, self.height, self.node)
+        return "BlockLayout[{}](x={}, y={}, width={}, height={}, node={})".format(
+            layout_mode(self.node), self.x, self.y, self.width, self.height, self.node)
+
+class EmbedLayout(LayoutObject):
+    def __init__(self, node, parent=None, previous=None):
+        super().__init__()
+        self.node = node
+        node.layout_object = self
+        self.children = []
+        self.parent = parent
+        self.previous = previous
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+        self.font = None
+
+    def get_ascent(self, font_multiplier=1.0):
+        return -self.height
+
+    def get_descent(self, font_multiplier=1.0):
+        return 0
+
+    def layout(self, zoom):
+        weight = self.node.style["font-weight"]
+        style = self.node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = device_px(
+            float(self.node.style["font-size"][:-2]), zoom)
+        self.font = get_font(size, weight, style)
+
+        if self.previous:
+            space = self.previous.font.measureText(" ")
+            self.x = self.previous.x + space + self.previous.width
+        else:
+            self.x = self.parent.x
+
+class InputLayout(EmbedLayout):
+    def __init__(self, node, parent, previous):
+        super().__init__(node, parent, previous)
+
+    def layout(self, zoom):
+        super().layout(zoom)
+
+        self.width = device_px(INPUT_WIDTH_PX, zoom)
+        self.height = linespace(self.font)
+
+    def paint(self, display_list):
+        cmds = []
+
+        rect = skia.Rect.MakeLTRB(
+            self.x, self.y, self.x + self.width,
+            self.y + self.height)
+
+        bgcolor = self.node.style.get("background-color",
+                                 "transparent")
+        if bgcolor != "transparent":
+            radius = float(self.node.style.get("border-radius", "0px")[:-2])
+            cmds.append(DrawRRect(rect, radius, bgcolor))
+
+        if self.node.tag == "input":
+            text = self.node.attributes.get("value", "")
+        elif self.node.tag == "button":
+            for node in tree_to_list(self.node, []):
+                if isinstance(node, Text):
+                    text = node.text
+                    break
+            else:
+                text = ""
+
+        color = self.node.style["color"]
+        cmds.append(DrawText(self.x, self.y,
+                             text, self.font, color))
+
+        if self.node.is_focused and self.node.tag == "input":
+            cx = rect.left() + self.font.measureText(text)
+            cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom()))
+
+        paint_outline(self.node, cmds, rect)
+        cmds = paint_visual_effects(self.node, cmds, rect)
+        display_list.extend(cmds)
+
+    def dispatch(self, x, y):
+        self.frame.focus_element(self.node)
+        self.frame.activate_element(self.node)
+        self.frame.set_needs_render()
+        return True
+
+    def __repr__(self):
+        return "InputLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
 
 class LineLayout:
     def __init__(self, node, parent, previous):
@@ -2294,10 +2243,11 @@ class Browser:
 
 CROSS_ORIGIN_IFRAMES = False
 
-if __name__ == "__main__":
+def main():
     import sys
     import argparse
-
+    global USE_BROWSER_THREAD, USE_GPU, USE_COMPOSITING
+    global SHOW_COMPOSITED_LAYER_BORDERS, CROSS_ORIGIN_IFRAMES
     parser = argparse.ArgumentParser(description='Chapter 13 code')
     parser.add_argument("url", type=str, help="URL to load")
     parser.add_argument('--single_threaded', action="store_true", default=False,
@@ -2384,3 +2334,6 @@ if __name__ == "__main__":
                 browser.render()
         browser.composite_raster_and_draw()
         browser.schedule_animation_frame()
+
+if __name__ == "__main__":
+    main()

@@ -1308,7 +1308,7 @@ def add_parent_pointers(nodes, parent=None):
         node.parent = parent
         add_parent_pointers(node.children, node)
 
-USE_GPU = True
+USE_GPU = False
 
 class Browser:
     def __init__(self):
