@@ -46,11 +46,14 @@ Moreover, the `download_image` method works directly:
 
     >>> body, img = lab15.download_image("/img.png", frame)
     >>> img # doctest: +ELLIPSIS
-    Image(5, 5, ColorType.kRGBA_8888_ColorType, AlphaType.kPremul_AlphaType)
+    Image(5, 5, ..., AlphaType.kPremul_AlphaType)
     >>> img.width()
     5
     >>> img.height()
     5
+    
+The `...` in the image description is because Skia will convert to the
+native byte order, and that can differ between platforms.
     
 Now let's make sure it actually renders:
 
