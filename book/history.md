@@ -21,7 +21,7 @@ The Memex concept
 =================
 
 <figure>
-  <img src="im/memex.jpg" alt="An image of the first few lines of *As You May Think*">
+  <img src="im/memex.jpg" alt="A photograph of the first few lines of *As You May Think*">
   <figcaption>
     (<a href="https://www.flickr.com/people/79255326@N00">Dunkoman</a>
     from <a href="https://commons.wikimedia.org/wiki/File:The_Memex_(3002477109).jpg">Wikipedia</a>,
