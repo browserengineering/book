@@ -172,11 +172,11 @@ several algorithms for decoding, some of which result in a
 worse-looking image but are faster than the default.[^lossy] For
 example, just for resizing an image, there's fast, simple, "nearest
 neighbor" resizing and the slower but higher-quality "bilinear" or
-even "[Lanczos][lanczos]" resizing algorithm.
+even "[Lanczos][lanczos]" resizing algorithms.
 
 [lanczos]: https://en.wikipedia.org/wiki/Lanczos_resampling
 
-To give web page authors control over this performance bottleneck, can
+To give web page authors control over this performance bottleneck,
 there's an [`image-rendering`][image-rendering] CSS property that
 indicates which algorithm to use. Let's add that as an argument to
 `DrawImage`:
@@ -199,9 +199,9 @@ class DrawImage(DisplayItem):
         canvas.drawImageRect(self.image, self.rect, paint)
 ```
 
-So we've now got the helper functions we need to downloading and
-decoding images. But to actually put images into web pages, we're
-going to need to add images into our browser's layout tree.
+So we've now got the helper functions we need to download and decode
+images. But to actually put images into web pages, we're going to need
+to add images into our browser's layout tree.
 
 [^lossy]: Image formats like JPEG are [*lossy*][lossy], meaning that
     they don't faithfully represent all of the information in the
@@ -223,8 +223,8 @@ Interestingly, when we used Skia's `MakeFromEncoded`, we didn't need
 to pass in the image format. That's because many image formats start
 with ["magic bytes"][magic-bytes]; for example, PNG files always start
 with byte 137 followed by the letters "PNG". These magic bytes are
-often more reliable than server-send MIME types, so this kind of
-"format sniffing" is common inside browsers and their supporting
+often more reliable than web-server-provided MIME types, so this kind
+of "format sniffing" is common inside browsers and their supporting
 libraries.
 :::
 
@@ -252,10 +252,11 @@ it reaches the end of the available space.
 
 But it's different than a text *node*, because the text in a text node is not
 just one glyph, but an entire run of text of a potentially arbitrary length,
-and that can be split into words and lines across multiple lines. An image, on
-the other hand, is an [atomic inline][atomic-inline]---it doesn't make sense to
-split it across multiple lines.^[There are other elements that can be atomic
-inlines, and we'll encounter more later in this chapter.]
+and that can be split into multiple words and lines. An image, on the
+other hand, is an [atomic inline][atomic-inline]---it doesn't make
+sense to split it across multiple lines.^[There are other elements
+that can be atomic inlines, and we'll encounter more later in this
+chapter.]
 
 
 [atomic-inline]: https://drafts.csswg.org/css-display-3/#atomic-inline
