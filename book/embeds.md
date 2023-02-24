@@ -122,11 +122,12 @@ copying that data wastes memory and time. But that means that the
 the `body` from `download_image` and need to make sure to store it
 somewhere for at least as long as we're using the image.[^memoryview]
 
-[^memoryview]: This is a bit of a hack. Perhaps a better solution
-    would be to write the request contents directly into a Skia `Data`
-    object; the `writable_data` API could permit that, but it would
-    require some refactoring of the rest of the browser that I'm
-    choosing to avoid.
+[^memoryview]: I admit it's a bit of a hack to work around the garbage
+    collector like this, but it's just part an parcel of bridging
+    between Python and a C++ library. An alternative would be to write
+    the request contents directly into a Skia `Data` object; the
+    `writable_data` API could permit that, but it would require some
+    refactoring of the `request` method.
     
 Once that `Data` object is created, it is passed to `MakeFromEncoded`.
 The name of this method hints that the image we've downloaded isn't
