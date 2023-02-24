@@ -45,7 +45,7 @@ Let's verify that we can request the image:
 Moreover, the `download_image` method works directly:
 
     >>> frame.nodes.children[0].children[0].image #doctest: +ELLIPSIS
-    Image(5, 5, ColorType.kRGBA_8888_ColorType, AlphaType.kPremul_AlphaType)
+    Image(5, 5, ..., AlphaType.kPremul_AlphaType)
     
 The `...` in the image description is because Skia will convert to the
 native byte order, and that can differ between platforms.
