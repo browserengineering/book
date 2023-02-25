@@ -5,81 +5,66 @@ prev: accessibility
 next: invalidation
 ...
 
-Our toy browser has a lot of rendering features, but is still missing a few
-present on pretty much every website. The most obvious is *images*---given how
-ubiquitous they are, it seems silly to have even a toy browser without images.
-But images are only the simplest form of *embedded content* within a web page,
-a much bigger topic, and one that has a lot of interesting implications for how
-browser engines work. That's mostly due to how powerful *iframes* are, since
-they allow you to embed one website in another.
+While our toy browser can render complex styles, visual effects, and
+animations, all of those apply basically just to text. Yet web pages
+contain a variety of non-text *embedded content*, from images through
+to iframes that embed one web page inside another. Embedded content of
+this sort has been essential throughout the web's history, and support
+for embedded content has powerful implications for browser
+architecture, performance, security, and open information access.
 
-The fact is, a toy browser without images or iframes simply wouldn't cover some
-very important architectural aspects of real browsers with important
-performance, security and open information access implications. So let's now
-implement them to see. And in keeping with the pattern you've already seen,
-basic support for these features is easy enough to implement in one chapter!
 
 Images
 ======
 
-Let's start with images, which are not too hard to get going (certainly if you
-have convenient libraries to decode and render them). So let's just get to
-it.[^img-history] We'll implement the `<img>` tag, which works like this:
+Images are certainly the most popular kind of embedded content on the
+web, dating back to [early 1993][img-email].[^img-history] They're
+included on web pages via the `<img>` tag, which looks like this:
 
     <img src="https://browser.engineering/im/hes.jpg">
 
-And of course renders something like this:
+[img-email]: http://1997.webhistory.org/www.lists/www-talk.1993q1/0182.html
+
+[^img-history]: So it's a little ironic that images only make their
+appearance in chapter 15 of this book! My excuse is that Tkinter
+doesn't support proper image sizing and clipping, and doesn't support
+very many image formats, so we had to wait for the introduction of
+Skia.
+
+And which renders something like this:
 
 <figure>
     <img src="im/hes.jpg" alt="A computer operator using a hypertext editing system in 1969">
     <figcaption>Hypertext Editing System <br/> (Gregory Lloyd from <a href="https://commons.wikimedia.org/wiki/File:HypertextEditingSystemConsoleBrownUniv1969.jpg">Wikipedia</a>, <a href="https://creativecommons.org/licenses/by/2.0/legalcode" rel="license">CC BY 2.0</a>)</figcaption>
 </figure>
 
-[^img-history]: Images have been around (almost) since the
-beginning, being proposed in [early 1993][img-email]. This makes it ironic that
-images only make their appearance in chapter 15 of the book. My excuse is that
-Tkinter doesn't support proper image sizing and clipping, and doesn't support
-very many image formats, so we had to wait for the introduction of Skia.
+Luckily, implementing images isn't too hard, so let's just get
+started. There are four steps to displaying images in our browser:
 
-An `<img>` is a leaf element of the DOM. In some ways, it's similar to a single
-font glyph that has to paint in a single rectangle sized to the image (instead
-of the glyph), takes up space in a `LineLayout`, and causes line breaking when
-it reaches the end of the available space.
+1. Download the image from a URL.
+2. Decode the image into a buffer in memory.
+3. Lay the image out on the page.
+4. Paint the image in the display list.
 
-But it's different than a text *node*, because the text in a text node is not
-just one glyph, but an entire run of text of a potentially arbitrary length,
-and that can be split into words and lines across multiple lines. An image, on
-the other hand, is an [atomic inline][atomic-inline]---it doesn't make sense to
-split it across multiple lines.^[There are other elements that can be atomic
-inlines, and we'll encounter more later in this chapter.]
+Let's start with downloading images from a URL. Naturally, that
+happens over HTTP, which we already have a `request` function for.
+However, all of the content we've downloaded so far---HTML, CSS, and
+JavaScript---has been textual, but images typically use binary data
+formats. So we'll need to extend `request` to support binary data.
 
-
-[atomic-inline]: https://drafts.csswg.org/css-display-3/#atomic-inline
-
-
-[img-email]: http://1997.webhistory.org/www.lists/www-talk.1993q1/0182.html
-
-There are three steps to displaying images:
-
-1. Download it from a URL.
-2. Decode it into a buffer in memory.^[I'll get into how this works in a bit;
-for now just think of decoding as something like decompressing a zip file.]
-3. Lay it out on the page.
-4. Paint it in the right place in the display list.
-
-For step 1 (download), make some changes to the `request`
-function to add support for binary data formats; currently it assumes an HTTP
-response is always `utf8`. Start by creating a binary file object
-from the response instead of `utf8`:
+The change is pretty minimal: instead of passing the `"r"` flag to
+`makefile`, pass a `"b"` flag indicating binary mode:
 
 ``` {.python}
 def request(url, top_level_url, payload=None):
     # ...
-    response = s.makefile("b", newline="\r\n")
+    response = s.makefile("b")
+    # ...
 ```
-Now each time we read a line, decode it individually; for image
-responses, all lines will be `utf8` except for the body, which is raw
-encoded image data.
+
+Now every type we read from `response`, we will get `bytes` of binary
+data, not a `str` with textual data, so we'll need to change some HTTP
+parser code to explicitly `decode` the data:
 
 ``` {.python}
 def request(url, top_level_url, payload=None):
@@ -88,146 +73,194 @@ def request(url, top_level_url, payload=None):
     # ...
     while True:
         line = response.readline().decode("utf8")
-        # ...    
+        # ...
+    # ...
 ```
 
-Then when processing the response body, check for the `content-type` header,
-which will tell the browser how to decode that part of the HTTP response. I
-discussed this header briefly in [Chapter 1](/http.html#the-servers-response), 
-where I noted that HTML web page responses have a value of `text/html` for this
-header. This value is a [MIME type][mime-type], which stands for Multipurpose
-Internet Mail Extensions, and was originally intended for enumerating all of the
-acceptable data formats for email attachments.^[Most email these days is
-actually HTML, and is encoded with the `text/html` MIME type. Gmail, for
-example, by default uses this format, but can be put in a "plain text mode"
-that encodes the email in `text/plain`.] We've actually encountered two more
-content types already: `text/css` and `application/javascript`, but since
-it assumed both were in `utf8` there was no need to differentiate in the
-code.^[That's not a correct thing to do in a real browser, and alternate
-character sets are an exercise in chapter 1.]
+Note that I _didn't_ add a `decode` call when we read the body; that's
+because the body might actually be binary data, and we want to return
+that binary data directly to the browser. Now, every existing call to
+`request`, which wants textual data, needs to `decode` the response.
+For example, in `load`, you'll want to do something like this:
 
-[mime-type]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types
-
-The `content-type` of an image depends on its format. For example, JPEG is
-`image/jpeg`; PNG is `image/png`. Arbitrary binary data with no specific
-format is `application/octet-stream`.^[An "octet" is a number with 8 bits,
-hence "oct" from the Latin root "octo".] So as a cheat, we'll look at
-`content-type` and assume that if it starts with `text` or contains
-`javascript`, the content is
-`utf8`, and otherwise return it as un-decoded data:
-
-``` {.python}
-def request(url, top_level_url, payload=None):
-    # ...
-    content_type = headers.get(
-        'content-type',
-        'application/octet-stream')
-    if content_type.startswith("text") or \
-        content_type.find('javascript') >= 0:
-        body = response.read().decode("utf8")
-    else:
-        body = response.read()
-    # ...
-    return headers, body
+``` {.python replace=Tab/Frame}
+class Tab:
+    def load(self, url, body=None):
+        # ...
+        headers, body = request(url, self.url, payload=body)
+        body = body.decode("utf8")
+        # ...
 ```
 
-Now define a method that decodes a response body that we know is an image
-(even if we don't know its format).^[Interestingly, to make it work for our toy
-browser we don't need to consult `content-type`. That's because Skia already
-auto-detects the image format by peeking at the first few bytes of the binary
-data, which varies for each image format.][^maybe-decode]
+Make sure to make this change everywhere in your browser that you call
+`request`, including inside `XMLHttpRequest_send` and in several other
+places in `load`. When we download images, however, we _won't_ call
+`decode`, and just use the binary data directly:
 
-[^maybe-decode]: Skia will try not to decode the image until it's asked to
-draw it. For our toy browser it doesn't matter very much, but in a
-real browser the timing of a decode is important for performance. That's also
-why there is an [HTML API][html-image-decode] to control decoding.
+``` {.python replace=tab/frame}
+def download_image(image_src, tab):
+    image_url = resolve_url(image_src, tab.url)
+    assert tab.allowed_request(image_url), \
+        "Blocked load of " + image_url + " due to CSP"
+    header, body = request(image_url, tab.url)
+    data = skia.Data.MakeWithoutCopy(body)
+    img = skia.Image.MakeFromEncoded(data)
+    assert img, "Failed to recognize image format for " + image_url
+    return body, img
+```
+
+Let's look at the steps between `request` and `return` carefully.
+First, the requested data is turned into a Skia `Data` object using
+the `MakeWithoutCopy` method. Then that `Data` is used to create an
+`Image` using `MakeFromEncoded`.
+
+`MakeWithoutCopy` means that the `Data` object just stores a reference
+to the existing `body` and doesn't own that data. That's essential,
+because encoded image data can be large---maybe megabytes---and
+copying that data wastes memory and time. But that means that the
+`data` is invalid if `body` is ever garbage-collected, so we return
+the `body` from `download_image` and need to make sure to store it
+somewhere for at least as long as we're using the image.[^memoryview]
+
+[^memoryview]: I admit it's a bit of a hack to work around the garbage
+    collector like this, but it's just part an parcel of bridging
+    between Python and a C++ library. An alternative would be to write
+    the request contents directly into a Skia `Data` object; the
+    `writable_data` API could permit that, but it would require some
+    refactoring of the `request` method.
+    
+Once that `Data` object is created, it is passed to `MakeFromEncoded`.
+The name of this method hints that the image we've downloaded isn't
+raw image bytes: all of the image formats you know---JPG, PNG, and the
+many more obscure ones---encode the image data using various
+sophisticated algorithms. The image therefore needs to be *decoded*
+before it can be used. Luckily, Skia will automatically do that for
+us, so drawing the image is pretty simple:
+
+``` {.python replace=%2c%20rect/%2c%20rect%2c%20quality,self.rect)/self.rect%2c%20paint)}
+class DrawImage(DisplayItem):
+    def __init__(self, image, rect):
+        super().__init__(rect)
+        self.image = image
+
+    def execute(self, canvas):
+        canvas.drawImageRect(self.image, self.rect)
+```
+
+Skia applies a variety of clever optimizations to decoding, such as
+directly decoding the image to its eventual size and caching the
+decoded image as long as possible.[^html-image-decode] That's because
+raw image data can be quite large:[^time-memory] a pixel is usually
+stored as four bytes, so a 12 megapixel camera (as you can find on
+phones these days) produces 48 megabytes of raw data.
+
+[^time-memory]: Decoding costs both a lot of memory and also a lot of
+    time, since just writing out all of those bytes can take a big
+    chunk of our render budget. More generally, images are more
+    expensive than text in a lot of ways. They take a long time to
+    download; decoding is slow; resizing is slow; and they can take up
+    a lot of both CPU and GPU memory. Optimizing image handling is
+    essential to a performant browser.
+    
+[^html-image-decode]: There's also is an [HTML API][html-image-decode]
+    to control decoding, so that the web page author can indicate when
+    to pay the cost of decoding.
 
 [html-image-decode]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLImageElement/decoding
 
-``` {.python expected=False}
-TODO: replace with download_image
-```
+But because image decoding can be so expensive, Skia actually has
+several algorithms for decoding, some of which result in a
+worse-looking image but are faster than the default.[^lossy] For
+example, just for resizing an image, there's fast, simple, "nearest
+neighbor" resizing and the slower but higher-quality "bilinear" or
+even "[Lanczos][lanczos]" resizing algorithms.
 
-Now, images are expensive relative to text content. To start with, they take a
-long time to download. But decoding is even more expensive in some ways, in
-particular how it can slow down the rendering pipeline and use up a lot of
-memory. On top of this, if the image is sized to a non-intrinsic size on
-screen, there are several different algorithms available for how to do it.
-Decoding and resizing are both expensive.
+[lanczos]: https://en.wikipedia.org/wiki/Lanczos_resampling
 
-To understand why, it's time to dig into what decoding actually does. *Decoding*
-is the process of converting an *encoded* image from a binary form optimized
-for quick download over a network into a *decoded* one suitable for rendering,
-typically a raw bitmap in memory that can be a direct input into
-rasterization on the GPU. It's called "decoding" and not "decompression"
-because many encoded image formats are [*lossy*][lossy], meaning that
-they "cheat": they don't faithfully represent all of the information in the
-original picture, in cases where it's unlikely that a human viewing the decoded
-image will notice the difference.
-
-[lossy]: https://en.wikipedia.org/wiki/Lossy_compression
-
-Many encoded image formats are very good at compression. This means that when a
-browser decodes it, the resulting bitmap may take up 10x or even 100x as much
-memory as the downloaded file size. As a result, it's very important for
-browsers to do as little decoding as possible. Two ways they achieve that are
-by avoiding decode for images not currently on the screen, and decoding
-directly to the size actually needed to draw pixels on the screen. 
-
-In addition, there is a big question of the *quality* of the decoding, in cases
-where the decoded size is not the same as the intrinsic size. In this
-situation, there are more (or fewer) pixels of intrinsic content than pixels on
-the screen, and some algorithm is needed to decide which ones to pick and how
-to mix adjacent pixels together. There are a bunch of possible *image
-filtering* algorithms, such as choosing the "nearest" source image pixel,
-a "bilinear" mix of pixels adjacent to the desired source pixel location, and
-other fancier algorithms like
-[Lanczos](https://en.wikipedia.org/wiki/Lanczos_resampling).
-
-At the moment, we can only decode to the [intrinsic size][intrinsic-size] of the
-image, i.e. the size of the source image data. But that's only because we don't
-support any way to change it. Let's optimize that, by decoding directly to the
-painted size rather than intrinsic, and utilize the
-[`image-rendering`][image-rendering] CSS property to decide which image filter
-algorithm to use:
-
-[intrinsic-size]: https://developer.mozilla.org/en-US/docs/Glossary/Intrinsic_Size#
-
-``` {.python}
-def filter_quality(node):
-    attr = node.style.get("image-rendering", "auto")
-    if attr == "high-quality":
-        return skia.FilterQuality.kHigh_FilterQuality
-    elif attr == "crisp-edges":
-        return skia.FilterQuality.kLow_FilterQuality
-    else:
-        return skia.FilterQuality.kMedium_FilterQuality
-```
-
-Now, of course, the `width` and `height` have to be specified to the
-"painted" size on the screen. Which means it's now time to figure out image
-layout and painted sizing.
+To give web page authors control over this performance bottleneck,
+there's an [`image-rendering`][image-rendering] CSS property that
+indicates which algorithm to use. Let's add that as an argument to
+`DrawImage`:
 
 [image-rendering]: https://developer.mozilla.org/en-US/docs/Web/CSS/image-rendering
 
+``` {.python}
+class DrawImage(DisplayItem):
+    def __init__(self, image, rect, quality):
+        # ...
+        if quality == "high-quality":
+            self.quality = skia.FilterQuality.kHigh_FilterQuality
+        elif quality == "crisp-edges":
+            self.quality = skia.FilterQuality.kLow_FilterQuality
+        else:
+            self.quality = skia.FilterQuality.kMedium_FilterQuality
 
+    def execute(self, canvas):
+        paint = skia.Paint(FilterQuality=self.quality)
+        canvas.drawImageRect(self.image, self.rect, paint)
+```
 
+So we've now got the helper functions we need to download and decode
+images. But to actually put images into web pages, we're going to need
+to add images into our browser's layout tree.
+
+[^lossy]: Image formats like JPEG are [*lossy*][lossy], meaning that
+    they don't faithfully represent all of the information in the
+    original picture, so there's a time/quality trade-off going on
+    before the file is saved. Typically these formats try to drop
+    "noisy details" that a human is unlikely to notice; different
+    decoding algorithms are making the same trade-off.
+
+[lossy]: https://en.wikipedia.org/wiki/Lossy_compression
 
 ::: {.further}
-All the same resize quality options are present in Skia. That's because
-resizing may occur during raster, just as it does during decode. One way
-for this to happen is via a scale transform (which our toy browser doesn't
-support, but real ones do). Another way is that an image may be animated from
-one size to another, and it doesn't make sense to re-decode it at every size.
-
-Real browsers push the image decoding step even further the rendering pipeline
-(e.g. in the raster phase) for this reason---to avoid a double resize or worse
-image quality. Yet another reason to do so is because raster happens on another
-thread, and so that way image decoding won't block the main thread.
+The HTTP `Content-Type` header lets the web server tell the browser
+whether a document contains text or binary data. The header contains a
+value called a [MIME type][mime-type]: `text/html`, `text/css`, and
+`text/javascript` for HTML, CSS, and JavaScript; `image/png` and
+`image/jpeg` for PNG and JPEG images; and [many others][mime-list] for
+different font, video, audio, and data formats.[^mime-history]
+Interestingly, when we used Skia's `MakeFromEncoded`, we didn't need
+to pass in the image format. That's because many image formats start
+with ["magic bytes"][magic-bytes]; for example, PNG files always start
+with byte 137 followed by the letters "PNG". These magic bytes are
+often more reliable than web-server-provided MIME types, so this kind
+of "format sniffing" is common inside browsers and their supporting
+libraries.
 :::
+
+[mime-type]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types
+
+[^mime-history]: "MIME" stands for Multipurpose Internet Mail
+Extensions, and was originally intended for enumerating all of the
+acceptable data formats for email attachments. These days the loop has
+basically closed: most email clients are now "webmail" clients,
+accessed through your browser, and most emails are now HTML, encoded
+with the `text/html` MIME type. Many mail clients do still have an
+option to encode the email in `text/plain`, however.
+
+[mime-list]: https://www.iana.org/assignments/media-types/media-types.xhtml
+
+[magic-bytes]: https://www.netspi.com/blog/technical/web-application-penetration-testing/magic-bytes-identifying-common-file-formats-at-a-glance/
 
 Embedded layout
 ===============
+
+An `<img>` is a leaf element of the DOM. In some ways, it's similar to a single
+font glyph that has to paint in a single rectangle sized to the image (instead
+of the glyph), takes up space in a `LineLayout`, and causes line breaking when
+it reaches the end of the available space.
+
+But it's different than a text *node*, because the text in a text node is not
+just one glyph, but an entire run of text of a potentially arbitrary length,
+and that can be split into multiple words and lines. An image, on the
+other hand, is an [atomic inline][atomic-inline]---it doesn't make
+sense to split it across multiple lines.^[There are other elements
+that can be atomic inlines, and we'll encounter more later in this
+chapter.]
+
+
+[atomic-inline]: https://drafts.csswg.org/css-display-3/#atomic-inline
 
 Images will be laid out by a new `ImageLayout` class. The height and width of
 the object is defined by the height of the image, but other aspects of it will be almost
@@ -337,24 +370,22 @@ class ImageLayout(EmbedLayout):
     def load(self, frame):
         assert "src" in self.node.attributes
         link = self.node.attributes["src"]
-        image_url = resolve_url(link, frame.url)
-        if not frame.allowed_request(image_url):
-            print("Blocked image", link, "due to CSP")
-            return
         try:
-            header, body = request(image_url, frame.url)
-            self.node.encoded_image = body
-            self.node.image = skia.Image.MakeFromEncoded(
-                skia.Data.MakeWithoutCopy(self.node.encoded_image))
-        except:
-            self.node.image = None
-            print("Failed to load image: " + image_url)
+            data, image = download_image(link, frame)
+        except Exception as e:
+            print("Image error:", e)
+            data, image = None, None
+        self.node.encoded_data = data
+        self.node.image = image
 
     def init(self, parent, previous):
         self.parent = parent
         self.previous = previous
     # ...
 ```
+
+Note that we save both the encoded data and the image, because of the
+`MakeWithoutCopy` optimizaion we used in `download_image`
 
 Then there is layout, which shares all the code except sizing:
 
@@ -363,9 +394,8 @@ class ImageLayout(EmbedLayout):
     def layout(self, zoom):
         super().layout(zoom)
         self.width = device_px(self.node.image.width(), zoom)
-        self.height = max(
-                device_px(self.node.image.height(), zoom),
-                linespace(self.font))
+        self.img_height = device_px(self.node.image.height(), zoom)
+        self.height = max(self.img_height, linespace(self.font))
 ```
 
 Notice how the positioning of an image depends on the font size of the element,
@@ -409,45 +439,19 @@ a replaced element and a regular element.
 
 [replaced-elements]: https://developer.mozilla.org/en-US/docs/Web/CSS/Replaced_element
 
-Painting an image is quite straightforward, and uses a new `DrawImage type`
-and the Skia `drawImageRect` API method that draws the image to be scaled and
-sized to the given rect.
+Painting an image is quite straightforward:
 
 ``` {.python}
-class DrawImage(DisplayItem):
-    def __init__(self, image, rect, quality):
-        super().__init__(rect)
-        self.image = image
-        self.quality = quality
-
-    def execute(self, canvas):
-        canvas.drawImageRect(
-            self.image, self.rect,
-            skia.Paint(FilterQuality=self.quality))
-```
-
-Finally, the `paint` method of `ImageLayout` finally decodes the image, and
-emits a single `DrawImage`:
-
-``` {.python expected=False}
 class ImageLayout(EmbedLayout):
-    # ...
     def paint(self, display_list):
         cmds = []
-
-        decoded_image = decode_image(self.node.image,
-            self.width, self.height,
-            self.node.style.get("image-rendering", "auto"))
-
         rect = skia.Rect.MakeLTRB(
-            self.x, self.y, self.x + self.width,
-            self.y + self.height)
-
-        cmds.append(DrawImage(decoded_image, rect))
-
+            self.x, self.y + self.height - self.img_height,
+            self.x + self.width, self.y + self.height)
+        quality = self.node.style.get("image-rendering", "auto")
+        cmds.append(DrawImage(self.node.image, rect, quality))
         display_list.extend(cmds)
 ```
-
 
 ::: {.further}
 The `<img>` tag uses a `src` attribute and not `href`. Why is that? And
@@ -502,7 +506,7 @@ class ImageLayout(EmbedLayout):
             # ...
 
         if "height" in self.node.attributes:
-            self.height = \
+            self.img_height = \
                 device_px(int(self.node.attributes["height"]), zoom)
         else:
             # ...        
@@ -551,7 +555,7 @@ class ImageLayout(EmbedLayout):
         if has_height:
             # ...
         elif has_width:
-            self.height = (1 / aspect_ratio) * \
+            self.img_height = (1 / aspect_ratio) * \
                 device_px(int(self.node.attributes["width"]), zoom)
         else:
             # ...
