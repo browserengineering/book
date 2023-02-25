@@ -312,7 +312,12 @@ class InputLayout(EmbedLayout):
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")
         elif self.node.tag == "button":
-            text = self.node.children[0].text
+            if len(self.node.children) == 1 and \
+               isinstance(self.node.children[0], Text):
+                text = self.node.children[0].text
+            else:
+                print("Ignoring HTML contents inside button")
+                text = ""
 
         color = self.node.style["color"]
         cmds.append(DrawText(self.x, self.y,
