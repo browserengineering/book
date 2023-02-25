@@ -94,7 +94,7 @@ class Tab:
 
 Make sure to make this change everywhere in your browser that you call
 `request`, including inside `XMLHttpRequest_send` and in several other
-places in `request`. When we download images, however, we _won't_ call
+places in `load`. When we download images, however, we _won't_ call
 `decode`, and just use the binary data directly:
 
 ``` {.python replace=tab/frame}
