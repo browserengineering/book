@@ -155,11 +155,11 @@ class DocumentLayout(LayoutObject):
     def __init__(self, node, frame):
         super().__init__()
         self.node = node
+        self.frame = frame
         node.layout_object = self
         self.parent = None
         self.previous = None
         self.children = []
-        self.frame = frame
 
     def layout(self, zoom, width):
         child = BlockLayout(self.node, self, None, self.frame)
@@ -248,9 +248,10 @@ class BlockLayout(LayoutObject):
             self.x, self.x, self.width, self.height, self.node)
 
 class EmbedLayout(LayoutObject):
-    def __init__(self, node, parent=None, previous=None):
+    def __init__(self, node, frame, parent=None, previous=None):
         super().__init__()
         self.node = node
+        self.frame = frame
         node.layout_object = self
         self.children = []
         self.parent = parent
@@ -282,8 +283,8 @@ class EmbedLayout(LayoutObject):
             self.x = self.parent.x
 
 class InputLayout(EmbedLayout):
-    def __init__(self, node, parent, previous):
-        super().__init__(node, parent, previous)
+    def __init__(self, node, parent, previous, frame):
+        super().__init__(node, frame, parent, previous)
 
     def layout(self, zoom):
         super().layout(zoom)
@@ -392,34 +393,31 @@ class InlineLayout(LayoutObject):
         new_line = LineLayout(self.node, self, last_line)
         self.children.append(new_line)
 
-    def text(self, node, zoom):
+    def get_font(self, node, zoom):
         weight = node.style["font-weight"]
         style = node.style["font-style"]
-        size = device_px(float(node.style["font-size"][:-2]), zoom)
-        font = get_font(size, weight, size)
-        for word in node.text.split():
-            w = font.measureText(word)
-            if self.cursor_x + w > self.x + self.width:
-                self.new_line()
-            line = self.children[-1]
-            text = TextLayout(node, word, line, self.previous_word)
-            line.children.append(text)
-            self.previous_word = text
-            self.cursor_x += w + font.measureText(" ")
+        font_size = device_px(float(node.style["font-size"][:-2]), zoom)
+        return get_font(font_size, weight, font_size)
 
-    def input(self, node, zoom):
-        w = device_px(INPUT_WIDTH_PX, zoom)
+    def add_inline_child(self, node, font, w, child_class, extra_param):
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
-        input = InputLayout(node, line, self.previous_word)
-        line.children.append(input)
-        self.previous_word = input
-        weight = node.style["font-weight"]
-        style = node.style["font-style"]
-        size = device_px(float(node.style["font-size"][:-2]), zoom)
-        font = get_font(size, weight, size)
+        child = child_class(node, line, self.previous_word, extra_param)
+        line.children.append(child)
+        self.previous_word = child
         self.cursor_x += w + font.measureText(" ")
+
+    def text(self, node, zoom):
+        font = self.get_font(node, zoom)
+        for word in node.text.split():
+            w = font.measureText(word)
+            self.add_inline_child(node, font, w, TextLayout, word)
+
+    def input(self, node, zoom):
+        font = self.get_font(node, zoom)
+        w = device_px(INPUT_WIDTH_PX, zoom)
+        self.add_inline_child(node, font, w, InputLayout, self.frame) 
 
     def image(self, node, zoom):
         img = ImageLayout(node, self.frame)
@@ -433,10 +431,7 @@ class InlineLayout(LayoutObject):
         img.init(line, self.previous_word)
         line.children.append(img)
         self.previous_word = img
-        weight = node.style["font-weight"]
-        style = node.style["font-style"]
-        size = device_px(float(node.style["font-size"][:-2]), zoom)
-        font = get_font(size, weight, size)
+        font = self.get_font(node, zoom)
         self.cursor_x += w + font.measureText(" ")
 
     def iframe(self, node, zoom):
@@ -451,10 +446,7 @@ class InlineLayout(LayoutObject):
             node, line, self.previous_word, self.frame)
         line.children.append(input)
         self.previous_word = input
-        weight = node.style["font-weight"]
-        style = node.style["font-style"]
-        size = device_px(float(node.style["font-size"][:-2]), zoom)
-        font = get_font(size, weight, size)
+        font = self.get_font(node, zoom)
         self.cursor_x += w + font.measureText(" ")
 
     def paint(self, display_list):
@@ -551,7 +543,7 @@ class LineLayout:
             self.x, self.y, self.width, self.height, self.node)
 
 class TextLayout:
-    def __init__(self, node, word, parent, previous):
+    def __init__(self, node, parent, previous, word):
         self.node = node
         self.word = word
         self.children = []
@@ -614,9 +606,9 @@ def filter_quality(node):
 
 class ImageLayout(EmbedLayout):
     def __init__(self, node, frame):
-        super().__init__(node)
+        super().__init__(node, frame)
         if not hasattr(self.node, "image"):
-            self.load(frame)
+            self.load(self.frame)
 
     def load(self, frame):
         assert "src" in self.node.attributes
@@ -679,7 +671,7 @@ IFRAME_DEFAULT_HEIGHT_PX = 150
 
 class IframeLayout(EmbedLayout):
     def __init__(self, node, parent, previous, parent_frame):
-        super().__init__(node, parent, previous)
+        super().__init__(node, parent_frame, parent, previous)
 
     def layout(self, zoom):
         super().layout(zoom)
@@ -1456,7 +1448,9 @@ class Frame:
         self.load(url, body)
 
     def keypress(self, char):
-        if self.tab.focus:
+        if self.tab.focus and self.tab.focus.tag == "input":
+            if not "value" in self.tab.focus.attributes:
+                self.activate_element(self.tab.focus)
             if self.get_js().dispatch_event(
                 "keydown", self.tab.focus, self.window_id): return
             self.tab.focus.attributes["value"] += char
