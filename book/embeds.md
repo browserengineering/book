@@ -96,7 +96,7 @@ Make sure to make this change everywhere in your browser that you call
 `request`, including inside `XMLHttpRequest_send` and in several other places
 in `load`. When we download images, however, we _won't_ call `decode`, and just
 use the binary data directly. And if the image fails to download, load
-a "broken image" icon of your choosing (I used [this one][broken-image]).
+a "broken image" of your choosing (I used [this one][broken-image]).
 
 [broken-image]: https://commons.wikimedia.org/wiki/File:Broken_Image.png
 
@@ -2180,7 +2180,10 @@ disable downloading of images until the user expressly asked for them.]
 
 *Image placeholders*: Building on top of lazy loading, implement placeholder
 styling of images that haven't loaded yet. This is done by setting a 0x0 sizing,
-unless `width` or `height` is specified.
+unless `width` or `height` is specified. Also add support for hiding the
+"broken image" if the `alt` attribute is empty: that's because if `alt` is
+not specified, the image is assumed to not be visually important, and showing
+a broken image is therefore not useful to the user.
 
 *Same-origin frame tree*: same-origin iframes can access each others' variables
  and DOM, even if they are not adjacent in the frame tree. Implement this.
