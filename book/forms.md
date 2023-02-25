@@ -165,7 +165,7 @@ Note that `<button>` elements can in principle contain complex HTML,
 not just a text node. I'm having the browser print a warning and skip
 the text in that case.[^exercises]
 
-[^exercises]: There's an [exercise](#exercises) on this
+[^exercises]: There's an [exercise](#exercises) on this.
 
 Finally, we draw that text:
 
