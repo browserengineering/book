@@ -29,8 +29,10 @@ widgets: \
 src/lab%.full.py: src/lab%.py
 	python3 infra/inline.py $< > $@
 
+CHAPTER=all
+
 lint: book/*.md src/*.py
-	python3 infra/compare.py --config config.json
+	python3 infra/compare.py --config config.json --chapter $(CHAPTER)
 	! grep -n '^```' book/*.md | awk '(NR % 2) {print}' | grep -v '{.'
 
 PANDOC=pandoc --from markdown --to html --lua-filter=infra/filter.lua --fail-if-warnings --metadata-file=config.json $(FLAGS)
