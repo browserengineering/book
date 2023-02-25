@@ -93,17 +93,24 @@ class Tab:
 ```
 
 Make sure to make this change everywhere in your browser that you call
-`request`, including inside `XMLHttpRequest_send` and in several other
-places in `load`. When we download images, however, we _won't_ call
-`decode`, and just use the binary data directly:
+`request`, including inside `XMLHttpRequest_send` and in several other places
+in `load`. When we download images, however, we _won't_ call `decode`, and just
+use the binary data directly. And if the image fails to download, load
+a "broken image" icon of your choosing (I used [this one][broken-image]).
+
+[broken-image]: https://commons.wikimedia.org/wiki/File:Broken_Image.png
 
 ``` {.python replace=tab/frame}
 def download_image(image_src, tab):
     image_url = resolve_url(image_src, tab.url)
     assert tab.allowed_request(image_url), \
         "Blocked load of " + image_url + " due to CSP"
-    header, body = request(image_url, tab.url)
-    data = skia.Data.MakeWithoutCopy(body)
+    try:
+        header, body = request(image_url, frame.url)
+        data = skia.Data.MakeWithoutCopy(body)
+    except:
+        data = skia.Data.MakeFromFileName("Broken_Image.png")
+        body = ""
     img = skia.Image.MakeFromEncoded(data)
     assert img, "Failed to recognize image format for " + image_url
     return body, img
@@ -2172,10 +2179,8 @@ disable downloading of images until the user expressly asked for them.]
 [lli]: https://developer.mozilla.org/en-US/docs/Web/Performance/Lazy_loading
 
 *Image placeholders*: Building on top of lazy loading, implement placeholder
-styling of images that haven't loaded yet. This is typically done by putting
-an icon representing an unloaded image in its place. If `width` or
-`height` is not specified, the resulting size in that dimension should be sized
-to fit the icon.
+styling of images that haven't loaded yet. This is done by setting a 0x0 sizing,
+unless `width` or `height` is specified.
 
 *Same-origin frame tree*: same-origin iframes can access each others' variables
  and DOM, even if they are not adjacent in the frame tree. Implement this.
