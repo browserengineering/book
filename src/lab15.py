@@ -739,8 +739,12 @@ def download_image(image_src, frame):
     image_url = resolve_url(image_src, frame.url)
     assert frame.allowed_request(image_url), \
         "Blocked load of " + image_url + " due to CSP"
-    header, body = request(image_url, frame.url)
-    data = skia.Data.MakeWithoutCopy(body)
+    try:
+        header, body = request(image_url, frame.url)
+        data = skia.Data.MakeWithoutCopy(body)
+    except:
+        data = skia.Data.MakeFromFileName("Broken_Image.png")
+        body = ""
     img = skia.Image.MakeFromEncoded(data)
     assert img, "Failed to recognize image format for " + image_url
     return body, img
