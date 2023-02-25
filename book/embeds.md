@@ -2181,7 +2181,7 @@ disable downloading of images until the user expressly asked for them.]
 *Image placeholders*: Building on top of lazy loading, implement placeholder
 styling of images that haven't loaded yet. This is done by setting a 0x0 sizing,
 unless `width` or `height` is specified. Also add support for hiding the
-"broken image" if the `alt` attribute is empty: that's because if `alt` is
+"broken image" if the `alt` attribute is empty, because if `alt` is
 not specified, the image is assumed to not be visually important, and showing
 a broken image is therefore not useful to the user.
 
