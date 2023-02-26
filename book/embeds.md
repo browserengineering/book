@@ -337,15 +337,29 @@ class InputLayout(EmbedLayout):
 And `ImageLayout` is almost the same. In `InputLayout`, the new `image`
 method is actually almost a carbon copy of `input` and `text`. So now we have
 three methods that are almost identical for each atomic piece of inline content.
-The two things in common are computing the font:
+The two things in common are computing the font  (and passing it to the various
+functions):
 
 ``` {.python}
 class InlineLayout(LayoutObject):
-    def get_font(self, node, zoom):
+    def font(self, node, zoom):
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         font_size = device_px(float(node.style["font-size"][:-2]), zoom)
         return get_font(font_size, weight, font_size)
+
+    def recurse(self, node, zoom):
+        font = self.font(node, zoom)
+        if isinstance(node, Text):
+            self.text(node, zoom, font)
+        else:
+            if node.tag == "br":
+                self.new_line()
+            elif node.tag == "input" or node.tag == "button":
+                self.input(node, zoom, font)
+            else:
+                for child in node.children:
+                    self.recurse(child, zoom)
 ```
 
 And adding an inline child layout object. In this case we need to parameterize
@@ -369,14 +383,12 @@ We can redefine  `text` and `input` in a satisfying way now:
 
 ``` {.python}
 class InlineLayout(LayoutObject):
-    def text(self, node, zoom):
-        font = self.get_font(node, zoom)
+    def text(self, node, zoom, font):
         for word in node.text.split():
             w = font.measureText(word)
             self.add_inline_child(node, font, w, TextLayout, word)
 
-    def input(self, node, zoom):
-        font = self.get_font(node, zoom)
+    def input(self, node, zoom, font):
         w = device_px(INPUT_WIDTH_PX, zoom)
         self.add_inline_child(node, font, w, InputLayout, self.frame) 
 ```
@@ -388,10 +400,9 @@ class InlineLayout(LayoutObject):
     def recurse(self, node, zoom):
             # ...
             elif node.tag == "img":
-                self.image(node, zoom)
+                self.image(node, zoom, font)
     
-    def image(self, node, zoom):
-        font = self.get_font(node, zoom)
+    def image(self, node, zoom, font):
         if "width" in node.attributes:
             w = device_px(int(node.attributes["width"]), zoom)
         else:
@@ -500,7 +511,7 @@ easy, and we need to multiply by zoom to get device pixels:
 ``` {.python}
 class InlineLayout(LayoutObject):
     # ...
-    def image(self, node, zoom):
+    def image(self, node, zoom, font):
         if "width" in node.attributes:
             w = device_px(int(node.attributes["width"]), zoom)
         else:
@@ -934,10 +945,9 @@ class InlineLayout(LayoutObject):
     def recurse(self, node, zoom):
         # ...
             elif node.tag == "iframe":
-                self.iframe(node, zoom)
+                self.iframe(node, zoom, font)
     # ...
-    def iframe(self, node, zoom):
-        font = self.get_font(node, zoom)
+    def iframe(self, node, zoom, font):
         if "width" in self.node.attributes:
             w = device_px(int(self.node.attributes["width"]), zoom)
         else:

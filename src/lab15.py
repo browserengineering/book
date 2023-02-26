@@ -370,18 +370,25 @@ class InlineLayout(LayoutObject):
 
         self.height = sum([line.height for line in self.children])
 
+    def font(self, node, zoom):
+        weight = node.style["font-weight"]
+        style = node.style["font-style"]
+        font_size = device_px(float(node.style["font-size"][:-2]), zoom)
+        return get_font(font_size, weight, font_size)
+
     def recurse(self, node, zoom):
+        font = self.font(node, zoom)
         if isinstance(node, Text):
-            self.text(node, zoom)
+            self.text(node, zoom, font)
         else:
             if node.tag == "br":
                 self.new_line()
             elif node.tag == "input" or node.tag == "button":
-                self.input(node, zoom)
+                self.input(node, zoom, font)
             elif node.tag == "img":
-                self.image(node, zoom)
+                self.image(node, zoom, font)
             elif node.tag == "iframe":
-                self.iframe(node, zoom)
+                self.iframe(node, zoom, font)
             else:
                 for child in node.children:
                     self.recurse(child, zoom)
@@ -393,12 +400,6 @@ class InlineLayout(LayoutObject):
         new_line = LineLayout(self.node, self, last_line)
         self.children.append(new_line)
 
-    def font(self, node, zoom):
-        weight = node.style["font-weight"]
-        style = node.style["font-style"]
-        font_size = device_px(float(node.style["font-size"][:-2]), zoom)
-        return get_font(font_size, weight, font_size)
-
     def add_inline_child(self, node, font, w, child_class, extra_param):
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
@@ -408,18 +409,17 @@ class InlineLayout(LayoutObject):
         self.previous_word = child
         self.cursor_x += w + font.measureText(" ")
 
-    def text(self, node, zoom):
-        font = self.font(node, zoom)
+    def text(self, node, zoom, font):
         for word in node.text.split():
             w = font.measureText(word)
             self.add_inline_child(node, font, w, TextLayout, word)
 
-    def input(self, node, zoom):
+    def input(self, node, zoom, font):
         font = self.font(node, zoom)
         w = device_px(INPUT_WIDTH_PX, zoom)
         self.add_inline_child(node, font, w, InputLayout, self.frame) 
 
-    def image(self, node, zoom):
+    def image(self, node, zoom, font):
         font = self.font(node, zoom)
         if "width" in node.attributes:
             w = device_px(int(node.attributes["width"]), zoom)
@@ -427,7 +427,7 @@ class InlineLayout(LayoutObject):
             w = device_px(node.image.width(), zoom)
         self.add_inline_child(node, font, w, ImageLayout, self.frame)
 
-    def iframe(self, node, zoom):
+    def iframe(self, node, zoom, font):
         font = self.font(node, zoom)
         if "width" in self.node.attributes:
             w = device_px(int(self.node.attributes["width"]), zoom)
