@@ -393,7 +393,7 @@ class InlineLayout(LayoutObject):
         new_line = LineLayout(self.node, self, last_line)
         self.children.append(new_line)
 
-    def get_font(self, node, zoom):
+    def font(self, node, zoom):
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         font_size = device_px(float(node.style["font-size"][:-2]), zoom)
@@ -409,18 +409,18 @@ class InlineLayout(LayoutObject):
         self.cursor_x += w + font.measureText(" ")
 
     def text(self, node, zoom):
-        font = self.get_font(node, zoom)
+        font = self.font(node, zoom)
         for word in node.text.split():
             w = font.measureText(word)
             self.add_inline_child(node, font, w, TextLayout, word)
 
     def input(self, node, zoom):
-        font = self.get_font(node, zoom)
+        font = self.font(node, zoom)
         w = device_px(INPUT_WIDTH_PX, zoom)
         self.add_inline_child(node, font, w, InputLayout, self.frame) 
 
     def image(self, node, zoom):
-        font = self.get_font(node, zoom)
+        font = self.font(node, zoom)
         if "width" in node.attributes:
             w = device_px(int(node.attributes["width"]), zoom)
         else:
@@ -428,7 +428,7 @@ class InlineLayout(LayoutObject):
         self.add_inline_child(node, font, w, ImageLayout, self.frame)
 
     def iframe(self, node, zoom):
-        font = self.get_font(node, zoom)
+        font = self.font(node, zoom)
         if "width" in self.node.attributes:
             w = device_px(int(self.node.attributes["width"]), zoom)
         else:
