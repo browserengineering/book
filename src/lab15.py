@@ -248,7 +248,7 @@ class BlockLayout(LayoutObject):
             self.x, self.x, self.width, self.height, self.node)
 
 class EmbedLayout(LayoutObject):
-    def __init__(self, node, frame, parent=None, previous=None):
+    def __init__(self, node, frame, parent, previous):
         super().__init__()
         self.node = node
         self.frame = frame
@@ -420,34 +420,20 @@ class InlineLayout(LayoutObject):
         self.add_inline_child(node, font, w, InputLayout, self.frame) 
 
     def image(self, node, zoom):
-        img = ImageLayout(node, self.frame)
+        font = self.get_font(node, zoom)
         if "width" in node.attributes:
             w = device_px(int(node.attributes["width"]), zoom)
         else:
             w = device_px(node.image.width(), zoom)
-        if self.cursor_x + w > self.x + self.width:
-            self.new_line()
-        line = self.children[-1]
-        img.init(line, self.previous_word)
-        line.children.append(img)
-        self.previous_word = img
-        font = self.get_font(node, zoom)
-        self.cursor_x += w + font.measureText(" ")
+        self.add_inline_child(node, font, w, ImageLayout, self.frame)
 
     def iframe(self, node, zoom):
+        font = self.get_font(node, zoom)
         if "width" in self.node.attributes:
             w = device_px(int(self.node.attributes["width"]), zoom)
         else:
             w = IFRAME_DEFAULT_WIDTH_PX + 2
-        if self.cursor_x + w > self.x + self.width:
-            self.new_line()
-        line = self.children[-1]
-        input = IframeLayout(
-            node, line, self.previous_word, self.frame)
-        line.children.append(input)
-        self.previous_word = input
-        font = self.get_font(node, zoom)
-        self.cursor_x += w + font.measureText(" ")
+        self.add_inline_child(node, font, w, IframeLayout, self.frame)
 
     def paint(self, display_list):
         cmds = []
@@ -605,25 +591,8 @@ def filter_quality(node):
         return skia.FilterQuality.kMedium_FilterQuality
 
 class ImageLayout(EmbedLayout):
-    def __init__(self, node, frame):
-        super().__init__(node, frame)
-        if not hasattr(self.node, "image"):
-            self.load(self.frame)
-
-    def load(self, frame):
-        assert "src" in self.node.attributes
-        link = self.node.attributes["src"]
-        try:
-            data, image = download_image(link, frame)
-        except Exception as e:
-            print("Image error:", e)
-            data, image = None, None
-        self.node.encoded_data = data
-        self.node.image = image
-
-    def init(self, parent, previous):
-        self.parent = parent
-        self.previous = previous
+    def __init__(self, node, parent, previous, frame):
+        super().__init__(node, frame, parent, previous)
 
     def layout(self, zoom):
         super().layout(zoom)
@@ -1327,6 +1296,27 @@ class Frame:
             except:
                 continue
             self.rules.extend(CSSParser(body.decode("utf8")).parse())
+
+        images = [node
+                   for node in tree_to_list(self.nodes, [])
+                   if isinstance(node, Element)
+                   and node.tag == "img"
+                   and "src" in node.attributes]
+        for img in images:
+            img.image = None
+            image_url = resolve_url(img.attributes["src"], self.url)
+            assert self.allowed_request(image_url), \
+                "Blocked load of " + image_url + " due to CSP"
+            try:
+                header, body = request(image_url, self.url)
+                data = skia.Data.MakeWithoutCopy(body)
+            except:
+                data = skia.Data.MakeFromFileName("Broken_Image.png")
+                body = ""
+            image = skia.Image.MakeFromEncoded(data)
+            assert image, "Failed to recognize image format for " + image_url
+            img.encoded_data = body
+            img.image = image
 
         iframes = [node
                    for node in tree_to_list(self.nodes, [])

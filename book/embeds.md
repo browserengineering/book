@@ -283,11 +283,12 @@ class LayoutObject:
         pass
 ```
 
-``` {.python}
+``` {.python replace=tab/frame}
 class EmbedLayout(LayoutObject):
-    def __init__(self, node, parent=None, previous=None):
+    def __init__(self, node, tab, parent, previous):
         super().__init__()
         self.node = node
+        self.tab = tab
         node.layout_object = self
         self.children = []
         self.parent = parent
@@ -321,10 +322,10 @@ class EmbedLayout(LayoutObject):
 
 Now `InputLayout` looks like this:
 
-``` {.python}
+``` {.python replace=tab/frame}
 class InputLayout(EmbedLayout):
-    def __init__(self, node, parent, previous):
-        super().__init__(node, parent, previous)
+    def __init__(self, node, parent, previous, tab):
+        super().__init__(node, tab, parent, previous)
 
     def layout(self, zoom):
         super().layout(zoom)
@@ -333,13 +334,54 @@ class InputLayout(EmbedLayout):
         self.height = linespace(self.font)
 ```
 
-And `ImageLayout` is almost the same. The two key differences
-are the need to actually load the image off the network, and then use
-the size of the image to size the `ImageLayout`. Let's start with loading.
-After loading, the image is stored on the `node`. But this adds some complexity
-in the `image` function we need to add on `InlineLayout`, because first it needs
-to load the image and only then set its `parent` and `previous` fields. That'll
-be via a new `init` method call.
+And `ImageLayout` is almost the same. In `InputLayout`, the new `image`
+method is actually almost a carbon copy of `input` and `text`. So now we have
+three methods that are almost identical for each atomic piece of inline content.
+The two things in common are computing the font:
+
+``` {.python}
+class InlineLayout(LayoutObject):
+    def get_font(self, node, zoom):
+        weight = node.style["font-weight"]
+        style = node.style["font-style"]
+        font_size = device_px(float(node.style["font-size"][:-2]), zoom)
+        return get_font(font_size, weight, font_size)
+```
+
+And adding an inline child layout object. In this case we need to parameterize
+it with the name of the child class to instantiate, and an `extra_param` that
+varies depending on the child type.
+
+``` {.python}
+class InlineLayout(LayoutObject):
+    def add_inline_child(self, node, font, w, child_class, extra_param):
+        if self.cursor_x + w > self.x + self.width:
+            self.new_line()
+        line = self.children[-1]
+        child = child_class(node, line, self.previous_word, extra_param)
+        line.children.append(child)
+        self.previous_word = child
+        self.cursor_x += w + font.measureText(" ")
+```
+
+We can redefine  `text` and `input` in a satisfying way now:
+
+
+``` {.python}
+class InlineLayout(LayoutObject):
+    def text(self, node, zoom):
+        font = self.get_font(node, zoom)
+        for word in node.text.split():
+            w = font.measureText(word)
+            self.add_inline_child(node, font, w, TextLayout, word)
+
+    def input(self, node, zoom):
+        font = self.get_font(node, zoom)
+        w = device_px(INPUT_WIDTH_PX, zoom)
+        self.add_inline_child(node, font, w, InputLayout, self.frame) 
+```
+
+Finally, now here is `image`:
 
 ``` {.python}
 class InlineLayout(LayoutObject):
@@ -349,55 +391,21 @@ class InlineLayout(LayoutObject):
                 self.image(node, zoom)
     
     def image(self, node, zoom):
-        img = ImageLayout(node, self.frame)
-        w = device_px(node.image.width(), zoom)
-        if self.cursor_x + w > self.x + self.width:
-            self.new_line()
-        line = self.children[-1]
-        img.init(line, self.previous_word)
-        line.children.append(img)
-        self.previous_word = img
-        weight = node.style["font-weight"]
-        style = node.style["font-style"]
-        size = device_px(float(node.style["font-size"][:-2]), zoom)
-        font = get_font(size, weight, size)
-        self.cursor_x += w + font.measureText(" ")
+        font = self.get_font(node, zoom)
+        if "width" in node.attributes:
+            w = device_px(int(node.attributes["width"]), zoom)
+        else:
+            w = device_px(node.image.width(), zoom)
+        self.add_inline_child(node, font, w, ImageLayout, self.frame)
 ```
-
-And here is `ImageLayout`. Note how we're loading the image, but not
-yet decoding it, because we don't know the painted size until layout is done.
-
-``` {.python}
-class ImageLayout(EmbedLayout):
-    def __init__(self, node, frame):
-        super().__init__(node)
-        if not hasattr(self.node, "image"):
-            self.load(frame)
-
-    def load(self, frame):
-        assert "src" in self.node.attributes
-        link = self.node.attributes["src"]
-        try:
-            data, image = download_image(link, frame)
-        except Exception as e:
-            print("Image error:", e)
-            data, image = None, None
-        self.node.encoded_data = data
-        self.node.image = image
-
-    def init(self, parent, previous):
-        self.parent = parent
-        self.previous = previous
-    # ...
-```
-
-Note that we save both the encoded data and the image, because of the
-`MakeWithoutCopy` optimizaion we used in `download_image`
 
 Then there is layout, which shares all the code except sizing:
 
 ``` {.python expected=False}
 class ImageLayout(EmbedLayout):
+    def __init__(self, node, parent, previous, tab):
+        super().__init__(node, tab)
+
     def layout(self, zoom):
         super().layout(zoom)
         self.width = device_px(self.node.image.width(), zoom)
@@ -916,10 +924,9 @@ IFRAME_DEFAULT_WIDTH_PX = 300
 IFRAME_DEFAULT_HEIGHT_PX = 150
 ```
 
-Iframe layout in `InlineLayout` is a lot like images. The only difference
-is the width calculation, so I've omitted the rest with "..."
-instead. I've added 2 to the width and height in these calculations to provide
-room for the painted border to come.
+Iframe layout in `InlineLayout` is a lot like images. I've added 2 to the width
+and height in these calculations to provide room for the painted border to
+come.
 
 ``` {.python}
 class InlineLayout(LayoutObject):
@@ -930,11 +937,12 @@ class InlineLayout(LayoutObject):
                 self.iframe(node, zoom)
     # ...
     def iframe(self, node, zoom):
+        font = self.get_font(node, zoom)
         if "width" in self.node.attributes:
             w = device_px(int(self.node.attributes["width"]), zoom)
         else:
             w = IFRAME_DEFAULT_WIDTH_PX + 2
-        # ...
+        self.add_inline_child(node, font, w, IframeLayout, self.frame)
 ```
 
 And the `IframeLayout` layout code is also similar, and also inherits from
@@ -944,7 +952,7 @@ aspect ratio, because iframes don't have an intrinsic size.)
 ``` {.python}
 class IframeLayout(EmbedLayout):
     def __init__(self, node, parent, previous, parent_frame):
-        super().__init__(node, parent, previous)
+        super().__init__(node, parent_frame, parent, previous)
 
     def layout(self, zoom):
         # ...

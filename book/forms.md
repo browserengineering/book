@@ -207,7 +207,10 @@ are self-closing, they never have children.
     the exercises below.
 
 Finally, this new `input` method is similar to the `text` method,
-creating a new layout object and adding it to the current line:
+creating a new layout object and adding it to the current line:^[It's so
+similar in fact that they only differ in the `w` variable definition.
+I'll resist the temptation to refactor this code until we get to
+[Chapter 15](embeds.md).]
 
 ``` {.python}
 class BlockLayout:
