@@ -200,85 +200,26 @@ class BlockLayout(LayoutObject):
         self.frame = frame
 
     def layout(self, zoom):
-        previous = None
-        for child in self.node.children:
-            if layout_mode(child) == "inline":
-                next = InlineLayout(child, self, previous, self.frame)
-            else:
-                next = BlockLayout(child, self, previous, self.frame)
-            self.children.append(next)
-            previous = next
-
-        self.width = self.parent.width
-        self.x = self.parent.x
-
         if self.previous:
             self.y = self.previous.y + self.previous.height
         else:
             self.y = self.parent.y
+
+        mode = layout_mode(self.node)
+        if mode == "block":
+            previous = None
+            for child in self.node.children:
+                next = BlockLayout(child, self, previous, self.frame)
+                self.children.append(next)
+                previous = next
+        else:
+            self.new_line()
+            self.recurse(self.node, zoom)
 
         for child in self.children:
             child.layout(zoom)
 
         self.height = sum([child.height for child in self.children])
-
-    def paint(self, display_list):
-        cmds = []
-
-        rect = skia.Rect.MakeLTRB(
-            self.x, self.y,
-            self.x + self.width, self.y + self.height)
-        bgcolor = self.node.style.get("background-color",
-                                 "transparent")
-        if bgcolor != "transparent":
-            radius = float(
-                self.node.style.get("border-radius", "0px")[:-2])
-            cmds.append(DrawRRect(rect, radius, bgcolor))
-
-        for child in self.children:
-            child.paint(cmds)
-
-        paint_outline(self.node, cmds, rect)
-
-        cmds = paint_visual_effects(self.node, cmds, rect)
-        display_list.extend(cmds)
-
-    def __repr__(self):
-        return "BlockLayout(x={}, y={}, width={}, height={}, node={})".format(
-            self.x, self.x, self.width, self.height, self.node)
-
-class InlineLayout(LayoutObject):
-    def __init__(self, node, parent, previous, frame):
-        super().__init__()
-        self.node = node
-        node.layout_object = self
-        self.parent = parent
-        self.previous = previous
-        self.children = []
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-        self.display_list = None
-        self.frame = frame
-
-    def layout(self, zoom):
-        self.width = self.parent.width
-
-        self.x = self.parent.x
-
-        if self.previous:
-            self.y = self.previous.y + self.previous.height
-        else:
-            self.y = self.parent.y
-
-        self.new_line()
-        self.recurse(self.node, zoom)
-        
-        for line in self.children:
-            line.layout(zoom)
-
-        self.height = sum([line.height for line in self.children])
 
     def recurse(self, node, zoom):
         if isinstance(node, Text):
@@ -390,6 +331,7 @@ class InlineLayout(LayoutObject):
             child.paint(cmds)
 
         if not is_atomic:
+            paint_outline(self.node, cmds, rect)
             cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
 
@@ -402,8 +344,8 @@ class InlineLayout(LayoutObject):
         return False
 
     def __repr__(self):
-        return "InlineLayout(x={}, y={}, width={}, height={}, node={})".format(
-            self.x, self.y, self.width, self.height, self.node)
+        return "BlockLayout[{}](x={}, y={}, width={}, height={}, node={})".format(
+            layout_mode(self.node), self.x, self.x, self.width, self.height, self.node)
 
 
 class EmbedLayout(LayoutObject):
