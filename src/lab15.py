@@ -200,6 +200,9 @@ class BlockLayout(LayoutObject):
         self.frame = frame
 
     def layout(self, zoom):
+        self.width = self.parent.width
+        self.x = self.parent.x
+
         if self.previous:
             self.y = self.previous.y + self.previous.height
         else:
@@ -345,7 +348,7 @@ class BlockLayout(LayoutObject):
 
     def __repr__(self):
         return "BlockLayout[{}](x={}, y={}, width={}, height={}, node={})".format(
-            layout_mode(self.node), self.x, self.x, self.width, self.height, self.node)
+            layout_mode(self.node), self.x, self.y, self.width, self.height, self.node)
 
 
 class EmbedLayout(LayoutObject):
