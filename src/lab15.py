@@ -247,95 +247,6 @@ class BlockLayout(LayoutObject):
         return "BlockLayout(x={}, y={}, width={}, height={}, node={})".format(
             self.x, self.x, self.width, self.height, self.node)
 
-class EmbedLayout(LayoutObject):
-    def __init__(self, node, parent=None, previous=None):
-        super().__init__()
-        self.node = node
-        node.layout_object = self
-        self.children = []
-        self.parent = parent
-        self.previous = previous
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-        self.font = None
-
-    def get_ascent(self, font_multiplier=1.0):
-        return -self.height
-
-    def get_descent(self, font_multiplier=1.0):
-        return 0
-
-    def layout(self, zoom):
-        weight = self.node.style["font-weight"]
-        style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
-        size = device_px(
-            float(self.node.style["font-size"][:-2]), zoom)
-        self.font = get_font(size, weight, style)
-
-        if self.previous:
-            space = self.previous.font.measureText(" ")
-            self.x = self.previous.x + space + self.previous.width
-        else:
-            self.x = self.parent.x
-
-class InputLayout(EmbedLayout):
-    def __init__(self, node, parent, previous):
-        super().__init__(node, parent, previous)
-
-    def layout(self, zoom):
-        super().layout(zoom)
-
-        self.width = device_px(INPUT_WIDTH_PX, zoom)
-        self.height = linespace(self.font)
-
-    def paint(self, display_list):
-        cmds = []
-
-        rect = skia.Rect.MakeLTRB(
-            self.x, self.y, self.x + self.width,
-            self.y + self.height)
-
-        bgcolor = self.node.style.get("background-color",
-                                 "transparent")
-        if bgcolor != "transparent":
-            radius = float(self.node.style.get("border-radius", "0px")[:-2])
-            cmds.append(DrawRRect(rect, radius, bgcolor))
-
-        if self.node.tag == "input":
-            text = self.node.attributes.get("value", "")
-        elif self.node.tag == "button":
-            if len(self.node.children) == 1 and \
-               isinstance(self.node.children[0], Text):
-                text = self.node.children[0].text
-            else:
-                print("Ignoring HTML contents inside button")
-                text = ""
-
-        color = self.node.style["color"]
-        cmds.append(DrawText(self.x, self.y,
-                             text, self.font, color))
-
-        if self.node.is_focused and self.node.tag == "input":
-            cx = rect.left() + self.font.measureText(text)
-            cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom()))
-
-        paint_outline(self.node, cmds, rect)
-        cmds = paint_visual_effects(self.node, cmds, rect)
-        display_list.extend(cmds)
-
-    def dispatch(self, x, y):
-        self.frame.focus_element(self.node)
-        self.frame.activate_element(self.node)
-        self.frame.set_needs_render()
-        return True
-
-    def __repr__(self):
-        return "InputLayout(x={}, y={}, width={}, height={})".format(
-            self.x, self.y, self.width, self.height)
-
 class InlineLayout(LayoutObject):
     def __init__(self, node, parent, previous, frame):
         super().__init__()
@@ -493,6 +404,96 @@ class InlineLayout(LayoutObject):
     def __repr__(self):
         return "InlineLayout(x={}, y={}, width={}, height={}, node={})".format(
             self.x, self.y, self.width, self.height, self.node)
+
+
+class EmbedLayout(LayoutObject):
+    def __init__(self, node, parent=None, previous=None):
+        super().__init__()
+        self.node = node
+        node.layout_object = self
+        self.children = []
+        self.parent = parent
+        self.previous = previous
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+        self.font = None
+
+    def get_ascent(self, font_multiplier=1.0):
+        return -self.height
+
+    def get_descent(self, font_multiplier=1.0):
+        return 0
+
+    def layout(self, zoom):
+        weight = self.node.style["font-weight"]
+        style = self.node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = device_px(
+            float(self.node.style["font-size"][:-2]), zoom)
+        self.font = get_font(size, weight, style)
+
+        if self.previous:
+            space = self.previous.font.measureText(" ")
+            self.x = self.previous.x + space + self.previous.width
+        else:
+            self.x = self.parent.x
+
+class InputLayout(EmbedLayout):
+    def __init__(self, node, parent, previous):
+        super().__init__(node, parent, previous)
+
+    def layout(self, zoom):
+        super().layout(zoom)
+
+        self.width = device_px(INPUT_WIDTH_PX, zoom)
+        self.height = linespace(self.font)
+
+    def paint(self, display_list):
+        cmds = []
+
+        rect = skia.Rect.MakeLTRB(
+            self.x, self.y, self.x + self.width,
+            self.y + self.height)
+
+        bgcolor = self.node.style.get("background-color",
+                                 "transparent")
+        if bgcolor != "transparent":
+            radius = float(self.node.style.get("border-radius", "0px")[:-2])
+            cmds.append(DrawRRect(rect, radius, bgcolor))
+
+        if self.node.tag == "input":
+            text = self.node.attributes.get("value", "")
+        elif self.node.tag == "button":
+            if len(self.node.children) == 1 and \
+               isinstance(self.node.children[0], Text):
+                text = self.node.children[0].text
+            else:
+                print("Ignoring HTML contents inside button")
+                text = ""
+
+        color = self.node.style["color"]
+        cmds.append(DrawText(self.x, self.y,
+                             text, self.font, color))
+
+        if self.node.is_focused and self.node.tag == "input":
+            cx = rect.left() + self.font.measureText(text)
+            cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom()))
+
+        paint_outline(self.node, cmds, rect)
+        cmds = paint_visual_effects(self.node, cmds, rect)
+        display_list.extend(cmds)
+
+    def dispatch(self, x, y):
+        self.frame.focus_element(self.node)
+        self.frame.activate_element(self.node)
+        self.frame.set_needs_render()
+        return True
+
+    def __repr__(self):
+        return "InputLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
 
 class LineLayout:
     def __init__(self, node, parent, previous):
