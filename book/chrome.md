@@ -844,7 +844,7 @@ class Browser:
     def handle_click(self, e):
         if e.y < CHROME_PX:
             # ...
-            elif 10 <= e.x < 35 and 40 <= e.y < 90:
+            elif 10 <= e.x < 35 and 50 <= e.y < 90:
                 self.tabs[self.active_tab].go_back()
             # ...
 ```
