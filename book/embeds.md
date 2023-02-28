@@ -367,7 +367,7 @@ it with the name of the child class to instantiate, and an `extra_param` that
 varies depending on the child type.
 
 ``` {.python}
-class InlineLayout(LayoutObject):
+class BlockLayout(LayoutObject):
     def add_inline_child(self, node, font, w, child_class, extra_param):
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
@@ -382,7 +382,7 @@ We can redefine  `text` and `input` in a satisfying way now:
 
 
 ``` {.python}
-class InlineLayout(LayoutObject):
+class BlockLayout(LayoutObject):
     def text(self, node, zoom, font):
         for word in node.text.split():
             w = font.measureText(word)
@@ -396,7 +396,7 @@ class InlineLayout(LayoutObject):
 Finally, now here is `image`:
 
 ``` {.python}
-class InlineLayout(LayoutObject):
+class BlockLayout(LayoutObject):
     def recurse(self, node, zoom):
             # ...
             elif node.tag == "img":
