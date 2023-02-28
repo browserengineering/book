@@ -256,12 +256,16 @@ class BlockLayout:
 
         if self.dirty_style:
             self.dirty_inline_children = True
+            self.dirty_width = True
             self.mark_dirty()
             self.dirty_style = False
 
         if self.dirty_width:
             assert not self.parent.dirty_width
-            self.width = self.parent.width
+            if "width" in self.node.style:
+                self.width = device_px(float(self.node.style["width"][:-2]), zoom)
+            else:
+                self.width = self.parent.width
             self.dirty_children = True
             for child in self.children:
                 child.dirty_width = True
@@ -301,20 +305,26 @@ class BlockLayout:
                     next = BlockLayout(child, self, previous, self.frame)
                     self.children.append(next)
                     previous = next
+                self.dirty_descendants = True
+                self.mark_dirty()
+            self.dirty_children = False
         else:
             if self.dirty_inline_children or self.dirty_children:
                 self.children = []
                 self.new_line()
                 assert not self.dirty_zoom
                 self.recurse(self.node, zoom)
+                self.dirty_descendants = True
+                self.mark_dirty()
             self.dirty_inline_children = False
-        self.dirty_children = False
+            self.dirty_children = False
 
         assert not self.dirty_children
         assert not self.dirty_zoom
         if self.dirty_descendants:
             for child in self.children:
                 child.layout(zoom)
+            self.dirty_descendants = False
 
         if self.dirty_height:
             assert not self.dirty_children
@@ -325,10 +335,10 @@ class BlockLayout:
                 self.height = new_height
                 self.parent.dirty_height = True
                 self.parent.mark_dirty()
-                self.dirty_height = False
                 if self.next:
                     self.next.dirty_y = True
                     self.next.mark_dirty()
+            self.dirty_height = False
 
     def paint(self, display_list):
         assert not self.dirty_children
@@ -426,6 +436,12 @@ class LineLayout:
         self.dirty_x = False
         self.dirty_y = False
 
+    def mark_dirty(self):
+        if isinstance(self.parent, BlockLayout) and \
+            not self.parent.dirty_descendants:
+            self.parent.dirty_descendants = True
+            self.parent.mark_dirty()
+
     def layout(self, zoom):
         self.width = self.parent.width
         self.x = self.parent.x
@@ -440,6 +456,8 @@ class LineLayout:
 
         if not self.children:
             self.height = 0
+            self.parent.dirty_height = True
+            self.parent.mark_dirty()
             return
 
         max_ascent = max([-child.get_ascent(1.25) 
@@ -450,6 +468,8 @@ class LineLayout:
         max_descent = max([child.get_descent(1.25)
                            for child in self.children])
         self.height = max_ascent + max_descent
+        self.parent.dirty_height = True
+        self.parent.mark_dirty()
 
         self.dirty_width = False
         self.dirty_height = False
