@@ -417,7 +417,6 @@ class InputLayout(EmbedLayout):
         return "InputLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
 
-
 class LineLayout:
     def __init__(self, node, parent, previous):
         self.node = node

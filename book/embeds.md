@@ -274,8 +274,8 @@ the object is defined by the height of the image, but other aspects of it will b
 the same as `InputLayout`. In fact, so similar that
 let's make them inherit from a new `EmbedLayout` base class to share a lot of
 code about inline layout and fonts. (And for completeness, make a new
-`LayoutObject` root class for all types of object, and make `BlockLayout`,
-`InlineLayout` and `DocumentLayout` inherit from it.
+`LayoutObject` root class for all types of object, and make `BlockLayout`
+and `DocumentLayout` inherit from it.
 
 ``` {.python}
 class LayoutObject:
@@ -334,6 +334,7 @@ class InputLayout(EmbedLayout):
         self.height = linespace(self.font)
 ```
 
+<<<<<<< HEAD
 And `ImageLayout` is almost the same. In `InputLayout`, the new `image`
 method is actually almost a carbon copy of `input` and `text`. So now we have
 three methods that are almost identical for each atomic piece of inline content.
@@ -348,6 +349,18 @@ class InlineLayout(LayoutObject):
         font_size = device_px(float(node.style["font-size"][:-2]), zoom)
         return get_font(font_size, weight, font_size)
 
+=======
+And `ImageLayout` is almost the same. The two key differences
+are the need to actually load the image off the network, and then use
+the size of the image to size the `ImageLayout`. Let's start with loading.
+After loading, the image is stored on the `node`. But this adds some complexity
+in the `image` function we need to add on `BlockLayout`, because first it needs
+to load the image and only then set its `parent` and `previous` fields. That'll
+be via a new `init` method call.
+
+``` {.python}
+class BlockLayout(LayoutObject):
+>>>>>>> df1374481dc53e59d44f41bc93611e66b89737eb
     def recurse(self, node, zoom):
         font = self.font(node, zoom)
         if isinstance(node, Text):
@@ -504,12 +517,12 @@ those.
 
 It's pretty easy: every place we deduce the width or height of an image layout
 object from its intrinsic size, first consult the corresponding attribute and
-use it instead if present. Let's start with `image` on `InlineLayout`. The width
+use it instead if present. Let's start with `image` on `BlockLayout`. The width
 and height attributes are in CSS pixels without unit suffixes, so parsing is
 easy, and we need to multiply by zoom to get device pixels:
 
 ``` {.python}
-class InlineLayout(LayoutObject):
+class BlockLayout(LayoutObject):
     # ...
     def image(self, node, zoom, font):
         if "width" in node.attributes:
@@ -935,12 +948,19 @@ IFRAME_DEFAULT_WIDTH_PX = 300
 IFRAME_DEFAULT_HEIGHT_PX = 150
 ```
 
+<<<<<<< HEAD
 Iframe layout in `InlineLayout` is a lot like images. I've added 2 to the width
 and height in these calculations to provide room for the painted border to
 come.
+=======
+Iframe layout in `BlockLayout` is a lot like images. The only difference
+is the width calculation, so I've omitted the rest with "..."
+instead. I've added 2 to the width and height in these calculations to provide
+room for the painted border to come.
+>>>>>>> df1374481dc53e59d44f41bc93611e66b89737eb
 
 ``` {.python}
-class InlineLayout(LayoutObject):
+class BlockLayout(LayoutObject):
     # ...
     def recurse(self, node, zoom):
         # ...
@@ -1107,7 +1127,7 @@ class LayoutObject:
 For an inline element it stops if focusable:
 
 ``` {.python}
-class InlineLayout(LayoutObject):
+class BlockLayout(LayoutObject):
    def dispatch(self, x, y):
         if isinstance(self.node, Element) and is_focusable(self.node):
             self.frame.focus_element(self.node)
