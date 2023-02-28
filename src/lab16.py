@@ -35,11 +35,40 @@ from lab14 import parse_color, parse_outline, draw_rect, DrawRRect, \
 from lab15 import request, DrawImage, DocumentLayout, BlockLayout, \
     InputLayout, LineLayout, TextLayout, ImageLayout, \
     IframeLayout, JSContext, style, AccessibilityNode, Frame, Tab, \
-    CommitData, draw_line, Browser, main, wrap_in_window, CROSS_ORIGIN_IFRAMES
+    CommitData, draw_line, Browser, main, wrap_in_window, CROSS_ORIGIN_IFRAMES, \
+    WINDOW_COUNT
 import wbetools
 
 @wbetools.patch(Frame)
 class Frame:
+    def __init__(self, tab, parent_frame, frame_element):
+        self.tab = tab
+        self.parent_frame = parent_frame
+        self.frame_element = frame_element
+        self.needs_style = False
+        self.needs_layout = False
+
+        self.document = None
+        self.scroll = 0
+        self.scroll_changed_in_frame = True
+        self.needs_focus_scroll = False
+        self.nodes = None
+        self.url = None
+        self.js = None
+        global WINDOW_COUNT
+        self.window_id = WINDOW_COUNT
+        WINDOW_COUNT += 1
+        self.frame_width = 0
+        self.frame_height = 0
+
+        self.tab.window_id_to_frame[self.window_id] = self
+
+        with open("browser15.css") as f:
+            self.default_style_sheet = \
+                CSSParser(f.read(), internal=True).parse()
+
+        self.measure_layout = MeasureTime("layout")
+
     def load(self, url, body=None):
         self.zoom = 1
         self.scroll = 0
@@ -123,7 +152,10 @@ class Frame:
                 key=cascade_priority), self)
 
     def layout(self, zoom):
+        self.measure_layout.start()
         self.document.layout(zoom, self.frame_width)
+        self.measure_layout.stop()
+        print(self.measure_layout.text())
 
         clamped_scroll = self.clamp_scroll(self.scroll)
         if clamped_scroll != self.scroll:
