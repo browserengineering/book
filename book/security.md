@@ -96,7 +96,7 @@ def handle_connection(conx):
 ```
 
 The first code block runs after all the request headers are parsed,
-before handling the request in `do_request`, while the the second code
+before handling the request in `do_request`, while the second code
 block runs after `do_request` returns, when the server is assembling
 the HTTP response.
 
@@ -539,9 +539,9 @@ Same-origin policy
 
 However, new capabilities lead to new responsibilities. HTTP requests
 sent with `XMLHttpRequest` include cookies. This is by design: when
-you "like" something, the the server needs to associate the "like" to
-your account. But it also means that `XMLHttpRequest` can access
-private data, and thus need to protect it.
+you "like" something, the server needs to associate the "like" to your
+account. But it also means that `XMLHttpRequest` can access private
+data, and thus need to protect it.
 
 Let's imagine an attacker wants to know your username on our guest
 book server. When you're logged in, the guest book includes your
@@ -1004,7 +1004,7 @@ security bug. So browsers provide additional layers of defense.
 ::: {.further}
 Since the [CSS parser](styles.md) is very permissive, some HTML pages
 also parse as valid CSS. This leads to an attack: include an external
-HTML page as a style sheet and observe the the styling it applies. A
+HTML page as a style sheet and observe the styling it applies. A
 [similar attack][json-hijack] involves including external JSON
 files as scripts. Setting a `Content-Type` header can prevent this
 sort of attack thanks to browsers' [Cross-Origin Read Blocking][corb]

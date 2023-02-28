@@ -563,7 +563,7 @@ and
 Note the negative sign when accessing the ascent. In Skia, ascent and
 descent are positive if they go downward and negative if they go
 upward, so ascents will normally be negative, the opposite of Tkinter.
-There's no analog for the `lineheight` field that Tkinter provides,
+There's no analog for the `linespace` field that Tkinter provides,
 but you can use descent minus ascent instead.
 
 You should now be able to run the browser again. It should look and
@@ -1556,7 +1556,7 @@ Browser compositing
 
 Optimizing away surfaces is great when they're not needed, but
 sometimes having more surfaces allows faster scrolling and
-animatations.
+animations.
 
 So far, any time anything changed in the browser chrome or the web
 page itself, we had to clear the canvas and re-raster everything on it
@@ -1697,10 +1697,9 @@ class Browser:
         self.draw()
 ```
 
-Notice how we don't redraw the chrome when the only the tab changes,
-and vice versa. In `handle_down`, which scrolls the page, we don't
-need to call `raster_tab` at all, since scrolling doesn't change the
-page.
+Notice how we don't redraw the chrome when only the tab changes, and
+vice versa. In `handle_down`, which scrolls the page, we don't need to
+call `raster_tab` at all, since scrolling doesn't change the page.
 
 We also have some related changes in `Tab`. First, we no longer need
 to pass around the scroll offset to the `execute` methods, or account
