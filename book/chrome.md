@@ -948,7 +948,7 @@ class Browser:
         self.focus = None
         if e.y < CHROME_PX:
             # ...
-            elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
+            elif 50 <= e.x < WIDTH - 10 and 50 <= e.y < 90:
                 self.focus = "address bar"
                 self.address_bar = ""
         # ...
