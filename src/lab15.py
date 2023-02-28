@@ -200,15 +200,6 @@ class BlockLayout(LayoutObject):
         self.frame = frame
 
     def layout(self, zoom):
-        previous = None
-        for child in self.node.children:
-            if layout_mode(child) == "inline":
-                next = InlineLayout(child, self, previous, self.frame)
-            else:
-                next = BlockLayout(child, self, previous, self.frame)
-            self.children.append(next)
-            previous = next
-
         self.width = self.parent.width
         self.x = self.parent.x
 
@@ -217,31 +208,120 @@ class BlockLayout(LayoutObject):
         else:
             self.y = self.parent.y
 
+        mode = layout_mode(self.node)
+        if mode == "block":
+            previous = None
+            for child in self.node.children:
+                next = BlockLayout(child, self, previous, self.frame)
+                self.children.append(next)
+                previous = next
+        else:
+            self.new_line()
+            self.recurse(self.node, zoom)
+
         for child in self.children:
             child.layout(zoom)
 
         self.height = sum([child.height for child in self.children])
 
+    def font(self, node, zoom):
+        weight = node.style["font-weight"]
+        style = node.style["font-style"]
+        font_size = device_px(float(node.style["font-size"][:-2]), zoom)
+        return get_font(font_size, weight, font_size)
+
+    def recurse(self, node, zoom):
+        font = self.font(node, zoom)
+        if isinstance(node, Text):
+            self.text(node, zoom, font)
+        else:
+            if node.tag == "br":
+                self.new_line()
+            elif node.tag == "input" or node.tag == "button":
+                self.input(node, zoom, font)
+            elif node.tag == "img":
+                self.image(node, zoom, font)
+            elif node.tag == "iframe":
+                self.iframe(node, zoom, font)
+            else:
+                for child in node.children:
+                    self.recurse(child, zoom)
+
+    def new_line(self):
+        self.previous_word = None
+        self.cursor_x = self.x
+        last_line = self.children[-1] if self.children else None
+        new_line = LineLayout(self.node, self, last_line)
+        self.children.append(new_line)
+
+    def add_inline_child(self, node, font, w, child_class, extra_param):
+        if self.cursor_x + w > self.x + self.width:
+            self.new_line()
+        line = self.children[-1]
+        child = child_class(node, line, self.previous_word, extra_param)
+        line.children.append(child)
+        self.previous_word = child
+        self.cursor_x += w + font.measureText(" ")
+
+    def text(self, node, zoom, font):
+        for word in node.text.split():
+            w = font.measureText(word)
+            self.add_inline_child(node, font, w, TextLayout, word)
+
+    def input(self, node, zoom, font):
+        font = self.font(node, zoom)
+        w = device_px(INPUT_WIDTH_PX, zoom)
+        self.add_inline_child(node, font, w, InputLayout, self.frame) 
+
+    def image(self, node, zoom, font):
+        font = self.font(node, zoom)
+        if "width" in node.attributes:
+            w = device_px(int(node.attributes["width"]), zoom)
+        else:
+            w = device_px(node.image.width(), zoom)
+        self.add_inline_child(node, font, w, ImageLayout, self.frame)
+
+    def iframe(self, node, zoom, font):
+        font = self.font(node, zoom)
+        if "width" in self.node.attributes:
+            w = device_px(int(self.node.attributes["width"]), zoom)
+        else:
+            w = IFRAME_DEFAULT_WIDTH_PX + 2
+        self.add_inline_child(node, font, w, IframeLayout, self.frame)
+
     def paint(self, display_list):
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
-            self.x, self.y,
-            self.x + self.width, self.y + self.height)
-        bgcolor = self.node.style.get("background-color",
-                                 "transparent")
-        if bgcolor != "transparent":
-            radius = float(
-                self.node.style.get("border-radius", "0px")[:-2])
-            cmds.append(DrawRRect(rect, radius, bgcolor))
+            self.x, self.y, self.x + self.width,
+            self.y + self.height)
 
+        is_atomic = not isinstance(self.node, Text) and \
+            (self.node.tag == "input" or self.node.tag == "button")
+
+        if not is_atomic:
+            bgcolor = self.node.style.get(
+                "background-color", "transparent")
+            if bgcolor != "transparent":
+                radius = float(self.node.style.get(
+                    "border-radius", "0px")[:-2])
+                cmds.append(DrawRRect(rect, radius, bgcolor))
+ 
         for child in self.children:
             child.paint(cmds)
 
-        paint_outline(self.node, cmds, rect)
-
-        cmds = paint_visual_effects(self.node, cmds, rect)
+        if not is_atomic:
+            paint_outline(self.node, cmds, rect)
+            cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
+
+    def dispatch(self, x, y):
+        if isinstance(self.node, Element) and is_focusable(self.node):
+            self.frame.focus_element(self.node)
+            self.frame.activate_element(self.node)
+            self.frame.set_needs_render()
+            return True
+        return False
 
     def __repr__(self):
         return "BlockLayout(x={}, y={}, width={}, height={}, node={})".format(
@@ -337,140 +417,6 @@ class InputLayout(EmbedLayout):
         return "InputLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
 
-class InlineLayout(LayoutObject):
-    def __init__(self, node, parent, previous, frame):
-        super().__init__()
-        self.node = node
-        node.layout_object = self
-        self.parent = parent
-        self.previous = previous
-        self.children = []
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-        self.display_list = None
-        self.frame = frame
-
-    def layout(self, zoom):
-        self.width = self.parent.width
-
-        self.x = self.parent.x
-
-        if self.previous:
-            self.y = self.previous.y + self.previous.height
-        else:
-            self.y = self.parent.y
-
-        self.new_line()
-        self.recurse(self.node, zoom)
-        
-        for line in self.children:
-            line.layout(zoom)
-
-        self.height = sum([line.height for line in self.children])
-
-    def font(self, node, zoom):
-        weight = node.style["font-weight"]
-        style = node.style["font-style"]
-        font_size = device_px(float(node.style["font-size"][:-2]), zoom)
-        return get_font(font_size, weight, font_size)
-
-    def recurse(self, node, zoom):
-        font = self.font(node, zoom)
-        if isinstance(node, Text):
-            self.text(node, zoom, font)
-        else:
-            if node.tag == "br":
-                self.new_line()
-            elif node.tag == "input" or node.tag == "button":
-                self.input(node, zoom, font)
-            elif node.tag == "img":
-                self.image(node, zoom, font)
-            elif node.tag == "iframe":
-                self.iframe(node, zoom, font)
-            else:
-                for child in node.children:
-                    self.recurse(child, zoom)
-
-    def new_line(self):
-        self.previous_word = None
-        self.cursor_x = self.x
-        last_line = self.children[-1] if self.children else None
-        new_line = LineLayout(self.node, self, last_line)
-        self.children.append(new_line)
-
-    def add_inline_child(self, node, font, w, child_class, extra_param):
-        if self.cursor_x + w > self.x + self.width:
-            self.new_line()
-        line = self.children[-1]
-        child = child_class(node, line, self.previous_word, extra_param)
-        line.children.append(child)
-        self.previous_word = child
-        self.cursor_x += w + font.measureText(" ")
-
-    def text(self, node, zoom, font):
-        for word in node.text.split():
-            w = font.measureText(word)
-            self.add_inline_child(node, font, w, TextLayout, word)
-
-    def input(self, node, zoom, font):
-        font = self.font(node, zoom)
-        w = device_px(INPUT_WIDTH_PX, zoom)
-        self.add_inline_child(node, font, w, InputLayout, self.frame) 
-
-    def image(self, node, zoom, font):
-        font = self.font(node, zoom)
-        if "width" in node.attributes:
-            w = device_px(int(node.attributes["width"]), zoom)
-        else:
-            w = device_px(node.image.width(), zoom)
-        self.add_inline_child(node, font, w, ImageLayout, self.frame)
-
-    def iframe(self, node, zoom, font):
-        font = self.font(node, zoom)
-        if "width" in self.node.attributes:
-            w = device_px(int(self.node.attributes["width"]), zoom)
-        else:
-            w = IFRAME_DEFAULT_WIDTH_PX + 2
-        self.add_inline_child(node, font, w, IframeLayout, self.frame)
-
-    def paint(self, display_list):
-        cmds = []
-
-        rect = skia.Rect.MakeLTRB(
-            self.x, self.y, self.x + self.width,
-            self.y + self.height)
-
-        is_atomic = not isinstance(self.node, Text) and \
-            (self.node.tag == "input" or self.node.tag == "button")
-
-        if not is_atomic:
-            bgcolor = self.node.style.get(
-                "background-color", "transparent")
-            if bgcolor != "transparent":
-                radius = float(self.node.style.get(
-                    "border-radius", "0px")[:-2])
-                cmds.append(DrawRRect(rect, radius, bgcolor))
- 
-        for child in self.children:
-            child.paint(cmds)
-
-        if not is_atomic:
-            cmds = paint_visual_effects(self.node, cmds, rect)
-        display_list.extend(cmds)
-
-    def dispatch(self, x, y):
-        if isinstance(self.node, Element) and is_focusable(self.node):
-            self.frame.focus_element(self.node)
-            self.frame.activate_element(self.node)
-            self.frame.set_needs_render()
-            return True
-        return False
-
-    def __repr__(self):
-        return "InlineLayout(x={}, y={}, width={}, height={}, node={})".format(
-            self.x, self.y, self.width, self.height, self.node)
 
 class LineLayout:
     def __init__(self, node, parent, previous):
