@@ -12,12 +12,12 @@ function grow() {
 
 function run_grow() {
     if (grow())
-        requestAnimationFrame(run_grow);
+        window.requestAnimationFrame(run_grow);
 }
 
 function start_grow(e) {
     current_frame = 0;
-    requestAnimationFrame(run_grow);
+    window.requestAnimationFrame(run_grow);
     e.preventDefault();
 }
 
@@ -30,12 +30,12 @@ function shrink() {
 
 function run_shrink() {
     if (shrink())
-        requestAnimationFrame(run_shrink);
+        window.requestAnimationFrame(run_shrink);
 }
 
 function start_shrink(e) {
     current_frame = 0;
-    requestAnimationFrame(run_shrink);
+    window.requestAnimationFrame(run_shrink);
     e.preventDefault();
 }
 
