@@ -4,9 +4,9 @@
         "intro.md": { "disabled": false },
         "history.md": { "disabled": false },
 
-        "http.md": { "disabled": false, "lab": "lab1.py" },
-        "graphics.md": { "disabled": false, "lab": "lab2.py" },
-        "text.md": { "disabled": false, "lab": "lab3.py" },
+        "http.md": { "disabled": false, "lab": "lab1.py", "tests": "lab1-tests.md" },
+        "graphics.md": { "disabled": false, "lab": "lab2.py", "tests": "lab2-tests.md" },
+        "text.md": { "disabled": false, "lab": "lab3.py", "tests": "lab3-tests.md" },
 
         "html.md": { "disabled": false, "lab": "lab4.py" },
         "layout.md": { "disabled": false, "lab": "lab5.py" },

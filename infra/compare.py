@@ -139,11 +139,7 @@ def compare_files(book, code, language, file):
                     print(" ", l, end="")
             print()
         if name.get("last"): break
-    if failure:
-        print("  Found differences in {} / {} blocks".format(failure, count))
-    else:
-        print("  Found no differences {} blocks".format(count))
-    return failure
+    return failure, count
 
 def test_entry(chapter, chapter_metadata, key, language, file):
     if key in chapter_metadata:
@@ -151,7 +147,12 @@ def test_entry(chapter, chapter_metadata, key, language, file):
         print(f"Comparing chapter {chapter} with {key} {fname}")
         with open("book/" + chapter) as book, \
              open("src/" + fname) as code:
-            return compare_files(book, code, language, file)
+            failure, count = compare_files(book, code, language, file)
+            if failure:
+                print("  Found differences in {} / {} blocks".format(failure, count))
+            else:
+                print("  Found no differences {} blocks".format(count))
+            return failure
     else:
         return 0
     
