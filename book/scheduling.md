@@ -78,10 +78,10 @@ consider [many different factors][chrome-scheduling].
 
 [chrome-scheduling]: https://blog.chromium.org/2015/04/scheduling-tasks-intelligently-for_30.html
 
-``` {.python expected=False}
+``` {.python}
 class TaskRunner:
     def run(self):
-        if len(self.tasks) > 0):
+        if len(self.tasks) > 0:
             task = self.tasks.pop(0)
             task.run()
 ```
@@ -306,7 +306,7 @@ class TaskRunner:
 
     def schedule_task(self, task):
         self.condition.acquire(blocking=True)
-        self.tasks.add_task(task)
+        self.tasks.append(task)
         self.condition.release()
 
     def run(self):
@@ -402,7 +402,7 @@ handle:
 ``` {.javascript file=runtime}
 XMLHttpRequest.prototype.send = function(body) {
     this.responseText = call_python("XMLHttpRequest_send",
-        this.method, this.url, this.body, this.is_async, this.handle);
+        this.method, this.url, body, this.is_async, this.handle);
 }
 ```
 
@@ -1254,7 +1254,7 @@ between them; and their implementation on a computer architecture.
 This way, the browser implementer (you!) has maximum flexibility to
 use more or less hardware parallelism as appropriate to the situation.
 For example, some devices have more [CPU cores][cores] than others, or
-are more sensitive to battery power usage, or there system processes
+are more sensitive to battery power usage, or their system processes
 such as listening to the wireless radio may limit the actual
 parallelism available to the browser.
 

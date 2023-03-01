@@ -844,7 +844,7 @@ class Browser:
     def handle_click(self, e):
         if e.y < CHROME_PX:
             # ...
-            elif 10 <= e.x < 35 and 40 <= e.y < 90:
+            elif 10 <= e.x < 35 and 50 <= e.y < 90:
                 self.tabs[self.active_tab].go_back()
             # ...
 ```
@@ -948,7 +948,7 @@ class Browser:
         self.focus = None
         if e.y < CHROME_PX:
             # ...
-            elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
+            elif 50 <= e.x < WIDTH - 10 and 50 <= e.y < 90:
                 self.focus = "address bar"
                 self.address_bar = ""
         # ...
@@ -1005,12 +1005,12 @@ class Browser:
             self.draw()
 ```
 
-This `handle_key` handler starts with some conditions: `<Key>` and
-fires for every key press, not just regular letters, so we want to
-ignore cases where no character is typed (a modifier key is pressed)
-or the character is outside the ASCII range (which can represent the
-arrow keys or function keys). After we modify `address_bar` we also
-need to call `draw()` so that the new letters actually show up.
+This `handle_key` handler starts with some conditions: `<Key>` fires
+for every key press, not just regular letters, so we want to ignore
+cases where no character is typed (a modifier key is pressed) or the
+character is outside the ASCII range (which can represent the arrow
+keys or function keys). After we modify `address_bar` we also need to
+call `draw()` so that the new letters actually show up.
 
 Finally, once the new URL is entered, we need to handle the "Enter"
 key, which Tk calls `<Return>`, and actually send the browser to the
@@ -1049,7 +1049,7 @@ Summary
 
 It's been a lot of work just to handle links! We had to:
 
-- Give each word had a clear size and position;
+- Give each word an explicit size and position;
 - Determine which piece of text a user clicked on;
 - Split per-page from browser-wide information;
 - Draw a tab bar, an address bar, and a back button;

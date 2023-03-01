@@ -87,7 +87,7 @@ Box model
 ![](https://www.w3.org/TR/CSS2/images/boxdim.png)
 
 __Margin rectangle__: The rectangle that encloses the margin (dark dashed line
-in the figure). Margin in the the spacing between elements.
+in the figure). Margin in the spacing between elements.
 
 __Border rectangle__: The rectangle that encloses the border (dark solid line
 in the figure). Borders can have a styled visual representation.

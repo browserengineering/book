@@ -350,9 +350,9 @@ class Browser:
                 self.active_tab = int((e.x - 40) / 80)
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
                 self.load("https://browser.engineering/")
-            elif 10 <= e.x < 35 and 40 <= e.y < 90:
+            elif 10 <= e.x < 35 and 50 <= e.y < 90:
                 self.tabs[self.active_tab].go_back()
-            elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
+            elif 50 <= e.x < WIDTH - 10 and 50 <= e.y < 90:
                 self.focus = "address bar"
                 self.address_bar = ""
         else:

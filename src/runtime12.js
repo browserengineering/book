@@ -74,7 +74,7 @@ XMLHttpRequest.prototype.open = function(method, url, is_async) {
 
 XMLHttpRequest.prototype.send = function(body) {
     this.responseText = call_python("XMLHttpRequest_send",
-        this.method, this.url, this.body, this.is_async, this.handle);
+        this.method, this.url, body, this.is_async, this.handle);
 }
 
 function __runXHROnload(body, handle) {

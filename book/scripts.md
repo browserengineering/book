@@ -144,7 +144,7 @@ That's your browser running its first bit of JavaScript!
 Actually, real browsers run JavaScript code as soon as the browser
 *parses* the `<script>` tag, not after the whole page is parsed. Or,
 at least, that is the default; there are [many options][scriptElement].
-What our toy browser does is what a real browser does when the the
+What our toy browser does is what a real browser does when the
 [`defer`][deferAttr] attribute is set. The default behavior is [much
 trickier][speculative] to implement efficiently.
 :::
@@ -366,7 +366,7 @@ page.
 
 JavaScript manipulates a web page by calling any of a large set of
 methods collectively called the DOM API, for "Document Object Model".
-The DOM API is big, and it keeps getting bigger, so we won't
+The DOM API is big, and it keeps getting bigger, so we won't be
 implementing all, or even most, of it. But a few core functions show
 key elements of the full API:
 
@@ -1200,7 +1200,7 @@ the tree. Double-check that clicking on links still works, and make
 sure `preventDefault` still successfully prevents clicks on a link
 from actually following the link.
 
-[eventBubbling]: https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Building_blocks/Events#event_bubbling_and_capture
+[eventBubbling]: https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Building_blocks/Events#event_bubbling
 
 *Inline styling*: The `style` property of a JavaScript `Node` object
 contains a [`CSSStyleDeclaration`][cssstyle] object. Setting any
