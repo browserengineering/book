@@ -1,5 +1,5 @@
 ---
-title: Applying User Styles
+title: Applying Author Styles
 chapter: 6
 prev: layout
 next: chrome
