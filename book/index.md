@@ -53,7 +53,7 @@ Part 2: Viewing Documents
     Parsing and fixing HTML
 (@) [Laying Out Pages](layout.md)\
     Inline and block layout, plus the box model
-(@) [Applying User Styles](styles.md)\
+(@) [Applying Author Styles](styles.md)\
     Parsing and applying CSS
 (@) [Handling Buttons and Links](chrome.md)\
     Hyperlinks and browser chrome
