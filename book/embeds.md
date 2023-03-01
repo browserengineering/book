@@ -367,12 +367,15 @@ varies depending on the child type.
 
 ``` {.python}
 class BlockLayout(LayoutObject):
-    def add_inline_child(self, node, zoom, w, child_class, extra_param):
+    def add_inline_child(self, node, zoom, w, child_class, frame, word=None):
         font = self.font(node, zoom)
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
-        child = child_class(node, line, self.previous_word, extra_param)
+        if word:
+            child = child_class(node, line, self.previous_word, word)
+        else:
+            child = child_class(node, line, self.previous_word, frame)
         line.children.append(child)
         self.previous_word = child
         self.cursor_x += w + font.measureText(" ")
@@ -387,7 +390,7 @@ class BlockLayout(LayoutObject):
         font = self.font(node, zoom)
         for word in node.text.split():
             w = font.measureText(word)
-            self.add_inline_child(node, zoom, w, TextLayout, word)
+            self.add_inline_child(node, zoom, w, TextLayout, self.frame, word)
 
     def input(self, node, zoom):
         w = device_px(INPUT_WIDTH_PX, zoom)
