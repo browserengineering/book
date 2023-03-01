@@ -231,18 +231,17 @@ class BlockLayout(LayoutObject):
         return get_font(font_size, weight, font_size)
 
     def recurse(self, node, zoom):
-        font = self.font(node, zoom)
         if isinstance(node, Text):
-            self.text(node, zoom, font)
+            self.text(node, zoom)
         else:
             if node.tag == "br":
                 self.new_line()
             elif node.tag == "input" or node.tag == "button":
-                self.input(node, zoom, font)
+                self.input(node, zoom)
             elif node.tag == "img":
-                self.image(node, zoom, font)
+                self.image(node, zoom)
             elif node.tag == "iframe":
-                self.iframe(node, zoom, font)
+                self.iframe(node, zoom)
             else:
                 for child in node.children:
                     self.recurse(child, zoom)
@@ -254,7 +253,8 @@ class BlockLayout(LayoutObject):
         new_line = LineLayout(self.node, self, last_line)
         self.children.append(new_line)
 
-    def add_inline_child(self, node, font, w, child_class, extra_param):
+    def add_inline_child(self, node, zoom, w, child_class, extra_param):
+        font = self.font(node, zoom)
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
@@ -263,31 +263,30 @@ class BlockLayout(LayoutObject):
         self.previous_word = child
         self.cursor_x += w + font.measureText(" ")
 
-    def text(self, node, zoom, font):
+    def text(self, node, zoom):
+        font = self.font(node, zoom)
         for word in node.text.split():
             w = font.measureText(word)
-            self.add_inline_child(node, font, w, TextLayout, word)
+            self.add_inline_child(node, zoom, w, TextLayout, word)
 
-    def input(self, node, zoom, font):
+    def input(self, node, zoom):
         font = self.font(node, zoom)
         w = device_px(INPUT_WIDTH_PX, zoom)
-        self.add_inline_child(node, font, w, InputLayout, self.frame) 
+        self.add_inline_child(node, zoom, w, InputLayout, self.frame) 
 
-    def image(self, node, zoom, font):
-        font = self.font(node, zoom)
+    def image(self, node, zoom):
         if "width" in node.attributes:
             w = device_px(int(node.attributes["width"]), zoom)
         else:
             w = device_px(node.image.width(), zoom)
-        self.add_inline_child(node, font, w, ImageLayout, self.frame)
+        self.add_inline_child(node, zoom, w, ImageLayout, self.frame)
 
-    def iframe(self, node, zoom, font):
-        font = self.font(node, zoom)
+    def iframe(self, node, zoom):
         if "width" in self.node.attributes:
             w = device_px(int(self.node.attributes["width"]), zoom)
         else:
             w = IFRAME_DEFAULT_WIDTH_PX + 2
-        self.add_inline_child(node, font, w, IframeLayout, self.frame)
+        self.add_inline_child(node, zoom, w, IframeLayout, self.frame)
 
     def paint(self, display_list):
         cmds = []
