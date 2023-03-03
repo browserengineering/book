@@ -347,18 +347,6 @@ class BlockLayout(LayoutObject):
         style = node.style["font-style"]
         font_size = device_px(float(node.style["font-size"][:-2]), zoom)
         return get_font(font_size, weight, font_size)
-
-    def recurse(self, node, zoom):
-        if isinstance(node, Text):
-            self.text(node, zoom)
-        else:
-            if node.tag == "br":
-                self.new_line()
-            elif node.tag == "input" or node.tag == "button":
-                self.input(node, zoom)
-            else:
-                for child in node.children:
-                    self.recurse(child, zoom)
 ```
 
 And adding an inline child layout object. In this case we need to parameterize
