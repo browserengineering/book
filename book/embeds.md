@@ -306,13 +306,7 @@ class EmbedLayout(LayoutObject):
         return 0
 
     def layout(self, zoom):
-        weight = self.node.style["font-weight"]
-        style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
-        size = device_px(
-            float(self.node.style["font-size"][:-2]), zoom)
-        self.font = get_font(size, weight, style)
-
+        self.font = font(self.node, zoom)
         if self.previous:
             space = self.previous.font.measureText(" ")
             self.x = self.previous.x + space + self.previous.width
@@ -337,16 +331,15 @@ class InputLayout(EmbedLayout):
 And `ImageLayout` is almost the same. In `InputLayout`, the new `image`
 method is actually almost a carbon copy of `input` and `text`. So now we have
 three methods that are almost identical for each atomic piece of inline content.
-The two things in common are computing the font  (and passing it to the various
+The two things in common are computing the font (and passing it to the various
 functions):
 
 ``` {.python}
-class BlockLayout(LayoutObject):
-    def font(self, node, zoom):
-        weight = node.style["font-weight"]
-        style = node.style["font-style"]
-        font_size = device_px(float(node.style["font-size"][:-2]), zoom)
-        return get_font(font_size, weight, font_size)
+def font(node, zoom):
+    weight = node.style["font-weight"]
+    style = node.style["font-style"]
+    font_size = device_px(float(node.style["font-size"][:-2]), zoom)
+    return get_font(font_size, weight, font_size)
 ```
 
 And adding an inline child layout object. In this case we need to parameterize
@@ -356,7 +349,6 @@ varies depending on the child type.
 ``` {.python}
 class BlockLayout(LayoutObject):
     def add_inline_child(self, node, zoom, w, child_class, frame, word=None):
-        font = self.font(node, zoom)
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
@@ -366,7 +358,7 @@ class BlockLayout(LayoutObject):
             child = child_class(node, line, self.previous_word, frame)
         line.children.append(child)
         self.previous_word = child
-        self.cursor_x += w + font.measureText(" ")
+        self.cursor_x += w + font(node, zoom).measureText(" ")
 ```
 
 We can redefine  `text` and `input` in a satisfying way now:
@@ -375,9 +367,9 @@ We can redefine  `text` and `input` in a satisfying way now:
 ``` {.python}
 class BlockLayout(LayoutObject):
     def text(self, node, zoom):
-        font = self.font(node, zoom)
+        node_font = font(node, zoom)
         for word in node.text.split():
-            w = font.measureText(word)
+            w = node_font.measureText(word)
             self.add_inline_child(node, zoom, w, TextLayout, self.frame, word)
 
     def input(self, node, zoom):

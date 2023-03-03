@@ -185,6 +185,12 @@ class DocumentLayout(LayoutObject):
     def __repr__(self):
         return "DocumentLayout()"
 
+def font(node, zoom):
+    weight = node.style["font-weight"]
+    style = node.style["font-style"]
+    font_size = device_px(float(node.style["font-size"][:-2]), zoom)
+    return get_font(font_size, weight, font_size)
+
 class BlockLayout(LayoutObject):
     def __init__(self, node, parent, previous, frame):
         super().__init__()
@@ -224,11 +230,6 @@ class BlockLayout(LayoutObject):
 
         self.height = sum([child.height for child in self.children])
 
-    def font(self, node, zoom):
-        weight = node.style["font-weight"]
-        style = node.style["font-style"]
-        font_size = device_px(float(node.style["font-size"][:-2]), zoom)
-        return get_font(font_size, weight, font_size)
 
     def recurse(self, node, zoom):
         if isinstance(node, Text):
@@ -254,7 +255,6 @@ class BlockLayout(LayoutObject):
         self.children.append(new_line)
 
     def add_inline_child(self, node, zoom, w, child_class, frame, word=None):
-        font = self.font(node, zoom)
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
@@ -264,16 +264,15 @@ class BlockLayout(LayoutObject):
             child = child_class(node, line, self.previous_word, frame)
         line.children.append(child)
         self.previous_word = child
-        self.cursor_x += w + font.measureText(" ")
+        self.cursor_x += w + font(node, zoom).measureText(" ")
 
     def text(self, node, zoom):
-        font = self.font(node, zoom)
+        node_font = font(node, zoom)
         for word in node.text.split():
-            w = font.measureText(word)
+            w = node_font.measureText(word)
             self.add_inline_child(node, zoom, w, TextLayout, self.frame, word)
 
     def input(self, node, zoom):
-        font = self.font(node, zoom)
         w = device_px(INPUT_WIDTH_PX, zoom)
         self.add_inline_child(node, zoom, w, InputLayout, self.frame) 
 
@@ -351,13 +350,7 @@ class EmbedLayout(LayoutObject):
         return 0
 
     def layout(self, zoom):
-        weight = self.node.style["font-weight"]
-        style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
-        size = device_px(
-            float(self.node.style["font-size"][:-2]), zoom)
-        self.font = get_font(size, weight, style)
-
+        self.font = font(self.node, zoom)
         if self.previous:
             space = self.previous.font.measureText(" ")
             self.x = self.previous.x + space + self.previous.width
@@ -495,12 +488,7 @@ class TextLayout:
         return self.font.getMetrics().fDescent * font_multiplier
 
     def layout(self, zoom):
-        weight = self.node.style["font-weight"]
-        style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
-        size = device_px(
-            float(self.node.style["font-size"][:-2]), zoom)
-        self.font = get_font(size, weight, style)
+        self.font = font(self.node, zoom)
 
         # Do not set self.y!!!
         self.width = self.font.measureText(self.word)
