@@ -351,7 +351,6 @@ class EmbedLayout(LayoutObject):
 
     def layout(self, zoom):
         self.font = font(self.node, zoom)
-
         if self.previous:
             space = self.previous.font.measureText(" ")
             self.x = self.previous.x + space + self.previous.width
