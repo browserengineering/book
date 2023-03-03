@@ -941,7 +941,7 @@ class Tab:
 
 All of this activation code is copied from the `click` method on
 `Tab`s, which can now be rewritten to call `activate_element`
-directly:
+directly. Code is also needed in `keypress` to activate if needed:
 
 ``` {.python}
 class Tab:
@@ -955,6 +955,11 @@ class Tab:
                 self.set_needs_render()
                 return
             elt = elt.parent
+
+    def keypress(self, char):
+        if self.focus and self.focus.tag == "input":
+            if not "value" in self.focus.attributes:
+                self.activate_element(self.focus)
 ```
 
 Note that hitting `Enter` when focused on a text entry clears the text

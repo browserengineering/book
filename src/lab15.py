@@ -155,11 +155,11 @@ class DocumentLayout(LayoutObject):
     def __init__(self, node, frame):
         super().__init__()
         self.node = node
+        self.frame = frame
         node.layout_object = self
         self.parent = None
         self.previous = None
         self.children = []
-        self.frame = frame
 
     def layout(self, zoom, width):
         child = BlockLayout(self.node, self, None, self.frame)
@@ -224,6 +224,12 @@ class BlockLayout(LayoutObject):
 
         self.height = sum([child.height for child in self.children])
 
+    def font(self, node, zoom):
+        weight = node.style["font-weight"]
+        style = node.style["font-style"]
+        font_size = device_px(float(node.style["font-size"][:-2]), zoom)
+        return get_font(font_size, weight, font_size)
+
     def recurse(self, node, zoom):
         if isinstance(node, Text):
             self.text(node, zoom)
@@ -247,70 +253,43 @@ class BlockLayout(LayoutObject):
         new_line = LineLayout(self.node, self, last_line)
         self.children.append(new_line)
 
-    def text(self, node, zoom):
-        weight = node.style["font-weight"]
-        style = node.style["font-style"]
-        size = device_px(float(node.style["font-size"][:-2]), zoom)
-        font = get_font(size, weight, size)
-        for word in node.text.split():
-            w = font.measureText(word)
-            if self.cursor_x + w > self.x + self.width:
-                self.new_line()
-            line = self.children[-1]
-            text = TextLayout(node, word, line, self.previous_word)
-            line.children.append(text)
-            self.previous_word = text
-            self.cursor_x += w + font.measureText(" ")
-
-    def input(self, node, zoom):
-        w = device_px(INPUT_WIDTH_PX, zoom)
+    def add_inline_child(self, node, zoom, w, child_class, frame, word=None):
+        font = self.font(node, zoom)
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
-        input = InputLayout(node, line, self.previous_word)
-        line.children.append(input)
-        self.previous_word = input
-        weight = node.style["font-weight"]
-        style = node.style["font-style"]
-        size = device_px(float(node.style["font-size"][:-2]), zoom)
-        font = get_font(size, weight, size)
+        if word:
+            child = child_class(node, line, self.previous_word, word)
+        else:
+            child = child_class(node, line, self.previous_word, frame)
+        line.children.append(child)
+        self.previous_word = child
         self.cursor_x += w + font.measureText(" ")
 
+    def text(self, node, zoom):
+        font = self.font(node, zoom)
+        for word in node.text.split():
+            w = font.measureText(word)
+            self.add_inline_child(node, zoom, w, TextLayout, self.frame, word)
+
+    def input(self, node, zoom):
+        font = self.font(node, zoom)
+        w = device_px(INPUT_WIDTH_PX, zoom)
+        self.add_inline_child(node, zoom, w, InputLayout, self.frame) 
+
     def image(self, node, zoom):
-        img = ImageLayout(node, self.frame)
         if "width" in node.attributes:
             w = device_px(int(node.attributes["width"]), zoom)
         else:
             w = device_px(node.image.width(), zoom)
-        if self.cursor_x + w > self.x + self.width:
-            self.new_line()
-        line = self.children[-1]
-        img.init(line, self.previous_word)
-        line.children.append(img)
-        self.previous_word = img
-        weight = node.style["font-weight"]
-        style = node.style["font-style"]
-        size = device_px(float(node.style["font-size"][:-2]), zoom)
-        font = get_font(size, weight, size)
-        self.cursor_x += w + font.measureText(" ")
+        self.add_inline_child(node, zoom, w, ImageLayout, self.frame)
 
     def iframe(self, node, zoom):
         if "width" in self.node.attributes:
             w = device_px(int(self.node.attributes["width"]), zoom)
         else:
             w = IFRAME_DEFAULT_WIDTH_PX + 2
-        if self.cursor_x + w > self.x + self.width:
-            self.new_line()
-        line = self.children[-1]
-        input = IframeLayout(
-            node, line, self.previous_word, self.frame)
-        line.children.append(input)
-        self.previous_word = input
-        weight = node.style["font-weight"]
-        style = node.style["font-style"]
-        size = device_px(float(node.style["font-size"][:-2]), zoom)
-        font = get_font(size, weight, size)
-        self.cursor_x += w + font.measureText(" ")
+        self.add_inline_child(node, zoom, w, IframeLayout, self.frame)
 
     def paint(self, display_list):
         cmds = []
@@ -347,14 +326,14 @@ class BlockLayout(LayoutObject):
         return False
 
     def __repr__(self):
-        return "BlockLayout[{}](x={}, y={}, width={}, height={}, node={})".format(
-            layout_mode(self.node), self.x, self.y, self.width, self.height, self.node)
-
+        return "BlockLayout(x={}, y={}, width={}, height={}, node={})".format(
+            self.x, self.x, self.width, self.height, self.node)
 
 class EmbedLayout(LayoutObject):
-    def __init__(self, node, parent=None, previous=None):
+    def __init__(self, node, frame, parent, previous):
         super().__init__()
         self.node = node
+        self.frame = frame
         node.layout_object = self
         self.children = []
         self.parent = parent
@@ -386,8 +365,8 @@ class EmbedLayout(LayoutObject):
             self.x = self.parent.x
 
 class InputLayout(EmbedLayout):
-    def __init__(self, node, parent, previous):
-        super().__init__(node, parent, previous)
+    def __init__(self, node, parent, previous, frame):
+        super().__init__(node, frame, parent, previous)
 
     def layout(self, zoom):
         super().layout(zoom)
@@ -497,7 +476,7 @@ class LineLayout:
             self.x, self.y, self.width, self.height, self.node)
 
 class TextLayout:
-    def __init__(self, node, word, parent, previous):
+    def __init__(self, node, parent, previous, word):
         self.node = node
         self.word = word
         self.children = []
@@ -559,25 +538,8 @@ def filter_quality(node):
         return skia.FilterQuality.kMedium_FilterQuality
 
 class ImageLayout(EmbedLayout):
-    def __init__(self, node, frame):
-        super().__init__(node)
-        if not hasattr(self.node, "image"):
-            self.load(frame)
-
-    def load(self, frame):
-        assert "src" in self.node.attributes
-        link = self.node.attributes["src"]
-        try:
-            data, image = download_image(link, frame)
-        except Exception as e:
-            print("Image error:", e)
-            data, image = None, None
-        self.node.encoded_data = data
-        self.node.image = image
-
-    def init(self, parent, previous):
-        self.parent = parent
-        self.previous = previous
+    def __init__(self, node, parent, previous, frame):
+        super().__init__(node, frame, parent, previous)
 
     def layout(self, zoom):
         super().layout(zoom)
@@ -625,7 +587,7 @@ IFRAME_DEFAULT_HEIGHT_PX = 150
 
 class IframeLayout(EmbedLayout):
     def __init__(self, node, parent, previous, parent_frame):
-        super().__init__(node, parent, previous)
+        super().__init__(node, parent_frame, parent, previous)
 
     def layout(self, zoom):
         super().layout(zoom)
@@ -1282,6 +1244,27 @@ class Frame:
                 continue
             self.rules.extend(CSSParser(body.decode("utf8")).parse())
 
+        images = [node
+                   for node in tree_to_list(self.nodes, [])
+                   if isinstance(node, Element)
+                   and node.tag == "img"
+                   and "src" in node.attributes]
+        for img in images:
+            img.image = None
+            image_url = resolve_url(img.attributes["src"], self.url)
+            assert self.allowed_request(image_url), \
+                "Blocked load of " + image_url + " due to CSP"
+            try:
+                header, body = request(image_url, self.url)
+                data = skia.Data.MakeWithoutCopy(body)
+            except:
+                data = skia.Data.MakeFromFileName("Broken_Image.png")
+                body = ""
+            image = skia.Image.MakeFromEncoded(data)
+            assert image, "Failed to recognize image format for " + image_url
+            img.encoded_data = body
+            img.image = image
+
         iframes = [node
                    for node in tree_to_list(self.nodes, [])
                    if isinstance(node, Element)
@@ -1402,7 +1385,9 @@ class Frame:
         self.load(url, body)
 
     def keypress(self, char):
-        if self.tab.focus:
+        if self.tab.focus and self.tab.focus.tag == "input":
+            if not "value" in self.tab.focus.attributes:
+                self.activate_element(self.tab.focus)
             if self.get_js().dispatch_event(
                 "keydown", self.tab.focus, self.window_id): return
             self.tab.focus.attributes["value"] += char
