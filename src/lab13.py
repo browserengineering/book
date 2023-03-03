@@ -592,7 +592,6 @@ class TextLayout:
     def layout(self):
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
         size = float(self.node.style["font-size"][:-2])
         self.font = get_font(size, weight, style)
 
@@ -632,7 +631,6 @@ class InputLayout:
     def layout(self):
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
         size = float(self.node.style["font-size"][:-2])
         self.font = get_font(size, weight, style)
 
