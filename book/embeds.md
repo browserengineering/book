@@ -429,7 +429,7 @@ class ImageLayout(EmbedLayout):
 ```
 
 Notice how the positioning of an image depends on the font size of the element,
-via the call to the the layout method of `EmbedLayout` in the superclass. Input
+via the call to the layout method of `EmbedLayout` in the superclass. Input
 elements already had that, but those elements generally have text in them, but
 images do not. That means that a "line" consisting of only an image still has
 has an implicit font affecting its layout somehow.^[In fact, a page with only a

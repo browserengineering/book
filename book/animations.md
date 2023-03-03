@@ -1963,7 +1963,7 @@ compositing, not geometry of layout objects.]
 
 That's because when we test for overlap, we're comparing the
 `composited_bounds` of the display item to the `composited_bounds` of
-the the composited layer. That means we're comparing the original
+the composited layer. That means we're comparing the original
 location of the display item, not its shifted version. We need to
 compute the absolute bounds instead:
 
@@ -2275,8 +2275,8 @@ that objects further away appear to move slower than closer-in objects (due to
 the angle of light changing less quickly). For example, when riding a train,
 the trees nearby move faster across your field of view than the hills in the
 distance. The same mathematical result can be applied to web contents by way of
-the the [`perspective`][perspective] CSS property.
-[This article][parallax] explains how, and [this one][csstricks-perspective]
+the [`perspective`][perspective] CSS property. [This
+article][parallax] explains how, and [this one][csstricks-perspective]
 gives a much deeper dive into perspective in CSS generally.
 
 [parallax]: https://developer.chrome.com/blog/performant-parallaxing/

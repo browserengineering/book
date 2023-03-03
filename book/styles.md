@@ -1,5 +1,5 @@
 ---
-title: Applying User Styles
+title: Applying Author Styles
 chapter: 6
 prev: layout
 next: chrome
@@ -719,14 +719,17 @@ colors as well---the CSS `color` property. But there's a catch:
 can that work?
 
 ::: {.further}
-Web pages can also supply "[alternative style sheets][alternate-ss]",
+Web pages can also supply [alternative style sheets][alternate-ss],
 and some browsers provide (obscure) methods to switch from the default
-to an alternate style sheet. The CSS standard also allows for [browser
-extensions][userstyles] that set custom style sheets for websites.
+to an alternate style sheet. The CSS standard also allows for [user
+styles][userstyles] that set custom style sheets for websites, with a
+priority [between][cascade-origin] browser and website-provided style
+sheets.
 :::
 
 [alternate-ss]: https://developer.mozilla.org/en-US/docs/Web/CSS/Alternative_style_sheets
 [userstyles]: https://userstyles.org
+[cascade-origin]: https://www.w3.org/TR/css-cascade/#cascade-origin
 
 Inherited styles
 ================
