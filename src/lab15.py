@@ -18,6 +18,8 @@ import ssl
 import threading
 import time
 import urllib.parse
+import wbetools
+
 from lab4 import print_tree
 from lab13 import Text, Element
 from lab6 import resolve_url
@@ -31,16 +33,14 @@ from lab11 import draw_text, get_font, linespace, \
     parse_blend_mode, CHROME_PX, SCROLL_STEP
 import OpenGL.GL as GL
 from lab12 import MeasureTime
-from lab13 import USE_BROWSER_THREAD, diff_styles, \
+from lab13 import diff_styles, \
     CompositedLayer, absolute_bounds, absolute_bounds_for_obj, \
     DrawCompositedLayer, Task, TaskRunner, SingleThreadedTaskRunner, \
     clamp_scroll, add_parent_pointers, \
     DisplayItem, DrawText, \
     DrawLine, paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, \
     REFRESH_RATE_SEC, HSTEP, VSTEP, SETTIMEOUT_CODE, XHR_ONLOAD_CODE, \
-    Transform, ANIMATED_PROPERTIES, SaveLayer, \
-    SHOW_COMPOSITED_LAYER_BORDERS
-
+    Transform, ANIMATED_PROPERTIES, SaveLayer
 from lab14 import parse_color, parse_outline, draw_rect, DrawRRect, \
     is_focused, paint_outline, has_outline, \
     device_px, cascade_priority, style, \
@@ -93,7 +93,7 @@ def request(url, top_level_url, payload=None):
     body += "\r\n" + (payload or "")
     s.send(body.encode("utf8"))
 
-    response = s.makefile("b")
+    response = s.makefile("b", newline="\r\n")
 
     statusline = response.readline().decode("utf8")
     version, status, explanation = statusline.split(" ", 2)
@@ -121,24 +121,29 @@ def request(url, top_level_url, payload=None):
     assert "transfer-encoding" not in headers
     assert "content-encoding" not in headers
 
-    body = response.read()
+    content_type = headers.get(
+        'content-type',
+        'application/octet-stream')
+    if content_type.startswith("text") or \
+        content_type.find('javascript') >= 0:
+        body = response.read().decode("utf8")
+    else:
+        body = response.read()
+
     s.close()
+
     return headers, body
 
 class DrawImage(DisplayItem):
     def __init__(self, image, rect, quality):
         super().__init__(rect)
         self.image = image
-        if quality == "high-quality":
-            self.quality = skia.FilterQuality.kHigh_FilterQuality
-        elif quality == "crisp-edges":
-            self.quality = skia.FilterQuality.kLow_FilterQuality
-        else:
-            self.quality = skia.FilterQuality.kMedium_FilterQuality
+        self.quality = quality
 
     def execute(self, canvas):
-        paint = skia.Paint(FilterQuality=self.quality)
-        canvas.drawImageRect(self.image, self.rect, paint)
+        canvas.drawImageRect(
+            self.image, self.rect,
+            skia.Paint(FilterQuality=self.quality))
 
     def __repr__(self):
         return "DrawImage(rect={})".format(
@@ -155,11 +160,11 @@ class DocumentLayout(LayoutObject):
     def __init__(self, node, frame):
         super().__init__()
         self.node = node
-        self.frame = frame
         node.layout_object = self
         self.parent = None
         self.previous = None
         self.children = []
+        self.frame = frame
 
     def layout(self, zoom, width):
         child = BlockLayout(self.node, self, None, self.frame)
@@ -184,12 +189,6 @@ class DocumentLayout(LayoutObject):
 
     def __repr__(self):
         return "DocumentLayout()"
-
-def font(node, zoom):
-    weight = node.style["font-weight"]
-    style = node.style["font-style"]
-    font_size = device_px(float(node.style["font-size"][:-2]), zoom)
-    return get_font(font_size, weight, font_size)
 
 class BlockLayout(LayoutObject):
     def __init__(self, node, parent, previous, frame):
@@ -230,7 +229,6 @@ class BlockLayout(LayoutObject):
 
         self.height = sum([child.height for child in self.children])
 
-
     def recurse(self, node, zoom):
         if isinstance(node, Text):
             self.text(node, zoom)
@@ -254,41 +252,70 @@ class BlockLayout(LayoutObject):
         new_line = LineLayout(self.node, self, last_line)
         self.children.append(new_line)
 
-    def add_inline_child(self, node, zoom, w, child_class, frame, word=None):
-        if self.cursor_x + w > self.x + self.width:
-            self.new_line()
-        line = self.children[-1]
-        if word:
-            child = child_class(node, line, self.previous_word, word)
-        else:
-            child = child_class(node, line, self.previous_word, frame)
-        line.children.append(child)
-        self.previous_word = child
-        self.cursor_x += w + font(node, zoom).measureText(" ")
-
     def text(self, node, zoom):
-        node_font = font(node, zoom)
+        weight = node.style["font-weight"]
+        style = node.style["font-style"]
+        size = device_px(float(node.style["font-size"][:-2]), zoom)
+        font = get_font(size, weight, size)
         for word in node.text.split():
-            w = node_font.measureText(word)
-            self.add_inline_child(node, zoom, w, TextLayout, self.frame, word)
+            w = font.measureText(word)
+            if self.cursor_x + w > self.x + self.width:
+                self.new_line()
+            line = self.children[-1]
+            text = TextLayout(node, word, line, self.previous_word)
+            line.children.append(text)
+            self.previous_word = text
+            self.cursor_x += w + font.measureText(" ")
 
     def input(self, node, zoom):
         w = device_px(INPUT_WIDTH_PX, zoom)
-        self.add_inline_child(node, zoom, w, InputLayout, self.frame) 
+        if self.cursor_x + w > self.x + self.width:
+            self.new_line()
+        line = self.children[-1]
+        input = InputLayout(node, line, self.previous_word)
+        line.children.append(input)
+        self.previous_word = input
+        weight = node.style["font-weight"]
+        style = node.style["font-style"]
+        size = device_px(float(node.style["font-size"][:-2]), zoom)
+        font = get_font(size, weight, size)
+        self.cursor_x += w + font.measureText(" ")
 
     def image(self, node, zoom):
+        img = ImageLayout(node, self.frame)
         if "width" in node.attributes:
             w = device_px(int(node.attributes["width"]), zoom)
         else:
             w = device_px(node.image.width(), zoom)
-        self.add_inline_child(node, zoom, w, ImageLayout, self.frame)
+        if self.cursor_x + w > self.x + self.width:
+            self.new_line()
+        line = self.children[-1]
+        img.init(line, self.previous_word)
+        line.children.append(img)
+        self.previous_word = img
+        weight = node.style["font-weight"]
+        style = node.style["font-style"]
+        size = device_px(float(node.style["font-size"][:-2]), zoom)
+        font = get_font(size, weight, size)
+        self.cursor_x += w + font.measureText(" ")
 
     def iframe(self, node, zoom):
         if "width" in self.node.attributes:
             w = device_px(int(self.node.attributes["width"]), zoom)
         else:
             w = IFRAME_DEFAULT_WIDTH_PX + 2
-        self.add_inline_child(node, zoom, w, IframeLayout, self.frame)
+        if self.cursor_x + w > self.x + self.width:
+            self.new_line()
+        line = self.children[-1]
+        input = IframeLayout(
+            node, line, self.previous_word, self.frame)
+        line.children.append(input)
+        self.previous_word = input
+        weight = node.style["font-weight"]
+        style = node.style["font-style"]
+        size = device_px(float(node.style["font-size"][:-2]), zoom)
+        font = get_font(size, weight, size)
+        self.cursor_x += w + font.measureText(" ")
 
     def paint(self, display_list):
         cmds = []
@@ -312,7 +339,6 @@ class BlockLayout(LayoutObject):
             child.paint(cmds)
 
         if not is_atomic:
-            paint_outline(self.node, cmds, rect)
             cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
 
@@ -325,14 +351,13 @@ class BlockLayout(LayoutObject):
         return False
 
     def __repr__(self):
-        return "BlockLayout(x={}, y={}, width={}, height={}, node={})".format(
-            self.x, self.x, self.width, self.height, self.node)
+        return "BlockLayout[{}](x={}, y={}, width={}, height={}, node={})".format(
+            layout_mode(self.node), self.x, self.y, self.width, self.height, self.node)
 
 class EmbedLayout(LayoutObject):
-    def __init__(self, node, frame, parent, previous):
+    def __init__(self, node, parent=None, previous=None):
         super().__init__()
         self.node = node
-        self.frame = frame
         node.layout_object = self
         self.children = []
         self.parent = parent
@@ -350,7 +375,13 @@ class EmbedLayout(LayoutObject):
         return 0
 
     def layout(self, zoom):
-        self.font = font(self.node, zoom)
+        weight = self.node.style["font-weight"]
+        style = self.node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = device_px(
+            float(self.node.style["font-size"][:-2]), zoom)
+        self.font = get_font(size, weight, style)
+
         if self.previous:
             space = self.previous.font.measureText(" ")
             self.x = self.previous.x + space + self.previous.width
@@ -358,8 +389,8 @@ class EmbedLayout(LayoutObject):
             self.x = self.parent.x
 
 class InputLayout(EmbedLayout):
-    def __init__(self, node, parent, previous, frame):
-        super().__init__(node, frame, parent, previous)
+    def __init__(self, node, parent, previous):
+        super().__init__(node, parent, previous)
 
     def layout(self, zoom):
         super().layout(zoom)
@@ -383,11 +414,11 @@ class InputLayout(EmbedLayout):
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")
         elif self.node.tag == "button":
-            if len(self.node.children) == 1 and \
-               isinstance(self.node.children[0], Text):
-                text = self.node.children[0].text
+            for node in tree_to_list(self.node, []):
+                if isinstance(node, Text):
+                    text = node.text
+                    break
             else:
-                print("Ignoring HTML contents inside button")
                 text = ""
 
         color = self.node.style["color"]
@@ -469,7 +500,7 @@ class LineLayout:
             self.x, self.y, self.width, self.height, self.node)
 
 class TextLayout:
-    def __init__(self, node, parent, previous, word):
+    def __init__(self, node, word, parent, previous):
         self.node = node
         self.word = word
         self.children = []
@@ -488,7 +519,12 @@ class TextLayout:
         return self.font.getMetrics().fDescent * font_multiplier
 
     def layout(self, zoom):
-        self.font = font(self.node, zoom)
+        weight = self.node.style["font-weight"]
+        style = self.node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = device_px(
+            float(self.node.style["font-size"][:-2]), zoom)
+        self.font = get_font(size, weight, style)
 
         # Do not set self.y!!!
         self.width = self.font.measureText(self.word)
@@ -526,8 +562,30 @@ def filter_quality(node):
         return skia.FilterQuality.kMedium_FilterQuality
 
 class ImageLayout(EmbedLayout):
-    def __init__(self, node, parent, previous, frame):
-        super().__init__(node, frame, parent, previous)
+    def __init__(self, node, frame):
+        super().__init__(node)
+        if not hasattr(self.node, "image"):
+            self.load(frame)
+
+    def load(self, frame):
+        assert "src" in self.node.attributes
+        link = self.node.attributes["src"]
+        image_url = resolve_url(link, frame.url)
+        if not frame.allowed_request(image_url):
+            print("Blocked image", link, "due to CSP")
+            return
+        try:
+            header, body = request(image_url, frame.url)
+            self.node.encoded_image = body
+            self.node.image = skia.Image.MakeFromEncoded(
+                skia.Data.MakeWithoutCopy(self.node.encoded_image))
+        except:
+            self.node.image = None
+            print("Failed to load image: " + image_url)
+
+    def init(self, parent, previous):
+        self.parent = parent
+        self.previous = previous
 
     def layout(self, zoom):
         super().layout(zoom)
@@ -546,23 +604,26 @@ class ImageLayout(EmbedLayout):
             self.width = device_px(self.node.image.width(), zoom)
     
         if has_height:
-            self.img_height = \
+            self.height = \
                 device_px(int(self.node.attributes["height"]), zoom)
         elif has_width:
-            self.img_height = (1 / aspect_ratio) * \
+            self.height = (1 / aspect_ratio) * \
                 device_px(int(self.node.attributes["width"]), zoom)
         else:
-            self.img_height = device_px(self.node.image.height(), zoom)
-
-        self.height = max(self.img_height, linespace(self.font))
+            self.height = max(
+                device_px(self.node.image.height(), zoom),
+                linespace(self.font))
 
     def paint(self, display_list):
         cmds = []
+
         rect = skia.Rect.MakeLTRB(
-            self.x, self.y + self.height - self.img_height,
-            self.x + self.width, self.y + self.height)
-        quality = self.node.style.get("image-rendering", "auto")
-        cmds.append(DrawImage(self.node.image, rect, quality))
+            self.x, self.y, self.x + self.width,
+            self.y + self.height)
+
+        cmds.append(DrawImage(self.node.image, rect,
+            filter_quality(self.node)))
+
         display_list.extend(cmds)
 
     def __repr__(self):
@@ -575,7 +636,7 @@ IFRAME_DEFAULT_HEIGHT_PX = 150
 
 class IframeLayout(EmbedLayout):
     def __init__(self, node, parent, previous, parent_frame):
-        super().__init__(node, parent_frame, parent, previous)
+        super().__init__(node, parent, previous)
 
     def layout(self, zoom):
         super().layout(zoom)
@@ -629,21 +690,9 @@ class IframeLayout(EmbedLayout):
 
     def __repr__(self):
         return "IframeLayout(src={}, x={}, y={}, width={}, height={})".format(
-            self.node.attributes["src"], self.x, self.y, self.width, self.height)
+            self.node.attributes["src"], self.x, self.y,
+            self.width, self.height)
 
-def download_image(image_src, frame):
-    image_url = resolve_url(image_src, frame.url)
-    assert frame.allowed_request(image_url), \
-        "Blocked load of " + image_url + " due to CSP"
-    try:
-        header, body = request(image_url, frame.url)
-        data = skia.Data.MakeWithoutCopy(body)
-    except:
-        data = skia.Data.MakeFromFileName("Broken_Image.png")
-        body = ""
-    img = skia.Image.MakeFromEncoded(data)
-    assert img, "Failed to recognize image format for " + image_url
-    return body, img
 
 class AttributeParser:
     def __init__(self, s):
@@ -666,9 +715,9 @@ class AttributeParser:
         quoted = False
         while self.i < len(self.s):
             cur = self.s[self.i]
-            if not cur.isspace() and cur not in "=\"":
+            if not cur.isspace() and cur not in "=\"\'":
                 self.i += 1
-            elif allow_quotes and cur in "\"":
+            elif allow_quotes and cur in "\"\'":
                 in_quote = not in_quote
                 quoted = True
                 self.i += 1
@@ -922,7 +971,6 @@ class JSContext:
         def run_load():
             headers, response = request(
                 full_url, self.tab.url, payload=body)
-            response = response.decode("utf8")
             task = Task(self.dispatch_xhr_onload, response, handle, window_id)
             self.tab.task_runner.schedule_task(task)
             if not isasync:
@@ -1118,9 +1166,6 @@ class AccessibilityNode:
         return "AccessibilityNode(node={} role={} text={}".format(
             str(self.node), self.role, self.text)
 
-
-WINDOW_COUNT = 0
-
 class Frame:
     def __init__(self, tab, parent_frame, frame_element):
         self.tab = tab
@@ -1136,9 +1181,8 @@ class Frame:
         self.nodes = None
         self.url = None
         self.js = None
-        global WINDOW_COUNT
-        self.window_id = WINDOW_COUNT
-        WINDOW_COUNT += 1
+        self.window_id = wbetools.WINDOW_COUNT
+        wbetools.WINDOW_COUNT += 1
         self.frame_width = 0
         self.frame_height = 0
 
@@ -1173,7 +1217,6 @@ class Frame:
         self.scroll = 0
         self.scroll_changed_in_frame = True
         headers, body = request(url, self.url, payload=body)
-        body = body.decode("utf8")
         self.url = url
 
         self.allowed_origins = None
@@ -1184,7 +1227,7 @@ class Frame:
 
         self.nodes = HTMLParser(body).parse()
 
-        if not self.parent_frame or CROSS_ORIGIN_IFRAMES or \
+        if not self.parent_frame or wbetools.FORCE_CROSS_ORIGIN_IFRAMES or \
             url_origin(self.url) != url_origin(self.parent_frame.url):
             self.js = JSContext(self.tab)
             self.js.interp.evaljs(\
@@ -1208,7 +1251,6 @@ class Frame:
                 continue
 
             header, body = request(script_url, url)
-            body = body.decode("utf8")
             task = Task(\
                 self.get_js().run, script_url, body,
                 self.window_id)
@@ -1230,28 +1272,7 @@ class Frame:
                 header, body = request(style_url, url)
             except:
                 continue
-            self.rules.extend(CSSParser(body.decode("utf8")).parse())
-
-        images = [node
-                   for node in tree_to_list(self.nodes, [])
-                   if isinstance(node, Element)
-                   and node.tag == "img"
-                   and "src" in node.attributes]
-        for img in images:
-            img.image = None
-            image_url = resolve_url(img.attributes["src"], self.url)
-            assert self.allowed_request(image_url), \
-                "Blocked load of " + image_url + " due to CSP"
-            try:
-                header, body = request(image_url, self.url)
-                data = skia.Data.MakeWithoutCopy(body)
-            except:
-                data = skia.Data.MakeFromFileName("Broken_Image.png")
-                body = ""
-            image = skia.Image.MakeFromEncoded(data)
-            assert image, "Failed to recognize image format for " + image_url
-            img.encoded_data = body
-            img.image = image
+            self.rules.extend(CSSParser(body).parse())
 
         iframes = [node
                    for node in tree_to_list(self.nodes, [])
@@ -1373,9 +1394,7 @@ class Frame:
         self.load(url, body)
 
     def keypress(self, char):
-        if self.tab.focus and self.tab.focus.tag == "input":
-            if not "value" in self.tab.focus.attributes:
-                self.activate_element(self.tab.focus)
+        if self.tab.focus:
             if self.get_js().dispatch_event(
                 "keydown", self.tab.focus, self.window_id): return
             self.tab.focus.attributes["value"] += char
@@ -1434,7 +1453,7 @@ class Tab:
         self.accessibility_focus = None
 
         self.browser = browser
-        if USE_BROWSER_THREAD:
+        if wbetools.USE_BROWSER_THREAD:
             self.task_runner = TaskRunner(self)
         else:
             self.task_runner = SingleThreadedTaskRunner(self)
@@ -1487,7 +1506,7 @@ class Tab:
                     value = animation.animate()
                     if value:
                         node.style[property_name] = value
-                        if USE_COMPOSITING and \
+                        if wbetools.USE_COMPOSITING and \
                             property_name == "opacity":
                             self.composited_updates.append(node)
                             self.set_needs_paint()
@@ -1629,7 +1648,7 @@ class CommitData:
 
 class Browser:
     def __init__(self):
-        if USE_GPU:
+        if wbetools.USE_GPU:
             self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
                 sdl2.SDL_WINDOWPOS_CENTERED,
                 sdl2.SDL_WINDOWPOS_CENTERED,
@@ -1722,7 +1741,7 @@ class Browser:
         self.spoken_alerts = []
 
     def render(self):
-        assert not USE_BROWSER_THREAD
+        assert not wbetools.USE_BROWSER_THREAD
         tab = self.tabs[self.active_tab]
         tab.run_animation_frame(self.scroll)
 
@@ -1928,7 +1947,7 @@ class Browser:
             active_tab.task_runner.schedule_task(task)
         self.lock.acquire(blocking=True)
         if self.needs_animation_frame and not self.animation_timer:
-            if USE_BROWSER_THREAD:
+            if wbetools.USE_BROWSER_THREAD:
                 self.animation_timer = \
                     threading.Timer(REFRESH_RATE_SEC, callback)
                 self.animation_timer.start()
@@ -2048,9 +2067,9 @@ class Browser:
                 self.set_active_tab(int((e.x - 40) / 80))
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
                 self.add_tab()
-            elif 10 <= e.x < 35 and 50 <= e.y < 90:
+            elif 10 <= e.x < 35 and 40 <= e.y < 90:
                 self.go_back()
-            elif 50 <= e.x < WIDTH - 10 and 50 <= e.y < 90:
+            elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
                 self.focus = "address bar"
                 self.address_bar = ""
             self.set_needs_raster()
@@ -2189,7 +2208,7 @@ class Browser:
         self.chrome_surface.draw(canvas, 0, 0)
         canvas.restore()
 
-        if USE_GPU:
+        if wbetools.USE_GPU:
             self.root_surface.flushAndSubmit()
             sdl2.SDL_GL_SwapWindow(self.sdl_window)
         else:
@@ -2214,13 +2233,13 @@ class Browser:
     def handle_quit(self):
         print(self.measure_composite_raster_and_draw.text())
         self.tabs[self.active_tab].task_runner.set_needs_quit()
-        if USE_GPU:
+        if wbetools.USE_GPU:
             sdl2.SDL_GL_DeleteContext(self.gl_context)
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
 CROSS_ORIGIN_IFRAMES = False
 
-if __name__ == "__main__":
+def main():
     import sys
     import argparse
 
@@ -2238,11 +2257,11 @@ if __name__ == "__main__":
         default=False, help="Whether to treat all iframes as cross-origin")
     args = parser.parse_args()
 
-    USE_BROWSER_THREAD = not args.single_threaded
-    USE_GPU = not args.disable_gpu
-    USE_COMPOSITING = not args.disable_compositing and not args.disable_gpu
-    SHOW_COMPOSITED_LAYER_BORDERS = args.show_composited_layer_borders
-    CROSS_ORIGIN_IFRAMES = args.force_cross_origin_iframes
+    wbetools.USE_BROWSER_THREAD = not args.single_threaded
+    wbetools.USE_GPU = not args.disable_gpu
+    wbetools.USE_COMPOSITING = not args.disable_compositing and not args.disable_gpu
+    wbetools.SHOW_COMPOSITED_LAYER_BORDERS = args.show_composited_layer_borders
+    wbetools.FORCE_CROSS_ORIGIN_IFRAMES = args.force_cross_origin_iframes
 
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
@@ -2302,7 +2321,7 @@ if __name__ == "__main__":
             elif event.type == sdl2.SDL_TEXTINPUT and not ctrl_down:
                 browser.handle_key(event.text.text.decode('utf8'))
         active_tab = browser.tabs[browser.active_tab]
-        if not USE_BROWSER_THREAD:
+        if not wbetools.USE_BROWSER_THREAD:
             if active_tab.task_runner.needs_quit:
                 break
             if browser.needs_animation_frame:
@@ -2310,3 +2329,6 @@ if __name__ == "__main__":
                 browser.render()
         browser.composite_raster_and_draw()
         browser.schedule_animation_frame()
+
+if __name__ == "__main__":
+    main()

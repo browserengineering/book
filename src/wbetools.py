@@ -14,3 +14,10 @@ def patch(existing_cls):
 
 def js_hide(f):
     return f
+
+SHOW_COMPOSITED_LAYER_BORDERS = False
+USE_COMPOSITING = True
+USE_GPU = True
+USE_BROWSER_THREAD = True
+FORCE_CROSS_ORIGIN_IFRAMES = False
+WINDOW_COUNT = 0
