@@ -51,8 +51,6 @@ class MeasureTime:
     def text(self):
         if self.count == 0: return ""
         avg = self.total_s / self.count
-        self.count = 0
-        self.total_s = 0
         return "Time in {} on average: {:>.0f}ms".format(
             self.name, avg * 1000)
 
@@ -596,11 +594,11 @@ class Browser:
                 active_tab.task_runner.schedule_task(task)
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
                 self.load_internal("https://browser.engineering/")
-            elif 10 <= e.x < 35 and 40 <= e.y < 90:
+            elif 10 <= e.x < 35 and 50 <= e.y < 90:
                 active_tab = self.tabs[self.active_tab]
                 task = Task(active_tab.go_back)
                 active_tab.task_runner.schedule_task(task)
-            elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
+            elif 50 <= e.x < WIDTH - 10 and 50 <= e.y < 90:
                 self.focus = "address bar"
                 self.address_bar = ""
             self.set_needs_raster_and_draw()
