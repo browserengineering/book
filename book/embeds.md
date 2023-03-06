@@ -1557,7 +1557,7 @@ definition of the `Window` class separately from `runtime.js`, because
 `wrap_in_window` needs `Window` defined exactly once, not each time it's
 called. The `Window` constructor stores its id, which will be useful later.
 
-``` {.python replace=%20or%20/%20or%20CROSS_ORIGIN_IFRAMES%20or%20}
+``` {.python replace=%20or%20/%20or%20wbetools.FORCE_CROSS_ORIGIN_IFRAMES%20or%20}
     def load(self, url, body=None):
         # ...
         if not self.parent_frame or \
