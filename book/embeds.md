@@ -282,7 +282,7 @@ rules][widget-rendering] that sometimes involve CSS.
 
 [widget-rendering]: https://html.spec.whatwg.org/multipage/rendering.html#widgets
 
-``` {.python}
+``` {.python replace=previous/previous%2c%20frame}
 class InputLayout(EmbedLayout):
     def __init__(self, node, parent, previous):
         super().__init__(node, parent, previous)
@@ -312,7 +312,7 @@ class InputLayout(EmbedLayout):
 Now it's easy to write `ImageLayout`. It'll take its width and height
 from the image itself:
 
-``` {.python}
+``` {.python replace=previous/previous%2c%20frame}
 class ImageLayout(EmbedLayout):
     def __init__(self, node, parent, previous):
         super().__init__(node, parent, previous)
@@ -385,16 +385,16 @@ There's also shared code that handles line layout. To make this
 shared, we need to add parameters for the layout class to instantiate
 and an `extra_param` that varies depending on the child type.
 
-``` {.python}
+``` {.python replace=child_class%2c/child_class%2c%20frame%2c,previous_word)/previous_word%2c%20frame)}
 class BlockLayout(LayoutObject):
-    def add_inline_child(self, node, zoom, w, child_class, frame, word=None):
+    def add_inline_child(self, node, zoom, w, child_class, word=None):
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
         if word:
             child = child_class(node, line, self.previous_word, word)
         else:
-            child = child_class(node, line, self.previous_word, frame)
+            child = child_class(node, line, self.previous_word)
         line.children.append(child)
         self.previous_word = child
         self.cursor_x += w + font(node, zoom).measureText(" ")
@@ -402,22 +402,22 @@ class BlockLayout(LayoutObject):
 
 We can redefine  `text` and `input` in a satisfying way now:
 
-``` {.python}
+``` {.python replace=TextLayout/TextLayout%2c%20self.frame,InputLayout/InputLayout%2c%20self.frame}
 class BlockLayout(LayoutObject):
     def text(self, node, zoom):
         node_font = font(node, zoom)
         for word in node.text.split():
             w = node_font.measureText(word)
-            self.add_inline_child(node, zoom, w, TextLayout, self.frame, word)
+            self.add_inline_child(node, zoom, w, TextLayout, word)
 
     def input(self, node, zoom):
         w = device_px(INPUT_WIDTH_PX, zoom)
-        self.add_inline_child(node, zoom, w, InputLayout, self.frame) 
+        self.add_inline_child(node, zoom, w, InputLayout) 
 ```
 
 Adding `image` is now also straightforward:
 
-``` {.python}
+``` {.python replace=ImageLayout/ImageLayout%2c%20self.frame}
 class BlockLayout(LayoutObject):
     def recurse(self, node, zoom):
             # ...
@@ -426,7 +426,7 @@ class BlockLayout(LayoutObject):
     
     def image(self, node, zoom):
         w = device_px(node.image.width(), zoom)
-        self.add_inline_child(node, zoom, w, ImageLayout, self.frame)
+        self.add_inline_child(node, zoom, w, ImageLayout)
 ```
 
 Images now appear in the display list and can be seen on the screen.
@@ -889,7 +889,7 @@ aspect ratio, because iframes don't have an intrinsic size.)
 ``` {.python}
 class IframeLayout(EmbedLayout):
     def __init__(self, node, parent, previous, parent_frame):
-        super().__init__(node, parent_frame, parent, previous)
+        super().__init__(node, parent, previous, parent_frame)
 
     def layout(self, zoom):
         # ...

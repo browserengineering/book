@@ -330,7 +330,7 @@ class BlockLayout(LayoutObject):
             self.x, self.x, self.width, self.height, self.node)
 
 class EmbedLayout(LayoutObject):
-    def __init__(self, node, frame, parent, previous):
+    def __init__(self, node, parent, previous, frame):
         super().__init__()
         self.node = node
         self.frame = frame
@@ -360,7 +360,7 @@ class EmbedLayout(LayoutObject):
 
 class InputLayout(EmbedLayout):
     def __init__(self, node, parent, previous, frame):
-        super().__init__(node, frame, parent, previous)
+        super().__init__(node, parent, previous, frame)
 
     def layout(self, zoom):
         super().layout(zoom)
@@ -528,7 +528,7 @@ def filter_quality(node):
 
 class ImageLayout(EmbedLayout):
     def __init__(self, node, parent, previous, frame):
-        super().__init__(node, frame, parent, previous)
+        super().__init__(node, parent, previous, frame)
 
     def layout(self, zoom):
         super().layout(zoom)
@@ -571,7 +571,7 @@ IFRAME_DEFAULT_HEIGHT_PX = 150
 
 class IframeLayout(EmbedLayout):
     def __init__(self, node, parent, previous, parent_frame):
-        super().__init__(node, parent_frame, parent, previous)
+        super().__init__(node, parent, previous, parent_frame)
 
     def layout(self, zoom):
         super().layout(zoom)
