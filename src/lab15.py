@@ -667,9 +667,9 @@ class AttributeParser:
         quoted = False
         while self.i < len(self.s):
             cur = self.s[self.i]
-            if not cur.isspace() and cur not in "=\"":
+            if not cur.isspace() and cur not in "=\"\'":
                 self.i += 1
-            elif allow_quotes and cur in "\"":
+            elif allow_quotes and cur in "\"\'":
                 in_quote = not in_quote
                 quoted = True
                 self.i += 1
