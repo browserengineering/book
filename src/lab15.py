@@ -1185,7 +1185,7 @@ class Frame:
 
         self.nodes = HTMLParser(body).parse()
 
-        if not self.parent_frame or wbetools.CROSS_ORIGIN_IFRAMES or \
+        if not self.parent_frame or wbetools.FORCE_CROSS_ORIGIN_IFRAMES or \
             url_origin(self.url) != url_origin(self.parent_frame.url):
             self.js = JSContext(self.tab)
             self.js.interp.evaljs(\
@@ -2241,7 +2241,7 @@ if __name__ == "__main__":
     wbetools.USE_GPU = not args.disable_gpu
     wbetools.USE_COMPOSITING = not args.disable_compositing and not args.disable_gpu
     wbetools.SHOW_COMPOSITED_LAYER_BORDERS = args.show_composited_layer_borders
-    wbetools.CROSS_ORIGIN_IFRAMES = args.force_cross_origin_iframes
+    wbetools.FORCE_CROSS_ORIGIN_IFRAMES = args.force_cross_origin_iframes
 
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
