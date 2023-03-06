@@ -1234,25 +1234,23 @@ class Frame:
             self.rules.extend(CSSParser(body.decode("utf8")).parse())
 
         images = [node
-                   for node in tree_to_list(self.nodes, [])
-                   if isinstance(node, Element)
-                   and node.tag == "img"
-                   and "src" in node.attributes]
+            for node in tree_to_list(self.nodes, [])
+            if isinstance(node, Element)
+            and node.tag == "img"
+            and node.attributes.get("src")]
         for img in images:
-            img.image = None
-            image_url = resolve_url(img.attributes["src"], self.url)
-            assert self.allowed_request(image_url), \
-                "Blocked load of " + image_url + " due to CSP"
             try:
+                image_url = resolve_url(img.attributes["src"], self.url)
+                assert self.allowed_request(image_url), \
+                    "Blocked load of " + image_url + " due to CSP"
                 header, body = request(image_url, self.url)
+                img.encoded_data = body
                 data = skia.Data.MakeWithoutCopy(body)
-            except:
-                data = skia.Data.MakeFromFileName("Broken_Image.png")
-                body = ""
-            image = skia.Image.MakeFromEncoded(data)
-            assert image, "Failed to recognize image format for " + image_url
-            img.encoded_data = body
-            img.image = image
+                img.image = skia.Image.MakeFromEncoded(data)
+                assert img.image, "Failed to recognize image format for " + image_url
+            except Exception as e:
+                print(e)
+                img.image = skia.Image.open("Broken_Image.png")
 
         iframes = [node
                    for node in tree_to_list(self.nodes, [])

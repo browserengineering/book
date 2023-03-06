@@ -101,15 +101,15 @@ use the binary data directly.
 class Tab:
     def load(self, url, body=None):
         # ...
-        imgs = [node
+        images = [node
             for node in tree_to_list(self.nodes, [])
             if isinstance(node, Element)
             and node.tag == "img"
             and node.attributes.get("src")]
-        for img in imgs:
-            image_url = resolve_url(image_src, tab.url)
-            assert self.allowed_request(image_url),
-                "Blocked image", image_url, "due to CSP"
+        for img in images:
+            image_url = resolve_url(img.attributes["src"], self.url)
+            assert self.allowed_request(image_url), \
+                "Blocked load of " + image_url + " due to CSP"
             header, body = request(image_url, self.url)
 ```
 
@@ -119,7 +119,7 @@ Once we've downloaded the image, we need to turn it into a Skia
 ``` {.python replace=Tab/Frame}
 class Tab:
     def load(self, url, body=None):
-        for img in imgs:
+        for img in images:
             # ...
             img.encoded_data = body
             data = skia.Data.MakeWithoutCopy(body)
@@ -149,7 +149,7 @@ load a "broken image" placeholder (I used [this one][broken-image]):
 ``` {.python replace=Tab/Frame}
 class Tab:
     def load(self, url, body=None):
-        for img in imgs:
+        for img in images:
             try:
                 # ...
             except Exception as e:
