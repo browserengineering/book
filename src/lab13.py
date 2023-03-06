@@ -663,6 +663,7 @@ class InputLayout:
             else:
                 print("Ignoring HTML contents inside button")
                 text = ""
+
         color = self.node.style["color"]
         cmds.append(DrawText(self.x, self.y,
                              text, self.font, color))

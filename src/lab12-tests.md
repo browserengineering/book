@@ -82,7 +82,7 @@ Scrolling down causes a draw but nothing else.
     Focusing the address bar and typing into it causes chrome raster and draw,
     but not tab raster
 
-    >>> browser.handle_click(Event(51, 41))
+    >>> browser.handle_click(Event(51, 51))
     >>> browser.focus
     'address bar'
     >>> browser.handle_key('c')

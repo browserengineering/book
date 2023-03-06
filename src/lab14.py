@@ -396,7 +396,6 @@ class TextLayout:
     def layout(self, zoom):
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
         size = device_px(
             float(self.node.style["font-size"][:-2]), zoom)
         self.font = get_font(size, weight, style)
@@ -442,7 +441,6 @@ class InputLayout:
     def layout(self, zoom):
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
         size = \
             device_px(float(self.node.style["font-size"][:-2]), zoom)
         self.font = get_font(size, weight, style)
@@ -478,6 +476,7 @@ class InputLayout:
             else:
                 print("Ignoring HTML contents inside button")
                 text = ""
+
         color = self.node.style["color"]
         cmds.append(DrawText(self.x, self.y,
                              text, self.font, color))
