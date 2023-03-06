@@ -1618,7 +1618,7 @@ something, not for no-ops), regardless of whether they are animating,
 but we'll set it to `False` for `ClipRRect` commands, since those
 can't animate in our browser.
 
-``` {.python replace=self.should_save/USE_COMPOSITING%20and%20self.should_save}
+``` {.python replace=self.should_save/wbetools.USE_COMPOSITING%20and%20self.should_save}
 class SaveLayer(DisplayItem):
     def __init__(self, sk_paint, node, children, should_save=True):
         # ...
