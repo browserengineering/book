@@ -10,14 +10,13 @@ This file contains tests for Chapter 14 (Accessibility).
     >>> _ = test.ssl.patch().start()
     >>> _ = test.gtts.patch()
     >>> threading.Lock = test.MockLock
-    >>> import lab13
     >>> import lab14
     >>> import time
     >>> import threading
     >>> import math
-    >>> lab14.USE_BROWSER_THREAD = False
-    >>> lab13.USE_GPU = False
-    >>> lab14.USE_GPU = False
+    >>> import wbetools
+    >>> wbetools.USE_BROWSER_THREAD = False
+    >>> wbetools.USE_GPU = False
 
 Outlines
 ========

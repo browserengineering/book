@@ -12,7 +12,8 @@ This file contains tests for Chapter 12 (Scheduling and Threading).
     >>> import lab12
     >>> import time
     >>> import threading
-    >>> lab12.USE_BROWSER_THREAD = False
+    >>> import wbetools
+    >>> wbetools.USE_BROWSER_THREAD = False
 
 Testing basic loading and dirty bits
 ====================================

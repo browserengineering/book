@@ -15,6 +15,8 @@ import ssl
 import threading
 import time
 import urllib.parse
+import wbetools
+
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab4 import Text, Element, print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS
@@ -162,8 +164,6 @@ class JSContext:
     def requestAnimationFrame(self):
         self.tab.browser.set_needs_animation_frame(self.tab)
 
-USE_BROWSER_THREAD = True
-
 def raster(display_list, canvas):
     for cmd in display_list:
         cmd.execute(canvas)
@@ -181,7 +181,7 @@ class Tab:
         self.needs_raf_callbacks = False
         self.needs_render = False
         self.browser = browser
-        if USE_BROWSER_THREAD:
+        if wbetools.USE_BROWSER_THREAD:
             self.task_runner = TaskRunner(self)
         else:
             self.task_runner = SingleThreadedTaskRunner(self)
@@ -508,7 +508,7 @@ class Browser:
         self.active_tab_display_list = None
 
     def render(self):
-        assert not USE_BROWSER_THREAD
+        assert not wbetools.USE_BROWSER_THREAD
         tab = self.tabs[self.active_tab]
         tab.run_animation_frame(self.scroll)
 
@@ -559,7 +559,7 @@ class Browser:
             active_tab.task_runner.schedule_task(task)
         self.lock.acquire(blocking=True)
         if self.needs_animation_frame and not self.animation_timer:
-            if USE_BROWSER_THREAD:
+            if wbetools.USE_BROWSER_THREAD:
                 self.animation_timer = \
                     threading.Timer(REFRESH_RATE_SEC, callback)
                 self.animation_timer.start()
@@ -748,7 +748,7 @@ if __name__ == "__main__":
         help='Whether to run the browser without a browser thread')
     args = parser.parse_args()
 
-    USE_BROWSER_THREAD = not args.single_threaded
+    wbetools.USE_BROWSER_THREAD = not args.single_threaded
 
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
@@ -772,7 +772,7 @@ if __name__ == "__main__":
             elif event.type == sdl2.SDL_TEXTINPUT:
                 browser.handle_key(event.text.text.decode('utf8'))
         active_tab = browser.tabs[browser.active_tab]
-        if not USE_BROWSER_THREAD:
+        if not wbetools.USE_BROWSER_THREAD:
             if active_tab.task_runner.needs_quit:
                 break
             if browser.needs_animation_frame:

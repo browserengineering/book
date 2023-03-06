@@ -32,7 +32,7 @@ from lab11 import FONTS, get_font, parse_color, parse_blend_mode, linespace
 from lab11 import draw_line, draw_text, get_font
 from lab11 import BlockLayout, DocumentLayout, LineLayout, TextLayout, InputLayout
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
-from lab12 import Task, REFRESH_RATE_SEC, USE_BROWSER_THREAD
+from lab12 import Task, REFRESH_RATE_SEC
 
 @wbetools.patch(Text)
 class Text:
@@ -247,7 +247,7 @@ class SaveLayer(DisplayItem):
         self.should_save = should_save
         self.sk_paint = sk_paint
 
-        if USE_COMPOSITING and self.should_save:
+        if wbetools.USE_COMPOSITING and self.should_save:
             self.needs_compositing = True
 
     def execute(self, canvas):
@@ -292,8 +292,6 @@ def parse_transform(transform_str):
     (x_px, y_px) = \
         transform_str[left_paren + 1:right_paren].split(",")
     return (float(x_px[:-2]), float(y_px[:-2]))
-
-USE_COMPOSITING = True
 
 class CSSParser:
     def __init__(self, s):
@@ -952,8 +950,6 @@ def style(node, rules, tab):
     for child in node.children:
         style(child, rules, tab)
 
-SHOW_COMPOSITED_LAYER_BORDERS = False
-
 def absolute_bounds_for_obj(obj):
     rect = skia.Rect.MakeXYWH(
         obj.x, obj.y, obj.width, obj.height)
@@ -1007,7 +1003,7 @@ class CompositedLayer:
         irect = bounds.roundOut()
 
         if not self.surface:
-            if USE_GPU:
+            if wbetools.USE_GPU:
                 self.surface = skia.Surface.MakeRenderTarget(
                     self.skia_context, skia.Budgeted.kNo,
                     skia.ImageInfo.MakeN32Premul(
@@ -1025,7 +1021,7 @@ class CompositedLayer:
             item.execute(canvas)
         canvas.restore()
 
-        if SHOW_COMPOSITED_LAYER_BORDERS:
+        if wbetools.SHOW_COMPOSITED_LAYER_BORDERS:
             draw_rect(
                 canvas, 0, 0, irect.width() - 1,
                 irect.height() - 1,
@@ -1061,7 +1057,7 @@ class Tab:
         self.needs_layout = False
         self.needs_paint = False
         self.browser = browser
-        if USE_BROWSER_THREAD:
+        if wbetools.USE_BROWSER_THREAD:
             self.task_runner = TaskRunner(self)
         else:
             self.task_runner = SingleThreadedTaskRunner(self)
@@ -1159,7 +1155,7 @@ class Tab:
                 value = animation.animate()
                 if value:
                     node.style[property_name] = value
-                    if USE_COMPOSITING and \
+                    if wbetools.USE_COMPOSITING and \
                         property_name == "opacity":
                         self.composited_updates.append(node)
                         self.set_needs_paint()
@@ -1311,11 +1307,10 @@ def add_parent_pointers(nodes, parent=None):
         node.parent = parent
         add_parent_pointers(node.children, node)
 
-USE_GPU = True
 
 class Browser:
     def __init__(self):
-        if USE_GPU:
+        if wbetools.USE_GPU:
             self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
                 sdl2.SDL_WINDOWPOS_CENTERED,
                 sdl2.SDL_WINDOWPOS_CENTERED,
@@ -1393,7 +1388,7 @@ class Browser:
         self.draw_list = []
 
     def render(self):
-        assert not USE_BROWSER_THREAD
+        assert not wbetools.USE_BROWSER_THREAD
         tab = self.tabs[self.active_tab]
         tab.run_animation_frame(self.scroll)
 
@@ -1525,7 +1520,7 @@ class Browser:
             active_tab.task_runner.schedule_task(task)
         self.lock.acquire(blocking=True)
         if self.needs_animation_frame and not self.animation_timer:
-            if USE_BROWSER_THREAD:
+            if wbetools.USE_BROWSER_THREAD:
                 self.animation_timer = \
                     threading.Timer(REFRESH_RATE_SEC, callback)
                 self.animation_timer.start()
@@ -1677,7 +1672,7 @@ class Browser:
         self.chrome_surface.draw(canvas, 0, 0)
         canvas.restore()
 
-        if USE_GPU:
+        if wbetools.USE_GPU:
             self.root_surface.flushAndSubmit()
             sdl2.SDL_GL_SwapWindow(self.sdl_window)
         else:
@@ -1702,7 +1697,7 @@ class Browser:
     def handle_quit(self):
         print(self.measure_composite_raster_and_draw.text())
         self.tabs[self.active_tab].task_runner.set_needs_quit()
-        if USE_GPU:
+        if wbetools.USE_GPU:
             sdl2.SDL_GL_DeleteContext(self.gl_context)
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
@@ -1722,10 +1717,10 @@ if __name__ == "__main__":
         default=False, help='Whether to visually indicate composited layer borders')
     args = parser.parse_args()
 
-    USE_BROWSER_THREAD = not args.single_threaded
-    USE_GPU = not args.disable_gpu
-    USE_COMPOSITING = not args.disable_compositing and not args.disable_gpu
-    SHOW_COMPOSITED_LAYER_BORDERS = args.show_composited_layer_borders
+    wbetools.USE_BROWSER_THREAD = not args.single_threaded
+    wbetools.USE_GPU = not args.disable_gpu
+    wbetools.USE_COMPOSITING = not args.disable_compositing and not args.disable_gpu
+    wbetools.SHOW_COMPOSITED_LAYER_BORDERS = args.show_composited_layer_borders
 
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
@@ -1749,7 +1744,7 @@ if __name__ == "__main__":
             elif event.type == sdl2.SDL_TEXTINPUT:
                 browser.handle_key(event.text.text.decode('utf8'))
         active_tab = browser.tabs[browser.active_tab]
-        if not USE_BROWSER_THREAD:
+        if not wbetools.USE_BROWSER_THREAD:
             if active_tab.task_runner.needs_quit:
                 break
             if browser.needs_animation_frame:

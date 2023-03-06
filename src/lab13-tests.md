@@ -13,9 +13,10 @@ This file contains tests for Chapter 13 (Animations and Compositing).
     >>> import time
     >>> import threading
     >>> import math
-    >>> lab13.USE_BROWSER_THREAD = False
-    >>> lab13.USE_GPU = False
     >>> lab13.TaskRunner = test.MockTaskRunner
+    >>> import wbetools
+    >>> wbetools.USE_BROWSER_THREAD = False
+    >>> wbetools.USE_GPU = False
 
 Testing CSS transtions
 ======================

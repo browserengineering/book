@@ -18,6 +18,8 @@ import ssl
 import threading
 import time
 import urllib.parse
+import wbetools
+
 from lab4 import print_tree
 from lab13 import Text, Element
 from lab6 import resolve_url
@@ -31,15 +33,14 @@ from lab11 import draw_text, get_font, linespace, \
     parse_blend_mode, CHROME_PX, SCROLL_STEP
 import OpenGL.GL as GL
 from lab12 import MeasureTime
-from lab13 import USE_BROWSER_THREAD, diff_styles, \
+from lab13 import diff_styles, \
     CompositedLayer, absolute_bounds, absolute_bounds_for_obj, \
     DrawCompositedLayer, Task, TaskRunner, SingleThreadedTaskRunner, \
     clamp_scroll, add_parent_pointers, \
     DisplayItem, DrawText, \
     DrawLine, paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, \
     REFRESH_RATE_SEC, HSTEP, VSTEP, SETTIMEOUT_CODE, XHR_ONLOAD_CODE, \
-    Transform, ANIMATED_PROPERTIES, SaveLayer, \
-    SHOW_COMPOSITED_LAYER_BORDERS
+    Transform, ANIMATED_PROPERTIES, SaveLayer
 
 from lab14 import parse_color, parse_outline, draw_rect, DrawRRect, \
     is_focused, paint_outline, has_outline, \
@@ -1184,7 +1185,7 @@ class Frame:
 
         self.nodes = HTMLParser(body).parse()
 
-        if not self.parent_frame or CROSS_ORIGIN_IFRAMES or \
+        if not self.parent_frame or wbetools.FORCE_CROSS_ORIGIN_IFRAMES or \
             url_origin(self.url) != url_origin(self.parent_frame.url):
             self.js = JSContext(self.tab)
             self.js.interp.evaljs(\
@@ -1434,7 +1435,7 @@ class Tab:
         self.accessibility_focus = None
 
         self.browser = browser
-        if USE_BROWSER_THREAD:
+        if wbetools.USE_BROWSER_THREAD:
             self.task_runner = TaskRunner(self)
         else:
             self.task_runner = SingleThreadedTaskRunner(self)
@@ -1487,7 +1488,7 @@ class Tab:
                     value = animation.animate()
                     if value:
                         node.style[property_name] = value
-                        if USE_COMPOSITING and \
+                        if wbetools.USE_COMPOSITING and \
                             property_name == "opacity":
                             self.composited_updates.append(node)
                             self.set_needs_paint()
@@ -1629,7 +1630,7 @@ class CommitData:
 
 class Browser:
     def __init__(self):
-        if USE_GPU:
+        if wbetools.USE_GPU:
             self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
                 sdl2.SDL_WINDOWPOS_CENTERED,
                 sdl2.SDL_WINDOWPOS_CENTERED,
@@ -1722,7 +1723,7 @@ class Browser:
         self.spoken_alerts = []
 
     def render(self):
-        assert not USE_BROWSER_THREAD
+        assert not wbetools.USE_BROWSER_THREAD
         tab = self.tabs[self.active_tab]
         tab.run_animation_frame(self.scroll)
 
@@ -1928,7 +1929,7 @@ class Browser:
             active_tab.task_runner.schedule_task(task)
         self.lock.acquire(blocking=True)
         if self.needs_animation_frame and not self.animation_timer:
-            if USE_BROWSER_THREAD:
+            if wbetools.USE_BROWSER_THREAD:
                 self.animation_timer = \
                     threading.Timer(REFRESH_RATE_SEC, callback)
                 self.animation_timer.start()
@@ -2189,7 +2190,7 @@ class Browser:
         self.chrome_surface.draw(canvas, 0, 0)
         canvas.restore()
 
-        if USE_GPU:
+        if wbetools.USE_GPU:
             self.root_surface.flushAndSubmit()
             sdl2.SDL_GL_SwapWindow(self.sdl_window)
         else:
@@ -2214,11 +2215,9 @@ class Browser:
     def handle_quit(self):
         print(self.measure_composite_raster_and_draw.text())
         self.tabs[self.active_tab].task_runner.set_needs_quit()
-        if USE_GPU:
+        if wbetools.USE_GPU:
             sdl2.SDL_GL_DeleteContext(self.gl_context)
         sdl2.SDL_DestroyWindow(self.sdl_window)
-
-CROSS_ORIGIN_IFRAMES = False
 
 if __name__ == "__main__":
     import sys
@@ -2238,11 +2237,11 @@ if __name__ == "__main__":
         default=False, help="Whether to treat all iframes as cross-origin")
     args = parser.parse_args()
 
-    USE_BROWSER_THREAD = not args.single_threaded
-    USE_GPU = not args.disable_gpu
-    USE_COMPOSITING = not args.disable_compositing and not args.disable_gpu
-    SHOW_COMPOSITED_LAYER_BORDERS = args.show_composited_layer_borders
-    CROSS_ORIGIN_IFRAMES = args.force_cross_origin_iframes
+    wbetools.USE_BROWSER_THREAD = not args.single_threaded
+    wbetools.USE_GPU = not args.disable_gpu
+    wbetools.USE_COMPOSITING = not args.disable_compositing and not args.disable_gpu
+    wbetools.SHOW_COMPOSITED_LAYER_BORDERS = args.show_composited_layer_borders
+    wbetools.FORCE_CROSS_ORIGIN_IFRAMES = args.force_cross_origin_iframes
 
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
@@ -2302,7 +2301,7 @@ if __name__ == "__main__":
             elif event.type == sdl2.SDL_TEXTINPUT and not ctrl_down:
                 browser.handle_key(event.text.text.decode('utf8'))
         active_tab = browser.tabs[browser.active_tab]
-        if not USE_BROWSER_THREAD:
+        if not wbetools.USE_BROWSER_THREAD:
             if active_tab.task_runner.needs_quit:
                 break
             if browser.needs_animation_frame:

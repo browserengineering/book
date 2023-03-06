@@ -15,9 +15,9 @@ This file contains tests for Chapter 15 (Embedded Content).
     >>> import time
     >>> import threading
     >>> import math
-    >>> lab15.USE_BROWSER_THREAD = False
-    >>> lab13.USE_GPU = False
-    >>> lab15.USE_GPU = False
+    >>> import wbetools
+    >>> wbetools.USE_BROWSER_THREAD = False
+    >>> wbetools.USE_GPU = False
 
 Test images
 ===========
