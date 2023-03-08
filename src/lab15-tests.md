@@ -42,9 +42,9 @@ Let's verify that we can request the image:
     >>> type(body)
     <class 'bytes'>
 
-Moreover, the `download_image` method works directly:
+The browser has now downloaded a Skia `Image` object:
 
-    >>> body, img = lab15.download_image("/img.png", frame)
+    >>> img = frame.nodes.children[0].children[0].image
     >>> img # doctest: +ELLIPSIS
     Image(5, 5, ..., AlphaType.kPremul_AlphaType)
     >>> img.width()
