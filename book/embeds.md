@@ -253,11 +253,11 @@ option to encode the email in `text/plain`, however.
 Embedded layout
 ===============
 
-By now, you probably have a good sense of how to add images to our
-browser's layout and paint process. We'll need to create an
-`ImageLayout` method; add a new `image` case to `BlockLayout`'s
-`recurse` method; and make sure the `ImageLayout`'s `paint` method
-generates a `DrawImage` command.
+Based on your experience with prior chapters, you can probably guess
+how to add images to our browser's layout and paint process. We'll
+need to create an `ImageLayout` method; add a new `image` case to
+`BlockLayout`'s `recurse` method; and make sure the `ImageLayout`'s
+`paint` method generates a `DrawImage` command.
 
 As we do this, you might recall doing something very similar for
 `<input>` elements. In fact, text areas and buttons are very similar
@@ -293,10 +293,10 @@ class InputLayout(EmbedLayout):
 
 Now, the idea is that `EmbedLayout` should provide common layout code
 for all kinds of embedded content, while its subclasses like
-`InputLayout` should provide the custom code needed to draw that specific
-kind of embedded content. Different types of embedded content might
-have different widths and heights, so that should happen in
-`InputLayout`. Likewise, `paint` should happen in `InputLayout`:
+`InputLayout` should provide the custom code needed to draw that
+specific kind. Different types of embedded content might have
+different widths and heights, so that should happen in `InputLayout`.
+Likewise, `paint` should happen in `InputLayout`:
 
 ``` {.python}
 class InputLayout(EmbedLayout):
