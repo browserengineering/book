@@ -288,7 +288,7 @@ class BlockLayout(LayoutObject):
         if "width" in self.node.attributes:
             w = device_px(int(self.node.attributes["width"]), zoom)
         else:
-            w = IFRAME_DEFAULT_WIDTH_PX + 2
+            w = IFRAME_WIDTH_PX + 2
         self.add_inline_child(node, zoom, w, IframeLayout, self.frame)
 
     def paint(self, display_list):
@@ -571,8 +571,8 @@ class ImageLayout(EmbedLayout):
             "height={})").format(self.node.attributes["src"],
                 self.x, self.y, self.width, self.height)
 
-IFRAME_DEFAULT_WIDTH_PX = 300
-IFRAME_DEFAULT_HEIGHT_PX = 150
+IFRAME_WIDTH_PX = 300
+IFRAME_HEIGHT_PX = 150
 
 class IframeLayout(EmbedLayout):
     def __init__(self, node, parent, previous, parent_frame):
@@ -581,28 +581,24 @@ class IframeLayout(EmbedLayout):
     def layout(self, zoom):
         super().layout(zoom)
 
-        has_width = "width" in self.node.attributes
-        has_height = "height" in self.node.attributes
+        width_attr = self.node.attributes.get("width")
+        height_attr = self.node.attributes.get("height")
 
-        if has_width:
-            self.width = \
-                device_px(int(self.node.attributes["width"]), zoom)
+        if width_attr:
+            self.width = device_px(int(width_attr), zoom)
         else:
-            self.width = device_px(
-                IFRAME_DEFAULT_WIDTH_PX + 2, zoom)
+            self.width = device_px(IFRAME_WIDTH_PX + 2, zoom)
 
-        if has_height:
-            self.height = \
-                device_px(int(self.node.attributes["height"]), zoom)
+        if height_attr:
+            self.height = device_px(int(height_attr), zoom)
         else:
-            self.height = device_px(
-                IFRAME_DEFAULT_HEIGHT_PX + 2, zoom)
+            self.height = device_px(IFRAME_HEIGHT_PX + 2, zoom)
 
         self.node.frame.frame_height = self.height - 2
         self.node.frame.frame_width = self.width - 2
 
     def paint(self, display_list):
-        cmds = []
+        frame_cmds = []
 
         rect = skia.Rect.MakeLTRB(
             self.x, self.y,
@@ -612,15 +608,13 @@ class IframeLayout(EmbedLayout):
         if bgcolor != "transparent":
             radius = float(
                 self.node.style.get("border-radius", "0px")[:-2])
-            cmds.append(DrawRRect(rect, radius, bgcolor))
+            frame_cmds.append(DrawRRect(rect, radius, bgcolor))
 
-        self.node.frame.paint(cmds)
+        self.node.frame.paint(frame_cmds)
 
-        cmds = [Transform(
-            (self.x + 1, self.y + 1), rect, self.node, cmds)]
-
+        offset = (self.x + 1, self.y + 1)
+        cmds = [Transform(offset, rect, self.node, frame_cmds)]
         paint_outline(self.node, cmds, rect)
-
         cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
 
@@ -1137,12 +1131,13 @@ class Frame:
         self.nodes = None
         self.url = None
         self.js = None
-        global WINDOW_COUNT
-        self.window_id = WINDOW_COUNT
-        WINDOW_COUNT += 1
+
         self.frame_width = 0
         self.frame_height = 0
 
+        global WINDOW_COUNT
+        self.window_id = WINDOW_COUNT
+        WINDOW_COUNT += 1
         self.tab.window_id_to_frame[self.window_id] = self
 
         with open("browser15.css") as f:
@@ -1456,7 +1451,7 @@ class Tab:
         self.root_frame.frame_height = HEIGHT - CHROME_PX
 
     def set_needs_render_all_frames(self):
-        for frame in self.window_id_to_frame.values():
+        for id, frame in self.window_id_to_frame.items():
             frame.set_needs_render()
 
     def set_needs_accessibility(self):
@@ -1532,7 +1527,7 @@ class Tab:
     def render(self):
         self.measure_render.start()
 
-        for frame in self.window_id_to_frame.values():
+        for id, frame in self.window_id_to_frame.items():
             frame.render()
 
         if self.needs_accessibility:
@@ -1543,7 +1538,6 @@ class Tab:
 
         if self.needs_paint:
             self.display_list = []
-
             self.root_frame.paint(self.display_list)
             self.needs_paint = False
 
