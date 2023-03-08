@@ -8,7 +8,7 @@ This file contains tests for Chapter 13 (Animations and Compositing).
     >>> import test12 as test
     >>> _ = test.socket.patch().start()
     >>> _ = test.ssl.patch().start()
-    >>> _ = test.MockLock.patch()
+    >>> _ = test.MockLock.patch().start()
     >>> import lab13
     >>> import time
     >>> import threading

@@ -9,7 +9,7 @@ This file contains tests for Chapter 14 (Accessibility).
     >>> _ = test.socket.patch().start()
     >>> _ = test.ssl.patch().start()
     >>> _ = test.gtts.patch()
-    >>> _ = test.MockLock.patch()
+    >>> _ = test.MockLock.patch().start()
     >>> import lab14
     >>> import time
     >>> import threading
