@@ -157,7 +157,7 @@ class Tab:
                 img.image = skia.Image.open("Broken_Image.png")
 ```
 
-Note that when errors don't occur, created the `Image` object using
+Note that when errors don't occur, we created the `Image` object using
 the `MakeFromEncoded` method. The name hints that the image we've
 downloaded isn't raw image bytes: all of the image formats you
 know---JPG, PNG, and the many more obscure ones---encode the image
