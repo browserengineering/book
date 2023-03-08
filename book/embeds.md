@@ -1988,8 +1988,8 @@ like [Rust][rust] have message-passing as a core language feature.
 [rust]: https://en.wikipedia.org/wiki/Rust_(programming_language)
 
 
-Iframe security
-===============
+Isolation and timing
+====================
 
 Iframes add a whole new layer of security challenges atop what we
 discussed in [Chapter 10](security.md). The power to embed one web
