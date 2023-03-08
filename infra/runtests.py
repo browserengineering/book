@@ -42,6 +42,7 @@ if __name__ == "__main__":
     argparser = argparse.ArgumentParser(description="Compare book blocks to teacher's copy")
     argparser.add_argument("config", type=str)
     argparser.add_argument("--chapter", type=str)
+    argparser.add_argument("--key", type=str)
     args = argparser.parse_args()
 
     with open(args.config) as f:
@@ -58,6 +59,7 @@ if __name__ == "__main__":
         if args.chapter and args.chapter != "all" and chapter != args.chapter: continue
         for key, value in metadata.items():
             if key == "disabled": continue
+            if args.key and key != args.key: continue
 
             ran_one = True
             if key == "tests":
@@ -74,7 +76,15 @@ if __name__ == "__main__":
                 failure += test_compare(chapter, metadata, key, "javascript", key)
 
     if not ran_one:
-        print(f"Could not find chapter {args.chapter}")
-        print("  Extant chapters:", ", ".join(data["chapters"].keys()))
+        if args.chapter:
+            print(f"Could not find chapter {args.chapter}")
+            print("  Extant chapters:", ", ".join(data["chapters"].keys()))
+        elif args.key:
+            print(f"Could not find key {args.key}")
+            key_sets = [set(list(metadata.keys())) for chapter, metadata in data["chapters"].items()]
+            keys = set([]).union(*key_sets) - set(["disabled"])
+            print("  Extant chapters:", ", ".join(keys))
+        failure = 1
+            
 
     sys.exit(failure)
