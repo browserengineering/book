@@ -476,67 +476,55 @@ before such things were mediated by a standards organization.
 
 [srcname]: http://1997.webhistory.org/www.lists/www-talk.1993q1/0196.html
 
-Images should now work and display on the page. But our implementation is very
-basic and actually has no way for the image's painted size to differ from its
-decoded size. There are of course several ways for a web page to change an
-image's rendered size.^[For example, the `width` and `height` CSS properties
-(not to be confused with the `width` and `height` attributes!), which were an
-exercise in Chapter 13.] But images *also* have, mostly for historical reasons
-(because these attributes were invented before CSS existed), special `width`
-and `height` attributes that override the intrinsic size. Let's implement
-those.
 
-It's pretty easy: every place we deduce the width or height of an image layout
-object from its intrinsic size, first consult the corresponding attribute and
-use it instead if present. Let's start with `image` on `BlockLayout`. The width
-and height attributes are in CSS pixels without unit suffixes, so parsing is
-easy, and we need to multiply by zoom to get device pixels:
+Modifying Image Sizes
+=====================
+
+So far, an image's size on the screen is its size in pixels, possibly
+zoomed. But in fact it's generally valuable for authors to control the
+size of embedded content. There are a number of ways to do this,^[For
+example, the `width` and `height` CSS properties (not to be confused
+with the `width` and `height` attributes!), which were an exercise in
+Chapter 13.] but one way is the special `width` and `height`
+attributes.^[Images have these mostly for historical reasons, because
+these attributes were invented before CSS existed.]
+
+If _both_ those attributes are present, things are pretty easy: we
+just read from them when laying out the element, both in `image`:
 
 ``` {.python}
 class BlockLayout(LayoutObject):
-    # ...
     def image(self, node, zoom):
         if "width" in node.attributes:
             w = device_px(int(node.attributes["width"]), zoom)
         else:
             w = device_px(node.image.width(), zoom)
+        # ...
 ```
 
 And in `ImageLayout`:
 
-``` {.python expected=False}
+``` {.python}
 class ImageLayout(EmbedLayout):
-    # ...
     def layout(self, zoom):
         # ...
-        if "width" in self.node.attributes:
-            self.width = \
-            device_px(int(self.node.attributes["width"]), zoom)
+        width_attr = self.node.attributes.get("width")
+        height_attr = self.node.attributes.get("height")
+        if width_attr and height_attr:
+            self.width = device_px(int(width_attr), zoom)
+            self.img_height = device_px(int(height_attr, zoom))
         else:
-            # ...
-
-        if "height" in self.node.attributes:
-            self.img_height = \
-                device_px(int(self.node.attributes["height"]), zoom)
-        else:
-            # ...        
+            self.width = device_px(self.node.image.width(), zoom)
+            self.img_height = device_px(self.node.image.height(), zoom)
+        # ...
 ```
 
-This works great to draw the image at a different size, if the web page wants
-to scale it up or down from the intrinsic size it happened to be encoded with.
-But it also allows the web page to screw up the image pretty badly if the
-*aspect ratio* (ratio of width to height) of the width and height attributes
- chosen are not the same as the intrinsic ones. If the ratio of them is double
- the intrinsic sizing, for example, then the image on the screen will look
- stretched horizontally.
-
-We can avoid this problem by only providing a *scale* for the image rather than
-new width and heights. One way to represent scale is to infer it if the web
-page happens only to specify only one of the `width` or `height`.
-
-Implementing this change is very easy:[^only-recently-aspect-ratio] it's
-just a few lines of edited code in `ImageLayout` to apply the aspect
-ratio when only one attribute is specified.
+This works great, but it has a major flaw: if the ratio of `width` to
+`height` isn't the same as the underlying image size, the image ends
+up stretched in weird ways. Sometimes that's on purpose but usually
+it's a mistake. So browsers instead implicitly use this *aspect ratio*
+to size then image if only one of `width` and `height` is
+given.[^only-recently-aspect-ratio]
 
 [^only-recently-aspect-ratio]: Despite it being easy to implement, this
 feature of real web browsers only appeared in 2021. Before that, developers
@@ -545,66 +533,30 @@ design oversights take a long time to fix.
 
 [padding-top-hack]: https://web.dev/aspect-ratio/#the-old-hack-maintaining-aspect-ratio-with-padding-top
 
+Implementing this aspect ratio tweak is easy:
+
 ``` {.python}
 class ImageLayout(EmbedLayout):
     # ...
     def layout(self, zoom):
         # ...
         aspect_ratio = self.node.image.width() / self.node.image.height()
-        has_width = "width" in self.node.attributes
-        has_height = "height" in self.node.attributes
 
-        if has_width:
+        if width_attr and height_attr:
             # ...
-        elif has_height:
-            self.width = aspect_ratio * \
-                device_px(int(self.node.attributes["height"]), zoom)
-        else:
-            # ...   
-
-        if has_height:
-            # ...
-        elif has_width:
-            self.img_height = (1 / aspect_ratio) * \
-                device_px(int(self.node.attributes["width"]), zoom)
+        elif width_attr:
+            self.width = device_px(int(width_attr), zoom)
+            self.img_height = aspect_ratio * self.width
+        elif height_attr:
+            self.img_height = device_px(int(height_attr), zoom)
+            self.width = aspect_ratio * self.img_height
         else:
             # ...
+        # ...
 ```
 
-Images are now present in our browser, with several nice features to control
-their layout and quality. Your browser should now be able to render
-<a href="/examples/example15-img.html">this
-example page</a> correctly.
-
-But what about accessibility? A screen reader can read out text, but how
-does it describe an image in words? That's what the `alt` attribute is for.
-It works like this:
-
-    <img src="https://browser.engineering/im/hes.jpg"
-    alt="A computer operator using a hypertext editing system in 1969">
-
-Implementing this in `AccessibilityNode` is very easy:
-
-``` {.python}
-class AccessibilityNode:
-    def __init__(self, node):
-            # ...
-            elif node.tag == "img":
-                self.role = "image"
-
-    def build(self):
-        elif self.role == "image":
-            if "alt" in self.node.attributes:
-                self.text = "Image: " + self.node.attributes["alt"]
-            else:
-                self.text = "Image"
-```
-
-However, since alt text is generally a phrase or sentence, and those contain
-whitespace, `HTMLParser`'s attribute parsing is not good enough (it can't
-handle quoted whitespace in attribute values). It'll need to look a
-lot more like how `CSSParser` statefully handles whitespace and quoting. I
-won't include the code here since the concept for how to parse it is the same.
+Your browser should now be able to render <a
+href="/examples/example15-img.html">this example page</a> correctly.
 
 ::: {.further}
 I discussed preserving aspect ratio for a loaded image, but what about before

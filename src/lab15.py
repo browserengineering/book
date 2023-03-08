@@ -533,26 +533,21 @@ class ImageLayout(EmbedLayout):
     def layout(self, zoom):
         super().layout(zoom)
 
+        width_attr = self.node.attributes.get("width")
+        height_attr = self.node.attributes.get("height")
         aspect_ratio = self.node.image.width() / self.node.image.height()
-        has_width = "width" in self.node.attributes
-        has_height = "height" in self.node.attributes
 
-        if has_width:
-            self.width = \
-                device_px(int(self.node.attributes["width"]), zoom)
-        elif has_height:
-            self.width = aspect_ratio * \
-                device_px(int(self.node.attributes["height"]), zoom)
+        if width_attr and height_attr:
+            self.width = device_px(int(width_attr), zoom)
+            self.img_height = device_px(int(height_attr), zoom)
+        elif width_attr:
+            self.width = device_px(int(width_attr), zoom)
+            self.img_height = aspect_ratio * self.width
+        elif height_attr:
+            self.img_height = device_px(int(height_attr), zoom)
+            self.width = aspect_ratio * self.img_height
         else:
             self.width = device_px(self.node.image.width(), zoom)
-    
-        if has_height:
-            self.img_height = \
-                device_px(int(self.node.attributes["height"]), zoom)
-        elif has_width:
-            self.img_height = (1 / aspect_ratio) * \
-                device_px(int(self.node.attributes["width"]), zoom)
-        else:
             self.img_height = device_px(self.node.image.height(), zoom)
 
         self.height = max(self.img_height, linespace(self.font))
