@@ -4,6 +4,8 @@ import doctest
 import os, sys
 import json
 import compare
+import importlib
+from unittest import mock
 
 def test_compare(chapter, metadata, key, language, fname):
     value = metadata[key]
@@ -23,6 +25,16 @@ def run_tests(chapter, file_name):
         print(f"  Failed {failure} / {count} tests")
     else:
         print(f"  Passed {count} tests")
+
+    # This ugly code reloads all of our modules from scratch, in case
+    # a test makes a mutation to a global for some reason
+    src_dir = os.path.split(os.path.realpath(file_name))
+    for name, mod in list(sys.modules.items()):
+        if hasattr(mod, "__file__") and mod.__file__ and \
+           os.path.realpath(mod.__file__).startswith(src_dir):
+            importlib.reload(mod)
+    mock.patch.stopall()
+        
     return failure
 
 if __name__ == "__main__":

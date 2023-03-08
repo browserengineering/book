@@ -8,7 +8,7 @@ This file contains tests for Chapter 12 (Scheduling and Threading).
     >>> import test12 as test
     >>> _ = test.socket.patch().start()
     >>> _ = test.ssl.patch().start()
-    >>> threading.Lock = test.MockLock
+    >>> _ = test.MockLock.patch()
     >>> import lab12
     >>> import time
     >>> import threading
