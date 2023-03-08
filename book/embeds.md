@@ -512,7 +512,7 @@ class ImageLayout(EmbedLayout):
         height_attr = self.node.attributes.get("height")
         if width_attr and height_attr:
             self.width = device_px(int(width_attr), zoom)
-            self.img_height = device_px(int(height_attr, zoom))
+            self.img_height = device_px(int(height_attr), zoom)
         else:
             self.width = device_px(self.node.image.width(), zoom)
             self.img_height = device_px(self.node.image.height(), zoom)
