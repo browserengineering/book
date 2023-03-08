@@ -11,9 +11,9 @@ def test_compare(chapter, metadata, key, language, fname):
     with open("../book/" + chapter) as book, open(value) as code:
         failure, count = compare.compare_files(book, code, language, fname)
     if failure:
-        print(f"  Found differences in {failure} / {count} blocks")
+        print(f"  Differences in {failure} / {count} blocks")
     else:
-        print(f"  Found no differences {count} blocks")
+        print(f"  Matched {count} blocks")
     return failure
 
 def run_tests(chapter, file_name):
@@ -45,9 +45,9 @@ if __name__ == "__main__":
     for chapter, metadata in data["chapters"].items():
         if args.chapter and args.chapter != "all" and chapter != args.chapter: continue
         for key, value in metadata.items():
-            if key == "disabled" and not args.chapter: continue
-            ran_one = True
+            if key == "disabled": continue
 
+            ran_one = True
             if key == "tests":
                 failure += run_tests(chapter, value)
             elif key == "lab":
