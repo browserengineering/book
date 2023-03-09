@@ -253,153 +253,69 @@ option to encode the email in `text/plain`, however.
 Embedded layout
 ===============
 
-An `<img>` is a leaf element of the DOM. In some ways, it's similar to a single
-font glyph that has to paint in a single rectangle sized to the image (instead
-of the glyph), takes up space in a `LineLayout`, and causes line breaking when
-it reaches the end of the available space.
+Based on your experience with prior chapters, you can probably guess
+how to add images to our browser's layout and paint process. We'll
+need to create an `ImageLayout` method; add a new `image` case to
+`BlockLayout`'s `recurse` method; and make sure the `ImageLayout`'s
+`paint` method generates a `DrawImage` command.
 
-But it's different than a text *node*, because the text in a text node is not
-just one glyph, but an entire run of text of a potentially arbitrary length,
-and that can be split into multiple words and lines. An image, on the
-other hand, is an [atomic inline][atomic-inline]---it doesn't make
-sense to split it across multiple lines.^[There are other elements
-that can be atomic inlines, and we'll encounter more later in this
-chapter.]
+As we do this, you might recall doing something very similar for
+`<input>` elements. In fact, text areas and buttons are very similar
+to images: both are leaf nodes of the DOM, placed into lines, affect
+the text baselines, and paint custom content.[^atomic-inline] Since
+they are so similar, let's try to reuse the same code for both.
 
+[^atomic-inline]: Images aren't quite like *text* because text node is
+potentially an entire run of text, split across multiple lines, while
+an image is an [atomic inline][atomic-inline]. The other types of
+embedded content in this chapter are also atomic inlines.
 
 [atomic-inline]: https://drafts.csswg.org/css-display-3/#atomic-inline
 
-Images will be laid out by a new `ImageLayout` class. The height and width of
-the object is defined by the height of the image, but other aspects of it will be almost
-the same as `InputLayout`. In fact, so similar that
-let's make them inherit from a new `EmbedLayout` base class to share a lot of
-code about inline layout and fonts. (And for completeness, make a new
-`LayoutObject` root class for all types of object, and make `BlockLayout`
-and `DocumentLayout` inherit from it.
+Let's split the existing `InputLayout` into a superclass called
+`EmbedLayout`, containing most of the existing code, and a new
+subclass with the input-specific code, `InputLayout`:[^widgets]
 
-``` {.python}
-class LayoutObject:
-    def __init__(self):
-        pass
-```
+[^widgets]: In a real browser, input elements are usually called
+*widgets* because they have a lot of [special rendering
+rules][widget-rendering] that sometimes involve CSS.
 
-``` {.python replace=tab/frame}
-class EmbedLayout(LayoutObject):
-    def __init__(self, node, tab, parent, previous):
-        super().__init__()
-        self.node = node
-        self.tab = tab
-        node.layout_object = self
-        self.children = []
-        self.parent = parent
-        self.previous = previous
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-        self.font = None
+[widget-rendering]: https://html.spec.whatwg.org/multipage/rendering.html#widgets
 
-    def get_ascent(self, font_multiplier=1.0):
-        return -self.height
-
-    def get_descent(self, font_multiplier=1.0):
-        return 0
-
-    def layout(self, zoom):
-        self.font = font(self.node, zoom)
-        if self.previous:
-            space = self.previous.font.measureText(" ")
-            self.x = self.previous.x + space + self.previous.width
-        else:
-            self.x = self.parent.x
-```
-
-Now `InputLayout` looks like this:
-
-``` {.python replace=tab/frame}
+``` {.python replace=previous/previous%2c%20frame}
 class InputLayout(EmbedLayout):
-    def __init__(self, node, parent, previous, tab):
-        super().__init__(node, tab, parent, previous)
+    def __init__(self, node, parent, previous):
+        super().__init__(node, parent, previous)
 
     def layout(self, zoom):
         super().layout(zoom)
+```
 
+Now, the idea is that `EmbedLayout` should provide common layout code
+for all kinds of embedded content, while its subclasses like
+`InputLayout` should provide the custom code needed to draw that
+specific kind. Different types of embedded content might have
+different widths and heights, so that should happen in `InputLayout`;
+so should `paint`:
+
+``` {.python}
+class InputLayout(EmbedLayout):
+    def layout(self, zoom):
+        # ...
         self.width = device_px(INPUT_WIDTH_PX, zoom)
         self.height = linespace(self.font)
+
+    def paint(self, display_list):
+        # ...
 ```
 
-And `ImageLayout` is almost the same. In `InputLayout`, the new `image`
-method is actually almost a carbon copy of `input` and `text`. So now we have
-three methods that are almost identical for each atomic piece of inline content.
-The two things in common are computing the font (and passing it to the various
-functions):
+Now it's easy to write `ImageLayout`. It'll take its width and height
+from the image itself:
 
-``` {.python}
-def font(node, zoom):
-    weight = node.style["font-weight"]
-    style = node.style["font-style"]
-    font_size = device_px(float(node.style["font-size"][:-2]), zoom)
-    return get_font(font_size, weight, font_size)
-```
-
-And adding an inline child layout object. In this case we need to parameterize
-it with the name of the child class to instantiate, and an `extra_param` that
-varies depending on the child type.
-
-``` {.python}
-class BlockLayout(LayoutObject):
-    def add_inline_child(self, node, zoom, w, child_class, frame, word=None):
-        if self.cursor_x + w > self.x + self.width:
-            self.new_line()
-        line = self.children[-1]
-        if word:
-            child = child_class(node, line, self.previous_word, word)
-        else:
-            child = child_class(node, line, self.previous_word, frame)
-        line.children.append(child)
-        self.previous_word = child
-        self.cursor_x += w + font(node, zoom).measureText(" ")
-```
-
-We can redefine  `text` and `input` in a satisfying way now:
-
-
-``` {.python}
-class BlockLayout(LayoutObject):
-    def text(self, node, zoom):
-        node_font = font(node, zoom)
-        for word in node.text.split():
-            w = node_font.measureText(word)
-            self.add_inline_child(node, zoom, w, TextLayout, self.frame, word)
-
-    def input(self, node, zoom):
-        w = device_px(INPUT_WIDTH_PX, zoom)
-        self.add_inline_child(node, zoom, w, InputLayout, self.frame) 
-```
-
-Finally, now here is `image`:
-
-``` {.python}
-class BlockLayout(LayoutObject):
-    def recurse(self, node, zoom):
-            # ...
-            elif node.tag == "img":
-                self.image(node, zoom)
-    
-    def image(self, node, zoom):
-        if "width" in node.attributes:
-            w = device_px(int(node.attributes["width"]), zoom)
-        else:
-            w = device_px(node.image.width(), zoom)
-        self.add_inline_child(node, zoom, w, ImageLayout, self.frame)
-```
-
-Then there is layout, which shares all the code except sizing:
-
-``` {.python expected=False}
+``` {.python replace=previous/previous%2c%20frame}
 class ImageLayout(EmbedLayout):
-    def __init__(self, node, parent, previous, tab):
-        super().__init__(node, tab)
+    def __init__(self, node, parent, previous):
+        super().__init__(node, parent, previous)
 
     def layout(self, zoom):
         super().layout(zoom)
@@ -408,48 +324,23 @@ class ImageLayout(EmbedLayout):
         self.height = max(self.img_height, linespace(self.font))
 ```
 
-Notice how the positioning of an image depends on the font size of the element,
-via the call to the layout method of `EmbedLayout` in the superclass. Input
-elements already had that, but those elements generally have text in them, but
-images do not. That means that a "line" consisting of only an image still has
-has an implicit font affecting its layout somehow.^[In fact, a page with only a
-single image and no text or CSS at all still has a font size (the default font
-size of a web page), and the image's layout depends on it. This is a very
-common source of confusion for web developers. In a real browser, it can be
-avoided by forcing an image into a block or other layout mode via the `display`
-CSS property.]
-
-That's unintuitive---there is no font in an image, why does this happen?
-The reason is that, as a type of inline layout, images are designed to flow
-along with related text. For example, the baseline of the image should line up
-with the [baseline][baseline-ch3] of the text next to it. And so the font of
-that text affects the layout of the image. Rather than special-case situations
-where there happens to be no adjacent text, the layout algorithm simply lays
-out the same as no text at all---similar to how `<br>` also implicitly has
-an associated font.
+Notice that the height of the image depends on the font size of the
+element. Though odd, this is how image layout actually works: a line
+with a single, very small, image on it will still be tall enough to
+contain text.^[In fact, a page with only a single image and no text or
+CSS at all still has its layout affected by a font---the default font.
+This is a very common source of confusion for web developers. In a
+real browser, it can be avoided by forcing an image into a block or
+other layout mode via the `display` CSS property.] The underlying
+reason for this is because, as a type of inline layout, images are
+designed to flow along with related text, including the computation of
+[baselines][baseline-ch3]. So a font is involved somehow. For example,
+the baseline of the image should line up with the of the text next to
+it.
 
 [baseline-ch3]: text.html#text-of-different-sizes
 
-In fact, now that you see images alongside input elements, notice how actually
-the input elements we defined in Chapter 8 *are also a form of embedded
-content*---after all, the way they are drawn to the screen is certainly not
-defined by HTML tags and CSS in our toy browser. That's why I called the
-superclass `EmbedLayout`.^[The details are complicated
-in a real browser, but input elements are usually called *widgets* instead,
-and have a lot of
-[special rendering rules][widget-rendering] that sometimes involve CSS.]
-
-The web specifications call images
-[*replaced elements*][replaced-elements]---characterized by putting stuff
-"outside of HTML" into an inline HTML context, and "replacing" what HTML might
-have drawn. In real browsers, input elements are some sort of hybrid between
-a replaced element and a regular element.
-
-[widget-rendering]: https://html.spec.whatwg.org/multipage/rendering.html#widgets
-
-[replaced-elements]: https://developer.mozilla.org/en-US/docs/Web/CSS/Replaced_element
-
-Painting an image is quite straightforward:
+Painting an image is also straightforward:
 
 ``` {.python}
 class ImageLayout(EmbedLayout):
@@ -461,6 +352,107 @@ class ImageLayout(EmbedLayout):
         quality = self.node.style.get("image-rendering", "auto")
         cmds.append(DrawImage(self.node.image, rect, quality))
         display_list.extend(cmds)
+```
+
+Note that the saved `img_height` property is used to make sure the
+image is positioned with its bottom edge on the text baseline.
+
+Now we just need to hook up the new `ImageLayout` to `BlockLayout`. We
+could do this by duplicating the `input` method and calling it
+`image`... but `input` is itself a duplicate of `text`, and after
+adding `image` we'd have three methods that are almost identical.
+Let's refactor so to move the shared code into an `add_inline_child`
+method.
+
+The part of these methods that differs is the part that computes the
+width of the new inline child. That's specific to the element. But
+most of the rest of the logic is shared.
+
+All of these methods compute the font. We need that in every method to
+determine how big of a space to leave after the inline:[^actual]
+
+[^actual]: Yes, this is how real browsers do it too.
+
+``` {.python}
+def font(node, zoom):
+    weight = node.style["font-weight"]
+    style = node.style["font-style"]
+    font_size = device_px(float(node.style["font-size"][:-2]), zoom)
+    return get_font(font_size, weight, font_size)
+```
+
+There's also shared code that handles line layout. To make this
+shared, we need to add parameters for the layout class to instantiate
+and an `extra_param` that varies depending on the child type.
+
+``` {.python replace=child_class%2c/child_class%2c%20frame%2c,previous_word)/previous_word%2c%20frame)}
+class BlockLayout(LayoutObject):
+    def add_inline_child(self, node, zoom, w, child_class, word=None):
+        if self.cursor_x + w > self.x + self.width:
+            self.new_line()
+        line = self.children[-1]
+        if word:
+            child = child_class(node, line, self.previous_word, word)
+        else:
+            child = child_class(node, line, self.previous_word)
+        line.children.append(child)
+        self.previous_word = child
+        self.cursor_x += w + font(node, zoom).measureText(" ")
+```
+
+We can redefine  `text` and `input` in a satisfying way now:
+
+``` {.python replace=TextLayout/TextLayout%2c%20self.frame,InputLayout/InputLayout%2c%20self.frame}
+class BlockLayout(LayoutObject):
+    def text(self, node, zoom):
+        node_font = font(node, zoom)
+        for word in node.text.split():
+            w = node_font.measureText(word)
+            self.add_inline_child(node, zoom, w, TextLayout, word)
+
+    def input(self, node, zoom):
+        w = device_px(INPUT_WIDTH_PX, zoom)
+        self.add_inline_child(node, zoom, w, InputLayout) 
+```
+
+Adding `image` is now also straightforward:
+
+``` {.python replace=ImageLayout/ImageLayout%2c%20self.frame}
+class BlockLayout(LayoutObject):
+    def recurse(self, node, zoom):
+            # ...
+            elif node.tag == "img":
+                self.image(node, zoom)
+    
+    def image(self, node, zoom):
+        w = device_px(node.image.width(), zoom)
+        self.add_inline_child(node, zoom, w, ImageLayout)
+```
+
+Images now appear in the display list and can be seen on the screen.
+But what about our second output modality, screen readers? That's what
+the `alt` attribute is for. It works like this:
+
+    <img src="https://browser.engineering/im/hes.jpg"
+    alt="A computer operator using a hypertext editing system in 1969">
+
+Implementing this in `AccessibilityNode` is very easy:
+
+``` {.python}
+class AccessibilityNode:
+    def __init__(self, node):
+        else:
+            # ...
+            elif node.tag == "img":
+                self.role = "image"
+
+    def build(self):
+        # ...
+        elif self.role == "image":
+            if "alt" in self.node.attributes:
+                self.text = "Image: " + self.node.attributes["alt"]
+            else:
+                self.text = "Image"
 ```
 
 ::: {.further}
@@ -475,7 +467,6 @@ before such things were mediated by a standards organization.
 :::
 
 [srcname]: http://1997.webhistory.org/www.lists/www-talk.1993q1/0196.html
-
 
 Modifying Image Sizes
 =====================
@@ -898,7 +889,7 @@ aspect ratio, because iframes don't have an intrinsic size.)
 ``` {.python}
 class IframeLayout(EmbedLayout):
     def __init__(self, node, parent, previous, parent_frame):
-        super().__init__(node, parent_frame, parent, previous)
+        super().__init__(node, parent, previous, parent_frame)
 
     def layout(self, zoom):
         # ...
