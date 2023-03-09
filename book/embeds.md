@@ -757,6 +757,10 @@ class Frame:
         for iframe in iframes:
             document_url = resolve_url(iframe.attributes["src"],
                 self.tab.root_frame.url)
+            if not self.allowed_request(document_url):
+                print("Blocked iframe", document_url, "due to CSP")
+                iframe.frame = None
+                continue
             iframe.frame = Frame(self.tab, self, iframe)
             iframe.frame.load(document_url)
         # ...
@@ -1070,10 +1074,13 @@ class IframeLayout(EmbedLayout):
                 self.node.style.get("border-radius", "0px")[:-2])
             frame_cmds.append(DrawRRect(rect, radius, bgcolor))
 
-        self.node.frame.paint(frame_cmds)
+        if self.node.frame:
+            self.node.frame.paint(frame_cmds)
 ```
 
-Note the last line, where we recursively paint the child frame.
+Note the last line, where we recursively paint the child frame. The
+conditional is only there to handle the (unusual) case of an iframe
+blocked due to CSP.
 
 Before putting those commands in the display list, though, we need to
 add a border and transform the coordinate system:

@@ -610,7 +610,8 @@ class IframeLayout(EmbedLayout):
                 self.node.style.get("border-radius", "0px")[:-2])
             frame_cmds.append(DrawRRect(rect, radius, bgcolor))
 
-        self.node.frame.paint(frame_cmds)
+        if self.node.frame:
+            self.node.frame.paint(frame_cmds)
 
         offset = (self.x + 1, self.y + 1)
         cmds = [Transform(offset, rect, self.node, frame_cmds)]
@@ -1257,6 +1258,10 @@ class Frame:
         for iframe in iframes:
             document_url = resolve_url(iframe.attributes["src"],
                 self.tab.root_frame.url)
+            if not self.allowed_request(document_url):
+                print("Blocked iframe", document_url, "due to CSP")
+                iframe.frame = None
+                continue
             iframe.frame = Frame(self.tab, self, iframe)
             iframe.frame.load(document_url)
 
