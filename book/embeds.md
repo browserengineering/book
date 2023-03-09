@@ -1085,8 +1085,6 @@ blocked due to CSP.
 Before putting those commands in the display list, though, we need to
 add a border and transform the coordinate system:
 
-[box-model]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Box_Model/Introduction_to_the_CSS_box_model
-
 ``` {.python}
 class IframeLayout(EmbedLayout):
     def paint(self, display_list):
@@ -1108,6 +1106,8 @@ border:[^content-box]
 model][box-model], but the `width` and `height` attributes of an
 iframe refer to the *content box*, and adding 2 yields the *border
 box*.
+
+[box-model]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Box_Model/Introduction_to_the_CSS_box_model
 
 ``` {.css}
 iframe {
