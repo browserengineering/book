@@ -31,10 +31,6 @@ src/lab%.full.py: src/lab%.py
 
 CHAPTER=all
 
-lint: book/*.md src/*.py
-	python3 infra/compare.py --config config.json --chapter $(CHAPTER)
-	! grep -n '^```' book/*.md | awk '(NR % 2) {print}' | grep -v '{.'
-
 PANDOC=pandoc --from markdown --to html --lua-filter=infra/filter.lua --fail-if-warnings --metadata-file=config.json $(FLAGS)
 
 www/%.html: book/%.md infra/template.html infra/signup.html infra/filter.lua config.json
@@ -79,13 +75,11 @@ backup:
 test-server:
 	(cd www/ && python3 ../infra/server.py)
 
-test:
+lint test:
 	python3 -m doctest infra/compiler.md
 	python3 -m doctest infra/annotate_code.md
-	set -e; \
-	for i in $$(seq 1 15); do \
-		(cd src/ && python3 -m doctest lab$$i-tests.md); \
-	done
+	python3 infra/runtests.py config.json --chapter $(CHAPTER)
+	! grep -n '^```' book/*.md | awk '(NR % 2) {print}' | grep -v '{.'
 
 test-allinone:
 	(cd src/ && python3 -m doctest lab13_allinone-tests.md);

@@ -139,55 +139,5 @@ def compare_files(book, code, language, file):
                     print(" ", l, end="")
             print()
         if name.get("last"): break
-    if failure:
-        print("  Found differences in {} / {} blocks".format(failure, count))
-    else:
-        print("  Found no differences {} blocks".format(count))
-    return failure
-
-def test_entry(chapter, chapter_metadata, key, language, file):
-    if key in chapter_metadata:
-        fname = chapter_metadata[key]
-        print(f"Comparing chapter {chapter} with {key} {fname}")
-        with open("book/" + chapter) as book, \
-             open("src/" + fname) as code:
-            return compare_files(book, code, language, file)
-    else:
-        return 0
+    return failure, count
     
-
-if __name__ == "__main__":
-    import sys, argparse
-    argparser = argparse.ArgumentParser(description="Compare book blocks to teacher's copy")
-    argparser.add_argument("--config", type=str)
-    argparser.add_argument("--chapter", type=str)
-    argparser.add_argument("--book", metavar="book.md", type=argparse.FileType("r"))
-    argparser.add_argument("--code", metavar="code.py", type=argparse.FileType("r"))
-    argparser.add_argument("--file", dest="file", help="Only consider code blocks from this file")
-    args = argparser.parse_args()
-
-    failure = False
-    if args.config:
-        with open(args.config) as f:
-            data = json.load(f)
-
-            chapters = data["chapters"]
-            for chapter, metadata in data["chapters"].items():
-                if args.chapter and args.chapter != "all" and chapter != args.chapter: continue
-                for key in metadata:
-                    value = metadata[key]
-                    if key == "disabled":
-                        continue
-                    elif key == "lab":
-                        failure += test_entry(chapter, metadata, "lab", "python", None)
-                    elif key == "stylesheet":
-                        failure += test_entry(chapter, metadata, "stylesheet", "css", None)
-                    elif key == "runtime":
-                        failure += test_entry(chapter, metadata, "runtime", "javascript", None)
-                    elif ".py" in value:
-                        failure += test_entry(chapter, metadata, key, "python", key)
-                    elif ".js" in value:
-                        failure += test_entry(chapter, metadata, key, "javascript", key)
-    else:
-        failure = compare_files(args.book, args.code, "python", args.file)
-    sys.exit(failure)

@@ -1,42 +1,99 @@
 {
     "chapters": {
-        "preface.md": { "disabled": false },
-        "intro.md": { "disabled": false },
-        "history.md": { "disabled": false },
+        "preface.md": { },
+        "intro.md": { },
+        "history.md": { },
 
-        "http.md": { "disabled": false, "lab": "lab1.py" },
-        "graphics.md": { "disabled": false, "lab": "lab2.py" },
-        "text.md": { "disabled": false, "lab": "lab3.py" },
+        "http.md": {
+            "lab": "lab1.py",
+            "tests": "lab1-tests.md"
+        },
+        "graphics.md": {
+            "lab": "lab2.py",
+            "tests": "lab2-tests.md"
+        },
+        "text.md": {
+            "lab": "lab3.py",
+            "tests": "lab3-tests.md"
+        },
 
-        "html.md": { "disabled": false, "lab": "lab4.py" },
-        "layout.md": { "disabled": false, "lab": "lab5.py" },
-        "styles.md": { "disabled": false, "lab": "lab6.py", "stylesheet": "browser6.css" },
-        "chrome.md": { "disabled": false, "lab": "lab7.py" },
+        "html.md": {
+            "lab": "lab4.py",
+            "tests": "lab4-tests.md"
+        },
+        "layout.md": {
+            "lab": "lab5.py",
+            "tests": "lab5-tests.md"
+        },
+        "styles.md": {
+            "lab": "lab6.py",
+            "stylesheet": "browser6.css",
+            "tests": "lab6-tests.md"
+        },
+        "chrome.md": {
+            "lab": "lab7.py",
+            "tests": "lab7-tests.md"
+        },
 
-        "forms.md": { "disabled": false, "lab": "lab8.py", "server": "server8.py", "stylesheet": "browser8.css" },
-        "scripts.md": { "disabled": false, "lab": "lab9.py", "server": "server9.py", "runtime": "runtime9.js" },
-        "security.md": { "disabled": false, "lab": "lab10.py", "server": "server10.py", "runtime": "runtime10.js" },
+        "forms.md": {
+            "lab": "lab8.py",
+            "server": "server8.py",
+            "stylesheet": "browser8.css",
+            "tests": "lab8-tests.md"
+        },
+        "scripts.md": {
+            "lab": "lab9.py",
+            "server": "server9.py",
+            "runtime": "runtime9.js",
+            "tests": "lab9-tests.md"
+        },
+        "security.md": {
+            "lab": "lab10.py",
+            "server": "server10.py",
+            "runtime": "runtime10.js",
+            "tests": "lab10-tests.md"
+        },
 
-        "visual-effects.md": { "disabled": false, "lab": "lab11.py", "examples": "examples11.py", "server": "server11.py"  },
-        "scheduling.md": { "disabled": false, "lab": "lab12.py", "server": "server12.py", "runtime": "runtime12.js", "eventloop": "eventloop12.js" },
+        "visual-effects.md": {
+            "lab": "lab11.py",
+            "examples": "examples11.py",
+            "server": "server11.py",
+            "tests": "lab11-tests.md"
+        },
+        "scheduling.md": {
+            "lab": "lab12.py",
+            "server": "server12.py",
+            "runtime": "runtime12.js",
+            "eventloop": "eventloop12.js",
+            "tests": "lab12-tests.md"
+        },
         "animations.md": {
-            "disabled": false,
             "lab": "lab13.py",
             "runtime": "runtime13.js",
-            "example-opacity-html": "example13-opacity-raf.html"},
-
-        "accessibility.md": { "disabled": false, "lab": "lab14.py", "stylesheet": "browser14.css",
-            "runtime": "runtime14.js" },
-        "embeds.md": { "disabled": true, "lab": "lab15.py", "runtime": "runtime15.js"},
+            "example-opacity-html": "example13-opacity-raf.html",
+            "tests": "lab13-tests.md"
+        },
+        "accessibility.md": {
+            "lab": "lab14.py",
+            "stylesheet": "browser14.css",
+            "runtime": "runtime14.js",
+            "tests": "lab14-tests.md"
+        },
+        "embeds.md": {
+            "disabled": true,
+            "lab": "lab15.py",
+            "runtime": "runtime15.js",
+            "tests": "lab15-tests.md"
+        },
 
         "skipped.md": { "disabled": true },
         "change.md": { "disabled": true },
         "reflow.md": { "disabled": true, "lab": "reflow-chapter.py" },
 
         "glossary.md": { "disabled": true },
-        "bibliography.md": { "disabled": false },
-        "about.md": { "disabled": false },
-        "classes.md": { "disabled": false }
+        "bibliography.md": { },
+        "about.md": { },
+        "classes.md": { }
     },
 
     "modes": {
