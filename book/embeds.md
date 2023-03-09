@@ -1016,9 +1016,9 @@ class IframeLayout(EmbedLayout):
 
 Note that there's a tricky dependency order here. We need the parent
 frame to do layout before the child frame, so the child frame has an
-up to date width and height when it does layout. That order is
-guaranteed for us by Python (where dictionaries are sorted by
-insertion order).
+up-to-date width and height when it does layout. That order is
+guaranteed for us by Python (3.7 or later), where dictionaries are
+sorted by insertion order.
 
 The root frame, of course, fills the whole window:
 
