@@ -330,7 +330,7 @@ class BlockLayout(LayoutObject):
             self.x, self.x, self.width, self.height, self.node)
 
 class EmbedLayout(LayoutObject):
-    def __init__(self, node, frame, parent, previous):
+    def __init__(self, node, parent, previous, frame):
         super().__init__()
         self.node = node
         self.frame = frame
@@ -360,7 +360,7 @@ class EmbedLayout(LayoutObject):
 
 class InputLayout(EmbedLayout):
     def __init__(self, node, parent, previous, frame):
-        super().__init__(node, frame, parent, previous)
+        super().__init__(node, parent, previous, frame)
 
     def layout(self, zoom):
         super().layout(zoom)
@@ -528,31 +528,26 @@ def filter_quality(node):
 
 class ImageLayout(EmbedLayout):
     def __init__(self, node, parent, previous, frame):
-        super().__init__(node, frame, parent, previous)
+        super().__init__(node, parent, previous, frame)
 
     def layout(self, zoom):
         super().layout(zoom)
 
+        width_attr = self.node.attributes.get("width")
+        height_attr = self.node.attributes.get("height")
         aspect_ratio = self.node.image.width() / self.node.image.height()
-        has_width = "width" in self.node.attributes
-        has_height = "height" in self.node.attributes
 
-        if has_width:
-            self.width = \
-                device_px(int(self.node.attributes["width"]), zoom)
-        elif has_height:
-            self.width = aspect_ratio * \
-                device_px(int(self.node.attributes["height"]), zoom)
+        if width_attr and height_attr:
+            self.width = device_px(int(width_attr), zoom)
+            self.img_height = device_px(int(height_attr), zoom)
+        elif width_attr:
+            self.width = device_px(int(width_attr), zoom)
+            self.img_height = aspect_ratio * self.width
+        elif height_attr:
+            self.img_height = device_px(int(height_attr), zoom)
+            self.width = aspect_ratio * self.img_height
         else:
             self.width = device_px(self.node.image.width(), zoom)
-    
-        if has_height:
-            self.img_height = \
-                device_px(int(self.node.attributes["height"]), zoom)
-        elif has_width:
-            self.img_height = (1 / aspect_ratio) * \
-                device_px(int(self.node.attributes["width"]), zoom)
-        else:
             self.img_height = device_px(self.node.image.height(), zoom)
 
         self.height = max(self.img_height, linespace(self.font))
@@ -576,7 +571,7 @@ IFRAME_HEIGHT_PX = 150
 
 class IframeLayout(EmbedLayout):
     def __init__(self, node, parent, previous, parent_frame):
-        super().__init__(node, parent_frame, parent, previous)
+        super().__init__(node, parent, previous, parent_frame)
 
     def layout(self, zoom):
         super().layout(zoom)

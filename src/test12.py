@@ -44,11 +44,9 @@ class MockNoOpTaskRunner:
 		pass
 
 class MockLock:
-	def __init__(self):
-		pass
+	def acquire(self, blocking): pass
+	def release(self): pass
 
-	def acquire(self, blocking):
-		pass
-
-	def release(self, ):
-		pass
+	@classmethod
+	def patch(cls):
+		return mock.patch("threading.Lock", wraps=cls)
