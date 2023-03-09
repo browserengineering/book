@@ -295,8 +295,8 @@ Now, the idea is that `EmbedLayout` should provide common layout code
 for all kinds of embedded content, while its subclasses like
 `InputLayout` should provide the custom code needed to draw that
 specific kind. Different types of embedded content might have
-different widths and heights, so that should happen in `InputLayout`.
-Likewise, `paint` should happen in `InputLayout`:
+different widths and heights, so that should happen in `InputLayout`;
+so should `paint`:
 
 ``` {.python}
 class InputLayout(EmbedLayout):
