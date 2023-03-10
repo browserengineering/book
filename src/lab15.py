@@ -240,9 +240,11 @@ class BlockLayout(LayoutObject):
                 self.new_line()
             elif node.tag == "input" or node.tag == "button":
                 self.input(node, zoom)
-            elif node.tag == "img":
+            elif node.tag == "img" and \
+                 "src" in node.attributes:
                 self.image(node, zoom)
-            elif node.tag == "iframe":
+            elif node.tag == "iframe" and \
+                 "src" in node.attributes:
                 self.iframe(node, zoom)
             else:
                 for child in node.children:
@@ -1223,7 +1225,7 @@ class Frame:
             for node in tree_to_list(self.nodes, [])
             if isinstance(node, Element)
             and node.tag == "img"
-            and node.attributes.get("src")]
+            and "src" in node.attributes]
         for img in images:
             try:
                 image_url = resolve_url(img.attributes["src"], self.url)

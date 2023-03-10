@@ -105,7 +105,7 @@ class Tab:
             for node in tree_to_list(self.nodes, [])
             if isinstance(node, Element)
             and node.tag == "img"
-            and node.attributes.get("src")]
+            and "src" in node.attributes]
         for img in images:
             image_url = resolve_url(img.attributes["src"], self.url)
             assert self.allowed_request(image_url), \
@@ -404,7 +404,8 @@ Finally, now here is `image`:
 class BlockLayout(LayoutObject):
     def recurse(self, node, zoom):
             # ...
-            elif node.tag == "img":
+            elif node.tag == "img" and \
+                 "src" in node.attributes:
                 self.image(node, zoom)
     
     def image(self, node, zoom):
@@ -949,7 +950,8 @@ class BlockLayout(LayoutObject):
     # ...
     def recurse(self, node, zoom):
         # ...
-            elif node.tag == "iframe":
+            elif node.tag == "iframe" and \
+                 "src" in node.attributes:
                 self.iframe(node, zoom)
     # ...
     def iframe(self, node, zoom):
