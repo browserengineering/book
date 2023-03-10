@@ -573,10 +573,10 @@ Interactive widgets
 
 So far, our browser has two kinds of embedded content: images and
 input elements. While both are important and widely-used,[^variants]
-they don't offer quite the customizability and flexibility[^openui]
-that more complex embedded content---like maps, PDFs, ads, and social
-media controls---requires. In modern browsers, these are handled by
-*embedding one web page within another* using the `<iframe>` element.
+they don't offer quite the customizability[^openui] and flexibility
+that complex embedded content like maps, PDFs, ads, and social media
+controls require. In modern browsers, these are handled by *embedding
+one web page within another* using the `<iframe>` element.
 
 [^variants]: As are variations like the [`<canvas>`][canvas-elt]
     element. Instead of loading an image from the network, JavaScript
@@ -595,33 +595,36 @@ media controls---requires. In modern browsers, these are handled by
 [shadow-dom]: https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_shadow_DOM
 [form-el]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/attachInternals
 
-The `<iframe>` tag's layout is a lot like the `<img>` tag: it has the `src`
-attribute and `width` and `height` attributes. And an iframe is almost exactly
-the same as a `Tab` within a `Tab`---it has its own HTML document, CSS, and
-scripts. There are three significant differences though:
+Semantically, an `<iframe>` is almost exactly a `Tab` inside a
+`Tab`---it has its own HTML document, CSS, and scripts. And
+layout-wise, an `<iframe>` is a lot like the `<img>` tag, with `width`
+and `height` attributes. So implementing basic iframes just requires
+handling three significant differences:
 
-* *Iframes have no browser chrome*. So any page navigation has to happen from
+* Iframes have *no browser chrome*. So any page navigation has to happen from
    within the page (either through an `<a>` element or script), or as a side
    effect of navigation on the web page that *contains* the `<iframe>`
    element.
 
-* *Iframes do not necessarily have their own rendering event
-loop.* [^iframe-event-loop] In real browsers, [cross-origin] iframes are often
-"site isolated", meaning that the iframe has its own CPU process for
-[security reasons][site-isolation]. In our toy browser we'll just make all
-iframes (even nested ones---yes, iframes can include iframes!) use the same
-rendering event loop.
+* Iframes can *share a rendering event loop*.[^iframe-event-loop] In
+  real browsers, [cross-origin] iframes are often "site isolated",
+  meaning that the iframe has its own CPU process for [security
+  reasons][site-isolation]. In our toy browser we'll just make all
+  iframes (even nested ones---yes, iframes can include iframes!) use
+  the same rendering event loop.
 
-* *Cross-origin iframes are *script-isolated *from their containing web page.*
-That means that a script in the iframe [can't access][cant-access] variables
-or DOM in the containing page, nor can scripts in the containing page access
-the iframe's variables or DOM.
+* Cross-origin iframes are *script-isolated* from the containing page.
+  That means that a script in the iframe [can't access][cant-access]
+  the containing page's variables or DOM, nor can scripts in the
+  containing page access the iframe's variables or DOM. Same-origin
+  iframes, however, can.
 
-[^iframe-event-loop]: For example, if an iframe has the same origin as the web
-page that embeds it, then scripts in the iframe can synchronously access the
-parent DOM. That means that it'd be basically impossible to put that iframe in
-a different thread or CPU process, and in practice it ends up in the same
-rendering event loop as a result.
+[^iframe-event-loop]: For example, if an iframe has the same origin as
+    the web page that embeds it, then scripts in the iframe can
+    synchronously access the parent DOM. That means that it'd be
+    basically impossible to put that iframe in a different thread or
+    CPU process, and in practice it ends up in the same rendering
+    event loop as a result.
 
 [cross-origin]: https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy
 
@@ -629,37 +632,44 @@ rendering event loop as a result.
 
 [cant-access]: https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy#cross-origin_script_api_access
 
-Since iframes are HTML documents, they can contain iframes. So in general each
-`Tab` has a tree of objects---*frames* containing HTML documents---nested
-within each other. Each node in this tree will be an object from a new `Frame`
-class. We'll use one rendering event loop for all `Frame`s.
+We'll get to these differences, but for now, let's start working on
+the idea of a `Tab` within a `Tab`. What we're going to do is split
+the concept of a `Tab` into two pieces: a `Tab` will own the event
+loop and script environments, and will contain a tree of `Frame`s.
 
-In terms of code, basically, we'll want to refactor `Tab` so that it's a
-container for a new `Frame` class. The `Frame` will implement the rendering
-work that the `Tab` used to do, and the `Tab` becomes a coordination and
-container class for the frame tree. More specifically, the `Tab` class will:
+It's good to plan out complicated refactors like this, so let's do
+that in some detail. A `Tab` will:
 
+* Interface between the `Browser` and the `Frame`s to handle events.
+* Proxy communication between frames.
 * Kick off animation frames and rendering.
 * Paint and own the display list for all frames in the tab.
-* Implement accessibility.
-* Provide glue code between `Browser` and the documents to implement event
-  handling.
-* Proxy communication between frame documents.
+* Construct and own the accessibility tree.
 * Commit to the browser thread.
 
-And the `Frame` class will:
+And the new `Frame` class will:
 
 * Own the DOM, layout trees, and scroll offset for its HTML document.
 * Own a `JSContext` if it is cross-origin to its parent.
 * Run style and layout on the its DOM and layout tree.
 * Implement loading and event handling (focus, hit testing, etc) for its HTML
   document.
+  
+Naturally, every `Frame` will need a reference to its `Tab`; it's also
+convenient to have access to the parent frame and the corresponding
+`<iframe>` element:
+  
+``` {.python}
+class Frame:
+    def __init__(self, tab, parent_frame, frame_element):
+        self.tab = tab
+        self.parent_frame = parent_frame
+        self.frame_element = frame_element
+        # ...
+```
 
-A `Frame` will also recurse into child `Frame`s for additional painting,
-accessibility and hit testing. 
-
-The `Tab`'s load method, for example, now simply manages history state and asks
-its root frame to load:
+Now let's look at how `Frame`s are created. The first place is in
+`Tab`'s load method, which needs to create the *root frame*:
 
 ``` {.python}
 class Tab:
@@ -672,21 +682,10 @@ class Tab:
         self.root_frame = Frame(self, None, None)
         self.root_frame.load(url, body)
 ```
-as do various event handlers, here's `click` for example:
 
-``` {.python}
-    def click(self, x, y):
-        self.render()
-        self.root_frame.click(x, y)
-```
-
-The `Frame` class has all of the rest of loading and event handling that used to
-be in `Tab`. I won't go into those details right now,  except the part where a
-`Frame` can load sub-frames via the `<iframe>` tag. In the code below, we
-collect all of the `<iframe>` elements in the DOM, load them, create a new
-`Frame` object, store it on the iframe element, and call `load` recursively.
-Note that all the code in the "..." below is the same as what used to be on
-`Tab`'s `load` method.
+Note that the guts of `load`, which sets up the DOM tree, now lives in
+the `Frame`, which owns that tree. That method can *also* construct
+`Frame`s, when it sees an `<iframe>` element:
 
 ``` {.python}
 class Frame:
@@ -700,11 +699,34 @@ class Frame:
         for iframe in iframes:
             document_url = resolve_url(iframe.attributes["src"],
                 self.tab.root_frame.url)
+            if not self.allowed_request(document_url):
+                print("Blocked iframe", document_url, "due to CSP")
+                iframe.frame = None
+                continue
             iframe.frame = Frame(self.tab, self, iframe)
             iframe.frame.load(document_url)
+        # ...
 ```
 
-That's pretty much it for loading, now let's investigate rendering.
+So we've now got a tree of frames inside a single tab. But because we
+will sometimes need direct access to an arbitrary frame, let's also
+give each frame an identifier, which I'm calling a *window ID*:
+
+``` {.python}
+WINDOW_COUNT = 0
+
+class Frame:
+    def __init__(self, tab, parent_frame, frame_element):
+        # ...
+        global WINDOW_COUNT
+        self.window_id = WINDOW_COUNT
+        WINDOW_COUNT += 1
+        self.tab.window_id_to_frame[self.window_id] = self
+```
+
+We'll use these window IDs in a couple of different places. Anyway,
+now that we have frames being created, let's work on rendering those
+frames to the screen.
 
 ::: {.further}
 For quite a while, browsers also supported another kind of embedded
@@ -785,18 +807,25 @@ efficient.
 Iframe rendering
 ================
 
-A `Tab` will delegate style and layout to each frame, and each frame will
-maintain its own dirty bits. Accessibility and paint will still be done at the
-`Tab` level, because the output of each of them is a combined result across
-all frames---a single display list, and a single accessibility tree. So that
-code doesn't change.
+Rendering is split between the `Tab` and its `Frame`s: the `Frame`
+does style and layout, while the `Tab` will do accessibility and
+paint.[^why-split] We'll need to execute that split, and also add code
+to trigger each `Frame`'s rendering from the `Tab`.
+
+[^why-split]: Why split the rendering pipeline this way? Because the
+    output of accessibility and paint is combined across all
+    frames---a single display list, and a single accessibility tree.
+    
+Let's start with splitting the rendering pipeline. The main method
+here is still the `Tab`'s `render` method, which first calls `render`
+on each frame to do style and layout:
 
 ``` {.python}
 class Tab:
     def render(self):
         self.measure_render.start()
 
-        for frame in self.window_id_to_frame.values():
+        for id, frame in self.window_id_to_frame.items():
             frame.render()
 
         if self.needs_accessibility:
@@ -806,15 +835,15 @@ class Tab:
             # ...
 ```
 
-Style and layout dirty bits are stored on `Frame` and control that part of
-rendering:
+Note that the `needs_accessibility`, `pending_hover`, and other flags
+are all still on the `Tab`, because the `Tab` still owns that part of
+rendering. Meanwhile, style and layout happen in the `Frame` now, so
+those dirty bits should live in the `Frame` as well:
 
 ``` {.python}
 class Frame:
     def __init__(self, tab, parent_frame, frame_element):
-        self.tab = tab
-        self.parent_frame = parent_frame
-        self.frame_element = frame_element
+        # ...
         self.needs_style = False
         self.needs_layout = False
 
@@ -836,35 +865,37 @@ class Frame:
             # ...
 ```
 
-Now for `<iframe>` layout. Let's start with the biggest layout difference
-between iframes and images: unlike images, *an `<iframe>` element has no
-intrinsic size*. So its layout is defined entirely by the attributes and CSS of
-the `iframe` element, and not at all by the content of the iframe.
-[^seamless-iframe]
+Styling doesn't really need any additional work, but with layout
+there's a crucial bit of communication that needs to happen between
+the parent and child frames: how wide and tall should a frame be laid
+out?
 
-[^seamless-iframe]: There were attempts to provide such an intrinsic sizing in
-the past, but it was [removed][seamless-removed] from the HTML specification
-when no browser implemented it. This may change
-[in the future][seamless-back], as there are good use cases for a *seamless*
-iframe whose layout coordinates with its parent frame. 
+Here there's a difference between iframe and image layout: *iframes
+have no intrinsic size*. So an iframe's layout is defined entirely by
+the attributes and CSS of the `iframe` element, and not at all by the
+content of the iframe.[^seamless-iframe] For iframes, if the `width`
+or `height` is not specified, it has a [default
+value][iframe-defaults], chosen a long time ago based on average
+screen sizes of the day:
+
+[^seamless-iframe]: There were attempts to provide such an intrinsic
+sizing in the past, but it was [removed][seamless-removed] from the
+HTML specification when no browser implemented it. This may change [in
+the future][seamless-back], as there are good use cases for a
+*seamless* iframe whose layout coordinates with its parent frame.
 
 [seamless-removed]: https://github.com/whatwg/html/issues/331
 [seamless-back]: https://github.com/w3c/csswg-drafts/issues/1771
 
-For iframes, if the `width` or `height` is not specified, it has a default
-value.^[These numbers were chosen by someone a long time ago as reasonable
-[defaults][iframe-defaults] based on average screen sizes of the day.]
-
 [iframe-defaults]: https://www.w3.org/TR/CSS2/visudet.html#inline-replaced-width
 
 ``` {.python}
-IFRAME_DEFAULT_WIDTH_PX = 300
-IFRAME_DEFAULT_HEIGHT_PX = 150
+IFRAME_WIDTH_PX = 300
+IFRAME_HEIGHT_PX = 150
 ```
 
-Iframe layout in `BlockLayout` is a lot like images. I've added 2 to the width
-and height in these calculations to provide room for the painted border to
-come.
+Besides this quirk, iframe layout is a lot like images. They're
+created in `BlockLayout`:
 
 ``` {.python}
 class BlockLayout(LayoutObject):
@@ -878,13 +909,15 @@ class BlockLayout(LayoutObject):
         if "width" in self.node.attributes:
             w = device_px(int(self.node.attributes["width"]), zoom)
         else:
-            w = IFRAME_DEFAULT_WIDTH_PX + 2
+            w = IFRAME_WIDTH_PX + 2
         self.add_inline_child(node, zoom, w, IframeLayout, self.frame)
 ```
 
-And the `IframeLayout` layout code is also similar, and also inherits from
-`EmbedLayout`. (Note however that there is no code regarding
-aspect ratio, because iframes don't have an intrinsic size.)
+Note that I've added 2 to the width and height in these calculations
+to provide room for a border later on.
+
+The `IframeLayout` layout code is also similar, inheriting from
+`EmbedLayout`, but without the aspect ratio code:
 
 ``` {.python}
 class IframeLayout(EmbedLayout):
@@ -893,31 +926,31 @@ class IframeLayout(EmbedLayout):
 
     def layout(self, zoom):
         # ...
-        if has_width:
-            self.width = \
-                device_px(int(self.node.attributes["width"]), zoom)
+        if width_attr:
+            self.width = device_px(int(width_attr), zoom)
         else:
-            self.width = device_px(
-                IFRAME_DEFAULT_WIDTH_PX + 2, zoom)
+            self.width = device_px(IFRAME_WIDTH_PX + 2, zoom)
 
-        if has_height:
-            self.height = \
-                device_px(int(self.node.attributes["height"]), zoom)
+        if height_attr:
+            self.height = device_px(int(height_attr), zoom)
         else:
-            self.height = device_px(
-                IFRAME_DEFAULT_HEIGHT_PX + 2, zoom)
+            self.height = device_px(IFRAME_HEIGHT_PX + 2, zoom)
 ```
 
-Each `Frame` will also needs its width and height, as an input to layout:
+Now, note that this code is being run in the *parent* frame. We need
+to get this width and height over to the *child* frame, so it can know
+its width and height for layout. So let's add a field for that in the
+child frame:
 
 ``` {.python}
 class Frame:
     def __init__(self, tab, parent_frame, frame_element):
+        # ...
         self.frame_width = 0
         self.frame_height = 0
 ```
 
-And set here:
+And we can set those when the parent frame is laid out:
 
 ``` {.python}
 class IframeLayout(EmbedLayout):
@@ -927,7 +960,13 @@ class IframeLayout(EmbedLayout):
         self.node.frame.frame_width = self.width - 2
 ```
 
-The root frame is sized to the window:
+Note that there's a tricky dependency order here. We need the parent
+frame to do layout before the child frame, so the child frame has an
+up-to-date width and height when it does layout. That order is
+guaranteed for us by Python (3.7 or later), where dictionaries are
+sorted by insertion order.
+
+The root frame, of course, fills the whole window:
 
 ``` {.python}
 class Tab:
@@ -937,21 +976,35 @@ class Tab:
         self.root_frame.frame_height = HEIGHT - CHROME_PX
 ```
 
-As for painting, iframes by default have a border around their content when
-painted.^[Which, again, is why I added 2 to the width and height. It's
-also why I added 1 to the `Transform`  in `paint`. This book
-doesn't go into the details of the [CSS box model][box-model], but the `width`
-and `height` attributes of an iframe refer to the *content box*, and adding 2
-yields the *border box*.] They also clip the iframe painted content to the
-bounds of the `<iframe>` element.
+Alright, we've now got frames styled and laid out, and just need to
+paint them. Unlike layout and style, all the frames in a tab produce a
+single, unified display list, so we're going to need to work
+recursively. We'll have the `Tab` paint the root `Frame`:
 
-[box-model]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Box_Model/Introduction_to_the_CSS_box_model
+``` {.python}
+class Tab:
+    def render(self):
+        if self.needs_paint:
+            self.display_list = []
+            self.root_frame.paint(self.display_list)
+            self.needs_paint = False
+```
+
+We'll then have the `Frame` call the layout tree's `paint` method:
 
 ``` {.python expected=False}
-class IframeLayout(EmbedLayout):
-    # ...
+class Frame:
     def paint(self, display_list):
-        cmds = []
+        self.document.paint(display_list)
+```
+
+Most of the layout tree's `paint` methods don't need to change, but to
+paint an `IframeLayout`, we'll need to paint the child frame:
+
+``` {.python}
+class IframeLayout(EmbedLayout):
+    def paint(self, display_list):
+        frame_cmds = []
 
         rect = skia.Rect.MakeLTRB(
             self.x, self.y,
@@ -961,19 +1014,52 @@ class IframeLayout(EmbedLayout):
         if bgcolor != "transparent":
             radius = float(
                 self.node.style.get("border-radius", "0px")[:-2])
-            cmds.append(DrawRRect(rect, radius, bgcolor))
+            frame_cmds.append(DrawRRect(rect, radius, bgcolor))
 
-        self.node.document.paint(cmds)
+        if self.node.frame:
+            self.node.frame.paint(frame_cmds)
+```
 
-        cmds = [Transform(
-            (self.x + 1 , self.y + 1), rect, self.node, cmds)]
+Note the last line, where we recursively paint the child frame. The
+conditional is only there to handle the (unusual) case of an iframe
+blocked due to CSP.
 
+Before putting those commands in the display list, though, we need to
+add a border and transform the coordinate system:
+
+``` {.python}
+class IframeLayout(EmbedLayout):
+    def paint(self, display_list):
+        # ...
+
+        offset = (self.x + 1, self.y + 1)
+        cmds = [Transform(offset, rect, self.node, frame_cmds)]
         paint_outline(self.node, cmds, rect)
-
         cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
 ```
 
+Note that the `Transform` shifts over the child frame contents so that
+its top-left corner starts where the actual `iframe` element is laid
+out. Well---its position, plus 1 pixel, to account for the two pixel
+border:[^content-box]
+
+[^content-box]: This book doesn't go into the details of the [CSS box
+model][box-model], but the `width` and `height` attributes of an
+iframe refer to the *content box*, and adding 2 yields the *border
+box*.
+
+[box-model]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Box_Model/Introduction_to_the_CSS_box_model
+
+``` {.css}
+iframe {
+    outline: 2px solid black;
+    overflow: clip;
+}
+```
+
+So we've now got iframes showing up on the screen. The next step is
+interacting with them.
 
 ::: {.further}
 
@@ -992,6 +1078,15 @@ obsolete.
 
 Iframe input events
 ===================
+
+Various event handlers also just delegate to the root frame:
+
+``` {.python}
+class Tab:
+    def click(self, x, y):
+        self.render()
+        self.root_frame.click(x, y)
+```
 
 Rendering now functions properly in iframes, but user input does not:
 it's not (yet) possible to click on a element in an iframe in our toy browser,
