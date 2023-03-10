@@ -995,7 +995,7 @@ Iframe input events
 
 Now that we've got iframes rendering to the screen, let's close the
 loop with user input. We want to add support for clicking on things
-inside an iframe, and also for tabbing around or scrolling inside on.
+inside an iframe, and also for tabbing around or scrolling inside one.
 
 Let's fix that. But all this code in `click` is getting a little unwieldy, so
 first some refactoring. We'll push object-type-specific behavior down into the
@@ -1132,8 +1132,8 @@ class Frame:
 Now, as you might recall from [Chapter 13](animations.md), scrolling
 happens both inside `Browser` and inside `Tab`, to reduce latency.
 That was already quite complicated, so to keep things simple, we won't
-do this for scrolling iframes. To support this, we'll need a new
-commit parameter so the browser thread knows whether to do scrolling:
+do this for non-root iframes. To support this, we'll need a new commit
+parameter so the browser thread knows whether to do scrolling:
 
 ``` {.python}
 class CommitData:
