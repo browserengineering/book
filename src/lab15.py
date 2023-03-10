@@ -651,7 +651,7 @@ class AttributeParser:
             self.i += 1
 
     def literal(self, literal):
-        if self.s[self.i] == literal:
+        if self.i < len(self.s) and self.s[self.i] == literal:
             self.i += 1
             return True
         return False
@@ -689,7 +689,7 @@ class AttributeParser:
                 value = self.word(allow_quotes=True) 
                 attributes[key.lower()] = value
             else:
-                attriubutes[key.lower()] = ""
+                attributes[key.lower()] = ""
         return (tag, attributes)
 
 class HTMLParser:
