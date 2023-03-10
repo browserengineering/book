@@ -635,8 +635,7 @@ handling three significant differences:
 We'll get to these differences, but for now, let's start working on
 the idea of a `Tab` within a `Tab`. What we're going to do is split
 the concept of a `Tab` into two pieces: a `Tab` will own the event
-loop and script environments, and will contain a tree---yes, a tree,
-because an iframe can itself contain nested iframes---of `Frame`s.
+loop and script environments, and will contain a tree of `Frame`s.
 
 It's good to plan out complicated refactors like this, so let's do
 that in some detail. A `Tab` will:
