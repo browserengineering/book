@@ -1489,154 +1489,240 @@ effects.
 Iframe scripts
 ==============
 
-Now we need to implement script behavior for iframes. All frames in the frame
-tree have their own global script namespace. In fact, the `Window` class
-(and `window` variable object) represents the [global object][global-object],
-and all global variables declared in a script are implicitly defined on this
-object. The simplest way to achieve this is by having each `Frame` object own
-its own `JSContext`, and by association its own DukPy interpreter. That's what
-`Tab` already did, and we can just copy all of its code for it.
+We've now got users interacting with iframes directly. The last step
+in adding iframe support, then, is allowing some kind of programmatic
+access. Of course, each frame can _already_ run scripts---but right
+now, each `Frame` has its own `JSContext`, so these scripts can't
+really interact with each other. In reality, *same-origin* iframes run
+in the same JavaScript context and can access each other's globals,
+call each other's functions, and modify each other's DOMs. Let's
+implement that.
+
+For two frames' JavaScript environments to interact, we'll need to put
+them in the same `JSContext`. So, instead of each `Frame` having a
+`JSContext` of its own, we'll want to store `JSContext`s on the `Tab`,
+in a dictionary that maps origins to JS contexts:
+
+``` {.python}
+class Tab:
+    def __init__(self, browser):
+        # ...
+        self.origin_to_js = {}
+
+    def get_js(self, origin):
+        if origin not in self.origin_to_js:
+            self.origin_to_js[origin] = JSContext(self)
+        return self.origin_to_js[origin]
+```
+
+Each `Frame` will then ask the `Tab` for its JavaScript context:
+
+``` {.python}
+class Frame:
+    def load(self, url, body=None):
+        # ...
+        self.js = self.tab.get_js(url_origin(url))
+        # ...
+```
+
+We've now got multiple pages' scripts living inside one JavaScript
+context, so we've got to keep them separate somehow. The key is going
+to be the `window` global, of type `Window`. In the browser, this
+refers to the [global object][global-object], and instead of writing a
+global variable like `a`, you can always write `window.a` instead. To
+keep our implementation simple, in our browser, scripts will always
+need to reference variable and functions via `window`. We'll need to
+do the same in our runtime:
+
+``` {.js}
+window.console = { log: function(x) { call_python("log", x); } }
+
+// ...
+
+window.Node = function(handle) { this.handle = handle; }
+
+// ...
+```
+
+Do the same for every function or variable in the `runtime.js` file.
+If you miss one, you'll get errors like this:
+
+    _dukpy.JSRuntimeError: ReferenceError: identifier 'Node' undefined
+    	duk_js_var.c:1258
+    	eval src/pyduktape.c:1 preventsyield
+
+Then you'll need to go find where you forgot to put `window.` in front
+of `Node`.
+
+::: {.quirk}
+Demos from previous chapters will need to be similarly fixed up before
+they work. For example, `setTimeout` might need to change to
+`window.setTimeout`, etc.
+:::
 
 [global-object]: https://developer.mozilla.org/en-US/docs/Glossary/Global_object
 
-But that only works if we consider every frame *cross-origin* to all of the
-others. That's not right, because two frames that have the same origin each get
-a global namespace for their scripts, but they can access each other's frames
-through, for example, the [`parent` attribute][window-parent] on their
-`Window`.^[There are various other APIs; see the related exercise.] For
-example, JavaScript in a same-origin child frame can access the `document`
-object for the DOM of its parent frame like this:
+To get multiple frames' scripts to play nice inside one JavaScript
+context, we'll create multiple `Window` objects, so imagine having a
+`window_1`, a `window_2`, and so on. Before running a frame's scripts,
+we'll assign `window` to the correct `Window` object, so that frame
+can refer to itself as `window`.[^dukpy-limitation]
 
-    console.log(window.parent.document)
+[^dukpy-limitation]: Some JavaScript engines support a simple API for
+    changing the global object, but the DukPy library that we're using
+    isn't one of them. There *is* a standard JavaScript operator
+    called `with` which sort of does this, but the rules are
+    complicated and unpredictable, and it's not recommended these
+    days.
 
-We need to implement that somehow. Unfortunately, DukPy doesn't natively support
-the feature of
-"evaluate this script under the given global variable". 
-
-[window-parent]: https://developer.mozilla.org/en-US/docs/Web/API/Window/parent
-
-Instead of switching to whole new JavaScript runtime, I'll just approximate the
-feature with two tricks: overwriting the `window` object and the `with`
-operator. The `with` operator is pretty obscure, but what it does is evaluate
-the content of a block by looking up objects on the given object first, and
-only after falling back to the global scope.^[It's important to reiterate that
-this is a hack and doesn't actually do things correctly, but it suffices to
-show the concept in our toy browser.] This example:
-
-    var win = {}
-    win.foo = 'bar'
-    with (win) { console.log(foo); }
-
-will print "bar", whereas without the "with" clause foo will not resolve to any
-variable.^[The `with` hack is only needed to support "unqualified" global
-variable access; if instead, you change all the example web pages we've been
-testing with this book to replace globals references such as `foo` with
-`window.foo`, then the hack will be unnecessary to make those examples work.]
-
-For each `JSContext`, we'll keep track of the set of frames that all use it, and
-store a `Window` object for each, associated with the frame it comes from, in
-variables called `window_0`, `window_1`, etc. Then whenever we need to evaluate
-a script from a particular frame, we'll wrap it in some code that overwrites
-the `window` object and evaluates via `with`. 
+So to begin with, let's define the `Window` class when we create a
+`JSContext`:
 
 ``` {.python}
-def wrap_in_window(js, window_id):
-    return ("window = window_{window_id}; " + \
-    "with (window) {{ {js} }}").format(js=js, window_id=window_id)
-```
-
-When multiple frames will have just one `JSContext`, we'll just store
-the `JSContext` on the "root" one---the frame closest to the frame tree root
-that has a particular origin, and reference it from descendant
-frames.[^disconnected]
-
-All this will require passing the parent frame as a
-constructor parameter and keeping track of window ids:
-
-[^disconnected]: This isn't actually correct. Any frame with the same origin
-should be in the "same origin" set, even if they are in disconnected pieces
-of the frame tree. For example, if a root frame with origin A embeds an
-iframe with origin B, and the iframe embeds *another* iframe with origin A,
-then the two A frames can access each others' variables. I won't implement
-this complication and instead left it as an exercise.
-
-``` {.python}
-WINDOW_COUNT = 0
-
-class Frame:
-    def __init__(self, tab, parent_frame, frame_element):
-        self.parent_frame = parent_frame
+class JSContext:
+    def __init__(self, tab):
         # ...
-        global WINDOW_COUNT
-        self.window_id = WINDOW_COUNT
-        WINDOW_COUNT += 1
-    # ...
-    def get_js(self):
-        if self.js:
-            return self.js
-        else:
-            return self.parent_frame.get_js()
+        self.interp.evaljs("function Window(id) { this._id = id };")
 ```
 
-The `JSContext` needs a way to create the `window_*` objects:
+Now, when a frame is created and wants to use a `JSContext`, it needs
+to ask for a `window` object to be created first:
 
 ``` {.python}
 class JSContext:
     def add_window(self, frame):
-        self.interp.evaljs(
-            "var window_{window_id} = \
-                new Window({window_id});".format(
-                window_id=frame.window_id))
+        code = "var window_{} = new Window({});".format(
+            frame.window_id, frame.window_id)
+        self.interp.evaljs(code)
 ```
 
-And then initializing the `JSContext` for the root. Here we need to evaluate
-definition of the `Window` class separately from `runtime.js`, because
-`runtime.js` itself needs to be evaluated by `wrap_in_window`. And
-`wrap_in_window` needs `Window` defined exactly once, not each time it's
-called. The `Window` constructor stores its id, which will be useful later.
+Before running any JavaScript, we'll want to change which window the
+`window` global refers to:
 
-``` {.python replace=%20or%20/%20or%20wbetools.FORCE_CROSS_ORIGIN_IFRAMES%20or%20}
-    def load(self, url, body=None):
+``` {.python}
+class JSContext:
+    def wrap(self, script, window_id):
+        return "window = window_{};".format(window_id) + script
+```
+
+We can use this to, for example, set up the initial runtime
+environment for each `Frame`:
+
+``` {.python}
+class JSContext:
+    def add_window(self, frame):
         # ...
-        if not self.parent_frame or \
-            url_origin(self.url) != url_origin(self.parent_frame.url):
-            self.js = JSContext(self.tab)
-            self.js.interp.evaljs(\
-                "function Window(id) { this._id = id };")
-        js = self.get_js()
-        js.add_window(self)
+        with open("runtime15.js") as f:
+            self.interp.evaljs(self.wrap(f.read(), frame.window_id))
 ```
 
-And whenever scripts are evaluated, they are wrapped (note the extra window
-id parameter):
+We'll need to call `wrap` any time we use `evaljs`, which also means
+we'll need to add a window ID argument to a lot of methods. For
+example, in `run` we'll add a `window_id` parameter:
 
 ``` {.python}
 class JSContext:
     def run(self, script, code, window_id):
         try:
-            print("Script returned: ", self.interp.evaljs(
-               wrap_in_window(code, window_id)))
+            code = self.wrap(code, window_id)
+            print("Script returned: ", self.interp.evaljs(code))
         except dukpy.JSRuntimeError as e:
             print("Script", script, "crashed", e)
-        self.current_window = None
 ```
 
-And pass that argument from the `load` method:
+And we'll pass that argument from the `load` method:
 
 ``` {.python}
 class Frame:
     def load(self, url, body=None):
-        # ...
-        with open("runtime15.js") as f:
-            wrapped = wrap_in_window(f.read(), self.window_id)
-            js.interp.evaljs(wrapped)
-        # ...
         for script in scripts:
             # ...
-            task = Task(\
-                self.get_js().run, script_url, body,
+            task = Task(
+                self.js.run, script_url, body,
                 self.window_id)
+            # ...
 ```
+
+The same holds for various dispatching APIs. For example, to dispatch
+an event, we'll need the `window_id`:
+
+``` {.python}
+class JSContext:
+    def dispatch_event(self, type, elt, window_id):
+        # ...
+        code = self.wrap(EVENT_DISPATCH_CODE, window_id)
+        do_default = self.interp.evaljs(code,
+            type=type, handle=handle)
+```
+
+You'll need to modify `EVENT_DISPATCH_CODE` to also prefix classes
+with `window`:
+
+``` {.python}
+EVENT_DISPATCH_CODE = \
+    "new window.Node(dukpy.handle)" + \
+    ".dispatchEvent(new window.Event(dukpy.type))"
+```
+
+And we'll need to pass that argument in `click`, `submit_form`, and
+`keypress`; I've omitted those code fragments. Note that you should
+have modified the `runtime.js` file to store the `LISTENERS` on the
+`window` object, meaning each `Frame` will have its own set of event
+listeners to dispatch to:
+
+``` {.js}
+window.LISTENERS = {}
+
+// ...
+
+
+window.Node.prototype.dispatchEvent = function(evt) {
+    var type = evt.type;
+    var handle = this.handle
+    var list = (window.LISTENERS[handle] &&
+        window.LISTENERS[handle][type]) || [];
+    for (var i = 0; i < list.length; i++) {
+        list[i].call(this, evt);
+    }
+    return evt.do_default;
+}
+```
+
+Do the same for `requestAnimationFrame`, passing around a window ID
+and wrapping the code so that it correctly references `window`.
+
+For calls _from_ JavaScript into the browser, we'll need JavaScript to
+pass in the window ID it is calling from:
+
+``` {.javascript}
+window.document = { querySelectorAll: function(s) {
+    var handles = call_python("querySelectorAll", s, window._id);
+    return handles.map(function(h) { return new window.Node(h) });
+}}
+```
+
+Then on the browser side we can use that window ID to get the `Frame`
+object:
+
+``` {.python}
+class JSContext:
+    def querySelectorAll(self, selector_text, window_id):
+        frame = self.tab.window_id_to_frame[window_id]
+        selector = CSSParser(selector_text).selector()
+        nodes = [node for node
+                 in tree_to_list(frame.nodes, [])
+                 if selector.matches(node)]
+        return [self.get_handle(node) for node in nodes]
+```
+
+We'll need something similar in `innerHTML` and `style` because we
+need to `set_needs_render` on the relevant `Frame`. For `setTimeout`
+and `XMLHttpRequest`, which involve a call from JavaScript into the
+browser and later a call from the browser into JavaScript, we'll
+likewise need to pass in a window ID from JavaScript, and use that
+window ID when calling back into JavaScript. I've ommitted that code
+because it is repetitive, but you can find all of the needed locations
+by searching your codebase for `evaljs`.
 
 ::: {.further}
 There are proposals to add the concept of different global namespaces natively
@@ -1647,19 +1733,30 @@ use cases where code modularity or isolation (e.g. for injected testing code)
 is desired.
 :::
 
-Iframe script APIs
-==================
+::: {.further}
+Same-origin iframes can not only synchronously access each others' variables,
+they can also change their origin! That is done via the
+[`domain`][domain-prop] property on the `Document` object. If this sounds weird,
+hard to implement correctly, and a mis-feature of the web, then you're right.
+That's why this feature is gradually being removed from the web.
+There are also [various headers][origin-headers] available for sites to opt
+into iframes having fewer features along these lines, with the benefit being
+better security and performance (isolated iframes can run in their own thread
+or CPU process).
 
-With these changes, you should be able to load basic scripts in iframes. But
-none of the runtime browser APIs work yet, because they don't know which
-`Window` to reference. There are two types of such APIs:
+[origin-headers]: https://html.spec.whatwg.org/multipage/browsers.html#origin-isolation
 
-* Synchronous APIs that modify the DOM or query it (e.g. `querySelectorAll`).
+You could also argue that it's questionable whether same-origin iframes should
+be able to access each others' variables. That may also be a
+mis-feature---what do you think?
+:::
 
-* Event-driven APIs that execute JavaScript callbacks or event handlers
-(`requestAnimationFrame` and `addEventListener`).
+[domain-prop]: https://developer.mozilla.org/en-US/docs/Web/API/Document/domain
 
-Let's first tackle the former. We'll start by implementing the `parent`
+Iframe message passing
+======================
+
+We'll start by implementing the `parent`
 attribute on the `Window` object. It isn't too hard---mostly passing the window
 id to Python so that it knows on which frame to run the API.
 
@@ -1730,152 +1827,6 @@ Object.defineProperty(Window.prototype, 'parent', {
   }
 });
 ```
-
-The same technique works for other runtime APIs, such as `querySelectorAll`.
-The Python for that API is:
-
-``` {.python}
-class JSContext:
-    def querySelectorAll(self, selector_text, window_id):
-        frame = self.tab.window_id_to_frame[window_id]
-        selector = CSSParser(selector_text).selector()
-        nodes = [node for node
-                 in tree_to_list(frame.nodes, [])
-                 if selector.matches(node)]
-        return [self.get_handle(node) for node in nodes]
-```
-
-And JavaScript:
-
-``` {.javascript}
-window.document = { querySelectorAll: function(s) {
-    var handles = call_python("querySelectorAll", s, window._id);
-    return handles.map(function(h) { return new Node(h) });
-}}
-```
-
-Next let's implement callback-based APIs, starting with `requestAnimationFrame`.
-On the JavaScript side, the only change needed is to store `RAF_LISTENERS`
-on the `window` object instead of the global scope, so that each
-window gets its own separate listeners.
-
-``` {.javascript}
-window.RAF_LISTENERS = [];
-
-window.requestAnimationFrame = function(fn) {
-    window.RAF_LISTENERS.push(fn);
-    call_python("requestAnimationFrame");
-}
-
-window.__runRAFHandlers = function() {
-    # ...
-    for (var i = 0; i < window.RAF_LISTENERS.length; i++) {
-        handlers_copy.push(window.RAF_LISTENERS[i]);
-    }
-    window.RAF_LISTENERS = [];
-}
-
-```
-
-The Python side will just cause the `Tab` to run an animation frame, just like
-before, so no change there. But we do need to change `run_animation_frame`
-to loop over all frames and call callbacks registered. Because each one
-uses `wrap_in_window`, the correct `Window` object is bound to the `window`
-variable and `RAF_LISTENERS` resolves to the correct variable for each frame.
-
-``` {.python}
-class Tab:
-    def run_animation_frame(self, scroll):
-        # ...
-        for (window_id, frame) in self.window_id_to_frame.items():
-            frame.get_js().interp.evaljs(
-                wrap_in_window("__runRAFHandlers()", window_id))
-            for node in tree_to_list(frame.nodes, []):
-                 #...
-```
-
-Event listeners are similar. Registering one is now stores a reference on the
-window:
-
-``` {.javascript}
-window.LISTENERS = {}
-# ...
-Node.prototype.addEventListener = function(type, listener) {
-    if (!window.LISTENERS[this.handle])
-        window.LISTENERS[this.handle] = {};
-    var dict = window.LISTENERS[this.handle];
-    # ...
-}
-
-Node.prototype.dispatchEvent = function(evt) {
-    # ...
-    var list = (window.LISTENERS[handle] &&
-        window.LISTENERS[handle][type]) || [];
-    # ...
-}
-
-```
-
-Dispatching the event requires `wrap_in_window`.^[All of the call sites of
-`dispatch_event` (`click`, `submit_form`, and `keypress`) will need an additional
-parameter of the window id; I've omitted those code fragments.]
-
-``` {.python}
-class JSContext:
-    def dispatch_event(self, type, elt, window_id):
-        # ...
-        do_default = self.interp.evaljs(
-            wrap_in_window(EVENT_DISPATCH_CODE, window_id),
-            type=type, handle=handle)
-```
-
-And that's it! I've omitted `setTimeout` and `XMLHTTPRequest`, but each of them uses
-one or both of the above techniques. As an exercise, migrate each of them
-to the new pattern..
-
-On the other hand, the rest work as-is: `getAttribute`, `innerHTML`, `style` and
-`Date`.^[Another good exercise: can you explain why these don't need any
-changes?] However, `innerHTML` can cause an iframe to be added to or removed
-from the document. Our browser does not handle that correctly, and I've left
-a solution for this problem to an exercise.
-
-::: {.quirk}
-Demos from previous chapters might not work, because the `with` operator hack
-doesn't always work. To fix them you'll have to replace some global variable
-references with one on `window`. For example, `setTimeout` might need to change
-to `window.setTimeout`, etc.
-
-The DukPy version you're using might also have a bug in the interaction between
-functions defined with the `function foo() { ... } ` syntax and the `with`
-operator. To work around it and run the animation tests from Chapter 13 with
-the runtime changes from this chapter, you'll probably need to edit the
-examples from that chapter to use the `foo = function() { ... } ` syntax
-instead.
-:::
-
-
-::: {.further}
-Same-origin iframes can not only synchronously access each others' variables,
-they can also change their origin! That is done via the
-[`domain`][domain-prop] property on the `Document` object. If this sounds weird,
-hard to implement correctly, and a mis-feature of the web, then you're right.
-That's why this feature is gradually being removed from the web.
-There are also [various headers][origin-headers] available for sites to opt
-into iframes having fewer features along these lines, with the benefit being
-better security and performance (isolated iframes can run in their own thread
-or CPU process).
-
-[origin-headers]: https://html.spec.whatwg.org/multipage/browsers.html#origin-isolation
-
-You could also argue that it's questionable whether same-origin iframes should
-be able to access each others' variables. That may also be a
-mis-feature---what do you think?
-:::
-
-[domain-prop]: https://developer.mozilla.org/en-US/docs/Web/API/Document/domain
-
-Iframe message passing
-======================
 
 Cross-origin iframes can't access each others' variables, but that doesn't
 mean they can't communicate. Instead of direct access, they use
@@ -1995,20 +1946,21 @@ dispatches an event on it:
 class Tab:
     def post_message(self, message, target_window_id):
         frame = self.window_id_to_frame[target_window_id]
-        frame.get_js().dispatch_post_message(
+        frame.js.dispatch_post_message(
             message, target_window_id)
 ```
 
 The event happens in the usual way:
 
 ``` {.python}
+POST_MESSAGE_DISPATCH_CODE = \
+    "window.dispatchEvent(new window.PostMessageEvent(dukpy.data))",
+
 class JSContext:
     def dispatch_post_message(self, message, window_id):
         self.interp.evaljs(
-            wrap_in_window(
-                "dispatchEvent(new PostMessageEvent(dukpy.data))",
-                window_id),
-            data=message)    
+            self.wrap(POST_MESSAGE_DISPATCH_CODE, window_id),
+            data=message)
 ```
 
 Try it out on [this demo](examples/example15-iframe.html). You should see

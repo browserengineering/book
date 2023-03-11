@@ -2,12 +2,12 @@ window.console = { log: function(x) { call_python("log", x); } }
 
 window.document = { querySelectorAll: function(s) {
     var handles = call_python("querySelectorAll", s, window._id);
-    return handles.map(function(h) { return new Node(h) });
+    return handles.map(function(h) { return new window.Node(h) });
 }}
 
 window.Node = function(handle) { this.handle = handle; }
 
-Node.prototype.getAttribute = function(attr) {
+window.Node.prototype.getAttribute = function(attr) {
     return call_python("getAttribute", this.handle, attr);
 }
 
@@ -18,11 +18,11 @@ window.Event = function(type) {
     this.do_default = true;
 }
 
-Event.prototype.preventDefault = function() {
+window.Event.prototype.preventDefault = function() {
     this.do_default = false;
 }
 
-Node.prototype.addEventListener = function(type, listener) {
+window.Node.prototype.addEventListener = function(type, listener) {
     if (!window.LISTENERS[this.handle])
         window.LISTENERS[this.handle] = {};
     var dict = window.LISTENERS[this.handle];
@@ -31,7 +31,7 @@ Node.prototype.addEventListener = function(type, listener) {
     list.push(listener);
 }
 
-Node.prototype.dispatchEvent = function(evt) {
+window.Node.prototype.dispatchEvent = function(evt) {
     var type = evt.type;
     var handle = this.handle
     var list = (window.LISTENERS[handle] &&
@@ -42,13 +42,13 @@ Node.prototype.dispatchEvent = function(evt) {
     return evt.do_default;
 }
 
-Object.defineProperty(Node.prototype, 'innerHTML', {
+Object.defineProperty(window.Node.prototype, 'innerHTML', {
     set: function(s) {
         call_python("innerHTML_set", this.handle, s.toString(), window._id);
     }
 });
 
-Object.defineProperty(Node.prototype, 'style', {
+Object.defineProperty(window.Node.prototype, 'style', {
     set: function(s) {
         call_python("style_set", this.handle, s.toString(), window._id);
     }
@@ -70,32 +70,32 @@ window.__runSetTimeout = function(handle) {
 window.XHR_REQUESTS = {}
 
 window.XMLHttpRequest = function() {
-    this.handle = Object.keys(XHR_REQUESTS).length;
-    XHR_REQUESTS[this.handle] = this;
+    this.handle = Object.keys(window.XHR_REQUESTS).length;
+    window.XHR_REQUESTS[this.handle] = this;
 }
 
-XMLHttpRequest.prototype.open = function(method, url, is_async) {
+window.XMLHttpRequest.prototype.open = function(method, url, is_async) {
     this.is_async = is_async;
     this.method = method;
     this.url = url;
 }
 
-XMLHttpRequest.prototype.send = function(body) {
+window.XMLHttpRequest.prototype.send = function(body) {
     this.responseText = call_python("XMLHttpRequest_send",
         this.method, this.url, this.body, this.is_async, this.handle,
         window._id);
 }
 
 window.__runXHROnload = function(body, handle) {
-    var obj = XHR_REQUESTS[handle];
-    var evt = new Event('load');
+    var obj = window.XHR_REQUESTS[handle];
+    var evt = new window.Event('load');
     obj.responseText = body;
     if (obj.onload)
         obj.onload(evt);
 }
 
 window.Date = function() {}
-Date.now = function() {
+window.Date.now = function() {
     return call_python("now");
 }
 
@@ -162,7 +162,6 @@ Object.defineProperty(Window.prototype, 'parent', {
             // Cross-origin
             return new Window(-1)
         }
-
     }
   }
 });

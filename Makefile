@@ -51,6 +51,8 @@ www/widgets/server%.js: src/server%.py src/server%.hints infra/compile.py
 www/onepage/%.html: book/%.md infra/chapter.html infra/filter.lua config.json
 	$(PANDOC) --toc --metadata=mode:onepage --variable=cur:$* --template infra/chapter.html $< -o $@
 
+www/onepage/onepage.html: ;
+
 www/onepage.html: $(patsubst %,www/onepage/%.html,$(CHAPTERS))
 www/onepage.html: book/onepage.md infra/template.html infra/filter.lua config.json
 	$(PANDOC) --metadata=mode:onepage --template infra/template.html -c book.css $< -o $@
