@@ -1500,7 +1500,8 @@ implement that.
 
 For two frames' JavaScript environments to interact, we'll need to put
 them in the same `JSContext`. So, instead of each `Frame` having a
-`JSContext` of its own, we'll want to store `JSContext`s on the `Tab`:
+`JSContext` of its own, we'll want to store `JSContext`s on the `Tab`,
+in a dictionary that maps origins to JS contexts:
 
 ``` {.python}
 class Tab:
@@ -1524,7 +1525,7 @@ class Frame:
         # ...
 ```
 
-We've now got multiple page's scripts living inside one JavaScript
+We've now got multiple pages' scripts living inside one JavaScript
 context, so we've got to keep them separate somehow. The key is going
 to be the `window` global, of type `Window`. In the browser, this
 refers to the [global object][global-object], and instead of writing a
@@ -1563,7 +1564,7 @@ they work. For example, `setTimeout` might need to change to
 
 To get multiple frames' scripts to play nice inside one JavaScript
 context, we'll create multiple `Window` objects, so imagine having a
-`window1`, a `window2`, and so on. Before running a frame's scripts,
+`window_1`, a `window_2`, and so on. Before running a frame's scripts,
 we'll assign `window` to the correct `Window` object, so that frame
 can refer to itself as `window`.[^dukpy-limitation]
 
