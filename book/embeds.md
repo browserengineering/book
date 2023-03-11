@@ -1669,7 +1669,7 @@ have modified the `runtime.js` file to store the `LISTENERS` on the
 `window` object, meaning each `Frame` will have its own set of event
 listeners to dispatch to:
 
-```
+``` {.js}
 window.LISTENERS = {}
 
 // ...
