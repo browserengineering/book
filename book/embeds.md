@@ -104,8 +104,7 @@ class Tab:
         images = [node
             for node in tree_to_list(self.nodes, [])
             if isinstance(node, Element)
-            and node.tag == "img"
-            and "src" in node.attributes]
+            and node.tag == "img"]
         for img in images:
             image_url = resolve_url(img.attributes["src"], self.url)
             assert self.allowed_request(image_url), \
