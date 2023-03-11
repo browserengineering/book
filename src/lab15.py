@@ -27,7 +27,6 @@ from lab6 import tree_to_list
 from lab6 import INHERITED_PROPERTIES
 from lab6 import compute_style
 from lab8 import layout_mode
-from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, url_origin
 from lab11 import draw_text, get_font, linespace, \
     parse_blend_mode, CHROME_PX, SCROLL_STEP
@@ -779,9 +778,12 @@ class HTMLParser:
 
 INTERNAL_ACCESSIBILITY_HOVER = "-internal-accessibility-hover"
 
-def wrap_in_window(js, window_id):
-    return ("window = window_{window_id}; " + \
-    "with (window) {{ {js} }}").format(js=js, window_id=window_id)
+EVENT_DISPATCH_CODE = \
+    "new window.Node(dukpy.handle)" + \
+    ".dispatchEvent(new window.Event(dukpy.type))"
+
+POST_MESSAGE_DISPATCH_CODE = \
+    "window.dispatchEvent(new window.PostMessageEvent(dukpy.data))",
 
 class JSContext:
     def __init__(self, tab):
@@ -809,24 +811,30 @@ class JSContext:
         self.node_to_handle = {}
         self.handle_to_node = {}
 
+        self.interp.evaljs("function Window(id) { this._id = id };")
+
     def add_window(self, frame):
-        self.interp.evaljs(
-            "var window_{window_id} = \
-                new Window({window_id});".format(
-                window_id=frame.window_id))
+        code = "var window_{} = new Window({});".format(
+            frame.window_id, frame.window_id)
+        self.interp.evaljs(code)
+
+        with open("runtime15.js") as f:
+            self.interp.evaljs(self.wrap(f.read(), frame.window_id))
+
+    def wrap(self, script, window_id):
+        return "window = window_{};".format(window_id) + script
 
     def run(self, script, code, window_id):
         try:
-            print("Script returned: ", self.interp.evaljs(
-               wrap_in_window(code, window_id)))
+            code = self.wrap(code, window_id)
+            print("Script returned: ", self.interp.evaljs(code))
         except dukpy.JSRuntimeError as e:
             print("Script", script, "crashed", e)
-        self.current_window = None
 
     def dispatch_event(self, type, elt, window_id):
         handle = self.node_to_handle.get(elt, -1)
-        do_default = self.interp.evaljs(
-            wrap_in_window(EVENT_DISPATCH_CODE, window_id),
+        code = self.wrap(EVENT_DISPATCH_CODE, window_id)
+        do_default = self.interp.evaljs(code,
             type=type, handle=handle)
         return not do_default
 
@@ -860,9 +868,7 @@ class JSContext:
 
     def dispatch_post_message(self, message, window_id):
         self.interp.evaljs(
-            wrap_in_window(
-                "dispatchEvent(new PostMessageEvent(dukpy.data))",
-                window_id),
+            self.wrap(POST_MESSAGE_DISPATCH_CODE, window_id),
             data=message)
 
     def postMessage(self, target_window_id, message, origin):
@@ -888,7 +894,7 @@ class JSContext:
 
     def dispatch_settimeout(self, handle, window_id):
         self.interp.evaljs(
-            wrap_in_window(SETTIMEOUT_CODE, window_id), handle=handle)
+            self.wrap(SETTIMEOUT_CODE, window_id), handle=handle)
 
     def setTimeout(self, handle, time, window_id):
         def run_callback():
@@ -897,8 +903,8 @@ class JSContext:
         threading.Timer(time / 1000.0, run_callback).start()
 
     def dispatch_xhr_onload(self, out, handle, window_id):
-        do_default = self.interp.evaljs(
-            XHR_ONLOAD_CODE, out=out, handle=handle)
+        code = self.wrap(XHR_ONLOAD_CODE, window_id)
+        do_default = self.interp.evaljs(code, out=out, handle=handle)
 
     def XMLHttpRequest_send(
         self, method, url, body, isasync, handle, window_id):
@@ -926,6 +932,10 @@ class JSContext:
 
     def now(self):
         return int(time.time() * 1000)
+
+    def dispatch_RAF(self, window_id):
+        code = self.wrap("window.__runRAFHandlers()", window_id)
+        self.interp.evaljs(code)
 
     def requestAnimationFrame(self):
         self.tab.browser.set_needs_animation_frame(self.tab)
@@ -1154,12 +1164,6 @@ class Frame:
         return self.allowed_origins == None or \
             url_origin(url) in self.allowed_origins
 
-    def get_js(self):
-        if self.js:
-            return self.js
-        else:
-            return self.parent_frame.get_js()
-
     def load(self, url, body=None):
         self.zoom = 1
         self.scroll = 0
@@ -1176,17 +1180,8 @@ class Frame:
 
         self.nodes = HTMLParser(body).parse()
 
-        if not self.parent_frame or wbetools.FORCE_CROSS_ORIGIN_IFRAMES or \
-            url_origin(self.url) != url_origin(self.parent_frame.url):
-            self.js = JSContext(self.tab)
-            self.js.interp.evaljs(\
-                "function Window(id) { this._id = id };")
-        js = self.get_js()
-        js.add_window(self)
-
-        with open("runtime15.js") as f:
-            wrapped = wrap_in_window(f.read(), self.window_id)
-            js.interp.evaljs(wrapped)
+        self.js = self.tab.get_js(url_origin(url))
+        self.js.add_window(self)
 
         scripts = [node.attributes["src"] for node
                    in tree_to_list(self.nodes, [])
@@ -1201,8 +1196,8 @@ class Frame:
 
             header, body = request(script_url, url)
             body = body.decode("utf8")
-            task = Task(\
-                self.get_js().run, script_url, body,
+            task = Task(
+                self.js.run, script_url, body,
                 self.window_id)
             self.tab.task_runner.schedule_task(task)
 
@@ -1349,7 +1344,7 @@ class Frame:
                 self.document.height) - self.frame_height))
 
     def submit_form(self, elt):
-        if self.get_js().dispatch_event(
+        if self.js.dispatch_event(
             "submit", elt, self.window_id): return
         inputs = [node for node in tree_to_list(elt, [])
                   if isinstance(node, Element)
@@ -1372,7 +1367,7 @@ class Frame:
         if self.tab.focus and self.tab.focus.tag == "input":
             if not "value" in self.tab.focus.attributes:
                 self.activate_element(self.tab.focus)
-            if self.get_js().dispatch_event(
+            if self.js.dispatch_event(
                 "keydown", self.tab.focus, self.window_id): return
             self.tab.focus.attributes["value"] += char
             self.set_needs_render()
@@ -1406,7 +1401,7 @@ class Frame:
                     loc_rect)]
         if not objs: return
         elt = objs[-1].node
-        if elt and self.get_js().dispatch_event(
+        if elt and self.js.dispatch_event(
             "click", elt, self.window_id): return
         while elt:
             if elt.layout_object and elt.layout_object.dispatch(x, y):
@@ -1441,6 +1436,7 @@ class Tab:
         self.zoom = 1.0
 
         self.window_id_to_frame = {}
+        self.origin_to_js = {}
 
     def load(self, url, body=None):
         self.history.append(url)
@@ -1449,6 +1445,13 @@ class Tab:
         self.root_frame.load(url, body)
         self.root_frame.frame_width = WIDTH
         self.root_frame.frame_height = HEIGHT - CHROME_PX
+
+    def get_js(self, origin):
+        if wbetools.FORCE_CROSS_ORIGIN_IFRAMES:
+            return JSContext(self)
+        if origin not in self.origin_to_js:
+            self.origin_to_js[origin] = JSContext(self)
+        return self.origin_to_js[origin]
 
     def set_needs_render_all_frames(self):
         for id, frame in self.window_id_to_frame.items():
@@ -1474,8 +1477,7 @@ class Tab:
 
         needs_composite = False
         for (window_id, frame) in self.window_id_to_frame.items():
-            frame.get_js().interp.evaljs(
-                wrap_in_window("__runRAFHandlers()", window_id))
+            frame.js.dispatch_RAF(frame.window_id)
     
             for node in tree_to_list(frame.nodes, []):
                 for (property_name, animation) in \
@@ -1599,7 +1601,7 @@ class Tab:
 
     def post_message(self, message, target_window_id):
         frame = self.window_id_to_frame[target_window_id]
-        frame.get_js().dispatch_post_message(
+        frame.js.dispatch_post_message(
             message, target_window_id)
 
 def draw_line(canvas, x1, y1, x2, y2, color):
