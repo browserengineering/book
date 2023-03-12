@@ -82,6 +82,3 @@ lint test:
 	python3 -m doctest infra/annotate_code.md
 	python3 infra/runtests.py config.json --chapter $(CHAPTER)
 	! grep -n '^```' book/*.md | awk '(NR % 2) {print}' | grep -v '{.'
-
-test-allinone:
-	(cd src/ && python3 -m doctest lab13_allinone-tests.md);

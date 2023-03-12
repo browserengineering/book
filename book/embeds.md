@@ -1602,7 +1602,7 @@ Before running any JavaScript, we'll want to change which window the
 ``` {.python}
 class JSContext:
     def wrap(self, script, window_id):
-        return "window = window_{};".format(window_id) + script
+        return "window = window_{}; {}".format(window_id, script)
 ```
 
 We can use this to, for example, set up the initial runtime
@@ -1954,7 +1954,7 @@ The event happens in the usual way:
 
 ``` {.python}
 POST_MESSAGE_DISPATCH_CODE = \
-    "window.dispatchEvent(new window.PostMessageEvent(dukpy.data))",
+    "window.dispatchEvent(new window.PostMessageEvent(dukpy.data))"
 
 class JSContext:
     def dispatch_post_message(self, message, window_id):
