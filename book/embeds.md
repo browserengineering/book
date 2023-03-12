@@ -1753,9 +1753,10 @@ about `eval`, it does the same thing as the DukPy `evaljs` method.] And if the
 eval throws a "variable not defined" exception, that means the window object is
 not defined, which can only be the case if the parent is cross-origin to the
 current window. In that case, return a fresh `Window` object with the fake id
-`-1`.^[Which is also correct, because cross-origin frames can't access each
-others' variables. However, in a real browser this `Window` object is not
-totally fake---see the related exercise at the end of the chapter.]
+`-1`.^[Which is also good that it's not a "real" window, because cross-origin
+frames can't access each others' variables. However, in a real browser this
+`Window` object is not fake---see the related exercise at the end of
+the chapter.]
 
 ``` {.html}
 Object.defineProperty(Window.prototype, 'parent', {
@@ -2126,8 +2127,13 @@ unless `width` or `height` is specified. Also add support for hiding the
 not specified, the image is assumed to not be visually important, and showing
 a broken image is therefore not useful to the user.
 
-*Same-origin frame tree*: same-origin iframes can access each others' variables
- and DOM, even if they are not adjacent in the frame tree. Implement this.
+*Accessing the full frame tree*: same-origin iframes can access each others'
+variables and DOM, even if they are not adjacent in the frame tree. Implement
+this by for the situation of a same-origin "grandparent" frame with a
+cross-origin parent by making `parent` return a real `Window` for cross-origin
+frames. However, this object should prohibit accessing the `document` object
+from a cross-origin JS context, and throw an exception if a script tries
+to do so.
 
 *Iframe media queries*. Implement the [width][width-mq] media query.
 
