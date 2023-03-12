@@ -386,7 +386,7 @@ shared, we need to add parameters for the layout class to instantiate
 and an `extra_param` that varies depending on the child type.
 
 ``` {.python replace=child_class%2c/child_class%2c%20frame%2c,previous_word)/previous_word%2c%20frame)}
-class BlockLayout(LayoutObject):
+class BlockLayout:
     def add_inline_child(self, node, zoom, w, child_class, word=None):
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
@@ -403,7 +403,7 @@ class BlockLayout(LayoutObject):
 We can redefine  `text` and `input` in a satisfying way now:
 
 ``` {.python replace=TextLayout/TextLayout%2c%20self.frame,InputLayout/InputLayout%2c%20self.frame}
-class BlockLayout(LayoutObject):
+class BlockLayout:
     def text(self, node, zoom):
         node_font = font(node, zoom)
         for word in node.text.split():
@@ -418,7 +418,7 @@ class BlockLayout(LayoutObject):
 Adding `image` is now also straightforward:
 
 ``` {.python replace=ImageLayout/ImageLayout%2c%20self.frame}
-class BlockLayout(LayoutObject):
+class BlockLayout:
     def recurse(self, node, zoom):
             # ...
             elif node.tag == "img":
@@ -484,7 +484,7 @@ If _both_ those attributes are present, things are pretty easy: we
 just read from them when laying out the element, both in `image`:
 
 ``` {.python}
-class BlockLayout(LayoutObject):
+class BlockLayout:
     def image(self, node, zoom):
         if "width" in node.attributes:
             w = device_px(int(node.attributes["width"]), zoom)
@@ -898,7 +898,7 @@ Besides this quirk, iframe layout is a lot like images. They're
 created in `BlockLayout`:
 
 ``` {.python}
-class BlockLayout(LayoutObject):
+class BlockLayout:
     # ...
     def recurse(self, node, zoom):
         # ...
@@ -1093,79 +1093,28 @@ it's not (yet) possible to click on a element in an iframe in our toy browser,
 iterate through its focusable elements, scroll it, or generate an accessibility
 tree.
 
-Let's fix that. But all this code in `click` is getting a little unwieldy, so
-first some refactoring. We'll push object-type-specific behavior down into the
-various `LayoutObject` subclasses, via a new `dispatch` method that does any
-special behavior and then returns `True` if the element tree walk should
-stop.^[In our toy browser, we never implemented [event bubbling][bubbling]. So
-all we're trying to do is walk up the tree until an element with special
-behavior is found. To see how bubbling affects this code, try the related
-exercise in chapter 9.]
-
-[bubbling]: https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Building_blocks/Events#event_bubbling
-
-The existing `click` method will now simply walk up the element tree until
-`dispatch` returns true:
+Let's fix that. It's as simple as checking for an iframe, and if found
+sending the click event to it and immediately returning after (because
+iframes capture click events):
 
 ``` {.python}
 class Frame:
     def click(self, x, y):
         # ...
         while elt:
-            if elt.layout_object and elt.layout_object.dispatch(x, y):
+            # ...
+            elif elt.tag == "iframe":
+                elt.frame.click(x - elt.layout_object.x, y - elt.layout_object.y)
                 return
-            elt = elt.parent
 
 ```
 
-By default, the tree walk is not stopped:
-
-``` {.python}
-class LayoutObject:
-    def dispatch(self, x, y):
-        return False
-```
-
-For an inline element it stops if focusable:
-
-``` {.python}
-class BlockLayout(LayoutObject):
-   def dispatch(self, x, y):
-        if isinstance(self.node, Element) and is_focusable(self.node):
-            self.frame.focus_element(self.node)
-            self.frame.activate_element(self.node)
-            self.frame.set_needs_render()
-            return True
-        return False
-```
-
-While for inputs, they are always focusable:
-
-``` {.python}
-class InputLayout(EmbedLayout):
-   def dispatch(self, x, y):
-        self.frame.focus_element(self.node)
-        self.frame.activate_element(self.node)
-        self.frame.set_needs_render()
-        return True
-```
-
-And now we're ready to implement `dispatch` for iframe elements. In this
-case, we should re-target the click to the iframe, after adjusting for its local
-coordinate space, and then stop the tree walk:
-
-
-``` {.python}
-class IframeLayout(EmbedLayout):
-    def dispatch(self, x, y):
-        self.node.frame.click(x - self.x, y - self.y)
-        return True
-```
-
-Now that clicking works, clicking on `<a>` elements will work. Which means
-that you can now cause a frame to navigate to a new page. And because a
-`Frame` has all the loading and navigation logic that `Tab` used to have, it
-just works without any more changes! That's satisfying.
+Now that clicking works, clicking on `<a>` elements will work. Which means that
+you can now cause a frame to navigate to a new page. And because a `Frame` has
+all the loading and navigation logic that `Tab` used to have, it just works
+without any more changes! That's satisfying. You should be able to load
+[this example](examples/example15-iframe.html). Repeatedly clicking on the link
+will add another recursive iframe.
 
 Focusing an element now also needs to store the frame the focused element is
 on (the `focus` value will still be stored on the `Tab`, not the `Frame`,
