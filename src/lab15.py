@@ -783,7 +783,7 @@ EVENT_DISPATCH_CODE = \
     ".dispatchEvent(new window.Event(dukpy.type))"
 
 POST_MESSAGE_DISPATCH_CODE = \
-    "window.dispatchEvent(new window.PostMessageEvent(dukpy.data))",
+    "window.dispatchEvent(new window.PostMessageEvent(dukpy.data))"
 
 class JSContext:
     def __init__(self, tab):
@@ -822,7 +822,7 @@ class JSContext:
             self.interp.evaljs(self.wrap(f.read(), frame.window_id))
 
     def wrap(self, script, window_id):
-        return "window = window_{};".format(window_id) + script
+        return "window = window_{}; {}".format(window_id, script)
 
     def run(self, script, code, window_id):
         try:
@@ -851,7 +851,7 @@ class JSContext:
         frame = self.tab.window_id_to_frame[window_id]
         selector = CSSParser(selector_text).selector()
         nodes = [node for node
-                 in tree_to_list(frame.nodes, [])
+             in tree_to_list(frame.nodes, [])
                  if selector.matches(node)]
         return [self.get_handle(node) for node in nodes]
 
