@@ -851,7 +851,7 @@ class JSContext:
         frame = self.tab.window_id_to_frame[window_id]
         selector = CSSParser(selector_text).selector()
         nodes = [node for node
-             in tree_to_list(frame.nodes, [])
+                in tree_to_list(frame.nodes, [])
                  if selector.matches(node)]
         return [self.get_handle(node) for node in nodes]
 
