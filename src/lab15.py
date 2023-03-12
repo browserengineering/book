@@ -144,16 +144,8 @@ class DrawImage(DisplayItem):
         return "DrawImage(rect={})".format(
             self.rect)
 
-class LayoutObject:
-    def __init__(self):
-        pass
-
-    def dispatch(self, x, y):
-        return False
-
-class DocumentLayout(LayoutObject):
+class DocumentLayout:
     def __init__(self, node, frame):
-        super().__init__()
         self.node = node
         self.frame = frame
         node.layout_object = self
@@ -191,9 +183,8 @@ def font(node, zoom):
     font_size = device_px(float(node.style["font-size"][:-2]), zoom)
     return get_font(font_size, weight, font_size)
 
-class BlockLayout(LayoutObject):
+class BlockLayout:
     def __init__(self, node, parent, previous, frame):
-        super().__init__()
         self.node = node
         node.layout_object = self
         self.parent = parent
@@ -316,21 +307,12 @@ class BlockLayout(LayoutObject):
             cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
 
-    def dispatch(self, x, y):
-        if isinstance(self.node, Element) and is_focusable(self.node):
-            self.frame.focus_element(self.node)
-            self.frame.activate_element(self.node)
-            self.frame.set_needs_render()
-            return True
-        return False
-
     def __repr__(self):
         return "BlockLayout(x={}, y={}, width={}, height={}, node={})".format(
             self.x, self.x, self.width, self.height, self.node)
 
-class EmbedLayout(LayoutObject):
+class EmbedLayout:
     def __init__(self, node, parent, previous, frame):
-        super().__init__()
         self.node = node
         self.frame = frame
         node.layout_object = self
@@ -401,12 +383,6 @@ class InputLayout(EmbedLayout):
         paint_outline(self.node, cmds, rect)
         cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
-
-    def dispatch(self, x, y):
-        self.frame.focus_element(self.node)
-        self.frame.activate_element(self.node)
-        self.frame.set_needs_render()
-        return True
 
     def __repr__(self):
         return "InputLayout(x={}, y={}, width={}, height={})".format(
@@ -612,10 +588,6 @@ class IframeLayout(EmbedLayout):
         paint_outline(self.node, cmds, rect)
         cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
-
-    def dispatch(self, x, y):
-        self.node.frame.click(x - self.x, y - self.y)
-        return True
 
     def __repr__(self):
         return "IframeLayout(src={}, x={}, y={}, width={}, height={})".format(
@@ -1404,7 +1376,15 @@ class Frame:
         if elt and self.js.dispatch_event(
             "click", elt, self.window_id): return
         while elt:
-            if elt.layout_object and elt.layout_object.dispatch(x, y):
+            if isinstance(elt, Text):
+                pass
+            elif elt.tag == "iframe":
+                elt.frame.click(x - elt.layout_object.x, y - elt.layout_object.y)
+                return
+            elif is_focusable(elt):
+                self.focus_element(elt)
+                self.activate_element(elt)
+                self.set_needs_render()
                 return
             elt = elt.parent
 
