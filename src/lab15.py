@@ -977,7 +977,7 @@ class AccessibilityNode:
     def __init__(self, node):
         self.node = node
         self.children = []
-        self.text = None
+        self.text = ""
 
         if node.layout_object:
             self.bounds = absolute_bounds_for_obj(node.layout_object)
@@ -1082,7 +1082,6 @@ class AccessibilityNode:
 class FrameAccessibilityNode(AccessibilityNode):
     def build(self):
         self.build_internal(self.node.frame.nodes)
-        self.text = "frame"
 
     def hit_test(self, x, y):
         if not self.intersects(x, y): return

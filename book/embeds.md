@@ -1253,12 +1253,12 @@ class AccessibilityNode:
 
 To `build` such a node, we just recurse into the frame:
 
-``` {.python replace=AccessibilityNode(self.node.frame.nodes)/FrameAccessibilityNode(self.node.frame)}
+``` {.python replace=AccessibilityNode(child_node.frame.nodes)/FrameAccessibilityNode(child_node)}
 class AccessibilityNode:
    def build_internal(self, child_node):
         if isinstance(child_node, Element) \
             and child_node.tag == "iframe" and child_node.frame:
-            child = AccessibilityNode(self.node.frame.nodes)
+            child = AccessibilityNode(child_node.frame.nodes)
         # ... 
 ```
 
@@ -1283,8 +1283,7 @@ We'll make a subclass of `AccessibilityNode` to store this information:
 
 ``` {.python}
 class FrameAccessibilityNode(AccessibilityNode):
-    def __init__(self, frame):
-        super().__init__(frame.nodes)
+    pass
 ```
 
 We'll create one of those below each `iframe` node:
@@ -1317,7 +1316,7 @@ ignore clicks outside the frame bounds:
 ``` {.python}
 class FrameAccessibilityNode(AccessibilityNode):
     def hit_test(self, x, y):
-        if not self.intersect(x, y): return
+        if not self.intersects(x, y): return
         new_x = x - self.bounds.x()
         new_y = y - self.bounds.y() + self.node.frame.scroll
         node = self
