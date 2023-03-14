@@ -28,10 +28,11 @@ def run_tests(chapter, file_name):
 
     # This ugly code reloads all of our modules from scratch, in case
     # a test makes a mutation to a global for some reason
-    src_dir = os.path.split(os.path.realpath(file_name))
+    src_dir = os.path.split(os.path.realpath(file_name))[0]
     for name, mod in list(sys.modules.items()):
         if hasattr(mod, "__file__") and mod.__file__ and \
-           os.path.realpath(mod.__file__).startswith(src_dir):
+           os.path.realpath(mod.__file__).startswith(src_dir) and \
+           mod.__file__.endswith("py"):
             importlib.reload(mod)
     mock.patch.stopall()
         

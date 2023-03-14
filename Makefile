@@ -51,6 +51,8 @@ www/widgets/server%.js: src/server%.py src/server%.hints infra/compile.py
 www/onepage/%.html: book/%.md infra/chapter.html infra/filter.lua config.json
 	$(PANDOC) --toc --metadata=mode:onepage --variable=cur:$* --template infra/chapter.html $< -o $@
 
+www/onepage/onepage.html: ;
+
 www/onepage.html: $(patsubst %,www/onepage/%.html,$(CHAPTERS))
 www/onepage.html: book/onepage.md infra/template.html infra/filter.lua config.json
 	$(PANDOC) --metadata=mode:onepage --template infra/template.html -c book.css $< -o $@
@@ -80,6 +82,3 @@ lint test:
 	python3 -m doctest infra/annotate_code.md
 	python3 infra/runtests.py config.json --chapter $(CHAPTER)
 	! grep -n '^```' book/*.md | awk '(NR % 2) {print}' | grep -v '{.'
-
-test-allinone:
-	(cd src/ && python3 -m doctest lab13_allinone-tests.md);
