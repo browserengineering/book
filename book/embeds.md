@@ -1255,13 +1255,10 @@ To `build` such a node, we just recurse into the frame:
 
 ``` {.python replace=AccessibilityNode(self.node.frame.nodes)/FrameAccessibilityNode(self.node.frame)}
 class AccessibilityNode:
-   def build(self):
-        if isinstance(self.node, Element) \
-            and self.node.tag == "iframe" and self.node.frame:
+   def build_internal(self, child_node):
+        if isinstance(child_node, Element) \
+            and child_node.tag == "iframe" and child_node.frame:
             child = AccessibilityNode(self.node.frame.nodes)
-            self.children.append(child)
-            child.build()
-            return
         # ... 
 ```
 
@@ -1288,20 +1285,16 @@ We'll make a subclass of `AccessibilityNode` to store this information:
 class FrameAccessibilityNode(AccessibilityNode):
     def __init__(self, frame):
         super().__init__(frame.nodes)
-        self.width = frame.frame_width
-        self.height = frame.frame_height
-        self.scroll = frame.scroll
 ```
 
 We'll create one of those below each `iframe` node:
 
 ``` {.python}
 class AccessibilityNode:
-   def build(self):
-        if isinstance(self.node, Element) \
-            and self.node.tag == "iframe" and self.node.frame:
-            child = FrameAccessibilityNode(self.node.frame)
-            # ...
+    def build_internal(self, child_node):
+        if isinstance(child_node, Element) \
+            and child_node.tag == "iframe" and child_node.frame:
+            child = FrameAccessibilityNode(child_node)
 ```
 
 Hit testing now has to become recursive:
@@ -1326,7 +1319,7 @@ class FrameAccessibilityNode(AccessibilityNode):
     def hit_test(self, x, y):
         if not self.intersect(x, y): return
         new_x = x - self.bounds.x()
-        new_y = y + self.scroll - self.bounds.y()
+        new_y = y - self.bounds.y() + self.node.frame.scroll
         node = self
         for child in self.children:
             res = child.hit_test(new_x, new_y)
@@ -1334,28 +1327,8 @@ class FrameAccessibilityNode(AccessibilityNode):
         return node
 ```
 
-Finally, we can create a `FrameAccessibilityNode` at the root of the
-accessibility tree to handle scrolling on the root frame in the same
-way:
-
-``` {.python}
-class Tab:
-    def render(self):
-        if self.needs_accessibility:
-            self.accessibility_tree = FrameAccessibilityNode(self.root_frame)
-            # ...
-
-class Browser:
-    def paint_draw_list(self):
-        # ...
-        if self.pending_hover:
-            (x, y) = self.pending_hover
-            a11y_node = self.accessibility_tree.hit_test(x, y)
-```
-
-Note that we don't need to adjust the pending hover for the scroll offset!
 Alright, we've now got all of our browser's forms of user interaction
-working correctly.
+properly recursing through the frame tree.
 
 ::: {.further}
 While our toy browser only has threaded scrolling of the root frame, a real
