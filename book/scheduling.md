@@ -63,6 +63,7 @@ the tasks to run are provided by the operating system.
 ``` {.python replace=(self)/(self%2c%20tab)}
 class TaskRunner:
     def __init__(self):
+        self.tab = tab
         self.tasks = []
 
     def schedule_task(self, task):
