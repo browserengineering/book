@@ -308,6 +308,7 @@ class TaskRunner:
     def schedule_task(self, task):
         self.condition.acquire(blocking=True)
         self.tasks.append(task)
+        self.condition.notify_all()
         self.condition.release()
 
     def run(self):
