@@ -1554,7 +1554,8 @@ class Tab:
 
     def enter(self):
         if self.focus:
-            self.activate_element(self.focus)
+            frame = self.focused_frame or self.root_frame
+            frame.activate_element(self.focus)
 
     def get_tabindex(node):
         return int(node.attributes.get("tabindex", 9999999))
