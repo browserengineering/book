@@ -1010,13 +1010,6 @@ class AccessibilityNode:
                 self.role = "none"
 
     def build(self):
-        if isinstance(self.node, Element) \
-            and self.node.tag == "iframe" and self.node.frame:
-            child = FrameAccessibilityNode(self.node.frame)
-            self.children.append(child)
-            child.build()
-            return
-
         for child_node in self.node.children:
             self.build_internal(child_node)
 
@@ -1055,7 +1048,11 @@ class AccessibilityNode:
             self.text += " is focused"
 
     def build_internal(self, child_node):
-        child = AccessibilityNode(child_node)
+        if isinstance(child_node, Element) \
+            and child_node.tag == "iframe" and child_node.frame:
+            child = FrameAccessibilityNode(child_node)
+        else:
+            child = AccessibilityNode(child_node)
         if child.role != "none":
             self.children.append(child)
             child.build()
@@ -1083,21 +1080,23 @@ class AccessibilityNode:
             str(self.node), self.role, self.text)
 
 class FrameAccessibilityNode(AccessibilityNode):
-    def __init__(self, frame):
-        super().__init__(frame.nodes)
-        self.width = frame.frame_width
-        self.height = frame.frame_height
-        self.scroll = frame.scroll
+    def build(self):
+        self.build_internal(self.node.frame.nodes)
+        self.text = "frame"
 
     def hit_test(self, x, y):
-        if not self.intersect(x, y): return
+        if not self.intersects(x, y): return
         new_x = x - self.bounds.x()
-        new_y = y + self.scroll - self.bounds.y()
+        new_y = y - self.bounds.y() + self.node.frame.scroll
         node = self
         for child in self.children:
             res = child.hit_test(new_x, new_y)
             if res: node = res
         return node
+
+    def __repr__(self):
+        return "FrameAccessibilityNode(node={} role={} text={}".format(
+            str(self.node), self.role, self.text)
 
 
 WINDOW_COUNT = 0
@@ -1524,7 +1523,7 @@ class Tab:
             frame.render()
 
         if self.needs_accessibility:
-            self.accessibility_tree = FrameAccessibilityNode(self.root_frame)
+            self.accessibility_tree = AccessibilityNode(self.root_frame.nodes)
             self.accessibility_tree.build()
             self.needs_accessibility = False
             self.needs_paint = True
@@ -1807,6 +1806,7 @@ class Browser:
 
         if self.pending_hover:
             (x, y) = self.pending_hover
+            y += self.scroll
             a11y_node = self.accessibility_tree.hit_test(x, y)
             if a11y_node:
                 if not self.hovered_a11y_node or \
