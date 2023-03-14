@@ -1702,38 +1702,21 @@ mis-feature---what do you think?
 
 [domain-prop]: https://developer.mozilla.org/en-US/docs/Web/API/Document/domain
 
-Iframe message passing
-======================
+Communicating between frames
+============================
 
-We'll start by implementing the `parent`
-attribute on the `Window` object. It isn't too hard---mostly passing the window
-id to Python so that it knows on which frame to run the API.
+We've now managed to run multiple `Frame`s worth of JavaScript in a
+single `JSContext`, and isolated them somewhat so that they don't mess
+with each others' state. But the whole point of this exercise is to
+allow *some* interaction between frames. Let's do that now.
 
-On the Python side, the `parent` method on `JSContext` will be passed the id of
-the window that wants its parent computed. We'll need to convert that id into a
-`Frame` object, and then return the `parent_frame` of that object.
-(The `parent_frame` `Frame` member variable was implemented earlier in the
-chapter.)
-
-To convert from window id to `Frame`, we'll need a mapping on `Tab` that does
-so:
-
-``` {.python}
-class Tab:
-    def __init__(self, browser):
-        self.window_id_to_frame = {}
-```
-
-And in each `Frame`, adding itself to the mapping:
-
-``` {.python}
-class Frame:
-    def __init__(self, tab, parent_frame, frame_element):
-        # ...
-        self.tab.window_id_to_frame[self.window_id] = self
-```
-
-And now we can use it:
+The simplest way two frames can interact is that they can get access
+to each other's state via the `parent` attribute on the `Window`
+object. If the two frames have the same origin, that lets one frame
+calls methods, access variables, and modify browser state for the
+other frame. Because we've had these same-origin frames share a
+`JSContext`, this isn't too hard to implement. Basically, we'll need a
+way to go from a window ID to its parent frame's window ID:
 
 ``` {.python}
 class JSContext:
@@ -1746,100 +1729,115 @@ class JSContext:
         return parent_frame.window_id
 ```
 
-On the JavaScript side, the most interesting bit is what to do with the id
-returned from Python. What it will do is to find the "`window_<id>`" object,
-which we can obtain via the `eval` JavaScript function.^[If you don't know
-about `eval`, it does the same thing as the DukPy `evaljs` method.] And if the
-eval throws a "variable not defined" exception, that means the window object is
-not defined, which can only be the case if the parent is cross-origin to the
-current window. In that case, return a fresh `Window` object with the fake id
-`-1`.^[Which is also good that it's not a "real" window, because cross-origin
-frames can't access each others' variables. However, in a real browser this
-`Window` object is not fake---see the related exercise at the end of
-the chapter.]
+On the JavaScript side, we now need to look up the `Window` object
+given its window ID. There are lots of ways you could do this, but the
+easiest is to have a global map:
+
+``` {.python}
+class JSContext:
+    def __init__(self, tab):
+        # ...
+        self.interp.evaljs("WINDOWS = {}")
+```
+
+We'll add each window to the global map as it's created:
+
+``` {.python}
+class JSContext:
+    def add_window(self, frame):
+        # ...
+        self.interp.evaljs("WINDOWS[{}] = window_{};".format(
+            frame.window_id, frame.window_id))
+```
+
+Now when you call `window.parent`, we can look up the correct `Window`
+object in this global map:
 
 ``` {.html}
 Object.defineProperty(Window.prototype, 'parent', {
   configurable: true,
   get: function() {
-    parent_id = call_python('parent', window._id);
+    var parent_id = call_python('parent', window._id);
     if (parent_id != undefined) {
-        try {
-            target_window = eval("window_" + parent_id);
-            // Same-origin
-            return target_window;
-        } catch (e) {
-            // Cross-origin
-            return new Window(-1)
-        }
-
+        var parent = WINDOWS[parent_id];
+        if (parent === undefined) parent = new Window(-1);
+        return parent;
     }
   }
 });
 ```
 
-Cross-origin iframes can't access each others' variables, but that doesn't
-mean they can't communicate. Instead of direct access, they use
-[*message passing*][message-passing], a technique for structured communication
-between two different event loops that doesn't require any shared variable
-state or locks.
+Note that it's possible for the lookup in `WINDOWS` to fail, if the
+parent frame is not in the same origin as the current one and
+therefore isn't running in the same `JSContext`. In that case, this
+code return a fresh `Window` object with a fake, negative id. This
+makes further accesses to that window's APIs to fail, making it
+impossible to modify that frame's state.^[Note however that in a real
+browser, this `Window` object is not fake, and some APIs can be called
+on it, most important its `parent` can also be retrieved. There is a
+related exercise at the end of the chapter.]
+
+So via `parent`, same-origin iframes can communicate. But what about
+cross-origin iframes? It would be insecure to let them access each
+other's variables or call each other's methods, so instead browsers
+allow a form of [*message passing*][message-passing], a technique for
+structured communication between two different event loops that
+doesn't require any shared variable state or locks.
 
 [message-passing]: https://en.wikipedia.org/wiki/Message_passing
 
 Message-passing in JavaScript works like this: you call the
-[`postMessage` API][postmessage] on the `Window` object you'd like to talk to,
-with the message itself as the first parameter, and `*` as the
-second.^[The second parameter has to do with
-origin restrictions, see the accompanying exercise.] Calling:
+[`postMessage` API][postmessage] on the `Window` object you'd like to
+talk to, with the message itself as the first parameter, and `*` as
+the second:^[The second parameter has to do with origin restrictions,
+see the accompanying exercise.]
 
 [postmessage]: https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage
 
-    window.parent.postMessage("message contents", '*')
+    window.parent.postMessage("...", '*')
 
-will broadcast "message contents" to the parent frame. A frame can listen to
-the message by adding an event listener on its `Window` object for the
-"message" event.
+This will broadcast the first argument[^structured-cloning] to the
+parent frame, which can receive the message by handling the `message`
+even on its `Window`:
+
+[^structured-cloning]: In a real browser, you can also pass data that
+is not a string, such as numbers and objects. It works via a
+*serialization* algorithm called [structured
+cloning][structured-clone], which converts most JavaScript objects,
+(though not, for example, DOM nodes) to a sequence of bytes that the
+receiver frame can convert back into a JavaScript object. DukPy
+doesn't support structured cloning natively, so our browser won't
+support this either.
+
 
     window.addEventListener("message", function(e) {
         console.log(e.data);
     });
 
-
-Note that in this case `window` is *not* the same object! It's the `Window`
-object for some other frame (e.g. the parent frame in the example above).
-
-In a real browser, you can also pass data that is not a string, such as numbers
-and objects. It works via a *serialization* algorithm called
-[structured cloning][structured-clone]. Structured cloning converts a
-JavaScript object of arbitrary^[Mostly. For example, DOM notes cannot be sent
-across, because it's not OK to access the DOM in multiple threads, and
-different event loops might be assigned different threads in a browser.]
-structure to a sequence of raw bytes, which are *deserialized* on the other end
-into a new object that has the same structure.
+Note that in this second code snippet, `window` is the receiving
+`Window`, a different `Window` from the `window` in the first snippet.
 
 [structured-clone]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm
 
-Let's implement `postMessage`.^[I won't provide support for cloning anything
-other than basic types like string and number, because DukPy doesn't support
-structured cloning natively.] In the JavaScript runtime, we'll need a new
-`WINDOW_LISTENERS` array to keep track of event listeners for messages (the old
-`LISTENERS` was only for events on `Node` objects).
+Let's implement `postMessage`, starting on the *receiver* side. Since
+this event happens on the `Window`, not on a `Node`, we'll need a new
+`WINDOW_LISTENERS` array:
 
 ``` {.javascript}
     window.WINDOW_LISTENERS = {}
 ```
 
-Then we need a way to structure the event object passed to the listener:
+Each listener will be called with a `MessageEvent` object:
 
 ``` {.javascript}
-window.PostMessageEvent = function(data) {
+window.MessageEvent = function(data) {
     this.type = "message";
     this.data = data;
 }
 ```
 
 The event listener and dispatching code is the same as for `Node`, except
-it's on `Window`:
+it's on `Window` and uses `WINDOW_LISTENERS`:
 
 ``` {.javascript}
 Window.prototype.addEventListener = function(type, listener) {
@@ -1864,8 +1862,9 @@ Window.prototype.dispatchEvent = function(evt) {
 }
 ```
 
-And finally, there is the `postMessage` method itself. It has to pass `self._id`
-because the post message is broadcast to all windows *except* the current one:
+That's everything on the receiver side; now let's do the sender side.
+The `postMessage` API itself. Note that `this._id` is the ID of the
+receiver or target window:
 
 ``` {.javascript}
 Window.prototype.postMessage = function(message, origin) {
@@ -1873,14 +1872,7 @@ Window.prototype.postMessage = function(message, origin) {
 }
 ```
 
-Over in Python land, `postMessage` schedules a `post_message` task on the
-`Tab`. Why schedule a task instead of sending the messages synchronously, you
-might ask? It's because `postMessage` is an *async* API that expressly does
-not allow synchronous bi-directional (or uni-directional, for that matter)
-communication. Asynchrony, callbacks and message-passing are inherent
-features of the JavaScript+event loop programming model.
-
-In any event, here is `postMessage`:
+In the browser, `postMessage` schedules a task on the `Tab`:
 
 ``` {.python}
 class JSContext:
@@ -1889,8 +1881,13 @@ class JSContext:
         self.tab.task_runner.schedule_task(task)
 ```
 
-Which then runs this code, which finds the frame for the given window id and
-dispatches an event on it:
+Scheduling the task is necessary because `postMessage` is an
+asynchronous API; sending a synchronous message might involve
+synchronizing multiple `JSContext`s or even multiple processes, which
+would add a lot of overhead.
+
+The task runs this code in the `Tab` to find the target frame and call
+its dispatch method:
 
 ``` {.python}
 class Tab:
@@ -1900,11 +1897,11 @@ class Tab:
             message, target_window_id)
 ```
 
-The event happens in the usual way:
+Which then calls the `dispatchEvent` method we just wrote:
 
 ``` {.python}
 POST_MESSAGE_DISPATCH_CODE = \
-    "window.dispatchEvent(new window.PostMessageEvent(dukpy.data))"
+    "window.dispatchEvent(new window.MessageEvent(dukpy.data))"
 
 class JSContext:
     def dispatch_post_message(self, message, window_id):
@@ -1913,9 +1910,13 @@ class JSContext:
             data=message)
 ```
 
-Try it out on [this demo](examples/example15-iframe.html). You should see
-"Message received from iframe: This is the contents of postMessage." printed to
- the console.
+You should now be able to use `postMessage` to send messages between
+frames,[^postmessage-demo] including cross-origin frames running in
+different `JSContext`s, in a secure way.
+
+[^postmessage-demo]: In [this demo](examples/example15-iframe.html),
+for example, you should see "Message received from iframe: This is the
+contents of postMessage." printed to the console.
 
 ::: {.further}
 Message-passing between event loops is by no means a JavaScript invention. Other

@@ -755,7 +755,7 @@ EVENT_DISPATCH_CODE = \
     ".dispatchEvent(new window.Event(dukpy.type))"
 
 POST_MESSAGE_DISPATCH_CODE = \
-    "window.dispatchEvent(new window.PostMessageEvent(dukpy.data))"
+    "window.dispatchEvent(new window.MessageEvent(dukpy.data))"
 
 class JSContext:
     def __init__(self, tab):
@@ -784,6 +784,7 @@ class JSContext:
         self.handle_to_node = {}
 
         self.interp.evaljs("function Window(id) { this._id = id };")
+        self.interp.evaljs("WINDOWS = {}")
 
     def add_window(self, frame):
         code = "var window_{} = new Window({});".format(
@@ -792,6 +793,9 @@ class JSContext:
 
         with open("runtime15.js") as f:
             self.interp.evaljs(self.wrap(f.read(), frame.window_id))
+
+        self.interp.evaljs("WINDOWS[{}] = window_{};".format(
+            frame.window_id, frame.window_id))
 
     def wrap(self, script, window_id):
         return "window = window_{}; {}".format(window_id, script)
