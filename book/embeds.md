@@ -403,8 +403,7 @@ Finally, now here is `image`:
 class BlockLayout(LayoutObject):
     def recurse(self, node, zoom):
             # ...
-            elif node.tag == "img" and \
-                 "src" in node.attributes:
+            elif node.tag == "img":
                 self.image(node, zoom)
     
     def image(self, node, zoom):
