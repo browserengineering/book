@@ -1230,7 +1230,7 @@ element itself, not just its children.
 
 [innerHTML]: https://developer.mozilla.org/en-US/docs/Web/API/Element/innerHTML
 
-*Script-added scripts and style sheets*: the `innerHTML` API could cause
+*Script-added scripts and style sheets*: The `innerHTML` API could cause
 `<script>` or `<link>`  elements to be added to the document, but currently
 our browser does not load them when this happens. Fix this.
 Likewise, when a `<link>` element is removed from the document, its style
