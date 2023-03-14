@@ -63,6 +63,7 @@ the tasks to run are provided by the operating system.
 ``` {.python replace=(self)/(self%2c%20tab)}
 class TaskRunner:
     def __init__(self):
+        self.tab = tab
         self.tasks = []
 
     def schedule_task(self, task):
@@ -92,7 +93,7 @@ To run those tasks, we need to call the `run` method on our
 ``` {.python expected=False}
 class Tab:
     def __init__(self):
-        self.task_runner = TaskRunner()
+        self.task_runner = TaskRunner(self)
 
 if __name__ == "__main__":
     while True:
@@ -300,18 +301,19 @@ erratic.
 
 ``` {.python expected=False}
 class TaskRunner:
-    def __init__(self):
+    def __init__(self, tab):
         # ...
         self.condition = threading.Condition()
 
     def schedule_task(self, task):
         self.condition.acquire(blocking=True)
         self.tasks.append(task)
+        self.condition.notify_all()
         self.condition.release()
 
     def run(self):
-        self.condition.acquire(blocking=True)
         task = None
+        self.condition.acquire(blocking=True)
         if len(self.tasks) > 0:
             task = self.tasks.pop(0)
         self.condition.release()
