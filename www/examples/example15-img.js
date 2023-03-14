@@ -1,5 +1,5 @@
-document.querySelectorAll("img")[0].addEventListener("click", function(e) {
-	console.log("clicked");
+window.document.querySelectorAll("img")[0].addEventListener("click", function(e) {
+	window.console.log("clicked");
 	e.preventDefault();
 });
 

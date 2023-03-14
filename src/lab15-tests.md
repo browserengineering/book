@@ -9,7 +9,7 @@ This file contains tests for Chapter 15 (Embedded Content).
     >>> _ = test.socket.patch().start()
     >>> _ = test.ssl.patch().start()
     >>> _ = test.gtts.patch()
-    >>> threading.Lock = test.MockLock
+    >>> _ = test.MockLock.patch().start()
     >>> import lab13
     >>> import lab15
     >>> import time
