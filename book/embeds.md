@@ -2001,24 +2001,34 @@ protect your page from any security or privacy risks caused by the
 other frame.
 
 The starting point is that cross-origin iframes can't access each
-other directly. But what if a [buffer overrun][buffer-overrun] lets an
-iframe run arbitrary code on your computer, circumventing these
-restrictions? To protect against such a situation, browsers these days
-load web pages in a security [*sandbox*][sandbox], wherein the
-operating system prevents even arbitrary code from accessing files,
-personal data, or other processes, including other frames. This
-technique is called [*site isolation*][site-isolation].
+other directly through JavaScript. That's good---but what if a bug in
+the JavaScript engine, like a [buffer overrun][buffer-overrun], lets
+an iframe circumvent those protections? Unfortunately, bugs like this
+are common enough that browsers have to defend against them. For
+example, browsers these days run frames from different origins in
+[different operating system processes][site-isolation], and use
+operating system features to limit how much access those
+processes have.
 
 [buffer-overrun]: https://en.wikipedia.org/wiki/Buffer_overflow
+[sandbox]: https://chromium.googlesource.com/chromium/src/+/main/docs/linux/sandboxing.md
 
-Implementing site isolation seems conceptually "straightforward", in
+Other parts of the browser mix content multiple frames, like our
+browser's `Tab`-wide display list. A bug in the rasterizer, could
+allow one frame to take over the rasterizer and read data from another
+frame. Modern browsers therefore use [sandboxing][sandbox] techniques
+to limit how bad such an attack could be. For example, Chromium can
+place the rasterizer in its own process and use a Linux feature called
+`seccomp` to limit what system calls that process can make. Even if a
+bug compromised the rasterizer, that rasterizer wouldn't be able to
+exfiltrate data over the network, preventing private date from leaking.
+
+These isolation and sandboxing features may seem "straightforward", in
 the same sense that the browser thread we added in [Chapter
 13](scheduling.md) is "straightforward". In practice, the many browser
-APIs mean both are full of subtleties and end up being extremely
-complex. Chromium, for example, took many years to ship the first
-implementation of site isolation.
-
-[sandbox]: https://en.wikipedia.org/wiki/Sandbox_(computer_security)
+APIs mean the implementation is full of subtleties and ends up being
+extremely complex. Chromium, for example, took many years to ship the
+first implementation of site isolation.
 
 [site-isolation]: https://www.chromium.org/Home/chromium-security/site-isolation/
 
@@ -2029,8 +2039,7 @@ attacker to read arbitrary locations in memory---including another
 frame's data, if the two frames are in the same process---by measuring
 the time certain operations take. Placing sensitive content in
 different CPU processes (which come with their own memory address
-spaces) is a good protection against these attacks, and that's just
-what site isolation does.
+spaces) is a good protection against these attacks.
 
 [spectre-meltdown]: https://meltdownattack.com/
 
