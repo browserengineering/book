@@ -300,7 +300,7 @@ erratic.
 
 ``` {.python expected=False}
 class TaskRunner:
-    def __init__(self):
+    def __init__(self, tab):
         # ...
         self.condition = threading.Condition()
 
@@ -310,8 +310,8 @@ class TaskRunner:
         self.condition.release()
 
     def run(self):
-        self.condition.acquire(blocking=True)
         task = None
+        self.condition.acquire(blocking=True)
         if len(self.tasks) > 0:
             task = self.tasks.pop(0)
         self.condition.release()
