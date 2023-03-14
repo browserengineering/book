@@ -17,19 +17,25 @@ architecture, performance, security, and open information access.
 Images
 ======
 
-Images are certainly the most popular kind of embedded content on the
-web, dating back to [early 1993][img-email].[^img-history] They're
-included on web pages via the `<img>` tag, which looks like this:
+Images are certainly the most popular kind of embedded
+content[^img-late] on the web, dating back to [early
+1993][img-email].[^img-history] They're included on web pages via the
+`<img>` tag, which looks like this:
 
     <img src="https://browser.engineering/im/hes.jpg">
 
 [img-email]: http://1997.webhistory.org/www.lists/www-talk.1993q1/0182.html
 
-[^img-history]: So it's a little ironic that images only make their
-appearance in chapter 15 of this book! My excuse is that Tkinter
-doesn't support proper image sizing and clipping, and doesn't support
-very many image formats, so we had to wait for the introduction of
-Skia.
+[^img-late]: So it's a little ironic that images only make their
+appearance in chapter 15 of this book! It's because Tkinter doesn't
+support many image formats or proper sizing and clipping, so I had to
+wait for the introduction of Skia.
+
+[^img-history]: This history is also [the reason behind][scrname] a
+    lot of inconsistencies, like `src` versus `href` or `img` versus
+    `image`.
+
+[srcname]: http://1997.webhistory.org/www.lists/www-talk.1993q1/0196.html
 
 And which renders something like this:
 
@@ -456,17 +462,18 @@ class AccessibilityNode:
 ```
 
 ::: {.further}
-The `<img>` tag uses a `src` attribute and not `href`. Why is that? And
-why is the tag name `img` and not `image`? The answer to the first is
-apparently that an image is not a "hypertext reference" (which
-is what `href` stands for), but instead a page sub-resource. However,
-sub-resources actually have inconsistent naming. For example, the `<link>`
-tag can refer to a style sheet with `href`, but the `<script>` tag
-uses `src`. The true reason may simply be [design disagreements][srcname]
-before such things were mediated by a standards organization.
+Videos are similar to images, but demand more bandwidth, time, and
+memory; they also have complications like [Digital Rights Management
+(DRM)][drm]. The `<video>` tag addresses some of that, with built-in
+support for advanced video [*codecs*][codec]^[In video, it's called a
+codec, but in images it's called a *format*--go figure.], DRM, and
+hardware acceleration. It also provides media controls like a
+play/pause button and volume controls.
 :::
 
-[srcname]: http://1997.webhistory.org/www.lists/www-talk.1993q1/0196.html
+[drm]: https://en.wikipedia.org/wiki/Digital_rights_management
+[codec]: https://en.wikipedia.org/wiki/Video_codec
+
 
 Modifying Image Sizes
 =====================
@@ -550,19 +557,13 @@ Your browser should now be able to render <a
 href="/examples/example15-img.html">this example page</a> correctly.
 
 ::: {.further}
-I discussed preserving aspect ratio for a loaded image, but what about before
-it loads? In our toy browser, images are loaded synchronously during `load`,
-but real browsers don't do that because it would slow down page load
-accordingly. So what should a browser render if the image hasn't loaded?
-It doesn't have the image intrinsic sizing, so it has to use other available
-information such as `width` and `height` to size it (and also style it---see
-the corresponding exercise at the end of the chapter).
-
-This is another reason why the inferred aspect ratio feature I implemented in
-this section is important, because in cases where the size of an image depends
-on [responsive design][resp-design] parameters, it's important to preserve the
-aspect ratio accordingly. Otherwise the page layout will look bad and cause
-[layout shift][cls] when the image loads.
+Our browser computes an aspect ratio from the loaded image dimensions,
+but that's not available before an image loads, which is a problem in
+real browsers where images are loaded asynchronously and where the
+image size can [respond to][resp-design] layout parameters. Not
+knowing the aspect ratio can cause the [layout to shift][cls] when the
+image loads, which can be frustrating for users. The [`aspect-ratio`
+property][aspect-ratio] is one way web pages can address this issue.
 :::
 
 [resp-design]: https://developer.\mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Responsive_Design
@@ -729,79 +730,27 @@ now that we have frames being created, let's work on rendering those
 frames to the screen.
 
 ::: {.further}
-For quite a while, browsers also supported another kind of embedded
-content: plugins. Some provided a programming language and mechanism
-for interactive UI, such as [Java applets][java-applets] or
-[Flash];^[YouTube originally used Flash for videos, for example.]
-others provided support for new content types like [PDF]. But plugins
-suffer from accessibility, integration, and performance issues,
-because they must implement a separate rendering, sandboxing, and
-execution system, duplicating all of the browser's own subsystems.
-Improving the browser to allow richer UI, by contrast, benefits all
-pages, not just those using a particular plugin.[^extensible-web]
-
-These days, plugins are less common---which I personally think is a
-good thing. The web is about making information accessible to
-everyone, and that requires open standards, including for embedded
-content. That means open formats and codecs for images and videos, but
-also open source plugins. Today, PDF is [standardized][pdf-standard],
-but for most of their history as plugins, these formats were closed off.
+For quite a while, browsers also supported embedded content in the
+form of *plugins* like [Java applets][java-applets] or [Flash]. But
+there were [performance, security, and accessibility
+problems][embedding] because plugins typically implemented their own
+rendering, sandboxing, and UI primitives. Over time, new APIs have
+closed the gap between web-native content and "non-web"
+plugins,[^like-canvas] and plugins have therefore become less common.
+Personally, I think that's a good thing: the web is about making
+information accessible to everyone, and that requires open standards,
+including for embedded content.
+:::
 
 [java-applets]: https://en.wikipedia.org/wiki/Java_applet
 [Flash]: https://en.wikipedia.org/wiki/Adobe_Flash
-[PDF]: https://developer.mozilla.org/en-US/docs/Learn/HTML/Multimedia_and_embedding/Other_embedding_technologies#the_embed_and_object_elements
-[pdf-standard]: https://www.iso.org/standard/51502.html
-
-[^extensible-web]: In other words, over time APIs have been added that close
-the gap between the use cases supported by iframes and "non-web" plugin
-systems like Flash. For example, in the last decade the `<canvas>` element
+[embedding]: https://developer.mozilla.org/en-US/docs/Learn/HTML/Multimedia_and_embedding/Other_embedding_technologies#the_embed_and_object_elements
+[^like-canvas]: For example, in the last decade the `<canvas>` element
 (which can of course be placed within an iframe) supports hardware-accelerated
 3D content, and [near-native-speed][webassembly] code.
 
 [webassembly]: https://en.wikipedia.org/wiki/WebAssembly
 
-:::
-
-::: {.further}
-Images can also be animated.[^animated-gif] So if a website can load an image,
-and the image can be animated, then that image is something very close to
-a *video*. But in practice, videos need very advanced encoding and encoding
-formats to minimize network and CPU costs, *and* these formats incur a lot of
-other complications, chief among them [Digital Rights Management (DRM)][drm]. To
-support all this, the `<video>` tag supported by real browsers provides
-built-in support for several common video [*codecs*][codec] with DRM and
-hardware acceleration.^[In video, it's called a codec, but in images it's
-called a *format*--go figure.] And on top of all this, videos need built-in
-*media controls*, such as play and pause buttons, and volume controls.
-
-[^animated-gif]: See the exercise for animated images at the end of this
-chapter.
-
-[drm]: https://en.wikipedia.org/wiki/Digital_rights_management
-[codec]: https://en.wikipedia.org/wiki/Video_codec
-
-Perhaps the most common use case for embedded content other than images and
-video is ads. Inline ads have been around since the beginning
-of the web, and are often (for good reasons or bad depending on your
-perspective) big users of third-party embedding and whatever
-animation/attention-drawing features the web has.
-
-From a browser engineering perspective, ads are also a very challenging source
-of performance and [user experience][ux] problems. For example, ads often load
-a lot of data, run a lot of code to measure various kinds of
-[analytics]---such as "was this ad viewed by the user and for how long?"---and
-are delay-loaded (similar to an async-loaded image) and so cause layout shift.
-
-A lot of browser engineering has gone into ways to improve or mitigate these
-problems---everything from ad blocker [browser extensions][extensions] to APIs
-such as [Intersection Observer][io] that make analytics computation more
-efficient.
-:::
-
-[ux]: https://en.wikipedia.org/wiki/User_experience
-[analytics]: https://en.wikipedia.org/wiki/Web_analytics
-[extensions]: https://en.wikipedia.org/wiki/Browser_extension
-[io]: https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API
 
 
 Iframe rendering
@@ -1062,16 +1011,12 @@ So we've now got iframes showing up on the screen. The next step is
 interacting with them.
 
 ::: {.further}
-
 Before iframes, there were the [`<frameset>` and `<frame>`][frameset] elements.
-These elements define a special layout of multiple web pages in a single
-browser window; if present, a `<frameset` replaces the
-`<body>` tag and splits the screen among the `<frame>`s specified. In the early
-days of the web, this was an alternate model to the CSS-based model I've
-presented in this book. The old model had confusing navigation and
-accessibility, and was strictly less flexible than use of `<iframe>`, so
-although all real browsers support them for legacy reasons, this feature is
-obsolete.
+A `<frameset>` replaces the `<body>` tag and splits browser window
+screen among multiple `<frame>`s; this was an early alternative layout
+algorithm to the one presented in this book. Sadly, frames had
+confusing navigation and accessibility, and lacked the flexibility of
+`<iframe>`s, so frames are rarely used these days.
 :::
 
 [frameset]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/frameset
@@ -1415,25 +1360,22 @@ See how easy it is to add accessibility for iframes? That's a great reason
 not to use a plugin.
 
 ::: {.further}
-While our toy browser only has threaded scrolling of the root frame, a real
-browser should aim to make scrolling threaded (and composited) for all
-the other frames, and via all the ways you can scroll---keyboard, touch,
-mouse wheel, scrollbars of different types, and so on.
-(And of course, due to the [`overflow`][overflow-css]
-CSS property, there can be any number of nested scrollers within each 
-other in a single frame.)
-
-Getting this right in all the corner cases
-is pretty hard, and it took each major browser quite a while to get it right.
-Only [in 2016][renderingng-scrolling], for example, was Chromium able to
-achieve it, and even then, there turned out be a very long tail of more or
-less obscure bugs to fix involving different combinations of complex
-containing blocks, stacking order, scrollbars, transforms and other visual
-effects.
+Our browser can only scroll the root frame on the browser thread, but
+real browsers have put in [a lot of work][threaded-scroll] to make
+scrolling happen on the browser thread as much as possible, including
+for iframes. The hard part is handling the many obscure combinations
+of containing blocks, [stacking orders][stacking-order], [scroll
+bars][overflow], transforms, and iframes: with scrolling on the
+browser thread, all of these complex interactions have be communicated
+from the main thread to the browser thread, and correctly interpreted
+by both sides.
 :::
 
-[overflow-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow
-[renderingng-scrolling]: https://developer.chrome.com/articles/renderingng/#threaded-scrolling-animations-and-decode
+[stacking-order]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
+[overflow]: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow
+[threaded-scroll]: https://developer.chrome.com/articles/renderingng/#threaded-scrolling-animations-and-decode
+
+
 
 Iframe scripts
 ==============
@@ -1450,7 +1392,13 @@ implement that.
 For two frames' JavaScript environments to interact, we'll need to put
 them in the same `JSContext`. So, instead of each `Frame` having a
 `JSContext` of its own, we'll want to store `JSContext`s on the `Tab`,
-in a dictionary that maps origins to JS contexts:
+in a dictionary that maps origins to JS contexts:[^shadow-realms]
+
+[^shadow-realms]: There are [various proposals][shadowrealm] to expose
+multiple global namespaces as a JavaScript API. It would definitely be
+convenient to have in this chapter!
+
+[shadowrealm]: https://github.com/tc39/proposal-shadowrealm
 
 ``` {.python}
 class Tab:
@@ -1674,33 +1622,18 @@ because it is repetitive, but you can find all of the needed locations
 by searching your codebase for `evaljs`.
 
 ::: {.further}
-There are proposals to add the concept of different global namespaces natively
-to the JavaScript language. One current proposal is the
-[ShadowRealm API](https://github.com/tc39/proposal-shadowrealm). This
-API would have helped me implement this chapter, but it's aimed at various
-use cases where code modularity or isolation (e.g. for injected testing code)
-is desired.
-:::
-
-::: {.further}
-Same-origin iframes can not only synchronously access each others' variables,
-they can also change their origin! That is done via the
-[`domain`][domain-prop] property on the `Document` object. If this sounds weird,
-hard to implement correctly, and a mis-feature of the web, then you're right.
-That's why this feature is gradually being removed from the web.
-There are also [various headers][origin-headers] available for sites to opt
-into iframes having fewer features along these lines, with the benefit being
-better security and performance (isolated iframes can run in their own thread
-or CPU process).
-
-[origin-headers]: https://html.spec.whatwg.org/multipage/browsers.html#origin-isolation
-
-You could also argue that it's questionable whether same-origin iframes should
-be able to access each others' variables. That may also be a
-mis-feature---what do you think?
+Same-origin iframes can access each other's state, but cross-origin
+ones can't. But the obscure [`domain`][domain-prop] property lets an
+iframe change its origin, moving itself in or out of same-origin
+status. I personally think it's a misfeature: it's hard to implement
+securely, and interferes with various sandboxing techniques; I hope it
+is eventually removed from the web. A more modern replacement are the
+[various headers][origin-headers] where an iframe can opt into less
+sharing in order to get better security and performance.
 :::
 
 [domain-prop]: https://developer.mozilla.org/en-US/docs/Web/API/Document/domain
+[origin-headers]: https://html.spec.whatwg.org/multipage/browsers.html#origin-isolation
 
 Iframe message passing
 ======================
@@ -1918,14 +1851,21 @@ Try it out on [this demo](examples/example15-iframe.html). You should see
  the console.
 
 ::: {.further}
-Message-passing between event loops is by no means a JavaScript invention. Other
-languages, going back to [SmallTalk][smalltalk] or even earlier, have used this
-model of computing for many years. And more recently, even systems languages
-like [Rust][rust] have message-passing as a core language feature.
+Ads are commonly served with iframes and are big users of the web's
+sandboxing, embedding, and animation primitives. This means they are a
+challenging source of performance and [user experience][ux] problems.
+For example, ad [analytics] are important to the ad economy, but
+involve running a lot of code and measuring lots of data. Some web
+APIs, such as [Intersection Observer][io], basically exist to make
+analytics computations more efficient. And, of course, the most
+popular [browser extensions][extensions] are probably ad blockers.
 :::
 
-[smalltalk]: https://en.wikipedia.org/wiki/Smalltalk
-[rust]: https://en.wikipedia.org/wiki/Rust_(programming_language)
+[ux]: https://en.wikipedia.org/wiki/User_experience
+[analytics]: https://en.wikipedia.org/wiki/Web_analytics
+[extensions]: https://en.wikipedia.org/wiki/Browser_extension
+[io]: https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API
+
 
 
 Iframe security
@@ -2003,19 +1943,14 @@ But that's not the only protection needed. It's also important to
 
 
 ::: {.further}
-The required headers for `SharedArrayBuffer` also caused problems for
-the *Web Browser Engineering* website, when I [added JavaScript support][js-blog]
-to embedded widgets. These widgets use `SharedArrayBuffer` to polyfill the way
-that runtime JavaScript APIs talk to the browser. It worked, but in order
-to make it an embedded widget required setting the opt-in headers for that API.
-Unfortunately, doing so broke an embedded YouTube video in Chapter 14,
-because YouTube does not (yet?) set this header.
-
-I worked around the issue by not embedding the widget as a sub-frame of the
-website in chapter 9, and instead [asking the reader](scripts.html#outline) to
-open a new browser window. This kind of complication---ensuring headers are set
-correctly on all frames, including third-party dependencies---is very common
-when trying to implement more advanced features on websites.
+The `SharedArrayBuffer` issue caused problems when I [added JavaScript
+support][js-blog] to the embedded browser widgets on this website. I
+was using `SharedArrayBuffer` to allow synchronous calls from a
+`JSContext` to the browser, and that required APIs that browsers
+restrict for security reasons. Setting the security headers wouldn't
+work, because [Chapter 14](accessibility.md) embeds a Youtube video.
+I worked around it by not embedding the browser widget and [asking the
+reader](scripts.html#outline) to open a new browser window.
 :::
 
 [js-blog]: https://browserbook.substack.com/p/javascript-in-javascript
