@@ -92,7 +92,7 @@ To run those tasks, we need to call the `run` method on our
 ``` {.python expected=False}
 class Tab:
     def __init__(self):
-        self.task_runner = TaskRunner()
+        self.task_runner = TaskRunner(self)
 
 if __name__ == "__main__":
     while True:
