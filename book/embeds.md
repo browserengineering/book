@@ -2127,7 +2127,7 @@ unless `width` or `height` is specified. Also add support for hiding the
 if `alt` text is provided, the browser can assume the image is important
 to the meaning of the website, and so it should tell the user that they
 are missing out on some of the content if it fails to load. But otherwise,
-the broken image icon is probably just ugly noise.
+the broken image icon is probably just ugly clutter.
 
 *Accessing the full frame tree*: same-origin iframes can access each others'
 variables and DOM, even if they are not adjacent in the frame tree. Implement
