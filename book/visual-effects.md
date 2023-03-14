@@ -1515,8 +1515,8 @@ class ClipRRect:
 
 Now, in `paint_visual_effects`, we can use `ClipRRect` instead of
 destination-in blending with `DrawRRect`, We can also
-fold the opacity into the `skia.Paint` passed to the outer `SaveLayer`, since
-that is defined to be applied before blending:
+fold the opacity into the `skia.Paint` passed to the outer
+`SaveLayer`, since that is defined to be applied before blending:
 
 ``` {.python}
 def paint_visual_effects(node, cmds, rect):
