@@ -566,7 +566,7 @@ image loads, which can be frustrating for users. The [`aspect-ratio`
 property][aspect-ratio] is one way web pages can address this issue.
 :::
 
-[resp-design]: https://developer.\mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Responsive_Design
+[resp-design]: https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Responsive_Design
 [cls]: https://web.dev/cls/
 
 Interactive widgets
