@@ -1092,7 +1092,7 @@ class Tab:
 ```
 
 When an iframe is clicked, pass the click through to the child frame,
-and immediately returning after (because iframes capture click events):
+and immediately return after (because iframes capture click events):
 
 ``` {.python}
 class Frame:
