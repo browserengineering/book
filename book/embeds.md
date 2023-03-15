@@ -2143,7 +2143,7 @@ frame.
 
 *Iframe history*: Ensure that iframes affect browser history. For
 example, if you click on a link inside an iframe, and then hit
-backspace, it should go back inside the iframe. Make sure that this
+back button, it should go back inside the iframe. Make sure that this
 works even when the user clicks links in multiple frames in various
 orders.^[It's debatable whether this is a good feature of iframes, as
 it causes a lot of confusion for web developers who embed iframes they
