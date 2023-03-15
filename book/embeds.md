@@ -1160,7 +1160,7 @@ class Tab:
         frame.advance_tab()
 ```
 
-We'll do the same exact thing for `keypress` and `enter`.
+Also do the same exact thing for `keypress` and `enter`.
 
 Another big interaction we need to support is scrolling. We'll store
 the scroll offset in each `Frame`:
