@@ -119,7 +119,7 @@ window.__runRAFHandlers = function() {
 
 window.WINDOW_LISTENERS = {}
 
-window.PostMessageEvent = function(data) {
+window.MessageEvent = function(data) {
     this.type = "message";
     this.data = data;
 }
@@ -152,16 +152,11 @@ Window.prototype.dispatchEvent = function(evt) {
 Object.defineProperty(Window.prototype, 'parent', {
   configurable: true,
   get: function() {
-    parent_id = call_python('parent', window._id);
+    var parent_id = call_python('parent', window._id);
     if (parent_id != undefined) {
-        try {
-            target_window = eval("window_" + parent_id);
-            // Same-origin
-            return target_window;
-        } catch (e) {
-            // Cross-origin
-            return new Window(-1)
-        }
+        var parent = WINDOWS[parent_id];
+        if (parent === undefined) parent = new Window(-1);
+        return parent;
     }
   }
 });
