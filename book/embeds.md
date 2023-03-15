@@ -2055,7 +2055,7 @@ of the [`getContext`][getcontext] API, and some of the drawing commands on
 including its default width and height. You should allocate a Skia canvas of
 an appropriate size when `getContext("2d")` is called, and implement some of
 the APIs that draw to the canvas.[^eager-canvas] It should be straightforward
-to translate most APIs to Skia methods.
+to translate most API methods to their Skia equivalent.
 
 [crc2d]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D
 
