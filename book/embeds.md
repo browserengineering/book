@@ -1949,72 +1949,80 @@ like [Rust][rust] have message-passing as a core language feature.
 [rust]: https://en.wikipedia.org/wiki/Rust_(programming_language)
 
 
-Iframe security
-===============
+Isolation and timing
+====================
 
-I've already discussed security in Chapter 10, but iframes cause new classes of
-serious security problems that are worth briefly covering here. However, there
-isn't anything new to implement in our browser for this section, so consider it
-optional reading.
+Iframes add a whole new layer of security challenges atop what we
+discussed in [Chapter 10](security.md). The power to embed one web
+page into another creates a commensurate security risk when the two
+pages don't trust each other---both in the case of embedding a trusted
+page into your own page, and the reverse, where an attacker embeds
+your page into their own, malicious one. In both cases, we want to
+protect your page from any security or privacy risks caused by the
+other frame.
 
-Iframes are very powerful, because they allow a web page to embed another one.
-But with that power comes a commensurate security risk in cases where the
-embedded web page is cross-origin to the main page. After all, it's literally a
-web page controlled by someone else that renders into the same tab as yours.
-And since it's unlikely that you really trust that other web page, you want to
-be protected from any security or privacy risks that page may represent.
-
-The fact that cross-origin iframes can't access their parents directly already
-provides a reasonable starting point. But it doesn't protect you if a
-browser bug allows JavaScript in an iframe to cause a
-[buffer overrun][buffer-overrun], which an attacker exploits to run
-arbitrary code. To protect against such a situation, browsers these days
-load web pages in a security [*sandbox*][sandbox], which prevents arbitrary
-code from such an attack from escaping the sandbox, thus (usually) protecting
-your OS, cookies, personal data and so on from being compromised.
-But we'd also like to separate the frames in a web page from each other,
-because there is also of plenty of user data embedded directly in each page.
+The starting point is that cross-origin iframes can't access each
+other directly through JavaScript. That's good---but what if a bug in
+the JavaScript engine, like a [buffer overrun][buffer-overrun], lets
+an iframe circumvent those protections? Unfortunately, bugs like this
+are common enough that browsers have to defend against them. For
+example, browsers these days run frames from different origins in
+[different operating system processes][site-isolation], and use
+operating system features to limit how much access those
+processes have.
 
 [buffer-overrun]: https://en.wikipedia.org/wiki/Buffer_overflow
+[sandbox]: https://chromium.googlesource.com/chromium/src/+/main/docs/linux/sandboxing.md
 
-That's the reason many browsers these days place each iframe in its own CPU
-process sandbox; this technique is called
-[*site isolation*][site-isolation]. Implementing site isolation seems
-conceptually "straightforward", in the same sense that the browser thread we
-added in chapter 13 is "straightforward". In practice, there are so many
-browser APIs and subtleties that both features are extremely complex and subtle
-in their full glory. That's why it took many years for Chromium to ship the
+Other parts of the browser mix content multiple frames, like our
+browser's `Tab`-wide display list. A bug in the rasterizer, could
+allow one frame to take over the rasterizer and read data from another
+frame. Modern browsers therefore use [sandboxing][sandbox] techniques
+to limit how bad such an attack could be. For example, Chromium can
+place the rasterizer in its own process and use a Linux feature called
+`seccomp` to limit what system calls that process can make. Even if a
+bug compromised the rasterizer, that rasterizer wouldn't be able to
+exfiltrate data over the network, preventing private date from leaking.
+
+These isolation and sandboxing features may seem "straightforward", in
+the same sense that the browser thread we added in [Chapter
+13](scheduling.md) is "straightforward". In practice, the many browser
+APIs mean the implementation is full of subtleties and ends up being
+extremely complex. Chromium, for example, took many years to ship the
 first implementation of site isolation.
-
-[sandbox]: https://en.wikipedia.org/wiki/Sandbox_(computer_security)
 
 [site-isolation]: https://www.chromium.org/Home/chromium-security/site-isolation/
 
-The importance of site isolation has greatly increased in recent years, due to
-the discovery of certain CPU cache timing attacks called *spectre*
-and *meltdown*.^[There's even a
-[website devoted to them][spectre-meltdown]---check out the videos and links on
-the website to see it in action!] In short, these attacks allow an attacker to
-read arbitrary locations in memory (e.g., the user's data!)
-as long as you have access to a high-precision timer. They do so by exploiting
-the timing of various features in modern CPUs. Placing sensitive content
-in different CPU processes (which come with their own memory address spaces) is
-a good protection against these attacks, and that's just what site isolation
-does.
+Site isolation has become much more important recent years, due to the
+CPU cache timing attacks called [*spectre* and
+*meltdown*][spectre-meltdown]. In short, these attacks allow an
+attacker to read arbitrary locations in memory---including another
+frame's data, if the two frames are in the same process---by measuring
+the time certain operations take. Placing sensitive content in
+different CPU processes (which come with their own memory address
+spaces) is a good protection against these attacks.
 
 [spectre-meltdown]: https://meltdownattack.com/
 
-But that's not the only protection needed. It's also important to 
-*remove high-precision timers*^[A *high precision timer* is anything that can
- measure duration of execution of code very accurately.] from the platform. So
- browsers did things like reducing the accuracy of APIs like `Date.now` or
- `setTimeout`. But there are some browser APIs that don't seem like timers yet
- still are, such as [SharedArrayBuffer].^[Check out
- [this explanation][sab-attack] if you want to learn more.] Since this API
- is still useful, and there is no good way to make it "less accurate", browsers
- now require [certain optional HTTP headers][sab-headers] to be present on the
- parent *and* child frames' HTTP responses in order to allow use of
- `SharedArrayBuffer`.
+That said, these kinds of *timing attacks* can be subtle, and there
+are doubtless more that haven't been discovered yet. To try to dull
+this threat, browsers currently prevent access to *high-precision
+timers* that can provide the accurate timing data typically required
+for timing attacks. For example, browsers reduce the accuracy of APIs
+like `Date.now` or `setTimeout`.
+
+Worse yet, there are browser APIs that don't seem like timers but can
+be used as such.[^sharedarraybuffer-attack] These API are useful, so
+browsers don't quite want to remove it, but there is also no way to
+make it "less accurate", since it's not primarily a clock anyway.
+Browsers now require [certain optional HTTP headers][sab-headers] to
+be present on the parent *and* child frames' HTTP responses in order
+to allow use of `SharedArrayBuffer`, though this is not a perfect
+solution.
+
+[^sharedarraybuffer-attack]: For example, the [SharedArrayBuffer] lets
+two JavaScript threads run concurrently and share memory, which can be
+used to [construct a clock][sab-attack].
 
 [SharedArrayBuffer]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer
 
