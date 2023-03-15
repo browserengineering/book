@@ -95,54 +95,74 @@ class Tab:
 Make sure to make this change everywhere in your browser that you call
 `request`, including inside `XMLHttpRequest_send` and in several other places
 in `load`. When we download images, however, we _won't_ call `decode`, and just
-use the binary data directly. And if the image fails to download, load
-a "broken image" of your choosing (I used [this one][broken-image]).
+use the binary data directly.
 
-[broken-image]: https://commons.wikimedia.org/wiki/File:Broken_Image.png
-
-``` {.python replace=tab/frame}
-def download_image(image_src, tab):
-    image_url = resolve_url(image_src, tab.url)
-    assert tab.allowed_request(image_url), \
-        "Blocked load of " + image_url + " due to CSP"
-    try:
-        header, body = request(image_url, frame.url)
-        data = skia.Data.MakeWithoutCopy(body)
-    except:
-        data = skia.Data.MakeFromFileName("Broken_Image.png")
-        body = ""
-    img = skia.Image.MakeFromEncoded(data)
-    assert img, "Failed to recognize image format for " + image_url
-    return body, img
+``` {.python replace=Tab/Frame}
+class Tab:
+    def load(self, url, body=None):
+        # ...
+        images = [node
+            for node in tree_to_list(self.nodes, [])
+            if isinstance(node, Element)
+            and node.tag == "img"]
+        for img in images:
+            image_url = resolve_url(img.attributes["src"], self.url)
+            assert self.allowed_request(image_url), \
+                "Blocked load of " + image_url + " due to CSP"
+            header, body = request(image_url, self.url)
 ```
 
-Let's look at the steps between `request` and `return` carefully.
-First, the requested data is turned into a Skia `Data` object using
-the `MakeWithoutCopy` method. Then that `Data` is used to create an
-`Image` using `MakeFromEncoded`.
+Once we've downloaded the image, we need to turn it into a Skia
+`Image` object. That requires the following code:
 
+``` {.python replace=Tab/Frame}
+class Tab:
+    def load(self, url, body=None):
+        for img in images:
+            # ...
+            img.encoded_data = body
+            data = skia.Data.MakeWithoutCopy(body)
+            img.image = skia.Image.MakeFromEncoded(data)
+```
+
+These two steps are tricky. First, the requested data is turned into a
+Skia `Data` object using the `MakeWithoutCopy` method.
 `MakeWithoutCopy` means that the `Data` object just stores a reference
 to the existing `body` and doesn't own that data. That's essential,
 because encoded image data can be large---maybe megabytes---and
 copying that data wastes memory and time. But that means that the
-`data` is invalid if `body` is ever garbage-collected, so we return
-the `body` from `download_image` and need to make sure to store it
-somewhere for at least as long as we're using the image.[^memoryview]
+`data` is invalid if `body` is ever garbage-collected, so we save the
+`body` in an `encoded_data` field.[^memoryview]
 
-[^memoryview]: I admit it's a bit of a hack to work around the garbage
-    collector like this, but it's just part an parcel of bridging
-    between Python and a C++ library. An alternative would be to write
-    the request contents directly into a Skia `Data` object; the
-    `writable_data` API could permit that, but it would require some
-    refactoring of the `request` method.
+[^memoryview]: This is a bit of a hack. Perhaps a better solution
+    would be to write the request contents directly into a Skia `Data`
+    object; the `writable_data` API could permit that, but it would
+    require some refactoring of the rest of the browser that I'm
+    choosing to avoid.
     
-Once that `Data` object is created, it is passed to `MakeFromEncoded`.
-The name of this method hints that the image we've downloaded isn't
-raw image bytes: all of the image formats you know---JPG, PNG, and the
-many more obscure ones---encode the image data using various
-sophisticated algorithms. The image therefore needs to be *decoded*
-before it can be used. Luckily, Skia will automatically do that for
-us, so drawing the image is pretty simple:
+The download and the decoding can both fail; if that happens we'll
+load a "broken image" placeholder (I used [this one][broken-image]):
+
+[broken-image]: https://commons.wikimedia.org/wiki/File:Broken_Image.png
+
+``` {.python replace=Tab/Frame}
+class Tab:
+    def load(self, url, body=None):
+        for img in images:
+            try:
+                # ...
+            except Exception as e:
+                print(e)
+                img.image = skia.Image.open("Broken_Image.png")
+```
+
+Note that when errors don't occur, we created the `Image` object using
+the `MakeFromEncoded` method. The name hints that the image we've
+downloaded isn't raw image bytes: all of the image formats you
+know---JPG, PNG, and the many more obscure ones---encode the image
+data using various sophisticated algorithms. The image therefore needs
+to be *decoded* before it can be used. Luckily, Skia will
+automatically do that for us, so drawing the image is pretty simple:
 
 ``` {.python replace=%2c%20rect/%2c%20rect%2c%20quality,self.rect)/self.rect%2c%20paint)}
 class DrawImage(DisplayItem):
@@ -902,7 +922,8 @@ class BlockLayout:
     # ...
     def recurse(self, node, zoom):
         # ...
-            elif node.tag == "iframe":
+            elif node.tag == "iframe" and \
+                 "src" in node.attributes:
                 self.iframe(node, zoom)
     # ...
     def iframe(self, node, zoom):
