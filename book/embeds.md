@@ -1174,7 +1174,7 @@ class Frame:
 Now, as you might recall from [Chapter 13](animations.md), scrolling
 happens both inside `Browser` and inside `Tab`, to reduce latency.
 That was already quite complicated, so to keep things simple, we won't
-do this for non-root iframes. To support this, we'll need a new commit
+support both for non-root iframes. For root frames, we'll need a new commit
 parameter so the browser thread knows whether to do scrolling:
 
 ``` {.python}
