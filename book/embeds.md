@@ -1774,7 +1774,7 @@ code return a fresh `Window` object with a fake, negative id. This
 makes further accesses to that window's APIs to fail, making it
 impossible to modify that frame's state.^[Note however that in a real
 browser, this `Window` object is not fake, and some APIs can be called
-on it, most important its `parent` can also be retrieved. There is a
+on it, such as that its `parent` can also be retrieved. There is a
 related exercise at the end of the chapter.]
 
 So via `parent`, same-origin iframes can communicate. But what about
