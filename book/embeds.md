@@ -2105,7 +2105,7 @@ large.[^early-lazy-loading] Add support for the [`loading`
 attribute][img-loading] on `img` elements. Your browser should only
 download images if they are close to the visible area of the page.
 This kind of optimization is generally called [lazy loading][lli].
-Implement an optimization in your browser that only loads images that
+Implement a second optimization in your browser that only renders images that
 are within a certain number of pixels of the being visible on the
 screen.
 
