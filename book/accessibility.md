@@ -1572,7 +1572,7 @@ class AccessibilityNode:
     def __init__(self, node):
         self.node = node
         self.children = []
-        self.text = None
+        self.text = ""
 ```
 
 The `build` method on `AccessibilityNode` recursively creates the
@@ -1847,7 +1847,7 @@ the element tag, plus whether it's focused.
 class AccessibilityNode:
     def __init__(self, node):
         # ...
-        self.text = None
+        self.text = ""
 
     def build(self):
         for child_node in self.node.children:

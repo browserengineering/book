@@ -1100,7 +1100,10 @@ obsolete.
 Iframe input events
 ===================
 
-Various event handlers also just delegate to the root frame:
+Now that we've got iframes rendering to the screen, let's close the
+loop with user input. We want to add support for clicking on things
+inside an iframe, and also for tabbing around or scrolling inside one.
+At a high level, event handlers just delegate to the root frame:
 
 ``` {.python}
 class Tab:
@@ -1109,14 +1112,8 @@ class Tab:
         self.root_frame.click(x, y)
 ```
 
-Rendering now functions properly in iframes, but user input does not:
-it's not (yet) possible to click on a element in an iframe in our toy browser,
-iterate through its focusable elements, scroll it, or generate an accessibility
-tree.
-
-Let's fix that. It's as simple as checking for an iframe, and if found
-sending the click event to it and immediately returning after (because
-iframes capture click events):
+When an iframe is clicked, pass the click through to the child frame,
+and immediately return after (because iframes capture click events):
 
 ``` {.python}
 class Frame:
@@ -1137,9 +1134,10 @@ without any more changes! That's satisfying. You should be able to load
 [this example](examples/example15-iframe.html). Repeatedly clicking on the link
 will add another recursive iframe.
 
-Focusing an element now also needs to store the frame the focused element is
-on (the `focus` value will still be stored on the `Tab`, not the `Frame`,
-though, since there is only one focus at a time in the tab):
+Let's get the rest of the interactions working as well, like focusing
+an element. You can only focus on one element per tab, so we will
+still store the `focus` on the `Tab`, but we'll need to store the
+frame the focused element is on too:
 
 ``` {.python}
 class Tab:
@@ -1148,34 +1146,45 @@ class Tab:
         self.focused_frame = None
 ```
 
+When a frame tries to focus on an element, it sets itself as the
+focused frame:
+
 ``` {.python}
 class Frame:
     def focus_element(self, node):
-        if node and node != self.tab.focus:
-            self.needs_focus_scroll = True
-        if self.tab.focus:
-            self.tab.focus.is_focused = False
-        self.tab.focus = node
+        # ...
         self.tab.focused_frame = self
-        if node:
-            node.is_focused = True
-        self.set_needs_render()
+        # ...
 ```
 
-Advancing a tab will use the focused frame (and you should move the rest of the
-business logic for `advance_tab` to `Frame`):
+There's also an extra subtlety to un-focused the previously focused
+element. Since it might be in another frame, we need to re-render that
+frame too, so that it stops drawing the focus outline:
+
+``` {.python}
+class Frame:
+    def focus_element(self, node):
+        # ...
+        if self.tab.focused_frame and self.tab.focused_frame != self:
+            self.tab.focused_frame.set_needs_render()
+        # ...
+```
+
+We can also press `Tab` to cycle through focusable elements in the
+current frame. Let's move the `advance_tab` logic into `Frame` and
+just dispatch to it from the `Tab`:
 
 ``` {.python}
 class Tab:
     def advance_tab(self):
-        frame = self.focused_frame
-        if not frame:
-            frame = self.root_frame
+        frame = self.focused_frame or self.root_frame
         frame.advance_tab()
 ```
 
-Now for scrolling. This will require moving scrolling onto `Frame` instead of
-`Browser` or `Tab`.
+Also do the same exact thing for `keypress` and `enter`.
+
+Another big interaction we need to support is scrolling. We'll store
+the scroll offset in each `Frame`:
 
 ``` {.python}
 class Frame:
@@ -1183,44 +1192,11 @@ class Frame:
         self.scroll = 0
 ```
 
-Clamping will now happen differently, because non-root frames have a height
-that is not defined by the size of the browser window, but rather their
-containing `<iframe>` element.
-
-We'll use this to do clamping based on this height:
-
-``` {.python}
-class Frame:
-    def clamp_scroll(self, scroll):
-        return max(0, min(
-            scroll,
-            math.ceil(
-                self.document.height) - self.frame_height))
-```
-
-Now change all call sites of `clamp_scroll` to use the method rather than the
-global function:
-
-``` {.python}
-class Frame:
-    def scroll_to(self, elt):
-        # ...
-        self.scroll = self.clamp_scroll(new_scroll)
-```
-
-``` {.python}
-class Frame:
-    def layout(self, zoom):
-        self.document = DocumentLayout(self.nodes, self)
-        self.document.layout(zoom, self.frame_width)
-
-        clamped_scroll = self.clamp_scroll(self.scroll)
-        if clamped_scroll != self.scroll:
-            self.scroll_changed_in_frame = True
-```
-
-Our browser supports browser-thread scrolling, but only for the root frame.
-To handle both cases, we'll need a new commit parameter:
+Now, as you might recall from [Chapter 13](animations.md), scrolling
+happens both inside `Browser` and inside `Tab`, to reduce latency.
+That was already quite complicated, so to keep things simple, we won't
+support both for non-root iframes. For root frames, we'll need a new commit
+parameter so the browser thread knows whether to do scrolling:
 
 ``` {.python}
 class CommitData:
@@ -1228,18 +1204,22 @@ class CommitData:
         display_list, composited_updates, accessibility_tree, focus):
         # ...
         self.root_frame_focused = root_frame_focused
-```
 
-``` {.python}
 class Tab:
     def run_animation_frame(self, scroll):
+        root_frame_focused = not self.focused_frame or \
+                self.focused_frame == self.root_frame
+        # ...
         commit_data = CommitData(
             # ...
-            root_frame_focused=not self.focused_frame or \
-                (self.focused_frame == self.root_frame),
+            root_frame_focused=root_frame_focused,
             # ...
         )
+        # ...
 ```
+
+The `Browser` thread will extract this information and use it when the
+user requests a scroll:
 
 ``` {.python}
 class Browser:
@@ -1249,8 +1229,8 @@ class Browser:
 
 ```
 
-And now we can use this parameter to keep browser scrolling for the root frame.
-The part in "..." is what used to be in `handle_down`.
+The browser thread will only handle scrolls if the root frame is
+focused:
 
 ``` {.python}
 class Browser:
@@ -1264,176 +1244,153 @@ class Browser:
         self.lock.release()        
 ```
 
+Naturally, when a tab is asked to scroll, it scrolls the focused frame:
+
 ``` {.python}
 class Tab:
     def scrolldown(self):
-        frame = self.focused_frame
-        if not frame: frame = self.root_frame
+        frame = self.focused_frame or self.root_frame
         frame.scrolldown()
         self.set_needs_paint()
 ```
+
+There's one more subtlety to scrolling. After we scroll, we want to
+*clamp* the scroll position, so you can't scroll past the last thing
+on the page. Right now `clamp_scroll` uses the window height to
+determine the maximum scroll amount; let's move that function inside
+`Frame` so it can use the current frame's height:
 
 ``` {.python}
 class Frame:
     def scrolldown(self):
         self.scroll = self.clamp_scroll(self.scroll + SCROLL_STEP)
+
+    def clamp_scroll(self, scroll):
+        maxscroll = math.ceil(self.document.height) - self.frame_height
+        return max(0, min(scroll, maxscroll))
 ```
 
-Accessibility trees for iframes are also relatively simple to get the basics
-working. There will be only one tree for all frames, and so we just need
-a role for iframes:
+Make sure to use the new `clamp_scroll` in all other places in `Frame`:
+
+``` {.python}
+class Frame:
+    def scroll_to(self, elt):
+        # ...
+        self.scroll = self.clamp_scroll(new_scroll)
+```
+
+Scroll clamping can also come into play if a layout causes a page's
+maximum height to shrink. You'll need to move the scroll clamping
+logic out of `Tab`'s `run_animation_frame` method and into the
+`Frame`'s `render` to handle this:
+
+``` {.python}
+class Frame:
+    def render(self):
+        clamped_scroll = self.clamp_scroll(self.scroll)
+        if clamped_scroll != self.scroll:
+            self.scroll_changed_in_frame = True
+        self.scroll = clamped_scroll
+```
+
+
+There's also a set of accessibility hover interactions that we need to
+support. These happen in the accessibility tree.
+
+::: {.todo}
+I think this first bit should move to the previous section on
+rendering, since it is a kind of rendering.
+:::
+
+Let's first get basic accessibility support for iframes. Like the
+display list, the accessibility tree is global across all frames.
+Iframes create `iframe` nodes:
 
 ``` {.python}
 class AccessibilityNode:
     def __init__(self, node):
+        else:
             elif node.tag == "iframe":
                 self.role = "iframe"
 ```
 
-And to recurse into them in `build`:
+To `build` such a node, we just recurse into the frame:
 
-``` {.python}
+``` {.python replace=AccessibilityNode(child_node.frame.nodes)/FrameAccessibilityNode(child_node)}
 class AccessibilityNode:
-   def build(self):
-        if isinstance(self.node, Element) \
-            and self.node.tag == "iframe":
-            self.child_tree = AccessibilityTree(self.node.frame)
-            self.child_tree.build()
-            return
+   def build_internal(self, child_node):
+        if isinstance(child_node, Element) \
+            and child_node.tag == "iframe" and child_node.frame:
+            child = AccessibilityNode(child_node.frame.nodes)
         # ... 
 ```
 
-But actually, accessibility still doesn't work for hover hit testing. That's for
-two reasons:^[Observe that frame-based `click` already works correctly, because
-we don't recurse into iframes unless the click intersects the `iframe`
-element's bounds.]
+This sort-of works, but it's not enough for hover hit testing, for two
+reasons:
 
-* It doesn't properly take into account scroll of iframes. (In Chapter 14,
-we did this just for the root frame.)
+- It doesn't know where the iframe is, so it doesn't know how to
+  transform the hover coordinates when it goes into a frame.^[Observe
+  that frame-based `click` already works correctly, because we don't
+  recurse into iframes unless the click intersects the `iframe`
+  element's bounds.]
+  
+- It doesn't know how big the iframe is, so it doesn't ignore things
+  that are clipped outside an iframe's bounds.^[Before iframes, we
+  didn't need to do that, because the SDL window system already did it
+  for us.]
 
-* It doesn't know how to apply clipping when hovering outside of an iframe's
-bounds. (Before iframes, we didn't need to do that, because the SDL
-window system already did it for us.)
+- It doesn't know how far a frame has scrolled, so it doesn't adjust
+  for scrolled frames.^[We only adjust for the root frame's scroll.]
 
-Fixing these problems requires some re-jiggering of the accessibility hit testing
-code to track scroll and iframe bounds, and applying them when recursing into
-child frames. We'll make a new `AccessibilityTree` class and create one for
-each frame and store on it the useful information:^[Real browsers such as
-Chromium also do this, for similar reasons.]
+We'll make a subclass of `AccessibilityNode` to store this information:
 
 ``` {.python}
-class AccessibilityTree:
-    def __init__(self, frame):
-        self.root_node = AccessibilityNode(frame.nodes)
-        self.width = frame.frame_width
-        self.height = frame.frame_height
-        self.scroll = frame.scroll
-
-    def build(self):
-        self.root_node.build()
+class FrameAccessibilityNode(AccessibilityNode):
+    pass
 ```
 
-And `AccessibilityNode` will create subtrees:
+We'll create one of those below each `iframe` node:
 
 ``` {.python}
 class AccessibilityNode:
-    def __init__(self, node):
-        # ...
-        self.child_tree = None
-
-    def build(self):
-        if isinstance(self.node, Element) \
-            and self.node.tag == "iframe":
-            self.child_tree = AccessibilityTree(self.node.frame)
-            self.child_tree.build()
-            return
-
-        # ...
+    def build_internal(self, child_node):
+        if isinstance(child_node, Element) \
+            and child_node.tag == "iframe" and child_node.frame:
+            child = FrameAccessibilityNode(child_node)
 ```
 
-Then we'll add a `to_list` method that does the same thing as `tree_to_list`
-(including recursing into child frames), that is suitable for all call sites
-of accessibility `tree_to_list` that are not hit testing:
-
-``` {.python}
-class AccessibilityTree:
-    def to_list(self, list):
-        return self.root_node.to_list(list)
-```
+Hit testing now has to become recursive:
 
 ``` {.python}
 class AccessibilityNode:
-    def to_list(self, list):
-        list.append(self)
-        if self.child_tree:
-            self.child_tree.to_list(list)
-            return list
-        for child in self.children:
-            child.to_list(list)
-        return list
-```
-
-Update all of the callsites of `tree_to_list` to call `to_list`; there are
-three in `update_accessibility` and one in `speak_document`.
-
-Hit testing will first need to check for hover outside the bounds, then apply
-scroll:
-
-``` {.python}
-class AccessibilityTree:
     def hit_test(self, x, y):
-        if x > self.width or y > self.height:
-            return None
-        y += self.scroll
-        nodes = []
-        self.root_node.hit_test(x, y, nodes)
-        if nodes:
-            return nodes[-1]
-```
-
-And then ask the node tree to do its usual thing:
-
-``` {.python}
-class AccessibilityTree:
-    def hit_test(self, x, y):
-        # ...
-        nodes = []
-        self.root_node.hit_test(x, y, nodes)
-        if nodes:
-            return nodes[-1]
-```
-
-Except that `AccessibilityNode` will now have special code to recurse into
-child trees:
-
-``` {.python}
-class AccessibilityNode:
-    def hit_test(self, x, y, nodes):
+        node = None
         if self.intersects(x, y):
-            nodes.append(self)
-        if self.child_tree:
-            child_node = self.child_tree.hit_test(
-                x - self.bounds.x(), y - self.bounds.y())
-            if child_node:
-                nodes.append(child_node)
+            node = self
         for child in self.children:
-            child.hit_test(x, y, nodes)
+            res = child.hit_test(x, y)
+            if res: node = res
+        return node
 ```
 
-Finally, the call site needs to no longer adjust for scroll and just call
-`hit_test`:
+Hit testing `FrameAccessibilityNodes` will use the frame's bounds to
+ignore clicks outside the frame bounds:
 
 ``` {.python}
-class Browser:
-    def paint_draw_list(self):
-        # ...
-        if self.pending_hover:
-            (x, y) = self.pending_hover
-            a11y_node = self.accessibility_tree.hit_test(x, y)
+class FrameAccessibilityNode(AccessibilityNode):
+    def hit_test(self, x, y):
+        if not self.intersects(x, y): return
+        new_x = x - self.bounds.x()
+        new_y = y - self.bounds.y() + self.node.frame.scroll
+        node = self
+        for child in self.children:
+            res = child.hit_test(new_x, new_y)
+            if res: node = res
+        return node
 ```
 
-See how easy it is to add accessibility for iframes? That's a great reason
-not to use a plugin.
+Alright, we've now got all of our browser's forms of user interaction
+properly recursing through the frame tree.
 
 ::: {.further}
 While our toy browser only has threaded scrolling of the root frame, a real

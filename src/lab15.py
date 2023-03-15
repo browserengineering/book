@@ -937,34 +937,11 @@ def style(node, rules, frame):
     for child in node.children:
         style(child, rules, frame)
 
-class AccessibilityTree:
-    def __init__(self, frame):
-        self.root_node = AccessibilityNode(frame.nodes)
-        self.width = frame.frame_width
-        self.height = frame.frame_height
-        self.scroll = frame.scroll
-
-    def build(self):
-        self.root_node.build()
-
-    def to_list(self, list):
-        return self.root_node.to_list(list)
-
-    def hit_test(self, x, y):
-        if x > self.width or y > self.height:
-            return None
-        y += self.scroll
-        nodes = []
-        self.root_node.hit_test(x, y, nodes)
-        if nodes:
-            return nodes[-1]
-
 class AccessibilityNode:
     def __init__(self, node):
         self.node = node
         self.children = []
-        self.text = None
-        self.child_tree = None
+        self.text = ""
 
         if node.layout_object:
             self.bounds = absolute_bounds_for_obj(node.layout_object)
@@ -997,12 +974,6 @@ class AccessibilityNode:
                 self.role = "none"
 
     def build(self):
-        if isinstance(self.node, Element) \
-            and self.node.tag == "iframe":
-            self.child_tree = AccessibilityTree(self.node.frame)
-            self.child_tree.build()
-            return
-
         for child_node in self.node.children:
             self.build_internal(child_node)
 
@@ -1041,41 +1012,53 @@ class AccessibilityNode:
             self.text += " is focused"
 
     def build_internal(self, child_node):
-        child = AccessibilityNode(child_node)
+        if isinstance(child_node, Element) \
+            and child_node.tag == "iframe" and child_node.frame:
+            child = FrameAccessibilityNode(child_node)
+        else:
+            child = AccessibilityNode(child_node)
         if child.role != "none":
             self.children.append(child)
             child.build()
         else:
             for grandchild_node in child_node.children:
                 self.build_internal(grandchild_node)
+
     def intersects(self, x, y):
         if self.bounds:
             return skia.Rect.Intersects(self.bounds,
                 skia.Rect.MakeXYWH(x, y, 1, 1))
         return False
 
-    def hit_test(self, x, y, nodes):
+    def hit_test(self, x, y):
+        node = None
         if self.intersects(x, y):
-            nodes.append(self)
-        if self.child_tree:
-            child_node = self.child_tree.hit_test(
-                x - self.bounds.x(), y - self.bounds.y())
-            if child_node:
-                nodes.append(child_node)
+            node = self
         for child in self.children:
-            child.hit_test(x, y, nodes)
-
-    def to_list(self, list):
-        list.append(self)
-        if self.child_tree:
-            self.child_tree.to_list(list)
-            return list
-        for child in self.children:
-            child.to_list(list)
-        return list
+            res = child.hit_test(x, y)
+            if res: node = res
+        return node
 
     def __repr__(self):
         return "AccessibilityNode(node={} role={} text={}".format(
+            str(self.node), self.role, self.text)
+
+class FrameAccessibilityNode(AccessibilityNode):
+    def build(self):
+        self.build_internal(self.node.frame.nodes)
+
+    def hit_test(self, x, y):
+        if not self.intersects(x, y): return
+        new_x = x - self.bounds.x()
+        new_y = y - self.bounds.y() + self.node.frame.scroll
+        node = self
+        for child in self.children:
+            res = child.hit_test(new_x, new_y)
+            if res: node = res
+        return node
+
+    def __repr__(self):
+        return "FrameAccessibilityNode(node={} role={} text={}".format(
             str(self.node), self.role, self.text)
 
 
@@ -1219,31 +1202,25 @@ class Frame:
                 INHERITED_PROPERTIES["color"] = "white"
             else:
                 INHERITED_PROPERTIES["color"] = "black"
-            self.style()
+            style(self.nodes,
+                  sorted(self.rules,
+                         key=cascade_priority), self)
             self.needs_layout = True
             self.needs_style = False
 
         if self.needs_layout:
-            self.layout(
-                self.tab.zoom)
+            self.document = DocumentLayout(self.nodes, self)
+            self.document.layout(self.tab.zoom, self.frame_width)
             if self.tab.accessibility_is_on:
                 self.tab.needs_accessibility = True
             else:
                 self.needs_paint = True
             self.needs_layout = False
 
-    def style(self):
-        style(self.nodes,
-            sorted(self.rules,
-                key=cascade_priority), self)
-
-    def layout(self, zoom):
-        self.document = DocumentLayout(self.nodes, self)
-        self.document.layout(zoom, self.frame_width)
-
         clamped_scroll = self.clamp_scroll(self.scroll)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_frame = True
+        self.scroll = clamped_scroll
 
     def paint(self, display_list):
         self.document.paint(display_list, self.tab.dark_mode,
@@ -1273,6 +1250,8 @@ class Frame:
             self.needs_focus_scroll = True
         if self.tab.focus:
             self.tab.focus.is_focused = False
+        if self.tab.focused_frame and self.tab.focused_frame != self:
+            self.tab.focused_frame.set_needs_render()
         self.tab.focus = node
         self.tab.focused_frame = self
         if node:
@@ -1292,12 +1271,6 @@ class Frame:
                     self.submit_form(elt)
                     return
                 elt = elt.parent
-
-    def clamp_scroll(self, scroll):
-        return max(0, min(
-            scroll,
-            math.ceil(
-                self.document.height) - self.frame_height))
 
     def submit_form(self, elt):
         if self.js.dispatch_event(
@@ -1371,6 +1344,23 @@ class Frame:
                 self.set_needs_render()
                 return
             elt = elt.parent
+
+    def clamp_scroll(self, scroll):
+        maxscroll = math.ceil(self.document.height) - self.frame_height
+        return max(0, min(scroll, maxscroll))
+
+class CommitData:
+    def __init__(self, url, scroll, root_frame_focused, height,
+        display_list, composited_updates, accessibility_tree, focus):
+        self.url = url
+        self.scroll = scroll
+        self.root_frame_focused = root_frame_focused
+        self.height = height
+        self.display_list = display_list
+        self.composited_updates = composited_updates
+        self.accessibility_tree = accessibility_tree
+        self.focus = focus
+
 
 class Tab:
     def __init__(self, browser):
@@ -1474,11 +1464,12 @@ class Tab:
                 composited_updates[node] = node.save_layer
         self.composited_updates.clear()
 
+        root_frame_focused = not self.focused_frame or \
+                self.focused_frame == self.root_frame
         commit_data = CommitData(
             url=self.root_frame.url,
             scroll=scroll,
-            root_frame_focused=not self.focused_frame or \
-                (self.focused_frame == self.root_frame),
+            root_frame_focused=root_frame_focused,
             height=math.ceil(self.root_frame.document.height),
             display_list=self.display_list,
             composited_updates=composited_updates,
@@ -1497,7 +1488,7 @@ class Tab:
             frame.render()
 
         if self.needs_accessibility:
-            self.accessibility_tree = AccessibilityTree(self.root_frame)
+            self.accessibility_tree = AccessibilityNode(self.root_frame.nodes)
             self.accessibility_tree.build()
             self.needs_accessibility = False
             self.needs_paint = True
@@ -1519,23 +1510,21 @@ class Tab:
         frame.keypress(char)
 
     def scrolldown(self):
-        frame = self.focused_frame
-        if not frame: frame = self.root_frame
+        frame = self.focused_frame or self.root_frame
         frame.scrolldown()
         self.set_needs_accessibility()
         self.set_needs_paint()
 
     def enter(self):
         if self.focus:
-            self.activate_element(self.focus)
+            frame = self.focused_frame or self.root_frame
+            frame.activate_element(self.focus)
 
     def get_tabindex(node):
         return int(node.attributes.get("tabindex", 9999999))
 
     def advance_tab(self):
-        frame = self.focused_frame
-        if not frame:
-            frame = self.root_frame
+        frame = self.focused_frame or self.root_frame
         frame.advance_tab()
 
     def zoom_by(self, increment):
@@ -1575,18 +1564,6 @@ def draw_line(canvas, x1, y1, x2, y2, color):
     paint.setStyle(skia.Paint.kStroke_Style)
     paint.setStrokeWidth(1)
     canvas.drawPath(path, paint)
-
-class CommitData:
-    def __init__(self, url, scroll, root_frame_focused, height,
-        display_list, composited_updates, accessibility_tree, focus):
-        self.url = url
-        self.scroll = scroll
-        self.root_frame_focused = root_frame_focused
-        self.height = height
-        self.display_list = display_list
-        self.composited_updates = composited_updates
-        self.accessibility_tree = accessibility_tree
-        self.focus = focus
 
 class Browser:
     def __init__(self):
@@ -1793,6 +1770,7 @@ class Browser:
 
         if self.pending_hover:
             (x, y) = self.pending_hover
+            y += self.scroll
             a11y_node = self.accessibility_tree.hit_test(x, y)
             if a11y_node:
                 if not self.hovered_a11y_node or \
@@ -1814,7 +1792,7 @@ class Browser:
             self.has_spoken_document = True
 
         self.active_alerts = [
-            node for node in self.accessibility_tree.to_list([])
+            node for node in tree_to_list(self.accessibility_tree, [])
             if node.role == "alert"
         ]
 
@@ -1827,7 +1805,7 @@ class Browser:
         for old_node in self.spoken_alerts:
             new_nodes = [
                 node for node in \
-                    self.accessibility_tree.to_list([])
+                    tree_to_list(self.accessibility_tree, [])
                 if node.node == old_node.node
                 and node.role == "alert"
             ]
@@ -1838,7 +1816,7 @@ class Browser:
         if self.tab_focus and \
             self.tab_focus != self.last_tab_focus:
             nodes = [node for node in \
-                self.accessibility_tree.to_list([])
+                tree_to_list(self.accessibility_tree, [])
                         if node.node == self.tab_focus]
             if nodes:
                 self.focus_a11y_node = nodes[0]
@@ -1977,7 +1955,7 @@ class Browser:
 
     def speak_document(self):
         text = "Here are the document contents: "
-        tree_list = self.accessibility_tree.to_list([])
+        tree_list = tree_to_list(self.accessibility_tree, [])
         for accessibility_node in tree_list:
             new_text = accessibility_node.text
             if new_text:
