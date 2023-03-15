@@ -2010,37 +2010,28 @@ when trying to implement more advanced features on websites.
 Summary
 =======
 
-This chapter introduced embedded content, via the examples of images and
-iframes. Reiterating the main points:
+This chapter introduced how the browser handles embedded content like
+images and iframes. Reiterating the main points:
 
-* Embedded content is a way to allow (potentially non-HTML) content---images,
-  video, canvas, iframes, input elements or plugins---to be added to a web
-  page.
+* Embedded content allow non-HTML content---images, video, canvas,
+  iframes, input elements, and plugins---to be added to a web page.
 
-* Images are relatively easy to add as long as you have a good decoding library
-  at hand, but need some care for layout and decoding optimizations.
+* Non-HTML content comes with its own performance concerns---like
+  image decoding time---and necessitates custom optimizations.
 
-* Over time, plugins that are not PDF viewers, images or video have been
-  replaced with the more general-purpose *iframe* element, which has evolved to
-  become just as powerful as any plugin, and benefits from all the hard-won
-  attributes of a browser such as its rendering pipeline, accessibility, and
-  open standards.
+* Iframes are a particularly important kind of embedded content,
+  having over time replaced browser plugins as the standard way to
+  easily embed complex content into a web page.
 
-* Because iframes contain an entire web page and all its
-  complexities---rendering, event handling, navigation, security---as well as
-  the ability to embed other iframes, they add quite a lot of complexity to a
-  browser implementation. However, this complexity is justified, because they
-  enable many important cross-origin use cases, such as ads, video, and social
-  media references, to be safely added to websites.
+* Iframes introduce all the complexities of the web---rendering, event
+  handling, navigation, security---into the browser's handling of
+  embedded content. However, this complexity is justified, because
+  they enable safely handling important cross-origin use cases, such
+  as ads, video, and social media buttons.
 
-* On the whole, images, canvases,^[Try the exercise about the `<canvas>` element
-  to see for yourself! Video was not really covered at all in this chapter;
-  depending on what you consider "basic", implementing them could be relatively
-  simple or quite hard.] and even iframes, are not *that* hard to implement in
-  a very basic form, because they reuse a lot of the code and concepts I've
-  explained in earlier chapters. But implementing them really well---as with
-  all good things in this life---takes a lot of effort and attention to
-  detail.
+And as we hope you saw in this chapter, none of these features are too
+difficult to implement, though---as you'll see in the exercises
+below---implementing them well can require effort and attention to detail.
 
 Exercises
 =========
@@ -2051,7 +2042,7 @@ of the [`getContext`][getcontext] API, and some of the drawing commands on
 including its default width and height. You should allocate a Skia canvas of
 an appropriate size when `getContext("2d")` is called, and implement some of
 the APIs that draw to the canvas.[^eager-canvas] It should be straightforward
-to translate these to Skia methods.
+to translate most API methods to their Skia equivalent.
 
 [crc2d]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D
 
@@ -2071,10 +2062,13 @@ is borne by the browser.)
 
 [getcontext]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/getContext
 
-*Background images*: elements can have not just `background-color`, but also
-[`background-image`][bg-img]. Implement the basics of this CSS property for
-images loaded by URL. Also implement the [`background-size`][bg-size] CSS
-property so the image can be sized in various ways.
+*Background images*: Elements can have a [`background-image`][bg-img].
+Implement the basics of this CSS property: a `url(...)` value for the
+`background-image` property. Avoid loading the image if the
+`background-image` property does not actually end up used on any
+element. For a bigger challenge, also allow the web page set the size
+of the background image with the [`background-size`][bg-size] CSS
+property.
 
 [bg-img]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-image
 
@@ -2086,26 +2080,27 @@ element.
 
 [obj-fit]: https://developer.mozilla.org/en-US/docs/Web/CSS/object-fit
 
-*Lazy decoding*: Decoding images can take time and use up a lot of memory.
-But some images, especially ones that are "below the fold":[^btf] they
-are further down in a web page and not visible and only exposed after some
-scrolling by the user. Implement an optimization in your browser that only
-decodes images that are visible on the screen.
+*Iframe aspect ratio*. Implement the [`aspect-ratio`][aspect-ratio] CSS
+property and use it to provide an implicit sizing to iframes and images
+when only one of `width` or `height` is specified (or when the image is not
+yet loaded, if you did the lazy loading exercise).
 
-[^btf]: "Below the fold" is a term borrowed from newspapers, meaning content
-you can't see when the newspaper is folded in half.
+[aspect-ratio]: https://developer.mozilla.org/en-US/docs/Web/CSS/aspect-ratio
 
-*Lazy loading*: Even though image compression works quite well these days,
-the encoded size can still be enough to noticeably slow down web page loads.
-Implement an optimization in your browser that only loads images that are
-within a certain number of pixels of the being visible on the
-screen.^[Real browsers have special [APIs][lli] and optimizations for this
-purpose; they don't actually lazy-load images by default, because otherwise
-some websites would break or look ugly. In the early days of the web,
-computer networks were slow enough that browsers had a user setting to
-disable downloading of images until the user expressly asked for them.]
+*Lazy loading*: Even encoded images can be quite
+large.[^early-lazy-loading] Add support for the [`loading`
+attribute][img-loading] on `img` elements. Your browser should only
+download images if they are close to the visible area of the page.
+This kind of optimization is generally called [lazy loading][lli].
+Implement a second optimization in your browser that only renders images that
+are within a certain number of pixels of the being visible on the
+screen.
 
+[^early-lazy-loading]: In the early days of the web, computer networks
+were slow enough that browsers had a user setting to disable
+downloading of images until the user expressly asked for them.
 [lli]: https://developer.mozilla.org/en-US/docs/Web/Performance/Lazy_loading
+[img-loading]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/img#loading
 
 *Image placeholders*: Building on top of lazy loading, implement placeholder
 styling of images that haven't loaded yet. This is done by setting a 0x0 sizing,
@@ -2116,43 +2111,40 @@ to the meaning of the website, and so it should tell the user that they
 are missing out on some of the content if it fails to load. But otherwise,
 the broken image icon is probably just ugly clutter.]
 
-*Accessing the full frame tree*: same-origin iframes can access each others'
-variables and DOM, even if they are not adjacent in the frame tree. Implement
-this by for the situation of a same-origin "grandparent" frame with a
-cross-origin parent by making `parent` return a real `Window` for cross-origin
-frames. However, this object should prohibit accessing the `document` object
-from a cross-origin JS context, and throw an exception if a script tries
-to do so.
-
-*Iframe media queries*. Implement the [width][width-mq] media query.
+*Media queries*. Implement the [width][width-mq] media query. Make
+sure it works inside iframes. Also make sure it works even when the
+width of an iframe is changed by its parent frame.
 
 [width-mq]: https://developer.mozilla.org/en-US/docs/Web/CSS/@media/width
 
-*Iframe aspect ratio*. Implement the [`aspect-ratio`][aspect-ratio] CSS
-property and use it to provide an implicit sizing to iframes and images
-when only one of `width` or `height` is specified (or when the image is not
-yet loaded, if you did the lazy loading exercise).
+*Target origin for `postMessage`*: Implement the `targetOrigin`
+parameter to [`postMssage`][postmessage]. This parameter is a string
+which indicates the frame origins that are allowed to receive the
+message.
 
-[aspect-ratio]: https://developer.mozilla.org/en-US/docs/Web/CSS/aspect-ratio
+*Multi-frame focus*: in our toy browser, pressing `Tab` cycles through
+the elements in the focused frame. But it's impossible to access
+focusable elements in other frames via the keyboard. Fix it to move
+between frames after iterating through all focusable elements in one
+frame.
 
-*Target origin for `postMessage`*: implement the second parameter of
-[`postMssage`][postmessage]: `targetOrigin`. This parameter is a protocol,
-hostname and port string that indicates which origin is allowed to receive
-the message.
+*Iframe history*: Ensure that iframes affect browser history. For
+example, if you click on a link inside an iframe, and then hit
+back button, it should go back inside the iframe. Make sure that this
+works even when the user clicks links in multiple frames in various
+orders.^[It's debatable whether this is a good feature of iframes, as
+it causes a lot of confusion for web developers who embed iframes they
+don't plan on navigating.]
 
-*Iframe history*: when iframes navigate (e.g. via a click on an `<a>` element,
-it affects browser history. In other words, if an iframe navigates, then the
-user presses the back button, it should navigate the iframe back to where it
-was; a second back button press navigates the parent page to its previous state.
-Implement this feature.^[It's debatable whether this is a good feature of
-iframes, as it causes a lot of confusion for web developers who embed iframes
-they don't plan on navigating.]
-
-*Multi-frame focus*: in our toy browser, pressing `tab` repeatedly goes through
-the elements in a single frame. But this is bad for accessibility, because it
-doesn't allow a user of the keyboard to obtain access to focusable elements in
-other frames. Fix it to move between frames after iterating through all
-focusable elements in one frame.
+*Accessing the full frame tree*: Same-origin iframes can access each
+others' variables and DOM, even if they are not adjacent in the frame
+tree. For example, if a frame's parent is cross-origin, but its
+grandparent is same-origin, then it should be possible to access
+methods and fields of `window.parent.parent`. Implement this by
+returning a real, working `Window` object for cross-origin parents.
+However, this object should prohibit accessing the `document` object
+from a cross-origin JS context, and throw an exception if a script
+tries to do so.
 
 *Iframes under transforms*: painting an iframe that has a CSS `transform` on it
 or an ancestor should already work, but event targeting for clicks doesn't work,
@@ -2161,4 +2153,5 @@ accessibility handles iframes under transform correctly in all cases.
 
 *Iframes added or removed by script*: the `innerHTML` API can cause iframes
 to be added or removed, but our browser doesn't load or unload them
-when this happens. Fix this: new iframes should be loaded and old ones unloaded.
+when this happens. Fix this: new iframes should be loaded and old ones
+unloaded.
