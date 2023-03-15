@@ -1863,7 +1863,7 @@ Window.prototype.dispatchEvent = function(evt) {
 ```
 
 That's everything on the receiver side; now let's do the sender side and implement
-The `postMessage` API itself. Note that `this._id` is the ID of the
+the `postMessage` API itself. Note that `this._id` is the ID of the
 receiver or target window:
 
 ``` {.javascript}
