@@ -1384,7 +1384,7 @@ class AccessibilityNode:
         pass
 ```
 
-But not for a `FrameAccessibilityNode`:
+A `FrameAccessibilityNode`, on the other hand, adjusts for the iframe's position:
 
 ``` {.python}
 class FrameAccessibilityNode(AccessibilityNode):
