@@ -955,9 +955,10 @@ def style(node, rules, frame):
         style(child, rules, frame)
 
 class AccessibilityNode:
-    def __init__(self, node):
+    def __init__(self, node, parent = None):
         self.node = node
         self.children = []
+        self.parent = parent
         self.text = ""
 
         if node.layout_object:
@@ -1031,9 +1032,9 @@ class AccessibilityNode:
     def build_internal(self, child_node):
         if isinstance(child_node, Element) \
             and child_node.tag == "iframe" and child_node.frame:
-            child = FrameAccessibilityNode(child_node)
+            child = FrameAccessibilityNode(child_node, self)
         else:
-            child = AccessibilityNode(child_node)
+            child = AccessibilityNode(child_node, self)
         if child.role != "none":
             self.children.append(child)
             child.build()
@@ -1056,6 +1057,19 @@ class AccessibilityNode:
             if res: node = res
         return node
 
+    def map_to_parent(self, rect):
+        pass
+
+    def absolute_bounds(self):
+        rect = skia.Rect.MakeXYWH(
+            self.bounds.x(), self.bounds.y(),
+            self.bounds.width(), self.bounds.height())
+        obj = self
+        while obj:
+            obj.map_to_parent(rect)
+            obj = obj.parent
+        return rect
+
     def __repr__(self):
         return "AccessibilityNode(node={} role={} text={}".format(
             str(self.node), self.role, self.text)
@@ -1073,6 +1087,9 @@ class FrameAccessibilityNode(AccessibilityNode):
             res = child.hit_test(new_x, new_y)
             if res: node = res
         return node
+
+    def map_to_parent(self, rect):
+        rect.offset(self.bounds.x(), self.bounds.y())
 
     def __repr__(self):
         return "FrameAccessibilityNode(node={} role={} text={}".format(
@@ -1802,7 +1819,7 @@ class Browser:
 
         if self.hovered_a11y_node:
             self.draw_list.append(DrawOutline(
-                self.hovered_a11y_node.bounds,
+                self.hovered_a11y_node.absolute_bounds(),
                 "white" if self.dark_mode else "black", 2))
 
     def update_accessibility(self):
