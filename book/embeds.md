@@ -1374,9 +1374,9 @@ class AccessibilityNode:
         return rect
 ```
 
-This method does nothing until we've defined `map_to_parent` of course, and
-that does nothing for most accessibility nodes (because they are in the same
-coordinate space of their parent):
+This method depends calls `map_to_parent` to adjust the bounds. For
+ most accessibility nodes we don't need to do anything, because they are in the same
+coordinate space as their parent:
 
 ``` {.python}
 class AccessibilityNode:
