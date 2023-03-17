@@ -1344,7 +1344,7 @@ class FrameAccessibilityNode(AccessibilityNode):
 Hit testing should now work, but the bounds of the hovered node when drawn
 to the screen are still wrong. For that, we'll need a method that returns
 the absolute screen rect of an `AccessibilityNode`. And that method in turn
-needs parent pointers so we can walk up the tree, so let's add that first:
+needs parent pointers to walk up the accessibility tree, so let's add that first:
 
 ``` {.python}
 class AccessibilityNode:
