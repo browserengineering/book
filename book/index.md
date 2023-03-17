@@ -80,7 +80,7 @@ Part 4: Modern Browsers
 (@) [Making Content Accessible](accessibility.md)\
     Keyboard input, zooming, and the accessibility tree
 (@) [Supporting Embedded Content](embeds.md)\
-    Images and iframes
+    Images, iframes, and scripting
 
 ::: {.outro}
 Conclusion

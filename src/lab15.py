@@ -180,8 +180,9 @@ class DocumentLayout:
 def font(node, zoom):
     weight = node.style["font-weight"]
     style = node.style["font-style"]
-    font_size = device_px(float(node.style["font-size"][:-2]), zoom)
-    return get_font(font_size, weight, font_size)
+    size = float(node.style["font-size"][:-2])
+    font_size = device_px(size, zoom)
+    return get_font(font_size, weight, style)
 
 class BlockLayout:
     def __init__(self, node, parent, previous, frame):
@@ -511,20 +512,22 @@ class ImageLayout(EmbedLayout):
 
         width_attr = self.node.attributes.get("width")
         height_attr = self.node.attributes.get("height")
-        aspect_ratio = self.node.image.width() / self.node.image.height()
+        image_width = self.node.image.width()
+        image_height = self.node.image.height()
+        aspect_ratio = image_width / image_height
 
         if width_attr and height_attr:
             self.width = device_px(int(width_attr), zoom)
             self.img_height = device_px(int(height_attr), zoom)
         elif width_attr:
             self.width = device_px(int(width_attr), zoom)
-            self.img_height = aspect_ratio * self.width
+            self.img_height = self.width / aspect_ratio
         elif height_attr:
             self.img_height = device_px(int(height_attr), zoom)
-            self.width = aspect_ratio * self.img_height
+            self.width = self.img_height * aspect_ratio
         else:
-            self.width = device_px(self.node.image.width(), zoom)
-            self.img_height = device_px(self.node.image.height(), zoom)
+            self.width = device_px(image_width, zoom)
+            self.img_height = device_px(image_height, zoom)
 
         self.height = max(self.img_height, linespace(self.font))
 
@@ -565,8 +568,9 @@ class IframeLayout(EmbedLayout):
         else:
             self.height = device_px(IFRAME_HEIGHT_PX + 2, zoom)
 
-        self.node.frame.frame_height = self.height - 2
-        self.node.frame.frame_width = self.width - 2
+        if self.node.frame:
+            self.node.frame.frame_height = self.height - 2
+            self.node.frame.frame_width = self.width - 2
 
     def paint(self, display_list):
         frame_cmds = []
@@ -1075,6 +1079,7 @@ class FrameAccessibilityNode(AccessibilityNode):
             str(self.node), self.role, self.text)
 
 
+BROKEN_IMAGE = skia.Image.open("Broken_Image.png")
 WINDOW_COUNT = 0
 
 class Frame:
@@ -1096,9 +1101,7 @@ class Frame:
         self.frame_width = 0
         self.frame_height = 0
 
-        global WINDOW_COUNT
-        self.window_id = WINDOW_COUNT
-        WINDOW_COUNT += 1
+        self.window_id = len(self.tab.window_id_to_frame)
         self.tab.window_id_to_frame[self.window_id] = self
 
         with open("browser15.css") as f:
@@ -1180,7 +1183,8 @@ class Frame:
             and node.tag == "img"]
         for img in images:
             try:
-                image_url = resolve_url(img.attributes["src"], self.url)
+                src = img.attributes.get("src", "")
+                image_url = resolve_url(src, self.url)
                 assert self.allowed_request(image_url), \
                     "Blocked load of " + image_url + " due to CSP"
                 header, body = request(image_url, self.url)
@@ -1191,7 +1195,7 @@ class Frame:
             except Exception as e:
                 print("Exception loading image: url="
                     + image_url + " exception=" + str(e))
-                img.image = skia.Image.open("Broken_Image.png")
+                img.image = BROKEN_IMAGE
 
         iframes = [node
                    for node in tree_to_list(self.nodes, [])
@@ -1350,7 +1354,9 @@ class Frame:
             if isinstance(elt, Text):
                 pass
             elif elt.tag == "iframe":
-                elt.frame.click(x - elt.layout_object.x, y - elt.layout_object.y)
+                new_x = x - elt.layout_object.x
+                new_y = y - elt.layout_object.y
+                elt.frame.click(new_x, new_y)
                 return
             elif is_focusable(elt):
                 self.focus_element(elt)
@@ -1360,7 +1366,8 @@ class Frame:
             elt = elt.parent
 
     def clamp_scroll(self, scroll):
-        maxscroll = math.ceil(self.document.height) - self.frame_height
+        height = math.ceil(self.document.height)
+        maxscroll = height - self.frame_height
         return max(0, min(scroll, maxscroll))
 
 class CommitData:
