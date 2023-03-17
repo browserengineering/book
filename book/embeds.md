@@ -470,7 +470,7 @@ the `alt` attribute is for. It works like this:
 
 Implementing this in `AccessibilityNode` is very easy:
 
-``` {.python}
+``` {.python replace=node)/node%2C%20parent%20=%20None)}
 class AccessibilityNode:
     def __init__(self, node):
         else:
@@ -1048,7 +1048,7 @@ Finally, let's also add iframes to the accessibility tree. Like the
 display list, the accessibility tree is global across all frames.
 We can have iframes create `iframe` nodes:
 
-``` {.python}
+``` {.python replace=node)/node%2C%20parent%20=%20None)}
 class AccessibilityNode:
     def __init__(self, node):
         else:
@@ -1058,7 +1058,7 @@ class AccessibilityNode:
 
 To `build` such a node, we just recurse into the frame:
 
-``` {.python replace=AccessibilityNode(child_node.frame.nodes)/FrameAccessibilityNode(child_node)}
+``` {.python replace=AccessibilityNode(child_node.frame.nodes)/FrameAccessibilityNode(child_node%2C%20self)}
 class AccessibilityNode:
    def build_internal(self, child_node):
         if isinstance(child_node, Element) \
@@ -1301,7 +1301,7 @@ class FrameAccessibilityNode(AccessibilityNode):
 
 We'll create one of those below each `iframe` node:
 
-``` {.python}
+``` {.python replace=(child_node)/(child_node%2C%20self)}
 class AccessibilityNode:
     def build_internal(self, child_node):
         if isinstance(child_node, Element) \
@@ -1339,6 +1339,57 @@ class FrameAccessibilityNode(AccessibilityNode):
             res = child.hit_test(new_x, new_y)
             if res: node = res
         return node
+```
+
+Hit testing should now work, but the bounds of the hovered node when drawn
+to the screen are still wrong. For that, we'll need a method that returns
+the absolute screen rect of an `AccessibilityNode`. And that method in turn
+needs parent pointers to walk up the accessibility tree, so let's add that first:
+
+``` {.python}
+class AccessibilityNode:
+    def __init__(self, node, parent = None):
+        # ...
+        self.parent = parent
+
+    def build_internal(self, child_node):
+        # ...
+            child = FrameAccessibilityNode(child_node, self)
+        else:
+            child = AccessibilityNode(child_node, self)
+```
+
+And now the method to map to absolute coordinates:
+
+``` {.python}
+class AccessibilityNode:
+    def absolute_bounds(self):
+        rect = skia.Rect.MakeXYWH(
+            self.bounds.x(), self.bounds.y(),
+            self.bounds.width(), self.bounds.height())
+        obj = self
+        while obj:
+            obj.map_to_parent(rect)
+            obj = obj.parent
+        return rect
+```
+
+This method depends on calls `map_to_parent` to adjust the bounds. For
+ most accessibility nodes we don't need to do anything, because they are in the same
+coordinate space as their parent:
+
+``` {.python}
+class AccessibilityNode:
+    def map_to_parent(self, rect):
+        pass
+```
+
+A `FrameAccessibilityNode`, on the other hand, adjusts for the iframe's position:
+
+``` {.python}
+class FrameAccessibilityNode(AccessibilityNode):
+    def map_to_parent(self, rect):
+        rect.offset(self.bounds.x(), self.bounds.y())
 ```
 
 You should now be able to hover on nodes and have them read out by our
