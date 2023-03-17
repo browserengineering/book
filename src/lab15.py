@@ -749,8 +749,9 @@ POST_MESSAGE_DISPATCH_CODE = \
     "window.dispatchEvent(new window.MessageEvent(dukpy.data))"
 
 class JSContext:
-    def __init__(self, tab):
+    def __init__(self, tab, url_origin):
         self.tab = tab
+        self.url_origin = url_origin
 
         self.interp = dukpy.JSInterpreter()
         self.interp.export_function("log", print)
@@ -776,6 +777,11 @@ class JSContext:
 
         self.interp.evaljs("function Window(id) { this._id = id };")
         self.interp.evaljs("WINDOWS = {}")
+
+    def throw_if_cross_origin(self, frame):
+        if url_origin(frame.url) != self.url_origin:
+            raise Exception(
+                "Cross-origin access disallowed from script")
 
     def add_window(self, frame):
         code = "var window_{} = new Window({});".format(
@@ -816,6 +822,7 @@ class JSContext:
 
     def querySelectorAll(self, selector_text, window_id):
         frame = self.tab.window_id_to_frame[window_id]
+        self.throw_if_cross_origin(frame)
         selector = CSSParser(selector_text).selector()
         nodes = [node for node
                 in tree_to_list(frame.nodes, [])
@@ -843,6 +850,8 @@ class JSContext:
         self.tab.task_runner.schedule_task(task)
 
     def innerHTML_set(self, handle, s, window_id):
+        frame = self.tab.window_id_to_frame[window_id]        
+        self.throw_if_cross_origin(frame)
         doc = HTMLParser(
             "<html><body>" + s + "</body></html>").parse()
         new_nodes = doc.children[0].children
@@ -850,13 +859,13 @@ class JSContext:
         elt.children = new_nodes
         for child in elt.children:
             child.parent = elt
-        frame = self.tab.window_id_to_frame[window_id]        
         frame.set_needs_render()
 
     def style_set(self, handle, s, window_id):
+        frame = self.tab.window_id_to_frame[window_id]        
+        self.throw_if_cross_origin(frame)
         elt = self.handle_to_node[handle]
         elt.attributes["style"] = s;
-        frame = self.tab.window_id_to_frame[window_id]        
         frame.set_needs_render()
 
     def dispatch_settimeout(self, handle, window_id):
@@ -1184,7 +1193,8 @@ class Frame:
                 img.image = skia.Image.MakeFromEncoded(data)
                 assert img.image, "Failed to recognize image format for " + image_url
             except Exception as e:
-                print(e)
+                print("Exception loading image: url="
+                    + image_url + " exception=" + str(e))
                 img.image = BROKEN_IMAGE
 
         iframes = [node
@@ -1413,9 +1423,9 @@ class Tab:
 
     def get_js(self, origin):
         if wbetools.FORCE_CROSS_ORIGIN_IFRAMES:
-            return JSContext(self)
+            return JSContext(self, origin)
         if origin not in self.origin_to_js:
-            self.origin_to_js[origin] = JSContext(self)
+            self.origin_to_js[origin] = JSContext(self, origin)
         return self.origin_to_js[origin]
 
     def set_needs_render_all_frames(self):

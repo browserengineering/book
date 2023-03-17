@@ -164,7 +164,8 @@ class Tab:
             try:
                 # ...
             except Exception as e:
-                print(e)
+                print("Exception loading image: url="
+                    + image_url + " exception=" + str(e))
                 img.image = BROKEN_IMAGE
 ```
 
@@ -1395,7 +1396,7 @@ class Tab:
 
     def get_js(self, origin):
         if origin not in self.origin_to_js:
-            self.origin_to_js[origin] = JSContext(self)
+            self.origin_to_js[origin] = JSContext(self, origin)
         return self.origin_to_js[origin]
 ```
 
@@ -1471,7 +1472,8 @@ So to begin with, let's define the `Window` class when we create a
 
 ``` {.python}
 class JSContext:
-    def __init__(self, tab):
+    def __init__(self, tab, url_origin):
+        self.url_origin = url_origin
         # ...
         self.interp.evaljs("function Window(id) { this._id = id };")
 ```
@@ -1658,7 +1660,7 @@ easiest is to have a global map:
 
 ``` {.python}
 class JSContext:
-    def __init__(self, tab):
+    def __init__(self, tab, url_origin):
         # ...
         self.interp.evaljs("WINDOWS = {}")
 ```
@@ -1683,22 +1685,48 @@ Object.defineProperty(Window.prototype, 'parent', {
     var parent_id = call_python('parent', window._id);
     if (parent_id != undefined) {
         var parent = WINDOWS[parent_id];
-        if (parent === undefined) parent = new Window(-1);
+        if (parent === undefined) parent = new Window(parent_id);
         return parent;
     }
   }
 });
 ```
 
-Note that it's possible for the lookup in `WINDOWS` to fail; this
-happens if the parent frame is not in the same origin as the current
-one and therefore isn't running in the same `JSContext`. This code
-return a fresh `Window` object in that case, with a fake, negative id.
-This makes further accesses to that window's APIs to fail, making it
-impossible to modify that frame's state.^[Note however that in a real
-browser, this `Window` object is not fake, and some APIs can be called
-on it; for example, its `parent` can be retrieved. There is a related
-exercise at the end of the chapter.]
+Note that it's possible for the lookup in `WINDOWS` to fail, if the
+parent frame is not in the same origin as the current one and
+therefore isn't running in the same `JSContext`. In that case, this
+code return a fresh `Window` object with that id. But iframes are not
+allowed to access each others' documents across origins (or call various
+other APIs that are unsafe), so add a method that checks for this situation
+and raises an exception:
+
+``` {.python}
+class JSContext:
+    def throw_if_cross_origin(self, frame):
+        if url_origin(frame.url) != self.url_origin:
+            raise Exception(
+                "Cross-origin access disallowed from script")
+```
+
+Then use this method in all `JSContext` methods that access documents:^[Note
+that in a real browser this is woefully inadequate security. A real browser
+would need to very carefully lock down the entire `runtime.js` code and
+audit every single JavaScript API with a fine-toothed comb.]
+
+``` {.python}
+class JSContext:
+    def querySelectorAll(self, selector_text, window_id):
+        frame = self.tab.window_id_to_frame[window_id]
+        self.throw_if_cross_origin(frame)
+
+    def innerHTML_set(self, handle, s, window_id):
+        frame = self.tab.window_id_to_frame[window_id]        
+        self.throw_if_cross_origin(frame)
+
+    def style_set(self, handle, s, window_id):
+        frame = self.tab.window_id_to_frame[window_id]        
+        self.throw_if_cross_origin(frame)
+```
 
 So via `parent`, same-origin iframes can communicate. But what about
 cross-origin iframes? It would be insecure to let them access each
@@ -1824,9 +1852,12 @@ You should now be able to use `postMessage` to send messages between
 frames,[^postmessage-demo] including cross-origin frames running in
 different `JSContext`s, in a secure way.
 
-[^postmessage-demo]: In [this demo](examples/example15-iframe.html),
-for example, you should see "Message received from iframe: This is the
-contents of postMessage." printed to the console.
+[^postmessage-demo]: In [this demo](examples/example15-iframe.html), for
+example, you should see "Message received from iframe: This is the contents of
+postMessage." printed to the console.^[This particular example uses a
+same-origin postMessage. You can test cross-origin locally by starting two
+local HTTP servers on different ports, then changing the URL of the
+`example15-img.html` iframe document to point to the second port.]
 
 ::: {.further}
 Ads are commonly served with iframes and are big users of the web's
@@ -1994,7 +2025,6 @@ is borne by the browser.)
 
 [retained-mode]: https://en.wikipedia.org/wiki/Retained_mode
 
-
 [canvas-reset]: https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-reset
 
 [getcontext]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/getContext
@@ -2072,16 +2102,6 @@ works even when the user clicks links in multiple frames in various
 orders.^[It's debatable whether this is a good feature of iframes, as
 it causes a lot of confusion for web developers who embed iframes they
 don't plan on navigating.]
-
-*Accessing the full frame tree*: Same-origin iframes can access each
-others' variables and DOM, even if they are not adjacent in the frame
-tree. For example, if a frame's parent is cross-origin, but its
-grandparent is same-origin, then it should be possible to access
-methods and fields of `window.parent.parent`. Implement this by
-returning a real, working `Window` object for cross-origin parents.
-However, this object should prohibit accessing the `document` object
-from a cross-origin JS context, and throw an exception if a script
-tries to do so.
 
 *Iframes under transforms*: painting an iframe that has a CSS `transform` on it
 or an ancestor should already work, but event targeting for clicks doesn't work,

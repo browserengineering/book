@@ -155,7 +155,7 @@ Object.defineProperty(Window.prototype, 'parent', {
     var parent_id = call_python('parent', window._id);
     if (parent_id != undefined) {
         var parent = WINDOWS[parent_id];
-        if (parent === undefined) parent = new Window(-1);
+        if (parent === undefined) parent = new Window(parent_id);
         return parent;
     }
   }
