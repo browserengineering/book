@@ -259,7 +259,7 @@ class BlockLayout:
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         size = float(node.style["font-size"][:-2])
-        font = get_font(size, weight, size)
+        font = get_font(size, weight, style)
         for word in node.text.split():
             w = font.measureText(word)
             if self.cursor_x + w > self.width:
@@ -281,7 +281,7 @@ class BlockLayout:
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         size = float(node.style["font-size"][:-2])
-        font = get_font(size, weight, size)
+        font = get_font(size, weight, style)
         self.cursor_x += w + font.measureText(" ")
 
     def paint(self, display_list):
