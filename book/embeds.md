@@ -1374,7 +1374,7 @@ class AccessibilityNode:
         return rect
 ```
 
-This method depends calls `map_to_parent` to adjust the bounds. For
+This method depends on calls `map_to_parent` to adjust the bounds. For
  most accessibility nodes we don't need to do anything, because they are in the same
 coordinate space as their parent:
 
