@@ -629,9 +629,6 @@ class AttributeParser:
                 self.i += 1
             else:
                 break
-        if self.i == start:
-            print("tag: " + self.s)
-            print("current: " + self.s[self.i:])
         assert self.i > start
         if quoted:
             return self.s[start+1:self.i-1]
