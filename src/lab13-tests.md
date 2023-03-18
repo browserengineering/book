@@ -93,6 +93,7 @@ The `parse_transform` function parses the value of the `transform` CSS property.
 Unsupported values are ignored.
 
     >>> lab13.parse_transform("rotate(45deg)")
+    >>> lab13.parse_transform("translateY(10px)")
 
 Animations work:
 
