@@ -1969,9 +1969,6 @@ class Browser:
         active_tab.task_runner.schedule_task(task)
         self.clear_data()
 
-    def add_tab(self):
-        self.load("https://browser.engineering/")
-
     def cycle_tabs(self):
         new_active_tab = (self.active_tab + 1) % len(self.tabs)
         self.set_active_tab(new_active_tab)
