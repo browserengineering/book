@@ -337,7 +337,8 @@ class EmbedLayout:
         self.font = font(self.node, zoom)
         if self.previous:
             space = self.previous.font.measureText(" ")
-            self.x = self.previous.x + space + self.previous.width
+            self.x = \
+                self.previous.x + space + self.previous.width
         else:
             self.x = self.parent.x
 
@@ -1075,13 +1076,17 @@ class AccessibilityNode:
             str(self.node), self.role, self.text)
 
 class FrameAccessibilityNode(AccessibilityNode):
+    def __init__(self, node, parent = None):
+        super().__init__(node, parent)
+        self.scroll = self.node.frame.scroll
+
     def build(self):
         self.build_internal(self.node.frame.nodes)
 
     def hit_test(self, x, y):
         if not self.intersects(x, y): return
         new_x = x - self.bounds.x()
-        new_y = y - self.bounds.y() + self.node.frame.scroll
+        new_y = y - self.bounds.y() + self.scroll
         node = self
         for child in self.children:
             res = child.hit_test(new_x, new_y)
@@ -1089,7 +1094,7 @@ class FrameAccessibilityNode(AccessibilityNode):
         return node
 
     def map_to_parent(self, rect):
-        rect.offset(self.bounds.x(), self.bounds.y())
+        rect.offset(self.bounds.x(), self.bounds.y() - self.scroll)
 
     def __repr__(self):
         return "FrameAccessibilityNode(node={} role={} text={}".format(
