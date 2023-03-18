@@ -243,3 +243,14 @@ Rendering will read out the accessibility instructions:
     
     >>> document.children[0].children[0].attributes
     {'src': 'my-url', 'alt': 'This is alt text'}
+
+Here are some brief tests for the attribute parser. First, that it allows
+spaces:
+
+    >>> lab15.AttributeParser('tag a="a b c" b=def').parse()
+    ('tag', {'a': 'a b c', 'b': 'def'})
+
+Next, that it allows the equals sign within quoted text:
+
+    >>> lab15.AttributeParser('tag a="a=b c"').parse()
+    ('tag', {'a': 'a=b c'})

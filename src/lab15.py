@@ -625,7 +625,7 @@ class AttributeParser:
                 in_quote = not in_quote
                 quoted = True
                 self.i += 1
-            elif in_quote and cur.isspace():
+            elif in_quote and (cur.isspace() or cur == "="):
                 self.i += 1
             else:
                 break
@@ -1956,6 +1956,10 @@ class Browser:
 
     def set_active_tab(self, index):
         self.active_tab = index
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.set_needs_paint)
+        active_tab.task_runner.schedule_task(task)
+
         self.clear_data()
         self.needs_animation_frame = True
 
@@ -1964,9 +1968,6 @@ class Browser:
         task = Task(active_tab.go_back)
         active_tab.task_runner.schedule_task(task)
         self.clear_data()
-
-    def add_tab(self):
-        self.load("https://browser.engineering/")
 
     def cycle_tabs(self):
         new_active_tab = (self.active_tab + 1) % len(self.tabs)
@@ -2024,7 +2025,7 @@ class Browser:
             if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
                 self.set_active_tab(int((e.x - 40) / 80))
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
-                self.add_tab()
+                self.load_internal("https://browser.engineering/")
             elif 10 <= e.x < 35 and 50 <= e.y < 90:
                 self.go_back()
             elif 50 <= e.x < WIDTH - 10 and 50 <= e.y < 90:
@@ -2086,9 +2087,14 @@ class Browser:
         active_tab.task_runner.schedule_task(task)
 
     def load(self, url):
+        self.lock.acquire(blocking=True)
+        self.load_internal(url)
+        self.lock.release()
+
+    def load_internal(self, url):
         new_tab = Tab(self)
-        self.set_active_tab(len(self.tabs))
         self.tabs.append(new_tab)
+        self.set_active_tab(len(self.tabs) - 1)
         self.schedule_load(url)
 
     def raster_tab(self):

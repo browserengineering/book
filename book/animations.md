@@ -1856,7 +1856,7 @@ standardized transform syntax.
 
 ``` {.python}
 def parse_transform(transform_str):
-    if transform_str.find('translate') < 0:
+    if transform_str.find('translate(') < 0:
         return None
     left_paren = transform_str.find('(')
     right_paren = transform_str.find(')')
