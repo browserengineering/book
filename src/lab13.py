@@ -285,7 +285,7 @@ class DrawCompositedLayer(DisplayItem):
 
 
 def parse_transform(transform_str):
-    if transform_str.find('translate') < 0:
+    if transform_str.find('translate(') < 0:
         return None
     left_paren = transform_str.find('(')
     right_paren = transform_str.find(')')
@@ -1008,6 +1008,8 @@ class CompositedLayer:
                     self.skia_context, skia.Budgeted.kNo,
                     skia.ImageInfo.MakeN32Premul(
                         irect.width(), irect.height()))
+                if self.surface is None:
+                    self.surface = skia.Surface(irect.width(), irect.height())
                 assert self.surface is not None
             else:
                 self.surface = skia.Surface(irect.width(), irect.height())

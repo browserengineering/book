@@ -1596,6 +1596,10 @@ class Browser:
 
     def set_active_tab(self, index):
         self.active_tab = index
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.set_needs_paint)
+        active_tab.task_runner.schedule_task(task)
+
         self.clear_data()
         self.needs_animation_frame = True
 
