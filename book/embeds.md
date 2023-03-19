@@ -513,7 +513,7 @@ modalities.
 Videos are similar to images, but demand more bandwidth, time, and
 memory; they also have complications like [Digital Rights Management
 (DRM)][drm]. The `<video>` tag addresses some of that, with built-in
-support for advanced video [*codecs*][codec]^[In video, it's called a
+support for advanced video [*codecs*][codec],^[In video, it's called a
 "codec", but in images it's called a "format"--go figure.] DRM, and
 hardware acceleration. It also provides media controls like a
 play/pause button and volume controls.
