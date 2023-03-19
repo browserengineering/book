@@ -527,13 +527,15 @@ Modifying Image Sizes
 =====================
 
 So far, an image's size on the screen is its size in pixels, possibly
-zoomed. But in fact it's generally valuable for authors to control the
-size of embedded content. There are a number of ways to do this,^[For
-example, the `width` and `height` CSS properties (not to be confused
-with the `width` and `height` attributes!), which were an exercise in
+zoomed.^[Note that zoom already may cause an image to render at a size
+different than its regular size, even before introducing the features in this
+section.] But in fact it's generally valuable for
+authors to control the size of embedded content. There are a number of ways to
+do this,^[For example, the `width` and `height` CSS properties (not to be
+confused with the `width` and `height` attributes!), which were an exercise in
 Chapter 13.] but one way is the special `width` and `height`
-attributes.^[Images have these mostly for historical reasons, because
-these attributes were invented before CSS existed.]
+attributes.^[Images have these mostly for historical reasons, because these
+attributes were invented before CSS existed.]
 
 If _both_ those attributes are present, things are pretty easy: we
 just read from them when laying out the element, both in `image`:
