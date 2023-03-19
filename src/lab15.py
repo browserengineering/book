@@ -161,7 +161,7 @@ class DocumentLayout:
         self.x = device_px(HSTEP, zoom)
         self.y = device_px(VSTEP, zoom)
         child.layout(zoom)
-        self.height = child.height + 2* device_px(VSTEP, zoom)
+        self.height = child.height + 2 * device_px(VSTEP, zoom)
 
     def paint(self, display_list, dark_mode, scroll, zoom):
         cmds = []
