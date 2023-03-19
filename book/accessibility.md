@@ -1145,8 +1145,10 @@ def paint_outline(node, cmds, rect, zoom):
         cmds.append(DrawOutline(rect, "black", 1))
 ```
 
-Call it in `InputLayout` to make sure text entries and buttons get
-outlines:
+Call it in `InputLayout` to make sure text entries and buttons get outlines.
+Also note that, because we now need access to `zoom` in all of the paint
+functions, you'll need to add that paramter to all of them
+(`DocumentLayout`, `BlockLayout`, etc).
 
 ``` {.python}
 class InputLayout:

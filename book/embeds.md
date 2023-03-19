@@ -935,7 +935,8 @@ IFRAME_WIDTH_PX = 300
 IFRAME_HEIGHT_PX = 150
 ```
 
-The extra 2 pixels provide room for a border later on.
+The extra 2 pixels (corrected for zoom, of course) provide room for a border
+later on.
 
 Now, note that this code is run in the *parent* frame. We need to get
 this width and height over to the *child* frame, so it can know its
@@ -1479,13 +1480,15 @@ class Frame:
         # ...
 ```
 
-So we've got multiple pages' scripts using one JavaScript context. Now we've got
-to keep them separate somehow. The key is going to be the `window` global, of
-type `Window`. In the browser, this refers to the[global object]
-[global-object], and instead of writing a global variable like `a`, you can
-always write `window.a` instead.[^shadow-realms] To keep our implementation
-simple, in our browser, scripts will always need to reference variable and
-functions via `window`. We'll need to do the same in our runtime:
+So we've got multiple pages' scripts using one JavaScript context. But now we've
+got to keep their variables in their own namespaces somehow. The key is going
+to be the `window` global, of type `Window`. In the browser, this refers to the
+[global object][global-object], and instead of writing a global variable like
+`a`, you can always write `window.a` instead.[^shadow-realms] To keep our
+implementation simple, in our browser, scripts will always need to reference
+variable and functions via `window`.^[This also means that all global variables
+in a script need to do the same, even if they are not browser APIs.] We'll need
+to do the same in our runtime:
 
 [^shadow-realms]: There are [various proposals][shadowrealm] to expose
 multiple global namespaces as a JavaScript API. It would definitely be
