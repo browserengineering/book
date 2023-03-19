@@ -91,12 +91,12 @@ def parse_color(color):
     else:
         return skia.ColorBLACK
 
-def parse_outline(outline_str):
+def parse_outline(outline_str, zoom):
     if not outline_str: return None
     values = outline_str.split(" ")
     if len(values) != 3: return None
     if values[1] != "solid": return None
-    return (int(values[0][:-2]), values[2])
+    return (device_px(int(values[0][:-2]), zoom), values[2])
 
 class DrawOutline(DisplayItem):
     def __init__(self, rect, color, thickness):
@@ -128,11 +128,11 @@ def is_focused(node):
     return node.is_focused
 
 def has_outline(node):
-    return parse_outline(node.style.get("outline"))
+    return parse_outline(node.style.get("outline"), 1)
 
-def paint_outline(node, cmds, rect):
+def paint_outline(node, cmds, rect, zoom):
     if has_outline(node):
-        thickness, color = parse_outline(node.style.get("outline"))
+        thickness, color = parse_outline(node.style.get("outline"), zoom)
         cmds.append(DrawOutline(rect, color, thickness))
 
 class BlockLayout:
@@ -220,7 +220,7 @@ class BlockLayout:
         font = get_font(size, weight, size)
         self.cursor_x += w + font.measureText(" ")
 
-    def paint(self, display_list):
+    def paint(self, display_list, zoom):
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
@@ -234,16 +234,19 @@ class BlockLayout:
             bgcolor = self.node.style.get("background-color",
                                      "transparent")
             if bgcolor != "transparent":
-                radius = float(self.node.style.get("border-radius", "0px")[:-2])
+                radius = device_px(
+                    float(self.node.style.get("border-radius", "0px")[:-2]),
+                        zoom)
                 cmds.append(DrawRRect(rect, radius, bgcolor))
  
         for child in self.children:
-            child.paint(cmds)
-
-        paint_outline(self.node, cmds, rect)
+            child.paint(cmds, zoom)
 
         if not is_atomic:
             cmds = paint_visual_effects(self.node, cmds, rect)
+            paint_outline(
+                self.node, cmds, rect, zoom)
+
         display_list.extend(cmds)
 
     def __repr__(self):
@@ -286,9 +289,9 @@ class LineLayout:
                            for word in self.children])
         self.height = 1.25 * (max_ascent + max_descent)
 
-    def paint(self, display_list):
+    def paint(self, display_list, zoom):
         for child in self.children:
-            child.paint(display_list)
+            child.paint(display_list, zoom)
 
         outline_rect = skia.Rect.MakeEmpty()
         focused_node = None
@@ -299,7 +302,8 @@ class LineLayout:
                 outline_rect.join(child.rect())
 
         if focused_node:
-            paint_outline(focused_node, display_list, outline_rect)
+            paint_outline(
+                focused_node, display_list, outline_rect, zoom)
 
     def role(self):
         return "none"
@@ -374,8 +378,8 @@ class DocumentLayout:
         child.layout(zoom)
         self.height = child.height + 2* device_px(VSTEP, zoom)
 
-    def paint(self, display_list):
-        self.children[0].paint(display_list)
+    def paint(self, display_list, zoom):
+        self.children[0].paint(display_list, zoom)
 
     def __repr__(self):
         return "DocumentLayout()"
@@ -411,7 +415,7 @@ class TextLayout:
 
         self.height = linespace(self.font)
 
-    def paint(self, display_list):
+    def paint(self, display_list, zoom):
         color = self.node.style["color"]
         display_list.append(
             DrawText(self.x, self.y, self.word, self.font, color))
@@ -454,7 +458,7 @@ class InputLayout:
         else:
             self.x = self.parent.x
 
-    def paint(self, display_list):
+    def paint(self, display_list, zoom):
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
@@ -464,7 +468,9 @@ class InputLayout:
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         if bgcolor != "transparent":
-            radius = float(self.node.style.get("border-radius", "0px")[:-2])
+            radius = device_px(
+                float(self.node.style.get("border-radius", "0px")[:-2]),
+                zoom)
             cmds.append(DrawRRect(rect, radius, bgcolor))
 
         if self.node.tag == "input":
@@ -485,8 +491,8 @@ class InputLayout:
             cx = rect.left() + self.font.measureText(text)
             cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom()))
 
-        paint_outline(self.node, cmds, rect)
         cmds = paint_visual_effects(self.node, cmds, rect)
+        paint_outline(self.node, cmds, rect, zoom)
         display_list.extend(cmds)
 
     def __repr__(self):
@@ -1098,7 +1104,7 @@ class Tab:
         if self.needs_paint:
             self.display_list = []
 
-            self.document.paint(self.display_list)
+            self.document.paint(self.display_list, self.zoom)
             self.needs_paint = False
 
         self.measure_render.stop()

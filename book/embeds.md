@@ -67,7 +67,7 @@ def request(url, top_level_url, payload=None):
     # ...
 ```
 
-Now every type we read from `response`, we will get `bytes` of binary
+Now every time we read from `response`, we will get `bytes` of binary
 data, not a `str` with textual data, so we'll need to change some HTTP
 parser code to explicitly `decode` the data:
 
@@ -356,7 +356,7 @@ class InputLayout(EmbedLayout):
         self.width = device_px(INPUT_WIDTH_PX, zoom)
         self.height = linespace(self.font)
 
-    def paint(self, display_list):
+    def paint(self, display_list, zoom):
         # ...
 ```
 
@@ -384,9 +384,9 @@ This is a common source of confusion for web developers. In a
 real browser, it can be avoided by forcing an image into a block or
 other layout mode via the `display` CSS property.] The underlying
 reason for this is because, as a type of inline layout, images are
-designed to flow along with related text, which means they affect and
-are affected by the [text baseline][baseline-ch3]: by default, the
-bottom of the image should line up with the text baseline.
+designed to flow along with related text, which means the
+bottom of the image should line up with the [text baseline][baseline-ch3]
+(in fact, `img_height` is saved in the code above to ensure they line up).
 
 [baseline-ch3]: text.html#text-of-different-sizes
 
@@ -394,7 +394,7 @@ Painting an image is also straightforward:
 
 ``` {.python}
 class ImageLayout(EmbedLayout):
-    def paint(self, display_list):
+    def paint(self, display_list, zoom):
         cmds = []
         rect = skia.Rect.MakeLTRB(
             self.x, self.y + self.height - self.img_height,
@@ -404,12 +404,9 @@ class ImageLayout(EmbedLayout):
         display_list.extend(cmds)
 ```
 
-Note that the saved `img_height` property is used to make sure the
-image is positioned with its bottom edge on the text baseline.
-
 Now we need to create `ImageLayout`s in `BlockLayout`. Input elements
 are created in an `input` method, so we could could duplicate it
-calling it `image`... but `input` is itself a duplicate of `text`, so
+calling it `image`...but `input` is itself a duplicate of `text`, so
 this would be a lot of almost-identical methods. The only part of
 these methods that differs is the part that computes the width of the
 new inline child; most of the rest of the logic is shared.
@@ -432,7 +429,7 @@ def font(node, zoom):
 
 There's also shared code that handles line layout; let's put that into
 a new `add_inline_child` method. We'll need parameters for the layout
-class to instantiate and an `word` parameter that is only passed for some
+class to instantiate and a `word` parameter that is only passed for some
 layout classes.
 
 ``` {.python replace=child_class%2c/child_class%2c%20frame%2c,previous_word)/previous_word%2c%20frame)}
@@ -517,7 +514,7 @@ Videos are similar to images, but demand more bandwidth, time, and
 memory; they also have complications like [Digital Rights Management
 (DRM)][drm]. The `<video>` tag addresses some of that, with built-in
 support for advanced video [*codecs*][codec]^[In video, it's called a
-"codec", but in images it's called a "format",--go figure.] DRM, and
+"codec", but in images it's called a "format"--go figure.] DRM, and
 hardware acceleration. It also provides media controls like a
 play/pause button and volume controls.
 :::
@@ -902,7 +899,7 @@ class BlockLayout:
         if "width" in self.node.attributes:
             w = device_px(int(self.node.attributes["width"]), zoom)
         else:
-            w = IFRAME_WIDTH_PX + 2
+            w = IFRAME_WIDTH_PX + device_px(2, zoom)
         self.add_inline_child(node, zoom, w, IframeLayout, self.frame)
 ```
 
@@ -917,12 +914,12 @@ class IframeLayout(EmbedLayout):
     def layout(self, zoom):
         # ...
         if width_attr:
-            self.width = device_px(int(width_attr), zoom)
+            self.width = device_px(int(width_attr) + 2, zoom)
         else:
             self.width = device_px(IFRAME_WIDTH_PX + 2, zoom)
 
         if height_attr:
-            self.height = device_px(int(height_attr), zoom)
+            self.height = device_px(int(height_attr) + 2, zoom)
         else:
             self.height = device_px(IFRAME_HEIGHT_PX + 2, zoom)
 ```
@@ -960,8 +957,8 @@ class IframeLayout(EmbedLayout):
     def layout(self, zoom):
         # ...
         if self.node.frame:
-            self.node.frame.frame_height = self.height - 2
-            self.node.frame.frame_width = self.width - 2
+            self.node.frame.frame_height = self.height - device_px(2, zoom)
+            self.node.frame.frame_width = self.width - device_px(2, zoom)
 ```
 
 The conditional is only there to handle the (unusual) case of an
@@ -994,7 +991,7 @@ class Tab:
     def render(self):
         if self.needs_paint:
             self.display_list = []
-            self.root_frame.paint(self.display_list)
+            self.root_frame.paint(self.display_list, self.zoom)
             self.needs_paint = False
 ```
 
@@ -1002,7 +999,7 @@ We'll then have the `Frame` call the layout tree's `paint` method:
 
 ``` {.python expected=False}
 class Frame:
-    def paint(self, display_list):
+    def paint(self, display_list, zoom):
         self.document.paint(display_list)
 ```
 
@@ -1011,7 +1008,7 @@ paint an `IframeLayout`, we'll need to paint the child frame:
 
 ``` {.python}
 class IframeLayout(EmbedLayout):
-    def paint(self, display_list):
+    def paint(self, display_list, zoom):
         frame_cmds = []
 
         rect = skia.Rect.MakeLTRB(
@@ -1020,12 +1017,13 @@ class IframeLayout(EmbedLayout):
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         if bgcolor != "transparent":
-            radius = float(
-                self.node.style.get("border-radius", "0px")[:-2])
+            radius = device_px(
+                float(self.node.style.get("border-radius", "0px")[:-2]),
+                zoom)
             frame_cmds.append(DrawRRect(rect, radius, bgcolor))
 
         if self.node.frame:
-            self.node.frame.paint(frame_cmds)
+            self.node.frame.paint(frame_cmds, zoom)
 ```
 
 Note the last line, where we recursively paint the child frame. 
@@ -1036,13 +1034,17 @@ system:
 
 ``` {.python}
 class IframeLayout(EmbedLayout):
-    def paint(self, display_list):
+    def paint(self, display_list, zoom):
         # ...
 
-        offset = (self.x + 1, self.y + 1)
+        diff = device_px(1, zoom)
+        offset = (self.x + diff, self.y + diff)
         cmds = [Transform(offset, rect, self.node, frame_cmds)]
-        paint_outline(self.node, cmds, rect)
-        cmds = paint_visual_effects(self.node, cmds, rect)
+        inner_rect = skia.Rect.MakeLTRB(
+            self.x + diff, self.y + diff,
+            self.x + self.width - diff, self.y + self.height - diff)
+        cmds = paint_visual_effects(self.node, cmds, inner_rect)
+        paint_outline(self.node, cmds, rect, zoom)
         display_list.extend(cmds)
 ```
 
@@ -1063,7 +1065,7 @@ the *border box*.
 
 ``` {.css}
 iframe {
-    outline: 2px solid black;
+    outline: 1px solid black;
     overflow: clip;
 }
 ```

@@ -1137,12 +1137,12 @@ class DrawOutline(DisplayItem):
             border_color=self.color, width=self.thickness)
 ```
 
-Now we can paint a 2 pixel black outline around an element like this:
+Now we can paint a 1 pixel black outline around an element like this:
 
-``` {.python replace=node.is_focused/has_outline(node),"black"/color,2/thickness}
-def paint_outline(node, cmds, rect):
+``` {.python replace=node.is_focused/has_outline(node),"black"/color,1/thickness}
+def paint_outline(node, cmds, rect, zoom):
     if node.is_focused:
-        cmds.append(DrawOutline(rect, "black", 2))
+        cmds.append(DrawOutline(rect, "black", 1))
 ```
 
 Call it in `InputLayout` to make sure text entries and buttons get
@@ -1150,14 +1150,14 @@ outlines:
 
 ``` {.python}
 class InputLayout:
-	def paint(self, display_list):
+	def paint(self, display_list, zoom):
 		# ...
         if self.node.is_focused and self.node.tag == "input":
             cx = rect.left() + self.font.measureText(text)
             cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom()))
 
-        paint_outline(self.node, cmds, rect)
         cmds = paint_visual_effects(self.node, cmds, rect)
+        paint_outline(self.node, cmds, rect, zoom)
         display_list.extend(cmds)
 ```
 
@@ -1175,7 +1175,7 @@ and draws a rectangle around them all:
 
 ``` {.python}
 class LineLayout:
-    def paint(self, display_list):
+    def paint(self, display_list, zoom):
         # ...
         outline_rect = skia.Rect.MakeEmpty()
         focused_node = None
@@ -1185,7 +1185,8 @@ class LineLayout:
                 focused_node = node.parent
                 outline_rect.join(child.rect())
         if focused_node:
-            paint_outline(focused_node, display_list, outline_rect)
+            paint_outline(
+                focused_node, display_list, outline_rect, zoom)
 ```
 
 You should also add a `paint_outline` call to `BlockLayout`, since
@@ -1388,12 +1389,12 @@ parse that into a thickness and a color, assuming that we only want to
 support `solid` outlines:
 
 ``` {.python}
-def parse_outline(outline_str):
+def parse_outline(outline_str, zoom):
     if not outline_str: return None
     values = outline_str.split(" ")
     if len(values) != 3: return None
     if values[1] != "solid": return None
-    return (int(values[0][:-2]), values[2])
+    return (device_px(int(values[0][:-2]), zoom), values[2])
 ```
 
 Now we can use this `parse_outline` method when drawing an outline, in
@@ -1401,11 +1402,11 @@ Now we can use this `parse_outline` method when drawing an outline, in
 
 ``` {.python}
 def has_outline(node):
-    return parse_outline(node.style.get("outline"))
+    return parse_outline(node.style.get("outline"), 1)
 
-def paint_outline(node, cmds, rect):
+def paint_outline(node, cmds, rect, zoom):
     if has_outline(node):
-        thickness, color = parse_outline(node.style.get("outline"))
+        thickness, color = parse_outline(node.style.get("outline"), zoom)
         cmds.append(DrawOutline(rect, color, thickness))
 ```
 
@@ -1413,9 +1414,9 @@ The default two-pixel black outline can now be moved into the browser
 default style sheet, like this:
 
 ``` {.css}
-input:focus { outline: 2px solid black; }
-button:focus { outline: 2px solid black; }
-div:focus { outline: 2px solid black; }
+input:focus { outline: 1px solid black; }
+button:focus { outline: 1px solid black; }
+div:focus { outline: 1px solid black; }
 ```
 
 Moreover, we can now make the outline white when dark mode is
@@ -1424,10 +1425,10 @@ background:
 
 ``` {.css}
 @media (prefers-color-scheme: dark) {
-input:focus { outline: 2px solid white; }
-button:focus { outline: 2px solid white; }
-div:focus { outline: 2px solid white; }
-a:focus { outline: 2px solid white; }
+input:focus { outline: 1px solid white; }
+button:focus { outline: 1px solid white; }
+div:focus { outline: 1px solid white; }
+a:focus { outline: 1px solid white; }
 }
 ```
 
@@ -1438,7 +1439,7 @@ to the browser style sheet above:
 
 ``` {.python}
 class LineLayout:
-    def paint(self, display_list):
+    def paint(self, display_list, zoom):
         for child in self.children:
             if has_outline(node.parent):
                 # ...
