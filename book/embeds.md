@@ -1060,7 +1060,9 @@ images until chapter 15 perhaps?]
 [^content-box]: This book doesn't go into the details of the [CSS box
 model][box-model], but the `width` and `height` attributes of an
 iframe refer to the *content box*, and adding the border width yields
-the *border box*.
+the *border box*. Note also that the clip we're appling is an overflow
+clip, which is not quite the same as an iframe clip, and the differences have
+to do with the box model as well.
 
 [box-model]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Box_Model/Introduction_to_the_CSS_box_model
 
