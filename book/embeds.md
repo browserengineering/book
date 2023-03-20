@@ -39,7 +39,7 @@ wait for the introduction of Skia.
 And which renders something like this:
 
 <figure>
-    <img src="im/hes.jpg" alt="A computer operator using a hypertext editing system in 1969">
+    <img src="/im/hes.jpg" alt="A computer operator using a hypertext editing system in 1969">
     <figcaption>Hypertext Editing System <br/> (Gregory Lloyd from <a href="https://commons.wikimedia.org/wiki/File:HypertextEditingSystemConsoleBrownUniv1969.jpg">Wikipedia</a>, <a href="https://creativecommons.org/licenses/by/2.0/legalcode" rel="license">CC BY 2.0</a>)</figcaption>
 </figure>
 
