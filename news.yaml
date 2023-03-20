@@ -4,6 +4,14 @@ link: https://browser.engineering/
 description: News, new chapters and blog posts
 webMaster: author@browser.engineering (Pavel Panchekha & Chris Harrelson)
 item:
+  - title: Supporting Embedded Content
+    link: https://browser.engineering/embeds.html
+    pubDate: Mon, 20 Mar 2023, 9:50:00 -0600
+    description:
+      Images and iframes introduce performance and security concerns
+      that impact browser architecture, but they also build on and
+      extend existing concepts like event loops, rendering, and
+      accessibility in an elegant way. Chapter 15 explains how.
   - title: Making Content Accessible
     link: https://browser.engineering/accessibility.html
     pubDate: Fri, 7 Oct 2022, 13:31:00 -0700
