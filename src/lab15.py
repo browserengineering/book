@@ -41,7 +41,7 @@ from lab13 import diff_styles, \
     REFRESH_RATE_SEC, HSTEP, VSTEP, SETTIMEOUT_CODE, XHR_ONLOAD_CODE, \
     Transform, ANIMATED_PROPERTIES, SaveLayer
 
-from lab14 import parse_color, parse_outline, draw_rect, DrawRRect, \
+from lab14 import parse_color, draw_rect, DrawRRect, \
     is_focused, paint_outline, has_outline, \
     device_px, cascade_priority, style, \
     is_focusable, get_tabindex, announce_text, speak_text, \
@@ -161,11 +161,11 @@ class DocumentLayout:
         self.x = device_px(HSTEP, zoom)
         self.y = device_px(VSTEP, zoom)
         child.layout(zoom)
-        self.height = child.height + 2* device_px(VSTEP, zoom)
+        self.height = child.height + 2 * device_px(VSTEP, zoom)
 
-    def paint(self, display_list, dark_mode, scroll):
+    def paint(self, display_list, dark_mode, scroll, zoom):
         cmds = []
-        self.children[0].paint(cmds)
+        self.children[0].paint(cmds, zoom)
         if scroll != None and scroll != 0:
             rect = skia.Rect.MakeLTRB(
                 self.x, self.y,
@@ -280,10 +280,10 @@ class BlockLayout:
         if "width" in self.node.attributes:
             w = device_px(int(self.node.attributes["width"]), zoom)
         else:
-            w = IFRAME_WIDTH_PX + 2
+            w = IFRAME_WIDTH_PX + device_px(2, zoom)
         self.add_inline_child(node, zoom, w, IframeLayout, self.frame)
 
-    def paint(self, display_list):
+    def paint(self, display_list, zoom):
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
@@ -297,15 +297,16 @@ class BlockLayout:
             bgcolor = self.node.style.get(
                 "background-color", "transparent")
             if bgcolor != "transparent":
-                radius = float(self.node.style.get(
-                    "border-radius", "0px")[:-2])
+                radius = device_px(
+                    float(self.node.style.get(
+                        "border-radius", "0px")[:-2]),
+                    zoom)
                 cmds.append(DrawRRect(rect, radius, bgcolor))
  
         for child in self.children:
-            child.paint(cmds)
+            child.paint(cmds, zoom)
 
         if not is_atomic:
-            paint_outline(self.node, cmds, rect)
             cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
 
@@ -352,7 +353,7 @@ class InputLayout(EmbedLayout):
         self.width = device_px(INPUT_WIDTH_PX, zoom)
         self.height = linespace(self.font)
 
-    def paint(self, display_list):
+    def paint(self, display_list, zoom):
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
@@ -362,7 +363,9 @@ class InputLayout(EmbedLayout):
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         if bgcolor != "transparent":
-            radius = float(self.node.style.get("border-radius", "0px")[:-2])
+            radius = device_px(
+                float(self.node.style.get("border-radius", "0px")[:-2]),
+                zoom)
             cmds.append(DrawRRect(rect, radius, bgcolor))
 
         if self.node.tag == "input":
@@ -383,8 +386,8 @@ class InputLayout(EmbedLayout):
             cx = rect.left() + self.font.measureText(text)
             cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom()))
 
-        paint_outline(self.node, cmds, rect)
         cmds = paint_visual_effects(self.node, cmds, rect)
+        paint_outline(self.node, cmds, rect, zoom)
         display_list.extend(cmds)
 
     def __repr__(self):
@@ -427,7 +430,7 @@ class LineLayout:
                            for child in self.children])
         self.height = max_ascent + max_descent
 
-    def paint(self, display_list):
+    def paint(self, display_list, zoom):
         outline_rect = skia.Rect.MakeEmpty()
         outline_node = None
         for child in self.children:
@@ -435,10 +438,10 @@ class LineLayout:
             if isinstance(node, Text) and has_outline(node.parent):
                 outline_node = node.parent
                 outline_rect.join(child.rect())
-            child.paint(display_list)
+            child.paint(display_list, zoom)
 
         if outline_node:
-            paint_outline(outline_node, display_list, outline_rect)
+            paint_outline(outline_node, display_list, outline_rect, zoom)
 
     def role(self):
         return "none"
@@ -480,7 +483,7 @@ class TextLayout:
 
         self.height = linespace(self.font)
 
-    def paint(self, display_list):
+    def paint(self, display_list, zoom):
         color = self.node.style["color"]
         display_list.append(
             DrawText(self.x, self.y, self.word, self.font, color))
@@ -532,7 +535,7 @@ class ImageLayout(EmbedLayout):
 
         self.height = max(self.img_height, linespace(self.font))
 
-    def paint(self, display_list):
+    def paint(self, display_list, zoom):
         cmds = []
         rect = skia.Rect.MakeLTRB(
             self.x, self.y + self.height - self.img_height,
@@ -560,20 +563,20 @@ class IframeLayout(EmbedLayout):
         height_attr = self.node.attributes.get("height")
 
         if width_attr:
-            self.width = device_px(int(width_attr), zoom)
+            self.width = device_px(int(width_attr) + 2, zoom)
         else:
             self.width = device_px(IFRAME_WIDTH_PX + 2, zoom)
 
         if height_attr:
-            self.height = device_px(int(height_attr), zoom)
+            self.height = device_px(int(height_attr) + 2, zoom)
         else:
             self.height = device_px(IFRAME_HEIGHT_PX + 2, zoom)
 
         if self.node.frame:
-            self.node.frame.frame_height = self.height - 2
-            self.node.frame.frame_width = self.width - 2
+            self.node.frame.frame_height = self.height - device_px(2, zoom)
+            self.node.frame.frame_width = self.width - device_px(2, zoom)
 
-    def paint(self, display_list):
+    def paint(self, display_list, zoom):
         frame_cmds = []
 
         rect = skia.Rect.MakeLTRB(
@@ -582,17 +585,22 @@ class IframeLayout(EmbedLayout):
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         if bgcolor != "transparent":
-            radius = float(
-                self.node.style.get("border-radius", "0px")[:-2])
+            radius = device_px(
+                float(self.node.style.get("border-radius", "0px")[:-2]),
+                zoom)
             frame_cmds.append(DrawRRect(rect, radius, bgcolor))
 
         if self.node.frame:
-            self.node.frame.paint(frame_cmds)
+            self.node.frame.paint(frame_cmds, zoom)
 
-        offset = (self.x + 1, self.y + 1)
+        diff = device_px(1, zoom)
+        offset = (self.x + diff, self.y + diff)
         cmds = [Transform(offset, rect, self.node, frame_cmds)]
-        paint_outline(self.node, cmds, rect)
-        cmds = paint_visual_effects(self.node, cmds, rect)
+        inner_rect = skia.Rect.MakeLTRB(
+            self.x + diff, self.y + diff,
+            self.x + self.width - diff, self.y + self.height - diff)
+        cmds = paint_visual_effects(self.node, cmds, inner_rect)
+        paint_outline(self.node, cmds, rect, zoom)
         display_list.extend(cmds)
 
     def __repr__(self):
@@ -1262,9 +1270,10 @@ class Frame:
             self.scroll_changed_in_frame = True
         self.scroll = clamped_scroll
 
-    def paint(self, display_list):
+    def paint(self, display_list, zoom):
         self.document.paint(display_list, self.tab.dark_mode,
-            self.scroll if self != self.tab.root_frame else None)
+            self.scroll if self != self.tab.root_frame else None,
+            zoom)
 
     def advance_tab(self):
         focusable_nodes = [node
@@ -1538,7 +1547,7 @@ class Tab:
 
         if self.needs_paint:
             self.display_list = []
-            self.root_frame.paint(self.display_list)
+            self.root_frame.paint(self.display_list, self.zoom)
             self.needs_paint = False
 
         self.measure_render.stop()

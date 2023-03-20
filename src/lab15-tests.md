@@ -92,10 +92,10 @@ Let's load the original image in an iframe.
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
      SaveLayer(alpha=1.0)
-       ClipRRect(RRect(13, 18, 315, 170, 1))
+       ClipRRect(RRect(14, 19, 314, 169, 1))
          Transform(translate(14.0, 19.0))
            DrawImage(rect=Rect(13, 29, 18, 34))
-         DrawOutline(top=18.0 left=13.0 bottom=170.0 right=315.0 border_color=black thickness=2)
+     DrawOutline(top=18.0 left=13.0 bottom=170.0 right=315.0 border_color=black thickness=1.0)
 
 And the sized one:
 
@@ -110,10 +110,10 @@ And the sized one:
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
      SaveLayer(alpha=1.0)
-       ClipRRect(RRect(13, 18, 315, 170, 1))
+       ClipRRect(RRect(14, 19, 314, 169, 1))
          Transform(translate(14.0, 19.0))
            DrawImage(rect=Rect(13, 18, 23, 38))
-         DrawOutline(top=18.0 left=13.0 bottom=170.0 right=315.0 border_color=black thickness=2)
+     DrawOutline(top=18.0 left=13.0 bottom=170.0 right=315.0 border_color=black thickness=1.0)
 
 Iframes can be sized too:
 
@@ -154,10 +154,10 @@ Iframes can be sized too:
      DrawText(text=.)
      DrawText(text=.)
      SaveLayer(alpha=1.0)
-       ClipRRect(RRect(45, 478, 95, 508, 1))
+       ClipRRect(RRect(46, 479, 96, 509, 1))
          Transform(translate(46.0, 479.0))
            DrawImage(rect=Rect(13, 29, 18, 34))
-         DrawOutline(top=478.0 left=45.0 bottom=508.0 right=95.0 border_color=black thickness=2)
+     DrawOutline(top=478.0 left=45.0 bottom=510.0 right=97.0 border_color=black thickness=1.0)
 
 Now let's test scrolling of the root frame:
 
@@ -191,7 +191,7 @@ And now scrolling affects just the child frame:
     >>> browser.scroll > 0
     False
     >>> browser.tabs[0].root_frame.nodes.children[0].children[47].frame.scroll
-    24.0
+    22.0
 
 Accessibility
 =============
