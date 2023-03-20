@@ -80,7 +80,6 @@
             "tests": "lab14-tests.md"
         },
         "embeds.md": {
-            "disabled": true,
             "lab": "lab15.py",
             "runtime": "runtime15.js",
             "tests": "lab15-tests.md"
