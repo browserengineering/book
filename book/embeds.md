@@ -960,8 +960,10 @@ class IframeLayout(EmbedLayout):
     def layout(self, zoom):
         # ...
         if self.node.frame:
-            self.node.frame.frame_height = self.height - device_px(2, zoom)
-            self.node.frame.frame_width = self.width - device_px(2, zoom)
+            self.node.frame.frame_height = \
+                self.height - device_px(2, zoom)
+            self.node.frame.frame_width = \
+                self.width - device_px(2, zoom)
 ```
 
 The conditional is only there to handle the (unusual) case of an
@@ -1020,8 +1022,8 @@ class IframeLayout(EmbedLayout):
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         if bgcolor != "transparent":
-            radius = device_px(
-                float(self.node.style.get("border-radius", "0px")[:-2]),
+            radius = device_px(float(
+                self.node.style.get("border-radius", "0px")[:-2]),
                 zoom)
             frame_cmds.append(DrawRRect(rect, radius, bgcolor))
 

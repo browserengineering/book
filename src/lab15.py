@@ -573,8 +573,10 @@ class IframeLayout(EmbedLayout):
             self.height = device_px(IFRAME_HEIGHT_PX + 2, zoom)
 
         if self.node.frame:
-            self.node.frame.frame_height = self.height - device_px(2, zoom)
-            self.node.frame.frame_width = self.width - device_px(2, zoom)
+            self.node.frame.frame_height = \
+                self.height - device_px(2, zoom)
+            self.node.frame.frame_width = \
+                self.width - device_px(2, zoom)
 
     def paint(self, display_list, zoom):
         frame_cmds = []
@@ -585,8 +587,8 @@ class IframeLayout(EmbedLayout):
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         if bgcolor != "transparent":
-            radius = device_px(
-                float(self.node.style.get("border-radius", "0px")[:-2]),
+            radius = device_px(float(
+                self.node.style.get("border-radius", "0px")[:-2]),
                 zoom)
             frame_cmds.append(DrawRRect(rect, radius, bgcolor))
 
