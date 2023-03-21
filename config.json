@@ -84,6 +84,9 @@
             "runtime": "runtime15.js",
             "tests": "lab15-tests.md"
         },
+        "invalidation.md": {
+            "disabled": true
+        },
 
         "skipped.md": { "disabled": true },
         "change.md": { "disabled": true },
