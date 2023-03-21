@@ -16,6 +16,7 @@ examples: $(patsubst %,www/examples/example%.html,$(EXAMPLE_HTML)) \
 	$(patsubst %,www/examples/example%.css,$(EXAMPLE_CSS))
 
 widgets: \
+	www/widgets/lab1.js \
 	www/widgets/lab2-browser.html www/widgets/lab2.js \
 	www/widgets/lab3-browser.html www/widgets/lab3.js \
 	www/widgets/lab4-browser.html www/widgets/lab4.js \
