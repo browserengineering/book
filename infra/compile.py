@@ -629,7 +629,7 @@ def compile(tree, ctx, indent=0):
         elif tree.name == "__repr__":
             # This actually defines a 'toString' operator
             assert ctx.type == "class"
-            def_line = " " * indent + "toString(" + ", ".join(args) + ") {\n"
+            def_line = " " * indent + "async toString(" + ", ".join(args) + ") {\n"
             last_line = "\n" + " " * indent + "}"
             return def_line + body + last_line
         else:

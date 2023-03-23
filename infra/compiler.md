@@ -347,7 +347,7 @@ basically don't call any functions for a `__repr__`:
 
     >>> Test.stmt("class foo:\n def __repr__(self):\n  return 'foo'")
     class foo {
-      toString() {
+      async toString() {
         return "foo";
       }
     }
