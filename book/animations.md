@@ -105,7 +105,7 @@ add support for changing an element's `style` attribute from
 JavaScript. To do that, register a setter on the `style` attribute of
 `Node` in the JavaScript runtime:
 
-``` {.javascript file=runtime}
+``` {.javascript}
 Object.defineProperty(Node.prototype, 'style', {
     set: function(s) {
         call_python("style_set", this.handle, s.toString());

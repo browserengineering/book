@@ -6,10 +6,24 @@ import json
 import compare
 import importlib
 from unittest import mock
+from pathlib import Path
 
-def test_compare(chapter, metadata, key, language, fname):
-    value = metadata[key]
-    print(f"Comparing chapter {chapter} with {key} {value}")
+IGNORE_FILES = [
+    "LICENSE",
+    "__pycache__",
+    "*.hints",
+    "test*.py",
+    "Broken_Image.png",
+    ".*",
+    "wbetools.py",
+
+    # These are from the old reflow chapter---to be deleted once ch16 is mostly done
+    "test10.js",
+    "test10.html",
+]
+
+def test_compare(chapter, value, language, fname):
+    print(f"Comparing {chapter}'s {language} for {fname} with {value}")
     with open("../book/" + chapter) as book, open(value) as code:
         failure, count = compare.compare_files(book, code, language, fname)
     if failure:
@@ -19,7 +33,7 @@ def test_compare(chapter, metadata, key, language, fname):
     return failure
 
 def run_tests(chapter, file_name):
-    print(f"Testing chapter {chapter} in {file_name}")
+    print(f"Testing {chapter} in {file_name}")
     failure, count = doctest.testfile(os.path.abspath(file_name), module_relative=False)
     if failure:
         print(f"  Failed {failure} / {count} tests")
@@ -54,29 +68,29 @@ if __name__ == "__main__":
     os.chdir(src_path)
     sys.path.insert(0, src_path)
 
-    ran_one = False
-    failure = 0
+    results = {}
     for chapter, metadata in data["chapters"].items():
         if args.chapter and args.chapter != "all" and chapter != args.chapter: continue
         for key, value in metadata.items():
             if key == "disabled": continue
             if args.key and key != args.key: continue
 
-            ran_one = True
             if key == "tests":
-                failure += run_tests(chapter, value)
+                results[value] = run_tests(chapter, value)
             elif key == "lab":
-                failure += test_compare(chapter, metadata, "lab", "python", None)
+                results[value] = test_compare(chapter, value, "python", None)
             elif key == "stylesheet":
-                failure += test_compare(chapter, metadata, "stylesheet", "css", None)
+                results[value] = test_compare(chapter, value, "css", None)
             elif key == "runtime":
-                failure += test_compare(chapter, metadata, "runtime", "javascript", None)
+                results[value] = test_compare(chapter, value, "javascript", None)
             elif isinstance(value, str) and ".py" in value:
-                failure += test_compare(chapter, metadata, key, "python", key)
+                results[value] = test_compare(chapter, value, "python", key.split(".")[0])
             elif isinstance(value, str) and ".js" in value:
-                failure += test_compare(chapter, metadata, key, "javascript", key)
+                results[value] = test_compare(chapter, value, "javascript", key.split(".")[0])
+            elif isinstance(value, str) and ".css" in value:
+                results[value] = test_compare(chapter, value, "css", key.split(".")[0])
 
-    if not ran_one:
+    if not results:
         if args.chapter:
             print(f"Could not find chapter {args.chapter}")
             print("  Extant chapters:", ", ".join(data["chapters"].keys()))
@@ -85,7 +99,19 @@ if __name__ == "__main__":
             key_sets = [set(list(metadata.keys())) for chapter, metadata in data["chapters"].items()]
             keys = set([]).union(*key_sets) - set(["disabled"])
             print("  Extant chapters:", ", ".join(keys))
-        failure = 1
-            
+        sys.exit(-1)
 
-    sys.exit(failure)
+    if not args.chapter or args.chapter == "all":
+        p = Path(".")
+        all_files = set(p.iterdir())
+        all_files -= set([Path(p) for p in results.keys()])
+        for glob in IGNORE_FILES:
+            all_files -= set(p.glob(glob))
+
+        if all_files:
+            print("Did not test these files:")
+            for file in all_files:
+                print("\t", file)
+            sys.exit(-1)
+            
+    sys.exit(sum(results.values()))

@@ -318,10 +318,6 @@ def device_px(css_px, zoom):
 def get_tabindex(node):
     return int(node.attributes.get("tabindex", "9999999"))
 
-def cascade_priority(rule):
-    media, selector, body = rule
-    return selector.priority
-
 def style(node, rules, tab):
     old_style = node.style
 

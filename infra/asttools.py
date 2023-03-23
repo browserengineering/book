@@ -71,18 +71,25 @@ def iter_methods(cls):
                 raise Exception("Invalid class member: " + ast.dump(item))
         else:
             raise Exception("Invalid class member: " + ast.dump(item))
+
+inline_cache = {}
+def load(filename):
+    if filename not in inline_cache:
+        with open(filename) as f:
+            ast = parse(f.read(), filename)
+        ast = inline(ast)
+        inline_cache[filename] = ast
+    return inline_cache[filename]
+
+def parse(source, filename='<unknown>'):
+    return AST39.parse(source, filename)
+
+def inline(tree):
+    tree2 = ResolveImports().visit(copy.deepcopy(tree))
+    tree3 = ResolvePatches().double_visit(tree2)
+    return ast.fix_missing_locations(tree3)
         
 class ResolveImports(ast.NodeTransformer):
-    def __init__(self):
-        self.cache = {}
-
-    def load(self, filename):
-        if filename not in self.cache:
-            with open(filename) as file:
-                subast = ast.parse(file.read(), filename)
-                self.cache[filename] = self.visit(subast)
-        return self.cache[filename]
-
     def visit_ImportFrom(self, cmd):
         assert cmd.level == 0
         assert cmd.module
@@ -91,7 +98,7 @@ class ResolveImports(ast.NodeTransformer):
         filename = "src/{}.py".format(cmd.module)
         objs = []
 
-        subast = self.load(filename)
+        subast = load(filename)
 
         for name in names:
             defns = [item for item_name, item in iter_defs(subast) if item_name == name]
