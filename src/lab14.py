@@ -25,7 +25,7 @@ from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab4 import Text, Element, print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS
 from lab6 import TagSelector, DescendantSelector
-from lab6 import INHERITED_PROPERTIES, cascade_priority, compute_style
+from lab6 import INHERITED_PROPERTIES, compute_style
 from lab6 import resolve_url, tree_to_list
 from lab7 import CHROME_PX
 from lab8 import INPUT_WIDTH_PX, layout_mode
@@ -317,6 +317,11 @@ def device_px(css_px, zoom):
 
 def get_tabindex(node):
     return int(node.attributes.get("tabindex", "9999999"))
+
+def cascade_priority(rule):
+    media, selector, body = rule
+    return selector.priority
+
 
 def style(node, rules, tab):
     old_style = node.style
