@@ -2087,6 +2087,16 @@ And as we hope you saw in this chapter, none of these features are too
 difficult to implement, though---as you'll see in the exercises
 below---implementing them well requires a lot of attention to detail.
 
+Outline
+=======
+
+The complete set of functions, classes, and methods in our browser 
+should now look something like this:
+
+::: {.cmd .python .outline html=True}
+    python3 infra/outlines.py --html src/lab15.py
+:::
+
 Exercises
 =========
 
