@@ -483,7 +483,7 @@ class Widget {
     
     on_error(e) {
         if (e instanceof ExpectedError) {
-            alert(e);
+            console.log(e);
         } else {
             throw e;
         }
