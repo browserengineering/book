@@ -586,7 +586,7 @@ Don't forget to export this function as `getAttribute`.
 We finally have enough of the DOM API to implement a little character
 count function for text areas:
 
-``` {.javascript file=comment}
+``` {.javascript file=comment expected=False}
 inputs = document.querySelectorAll('input')
 for (var i = 0; i < inputs.length; i++) {
     var name = inputs[i].getAttribute("name");
@@ -737,7 +737,7 @@ snippet stores the named `type` and `handle` arguments to `evaljs`.
 With all this event-handling machinery in place, we can update the
 character count every time an input area changes:
 
-``` {.javascript file=comment}
+``` {.javascript file=comment expected=False}
 function lengthCheck() {
     var name = this.getAttribute("name");
     var value = this.getAttribute("value");
@@ -886,18 +886,20 @@ def do_request(method, url, headers, body):
 We can then put our little input length checker into `comment.js`,
 with the `lengthCheck` function modified to use `innerHTML`:
 
-``` {.javascript file=comment}
-label = document.querySelectorAll("label")[0];
+``` {.javascript file=comment replace=value.length%20>%20100/!allow_submit}
+var label = document.querySelectorAll("label")[0];
 
 function lengthCheck() {
     var value = this.getAttribute("value");
     if (value.length > 100) {
-        label.innerHTML = "Comment too long!"
+        label.innerHTML = "Comment too long!";
     }
 }
 
-input = document.querySelectorAll("input")[0];
-input.addEventListener("keydown", lengthCheck);
+var inputs = document.querySelectorAll("input");
+for (var i = 0; i < inputs.length; i++) {
+    inputs[i].addEventListener("keydown", lengthCheck);
+}
 ```
 
 Try it out: write a long comment and you should see the page warning
@@ -905,7 +907,7 @@ you that the comment is too long. By the way, we might want to make it
 stand out more, so let's go ahead and add another URL to our web
 server, `/comment.css`, with the contents:
 
-``` {.css}
+``` {.css file=comment}
 label { font-weight: bold; color: red; }
 ```
 
@@ -1035,16 +1037,17 @@ is allowed, and then when submission is attempted it can check that
 variable and cancel that submission if necessary:
 
 ``` {.javascript file=comment}
-allow_submit = true;
+var allow_submit = true;
 
 function lengthCheck() {
-    allow_submit = input.getAttribute("value").length <= 100;
+    // ...
+    allow_submit = value.length <= 100;
     if (!allow_submit) {
         // ...
     }
 }
 
-form = document.querySelectorAll("form")[0];
+var form = document.querySelectorAll("form")[0];
 form.addEventListener("submit", function(e) {
     if (!allow_submit) e.preventDefault();
 });
