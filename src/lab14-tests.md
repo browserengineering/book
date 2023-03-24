@@ -5,7 +5,7 @@ This file contains tests for Chapter 14 (Accessibility).
 
 	>>> from test import Event
     >>> import threading
-    >>> import test14 as test
+    >>> import test11 as test
     >>> _ = test.socket.patch().start()
     >>> _ = test.ssl.patch().start()
     >>> _ = test.gtts.patch()
