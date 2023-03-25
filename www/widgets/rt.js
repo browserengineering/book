@@ -458,6 +458,8 @@ class sdl {
     static SDL_BIG_ENDIAN = 0;
 }
 
+let ROBOTO_DATA;
+
 class skia {
     static Surface = wrap_class(class {
         constructor(width, height, is_root=false) {
@@ -520,6 +522,15 @@ class skia {
         }
     });
 
+    static Path = CanvasKit.Path;
+
+    static Font = CanvasKit.Font;
+
+    static Typeface = function () {
+        return CanvasKit.FontMgr.FromData([ROBOTO_DATA]).makeTypefaceFromData(
+            ROBOTO_DATA);
+    }
+
     static BlendMode = {
         kSrcOver: BlendModeEnumValues.SrcOver,
         kMultiply: BlendModeEnumValues.Multiply,
@@ -536,11 +547,6 @@ class skia {
     static ColorSetARGB = function(r, g, b, a) {
         return CanvasKit.Color(r, g, b, a);
     }
-
-    static Path = function() {
-        return new CanvasKit.Path();
-    }
-
 }
 
 class wbetools {

@@ -21,7 +21,17 @@
 <script type="text/javascript">
   const ckLoaded = CanvasKitInit({
     locateFile: (file) => 'https://unpkg.com/canvaskit-wasm@0.19.0/bin/'+file});
-  ckLoaded.then((CanvasKit) => {
+
+const loadFont = fetch(
+    'https://storage.googleapis.com/skia-cdn/misc/Roboto-Regular.ttf')
+    .then((response) => response.arrayBuffer())
+    .then((roboto_data) => {
+        FONT_MANAGER = 
+    });
+  
+  Promise.all([ckLoaded, loadFont]).then(([CanvasKit, robotoData]) => {
+    let FONT_MANAGER = CanvasKit.FontMgr.FromData([robotoData]);
+
     const surface = CanvasKit.MakeCanvasSurface('canvas');
 
     const paint = new CanvasKit.Paint();
