@@ -45,8 +45,8 @@ using this book</a>, who often read drafts and gave valuable feedback.
 
 <p>Thanks go out to Brian Salomon (graphics expert and Skia engineering lead)
 for sanity checking Chapter 11, to Daniel Tseng (Chrome accessibility TLM)
-for feedback on Chapter 14, and to Shu-yu Guo for advice on how to implement
-JavaScript global namespaces in Chapter 15.
+for feedback on Chapter 14, and to Shu-yu Guo (v8 team member) for advice
+on how to implement JavaScript global namespaces in Chapter 15.
 </p>
 
 <p>
