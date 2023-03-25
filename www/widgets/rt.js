@@ -30,7 +30,7 @@ function http_textarea(elt) {
 
 const rt_constants = {};
 rt_constants.ZOOM = 1.0;
-rt_constants.TKELEMENT = null;
+rt_constants.ROOT_CANVS = null;
 rt_constants.URLS = {};
 
 class ExpectedError extends Error {
@@ -154,7 +154,7 @@ class ssl {
 class tkinter { 
     static Tk = wrap_class(class {
         constructor() {
-            this.elt = rt_constants.TKELEMENT;
+            this.elt = rt_constants.ROOT_CANVAS;
         }
 
         bind(key, fn) {
@@ -280,14 +280,14 @@ class tkinter {
             }
 
             measure(text) {
-                let ctx = rt_constants.TKELEMENT.getContext('2d');
+                let ctx = rt_constants.ROOT_CANVAS.getContext('2d');
                 ctx.font = this.string;
                 return ctx.measureText(text).width / rt_constants.ZOOM;
             }
 
             metrics(field) {
                 if (!this.$metrics) {
-                    let ctx = rt_constants.TKELEMENT.getContext('2d');
+                    let ctx = rt_constants.ROOT_CANVAS.getContext('2d');
                     ctx.textBaseline = "alphabetic";
                     ctx.font = this.string;
                     let m = ctx.measureText("Hxy");
@@ -428,6 +428,34 @@ class dukpy {
             }
         }
     })
+}
+
+class sdl {
+    static SDL_CreateWindow(name, option1, option2, width, height, shown) {
+        return {};
+    }
+
+    static SDL_CreateRGBSurfaceFrom(bytes, width, height, depth, pitch,
+        red, green, blue, alpha) {
+        return {};
+    }
+
+    static SDL_Rect(top, left, width, height) {
+        return {};
+    }
+
+
+    static SDL_BlitSurface(surface, rect, window, rect) {
+    }
+
+    static SDL_UpdateWindowSurface(window) {
+    }
+
+    static SDL_WINDOWPOS_CENTERED = 0;
+    static SDL_WINDOWPOS_CENTERED = 0;
+    static SDL_WINDOW_SHOWN = 0;
+    static SDL_BYTEORDER = 0;
+    static SDL_BIG_ENDIAN = 0;
 }
 
 class wbetools {
