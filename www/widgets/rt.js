@@ -458,6 +458,91 @@ class sdl {
     static SDL_BIG_ENDIAN = 0;
 }
 
+class skia {
+    static Surface = wrap_class(class {
+        constructor(width, height, is_root=false) {
+            if (is_root) {
+                this.surface = CanvasKit.MakeCanvasSurface('canvas');
+            } else {
+                this.surface = CanvasKit.MakeSurface(width, height);
+            }
+        }
+        static MakeRaster(image_info) {
+            return new Surface(image_info);
+        }
+
+        getCanvas() {
+            return this.surface.getCanvas();
+        }
+
+        makeImageSnapshot() {
+            return this.surface.makeImageSnapshot();
+        }
+
+        draw(canvas, left, top) {
+            this.surface.draw(canvas, left, top);
+        }
+
+        width() {
+            return self.surface.width();
+        }
+
+        height() {
+            return self.surface.height();
+        }
+    })
+
+    static ImageInfo = wrap_class(class {
+        constructor(width, height) {
+            this.width = width
+            this.height = height            
+        }
+        static Make(width, height, ct, at) {
+            return new ImageInfo(width, height);
+        }
+    });
+
+    static Paint = CanvasKit.Paint;
+
+    static Rect = wrap_class(class {
+        static MakeLTRB(left, top, right, bottom) {
+            return CanvasKit.LTRBRect(left, top, right, bottom);
+        }
+
+        static MakeEmpty() {
+            return CanvasKitXYWHRect(0, 0, 0, 0);
+        }
+    });
+
+    static RRect = wrap_class(class {
+        static MakeRectXY(rect, x, y){
+            return CanvasKit.RRectXY(rect, x, y);
+        }
+    });
+
+    static BlendMode = {
+        kSrcOver: BlendModeEnumValues.SrcOver,
+        kMultiply: BlendModeEnumValues.Multiply,
+        kDifference: BlendModeEnumValues.Multiply           
+    }
+
+    static ColorWHITE = CanvasKit.WHITE;
+    static ColorRED = CanvasKit.RED;
+    static ColorGREEN = CanvasKit.GREEN;
+    static ColorBLUE = CanvasKit.BLUE;
+    static ColorGRAY = CanvasKit.Color(0x80, 0x80, 0x80, 0xFF);
+    static ColorBLACK = CanvasKit.BLACK;
+
+    static ColorSetARGB = function(r, g, b, a) {
+        return CanvasKit.Color(r, g, b, a);
+    }
+
+    static Path = function() {
+        return new CanvasKit.Path();
+    }
+
+}
+
 class wbetools {
 
 }
