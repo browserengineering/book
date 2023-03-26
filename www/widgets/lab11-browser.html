@@ -16,35 +16,33 @@
 <figure id="widget">
   <canvas id="canvas" width="352" height="160"></canvas>
 </figure>
-<script type="text/javascript"
-  src="canvaskit.js"></script>
-<script type="text/javascript">
-  const ckLoaded = CanvasKitInit({
-    locateFile: (file) => 'https://unpkg.com/canvaskit-wasm@0.19.0/bin/'+file});
+<script src="canvaskit.js"></script>
+<script type="module" src="rt.js"></script>
+<script type="module" src="lab11.js"></script>
+<script type="module">
+import { rt_constants, socket, Widget } from "./rt.js";
+import { Browser, constants } from "./lab11.js";
+import { handle_connection } from "./server10.js";
+
+const ckLoaded = CanvasKitInit({
+  locateFile: (file) => 'https://unpkg.com/canvaskit-wasm@0.19.0/bin/'+file});
 
 const loadFont = fetch(
-    'https://storage.googleapis.com/skia-cdn/misc/Roboto-Regular.ttf')
-    .then((response) => response.arrayBuffer())
-    .then((roboto_data) => {
-        FONT_MANAGER = 
-    });
-  
-  Promise.all([ckLoaded, loadFont]).then(([CanvasKit, robotoData]) => {
-    let FONT_MANAGER = CanvasKit.FontMgr.FromData([robotoData]);
+  'https://storage.googleapis.com/skia-cdn/misc/Roboto-Regular.ttf')
+  .then((response) => response.arrayBuffer()); 
 
-    const surface = CanvasKit.MakeCanvasSurface('canvas');
+Promise.all([ckLoaded, loadFont]).then(([CanvasKit, robotoData]) => {
+  rt_constants.ROBOTO_DATA = robotoData;
+  rt_constants.FONT_MANAGER = CanvasKit.FontMgr.FromData([robotoData]);
 
-    const paint = new CanvasKit.Paint();
-    paint.setColor(CanvasKit.Color4f(0.9, 0, 0, 1.0));
-    paint.setStyle(CanvasKit.PaintStyle.Stroke);
-    paint.setAntiAlias(true);
-    const rr = CanvasKit.RRectXY(CanvasKit.LTRBRect(10, 60, 150, 150), 25, 15);
-
-    function draw(canvas) {
-      canvas.clear(CanvasKit.WHITE);
-      canvas.drawRRect(rr, paint);
-    }
-    surface.drawOnce(draw);
+  let widget = new Widget(document.querySelector("#controls"));
+  widget.run(async function() {
+      constants.WIDTH = window.innerWidth;
+      let url = "https://localhost:8000/" + document.getElementById("input").value;
+      let b = await (new Browser()).init();
+      await b.load(url)
   });
+  widget.next();
+});
 </script>
 

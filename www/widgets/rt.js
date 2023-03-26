@@ -32,6 +32,7 @@ const rt_constants = {};
 rt_constants.ZOOM = 1.0;
 rt_constants.ROOT_CANVS = null;
 rt_constants.URLS = {};
+rt_constants.FONT_MANAGER = null;
 
 class ExpectedError extends Error {
     constructor(msg) {
@@ -527,8 +528,8 @@ class skia {
     static Font = CanvasKit.Font;
 
     static Typeface = function () {
-        return CanvasKit.FontMgr.FromData([ROBOTO_DATA]).makeTypefaceFromData(
-            ROBOTO_DATA);
+        return rt_constants.FONT_MANAGER.makeTypefaceFromData(
+            rt_constants.ROBOTO_DATA);
     }
 
     static BlendMode = {
