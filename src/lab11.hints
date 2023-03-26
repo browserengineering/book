@@ -6,5 +6,6 @@
  {"code": "'href' in elt.attributes", "type": "dict"},
  {"code": "'name' in node.attributes", "type": "dict"},
  {"code": "'content-security-policy' in headers", "type": "dict"},
- {"code": "('TextLayout(x={}, y={}, width={}, height={}, ' + 'node={}, word={})').format(self.x, self.y, self.width, self.height, self.node, self.word)", "js": "('')"}
+ {"code": "('TextLayout(x={}, y={}, width={}, height={}, ' + 'node={}, word={})').format(self.x, self.y, self.width, self.height, self.node, self.word)", "js": "('')"},
+ {"code": "skia.Rect.MakeEmpty()", "js": "skia.Rect.MakeEmpty()"}
  ]
