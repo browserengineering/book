@@ -157,12 +157,12 @@ LIBRARY_METHODS = [
     # skia.Font
     "getMetrics",
 
-    # skia.RRect
-    "RRect.MakeEmpty",
-
-    # skia.Rect
-    "MakeRectXY"
+    # skia.Rect 
+    "MakeEmpty",
     "MakeLTRB",
+
+    # skia.RRect
+    "MakeRectXY",
 
     # skia.Canvas
     "saveLayer",
