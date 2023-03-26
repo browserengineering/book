@@ -153,6 +153,54 @@ LIBRARY_METHODS = [
 
     # dukpy
     "evaljs",
+
+    # skia.Font
+    "getMetrics",
+
+    # skia.RRect
+    "RRect.MakeEmpty",
+
+    # skia.Rect
+    "Rect.MakeEmpty",
+    "MakeRectXY"
+    "MakeLTRB",
+
+    # skia.Canvas
+    "saveLayer",
+    "restore",
+    "measureText",
+    "save",
+    "restore",
+    "drawRRect",
+    "Path",
+    "setStrokeWidth",
+    "clipRect",
+    "clipRRect",
+    "drawPath",
+    "drawString",
+    "drawRect",
+    "clear",
+    "translate",
+
+    # skia.Paint
+    "setStyle",
+    "setColor",
+
+    # skia.Surface
+    "makeImageSnapshot",
+    "height",
+    "getCanvas",
+    "MakeRaster",
+
+    # skia.Path
+    "moveTo",
+    "lineTo",
+
+    # skia.ImageInfo
+    "Make",
+
+    # skia.Image
+    "tobytes"
 ]
 
 OUR_FNS = []
