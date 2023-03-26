@@ -6,7 +6,6 @@ without exercises.
 
 import ctypes
 import dukpy
-import io
 import gtts
 import math
 import os

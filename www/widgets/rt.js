@@ -2,10 +2,10 @@
 
 
 export {
-    breakpoint, filesystem,
+    breakpoint, filesystem, ctypes,
     socket, ssl, tkinter, dukpy, urllib, html, random, wbetools,
     truthy, comparator, pysplit, pyrsplit, asyncfilter,
-    rt_constants, Widget, http_textarea, 
+    rt_constants, Widget, http_textarea, skia, sdl
     };
 
 function wrap_class(cls) {
@@ -547,6 +547,9 @@ class skia {
     static ColorSetARGB = function(r, g, b, a) {
         return CanvasKit.Color(r, g, b, a);
     }
+}
+
+class ctypes {
 }
 
 class wbetools {
