@@ -17,13 +17,8 @@
   <canvas id="canvas" width="352" height="160"></canvas>
 </figure>
 <script src="canvaskit.js"></script>
-<script type="module" src="rt.js"></script>
 <script type="module" src="lab11.js"></script>
 <script type="module">
-import { rt_constants, socket, Widget } from "./rt.js";
-import { Browser, constants } from "./lab11.js";
-import { handle_connection } from "./server10.js";
-
 const ckLoaded = CanvasKitInit({
   locateFile: (file) => 'https://unpkg.com/canvaskit-wasm@0.19.0/bin/'+file});
 
@@ -32,6 +27,12 @@ const loadFont = fetch(
   .then((response) => response.arrayBuffer()); 
 
 Promise.all([ckLoaded, loadFont]).then(([CanvasKit, robotoData]) => {
+  console.log(CanvasKit)
+
+  import { rt_constants, socket, Widget } from "./rt.js";
+  import { Browser, constants } from "./lab11.js";
+  import { handle_connection } from "./server10.js";
+
   rt_constants.ROBOTO_DATA = robotoData;
   rt_constants.FONT_MANAGER = CanvasKit.FontMgr.FromData([robotoData]);
 

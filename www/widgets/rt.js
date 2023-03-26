@@ -445,8 +445,7 @@ class sdl {
         return {};
     }
 
-
-    static SDL_BlitSurface(surface, rect, window, rect) {
+    static SDL_BlitSurface(sdl_surface, sdl_rect, window_surface, window_rect) {
     }
 
     static SDL_UpdateWindowSurface(window) {
