@@ -161,7 +161,6 @@ LIBRARY_METHODS = [
     "RRect.MakeEmpty",
 
     # skia.Rect
-    "Rect.MakeEmpty",
     "MakeRectXY"
     "MakeLTRB",
 
