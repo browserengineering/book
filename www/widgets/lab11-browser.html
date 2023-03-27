@@ -17,33 +17,36 @@
   <canvas id="canvas" width="352" height="160"></canvas>
 </figure>
 <script src="canvaskit.js"></script>
-<script type="module" src="lab11.js"></script>
 <script type="module">
 const ckLoaded = CanvasKitInit({
   locateFile: (file) => 'https://unpkg.com/canvaskit-wasm@0.19.0/bin/'+file});
 
 const loadFont = fetch(
   'https://storage.googleapis.com/skia-cdn/misc/Roboto-Regular.ttf')
-  .then((response) => response.arrayBuffer()); 
+  .then((response) => response.arrayBuffer());
 
 Promise.all([ckLoaded, loadFont]).then(([CanvasKit, robotoData]) => {
-  console.log(CanvasKit)
+  console.log(CanvasKit);
+  Promise.all([import("./rt.js"), import("./lab11.js"),
+    import("./server10.js")]).then(
+  ([rt, lab11, server10]) => {
+    let { rt_constants, socket, Widget } = rt;
+    let { Browser, constants } = lab11;
+    let { handle_connection } = server10;
 
-  import { rt_constants, socket, Widget } from "./rt.js";
-  import { Browser, constants } from "./lab11.js";
-  import { handle_connection } from "./server10.js";
+    rt_constants.ROBOTO_DATA = robotoData;
+    rt_constants.FONT_MANAGER = CanvasKit.FontMgr.FromData([robotoData]);
+    rt_constants.CanvasKit = CanvasKit
 
-  rt_constants.ROBOTO_DATA = robotoData;
-  rt_constants.FONT_MANAGER = CanvasKit.FontMgr.FromData([robotoData]);
-
-  let widget = new Widget(document.querySelector("#controls"));
-  widget.run(async function() {
-      constants.WIDTH = window.innerWidth;
-      let url = "https://localhost:8000/" + document.getElementById("input").value;
-      let b = await (new Browser()).init();
-      await b.load(url)
+    let widget = new Widget(document.querySelector("#controls"));
+    widget.run(async function() {
+        constants.WIDTH = window.innerWidth;
+        let url = "https://localhost:8000/" + document.getElementById("input").value;
+        let b = await (new Browser()).init();
+        await b.load(url);
+    });
+    widget.next();
   });
-  widget.next();
 });
 </script>
 

@@ -1,11 +1,10 @@
 /* This file simulates Python packages used by the WBE browser */
 
-
 export {
-    breakpoint, filesystem, ctypes,
+    breakpoint, filesystem, ctypes, math,
     socket, ssl, tkinter, dukpy, urllib, html, random, wbetools,
     truthy, comparator, pysplit, pyrsplit, asyncfilter,
-    rt_constants, Widget, http_textarea, skia, sdl
+    rt_constants, Widget, http_textarea, skia, sdl2
     };
 
 function wrap_class(cls) {
@@ -33,6 +32,7 @@ rt_constants.ZOOM = 1.0;
 rt_constants.ROOT_CANVS = null;
 rt_constants.URLS = {};
 rt_constants.FONT_MANAGER = null;
+rt_constants.CanvasKit = null;
 
 class ExpectedError extends Error {
     constructor(msg) {
@@ -348,6 +348,12 @@ class random {
     }
 }
 
+class math {
+    static ceil(num) {
+        return Math.ceil(num);
+    }
+}
+
 class JSInterpreterError extends ExpectedError {
     constructor() {
         super("This widget cannot execute JavaScript due to sandboxing, " +
@@ -431,7 +437,7 @@ class dukpy {
     })
 }
 
-class sdl {
+class sdl2 {
     static SDL_CreateWindow(name, option1, option2, width, height, shown) {
         return {};
     }
@@ -458,15 +464,15 @@ class sdl {
     static SDL_BIG_ENDIAN = 0;
 }
 
-let ROBOTO_DATA;
+let CanvasKit;
 
 class skia {
     static Surface = wrap_class(class {
         constructor(width, height, is_root=false) {
             if (is_root) {
-                this.surface = CanvasKit.MakeCanvasSurface('canvas');
+                this.surface = rt_constants.CanvasKit.MakeCanvasSurface('canvas');
             } else {
-                this.surface = CanvasKit.MakeSurface(width, height);
+                this.surface = rt_constants.CanvasKit.MakeSurface(width, height);
             }
         }
         static MakeRaster(image_info) {
@@ -504,27 +510,27 @@ class skia {
         }
     });
 
-    static Paint = CanvasKit.Paint;
+    static Paint;
 
     static Rect = wrap_class(class {
         static MakeLTRB(left, top, right, bottom) {
-            return CanvasKit.LTRBRect(left, top, right, bottom);
+            return rt_constants.CanvasKit.LTRBRect(left, top, right, bottom);
         }
 
         static MakeEmpty() {
-            return CanvasKitXYWHRect(0, 0, 0, 0);
+            return rt_constants.CanvasKitXYWHRect(0, 0, 0, 0);
         }
     });
 
     static RRect = wrap_class(class {
         static MakeRectXY(rect, x, y){
-            return CanvasKit.RRectXY(rect, x, y);
+            return rt_constants.CanvasKit.RRectXY(rect, x, y);
         }
     });
 
-    static Path = CanvasKit.Path;
+    static Path = rt_constants.CanvasKit.Path;
 
-    static Font = CanvasKit.Font;
+    static Font = rt_constants.CanvasKit.Font;
 
     static Typeface = function () {
         return rt_constants.FONT_MANAGER.makeTypefaceFromData(
@@ -537,16 +543,23 @@ class skia {
         kDifference: BlendModeEnumValues.Multiply           
     }
 
-    static ColorWHITE = CanvasKit.WHITE;
-    static ColorRED = CanvasKit.RED;
-    static ColorGREEN = CanvasKit.GREEN;
-    static ColorBLUE = CanvasKit.BLUE;
-    static ColorGRAY = CanvasKit.Color(0x80, 0x80, 0x80, 0xFF);
-    static ColorBLACK = CanvasKit.BLACK;
-
     static ColorSetARGB = function(r, g, b, a) {
-        return CanvasKit.Color(r, g, b, a);
+        return rt_constants.CanvasKit.Color(r, g, b, a);
     }
+}
+
+function init_skia(canvaskit_arg) {
+    CanvasKit = canvaskit_arg;
+    skia.Paint = CanvasKit.paint;
+    skia.Path = CanvasKit.Path;
+    skia.Font = CanvasKit.Font;
+    skia.ColorWHITE = rt_constants.CanvasKit.WHITE;
+    skia.ColorRED = rt_constants.CanvasKit.RED;
+    skia.ColorGREEN = rt_constants.CanvasKit.GREEN;
+    skia.ColorBLUE = rt_constants.CanvasKit.BLUE;
+    skia.ColorGRAY = rt_constants.CanvasKit.Color(0x80, 0x80, 0x80, 0xFF);
+    static ColorBLACK = rt_constants.CanvasKit.BLACK;
+
 }
 
 class ctypes {
