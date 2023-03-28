@@ -27,16 +27,15 @@ const loadFont = fetch(
 
 Promise.all([ckLoaded, loadFont]).then(([CanvasKit, robotoData]) => {
   console.log(CanvasKit);
+//  throw new Error("hi")
   Promise.all([import("./rt.js"), import("./lab11.js"),
     import("./server10.js")]).then(
   ([rt, lab11, server10]) => {
-    let { rt_constants, socket, Widget } = rt;
+    let { init_skia, socket, Widget } = rt;
     let { Browser, constants } = lab11;
     let { handle_connection } = server10;
 
-    rt_constants.ROBOTO_DATA = robotoData;
-    rt_constants.FONT_MANAGER = CanvasKit.FontMgr.FromData([robotoData]);
-    rt_constants.CanvasKit = CanvasKit
+    init_skia(CanvasKit, robotoData)
 
     let widget = new Widget(document.querySelector("#controls"));
     widget.run(async function() {

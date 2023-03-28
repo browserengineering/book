@@ -4,7 +4,7 @@ export {
     breakpoint, filesystem, ctypes, math,
     socket, ssl, tkinter, dukpy, urllib, html, random, wbetools,
     truthy, comparator, pysplit, pyrsplit, asyncfilter,
-    rt_constants, Widget, http_textarea, skia, sdl2
+    rt_constants, Widget, http_textarea, skia, sdl2, init_skia
     };
 
 function wrap_class(cls) {
@@ -29,10 +29,12 @@ function http_textarea(elt) {
 
 const rt_constants = {};
 rt_constants.ZOOM = 1.0;
-rt_constants.ROOT_CANVS = null;
+rt_constants.ROOT_CANVAS = null;
 rt_constants.URLS = {};
-rt_constants.FONT_MANAGER = null;
-rt_constants.CanvasKit = null;
+
+let FONT_MANAGER;
+let CANVAS_KIT;
+let ROBOTO_DATA
 
 class ExpectedError extends Error {
     constructor(msg) {
@@ -464,102 +466,123 @@ class sdl2 {
     static SDL_BIG_ENDIAN = 0;
 }
 
-let CanvasKit;
-
-class skia {
-    static Surface = wrap_class(class {
-        constructor(width, height, is_root=false) {
-            if (is_root) {
-                this.surface = rt_constants.CanvasKit.MakeCanvasSurface('canvas');
-            } else {
-                this.surface = rt_constants.CanvasKit.MakeSurface(width, height);
-            }
-        }
-        static MakeRaster(image_info) {
-            return new Surface(image_info);
-        }
-
-        getCanvas() {
-            return this.surface.getCanvas();
-        }
-
-        makeImageSnapshot() {
-            return this.surface.makeImageSnapshot();
-        }
-
-        draw(canvas, left, top) {
-            this.surface.draw(canvas, left, top);
-        }
-
-        width() {
-            return self.surface.width();
-        }
-
-        height() {
-            return self.surface.height();
-        }
-    })
-
-    static ImageInfo = wrap_class(class {
-        constructor(width, height) {
-            this.width = width
-            this.height = height            
-        }
-        static Make(width, height, ct, at) {
-            return new ImageInfo(width, height);
-        }
-    });
-
-    static Paint;
-
-    static Rect = wrap_class(class {
-        static MakeLTRB(left, top, right, bottom) {
-            return rt_constants.CanvasKit.LTRBRect(left, top, right, bottom);
-        }
-
-        static MakeEmpty() {
-            return rt_constants.CanvasKitXYWHRect(0, 0, 0, 0);
-        }
-    });
-
-    static RRect = wrap_class(class {
-        static MakeRectXY(rect, x, y){
-            return rt_constants.CanvasKit.RRectXY(rect, x, y);
-        }
-    });
-
-    static Path = rt_constants.CanvasKit.Path;
-
-    static Font = rt_constants.CanvasKit.Font;
-
-    static Typeface = function () {
-        return rt_constants.FONT_MANAGER.makeTypefaceFromData(
-            rt_constants.ROBOTO_DATA);
+class ImageInfo {
+    constructor(width, height) {
+        this.width = width
+        this.height = height            
     }
-
-    static BlendMode = {
-        kSrcOver: BlendModeEnumValues.SrcOver,
-        kMultiply: BlendModeEnumValues.Multiply,
-        kDifference: BlendModeEnumValues.Multiply           
-    }
-
-    static ColorSetARGB = function(r, g, b, a) {
-        return rt_constants.CanvasKit.Color(r, g, b, a);
+    static Make(width, height, ct, at) {
+        return new ImageInfo(width, height);
     }
 }
 
-function init_skia(canvaskit_arg) {
-    CanvasKit = canvaskit_arg;
-    skia.Paint = CanvasKit.paint;
-    skia.Path = CanvasKit.Path;
-    skia.Font = CanvasKit.Font;
-    skia.ColorWHITE = rt_constants.CanvasKit.WHITE;
-    skia.ColorRED = rt_constants.CanvasKit.RED;
-    skia.ColorGREEN = rt_constants.CanvasKit.GREEN;
-    skia.ColorBLUE = rt_constants.CanvasKit.BLUE;
-    skia.ColorGRAY = rt_constants.CanvasKit.Color(0x80, 0x80, 0x80, 0xFF);
-    static ColorBLACK = rt_constants.CanvasKit.BLACK;
+class Surface {
+    constructor(width, height, is_root=false) {
+        if (is_root) {
+            this.surface = CANVAS_KIT.MakeCanvasSurface('canvas');
+        } else {
+            this.surface = CANVAS_KIT.MakeSurface(width, height);
+        }
+    }
+    static MakeRaster(image_info) {
+        return new Surface(image_info, undefined, true);
+    }
 
+    getCanvas() {
+        return this.surface.getCanvas();
+    }
+
+    makeImageSnapshot() {
+        return this.surface.makeImageSnapshot();
+    }
+
+    draw(canvas, left, top) {
+        this.surface.draw(canvas, left, top);
+    }
+
+    width() {
+        return self.surface.width();
+    }
+
+    height() {
+        return self.surface.height();
+    }
+}
+
+class Rect {
+    static MakeLTRB(left, top, right, bottom) {
+        return CANVAS_KIT.LTRBRect(left, top, right, bottom);
+    }
+
+    static MakeEmpty() {
+        return CANVAS_KIT.XYWHRect(0, 0, 0, 0);
+    }
+}
+
+class RRect {
+    static MakeRectXY(rect, x, y){
+        return CANVAS_KIT.RRectXY(rect, x, y);
+    }
+}
+
+class skia {
+    static Surface = Surface;
+    static ImageInfo = ImageInfo;
+    static Rect = Rect;
+    static RRect = RRect;
+
+    static Paint;
+
+    static RRect = wrap_class(class {
+        static MakeRectXY(rect, x, y){
+            return rt_constants.CANVAS_KIT.RRectXY(rect, x, y);
+        }
+    });
+
+    static Path;
+
+    static Font;
+
+    static ColorWHITE;
+    static colorRED;
+    static colorGREEN;
+    static colorBLUE;
+    static colorGRAY;
+    static colorBLACK;
+
+    static Typeface = function () {
+        return rt_constants.FONT_MANAGER.makeTypefaceFromData(
+            ROBOTO_DATA);
+    }
+
+    static BlendMode;
+
+    static ColorSetARGB = function(r, g, b, a) {
+        return rt_constants.CANVAS_KIT.Color(r, g, b, a);
+    }
+}
+
+function init_skia(canvasKit, robotoData) {
+    console.log('init_skia');
+    CANVAS_KIT = canvasKit;
+    ROBOTO_DATA = robotoData;
+    FONT_MANAGER = CANVAS_KIT.FontMgr.FromData([robotoData]);
+
+    skia.Paint = CANVAS_KIT.paint;
+    skia.Path = CANVAS_KIT.Path;
+    skia.Font = CANVAS_KIT.Font;
+    skia.ColorWHITE = CANVAS_KIT.WHITE;
+    skia.ColorRED = CANVAS_KIT.RED;
+    skia.ColorGREEN = CANVAS_KIT.GREEN;
+    skia.ColorBLUE = CANVAS_KIT.BLUE;
+    skia.ColorGRAY = CANVAS_KIT.Color(0x80, 0x80, 0x80, 0xFF);
+    skia.ColorBLACK = CANVAS_KIT.BLACK;
+
+    skia.BlendMode = {
+        kSrcOver: CANVAS_KIT.BlendMode.SrcOver,
+        kMultiply: CANVAS_KIT.BlendMode.Multiply,
+        kDifference: CANVAS_KIT.BlendMode.Multiply           
+    }
 }
 
 class ctypes {
