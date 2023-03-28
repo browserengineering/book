@@ -7,10 +7,12 @@ export {
     rt_constants, Widget, http_textarea, skia, sdl2, init_skia
     };
 
-function wrap_class(cls) {
-    return function(...args) {
+function wrap_class(cls, fn) {
+    var f = function(...args) {
         return new cls(...args);
     }
+    if (fn) fn(f);
+    return f;
 }
 
 function http_ok(body, headers) {
@@ -466,78 +468,74 @@ class sdl2 {
     static SDL_BIG_ENDIAN = 0;
 }
 
-class ImageInfo {
-    constructor(width, height) {
-        this.width = width
-        this.height = height            
-    }
-    static Make(width, height, ct, at) {
-        return new ImageInfo(width, height);
-    }
-}
-
-class Surface {
-    constructor(width, height, is_root=false) {
-        if (is_root) {
-            this.surface = CANVAS_KIT.MakeCanvasSurface('canvas');
-        } else {
-            this.surface = CANVAS_KIT.MakeSurface(width, height);
-        }
-    }
-    static MakeRaster(image_info) {
-        return new Surface(image_info, undefined, true);
-    }
-
-    getCanvas() {
-        return this.surface.getCanvas();
-    }
-
-    makeImageSnapshot() {
-        return this.surface.makeImageSnapshot();
-    }
-
-    draw(canvas, left, top) {
-        this.surface.draw(canvas, left, top);
-    }
-
-    width() {
-        return self.surface.width();
-    }
-
-    height() {
-        return self.surface.height();
-    }
-}
-
-class Rect {
-    static MakeLTRB(left, top, right, bottom) {
-        return CANVAS_KIT.LTRBRect(left, top, right, bottom);
-    }
-
-    static MakeEmpty() {
-        return CANVAS_KIT.XYWHRect(0, 0, 0, 0);
-    }
-}
-
-class RRect {
-    static MakeRectXY(rect, x, y){
-        return CANVAS_KIT.RRectXY(rect, x, y);
-    }
-}
-
 class skia {
-    static Surface = Surface;
-    static ImageInfo = ImageInfo;
-    static Rect = Rect;
-    static RRect = RRect;
+    static Surface = wrap_class(class {
+        constructor(width, height, is_root=false) {
+            if (is_root) {
+                this.surface = CANVAS_KIT.MakeCanvasSurface('canvas');
+            } else {
+                this.surface = CANVAS_KIT.MakeSurface(width, height);
+            }
+        }
+
+        getCanvas() {
+            return this.surface.getCanvas();
+        }
+
+        makeImageSnapshot() {
+            return this.surface.makeImageSnapshot();
+        }
+
+        draw(canvas, left, top) {
+            this.surface.draw(canvas, left, top);
+        }
+
+        width() {
+            return self.surface.width();
+        }
+
+        height() {
+            return self.surface.height();
+        }
+    }, (obj) => {
+        obj.MakeRaster = (image_info) => {
+            return obj(image_info, undefined, true);
+        }
+    });
+
+    static ImageInfo = wrap_class(class {
+        constructor(width, height) {
+            this.width = width
+            this.height = height            
+        }
+    }, (obj) => {
+        obj.Make = (width, height, ct, at) => {
+            return obj(width, height);
+        }
+    });
+
+    static Rect = {
+        MakeLTRB: (left, top, right, bottom) => {
+            return CANVAS_KIT.LTRBRect(left, top, right, bottom);
+        },
+        MakeEmpty : () => {
+            return CANVAS_KIT.XYWHRect(0, 0, 0, 0);
+        }
+    };
+
+    static RRect = {
+        MakeRectXY : (rect, x, y) => {
+            return CANVAS_KIT.RRectXY(rect, x, y);
+        }
+    };
 
     static Paint;
 
-    static RRect = wrap_class(class {
-        static MakeRectXY(rect, x, y){
+    static RRect = {
+        MakeRectXY: function(rect, x, y) {
             return rt_constants.CANVAS_KIT.RRectXY(rect, x, y);
         }
-    });
+    };
 
     static Path;
 
@@ -551,14 +549,14 @@ class skia {
     static colorBLACK;
 
     static Typeface = function () {
-        return rt_constants.FONT_MANAGER.makeTypefaceFromData(
+        return FONT_MANAGER.makeTypefaceFromData(
             ROBOTO_DATA);
     }
 
     static BlendMode;
 
     static ColorSetARGB = function(r, g, b, a) {
-        return rt_constants.CANVAS_KIT.Color(r, g, b, a);
+        return CANVAS_KIT.Color(r, g, b, a);
     }
 }
 
