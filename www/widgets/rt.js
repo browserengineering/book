@@ -91,7 +91,11 @@ class socket {
             let [line1] = this.input.split("\r\n", 1);
             let [method, path, protocol] = line1.split(" ");
             this.url = this.scheme + "://" + this.host + path;
+            console.log(this.url);
+            console.log(this.port);
+            console.log(rt_constants.URLS["local://" + this.port]);
             if (this.host == "localhost" && rt_constants.URLS["local://" + this.port]) {
+                console.log('port matched')
                 let s = new socket({family: "inet", type: "stream", proto: "tcp"});
                 s.is_proxy_socket = true;
                 s.output = this.input;

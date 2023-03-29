@@ -37,10 +37,13 @@ Promise.all([ckLoaded, loadFont]).then(([CanvasKit, robotoData]) => {
 
     init_skia(CanvasKit, robotoData)
 
+    socket.accept(8000, handle_connection);
+
     let widget = new Widget(document.querySelector("#controls"));
     widget.run(async function() {
         constants.WIDTH = window.innerWidth;
         let url = "https://localhost:8000/" + document.getElementById("input").value;
+        console.log(url)
         let b = await (new Browser()).init();
         await b.load(url);
     });
