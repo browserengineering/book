@@ -91,11 +91,7 @@ class socket {
             let [line1] = this.input.split("\r\n", 1);
             let [method, path, protocol] = line1.split(" ");
             this.url = this.scheme + "://" + this.host + path;
-            console.log(this.url);
-            console.log(this.port);
-            console.log(rt_constants.URLS["local://" + this.port]);
             if (this.host == "localhost" && rt_constants.URLS["local://" + this.port]) {
-                console.log('port matched')
                 let s = new socket({family: "inet", type: "stream", proto: "tcp"});
                 s.is_proxy_socket = true;
                 s.output = this.input;
@@ -462,6 +458,9 @@ class sdl2 {
     static SDL_BlitSurface(sdl_surface, sdl_rect, window_surface, window_rect) {
     }
 
+    static SDL_GetWindowSurface(window) {
+    }
+
     static SDL_UpdateWindowSurface(window) {
     }
 
@@ -478,14 +477,12 @@ function patch_canvas(canvas) {
     var oldDrawRect = canvas.drawRect;
     var oldDrawRRect = canvas.drawRRect;
     var oldSaveLayer = canvas.saveLayer;
+    var oldClipRect = canvas.clipRRect;
+    var oldClipRRect = canvas.clipRRect;
 
     canvas.drawPath = (path, paint) => {
-        console.log('hi')
         oldDrawPath.call(canvas, path, paint.getPaint());
     };
-        console.log('patched')
-    console.log(canvas.drawPath)
-//    canvas.drawPath(1, 2);
 
     canvas.drawRect = (rect, paint) => {
         oldDrawRect.call(canvas, rect, paint.getPaint());
@@ -496,12 +493,20 @@ function patch_canvas(canvas) {
     };
 
     canvas.drawString = (text, x, y, font, paint) => {
-//        canvas.drawParagraph(p, x, y);
+        canvas.drawText(text, x, y, paint.getPaint(), font.getFont())       
     };
 
-    canvas.saveLayer = (paint) => {
-        oldSaveLayer.call(canvas. paint.getPaint());
+    canvas.saveLayer = (dict) => {
+        oldSaveLayer.call(canvas, dict["paint"].getPaint());
     };
+
+    canvas.clipRect = (rect) => {
+        oldClipRect.call(canvas, rect, CANVAS_KIT.ClipOp.Intersect, false);
+    };
+
+    canvas.clipRRect = (rect) => {
+        oldClipRRect.call(canvas, rect, CANVAS_KIT.ClipOp.Intersect, false);
+    }
 }
 
 class skia {
@@ -521,11 +526,12 @@ class skia {
         }
 
         makeImageSnapshot() {
-            return this.surface.makeImageSnapshot();
+            return {tobytes: () => this.surface.flush()}
         }
 
         draw(canvas, left, top) {
-            this.surface.draw(canvas, left, top);
+            canvas.drawImage(this.surface.makeImageSnapshot(), left, top,
+                new CANVAS_KIT.Paint());
         }
 
         width() {
@@ -601,11 +607,9 @@ class skia {
 }
 
 function init_skia(canvasKit, robotoData) {
-    console.log('init_skia');
     CANVAS_KIT = canvasKit;
     ROBOTO_DATA = robotoData;
     FONT_MANAGER = CANVAS_KIT.FontMgr.FromData([robotoData]);
-    console.log(FONT_MANAGER)
 
     skia.Paint = wrap_class(class {
         constructor(args) {
@@ -641,6 +645,10 @@ function init_skia(canvasKit, robotoData) {
     skia.Font = wrap_class(class {
         constructor(typeface) {
             this.font = new CANVAS_KIT.Font(typeface);
+        }
+
+        getFont() {
+            return this.font;
         }
 
         getMetrics() {

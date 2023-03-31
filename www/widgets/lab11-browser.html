@@ -28,18 +28,11 @@ const loadFont = fetch(
 let CANVAS_KIT
 
 Promise.all([ckLoaded, loadFont]).then(([CanvasKit, robotoData]) => {
-  console.log(CanvasKit);
+    console.log(CanvasKit);
     CANVAS_KIT = CanvasKit;
     let font_manager = CanvasKit.FontMgr.FromData([robotoData]);
     let typeface = font_manager.MakeTypefaceFromData(
             robotoData);
-
-
-    // let f = new CanvasKit.Font(typeface);
-    // console.log(typeface);
-    // console.log(f.getTypeface());
-
-//  throw new Error("hi")
 
   Promise.all([import("./rt.js"), import("./lab11.js"),
     import("./server10.js")]).then(
@@ -56,7 +49,6 @@ Promise.all([ckLoaded, loadFont]).then(([CanvasKit, robotoData]) => {
     widget.run(async function() {
         constants.WIDTH = window.innerWidth;
         let url = "https://localhost:8000/" + document.getElementById("input").value;
-        console.log(url)
         let b = await (new Browser()).init();
         await b.load(url);
     });
