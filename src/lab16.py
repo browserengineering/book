@@ -156,7 +156,6 @@ class Frame:
             self.measure_layout.start()
             self.document.layout(self.tab.zoom, self.frame_width)
             self.measure_layout.stop()
-            print(self.measure_layout.text())
             if self.tab.accessibility_is_on:
                 self.tab.needs_accessibility = True
             else:
@@ -439,7 +438,7 @@ class LineLayout:
 
 @wbetools.patch(JSContext)
 class JSContext:
-    def innerHTML_set(self, handle, s):
+    def innerHTML_set(self, handle, s, window_id):
         frame = self.tab.window_id_to_frame[window_id]        
         self.throw_if_cross_origin(frame)
         doc = HTMLParser(
@@ -449,7 +448,8 @@ class JSContext:
         elt.children = new_nodes
         for child in elt.children:
             child.parent = elt
-        self.tab.set_needs_render()
+        frame.set_needs_render()
+
         elt.layout_object.dirty_children = True
         elt.layout_object.mark_dirty()
 
