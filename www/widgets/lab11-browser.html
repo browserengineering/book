@@ -37,13 +37,14 @@ Promise.all([ckLoaded, loadFont]).then(([CanvasKit, robotoData]) => {
   Promise.all([import("./rt.js"), import("./lab11.js"),
     import("./server10.js")]).then(
   ([rt, lab11, server10]) => {
-    let { init_skia, socket, Widget } = rt;
+    let { init_skia, socket, Widget, rt_constants } = rt;
     let { Browser, constants } = lab11;
     let { handle_connection } = server10;
 
     init_skia(CanvasKit, robotoData)
 
     socket.accept(8000, handle_connection);
+    rt_constants.ROOT_CANVAS = document.querySelector("#canvas");
 
     let widget = new Widget(document.querySelector("#controls"));
     widget.run(async function() {

@@ -513,8 +513,10 @@ class skia {
     static Surface = wrap_class(class {
         constructor(width, height, is_root=false) {
             if (is_root) {
-                rt_constants.ROOT_CANVAS.width = width * rt_constants.ZOOM;
-                rt_constants.ROOT_CANVAS.width = height * rt_constants.ZOOM;
+                let image_info = width
+                console.log('root: width=' + image_info.width)
+                rt_constants.ROOT_CANVAS.width = image_info.width * rt_constants.ZOOM;
+                rt_constants.ROOT_CANVAS.width = image_info.height * rt_constants.ZOOM;
                this.surface = CANVAS_KIT.MakeCanvasSurface('canvas');
             } else {
                 this.surface = CANVAS_KIT.MakeSurface(width, height);
