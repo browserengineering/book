@@ -4,13 +4,14 @@ up to and including Chapter 4 (Constructing a Document Tree),
 without exercises.
 """
 
+import wbetools
 import socket
 import ssl
 import tkinter
 import tkinter.font
 from lab1 import URL
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
-from lab3 import FONTS, get_font
+from lab3 import FONTS, get_font, Layout, Browser
 
 class Text:
     def __init__(self, text, parent):
@@ -139,6 +140,7 @@ class HTMLParser:
             parent.children.append(node)
         return self.unfinished.pop()
 
+@wbetools.patch(Layout)
 class Layout:
     def __init__(self, tree):
         self.display_list = []
@@ -187,57 +189,13 @@ class Layout:
         elif tag == "p":
             self.flush()
             self.cursor_y += VSTEP
-        
-    def word(self, word):
-        font = get_font(self.size, self.weight, self.style)
-        w = font.measure(word)
-        if self.cursor_x + w > WIDTH - HSTEP:
-            self.flush()
-        self.line.append((self.cursor_x, word, font))
-        self.cursor_x += w + font.measure(" ")
 
-    def flush(self):
-        if not self.line: return
-        metrics = [font.metrics() for x, word, font in self.line]
-        max_ascent = max([metric["ascent"] for metric in metrics])
-        baseline = self.cursor_y + 1.25 * max_ascent
-        for x, word, font in self.line:
-            y = baseline - font.metrics("ascent")
-            self.display_list.append((x, y, word, font))
-        self.cursor_x = HSTEP
-        self.line = []
-        max_descent = max([metric["descent"] for metric in metrics])
-        self.cursor_y = baseline + 1.25 * max_descent
-
+@wbetools.patch(Browser)
 class Browser:
-    def __init__(self):
-        self.window = tkinter.Tk()
-        self.canvas = tkinter.Canvas(
-            self.window,
-            width=WIDTH,
-            height=HEIGHT
-        )
-        self.canvas.pack()
-
-        self.scroll = 0
-        self.window.bind("<Down>", self.scrolldown)
-        self.display_list = []
-
     def load(self, url):
         headers, body = url.request()
         self.nodes = HTMLParser(body).parse()
         self.display_list = Layout(self.nodes).display_list
-        self.draw()
-
-    def draw(self):
-        self.canvas.delete("all")
-        for x, y, word, font in self.display_list:
-            if y > self.scroll + HEIGHT: continue
-            if y + font.metrics("linespace") < self.scroll: continue
-            self.canvas.create_text(x, y - self.scroll, text=word, font=font, anchor="nw")
-
-    def scrolldown(self, e):
-        self.scroll += SCROLL_STEP
         self.draw()
 
 if __name__ == "__main__":
