@@ -67,7 +67,7 @@ def replace(block, *cmds):
 def dropline(block, pattern):
     return "\n".join([
         line for line in block.split("\n")
-        if pattern not in line
+        if urllib.parse.unquote(pattern) not in line
     ])
 
 def tangle(file):

@@ -34,7 +34,7 @@ layout value is computed, and what values it depends on.
 Let's start by thinking about how layout objects are created. Right
 now, layout objects are created by `Tab`s when `render` is called:
 
-``` {.python expected=False}
+``` {.python file=lab15}
 class Frame:
     def render(self):
         if self.needs_layout:
@@ -89,10 +89,10 @@ class Frame:
 Next, let's look at the next case, where `BlockLayout` objects are
 created by `DocumentLayout`. Here's what that code looks like:
 
-``` {.python expected=False}
+``` {.python file=lab15}
 class DocumentLayout:
     def layout(self, zoom, width):
-        child = BlockLayout(self.node, self, None)
+        child = BlockLayout(self.node, self, None, self.frame)
         self.children.append(child)
         # ...
 ```
@@ -205,7 +205,7 @@ created. Let's look at another: `BlockLayout`s created by
 `BlockLayout`s in their `layout` method. Here's the relevant code;
 it only runs in block layout mode:
 
-``` {.python expected=False}
+``` {.python file=lab15 dropline=self.children%20%3d}
 class BlockLayout:
     def layout(self, zoom):
         self.children = []
@@ -213,7 +213,7 @@ class BlockLayout:
         if mode == "block":
             previous = None
             for child in self.node.children:
-                next = BlockLayout(child, self, previous)
+                next = BlockLayout(child, self, previous, self.frame)
                 self.children.append(next)
                 previous = next
         # ...
@@ -599,7 +599,7 @@ redundant recomputations of these three fields.
 Here we again need to think about dependencies. The computations for
 these three fields look like this:
 
-``` {.python expected=False}
+``` {.python file=lab15}
 class BlockLayout:
     def layout(self, zoom):
         # ...
