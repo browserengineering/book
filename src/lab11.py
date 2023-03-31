@@ -523,7 +523,7 @@ class Tab:
             url_origin(url) in self.allowed_origins
 
     def load(self, url, body=None):
-        headers, body = request(url, self.url, payload=body)
+        headers, body = request(url, self.url, body)
         self.scroll = 0
         self.url = url
         self.history.append(url)

@@ -513,7 +513,9 @@ class skia {
     static Surface = wrap_class(class {
         constructor(width, height, is_root=false) {
             if (is_root) {
-                this.surface = CANVAS_KIT.MakeCanvasSurface('canvas');
+                rt_constants.ROOT_CANVAS.width = width * rt_constants.ZOOM;
+                rt_constants.ROOT_CANVAS.width = height * rt_constants.ZOOM;
+               this.surface = CANVAS_KIT.MakeCanvasSurface('canvas');
             } else {
                 this.surface = CANVAS_KIT.MakeSurface(width, height);
             }

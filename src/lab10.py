@@ -171,7 +171,6 @@ class JSContext:
             raise Exception("Cross-origin XHR request not allowed")
         return out
 
-
 class Tab:
     def __init__(self):
         self.history = []
