@@ -472,6 +472,38 @@ class sdl2 {
     static SDL_BIG_ENDIAN = 0;
 }
 
+
+function patch_canvas(canvas) {
+    var oldDrawPath = canvas.drawPath;
+    var oldDrawRect = canvas.drawRect;
+    var oldDrawRRect = canvas.drawRRect;
+    var oldSaveLayer = canvas.saveLayer;
+
+    canvas.drawPath = (path, paint) => {
+        console.log('hi')
+        oldDrawPath.call(canvas, path, paint.getPaint());
+    };
+        console.log('patched')
+    console.log(canvas.drawPath)
+//    canvas.drawPath(1, 2);
+
+    canvas.drawRect = (rect, paint) => {
+        oldDrawRect.call(canvas, rect, paint.getPaint());
+    };
+
+    canvas.drawRRect = (rrect, paint) => {
+        oldDrawRect.call(canvas, rrect, paint.getPaint());
+    };
+
+    canvas.drawString = (text, x, y, font, paint) => {
+//        canvas.drawParagraph(p, x, y);
+    };
+
+    canvas.saveLayer = (paint) => {
+        oldSaveLayer.call(canvas. paint.getPaint());
+    };
+}
+
 class skia {
     static Surface = wrap_class(class {
         constructor(width, height, is_root=false) {
@@ -483,7 +515,9 @@ class skia {
         }
 
         getCanvas() {
-            return this.surface.getCanvas();
+            this.canvas = this.surface.getCanvas();
+            patch_canvas(this.canvas);
+            return this.canvas;
         }
 
         makeImageSnapshot() {
@@ -537,7 +571,7 @@ class skia {
 
     static RRect = {
         MakeRectXY: function(rect, x, y) {
-            return rt_constants.CANVAS_KIT.RRectXY(rect, x, y);
+            return CANVAS_KIT.RRectXY(rect, x, y);
         }
     };
 
@@ -552,8 +586,10 @@ class skia {
     static colorGRAY;
     static colorBLACK;
 
+    static FontStyle;
+
     static Typeface = function () {
-        return FONT_MANAGER.makeTypefaceFromData(
+        return FONT_MANAGER.MakeTypefaceFromData(
             ROBOTO_DATA);
     }
 
@@ -569,10 +605,52 @@ function init_skia(canvasKit, robotoData) {
     CANVAS_KIT = canvasKit;
     ROBOTO_DATA = robotoData;
     FONT_MANAGER = CANVAS_KIT.FontMgr.FromData([robotoData]);
+    console.log(FONT_MANAGER)
 
-    skia.Paint = CANVAS_KIT.paint;
-    skia.Path = CANVAS_KIT.Path;
-    skia.Font = CANVAS_KIT.Font;
+    skia.Paint = wrap_class(class {
+        constructor(args) {
+            this.paint = new CANVAS_KIT.Paint();
+            if (!args)
+                return;
+            if (args["Color"]) {
+                console.log('setting color')
+                this.paint.setColor(args["Color"])
+            }
+        }
+
+        getPaint() {
+            return this.paint;
+        }
+
+        setStyle(style) {
+            this.paint.setStyle(style);
+        }
+
+        setStrokeWidth(width) {
+            this.paint.setStrokeWidth(width);
+        }
+
+        setColor(color) {
+            this.paint.setColor(color);
+        }
+    }, (obj) => {
+        obj.kStroke_Style = CANVAS_KIT.PaintStyle.Stroke;
+        obj.kFill_Style = CANVAS_KIT.PaintStyle.Fill;
+    });
+    skia.Path = wrap_class(CANVAS_KIT.Path);
+    skia.Font = wrap_class(class {
+        constructor(typeface) {
+            this.font = new CANVAS_KIT.Font(typeface);
+        }
+
+        getMetrics() {
+            return {fAscent: 2.0, fDescent: 2.0};
+        }
+
+        measureText(t) {
+            return this.font.measureText(t);
+        }
+    });
     skia.ColorWHITE = CANVAS_KIT.WHITE;
     skia.ColorRED = CANVAS_KIT.RED;
     skia.ColorGREEN = CANVAS_KIT.GREEN;
@@ -585,6 +663,14 @@ function init_skia(canvasKit, robotoData) {
         kMultiply: CANVAS_KIT.BlendMode.Multiply,
         kDifference: CANVAS_KIT.BlendMode.Multiply           
     }
+    skia.FontStyle = wrap_class(class {
+        constructor(weight, width, style) {}
+    }, (f) => {
+        f.kBold_Weight = CANVAS_KIT.FontWeight.Bold,
+        f.kNormal_Weight = CANVAS_KIT.FontWeight.Normal,
+        f.kItalic_Slant = CANVAS_KIT.FontSlant.Italic,
+        f.kUpright_Slant = CANVAS_KIT.FontSlant.Upright
+    });
 }
 
 class ctypes {
