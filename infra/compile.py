@@ -157,7 +157,7 @@ LIBRARY_METHODS = [
     # skia.Font
     "getMetrics",
 
-    # skia.Rect 
+    # skia.Rect
     "MakeEmpty",
     "MakeLTRB",
 
