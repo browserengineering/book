@@ -140,13 +140,14 @@ class ResolvePatches(ast.NodeTransformer):
                 for patch in patches:
                     for repl_name, repl_stmt in iter_methods(patch):
                         body2[repl_name] = repl_stmt
-                return ast.ClassDef(cmd.name, cmd.bases, cmd.keywords, list(body2.values()), [])
+                return ast.ClassDef(patch.name, cmd.bases, cmd.keywords, list(body2.values()), [])
             else:
                 return cmd
         else:
             assert len(cmd.decorator_list) == 1
             assert is_patch_decorator(cmd.decorator_list[0])
-            assert cmd.decorator_list[0].args[0].id == cmd.name
+            # Actually violated in Chapter 5 where we rename Layout to BlockLayout
+            #assert cmd.decorator_list[0].args[0].id == cmd.name
             self.patches.setdefault(cmd.name, []).append(cmd)
             return None
 
