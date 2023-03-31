@@ -4,7 +4,9 @@ up to and including Chapter 16 (Reusing Previous Computations),
 without exercises.
 """
 
+import sdl2
 import skia
+import ctypes
 from lab4 import print_tree
 from lab4 import HTMLParser
 from lab13 import Text, Element
@@ -19,7 +21,7 @@ from lab11 import draw_text, get_font, linespace, \
     parse_blend_mode, CHROME_PX, SCROLL_STEP
 import OpenGL.GL as GL
 from lab12 import MeasureTime
-from lab13 import USE_BROWSER_THREAD, diff_styles, \
+from lab13 import diff_styles, \
     CompositedLayer, absolute_bounds, absolute_bounds_for_obj, \
     DrawCompositedLayer, Task, TaskRunner, SingleThreadedTaskRunner, \
     clamp_scroll, add_parent_pointers, \
@@ -35,47 +37,18 @@ from lab14 import parse_color, parse_outline, draw_rect, DrawRRect, \
 from lab15 import request, DrawImage, DocumentLayout, BlockLayout, \
     InputLayout, LineLayout, TextLayout, ImageLayout, \
     IframeLayout, JSContext, style, AccessibilityNode, Frame, Tab, \
-    CommitData, draw_line, Browser, main, wrap_in_window, CROSS_ORIGIN_IFRAMES, \
-    WINDOW_COUNT
+    CommitData, draw_line, Browser
 import wbetools
 
 @wbetools.patch(Frame)
 class Frame:
-    def __init__(self, tab, parent_frame, frame_element):
-        self.tab = tab
-        self.parent_frame = parent_frame
-        self.frame_element = frame_element
-        self.needs_style = False
-        self.needs_layout = False
-
-        self.document = None
-        self.scroll = 0
-        self.scroll_changed_in_frame = True
-        self.needs_focus_scroll = False
-        self.nodes = None
-        self.url = None
-        self.js = None
-        global WINDOW_COUNT
-        self.window_id = WINDOW_COUNT
-        WINDOW_COUNT += 1
-        self.frame_width = 0
-        self.frame_height = 0
-
-        self.tab.window_id_to_frame[self.window_id] = self
-
-        with open("browser15.css") as f:
-            self.default_style_sheet = \
-                CSSParser(f.read(), internal=True).parse()
-
-        self.measure_layout = MeasureTime("layout")
-
     def load(self, url, body=None):
         self.zoom = 1
         self.scroll = 0
         self.scroll_changed_in_frame = True
         headers, body = request(url, self.url, payload=body)
+        body = body.decode("utf8")
         self.url = url
-        self.accessibility_tree = None
 
         self.allowed_origins = None
         if "content-security-policy" in headers:
@@ -85,17 +58,8 @@ class Frame:
 
         self.nodes = HTMLParser(body).parse()
 
-        if not self.parent_frame or CROSS_ORIGIN_IFRAMES or \
-            url_origin(self.url) != url_origin(self.parent_frame.url):
-            self.js = JSContext(self.tab)
-            self.js.interp.evaljs(\
-                "function Window(id) { this._id = id };")
-        js = self.get_js()
-        js.add_window(self)
-
-        with open("runtime15.js") as f:
-            wrapped = wrap_in_window(f.read(), self.window_id)
-            js.interp.evaljs(wrapped)
+        self.js = self.tab.get_js(url_origin(url))
+        self.js.add_window(self)
 
         scripts = [node.attributes["src"] for node
                    in tree_to_list(self.nodes, [])
@@ -109,8 +73,9 @@ class Frame:
                 continue
 
             header, body = request(script_url, url)
-            task = Task(\
-                self.get_js().run, script_url, body,
+            body = body.decode("utf8")
+            task = Task(
+                self.js.run, script_url, body,
                 self.window_id)
             self.tab.task_runner.schedule_task(task)
 
@@ -130,7 +95,27 @@ class Frame:
                 header, body = request(style_url, url)
             except:
                 continue
-            self.rules.extend(CSSParser(body).parse())
+            self.rules.extend(CSSParser(body.decode("utf8")).parse())
+
+        images = [node
+            for node in tree_to_list(self.nodes, [])
+            if isinstance(node, Element)
+            and node.tag == "img"]
+        for img in images:
+            try:
+                src = img.attributes.get("src", "")
+                image_url = resolve_url(src, self.url)
+                assert self.allowed_request(image_url), \
+                    "Blocked load of " + image_url + " due to CSP"
+                header, body = request(image_url, self.url)
+                img.encoded_data = body
+                data = skia.Data.MakeWithoutCopy(body)
+                img.image = skia.Image.MakeFromEncoded(data)
+                assert img.image, "Failed to recognize image format for " + image_url
+            except Exception as e:
+                print("Exception loading image: url="
+                    + image_url + " exception=" + str(e))
+                img.image = BROKEN_IMAGE
 
         iframes = [node
                    for node in tree_to_list(self.nodes, [])
@@ -140,46 +125,68 @@ class Frame:
         for iframe in iframes:
             document_url = resolve_url(iframe.attributes["src"],
                 self.tab.root_frame.url)
+            if not self.allowed_request(document_url):
+                print("Blocked iframe", document_url, "due to CSP")
+                iframe.frame = None
+                continue
             iframe.frame = Frame(self.tab, self, iframe)
             iframe.frame.load(document_url)
 
+        # Changed---create DocumentLayout here
         self.document = DocumentLayout(self.nodes, self)
         self.set_needs_render()
 
-    def style(self):
-        style(self.nodes,
-            sorted(self.rules,
-                key=cascade_priority), self)
+        # For testing only?
+        self.measure_layout = MeasureTime("layout")
 
-    def layout(self, zoom):
-        self.measure_layout.start()
-        self.document.layout(zoom, self.frame_width)
-        self.measure_layout.stop()
-        print(self.measure_layout.text())
+    def render(self):
+        if self.needs_style:
+            if self.tab.dark_mode:
+                INHERITED_PROPERTIES["color"] = "white"
+            else:
+                INHERITED_PROPERTIES["color"] = "black"
+            style(self.nodes,
+                  sorted(self.rules,
+                         key=cascade_priority), self)
+            self.needs_layout = True
+            self.needs_style = False
+
+        if self.needs_layout:
+            # Change here
+            self.measure_layout.start()
+            self.document.layout(self.tab.zoom, self.frame_width)
+            self.measure_layout.stop()
+            print(self.measure_layout.text())
+            if self.tab.accessibility_is_on:
+                self.tab.needs_accessibility = True
+            else:
+                self.needs_paint = True
+            self.needs_layout = False
 
         clamped_scroll = self.clamp_scroll(self.scroll)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_frame = True
+        self.scroll = clamped_scroll
 
 @wbetools.patch(DocumentLayout)
 class DocumentLayout:
     def __init__(self, node, frame):
         self.node = node
+        self.frame = frame
         node.layout_object = self
         self.parent = None
         self.previous = None
         self.children = []
-        self.frame = frame
-
-        self.dirty_height = True
-        self.dirty_width = True
-        self.dirty_x = True
-        self.dirty_y = True
 
         self.width = None
         self.height = None
         self.x = None
         self.y = None
+
+        self.dirty_height = True
+        self.dirty_width = True
+        self.dirty_x = True
+        self.dirty_y = True
 
     def mark_dirty(self):
         if isinstance(self.parent, BlockLayout) and \
@@ -210,6 +217,7 @@ class DocumentLayout:
             child.mark_dirty()
             self.dirty_y = False
         child.layout(zoom)
+        assert not child.dirty_height
         self.height = child.height + 2* device_px(VSTEP, zoom)
 
 @wbetools.patch(BlockLayout)
@@ -219,10 +227,11 @@ class BlockLayout:
         node.layout_object = self
         self.parent = parent
         self.previous = previous
-        self.next = None
-        if previous: previous.next = self
         self.children = []
         self.frame = frame
+
+        if previous: previous.next = self
+        self.next = None
 
         self.x = None
         self.y = None
@@ -296,8 +305,8 @@ class BlockLayout:
                 self.next.mark_dirty()
             self.dirty_y = False
 
-        previous = None
-        if layout_mode(self.node) == "block":
+        mode = layout_mode(self.node)
+        if mode == "block":
             if self.dirty_children:
                 self.children = []
                 previous = None
@@ -340,31 +349,99 @@ class BlockLayout:
                     self.next.mark_dirty()
             self.dirty_height = False
 
-    def paint(self, display_list):
+    def paint(self, display_list, zoom):
+        # Changed: demand children not dirty
         assert not self.dirty_children
+        
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
-            self.x, self.y,
-            self.x + self.width, self.y + self.height)
-        bgcolor = self.node.style.get("background-color",
-                                 "transparent")
-        if bgcolor != "transparent":
-            radius = float(
-                self.node.style.get("border-radius", "0px")[:-2])
-            cmds.append(DrawRRect(rect, radius, bgcolor))
+            self.x, self.y, self.x + self.width,
+            self.y + self.height)
 
+        is_atomic = not isinstance(self.node, Text) and \
+            (self.node.tag == "input" or self.node.tag == "button")
+
+        if not is_atomic:
+            bgcolor = self.node.style.get(
+                "background-color", "transparent")
+            if bgcolor != "transparent":
+                radius = device_px(
+                    float(self.node.style.get(
+                        "border-radius", "0px")[:-2]),
+                    zoom)
+                cmds.append(DrawRRect(rect, radius, bgcolor))
+ 
         for child in self.children:
-            child.paint(cmds)
+            child.paint(cmds, zoom)
 
-        paint_outline(self.node, cmds, rect)
-
-        cmds = paint_visual_effects(self.node, cmds, rect)
+        if not is_atomic:
+            cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
+
+@wbetools.patch(LineLayout)
+class LineLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        self.parent = parent
+        self.previous = previous
+        self.children = []
+
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+
+        self.dirty_height = False
+        self.dirty_width = False
+        self.dirty_x = False
+        self.dirty_y = False
+
+    def mark_dirty(self):
+        if isinstance(self.parent, BlockLayout) and \
+            not self.parent.dirty_descendants:
+            self.parent.dirty_descendants = True
+            self.parent.mark_dirty()
+
+    def layout(self, zoom):
+        self.width = self.parent.width
+        self.x = self.parent.x
+
+        if self.previous:
+            self.y = self.previous.y + self.previous.height
+        else:
+            self.y = self.parent.y
+
+        for word in self.children:
+            word.layout(zoom)
+
+        if not self.children:
+            self.height = 0
+            self.parent.dirty_height = True
+            self.parent.mark_dirty()
+            return
+
+        max_ascent = max([-child.get_ascent(1.25) 
+                          for child in self.children])
+        baseline = self.y + max_ascent
+        for child in self.children:
+            child.y = baseline + child.get_ascent()
+        max_descent = max([child.get_descent(1.25)
+                           for child in self.children])
+        self.height = max_ascent + max_descent
+        self.parent.dirty_height = True
+        self.parent.mark_dirty()
+
+        self.dirty_width = False
+        self.dirty_height = False
+        self.dirty_x = False
+        self.dirty_y = False
 
 @wbetools.patch(JSContext)
 class JSContext:
     def innerHTML_set(self, handle, s):
+        frame = self.tab.window_id_to_frame[window_id]        
+        self.throw_if_cross_origin(frame)
         doc = HTMLParser(
             "<html><body>" + s + "</body></html>").parse()
         new_nodes = doc.children[0].children
@@ -419,62 +496,93 @@ def style(node, rules, frame):
     for child in node.children:
         style(child, rules, frame)
 
-@wbetools.patch(LineLayout)
-class LineLayout:
-    def __init__(self, node, parent, previous):
-        self.node = node
-        self.parent = parent
-        self.previous = previous
-        self.children = []
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-
-        self.dirty_height = False
-        self.dirty_width = False
-        self.dirty_x = False
-        self.dirty_y = False
-
-    def mark_dirty(self):
-        if isinstance(self.parent, BlockLayout) and \
-            not self.parent.dirty_descendants:
-            self.parent.dirty_descendants = True
-            self.parent.mark_dirty()
-
-    def layout(self, zoom):
-        self.width = self.parent.width
-        self.x = self.parent.x
-
-        if self.previous:
-            self.y = self.previous.y + self.previous.height
-        else:
-            self.y = self.parent.y
-
-        for word in self.children:
-            word.layout(zoom)
-
-        if not self.children:
-            self.height = 0
-            self.parent.dirty_height = True
-            self.parent.mark_dirty()
-            return
-
-        max_ascent = max([-child.get_ascent(1.25) 
-                          for child in self.children])
-        baseline = self.y + max_ascent
-        for child in self.children:
-            child.y = baseline + child.get_ascent()
-        max_descent = max([child.get_descent(1.25)
-                           for child in self.children])
-        self.height = max_ascent + max_descent
-        self.parent.dirty_height = True
-        self.parent.mark_dirty()
-
-        self.dirty_width = False
-        self.dirty_height = False
-        self.dirty_x = False
-        self.dirty_y = False
-
 if __name__ == "__main__":
-    main()
+    import sys
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Chapter 13 code')
+    parser.add_argument("url", type=str, help="URL to load")
+    parser.add_argument('--single_threaded', action="store_true", default=False,
+        help='Whether to run the browser without a browser thread')
+    parser.add_argument('--disable_compositing', action="store_true",
+        default=False, help='Whether to composite some elements')
+    parser.add_argument('--disable_gpu', action='store_true',
+        default=False, help='Whether to disable use of the GPU')
+    parser.add_argument('--show_composited_layer_borders', action="store_true",
+        default=False, help='Whether to visually indicate composited layer borders')
+    parser.add_argument("--force_cross_origin_iframes", action="store_true",
+        default=False, help="Whether to treat all iframes as cross-origin")
+    args = parser.parse_args()
+
+    wbetools.USE_BROWSER_THREAD = not args.single_threaded
+    wbetools.USE_GPU = not args.disable_gpu
+    wbetools.USE_COMPOSITING = not args.disable_compositing and not args.disable_gpu
+    wbetools.SHOW_COMPOSITED_LAYER_BORDERS = args.show_composited_layer_borders
+    wbetools.FORCE_CROSS_ORIGIN_IFRAMES = args.force_cross_origin_iframes
+
+    sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
+    browser = Browser()
+    browser.load(args.url)
+
+    event = sdl2.SDL_Event()
+    ctrl_down = False
+    while True:
+        if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+            if event.type == sdl2.SDL_QUIT:
+                browser.handle_quit()
+                sdl2.SDL_Quit()
+                sys.exit()
+                break
+            elif event.type == sdl2.SDL_MOUSEBUTTONUP:
+                browser.handle_click(event.button)
+            elif event.type == sdl2.SDL_MOUSEMOTION:
+                browser.handle_hover(event.motion)
+            elif event.type == sdl2.SDL_KEYDOWN:
+                if ctrl_down:
+                    if event.key.keysym.sym == sdl2.SDLK_EQUALS:
+                        browser.increment_zoom(1)
+                    elif event.key.keysym.sym == sdl2.SDLK_MINUS:
+                        browser.increment_zoom(-1)
+                    elif event.key.keysym.sym == sdl2.SDLK_0:
+                        browser.reset_zoom()
+                    elif event.key.keysym.sym == sdl2.SDLK_LEFT:
+                        browser.go_back()
+                    elif event.key.keysym.sym == sdl2.SDLK_TAB:
+                        browser.cycle_tabs()
+                    elif event.key.keysym.sym == sdl2.SDLK_a:
+                        browser.toggle_accessibility()
+                    elif event.key.keysym.sym == sdl2.SDLK_d:
+                        browser.toggle_dark_mode()
+                    elif event.key.keysym.sym == sdl2.SDLK_m:
+                        browser.toggle_mute()
+                    elif event.key.keysym.sym == sdl2.SDLK_t:
+                        browser.add_tab()
+                    elif event.key.keysym.sym == sdl2.SDLK_q:
+                        browser.handle_quit()
+                        sdl2.SDL_Quit()
+                        sys.exit()
+                        break
+                elif event.key.keysym.sym == sdl2.SDLK_RETURN:
+                    browser.handle_enter()
+                elif event.key.keysym.sym == sdl2.SDLK_DOWN:
+                    browser.handle_down()
+                elif event.key.keysym.sym == sdl2.SDLK_TAB:
+                    browser.handle_tab()
+                elif event.key.keysym.sym == sdl2.SDLK_RCTRL or \
+                    event.key.keysym.sym == sdl2.SDLK_LCTRL:
+                    ctrl_down = True
+            elif event.type == sdl2.SDL_KEYUP:
+                if event.key.keysym.sym == sdl2.SDLK_RCTRL or \
+                    event.key.keysym.sym == sdl2.SDLK_LCTRL:
+                    ctrl_down = False
+            elif event.type == sdl2.SDL_TEXTINPUT and not ctrl_down:
+                browser.handle_key(event.text.text.decode('utf8'))
+        active_tab = browser.tabs[browser.active_tab]
+        if not wbetools.USE_BROWSER_THREAD:
+            if active_tab.task_runner.needs_quit:
+                break
+            if browser.needs_animation_frame:
+                browser.needs_animation_frame = False
+                browser.render()
+        browser.composite_raster_and_draw()
+        browser.schedule_animation_frame()
