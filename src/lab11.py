@@ -259,7 +259,7 @@ class BlockLayout:
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         size = float(node.style["font-size"][:-2])
-        font = get_font(size, weight, size)
+        font = get_font(size, weight, style)
         for word in node.text.split():
             w = font.measureText(word)
             if self.cursor_x + w > self.width:
@@ -281,7 +281,7 @@ class BlockLayout:
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         size = float(node.style["font-size"][:-2])
-        font = get_font(size, weight, size)
+        font = get_font(size, weight, style)
         self.cursor_x += w + font.measureText(" ")
 
     def paint(self, display_list):
@@ -397,7 +397,6 @@ class TextLayout:
     def layout(self):
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
         size = float(self.node.style["font-size"][:-2])
         self.font = get_font(size, weight, style)
 
@@ -437,7 +436,6 @@ class InputLayout:
     def layout(self):
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
         size = float(self.node.style["font-size"][:-2])
         self.font = get_font(size, weight, style)
 
@@ -466,7 +464,12 @@ class InputLayout:
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")
         elif self.node.tag == "button":
-            text = self.node.children[0].text
+            if len(self.node.children) == 1 and \
+               isinstance(self.node.children[0], Text):
+                text = self.node.children[0].text
+            else:
+                print("Ignoring HTML contents inside button")
+                text = ""
 
         color = self.node.style["color"]
         cmds.append(DrawText(self.x, self.y,
@@ -695,9 +698,9 @@ class Browser:
                 self.raster_tab()
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
                 self.load("https://browser.engineering/")
-            elif 10 <= e.x < 35 and 40 <= e.y < 90:
+            elif 10 <= e.x < 35 and 50 <= e.y < 90:
                 self.tabs[self.active_tab].go_back()
-            elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
+            elif 50 <= e.x < WIDTH - 10 and 50 <= e.y < 90:
                 self.focus = "address bar"
                 self.address_bar = ""
             self.raster_chrome()

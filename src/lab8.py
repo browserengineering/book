@@ -131,7 +131,12 @@ class InputLayout:
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")
         elif self.node.tag == "button":
-            text = self.node.children[0].text
+            if len(self.node.children) == 1 and \
+               isinstance(self.node.children[0], Text):
+                text = self.node.children[0].text
+            else:
+                print("Ignoring HTML contents inside button")
+                text = ""
 
         color = self.node.style["color"]
         display_list.append(
@@ -416,9 +421,9 @@ class Browser:
                 self.active_tab = int((e.x - 40) / 80)
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
                 self.load("https://browser.engineering/")
-            elif 10 <= e.x < 35 and 40 <= e.y < 90:
+            elif 10 <= e.x < 35 and 50 <= e.y < 90:
                 self.tabs[self.active_tab].go_back()
-            elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
+            elif 50 <= e.x < WIDTH - 10 and 50 <= e.y < 90:
                 self.focus = "address bar"
                 self.address_bar = ""
         else:

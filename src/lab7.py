@@ -160,12 +160,15 @@ class BlockLayout:
         new_line = LineLayout(self.node, self, last_line)
         self.children.append(new_line)
 
-    def text(self, node):
+    def get_font(self, node):
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         if style == "normal": style = "roman"
         size = int(float(node.style["font-size"][:-2]) * .75)
-        font = get_font(size, weight, style)
+        return get_font(size, weight, style)
+
+    def text(self, node):
+        font = self.get_font(node)
         for word in node.text.split():
             w = font.measure(word)
             if self.cursor_x + w > self.width:
@@ -319,9 +322,9 @@ class Browser:
                 self.active_tab = int((e.x - 40) / 80)
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
                 self.load("https://browser.engineering/")
-            elif 10 <= e.x < 35 and 40 <= e.y < 90:
+            elif 10 <= e.x < 35 and 50 <= e.y < 90:
                 self.tabs[self.active_tab].go_back()
-            elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
+            elif 50 <= e.x < WIDTH - 10 and 50 <= e.y < 90:
                 self.focus = "address bar"
                 self.address_bar = ""
         else:

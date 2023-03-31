@@ -144,7 +144,7 @@ class InputLayout:
             display_list.append(rect)
 ```
 
-It also needs to draw the text inside:
+It then needs to get the input element's text contents:
 
 ``` {.python}
 class InputLayout:
@@ -153,8 +153,25 @@ class InputLayout:
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")
         elif self.node.tag == "button":
-            text = self.node.children[0].text
+            if len(self.node.children) == 1 and \
+               isinstance(self.node.children[0], Text):
+                text = self.node.children[0].text
+            else:
+                print("Ignoring HTML contents inside button")
+                text = ""
+```
 
+Note that `<button>` elements can in principle contain complex HTML,
+not just a text node. I'm having the browser print a warning and skip
+the text in that case.[^exercises]
+
+[^exercises]: There's an [exercise](#exercises) on this.
+
+Finally, we draw that text:
+
+``` {.python}
+class InputLayout:
+    def paint(self, display_list):
         color = self.node.style["color"]
         display_list.append(
             DrawText(self.x, self.y, text, self.font, color))
@@ -189,8 +206,11 @@ are self-closing, they never have children.
 [^but-exercise]: Though you'll need to do this differently for one of
     the exercises below.
 
-Finally, this new `input` method is similar to the `text` method,
-creating a new layout object and adding it to the current line:
+Finally, this new `input` method is similar to the `text` method, creating a new
+layout object and adding it to the current line:^[It's so similar in fact that
+they only differ in the `w` variable definition, and the need to loop over
+words. I'll resist the temptation to refactor this code until we get to
+[Chapter 15](embeds.md).]
 
 ``` {.python}
 class BlockLayout:

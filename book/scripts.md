@@ -144,7 +144,7 @@ That's your browser running its first bit of JavaScript!
 Actually, real browsers run JavaScript code as soon as the browser
 *parses* the `<script>` tag, not after the whole page is parsed. Or,
 at least, that is the default; there are [many options][scriptElement].
-What our toy browser does is what a real browser does when the the
+What our toy browser does is what a real browser does when the
 [`defer`][deferAttr] attribute is set. The default behavior is [much
 trickier][speculative] to implement efficiently.
 :::
@@ -366,7 +366,7 @@ page.
 
 JavaScript manipulates a web page by calling any of a large set of
 methods collectively called the DOM API, for "Document Object Model".
-The DOM API is big, and it keeps getting bigger, so we won't
+The DOM API is big, and it keeps getting bigger, so we won't be
 implementing all, or even most, of it. But a few core functions show
 key elements of the full API:
 
@@ -586,7 +586,7 @@ Don't forget to export this function as `getAttribute`.
 We finally have enough of the DOM API to implement a little character
 count function for text areas:
 
-``` {.javascript file=comment}
+``` {.javascript file=comment expected=False}
 inputs = document.querySelectorAll('input')
 for (var i = 0; i < inputs.length; i++) {
     var name = inputs[i].getAttribute("name");
@@ -737,7 +737,7 @@ snippet stores the named `type` and `handle` arguments to `evaljs`.
 With all this event-handling machinery in place, we can update the
 character count every time an input area changes:
 
-``` {.javascript file=comment}
+``` {.javascript file=comment expected=False}
 function lengthCheck() {
     var name = this.getAttribute("name");
     var value = this.getAttribute("value");
@@ -886,18 +886,20 @@ def do_request(method, url, headers, body):
 We can then put our little input length checker into `comment.js`,
 with the `lengthCheck` function modified to use `innerHTML`:
 
-``` {.javascript file=comment}
-label = document.querySelectorAll("label")[0];
+``` {.javascript file=comment replace=value.length%20>%20100/!allow_submit}
+var label = document.querySelectorAll("label")[0];
 
 function lengthCheck() {
     var value = this.getAttribute("value");
     if (value.length > 100) {
-        label.innerHTML = "Comment too long!"
+        label.innerHTML = "Comment too long!";
     }
 }
 
-input = document.querySelectorAll("input")[0];
-input.addEventListener("keydown", lengthCheck);
+var inputs = document.querySelectorAll("input");
+for (var i = 0; i < inputs.length; i++) {
+    inputs[i].addEventListener("keydown", lengthCheck);
+}
 ```
 
 Try it out: write a long comment and you should see the page warning
@@ -905,7 +907,7 @@ you that the comment is too long. By the way, we might want to make it
 stand out more, so let's go ahead and add another URL to our web
 server, `/comment.css`, with the contents:
 
-``` {.css}
+``` {.css file=comment}
 label { font-weight: bold; color: red; }
 ```
 
@@ -1035,16 +1037,17 @@ is allowed, and then when submission is attempted it can check that
 variable and cancel that submission if necessary:
 
 ``` {.javascript file=comment}
-allow_submit = true;
+var allow_submit = true;
 
 function lengthCheck() {
-    allow_submit = input.getAttribute("value").length <= 100;
+    // ...
+    allow_submit = value.length <= 100;
     if (!allow_submit) {
         // ...
     }
 }
 
-form = document.querySelectorAll("form")[0];
+var form = document.querySelectorAll("form")[0];
 form.addEventListener("submit", function(e) {
     if (!allow_submit) e.preventDefault();
 });
@@ -1200,7 +1203,7 @@ the tree. Double-check that clicking on links still works, and make
 sure `preventDefault` still successfully prevents clicks on a link
 from actually following the link.
 
-[eventBubbling]: https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Building_blocks/Events#event_bubbling_and_capture
+[eventBubbling]: https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Building_blocks/Events#event_bubbling
 
 *Inline styling*: The `style` property of a JavaScript `Node` object
 contains a [`CSSStyleDeclaration`][cssstyle] object. Setting any
@@ -1230,7 +1233,7 @@ element itself, not just its children.
 
 [innerHTML]: https://developer.mozilla.org/en-US/docs/Web/API/Element/innerHTML
 
-*Script-added scripts and style sheets*: the `innerHTML` API could cause
+*Script-added scripts and style sheets*: The `innerHTML` API could cause
 `<script>` or `<link>`  elements to be added to the document, but currently
 our browser does not load them when this happens. Fix this.
 Likewise, when a `<link>` element is removed from the document, its style

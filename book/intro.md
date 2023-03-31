@@ -181,13 +181,12 @@ yet seem to be important. How do I understand that 15-year-old code? Or learn
 the purpose of these new files? Can I delete those lines of code, or are they
 there for a reason?
 
-What's amazing is that, despite the scale and the pace and the complexity, there
-is still room to contribute. Every browser has thousands of unfixed bugs, from
-the smallest of mistakes to myriad mix ups and mismatches. Every browser must be
-endlessly tuned and optimized to squeeze out that last bit of performance. Every
-browser requires painstaking work to continuously refactor the code to reduce
-its complexity, often through the careful[^browsers-abstraction-hard]
-introduction of modularization and abstraction.
+Every browser has thousands of unfixed bugs, from the smallest of mistakes to
+myriad mix ups and mismatches. Every browser must be endlessly tuned and
+optimized to squeeze out that last bit of performance. Every browser requires
+painstaking work to continuously refactor the code to reduce its complexity,
+often through the careful[^browsers-abstraction-hard] introduction of
+modularization and abstraction.
 
 [^browsers-abstraction-hard]: Browsers are so performance-sensitive that, in
 many places, merely the introduction of an abstraction---the function call or

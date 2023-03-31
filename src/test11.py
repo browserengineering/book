@@ -47,11 +47,14 @@ class socket:
         output = self.URLs[url][1]
         if self.URLs[url][2]:
             assert self.body == self.URLs[url][2], (self.body, self.URLs[url][2])
+        stream = io.BytesIO(output)
         if encoding:
-            return io.StringIO(output.decode(encoding).replace(newline, "\n"), newline)
+            stream = io.TextIOWrapper(stream, encoding=encoding, newline=newline)
+            stream.mode = mode
         else:
-            assert mode == "b"
-            return io.BytesIO(output)
+            assert mode == "b", "If no file encoding is passed, must pass 'b' mode"
+
+        return stream
 
     def close(self):
         self.connected = False

@@ -25,7 +25,7 @@ from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab4 import Text, Element, print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS
 from lab6 import TagSelector, DescendantSelector
-from lab6 import INHERITED_PROPERTIES, cascade_priority, compute_style
+from lab6 import INHERITED_PROPERTIES, compute_style
 from lab6 import resolve_url, tree_to_list
 from lab7 import CHROME_PX
 from lab8 import INPUT_WIDTH_PX, layout_mode
@@ -34,7 +34,7 @@ from lab10 import COOKIE_JAR, request, url_origin
 from lab11 import FONTS, get_font, parse_blend_mode, linespace
 from lab11 import draw_text
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
-from lab12 import Task, REFRESH_RATE_SEC, USE_BROWSER_THREAD
+from lab12 import Task, REFRESH_RATE_SEC
 from lab13 import JSContext, diff_styles, clamp_scroll, add_parent_pointers
 from lab13 import absolute_bounds, absolute_bounds_for_obj
 from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
@@ -91,12 +91,12 @@ def parse_color(color):
     else:
         return skia.ColorBLACK
 
-def parse_outline(outline_str):
+def parse_outline(outline_str, zoom):
     if not outline_str: return None
     values = outline_str.split(" ")
     if len(values) != 3: return None
     if values[1] != "solid": return None
-    return (int(values[0][:-2]), values[2])
+    return (device_px(int(values[0][:-2]), zoom), values[2])
 
 class DrawOutline(DisplayItem):
     def __init__(self, rect, color, thickness):
@@ -128,11 +128,11 @@ def is_focused(node):
     return node.is_focused
 
 def has_outline(node):
-    return parse_outline(node.style.get("outline"))
+    return parse_outline(node.style.get("outline"), 1)
 
-def paint_outline(node, cmds, rect):
+def paint_outline(node, cmds, rect, zoom):
     if has_outline(node):
-        thickness, color = parse_outline(node.style.get("outline"))
+        thickness, color = parse_outline(node.style.get("outline"), zoom)
         cmds.append(DrawOutline(rect, color, thickness))
 
 class BlockLayout:
@@ -220,7 +220,7 @@ class BlockLayout:
         font = get_font(size, weight, size)
         self.cursor_x += w + font.measureText(" ")
 
-    def paint(self, display_list):
+    def paint(self, display_list, zoom):
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
@@ -234,16 +234,19 @@ class BlockLayout:
             bgcolor = self.node.style.get("background-color",
                                      "transparent")
             if bgcolor != "transparent":
-                radius = float(self.node.style.get("border-radius", "0px")[:-2])
+                radius = device_px(
+                    float(self.node.style.get("border-radius", "0px")[:-2]),
+                        zoom)
                 cmds.append(DrawRRect(rect, radius, bgcolor))
  
         for child in self.children:
-            child.paint(cmds)
-
-        paint_outline(self.node, cmds, rect)
+            child.paint(cmds, zoom)
 
         if not is_atomic:
             cmds = paint_visual_effects(self.node, cmds, rect)
+            paint_outline(
+                self.node, cmds, rect, zoom)
+
         display_list.extend(cmds)
 
     def __repr__(self):
@@ -286,9 +289,9 @@ class LineLayout:
                            for word in self.children])
         self.height = 1.25 * (max_ascent + max_descent)
 
-    def paint(self, display_list):
+    def paint(self, display_list, zoom):
         for child in self.children:
-            child.paint(display_list)
+            child.paint(display_list, zoom)
 
         outline_rect = skia.Rect.MakeEmpty()
         focused_node = None
@@ -299,7 +302,8 @@ class LineLayout:
                 outline_rect.join(child.rect())
 
         if focused_node:
-            paint_outline(focused_node, display_list, outline_rect)
+            paint_outline(
+                focused_node, display_list, outline_rect, zoom)
 
     def role(self):
         return "none"
@@ -374,8 +378,8 @@ class DocumentLayout:
         child.layout(zoom)
         self.height = child.height + 2* device_px(VSTEP, zoom)
 
-    def paint(self, display_list):
-        self.children[0].paint(display_list)
+    def paint(self, display_list, zoom):
+        self.children[0].paint(display_list, zoom)
 
     def __repr__(self):
         return "DocumentLayout()"
@@ -396,7 +400,6 @@ class TextLayout:
     def layout(self, zoom):
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
         size = device_px(
             float(self.node.style["font-size"][:-2]), zoom)
         self.font = get_font(size, weight, style)
@@ -412,7 +415,7 @@ class TextLayout:
 
         self.height = linespace(self.font)
 
-    def paint(self, display_list):
+    def paint(self, display_list, zoom):
         color = self.node.style["color"]
         display_list.append(
             DrawText(self.x, self.y, self.word, self.font, color))
@@ -442,7 +445,6 @@ class InputLayout:
     def layout(self, zoom):
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
-        if style == "normal": style = "roman"
         size = \
             device_px(float(self.node.style["font-size"][:-2]), zoom)
         self.font = get_font(size, weight, style)
@@ -456,7 +458,7 @@ class InputLayout:
         else:
             self.x = self.parent.x
 
-    def paint(self, display_list):
+    def paint(self, display_list, zoom):
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
@@ -466,13 +468,20 @@ class InputLayout:
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         if bgcolor != "transparent":
-            radius = float(self.node.style.get("border-radius", "0px")[:-2])
+            radius = device_px(
+                float(self.node.style.get("border-radius", "0px")[:-2]),
+                zoom)
             cmds.append(DrawRRect(rect, radius, bgcolor))
 
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")
         elif self.node.tag == "button":
-            text = self.node.children[0].text
+            if len(self.node.children) == 1 and \
+               isinstance(self.node.children[0], Text):
+                text = self.node.children[0].text
+            else:
+                print("Ignoring HTML contents inside button")
+                text = ""
 
         color = self.node.style["color"]
         cmds.append(DrawText(self.x, self.y,
@@ -482,8 +491,8 @@ class InputLayout:
             cx = rect.left() + self.font.measureText(text)
             cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom()))
 
-        paint_outline(self.node, cmds, rect)
         cmds = paint_visual_effects(self.node, cmds, rect)
+        paint_outline(self.node, cmds, rect, zoom)
         display_list.extend(cmds)
 
     def __repr__(self):
@@ -527,7 +536,7 @@ class AccessibilityNode:
     def __init__(self, node):
         self.node = node
         self.children = []
-        self.text = None
+        self.text = ""
 
         if node.layout_object:
             self.bounds = absolute_bounds_for_obj(node.layout_object)
@@ -919,7 +928,7 @@ class Tab:
         self.accessibility_tree = None
 
         self.browser = browser
-        if USE_BROWSER_THREAD:
+        if wbetools.USE_BROWSER_THREAD:
             self.task_runner = TaskRunner(self)
         else:
             self.task_runner = SingleThreadedTaskRunner(self)
@@ -1021,7 +1030,7 @@ class Tab:
                 value = animation.animate()
                 if value:
                     node.style[property_name] = value
-                    if USE_COMPOSITING and \
+                    if wbetools.USE_COMPOSITING and \
                         property_name == "opacity":
                         self.composited_updates.append(node)
                         self.set_needs_paint()
@@ -1095,7 +1104,7 @@ class Tab:
         if self.needs_paint:
             self.display_list = []
 
-            self.document.paint(self.display_list)
+            self.document.paint(self.display_list, self.zoom)
             self.needs_paint = False
 
         self.measure_render.stop()
@@ -1183,7 +1192,9 @@ class Tab:
         self.load(url, body)
 
     def keypress(self, char):
-        if self.focus:
+        if self.focus and self.focus.tag == "input":
+            if not "value" in self.focus.attributes:
+                self.activate_element(self.focus)
             if self.js.dispatch_event("keydown", self.focus): return
             self.focus.attributes["value"] += char
             self.set_needs_render()
@@ -1243,7 +1254,7 @@ def draw_line(canvas, x1, y1, x2, y2, color):
 
 class Browser:
     def __init__(self):
-        if USE_GPU:
+        if wbetools.USE_GPU:
             self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
                 sdl2.SDL_WINDOWPOS_CENTERED,
                 sdl2.SDL_WINDOWPOS_CENTERED,
@@ -1335,7 +1346,7 @@ class Browser:
         self.spoken_alerts = []
 
     def render(self):
-        assert not USE_BROWSER_THREAD
+        assert not wbetools.USE_BROWSER_THREAD
         tab = self.tabs[self.active_tab]
         tab.run_animation_frame(self.scroll)
 
@@ -1546,7 +1557,7 @@ class Browser:
             active_tab.task_runner.schedule_task(task)
         self.lock.acquire(blocking=True)
         if self.needs_animation_frame and not self.animation_timer:
-            if USE_BROWSER_THREAD:
+            if wbetools.USE_BROWSER_THREAD:
                 self.animation_timer = \
                     threading.Timer(REFRESH_RATE_SEC, callback)
                 self.animation_timer.start()
@@ -1591,6 +1602,10 @@ class Browser:
 
     def set_active_tab(self, index):
         self.active_tab = index
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.set_needs_paint)
+        active_tab.task_runner.schedule_task(task)
+
         self.clear_data()
         self.needs_animation_frame = True
 
@@ -1662,9 +1677,9 @@ class Browser:
                 self.set_active_tab(int((e.x - 40) / 80))
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
                 self.load_internal("https://browser.engineering/")
-            elif 10 <= e.x < 35 and 40 <= e.y < 90:
+            elif 10 <= e.x < 35 and 50 <= e.y < 90:
                 self.go_back()
-            elif 50 <= e.x < WIDTH - 10 and 40 <= e.y < 90:
+            elif 50 <= e.x < WIDTH - 10 and 50 <= e.y < 90:
                 self.focus = "address bar"
                 self.address_bar = ""
             self.set_needs_raster()
@@ -1812,7 +1827,7 @@ class Browser:
         self.chrome_surface.draw(canvas, 0, 0)
         canvas.restore()
 
-        if USE_GPU:
+        if wbetools.USE_GPU:
             self.root_surface.flushAndSubmit()
             sdl2.SDL_GL_SwapWindow(self.sdl_window)
         else:
@@ -1837,7 +1852,7 @@ class Browser:
     def handle_quit(self):
         print(self.measure_composite_raster_and_draw.text())
         self.tabs[self.active_tab].task_runner.set_needs_quit()
-        if USE_GPU:
+        if wbetools.USE_GPU:
             sdl2.SDL_GL_DeleteContext(self.gl_context)
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
@@ -1857,10 +1872,10 @@ if __name__ == "__main__":
         default=False, help='Whether to visually indicate composited layer borders')
     args = parser.parse_args()
 
-    USE_BROWSER_THREAD = not args.single_threaded
-    USE_GPU = not args.disable_gpu
-    USE_COMPOSITING = not args.disable_compositing and not args.disable_gpu
-    SHOW_COMPOSITED_LAYER_BORDERS = args.show_composited_layer_borders
+    wbetools.USE_BROWSER_THREAD = not args.single_threaded
+    wbetools.USE_GPU = not args.disable_gpu
+    wbetools.USE_COMPOSITING = not args.disable_compositing and not args.disable_gpu
+    wbetools.SHOW_COMPOSITED_LAYER_BORDERS = args.show_composited_layer_borders
 
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
@@ -1922,7 +1937,7 @@ if __name__ == "__main__":
             elif event.type == sdl2.SDL_TEXTINPUT and not ctrl_down:
                 browser.handle_key(event.text.text.decode('utf8'))
         active_tab = browser.tabs[browser.active_tab]
-        if not USE_BROWSER_THREAD:
+        if not wbetools.USE_BROWSER_THREAD:
             if active_tab.task_runner.needs_quit:
                 break
             if browser.needs_animation_frame:

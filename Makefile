@@ -16,6 +16,7 @@ examples: $(patsubst %,www/examples/example%.html,$(EXAMPLE_HTML)) \
 	$(patsubst %,www/examples/example%.css,$(EXAMPLE_CSS))
 
 widgets: \
+	www/widgets/lab1.js \
 	www/widgets/lab2-browser.html www/widgets/lab2.js \
 	www/widgets/lab3-browser.html www/widgets/lab3.js \
 	www/widgets/lab4-browser.html www/widgets/lab4.js \
@@ -29,9 +30,7 @@ widgets: \
 src/lab%.full.py: src/lab%.py
 	python3 infra/inline.py $< > $@
 
-lint: book/*.md src/*.py
-	python3 infra/compare.py --config config.json
-	! grep -n '^```' book/*.md | awk '(NR % 2) {print}' | grep -v '{.'
+CHAPTER=all
 
 PANDOC=pandoc --from markdown --to html --lua-filter=infra/filter.lua --fail-if-warnings --metadata-file=config.json $(FLAGS)
 
@@ -52,6 +51,8 @@ www/widgets/server%.js: src/server%.py src/server%.hints infra/compile.py
 
 www/onepage/%.html: book/%.md infra/chapter.html infra/filter.lua config.json
 	$(PANDOC) --toc --metadata=mode:onepage --variable=cur:$* --template infra/chapter.html $< -o $@
+
+www/onepage/onepage.html: ;
 
 www/onepage.html: $(patsubst %,www/onepage/%.html,$(CHAPTERS))
 www/onepage.html: book/onepage.md infra/template.html infra/filter.lua config.json
@@ -77,13 +78,8 @@ backup:
 test-server:
 	(cd www/ && python3 ../infra/server.py)
 
-test:
+lint test:
 	python3 -m doctest infra/compiler.md
 	python3 -m doctest infra/annotate_code.md
-	set -e; \
-	for i in $$(seq 1 15); do \
-		(cd src/ && python3 -m doctest lab$$i-tests.md); \
-	done
-
-test-allinone:
-	(cd src/ && python3 -m doctest lab13_allinone-tests.md);
+	python3 infra/runtests.py config.json --chapter $(CHAPTER)
+	! grep -n '^```' book/*.md | awk '(NR % 2) {print}' | grep -v '{.'

@@ -53,7 +53,7 @@ Part 2: Viewing Documents
     Parsing and fixing HTML
 (@) [Laying Out Pages](layout.md)\
     Inline and block layout, plus the box model
-(@) [Applying User Styles](styles.md)\
+(@) [Applying Author Styles](styles.md)\
     Parsing and applying CSS
 (@) [Handling Buttons and Links](chrome.md)\
     Hyperlinks and browser chrome
@@ -80,7 +80,7 @@ Part 4: Modern Browsers
 (@) [Making Content Accessible](accessibility.md)\
     Keyboard input, zooming, and the accessibility tree
 (@) [Supporting Embedded Content](embeds.md)\
-    Images and iframes
+    Images, iframes, and scripting
 
 ::: {.outro}
 Conclusion

@@ -105,7 +105,7 @@ add support for changing an element's `style` attribute from
 JavaScript. To do that, register a setter on the `style` attribute of
 `Node` in the JavaScript runtime:
 
-``` {.javascript file=runtime}
+``` {.javascript}
 Object.defineProperty(Node.prototype, 'style', {
     set: function(s) {
         call_python("style_set", this.handle, s.toString());
@@ -1618,7 +1618,7 @@ something, not for no-ops), regardless of whether they are animating,
 but we'll set it to `False` for `ClipRRect` commands, since those
 can't animate in our browser.
 
-``` {.python replace=self.should_save/USE_COMPOSITING%20and%20self.should_save}
+``` {.python replace=self.should_save/wbetools.USE_COMPOSITING%20and%20self.should_save}
 class SaveLayer(DisplayItem):
     def __init__(self, sk_paint, node, children, should_save=True):
         # ...
@@ -1856,7 +1856,7 @@ standardized transform syntax.
 
 ``` {.python}
 def parse_transform(transform_str):
-    if transform_str.find('translate') < 0:
+    if transform_str.find('translate(') < 0:
         return None
     left_paren = transform_str.find('(')
     right_paren = transform_str.find(')')
@@ -1963,7 +1963,7 @@ compositing, not geometry of layout objects.]
 
 That's because when we test for overlap, we're comparing the
 `composited_bounds` of the display item to the `composited_bounds` of
-the the composited layer. That means we're comparing the original
+the composited layer. That means we're comparing the original
 location of the display item, not its shifted version. We need to
 compute the absolute bounds instead:
 
@@ -2275,8 +2275,8 @@ that objects further away appear to move slower than closer-in objects (due to
 the angle of light changing less quickly). For example, when riding a train,
 the trees nearby move faster across your field of view than the hills in the
 distance. The same mathematical result can be applied to web contents by way of
-the the [`perspective`][perspective] CSS property.
-[This article][parallax] explains how, and [this one][csstricks-perspective]
+the [`perspective`][perspective] CSS property. [This
+article][parallax] explains how, and [this one][csstricks-perspective]
 gives a much deeper dive into perspective in CSS generally.
 
 [parallax]: https://developer.chrome.com/blog/performant-parallaxing/

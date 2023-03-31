@@ -139,7 +139,7 @@ Testing layout_mode
          <input>
          <div>
 
-In this case, because there is an inline elemnet (the `<input>`) and a block'
+In this case, because there is an inline element (the `<input>`) and a block'
 sibling (the `<div`), they should be contianed in a `BlockLayout[block]`, but the
 `<input>` element is in an `BlockLayout[inline]`:
 
@@ -156,3 +156,17 @@ The painted output also is only drawing the input as 200px wide:
 
     >>> browser.tabs[0].display_list
     [DrawRect(top=20.25 left=13 bottom=32.25 right=213 color=lightblue), DrawText(text=)]
+    
+If a `<button>` contains rich markup inside of it, it should print nothing:
+
+    >>> url3 = 'http://test.test/example-empty'
+    >>> test.socket.respond(url3, b"HTTP/1.0 200 OK\r\n" +
+    ... b"Header1: Value1\r\n\r\n" +
+    ... b"<form action=\"/submit\">" +
+    ... b"<button><b>Rich markup</b></button>" +
+    ... b"</form>")
+    >>> browser = lab8.Browser()
+    >>> browser.load(url3)
+    Ignoring HTML contents inside button
+    >>> browser.tabs[0].display_list
+    [DrawRect(top=20.25 left=13 bottom=32.25 right=213 color=orange), DrawText(text=)]

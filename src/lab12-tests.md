@@ -8,11 +8,12 @@ This file contains tests for Chapter 12 (Scheduling and Threading).
     >>> import test12 as test
     >>> _ = test.socket.patch().start()
     >>> _ = test.ssl.patch().start()
-    >>> threading.Lock = test.MockLock
+    >>> _ = test.MockLock.patch().start()
     >>> import lab12
     >>> import time
     >>> import threading
-    >>> lab12.USE_BROWSER_THREAD = False
+    >>> import wbetools
+    >>> wbetools.USE_BROWSER_THREAD = False
 
 Testing basic loading and dirty bits
 ====================================
@@ -81,7 +82,7 @@ Scrolling down causes a draw but nothing else.
     Focusing the address bar and typing into it causes chrome raster and draw,
     but not tab raster
 
-    >>> browser.handle_click(Event(51, 41))
+    >>> browser.handle_click(Event(51, 51))
     >>> browser.focus
     'address bar'
     >>> browser.handle_key('c')
