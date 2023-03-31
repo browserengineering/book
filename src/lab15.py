@@ -222,6 +222,7 @@ class BlockLayout:
 
         self.height = sum([child.height for child in self.children])
 
+
     def recurse(self, node, zoom):
         if isinstance(node, Text):
             self.text(node, zoom)
@@ -2219,8 +2220,7 @@ class Browser:
 if __name__ == "__main__":
     import sys
     import argparse
-    global USE_BROWSER_THREAD, USE_GPU, USE_COMPOSITING
-    global SHOW_COMPOSITED_LAYER_BORDERS, CROSS_ORIGIN_IFRAMES
+
     parser = argparse.ArgumentParser(description='Chapter 13 code')
     parser.add_argument("url", type=str, help="URL to load")
     parser.add_argument('--single_threaded', action="store_true", default=False,
