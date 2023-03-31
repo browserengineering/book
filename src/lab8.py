@@ -4,6 +4,7 @@ up to and including Chapter 8 (Sending Information to Servers),
 without exercises.
 """
 
+import wbetools
 import socket
 import ssl
 import tkinter
@@ -12,12 +13,12 @@ import urllib.parse
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
-from lab5 import BLOCK_ELEMENTS, DrawRect
+from lab5 import BLOCK_ELEMENTS, DrawRect, layout_mode
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
-from lab6 import DrawText, tree_to_list, URL
-from lab7 import DrawLine, DrawOutline, LineLayout, TextLayout, CHROME_PX
-import wbetools
+from lab6 import DrawText, URL, tree_to_list
+from lab7 import DrawLine, DrawOutline, DocumentLayout, BlockLayout, LineLayout, TextLayout
+from lab7 import CHROME_PX, Tab, Browser
 
 @wbetools.patch(URL)
 class URL:
@@ -62,6 +63,7 @@ class URL:
         s.close()
         return headers, body
 
+@wbetools.patch(layout_mode)
 def layout_mode(node):
     if isinstance(node, Text):
         return "inline"
@@ -136,42 +138,8 @@ class InputLayout:
         return "InputLayout(x={}, y={}, width={}, height={}, {})".format(
             self.x, self.y, self.width, self.height, extra)
 
+@wbetools.patch(BlockLayout)
 class BlockLayout:
-    def __init__(self, node, parent, previous):
-        self.node = node
-        self.parent = parent
-        self.previous = previous
-        self.children = []
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-
-    def layout(self):
-        self.width = self.parent.width
-        self.x = self.parent.x
-
-        if self.previous:
-            self.y = self.previous.y + self.previous.height
-        else:
-            self.y = self.parent.y
-
-        mode = layout_mode(self.node)
-        if mode == "block":
-            previous = None
-            for child in self.node.children:
-                next = BlockLayout(child, self, previous)
-                self.children.append(next)
-                previous = next
-        else:
-            self.new_line()
-            self.recurse(self.node)
-
-        for child in self.children:
-            child.layout()
-
-        self.height = sum([child.height for child in self.children])
-
     def recurse(self, node):
         if isinstance(node, Text):
             for word in node.text.split():
@@ -184,31 +152,6 @@ class BlockLayout:
             else:
                 for child in node.children:
                     self.recurse(child)
-
-    def new_line(self):
-        self.previous_word = None
-        self.cursor_x = 0
-        last_line = self.children[-1] if self.children else None
-        new_line = LineLayout(self.node, self, last_line)
-        self.children.append(new_line)
-
-    def get_font(self, node):
-        weight = node.style["font-weight"]
-        style = node.style["font-style"]
-        if style == "normal": style = "roman"
-        size = int(float(node.style["font-size"][:-2]) * .75)
-        return get_font(size, weight, style)
-
-    def word(self, node, word):
-        font = self.get_font(node)
-        w = font.measure(word)
-        if self.cursor_x + w > self.width:
-            self.new_line()
-        line = self.children[-1]
-        text = TextLayout(node, word, line, self.previous_word)
-        line.children.append(text)
-        self.previous_word = text
-        self.cursor_x += w + font.measure(" ")
 
     def input(self, node):
         w = INPUT_WIDTH_PX
@@ -241,34 +184,12 @@ class BlockLayout:
         return "BlockLayout[{}](x={}, y={}, width={}, height={}, node={})".format(
             layout_mode(self.node), self.x, self.y, self.width, self.height, self.node)
 
-class DocumentLayout:
-    def __init__(self, node):
-        self.node = node
-        self.parent = None
-        self.previous = None
-        self.children = []
-
-    def layout(self):
-        child = BlockLayout(self.node, self, None)
-        self.children.append(child)
-
-        self.width = WIDTH - 2*HSTEP
-        self.x = HSTEP
-        self.y = VSTEP
-        child.layout()
-        self.height = child.height + 2*VSTEP
-
-    def paint(self, display_list):
-        self.children[0].paint(display_list)
-
-    def __repr__(self):
-        return "DocumentLayout()"
-
+@wbetools.patch(Tab)
 class Tab:
     def __init__(self):
         self.history = []
-        self.focus = None
         self.url = None
+        self.focus = None
 
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
@@ -318,10 +239,6 @@ class Tab:
             if cmd.bottom < self.scroll: continue
             cmd.execute(self.scroll - CHROME_PX, canvas)
 
-    def scrolldown(self):
-        max_y = self.document.height - (HEIGHT - CHROME_PX)
-        self.scroll = min(self.scroll + SCROLL_STEP, max_y)
-
     def click(self, x, y):
         self.focus = None
         y += self.scroll
@@ -370,12 +287,7 @@ class Tab:
             self.focus.attributes["value"] += char
             self.render()
 
-    def go_back(self):
-        if len(self.history) > 1:
-            self.history.pop()
-            back = self.history.pop()
-            self.load(back)
-
+@wbetools.patch(Browser)
 class Browser:
     def __init__(self):
         self.window = tkinter.Tk()
@@ -396,10 +308,6 @@ class Browser:
         self.active_tab = None
         self.focus = None
         self.address_bar = ""
-
-    def handle_down(self, e):
-        self.tabs[self.active_tab].scrolldown()
-        self.draw()
 
     def handle_click(self, e):
         if e.y < CHROME_PX:
@@ -427,58 +335,6 @@ class Browser:
         elif self.focus == "content":
             self.tabs[self.active_tab].keypress(e.char)
             self.draw()
-
-    def handle_enter(self, e):
-        if self.focus == "address bar":
-            self.tabs[self.active_tab].load(self.address_bar)
-            self.focus = None
-            self.draw()
-
-    def load(self, url):
-        new_tab = Tab()
-        new_tab.load(url)
-        self.active_tab = len(self.tabs)
-        self.tabs.append(new_tab)
-        self.draw()
-
-    def paint_chrome(self):
-        cmds = []
-        cmds.append(DrawRect(0, 0, WIDTH, CHROME_PX, "white"))
-        cmds.append(DrawLine(0, CHROME_PX - 1, WIDTH, CHROME_PX - 1, "black", 1))
-
-        tabfont = get_font(20, "normal", "roman")
-        for i, tab in enumerate(self.tabs):
-            name = "Tab {}".format(i)
-            x1, x2 = 40 + 80 * i, 120 + 80 * i
-            cmds.append(DrawLine(x1, 0, x1, 40, "black", 1))
-            cmds.append(DrawLine(x2, 0, x2, 40, "black", 1))
-            cmds.append(DrawText(x1 + 10, 10, name, tabfont, "black"))
-            if i == self.active_tab:
-                cmds.append(DrawLine(0, 40, x1, 40, "black", 1))
-                cmds.append(DrawLine(x2, 40, WIDTH, 40, "black", 1))
-
-        buttonfont = get_font(30, "normal", "roman")
-        cmds.append(DrawOutline(10, 10, 30, 30, "black", 1))
-        cmds.append(DrawText(11, 0, "+", buttonfont, "black"))
-
-        cmds.append(DrawOutline(40, 50, WIDTH - 10, 90, "black", 1))
-        if self.focus == "address bar":
-            cmds.append(DrawText(55, 55, self.address_bar, buttonfont, "black"))
-            w = buttonfont.measure(self.address_bar)
-            cmds.append(DrawLine(55 + w, 55, 55 + w, 85, "black", 1))
-        else:
-            url = str(self.tabs[self.active_tab].url)
-            cmds.append(DrawText(55, 55, url, buttonfont, "black"))
-
-        cmds.append(DrawOutline(10, 50, 35, 90, "black", 1))
-        cmds.append(DrawText(15, 50, "<", buttonfont, "black"))
-        return cmds
-
-    def draw(self):
-        self.canvas.delete("all")
-        self.tabs[self.active_tab].draw(self.canvas)
-        for cmd in self.paint_chrome():
-            cmd.execute(0, self.canvas)
 
 if __name__ == "__main__":
     import sys
