@@ -167,6 +167,236 @@ class Frame:
             self.scroll_changed_in_frame = True
         self.scroll = clamped_scroll
 
+@wbetools.patch(LineLayout)
+class LineLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        self.parent = parent
+        self.previous = previous
+        self.children = []
+
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+
+        self.dirty_width = True
+        self.dirty_height = True
+        self.dirty_x = True
+        self.dirty_y = True
+
+    def mark_dirty(self):
+        if isinstance(self.parent, BlockLayout) and \
+            not self.parent.dirty_descendants:
+            self.parent.dirty_descendants = True
+            self.parent.mark_dirty()
+
+    def layout(self, zoom):
+        self.width = self.parent.width
+        self.x = self.parent.x
+
+        if self.previous:
+            self.y = self.previous.y + self.previous.height
+        else:
+            self.y = self.parent.y
+
+        for word in self.children:
+            word.layout(zoom)
+
+        if not self.children:
+            self.height = 0
+            self.parent.dirty_height = True
+            self.parent.mark_dirty()
+            return
+
+        max_ascent = max([-child.get_ascent(1.25) 
+                          for child in self.children])
+        baseline = self.y + max_ascent
+        for child in self.children:
+            child.y = baseline + child.get_ascent()
+        max_descent = max([child.get_descent(1.25)
+                           for child in self.children])
+        self.height = max_ascent + max_descent
+        self.parent.dirty_height = True
+        self.parent.mark_dirty()
+
+        self.dirty_width = False
+        self.dirty_height = False
+        self.dirty_x = False
+        self.dirty_y = False
+
+@wbetools.patch(BlockLayout)
+class BlockLayout:
+    def __init__(self, node, parent, previous, frame):
+        self.node = node
+        node.layout_object = self
+        self.parent = parent
+        self.previous = previous
+        self.children = []
+        self.frame = frame
+
+        if previous: previous.next = self
+        self.next = None
+
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+
+        self.dirty_children = True
+        self.dirty_zoom = True
+        self.zoom = None
+        self.dirty_style = True
+        self.dirty_width = True
+        self.dirty_height = True
+        self.dirty_x = True
+        self.dirty_y = True
+        self.dirty_descendants = True
+
+    def mark_dirty(self):
+        if isinstance(self.parent, BlockLayout) and \
+            not self.parent.dirty_descendants:
+            self.parent.dirty_descendants = True
+            self.parent.mark_dirty()
+
+    def layout(self, zoom):
+        self.dirty_zoom = (zoom != self.zoom)
+        if self.dirty_zoom:
+            self.zoom = zoom
+            self.mark_dirty()
+            self.dirty_width = True
+            self.dirty_zoom = False
+
+        if self.dirty_style:
+            self.dirty_children = True
+            self.dirty_width = True
+            self.mark_dirty()
+            self.dirty_style = False
+
+        if self.dirty_width:
+            assert not self.parent.dirty_width
+            if "width" in self.node.style:
+                self.width = device_px(float(self.node.style["width"][:-2]), zoom)
+            else:
+                self.width = self.parent.width
+            self.dirty_children = True
+            for child in self.children:
+                child.dirty_width = True
+                child.mark_dirty()
+            self.dirty_width = False
+
+        if self.dirty_x:
+            assert not self.parent.dirty_x
+            self.x = self.parent.x
+            for child in self.children:
+                child.dirty_x = True
+                child.mark_dirty()
+            self.dirty_x = False
+
+        if self.dirty_y:
+            assert not self.previous or not self.previous.dirty_y
+            assert not self.previous or not self.previous.dirty_height
+            assert not self.parent.dirty_y
+            if self.previous:
+                self.y = self.previous.y + self.previous.height
+            else:
+                self.y = self.parent.y
+            for child in self.children:
+                child.dirty_y = True
+                child.mark_dirty()
+            if self.next:
+                self.next.dirty_y = True
+                self.next.mark_dirty()
+            self.dirty_y = False
+
+        mode = layout_mode(self.node)
+        if self.dirty_children:
+            if mode == "block":
+                self.children = []
+                previous = None
+                for child in self.node.children:
+                    next = BlockLayout(child, self, previous, self.frame)
+                    self.children.append(next)
+                    previous = next
+                self.dirty_descendants = True
+                self.mark_dirty()
+            else:
+                self.children = []
+                self.new_line()
+                assert not self.dirty_zoom
+                self.recurse(self.node, zoom)
+                self.dirty_descendants = True
+                self.mark_dirty()
+            self.dirty_children = False
+
+        if self.dirty_descendants:
+            assert not self.dirty_children
+            assert not self.dirty_zoom
+            for child in self.children:
+                child.layout(zoom)
+            self.dirty_descendants = False
+
+        if self.dirty_height:
+            assert not self.dirty_children
+            for child in self.children:
+                assert not child.dirty_height
+            new_height = sum([child.height for child in self.children])
+            if self.height != new_height:
+                self.height = new_height
+                self.parent.dirty_height = True
+                self.parent.mark_dirty()
+                if self.next:
+                    self.next.dirty_y = True
+                    self.next.mark_dirty()
+            self.dirty_height = False
+
+    def recurse(self, node, zoom):
+        assert not self.dirty_style
+        if isinstance(node, Text):
+            self.text(node, zoom)
+        else:
+            if node.tag == "br":
+                self.new_line()
+            elif node.tag == "input" or node.tag == "button":
+                self.input(node, zoom)
+            elif node.tag == "img":
+                self.image(node, zoom)
+            elif node.tag == "iframe" and \
+                 "src" in node.attributes:
+                self.iframe(node, zoom)
+            else:
+                for child in node.children:
+                    self.recurse(child, zoom)
+
+    def paint(self, display_list, zoom):
+        assert not self.dirty_children
+        
+        cmds = []
+
+        rect = skia.Rect.MakeLTRB(
+            self.x, self.y, self.x + self.width,
+            self.y + self.height)
+
+        is_atomic = not isinstance(self.node, Text) and \
+            (self.node.tag == "input" or self.node.tag == "button")
+
+        if not is_atomic:
+            bgcolor = self.node.style.get(
+                "background-color", "transparent")
+            if bgcolor != "transparent":
+                radius = device_px(
+                    float(self.node.style.get(
+                        "border-radius", "0px")[:-2]),
+                    zoom)
+                cmds.append(DrawRRect(rect, radius, bgcolor))
+ 
+        for child in self.children:
+            child.paint(cmds, zoom)
+
+        if not is_atomic:
+            cmds = paint_visual_effects(self.node, cmds, rect)
+        display_list.extend(cmds)
+
 @wbetools.patch(DocumentLayout)
 class DocumentLayout:
     def __init__(self, node, frame):
@@ -218,223 +448,6 @@ class DocumentLayout:
         child.layout(zoom)
         assert not child.dirty_height
         self.height = child.height + 2* device_px(VSTEP, zoom)
-
-@wbetools.patch(BlockLayout)
-class BlockLayout:
-    def __init__(self, node, parent, previous, frame):
-        self.node = node
-        node.layout_object = self
-        self.parent = parent
-        self.previous = previous
-        self.children = []
-        self.frame = frame
-
-        if previous: previous.next = self
-        self.next = None
-
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-
-        self.dirty_children = True
-        self.dirty_inline_children = True
-        self.dirty_zoom = True
-        self.zoom = None
-        self.dirty_style = True
-        self.dirty_width = True
-        self.dirty_height = True
-        self.dirty_x = True
-        self.dirty_y = True
-        self.dirty_descendants = True
-
-    def mark_dirty(self):
-        if isinstance(self.parent, BlockLayout) and \
-            not self.parent.dirty_descendants:
-            self.parent.dirty_descendants = True
-            self.parent.mark_dirty()
-
-    def layout(self, zoom):
-        self.dirty_zoom = (zoom != self.zoom)
-        if self.dirty_zoom:
-            self.zoom = zoom
-            self.mark_dirty()
-            self.dirty_inline_children = True
-            self.dirty_zoom = False
-
-        if self.dirty_style:
-            self.dirty_inline_children = True
-            self.dirty_width = True
-            self.mark_dirty()
-            self.dirty_style = False
-
-        if self.dirty_width:
-            assert not self.parent.dirty_width
-            if "width" in self.node.style:
-                self.width = device_px(float(self.node.style["width"][:-2]), zoom)
-            else:
-                self.width = self.parent.width
-            self.dirty_children = True
-            for child in self.children:
-                child.dirty_width = True
-                child.mark_dirty()
-            self.dirty_width = False
-
-        if self.dirty_x:
-            assert not self.parent.dirty_x
-            self.x = self.parent.x
-            for child in self.children:
-                child.dirty_x = True
-                child.mark_dirty()
-            self.dirty_x = False
-
-        if self.dirty_y:
-            assert not self.previous or not self.previous.dirty_y
-            assert not self.previous or not self.previous.dirty_height
-            assert not self.parent.dirty_y
-            if self.previous:
-                self.y = self.previous.y + self.previous.height
-            else:
-                self.y = self.parent.y
-            for child in self.children:
-                child.dirty_y = True
-                child.mark_dirty()
-            if self.next:
-                self.next.dirty_y = True
-                self.next.mark_dirty()
-            self.dirty_y = False
-
-        mode = layout_mode(self.node)
-        if mode == "block":
-            if self.dirty_children:
-                self.children = []
-                previous = None
-                for child in self.node.children:
-                    next = BlockLayout(child, self, previous, self.frame)
-                    self.children.append(next)
-                    previous = next
-                self.dirty_descendants = True
-                self.mark_dirty()
-            self.dirty_children = False
-        else:
-            if self.dirty_inline_children or self.dirty_children:
-                self.children = []
-                self.new_line()
-                assert not self.dirty_zoom
-                self.recurse(self.node, zoom)
-                self.dirty_descendants = True
-                self.mark_dirty()
-            self.dirty_inline_children = False
-            self.dirty_children = False
-
-        assert not self.dirty_children
-        assert not self.dirty_zoom
-        if self.dirty_descendants:
-            for child in self.children:
-                child.layout(zoom)
-            self.dirty_descendants = False
-
-        if self.dirty_height:
-            assert not self.dirty_children
-            for child in self.children:
-                assert not child.dirty_height
-            new_height = sum([child.height for child in self.children])
-            if self.height != new_height:
-                self.height = new_height
-                self.parent.dirty_height = True
-                self.parent.mark_dirty()
-                if self.next:
-                    self.next.dirty_y = True
-                    self.next.mark_dirty()
-            self.dirty_height = False
-
-    def paint(self, display_list, zoom):
-        # Changed: demand children not dirty
-        assert not self.dirty_children
-        
-        cmds = []
-
-        rect = skia.Rect.MakeLTRB(
-            self.x, self.y, self.x + self.width,
-            self.y + self.height)
-
-        is_atomic = not isinstance(self.node, Text) and \
-            (self.node.tag == "input" or self.node.tag == "button")
-
-        if not is_atomic:
-            bgcolor = self.node.style.get(
-                "background-color", "transparent")
-            if bgcolor != "transparent":
-                radius = device_px(
-                    float(self.node.style.get(
-                        "border-radius", "0px")[:-2]),
-                    zoom)
-                cmds.append(DrawRRect(rect, radius, bgcolor))
- 
-        for child in self.children:
-            child.paint(cmds, zoom)
-
-        if not is_atomic:
-            cmds = paint_visual_effects(self.node, cmds, rect)
-        display_list.extend(cmds)
-
-@wbetools.patch(LineLayout)
-class LineLayout:
-    def __init__(self, node, parent, previous):
-        self.node = node
-        self.parent = parent
-        self.previous = previous
-        self.children = []
-
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-
-        self.dirty_height = False
-        self.dirty_width = False
-        self.dirty_x = False
-        self.dirty_y = False
-
-    def mark_dirty(self):
-        if isinstance(self.parent, BlockLayout) and \
-            not self.parent.dirty_descendants:
-            self.parent.dirty_descendants = True
-            self.parent.mark_dirty()
-
-    def layout(self, zoom):
-        self.width = self.parent.width
-        self.x = self.parent.x
-
-        if self.previous:
-            self.y = self.previous.y + self.previous.height
-        else:
-            self.y = self.parent.y
-
-        for word in self.children:
-            word.layout(zoom)
-
-        if not self.children:
-            self.height = 0
-            self.parent.dirty_height = True
-            self.parent.mark_dirty()
-            return
-
-        max_ascent = max([-child.get_ascent(1.25) 
-                          for child in self.children])
-        baseline = self.y + max_ascent
-        for child in self.children:
-            child.y = baseline + child.get_ascent()
-        max_descent = max([child.get_descent(1.25)
-                           for child in self.children])
-        self.height = max_ascent + max_descent
-        self.parent.dirty_height = True
-        self.parent.mark_dirty()
-
-        self.dirty_width = False
-        self.dirty_height = False
-        self.dirty_x = False
-        self.dirty_y = False
 
 @wbetools.patch(JSContext)
 class JSContext:

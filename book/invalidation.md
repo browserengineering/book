@@ -34,12 +34,12 @@ layout value is computed, and what values it depends on.
 Let's start by thinking about how layout objects are created. Right
 now, layout objects are created by `Tab`s when `render` is called:
 
-``` {.python}
-class Tab:
+``` {.python expected=False}
+class Frame:
     def render(self):
         if self.needs_layout:
-            self.document = DocumentLayout(self.nodes)
-            self.document.layout(self.zoom)
+            self.document = DocumentLayout(self.nodes, self)
+            self.document.layout(self.tab.zoom, self.frame_width)
             # ...
 ```
 
@@ -74,24 +74,24 @@ change, we only need to do it once. Let's move that one line of code
 from `render` to `load`:
 
 ``` {.python}
-class Tab:
+class Frame:
     def load(self, url, body=None):
         # ...
-        self.document = DocumentLayout(self.nodes)
+        self.document = DocumentLayout(self.nodes, self)
         self.set_needs_render()
 
     def render(self):
         if self.needs_layout:
-            self.document.layout(self.zoom)
+            self.document.layout(self.tab.zoom, self.frame_width)
             # ...
 ```
 
 Next, let's look at the next case, where `BlockLayout` objects are
 created by `DocumentLayout`. Here's what that code looks like:
 
-``` {.python}
+``` {.python expected=False}
 class DocumentLayout:
-    def layout(self, zoom):
+    def layout(self, zoom, width):
         child = BlockLayout(self.node, self, None)
         self.children.append(child)
         # ...
@@ -106,11 +106,11 @@ already occurred before.
 We might therefore be tempted to skip the redundant work, with
 something like this:
 
-``` {.python}
+``` {.python replace=.append(child)/%20%3d%20[child]}
 class DocumentLayout:
-    def layout(self, zoom):
+    def layout(self, zoom, width):
         if not self.children:
-            child = BlockLayout(self.node, self, None)
+            child = BlockLayout(self.node, self, None, self.frame)
         else:
             child = self.children[0]
         self.children.append(child)
@@ -143,9 +143,9 @@ instead of just modifying it:
 
 ``` {.python}
 class DocumentLayout:
-    def layout(self, zoom):
+    def layout(self, zoom, width):
         if not self.children:
-            child = BlockLayout(self.node, self, None)
+            child = BlockLayout(self.node, self, None, self.frame)
         else:
             child = self.children[0]
         self.children = [child]
@@ -205,12 +205,12 @@ created. Let's look at another: `BlockLayout`s created by
 `BlockLayout`s in their `layout` method. Here's the relevant code;
 it only runs in block layout mode:
 
-``` {.python}
+``` {.python expected=False}
 class BlockLayout:
     def layout(self, zoom):
         self.children = []
         # ...
-        if layout_mode(self.node) == "block":
+        if mode == "block":
             previous = None
             for child in self.node.children:
                 next = BlockLayout(child, self, previous)
@@ -241,7 +241,7 @@ To do that, we're going to use a dirty flag:
 
 ``` {.python}
 class BlockLayout:
-    def __init__(self, node, parent, previous):
+    def __init__(self, node, parent, previous, frame):
         # ...
         self.dirty_children = True
 ```
@@ -265,7 +265,7 @@ dirty flag any time that API is called:
 
 ``` {.python}
 class JSContext:
-    def innerHTML_set(self, handle, s):
+    def innerHTML_set(self, handle, s, window_id):
         # ...
         elt.layout_object.dirty_children = True
 ```
@@ -279,7 +279,7 @@ protects. `BlockLayout` uses its `children` field in three places: to
 recursively call `layout` on all its children; to compute its
 `height`; and to `paint` itself. Let's add a check in each place:
 
-``` {.python}
+``` {.python replace=self.height/new_height}
 class BlockLayout:
     def layout(self, zoom):
         # ...
@@ -288,11 +288,10 @@ class BlockLayout:
         for child in self.children:
             child.layout(zoom)
             
-        assert self.dirty_children
-        self.height = display_px(
-            sum([child.height for child in self.children]), zoom)
+        assert not self.dirty_children
+        self.height = sum([child.height for child in self.children])
 
-    def paint(self, display_list):
+    def paint(self, display_list, zoom):
         assert not self.dirty_children
         # ...
 ```
@@ -312,11 +311,12 @@ right after that `if` statement:
 ``` {.python}
 class BlockLayout:
     def layout(self, zoom):
-        if layout_mode(self.node) == "block":
-            # ...
-        else:
-            # ...
-        self.dirty_children = False
+        if self.dirty_children:
+            if mode == "block":
+                # ...
+            else:
+                # ...
+            self.dirty_children = False
 ```
 
 Before going further, rerun your browser and test it on a web page
@@ -332,7 +332,7 @@ move it into the two branches of the `if` statement:
 ``` {.python}
 class BlockLayout:
     def layout(self, zoom):
-        if layout_mode(self.node) == "block":
+        if mode == "block":
             self.children = []
             # ...
         else:
@@ -347,8 +347,8 @@ date:
 ``` {.python}
 class BlockLayout:
     def layout(self, zoom):
-        if layout_mode(self.node) == "block":
-            if self.dirty_children:
+        if self.dirty_children:
+            if mode == "block":
                 # ...
 ```
 
@@ -363,10 +363,11 @@ statement:
 ``` {.python}
 class BlockLayout:
     def layout(self, zoom):
-        else:
-            self.children = []
-            self.new_line()
-            self.recurse(self.node)
+        if self.dirty_children:
+            else:
+                self.children = []
+                self.new_line()
+                self.recurse(self.node, zoom)
 ```
 
 Here the `new_line` and `recurse` methods add new layout objects to
@@ -406,7 +407,7 @@ value and compare:
 
 ``` {.python}
 class BlockLayout:
-    def __init__(self):
+    def __init__(self, node, parent, previous, frame):
         # ...
         self.dirty_zoom = True
         self.zoom = None
@@ -426,7 +427,7 @@ class BlockLayout:
     def layout(self, zoom):
         if self.dirty_zoom:
             # ...
-            self.dirty_children = True
+            self.dirty_width = True
             self.dirty_zoom = False
 ```
 
@@ -436,18 +437,19 @@ flag:
 ``` {.python}
 class BlockLayout:
     def layout(self, zoom):
-        # ...
-        else:
-            assert not self.dirty_zoom
-            self.recurse(self.node, zoom)           
-        # ...
+        if self.dirty_children:
+            else:
+                # ...
+                assert not self.dirty_zoom
+                self.recurse(self.node, zoom)           
+                # ...
 ```
 
 Now let's look at `dirty_style`:
 
 ``` {.python}
 class BlockLayout:
-    def __init__(self):
+    def __init__(self, node, parent, previous, frame):
         # ...
         self.dirty_style = True
 ```
@@ -457,13 +459,13 @@ use to set the `dirty_style` flag:
 
 ``` {.python}
 class BlockLayout:
-    def __init__(self):
+    def __init__(self, node, parent, previous, frame):
         # ...
         self.dirty_style = True
 
-def style(node, rules, tab):
+def style(node, rules, frame):
     # ...
-    if node.style != old_style:
+    if node.style != old_style and node.layout_object:
         node.layout_object.dirty_style = True
 ```
 
@@ -483,7 +485,7 @@ used in `recurse`, let's check it before we use it:
 
 ``` {.python}
 class BlockLayout:
-    def recurse(self):
+    def recurse(self, node, zoom):
         assert not self.dirty_style
         # ...
 ```
@@ -494,7 +496,7 @@ skip redundant re-allocations of layout objects, we just need to add
 
 ``` {.python}
 class BlockLayout:
-    def __init__(self):
+    def __init__(self, node, parent, previous, frame):
         # ...
         self.dirty_width = True
 ```
@@ -523,7 +525,7 @@ class BlockLayout:
         # ...
         if self.dirty_width:
             assert not self.parent.dirty_width
-            self.width = display_px(self.parent.width, self.zoom)
+            self.width = self.parent.width
             self.dirty_children = True
             for child in self.children:
                 child.dirty_width = True
@@ -562,8 +564,8 @@ and `recurse`:
 class BlockLayout:
     def layout(self, zoom):
         # ...
-        if self.needs_children:
-            mode = layout_mode(self.node)
+        mode = layout_mode(self.node)
+        if self.dirty_children:
             if mode == "block":
                 # ...
             else:
@@ -597,9 +599,9 @@ redundant recomputations of these three fields.
 Here we again need to think about dependencies. The computations for
 these three fields look like this:
 
-``` {.python}
+``` {.python expected=False}
 class BlockLayout:
-    def layout(self):
+    def layout(self, zoom):
         # ...
         self.x = self.parent.x
         if self.previous:
@@ -607,8 +609,7 @@ class BlockLayout:
         else:
             self.y = self.parent.y
         # ...
-        self.height = sum([
-            child.height for child in self.children])
+        self.height = sum([child.height for child in self.children])
 ```
 
 Thus, the dependencies of each field are:
@@ -633,7 +634,7 @@ Putting that into code, we get the following code:
 
 ``` {.python}
 class BlockLayout:
-    def layout(self):
+    def layout(self, zoom):
         # ...
         if self.dirty_x:
             assert not self.parent.dirty_x
@@ -660,7 +661,7 @@ class LineLayout:
         self.dirty_x = True
         self.dirty_y = True
 
-    def layout(self):
+    def layout(self, zoom):
         # ...
         self.dirty_width = False
         self.dirty_height = False
@@ -685,9 +686,9 @@ The `dirty_height` flag is kind of similar; for that we must:
 
 That code looks like this:
 
-``` {.python}
+``` {.python replace=self.height/new_height}
 class BlockLayout:
-    def layout(self):
+    def layout(self, zoom):
         # ...
         if self.dirty_height:
             assert not self.dirty_children
@@ -730,7 +731,7 @@ to the `dirty_height` block which sets `dirty_y`:
 
 ``` {.python}
 class BlockLayout:
-    def layout(self):
+    def layout(self, zoom):
         if self.dirty_y:
             assert not self.previous or not self.previous.dirty_y
             assert not self.previous or not self.previous.dirty_height
@@ -741,12 +742,14 @@ class BlockLayout:
                 self.y = self.parent.y
             for child in self.children:
                 child.dirty_y = True
-            if self.next: self.next.dirty_y = True
+            if self.next:
+                self.next.dirty_y = True
             self.dirty_y = False
         # ...
         if self.dirty_height:
             # ...
-            if self.next: self.next.dirty_y = True
+            if self.next:
+                self.next.dirty_y = True
 ```
 
 Since we need to access the next sibling, we will also need to save
@@ -754,10 +757,10 @@ that:
 
 ``` {.python}
 class BlockLayout:
-    def __init__(self, node, parent, previous):
+    def __init__(self, node, parent, previous, frame):
         # ...
+        if previous: previous.next = self
         self.next = None
-        previous.next = self
 ```
 
 Note a couple of interesting things about this `dirty_y` code. First
@@ -804,7 +807,7 @@ height and compare it to the old value before setting dirty flags:
 
 ``` {.python}
 class BlockLayout:
-    def layout(self):
+    def layout(self, zoom):
         if self.dirty_height:
             for child in self.children:
                 assert not child.dirty_height
@@ -812,7 +815,8 @@ class BlockLayout:
             if self.height != new_height:
                 self.height = new_height
                 self.parent.dirty_height = True
-                if self.next: self.next.dirty_y = True
+                if self.next:
+                    self.next.dirty_y = True
             self.dirty_height = False
 ```
 
@@ -874,7 +878,7 @@ each `BlockLayout`:
 
 ``` {.python}
 class BlockLayout:
-    def __init__(self, node, parent, previous):
+    def __init__(self, node, parent, previous, frame):
         # ...
         self.dirty_descendants = True
 ```
@@ -883,9 +887,9 @@ We'll want this flag to be set if any other dirty flag is set. So, any
 time a dirty flag is set, we'll want to set the `dirty_descendants`
 flag on all ancestors:
 
-``` {.python}
+``` {.python replace=BlockLayout:/LineLayout:}
 class BlockLayout:
-    def mark_dirty(self)
+    def mark_dirty(self):
         if isinstance(self.parent, BlockLayout) and \
             not self.parent.dirty_descendants:
             self.parent.dirty_descendants = True
@@ -917,11 +921,11 @@ call:
 
 ``` {.python}
 class BlockLayout:
-    def layout(self):
+    def layout(self, zoom):
         # ... 
         if self.dirty_descendants:
             for child in self.children:
-                child.layout()
+                child.layout(zoom)
         # ... 
 ```
 
