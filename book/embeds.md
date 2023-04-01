@@ -901,7 +901,8 @@ class BlockLayout:
     # ...
     def iframe(self, node):
         if "width" in self.node.attributes:
-            w = device_px(int(self.node.attributes["width"]), self.zoom)
+            w = device_px(int(self.node.attributes["width"]),
+            self.zoom)
         else:
             w = IFRAME_WIDTH_PX + device_px(2, self.zoom)
         self.add_inline_child(node, w, IframeLayout, self.frame)

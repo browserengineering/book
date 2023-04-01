@@ -113,8 +113,8 @@ and abilities.
 ::: {.further}
 In the United States, the European Union, and many other countries,
 website accessibility is in many cases legally required. For example,
-United States Government websites are required to be accessible under [Section
-508][sec508] of the [Rehabilitation Act Amendments of
+United States Government websites are required to be accessible under
+[Section 508][sec508] of the [Rehabilitation Act Amendments of
 1973 (with amendments added later)][rehab-act], and the government has a bunch of
 [regulations][a11yreg]. In the United States, non-government websites
 are also required to be accessible under the [Americans with
@@ -123,7 +123,7 @@ exactly what that legal requirement means in practice, since it's
 mostly being done through the courts. A similar law in the European Union
 is the [European Accessibility Act][europe-a11y].
 :::
-e
+
 [sec508]: https://www.access-board.gov/law/ra.html#section-508-federal-electronic-and-information-technology
 [rehab-act]: https://www.access-board.gov/law/ra.html
 [ada]: https://www.ada.gov/ada_intro.htm
