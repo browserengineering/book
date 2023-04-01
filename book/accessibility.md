@@ -123,7 +123,7 @@ exactly what that legal requirement means in practice, since it's
 mostly being done through the courts. A similar law in the European Union
 is the [European Accessibility Act][europe-a11y].
 :::
-
+e
 [sec508]: https://www.access-board.gov/law/ra.html#section-508-federal-electronic-and-information-technology
 [rehab-act]: https://www.access-board.gov/law/ra.html
 [ada]: https://www.ada.gov/ada_intro.htm
@@ -249,61 +249,21 @@ class Tab:
 
 The `zoom` factor is supposed to multiply all CSS sizes, so we'll need
 access to it during layout. There's a few ways to do this, but the
-easiest is just to pass it in as an argument to `layout`:
+easiest is just to make it a constructor parameter to all layout object
+types. Here's `DocumentLayout` for example (I've omitted all the rest):
 
 ``` {.python}
-class Tab:
-	# ...
-	def render(self):
-			# ...
-			self.document.layout(self.zoom)
-```
-
-The `LineLayout` and `DocumentLayout` classes just pass on the zoom to
-their children:
-
-``` {.python}
-class LineLayout:
-	# ...
-    def layout(self, zoom):
-        for word in self.children:
-            word.layout(zoom)
-
 class DocumentLayout:
-	# ...
-    def layout(self, zoom):
-    	# ...
-        child.layout(zoom)
-```
-
-However, `BlockLayout`, `TextLayout`, and `InputLayout` have to
-handle zoom specially, because the elements they represent have to be
-scaled by the `zoom` multiplier. First, pass the `zoom` argument into
-the `recurse` method and from there into `text` and `input`:
-
-``` {.python}
-class BlockLayout:
-	# ...
-    def layout(self, zoom):
-    	# ...
-        self.recurse(self.node, zoom)
+    def __init__(self, node, zoom):
         # ...
-        for child in self.children:
-            child.layout(zoom)
+        self.zoom = zoom
 
-    def recurse(self, node, zoom):
-        if isinstance(node, Text):
-            self.text(node, zoom)
-        else:
-        	# ...
-            elif node.tag == "input" or node.tag == "button":
-                self.input(node, zoom)
-            else:
-                for child in node.children:
-                    self.recurse(child, zoom)
+    def layout(self):
+        child = BlockLayout(self.node, self, None, self.zoom)
+        # ...
 ```
 
-These two methods now need to scale their font sizes to account for
+Various methods now need to scale their font sizes to account for
 `zoom`. Since scaling by `zoom` is a common operation, let's wrap it
 in a helper method, `device_px`:
 
@@ -324,23 +284,23 @@ We'll do this conversion to adjust the font sizes in the `text` and
 ``` {.python}
 class BlockLayout:
 	# ....
-    def text(self, node, zoom):
+    def text(self, node):
     	# ...
-        size = device_px(float(node.style["font-size"][:-2]), zoom)
+        size = device_px(float(node.style["font-size"][:-2]), self.zoom)
 
-    def input(self, node, zoom):
+    def input(self, node):
 	    # ...
-        size = device_px(float(node.style["font-size"][:-2]), zoom)
+        size = device_px(float(node.style["font-size"][:-2]), self.zoom)
 ```
 
 
 ``` {.python}
 class InputLayout:
     # ....
-    def layout(self, zoom):
+    def layout(self):
         # ...
         size = \
-            device_px(float(self.node.style["font-size"][:-2]), zoom)
+            device_px(float(self.node.style["font-size"][:-2]), self.zoom)
 ```
 
 As well as the font size in `TextLayout`:[^min-font-size]
@@ -358,10 +318,10 @@ sizes][relative-font-size].
 ``` {.python}
 class TextLayout:
 	# ...
-    def layout(self, zoom):
+    def layout(self):
     	# ...
         size = device_px(
-        	float(self.node.style["font-size"][:-2]), zoom)
+        	float(self.node.style["font-size"][:-2]), self.zoom)
 ```
 
 And the fixed `INPUT_WIDTH_PX` for text boxes:
@@ -369,8 +329,8 @@ And the fixed `INPUT_WIDTH_PX` for text boxes:
 ``` {.python }
 class BlockLayout:
 	# ...
-    def input(self, node, zoom):
-        w = device_px(INPUT_WIDTH_PX, zoom)	
+    def input(self, node):
+        w = device_px(INPUT_WIDTH_PX, self.zoom)	
 ```
 
 Finally, one tricky place we need to adjust for zoom is inside
@@ -384,13 +344,13 @@ pixels and *does* need to be converted:
 ``` {.python}
 class DocumentLayout:
 	# ...
-    def layout(self, zoom):
+    def layout(self):
     	# ...
-        self.width = WIDTH - 2 * device_px(HSTEP, zoom)
-        self.x = device_px(HSTEP, zoom)
-        self.y = device_px(VSTEP, zoom)
-        child.layout(zoom)
-        self.height = child.height + 2* device_px(VSTEP, zoom)
+        self.width = WIDTH - 2 * device_px(HSTEP, self.zoom)
+        self.x = device_px(HSTEP, self.zoom)
+        self.y = device_px(VSTEP, self.zoom)
+        child.layout()
+        self.height = child.height + 2* device_px(VSTEP, self.zoom)
 ```
 
 Now try it out. All of the fonts should get about 10% bigger each
@@ -1146,20 +1106,17 @@ def paint_outline(node, cmds, rect, zoom):
 ```
 
 Call it in `InputLayout` to make sure text entries and buttons get outlines.
-Also note that, because we now need access to `zoom` in all of the paint
-functions, you'll need to add that paramter to all of them
-(`DocumentLayout`, `BlockLayout`, etc).
 
 ``` {.python}
 class InputLayout:
-	def paint(self, display_list, zoom):
+	def paint(self, display_list):
 		# ...
         if self.node.is_focused and self.node.tag == "input":
             cx = rect.left() + self.font.measureText(text)
             cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom()))
 
         cmds = paint_visual_effects(self.node, cmds, rect)
-        paint_outline(self.node, cmds, rect, zoom)
+        paint_outline(self.node, cmds, rect, self.zoom)
         display_list.extend(cmds)
 ```
 
@@ -1177,7 +1134,7 @@ and draws a rectangle around them all:
 
 ``` {.python}
 class LineLayout:
-    def paint(self, display_list, zoom):
+    def paint(self, display_list):
         # ...
         outline_rect = skia.Rect.MakeEmpty()
         focused_node = None
@@ -1188,7 +1145,7 @@ class LineLayout:
                 outline_rect.join(child.rect())
         if focused_node:
             paint_outline(
-                focused_node, display_list, outline_rect, zoom)
+                focused_node, display_list, outline_rect, self.zoom)
 ```
 
 You should also add a `paint_outline` call to `BlockLayout`, since
@@ -1441,7 +1398,7 @@ to the browser style sheet above:
 
 ``` {.python}
 class LineLayout:
-    def paint(self, display_list, zoom):
+    def paint(self, display_list):
         for child in self.children:
             if has_outline(node.parent):
                 # ...
@@ -2183,7 +2140,7 @@ like this:
 
 ``` {.python}
 class BlockLayout:
-    def __init__(self, node, parent, previous):
+    def __init__(self, node, parent, previous, zoom):
         # ...
         node.layout_object = self
 ```
