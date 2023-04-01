@@ -145,27 +145,28 @@ class DrawImage(DisplayItem):
             self.rect)
 
 class DocumentLayout:
-    def __init__(self, node, frame):
+    def __init__(self, node, frame, zoom):
         self.node = node
         self.frame = frame
         node.layout_object = self
         self.parent = None
         self.previous = None
         self.children = []
+        self.zoom = zoom
 
-    def layout(self, zoom, width):
-        child = BlockLayout(self.node, self, None, self.frame)
+    def layout(self, width):
+        child = BlockLayout(self.node, self, None, self.frame, self.zoom)
         self.children.append(child)
 
-        self.width = width - 2 * device_px(HSTEP, zoom)
-        self.x = device_px(HSTEP, zoom)
-        self.y = device_px(VSTEP, zoom)
-        child.layout(zoom)
-        self.height = child.height + 2 * device_px(VSTEP, zoom)
+        self.width = width - 2 * device_px(HSTEP, self.zoom)
+        self.x = device_px(HSTEP, self.zoom)
+        self.y = device_px(VSTEP, self.zoom)
+        child.layout()
+        self.height = child.height + 2 * device_px(VSTEP, self.zoom)
 
-    def paint(self, display_list, dark_mode, scroll, zoom):
+    def paint(self, display_list, dark_mode, scroll):
         cmds = []
-        self.children[0].paint(cmds, zoom)
+        self.children[0].paint(cmds)
         if scroll != None and scroll != 0:
             rect = skia.Rect.MakeLTRB(
                 self.x, self.y,
@@ -185,7 +186,7 @@ def font(node, zoom):
     return get_font(font_size, weight, style)
 
 class BlockLayout:
-    def __init__(self, node, parent, previous, frame):
+    def __init__(self, node, parent, previous, frame, zoom):
         self.node = node
         node.layout_object = self
         self.parent = parent
@@ -196,8 +197,9 @@ class BlockLayout:
         self.width = None
         self.height = None
         self.frame = frame
+        self.zoom = zoom
 
-    def layout(self, zoom):
+    def layout(self):
         self.width = self.parent.width
         self.x = self.parent.x
 
@@ -210,80 +212,82 @@ class BlockLayout:
         if mode == "block":
             previous = None
             for child in self.node.children:
-                next = BlockLayout(child, self, previous, self.frame)
+                next = BlockLayout(child, self, previous, self.frame, self.zoom)
                 self.children.append(next)
                 previous = next
         else:
             self.new_line()
-            self.recurse(self.node, zoom)
+            self.recurse(self.node)
 
         for child in self.children:
-            child.layout(zoom)
+            child.layout()
 
         self.height = sum([child.height for child in self.children])
 
 
-    def recurse(self, node, zoom):
+    def recurse(self, node):
         if isinstance(node, Text):
-            self.text(node, zoom)
+            self.text(node)
         else:
             if node.tag == "br":
                 self.new_line()
             elif node.tag == "input" or node.tag == "button":
-                self.input(node, zoom)
+                self.input(node)
             elif node.tag == "img":
-                self.image(node, zoom)
+                self.image(node)
             elif node.tag == "iframe" and \
                  "src" in node.attributes:
-                self.iframe(node, zoom)
+                self.iframe(node)
             else:
                 for child in node.children:
-                    self.recurse(child, zoom)
+                    self.recurse(child)
 
     def new_line(self):
         self.previous_word = None
         self.cursor_x = self.x
         last_line = self.children[-1] if self.children else None
-        new_line = LineLayout(self.node, self, last_line)
+        new_line = LineLayout(self.node, self, last_line, self.zoom)
         self.children.append(new_line)
 
-    def add_inline_child(self, node, zoom, w, child_class, frame, word=None):
+    def add_inline_child(self, node, w, child_class, frame, word=None):
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
         if word:
-            child = child_class(node, line, self.previous_word, word)
+            child = child_class(node, line, self.previous_word, word,
+                self.zoom)
         else:
-            child = child_class(node, line, self.previous_word, frame)
+            child = child_class(node, line, self.previous_word, frame,
+                self.zoom)
         line.children.append(child)
         self.previous_word = child
-        self.cursor_x += w + font(node, zoom).measureText(" ")
+        self.cursor_x += w + font(node, self.zoom).measureText(" ")
 
-    def text(self, node, zoom):
-        node_font = font(node, zoom)
+    def text(self, node):
+        node_font = font(node, self.zoom)
         for word in node.text.split():
             w = node_font.measureText(word)
-            self.add_inline_child(node, zoom, w, TextLayout, self.frame, word)
+            self.add_inline_child(node, w, TextLayout, self.frame, word)
 
-    def input(self, node, zoom):
-        w = device_px(INPUT_WIDTH_PX, zoom)
-        self.add_inline_child(node, zoom, w, InputLayout, self.frame) 
+    def input(self, node):
+        w = device_px(INPUT_WIDTH_PX, self.zoom)
+        self.add_inline_child(node, w, InputLayout, self.frame) 
 
-    def image(self, node, zoom):
+    def image(self, node):
         if "width" in node.attributes:
-            w = device_px(int(node.attributes["width"]), zoom)
+            w = device_px(int(node.attributes["width"]), self.zoom)
         else:
-            w = device_px(node.image.width(), zoom)
-        self.add_inline_child(node, zoom, w, ImageLayout, self.frame)
+            w = device_px(node.image.width(), self.zoom)
+        self.add_inline_child(node, w, ImageLayout, self.frame)
 
-    def iframe(self, node, zoom):
+    def iframe(self, node):
         if "width" in self.node.attributes:
-            w = device_px(int(self.node.attributes["width"]), zoom)
+            w = device_px(int(self.node.attributes["width"]), self.zoom)
         else:
-            w = IFRAME_WIDTH_PX + device_px(2, zoom)
-        self.add_inline_child(node, zoom, w, IframeLayout, self.frame)
+            w = IFRAME_WIDTH_PX + device_px(2, self.zoom)
+        self.add_inline_child(node, w, IframeLayout, self.frame)
 
-    def paint(self, display_list, zoom):
+    def paint(self, display_list):
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
@@ -300,11 +304,11 @@ class BlockLayout:
                 radius = device_px(
                     float(self.node.style.get(
                         "border-radius", "0px")[:-2]),
-                    zoom)
+                    self.oom)
                 cmds.append(DrawRRect(rect, radius, bgcolor))
  
         for child in self.children:
-            child.paint(cmds, zoom)
+            child.paint(cmds)
 
         if not is_atomic:
             cmds = paint_visual_effects(self.node, cmds, rect)
@@ -315,7 +319,7 @@ class BlockLayout:
             self.x, self.x, self.width, self.height, self.node)
 
 class EmbedLayout:
-    def __init__(self, node, parent, previous, frame):
+    def __init__(self, node, parent, previous, frame, zoom):
         self.node = node
         self.frame = frame
         node.layout_object = self
@@ -327,6 +331,7 @@ class EmbedLayout:
         self.width = None
         self.height = None
         self.font = None
+        self.zoom = zoom
 
     def get_ascent(self, font_multiplier=1.0):
         return -self.height
@@ -334,8 +339,8 @@ class EmbedLayout:
     def get_descent(self, font_multiplier=1.0):
         return 0
 
-    def layout(self, zoom):
-        self.font = font(self.node, zoom)
+    def layout(self):
+        self.font = font(self.node, self.zoom)
         if self.previous:
             space = self.previous.font.measureText(" ")
             self.x = \
@@ -344,16 +349,16 @@ class EmbedLayout:
             self.x = self.parent.x
 
 class InputLayout(EmbedLayout):
-    def __init__(self, node, parent, previous, frame):
-        super().__init__(node, parent, previous, frame)
+    def __init__(self, node, parent, previous, frame, zoom):
+        super().__init__(node, parent, previous, frame, zoom)
 
-    def layout(self, zoom):
-        super().layout(zoom)
+    def layout(self):
+        super().layout()
 
-        self.width = device_px(INPUT_WIDTH_PX, zoom)
+        self.width = device_px(INPUT_WIDTH_PX, self.zoom)
         self.height = linespace(self.font)
 
-    def paint(self, display_list, zoom):
+    def paint(self, display_list,):
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
@@ -365,7 +370,7 @@ class InputLayout(EmbedLayout):
         if bgcolor != "transparent":
             radius = device_px(
                 float(self.node.style.get("border-radius", "0px")[:-2]),
-                zoom)
+                self.zoom)
             cmds.append(DrawRRect(rect, radius, bgcolor))
 
         if self.node.tag == "input":
@@ -387,7 +392,7 @@ class InputLayout(EmbedLayout):
             cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom()))
 
         cmds = paint_visual_effects(self.node, cmds, rect)
-        paint_outline(self.node, cmds, rect, zoom)
+        paint_outline(self.node, cmds, rect, self.zoom)
         display_list.extend(cmds)
 
     def __repr__(self):
@@ -395,7 +400,7 @@ class InputLayout(EmbedLayout):
             self.x, self.y, self.width, self.height)
 
 class LineLayout:
-    def __init__(self, node, parent, previous):
+    def __init__(self, node, parent, previous, zoom):
         self.node = node
         self.parent = parent
         self.previous = previous
@@ -404,8 +409,9 @@ class LineLayout:
         self.y = None
         self.width = None
         self.height = None
+        self.zoom = zoom
 
-    def layout(self, zoom):
+    def layout(self):
         self.width = self.parent.width
         self.x = self.parent.x
 
@@ -415,7 +421,7 @@ class LineLayout:
             self.y = self.parent.y
 
         for word in self.children:
-            word.layout(zoom)
+            word.layout()
 
         if not self.children:
             self.height = 0
@@ -430,7 +436,7 @@ class LineLayout:
                            for child in self.children])
         self.height = max_ascent + max_descent
 
-    def paint(self, display_list, zoom):
+    def paint(self, display_list):
         outline_rect = skia.Rect.MakeEmpty()
         outline_node = None
         for child in self.children:
@@ -438,10 +444,10 @@ class LineLayout:
             if isinstance(node, Text) and has_outline(node.parent):
                 outline_node = node.parent
                 outline_rect.join(child.rect())
-            child.paint(display_list, zoom)
+            child.paint(display_list)
 
         if outline_node:
-            paint_outline(outline_node, display_list, outline_rect, zoom)
+            paint_outline(outline_node, display_list, outline_rect, self.zoom)
 
     def role(self):
         return "none"
@@ -451,7 +457,7 @@ class LineLayout:
             self.x, self.y, self.width, self.height, self.node)
 
 class TextLayout:
-    def __init__(self, node, parent, previous, word):
+    def __init__(self, node, parent, previous, word, zoom):
         self.node = node
         self.word = word
         self.children = []
@@ -462,6 +468,7 @@ class TextLayout:
         self.width = None
         self.height = None
         self.font = None
+        self.zoom = zoom
 
     def get_ascent(self, font_multiplier=1.0):
         return self.font.getMetrics().fAscent * font_multiplier
@@ -469,8 +476,8 @@ class TextLayout:
     def get_descent(self, font_multiplier=1.0):
         return self.font.getMetrics().fDescent * font_multiplier
 
-    def layout(self, zoom):
-        self.font = font(self.node, zoom)
+    def layout(self):
+        self.font = font(self.node, self.zoom)
 
         # Do not set self.y!!!
         self.width = self.font.measureText(self.word)
@@ -483,7 +490,7 @@ class TextLayout:
 
         self.height = linespace(self.font)
 
-    def paint(self, display_list, zoom):
+    def paint(self, display_list):
         color = self.node.style["color"]
         display_list.append(
             DrawText(self.x, self.y, self.word, self.font, color))
@@ -508,11 +515,11 @@ def filter_quality(node):
         return skia.FilterQuality.kMedium_FilterQuality
 
 class ImageLayout(EmbedLayout):
-    def __init__(self, node, parent, previous, frame):
-        super().__init__(node, parent, previous, frame)
+    def __init__(self, node, parent, previous, frame, zoom):
+        super().__init__(node, parent, previous, frame, zoom)
 
-    def layout(self, zoom):
-        super().layout(zoom)
+    def layout(self):
+        super().layout()
 
         width_attr = self.node.attributes.get("width")
         height_attr = self.node.attributes.get("height")
@@ -521,21 +528,21 @@ class ImageLayout(EmbedLayout):
         aspect_ratio = image_width / image_height
 
         if width_attr and height_attr:
-            self.width = device_px(int(width_attr), zoom)
-            self.img_height = device_px(int(height_attr), zoom)
+            self.width = device_px(int(width_attr), self.zoom)
+            self.img_height = device_px(int(height_attr), self.zoom)
         elif width_attr:
-            self.width = device_px(int(width_attr), zoom)
+            self.width = device_px(int(width_attr), self.zoom)
             self.img_height = self.width / aspect_ratio
         elif height_attr:
-            self.img_height = device_px(int(height_attr), zoom)
+            self.img_height = device_px(int(height_attr), self.zoom)
             self.width = self.img_height * aspect_ratio
         else:
-            self.width = device_px(image_width, zoom)
-            self.img_height = device_px(image_height, zoom)
+            self.width = device_px(image_width, self.zoom)
+            self.img_height = device_px(image_height, self.zoom)
 
         self.height = max(self.img_height, linespace(self.font))
 
-    def paint(self, display_list, zoom):
+    def paint(self, display_list):
         cmds = []
         rect = skia.Rect.MakeLTRB(
             self.x, self.y + self.height - self.img_height,
@@ -553,32 +560,32 @@ IFRAME_WIDTH_PX = 300
 IFRAME_HEIGHT_PX = 150
 
 class IframeLayout(EmbedLayout):
-    def __init__(self, node, parent, previous, parent_frame):
-        super().__init__(node, parent, previous, parent_frame)
+    def __init__(self, node, parent, previous, parent_frame, zoom):
+        super().__init__(node, parent, previous, parent_frame, zoom)
 
-    def layout(self, zoom):
-        super().layout(zoom)
+    def layout(self):
+        super().layout()
 
         width_attr = self.node.attributes.get("width")
         height_attr = self.node.attributes.get("height")
 
         if width_attr:
-            self.width = device_px(int(width_attr) + 2, zoom)
+            self.width = device_px(int(width_attr) + 2, self.zoom)
         else:
-            self.width = device_px(IFRAME_WIDTH_PX + 2, zoom)
+            self.width = device_px(IFRAME_WIDTH_PX + 2, self.zoom)
 
         if height_attr:
-            self.height = device_px(int(height_attr) + 2, zoom)
+            self.height = device_px(int(height_attr) + 2, self.zoom)
         else:
-            self.height = device_px(IFRAME_HEIGHT_PX + 2, zoom)
+            self.height = device_px(IFRAME_HEIGHT_PX + 2, self.zoom)
 
         if self.node.frame:
             self.node.frame.frame_height = \
-                self.height - device_px(2, zoom)
+                self.height - device_px(2, self.zoom)
             self.node.frame.frame_width = \
-                self.width - device_px(2, zoom)
+                self.width - device_px(2, self.zoom)
 
-    def paint(self, display_list, zoom):
+    def paint(self, display_list):
         frame_cmds = []
 
         rect = skia.Rect.MakeLTRB(
@@ -593,16 +600,16 @@ class IframeLayout(EmbedLayout):
             frame_cmds.append(DrawRRect(rect, radius, bgcolor))
 
         if self.node.frame:
-            self.node.frame.paint(frame_cmds, zoom)
+            self.node.frame.paint(frame_cmds)
 
-        diff = device_px(1, zoom)
+        diff = device_px(1, self.zoom)
         offset = (self.x + diff, self.y + diff)
         cmds = [Transform(offset, rect, self.node, frame_cmds)]
         inner_rect = skia.Rect.MakeLTRB(
             self.x + diff, self.y + diff,
             self.x + self.width - diff, self.y + self.height - diff)
         cmds = paint_visual_effects(self.node, cmds, inner_rect)
-        paint_outline(self.node, cmds, rect, zoom)
+        paint_outline(self.node, cmds, rect, self.zoom)
         display_list.extend(cmds)
 
     def __repr__(self):
@@ -1259,8 +1266,8 @@ class Frame:
             self.needs_style = False
 
         if self.needs_layout:
-            self.document = DocumentLayout(self.nodes, self)
-            self.document.layout(self.tab.zoom, self.frame_width)
+            self.document = DocumentLayout(self.nodes, self, self.tab.zoom)
+            self.document.layout(self.frame_width)
             if self.tab.accessibility_is_on:
                 self.tab.needs_accessibility = True
             else:
@@ -1272,10 +1279,9 @@ class Frame:
             self.scroll_changed_in_frame = True
         self.scroll = clamped_scroll
 
-    def paint(self, display_list, zoom):
+    def paint(self, display_list):
         self.document.paint(display_list, self.tab.dark_mode,
-            self.scroll if self != self.tab.root_frame else None,
-            zoom)
+            self.scroll if self != self.tab.root_frame else None)
 
     def advance_tab(self):
         focusable_nodes = [node
@@ -1549,7 +1555,7 @@ class Tab:
 
         if self.needs_paint:
             self.display_list = []
-            self.root_frame.paint(self.display_list, self.zoom)
+            self.root_frame.paint(self.display_list)
             self.needs_paint = False
 
         self.measure_render.stop()

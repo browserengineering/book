@@ -136,7 +136,7 @@ def paint_outline(node, cmds, rect, zoom):
         cmds.append(DrawOutline(rect, color, thickness))
 
 class BlockLayout:
-    def __init__(self, node, parent, previous):
+    def __init__(self, node, parent, previous, zoom):
         self.node = node
         node.layout_object = self
         self.parent = parent
@@ -146,8 +146,9 @@ class BlockLayout:
         self.y = None
         self.width = None
         self.height = None
+        self.zoom = zoom
 
-    def layout(self, zoom):
+    def layout(self):
         self.width = self.parent.width
         self.x = self.parent.x
 
@@ -160,67 +161,67 @@ class BlockLayout:
         if mode == "block":
             previous = None
             for child in self.node.children:
-                next = BlockLayout(child, self, previous)
+                next = BlockLayout(child, self, previous, self.zoom)
                 self.children.append(next)
                 previous = next
         else:
             self.new_line()
-            self.recurse(self.node, zoom)
+            self.recurse(self.node)
 
         for child in self.children:
-            child.layout(zoom)
+            child.layout()
 
         self.height = sum([child.height for child in self.children])
 
-    def recurse(self, node, zoom):
+    def recurse(self, node):
         if isinstance(node, Text):
-            self.text(node, zoom)
+            self.text(node)
         else:
             if node.tag == "br":
                 self.new_line()
             elif node.tag == "input" or node.tag == "button":
-                self.input(node, zoom)
+                self.input(node)
             else:
                 for child in node.children:
-                    self.recurse(child, zoom)
+                    self.recurse(child)
 
     def new_line(self):
         self.previous_word = None
         self.cursor_x = 0
         last_line = self.children[-1] if self.children else None
-        new_line = LineLayout(self.node, self, last_line)
+        new_line = LineLayout(self.node, self, last_line, self.zoom)
         self.children.append(new_line)
 
-    def text(self, node, zoom):
+    def text(self, node):
         weight = node.style["font-weight"]
         style = node.style["font-style"]
-        size = device_px(float(node.style["font-size"][:-2]), zoom)
+        size = device_px(float(node.style["font-size"][:-2]), self.zoom)
         font = get_font(size, weight, size)
         for word in node.text.split():
             w = font.measureText(word)
             if self.cursor_x + w > self.width:
                 self.new_line()
             line = self.children[-1]
-            text = TextLayout(node, word, line, self.previous_word)
+            text = TextLayout(node, word, line, self.previous_word, self.zoom)
             line.children.append(text)
             self.previous_word = text
             self.cursor_x += w + font.measureText(" ")
 
-    def input(self, node, zoom):
-        w = device_px(INPUT_WIDTH_PX, zoom)
+    def input(self, node):
+        w = device_px(INPUT_WIDTH_PX, self.zoom)
         if self.cursor_x + w > self.width:
             self.new_line()
         line = self.children[-1]
-        input = InputLayout(node, line, self.previous_word)
+        input = InputLayout(node, line, self.previous_word, self.zoom)
         line.children.append(input)
         self.previous_word = input
         weight = node.style["font-weight"]
         style = node.style["font-style"]
-        size = device_px(float(node.style["font-size"][:-2]), zoom)
+        size = device_px(float(node.style["font-size"][:-2]), self.zoom)
         font = get_font(size, weight, size)
         self.cursor_x += w + font.measureText(" ")
 
-    def paint(self, display_list, zoom):
+    def paint(self, display_list):
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
@@ -236,16 +237,16 @@ class BlockLayout:
             if bgcolor != "transparent":
                 radius = device_px(
                     float(self.node.style.get("border-radius", "0px")[:-2]),
-                        zoom)
+                        self.zoom)
                 cmds.append(DrawRRect(rect, radius, bgcolor))
  
         for child in self.children:
-            child.paint(cmds, zoom)
+            child.paint(cmds)
 
         if not is_atomic:
             cmds = paint_visual_effects(self.node, cmds, rect)
             paint_outline(
-                self.node, cmds, rect, zoom)
+                self.node, cmds, rect, self.zoom)
 
         display_list.extend(cmds)
 
@@ -254,7 +255,7 @@ class BlockLayout:
             layout_mode(self.node), self.x, self.y, self.width, self.height, self.node)
 
 class LineLayout:
-    def __init__(self, node, parent, previous):
+    def __init__(self, node, parent, previous, zoom):
         self.node = node
         self.parent = parent
         self.previous = previous
@@ -263,8 +264,9 @@ class LineLayout:
         self.y = None
         self.width = None
         self.height = None
+        self.zoom = zoom
 
-    def layout(self, zoom):
+    def layout(self):
         self.width = self.parent.width
         self.x = self.parent.x
 
@@ -274,7 +276,7 @@ class LineLayout:
             self.y = self.parent.y
 
         for word in self.children:
-            word.layout(zoom)
+            word.layout()
 
         if not self.children:
             self.height = 0
@@ -289,9 +291,9 @@ class LineLayout:
                            for word in self.children])
         self.height = 1.25 * (max_ascent + max_descent)
 
-    def paint(self, display_list, zoom):
+    def paint(self, display_list):
         for child in self.children:
-            child.paint(display_list, zoom)
+            child.paint(display_list)
 
         outline_rect = skia.Rect.MakeEmpty()
         focused_node = None
@@ -303,7 +305,7 @@ class LineLayout:
 
         if focused_node:
             paint_outline(
-                focused_node, display_list, outline_rect, zoom)
+                focused_node, display_list, outline_rect, self.zoom)
 
     def role(self):
         return "none"
@@ -361,31 +363,32 @@ def style(node, rules, tab):
         style(child, rules, tab)
 
 class DocumentLayout:
-    def __init__(self, node):
+    def __init__(self, node, zoom):
         self.node = node
         node.layout_object = self
         self.parent = None
         self.previous = None
         self.children = []
+        self.zoom = zoom
 
-    def layout(self, zoom):
-        child = BlockLayout(self.node, self, None)
+    def layout(self):
+        child = BlockLayout(self.node, self, None, self.zoom)
         self.children.append(child)
 
-        self.width = WIDTH - 2 * device_px(HSTEP, zoom)
-        self.x = device_px(HSTEP, zoom)
-        self.y = device_px(VSTEP, zoom)
-        child.layout(zoom)
-        self.height = child.height + 2* device_px(VSTEP, zoom)
+        self.width = WIDTH - 2 * device_px(HSTEP, self.zoom)
+        self.x = device_px(HSTEP, self.zoom)
+        self.y = device_px(VSTEP, self.zoom)
+        child.layout()
+        self.height = child.height + 2* device_px(VSTEP, self.zoom)
 
-    def paint(self, display_list, zoom):
-        self.children[0].paint(display_list, zoom)
+    def paint(self, display_list):
+        self.children[0].paint(display_list)
 
     def __repr__(self):
         return "DocumentLayout()"
 
 class TextLayout:
-    def __init__(self, node, word, parent, previous):
+    def __init__(self, node, word, parent, previous, zoom):
         self.node = node
         self.word = word
         self.children = []
@@ -396,12 +399,13 @@ class TextLayout:
         self.width = None
         self.height = None
         self.font = None
+        self.zoom = zoom
 
-    def layout(self, zoom):
+    def layout(self):
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
         size = device_px(
-            float(self.node.style["font-size"][:-2]), zoom)
+            float(self.node.style["font-size"][:-2]), self.zoom)
         self.font = get_font(size, weight, style)
 
         # Do not set self.y!!!
@@ -415,7 +419,7 @@ class TextLayout:
 
         self.height = linespace(self.font)
 
-    def paint(self, display_list, zoom):
+    def paint(self, display_list):
         color = self.node.style["color"]
         display_list.append(
             DrawText(self.x, self.y, self.word, self.font, color))
@@ -431,7 +435,7 @@ class TextLayout:
             self.x, self.y, self.width, self.height, self.node, self.word)
 
 class InputLayout:
-    def __init__(self, node, parent, previous):
+    def __init__(self, node, parent, previous, zoom):
         self.node = node
         self.children = []
         self.parent = parent
@@ -441,15 +445,16 @@ class InputLayout:
         self.width = None
         self.height = None
         self.font = None
+        self.zoom = zoom
 
-    def layout(self, zoom):
+    def layout(self):
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
         size = \
-            device_px(float(self.node.style["font-size"][:-2]), zoom)
+            device_px(float(self.node.style["font-size"][:-2]), self.zoom)
         self.font = get_font(size, weight, style)
 
-        self.width = device_px(INPUT_WIDTH_PX, zoom)
+        self.width = device_px(INPUT_WIDTH_PX, self.zoom)
         self.height = linespace(self.font)
 
         if self.previous:
@@ -458,7 +463,7 @@ class InputLayout:
         else:
             self.x = self.parent.x
 
-    def paint(self, display_list, zoom):
+    def paint(self, display_list):
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
@@ -470,7 +475,7 @@ class InputLayout:
         if bgcolor != "transparent":
             radius = device_px(
                 float(self.node.style.get("border-radius", "0px")[:-2]),
-                zoom)
+                self.zoom)
             cmds.append(DrawRRect(rect, radius, bgcolor))
 
         if self.node.tag == "input":
@@ -492,7 +497,7 @@ class InputLayout:
             cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom()))
 
         cmds = paint_visual_effects(self.node, cmds, rect)
-        paint_outline(self.node, cmds, rect, zoom)
+        paint_outline(self.node, cmds, rect, self.zoom)
         display_list.extend(cmds)
 
     def __repr__(self):
@@ -1089,8 +1094,8 @@ class Tab:
             self.needs_style = False
 
         if self.needs_layout:
-            self.document = DocumentLayout(self.nodes)
-            self.document.layout(self.zoom)
+            self.document = DocumentLayout(self.nodes, self.zoom)
+            self.document.layout()
             self.needs_accessibility = True
             self.needs_paint = True
             self.needs_layout = False
@@ -1104,7 +1109,7 @@ class Tab:
         if self.needs_paint:
             self.display_list = []
 
-            self.document.paint(self.display_list, self.zoom)
+            self.document.paint(self.display_list)
             self.needs_paint = False
 
         self.measure_render.stop()
@@ -1717,7 +1722,7 @@ class Browser:
     def handle_enter(self):
         self.lock.acquire(blocking=True)
         if self.focus == "address bar":
-            self.schedule_load(active_tab, self.address_bar)
+            self.schedule_load(self.address_bar)
             self.url = self.address_bar
             self.focus = None
             self.set_needs_raster()
