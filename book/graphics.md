@@ -480,7 +480,7 @@ for x, y, c in self.display_list:
 The first `if` statement skips characters below the viewing window;
 the second skips characters above it. In that second `if` statement,
 `y + VSTEP` computes the bottom edge of the character, so that
-character that are halfway inside the viewing window are still drawn.
+characters that are halfway inside the viewing window are still drawn.
 
 Scrolling should now be pleasantly fast, and hopefully well within the 16ms
 animation frame budget. And because we split `layout` and `draw`, we don't need
