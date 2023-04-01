@@ -775,7 +775,7 @@ animation maximally smooth. It works like this:
 
 [raf]: https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame
 
-``` {.javascript .example}
+``` {.javascript.example}
 function callback() { /* Modify DOM */ }
 requestAnimationFrame(callback);
 ```

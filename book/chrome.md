@@ -102,7 +102,7 @@ words in the whole inline element.
 Inside the `text` method, this key line adds a word to the current
 line of text:
 
-``` {.python file=lab6 indent=12}
+``` {.python.lab6 indent=12}
 self.line.append((self.cursor_x, word, font, color))
 ```
 

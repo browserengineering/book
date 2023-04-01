@@ -32,7 +32,6 @@
         },
         "chrome.md": {
             "lab": "lab7.py",
-            "lab6": "lab6.py",
             "tests": "lab7-tests.md"
         },
 

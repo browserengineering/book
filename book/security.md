@@ -86,7 +86,7 @@ def handle_connection(conx):
 Of course, new visitors need to be told to remember their
 newly-generated token:
 
-``` {.python file=server replace=%7b%7d/%7b%7d;%20SameSite%3dLax}
+``` {.python file=server replace=%7b%7d/%7b%7d;%20SameSite=Lax}
 def handle_connection(conx):
     # ...
     if 'cookie' not in headers:
@@ -359,7 +359,7 @@ you open a second tab, you're logged in on that tab as well.
 When the browser visits a page, it needs to send the cookie for that
 site:
 
-``` {.python replace=(url/(url%2c%20top_level_url,cookie%20%3d/cookie%2c%20params%20%3d}
+``` {.python replace=(url/(url%2c%20top_level_url,cookie%20=/cookie%2c%20params%20=}
 def request(url, payload=None):
     # ...
     if host in COOKIE_JAR:
@@ -374,7 +374,7 @@ Symmetrically, the browser has to update the cookie jar when it sees a
 [^multiple-set-cookies]: A server can actually send multiple
     `Set-Cookie` headers to set multiple cookies in one request.
 
-``` {.python sub=(url with=(url,%20top_level_url sub=%3d%20kv with=%3d%20(kv%2c%20params) sub=kv with=cookie}
+``` {.python replace=(url/(url%2c%20top_level_url,=%20kv/=%20(kv%2c%20params),kv/cookie}
 def request(url, payload=None):
     # ...
     if "set-cookie" in headers:
@@ -458,7 +458,7 @@ I'll implement a minimal version here. Specifically, I'll support only
 
 [xhr-open]: https://xhr.spec.whatwg.org/#the-open()-method
 
-``` {.javascript .example}
+``` {.javascript.example}
 x = new XMLHttpRequest();
 x.open("GET", url, false);
 x.send();
@@ -557,7 +557,7 @@ could request the guest book page:
     ads on sketchy websites where users have low standards for
     security anyway.
 
-``` {.javascript .example}
+``` {.javascript.example}
 x = new XMLHttpRequest();
 x.open("GET", "http://localhost:8000/", false);
 x.send();

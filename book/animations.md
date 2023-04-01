@@ -407,7 +407,7 @@ similar code in every display command, so let's give them all a new
 that's overridden for specific display commands. For example, we can make sure
 that every display command has a `children` field:
 
-``` {.python replace=children%3d[]/rect%2c%20children%3d[]%2c%20node%3dNone}
+``` {.python replace=children=[]/rect%2c%20children=[]%2c%20node=None}
 class DisplayItem:
     def __init__(self, children=[]):
         self.children = children
@@ -430,7 +430,7 @@ class DrawRect(DisplayItem):
 Commands that already had a `children` field need to pass it to the
 `__init__` call:
 
-``` {.python replace=children%3dchildren/rect%2c%20children%3dchildren}
+``` {.python replace=children=children/rect%2c%20children=children}
 class ClipRRect(DisplayItem):
     def __init__(self, rect, radius, children, should_clip=True):
         super().__init__(children=children)
