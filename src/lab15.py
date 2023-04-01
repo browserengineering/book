@@ -596,7 +596,7 @@ class IframeLayout(EmbedLayout):
         if bgcolor != "transparent":
             radius = device_px(float(
                 self.node.style.get("border-radius", "0px")[:-2]),
-                zoom)
+                self.zoom)
             frame_cmds.append(DrawRRect(rect, radius, bgcolor))
 
         if self.node.frame:
