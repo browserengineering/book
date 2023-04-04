@@ -829,15 +829,9 @@ class Browser:
 
 if __name__ == "__main__":
     import sys
-    import argparse
-
-    parser = argparse.ArgumentParser(description='Toy browser')
-    parser.add_argument("url", type=str, help="URL to load")
-    args = parser.parse_args()
-
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
-    browser.load(args.url)
+    browser.load(sys.argv[1])
 
     event = sdl2.SDL_Event()
     while True:
