@@ -4,7 +4,8 @@ export {
     breakpoint, filesystem, ctypes, math,
     socket, ssl, tkinter, dukpy, urllib, html, random, wbetools,
     truthy, comparator, pysplit, pyrsplit, asyncfilter,
-    rt_constants, Widget, http_textarea, skia, sdl2, init_skia
+    rt_constants, Widget, http_textarea, skia, sdl2, init_skia,
+    init_window
     };
 
 function wrap_class(cls, fn) {
@@ -91,7 +92,7 @@ class socket {
             let [line1] = this.input.split("\r\n", 1);
             let [method, path, protocol] = line1.split(" ");
             this.url = this.scheme + "://" + this.host + path;
-            if (this.host == "localhost" && rt_constants.URLS["local://" + this.port]) {
+            if (this.host == "localhost" &&rt_constants.URLS["local://" + this.port]) {
                 let s = new socket({family: "inet", type: "stream", proto: "tcp"});
                 s.is_proxy_socket = true;
                 s.output = this.input;
@@ -320,6 +321,15 @@ class tkinter {
     }
 }
 
+function init_window(browser) {
+    var w = tkinter.Tk()
+    w.bind("<Down>", (e) => browser.handle_down(e));
+    w.bind("<Button-1>", (e) => browser.handle_click(e));
+    w.bind("<Key>", (e) => browser.handle_key(e.char));
+    w.bind("<Return>", (e) => browser.handle_enter(e));
+    return w;
+}
+
 class urllib {
     static parse = class {
         static quote(s) {
@@ -489,7 +499,7 @@ function patch_canvas(canvas) {
     };
 
     canvas.drawRRect = (rrect, paint) => {
-        oldDrawRect.call(canvas, rrect, paint.getPaint());
+        oldDrawRect.call(canvas, rrect, paint["paint"].getPaint());
     };
 
     canvas.drawString = (text, x, y, font, paint) => {
@@ -538,11 +548,11 @@ class skia {
         }
 
         width() {
-            return self.surface.width();
+            return this.surface.width();
         }
 
         height() {
-            return self.surface.height();
+            return this.surface.height();
         }
     }, (obj) => {
         obj.MakeRaster = (image_info) => {
