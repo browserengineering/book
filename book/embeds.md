@@ -323,8 +323,9 @@ class EmbedLayout:
     def get_descent(self, font_multiplier=1.0):
         return 0
 
-    def layout(self, zoom):
-        self.font = font(self.node, zoom)
+    def layout(self):
+        self.zoom = self.parent.zoom
+        self.font = font(self.node, self.zoom)
         if self.previous:
             space = self.previous.font.measureText(" ")
             self.x = \
@@ -338,8 +339,8 @@ class InputLayout(EmbedLayout):
     def __init__(self, node, parent, previous):
         super().__init__(node, parent, previous)
 
-    def layout(self, zoom):
-        super().layout(zoom)
+    def layout(self):
+        super().layout()
 ```
 
 The idea is that `EmbedLayout` should provide common layout code for
@@ -351,12 +352,12 @@ definition of `paint`:
 
 ``` {.python}
 class InputLayout(EmbedLayout):
-    def layout(self, zoom):
+    def layout(self):
         # ...
-        self.width = device_px(INPUT_WIDTH_PX, zoom)
+        self.width = device_px(INPUT_WIDTH_PX, self.zoom)
         self.height = linespace(self.font)
 
-    def paint(self, display_list, zoom):
+    def paint(self, display_list):
         # ...
 ```
 
@@ -367,11 +368,10 @@ but take its width and height from the image itself:
 class ImageLayout(EmbedLayout):
     def __init__(self, node, parent, previous):
         super().__init__(node, parent, previous)
-
-    def layout(self, zoom):
-        super().layout(zoom)
-        self.width = device_px(self.node.image.width(), zoom)
-        self.img_height = device_px(self.node.image.height(), zoom)
+    def layout(self):
+        super().layout()
+        self.width = device_px(self.node.image.width(), self.zoom)
+        self.img_height = device_px(self.node.image.height(), self.zoom)
         self.height = max(self.img_height, linespace(self.font))
 ```
 
@@ -394,7 +394,7 @@ Painting an image is also straightforward:
 
 ``` {.python}
 class ImageLayout(EmbedLayout):
-    def paint(self, display_list, zoom):
+    def paint(self, display_list):
         cmds = []
         rect = skia.Rect.MakeLTRB(
             self.x, self.y + self.height - self.img_height,
@@ -434,46 +434,46 @@ layout classes.
 
 ``` {.python replace=child_class%2c/child_class%2c%20frame%2c,previous_word)/previous_word%2c%20frame)}
 class BlockLayout:
-    def add_inline_child(self, node, zoom, w, child_class, word=None):
+    def add_inline_child(self, node, w, child_class, word=None):
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
         if word:
             child = child_class(node, line, self.previous_word, word)
         else:
-            child = child_class(node, line, self.previous_word)
+            child = child_class(node, line, self.previous_word, frame)
         line.children.append(child)
         self.previous_word = child
-        self.cursor_x += w + font(node, zoom).measureText(" ")
+        self.cursor_x += w + font(node, self.zoom).measureText(" ")
 ```
 
 We can redefine  `text` and `input` in a satisfying way now:
 
 ``` {.python replace=TextLayout/TextLayout%2c%20self.frame,InputLayout/InputLayout%2c%20self.frame}
 class BlockLayout:
-    def text(self, node, zoom):
-        node_font = font(node, zoom)
+    def text(self, node):
+        node_font = font(node, self.zoom)
         for word in node.text.split():
             w = node_font.measureText(word)
-            self.add_inline_child(node, zoom, w, TextLayout, word)
+            self.add_inline_child(node, w, TextLayout, word)
 
-    def input(self, node, zoom):
-        w = device_px(INPUT_WIDTH_PX, zoom)
-        self.add_inline_child(node, zoom, w, InputLayout) 
+    def input(self, node):
+        w = device_px(INPUT_WIDTH_PX, self.zoom)
+        self.add_inline_child(node, w, InputLayout) 
 ```
 
 Adding `image` is now also straightforward:
 
 ``` {.python replace=ImageLayout/ImageLayout%2c%20self.frame}
 class BlockLayout:
-    def recurse(self, node, zoom):
+    def recurse(self, node):
             # ...
             elif node.tag == "img":
-                self.image(node, zoom)
+                self.image(node)
     
-    def image(self, node, zoom):
-        w = device_px(node.image.width(), zoom)
-        self.add_inline_child(node, zoom, w, ImageLayout)
+    def image(self, node):
+        w = device_px(node.image.width(), self.zoom)
+        self.add_inline_child(node, w, ImageLayout)
 ```
 
 Now that we have `ImageLayout` nodes in our layout tree, we'll be
@@ -542,11 +542,11 @@ just read from them when laying out the element, both in `image`:
 
 ``` {.python}
 class BlockLayout:
-    def image(self, node, zoom):
+    def image(self, node):
         if "width" in node.attributes:
-            w = device_px(int(node.attributes["width"]), zoom)
+            w = device_px(int(node.attributes["width"]), self.zoom)
         else:
-            w = device_px(node.image.width(), zoom)
+            w = device_px(node.image.width(), self.zoom)
         # ...
 ```
 
@@ -554,7 +554,7 @@ And in `ImageLayout`:
 
 ``` {.python}
 class ImageLayout(EmbedLayout):
-    def layout(self, zoom):
+    def layout(self):
         # ...
         width_attr = self.node.attributes.get("width")
         height_attr = self.node.attributes.get("height")
@@ -562,11 +562,11 @@ class ImageLayout(EmbedLayout):
         image_height = self.node.image.height()
 
         if width_attr and height_attr:
-            self.width = device_px(int(width_attr), zoom)
-            self.img_height = device_px(int(height_attr), zoom)
+            self.width = device_px(int(width_attr), self.zoom)
+            self.img_height = device_px(int(height_attr), self.zoom)
         else:
-            self.width = device_px(image_width, zoom)
-            self.img_height = device_px(image_height, zoom)
+            self.width = device_px(image_width, self.zoom)
+            self.img_height = device_px(image_height, self.zoom)
         # ...
 ```
 
@@ -589,17 +589,17 @@ Implementing this aspect ratio tweak is easy:
 ``` {.python}
 class ImageLayout(EmbedLayout):
     # ...
-    def layout(self, zoom):
+    def layout(self):
         # ...
         aspect_ratio = image_width / image_height
 
         if width_attr and height_attr:
             # ...
         elif width_attr:
-            self.width = device_px(int(width_attr), zoom)
+            self.width = device_px(int(width_attr), self.zoom)
             self.img_height = self.width / aspect_ratio
         elif height_attr:
-            self.img_height = device_px(int(height_attr), zoom)
+            self.img_height = device_px(int(height_attr), self.zoom)
             self.width = self.img_height * aspect_ratio
         else:
             # ...
@@ -891,18 +891,19 @@ a "seamless" iframe whose layout coordinates with its parent frame.
 ``` {.python}
 class BlockLayout:
     # ...
-    def recurse(self, node, zoom):
+    def recurse(self, node):
         # ...
             elif node.tag == "iframe" and \
                  "src" in node.attributes:
-                self.iframe(node, zoom)
+                self.iframe(node)
     # ...
-    def iframe(self, node, zoom):
+    def iframe(self, node):
         if "width" in self.node.attributes:
-            w = device_px(int(self.node.attributes["width"]), zoom)
+            w = device_px(int(self.node.attributes["width"]),
+            self.zoom)
         else:
-            w = IFRAME_WIDTH_PX + device_px(2, zoom)
-        self.add_inline_child(node, zoom, w, IframeLayout, self.frame)
+            w = IFRAME_WIDTH_PX + device_px(2, self.zoom)
+        self.add_inline_child(node, w, IframeLayout, self.frame)
 ```
 
 The `IframeLayout` layout code is also similar, inheriting from
@@ -913,17 +914,17 @@ class IframeLayout(EmbedLayout):
     def __init__(self, node, parent, previous, parent_frame):
         super().__init__(node, parent, previous, parent_frame)
 
-    def layout(self, zoom):
+    def layout(self):
         # ...
         if width_attr:
-            self.width = device_px(int(width_attr) + 2, zoom)
+            self.width = device_px(int(width_attr) + 2, self.zoom)
         else:
-            self.width = device_px(IFRAME_WIDTH_PX + 2, zoom)
+            self.width = device_px(IFRAME_WIDTH_PX + 2, self.zoom)
 
         if height_attr:
-            self.height = device_px(int(height_attr) + 2, zoom)
+            self.height = device_px(int(height_attr) + 2, self.zoom)
         else:
-            self.height = device_px(IFRAME_HEIGHT_PX + 2, zoom)
+            self.height = device_px(IFRAME_HEIGHT_PX + 2, self.zoom)
 ```
 
 Note that if the `width` isn't specified, it uses a [default
@@ -957,13 +958,13 @@ And we can set those when the parent frame is laid out:
 
 ``` {.python}
 class IframeLayout(EmbedLayout):
-    def layout(self, zoom):
+    def layout(self):
         # ...
         if self.node.frame:
             self.node.frame.frame_height = \
-                self.height - device_px(2, zoom)
+                self.height - device_px(2, self.zoom)
             self.node.frame.frame_width = \
-                self.width - device_px(2, zoom)
+                self.width - device_px(2, self.zoom)
 ```
 
 The conditional is only there to handle the (unusual) case of an
@@ -996,7 +997,7 @@ class Tab:
     def render(self):
         if self.needs_paint:
             self.display_list = []
-            self.root_frame.paint(self.display_list, self.zoom)
+            self.root_frame.paint(self.display_list)
             self.needs_paint = False
 ```
 
@@ -1004,7 +1005,7 @@ We'll then have the `Frame` call the layout tree's `paint` method:
 
 ``` {.python expected=False}
 class Frame:
-    def paint(self, display_list, zoom):
+    def paint(self, display_list):
         self.document.paint(display_list)
 ```
 
@@ -1013,7 +1014,7 @@ paint an `IframeLayout`, we'll need to paint the child frame:
 
 ``` {.python}
 class IframeLayout(EmbedLayout):
-    def paint(self, display_list, zoom):
+    def paint(self, display_list):
         frame_cmds = []
 
         rect = skia.Rect.MakeLTRB(
@@ -1024,11 +1025,11 @@ class IframeLayout(EmbedLayout):
         if bgcolor != "transparent":
             radius = device_px(float(
                 self.node.style.get("border-radius", "0px")[:-2]),
-                zoom)
+                self.zoom)
             frame_cmds.append(DrawRRect(rect, radius, bgcolor))
 
         if self.node.frame:
-            self.node.frame.paint(frame_cmds, zoom)
+            self.node.frame.paint(frame_cmds)
 ```
 
 Note the last line, where we recursively paint the child frame. 
@@ -1039,17 +1040,17 @@ system:
 
 ``` {.python}
 class IframeLayout(EmbedLayout):
-    def paint(self, display_list, zoom):
+    def paint(self, display_list):
         # ...
 
-        diff = device_px(1, zoom)
+        diff = device_px(1, self.zoom)
         offset = (self.x + diff, self.y + diff)
         cmds = [Transform(offset, rect, self.node, frame_cmds)]
         inner_rect = skia.Rect.MakeLTRB(
             self.x + diff, self.y + diff,
             self.x + self.width - diff, self.y + self.height - diff)
         cmds = paint_visual_effects(self.node, cmds, inner_rect)
-        paint_outline(self.node, cmds, rect, zoom)
+        paint_outline(self.node, cmds, rect, self.zoom)
         display_list.extend(cmds)
 ```
 
