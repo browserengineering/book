@@ -145,17 +145,17 @@ class DrawImage(DisplayItem):
             self.rect)
 
 class DocumentLayout:
-    def __init__(self, node, frame, zoom):
+    def __init__(self, node, frame):
         self.node = node
         self.frame = frame
         node.layout_object = self
         self.parent = None
         self.previous = None
         self.children = []
-        self.zoom = zoom
 
-    def layout(self, width):
-        child = BlockLayout(self.node, self, None, self.frame, self.zoom)
+    def layout(self, width, zoom):
+        self.zoom = zoom
+        child = BlockLayout(self.node, self, None, self.frame)
         self.children.append(child)
 
         self.width = width - 2 * device_px(HSTEP, self.zoom)
@@ -186,7 +186,7 @@ def font(node, zoom):
     return get_font(font_size, weight, style)
 
 class BlockLayout:
-    def __init__(self, node, parent, previous, frame, zoom):
+    def __init__(self, node, parent, previous, frame):
         self.node = node
         node.layout_object = self
         self.parent = parent
@@ -197,9 +197,9 @@ class BlockLayout:
         self.width = None
         self.height = None
         self.frame = frame
-        self.zoom = zoom
 
     def layout(self):
+        self.zoom = self.parent.zoom
         self.width = self.parent.width
         self.x = self.parent.x
 
@@ -212,7 +212,7 @@ class BlockLayout:
         if mode == "block":
             previous = None
             for child in self.node.children:
-                next = BlockLayout(child, self, previous, self.frame, self.zoom)
+                next = BlockLayout(child, self, previous, self.frame)
                 self.children.append(next)
                 previous = next
         else:
@@ -246,7 +246,7 @@ class BlockLayout:
         self.previous_word = None
         self.cursor_x = self.x
         last_line = self.children[-1] if self.children else None
-        new_line = LineLayout(self.node, self, last_line, self.zoom)
+        new_line = LineLayout(self.node, self, last_line)
         self.children.append(new_line)
 
     def add_inline_child(self, node, w, child_class, frame, word=None):
@@ -254,11 +254,9 @@ class BlockLayout:
             self.new_line()
         line = self.children[-1]
         if word:
-            child = child_class(node, line, self.previous_word, word,
-                self.zoom)
+            child = child_class(node, line, self.previous_word, word)
         else:
-            child = child_class(node, line, self.previous_word, frame,
-                self.zoom)
+            child = child_class(node, line, self.previous_word, frame)
         line.children.append(child)
         self.previous_word = child
         self.cursor_x += w + font(node, self.zoom).measureText(" ")
@@ -320,7 +318,7 @@ class BlockLayout:
             self.x, self.x, self.width, self.height, self.node)
 
 class EmbedLayout:
-    def __init__(self, node, parent, previous, frame, zoom):
+    def __init__(self, node, parent, previous, frame):
         self.node = node
         self.frame = frame
         node.layout_object = self
@@ -332,7 +330,6 @@ class EmbedLayout:
         self.width = None
         self.height = None
         self.font = None
-        self.zoom = zoom
 
     def get_ascent(self, font_multiplier=1.0):
         return -self.height
@@ -341,6 +338,7 @@ class EmbedLayout:
         return 0
 
     def layout(self):
+        self.zoom = self.parent.zoom
         self.font = font(self.node, self.zoom)
         if self.previous:
             space = self.previous.font.measureText(" ")
@@ -350,8 +348,8 @@ class EmbedLayout:
             self.x = self.parent.x
 
 class InputLayout(EmbedLayout):
-    def __init__(self, node, parent, previous, frame, zoom):
-        super().__init__(node, parent, previous, frame, zoom)
+    def __init__(self, node, parent, previous, frame):
+        super().__init__(node, parent, previous, frame)
 
     def layout(self):
         super().layout()
@@ -401,7 +399,7 @@ class InputLayout(EmbedLayout):
             self.x, self.y, self.width, self.height)
 
 class LineLayout:
-    def __init__(self, node, parent, previous, zoom):
+    def __init__(self, node, parent, previous):
         self.node = node
         self.parent = parent
         self.previous = previous
@@ -410,9 +408,9 @@ class LineLayout:
         self.y = None
         self.width = None
         self.height = None
-        self.zoom = zoom
 
     def layout(self):
+        self.zoom = self.parent.zoom
         self.width = self.parent.width
         self.x = self.parent.x
 
@@ -458,7 +456,7 @@ class LineLayout:
             self.x, self.y, self.width, self.height, self.node)
 
 class TextLayout:
-    def __init__(self, node, parent, previous, word, zoom):
+    def __init__(self, node, parent, previous, word):
         self.node = node
         self.word = word
         self.children = []
@@ -469,7 +467,6 @@ class TextLayout:
         self.width = None
         self.height = None
         self.font = None
-        self.zoom = zoom
 
     def get_ascent(self, font_multiplier=1.0):
         return self.font.getMetrics().fAscent * font_multiplier
@@ -478,6 +475,7 @@ class TextLayout:
         return self.font.getMetrics().fDescent * font_multiplier
 
     def layout(self):
+        self.zoom = self.parent.zoom
         self.font = font(self.node, self.zoom)
 
         # Do not set self.y!!!
@@ -516,8 +514,8 @@ def filter_quality(node):
         return skia.FilterQuality.kMedium_FilterQuality
 
 class ImageLayout(EmbedLayout):
-    def __init__(self, node, parent, previous, frame, zoom):
-        super().__init__(node, parent, previous, frame, zoom)
+    def __init__(self, node, parent, previous, frame):
+        super().__init__(node, parent, previous, frame)
 
     def layout(self):
         super().layout()
@@ -561,8 +559,8 @@ IFRAME_WIDTH_PX = 300
 IFRAME_HEIGHT_PX = 150
 
 class IframeLayout(EmbedLayout):
-    def __init__(self, node, parent, previous, parent_frame, zoom):
-        super().__init__(node, parent, previous, parent_frame, zoom)
+    def __init__(self, node, parent, previous, parent_frame):
+        super().__init__(node, parent, previous, parent_frame)
 
     def layout(self):
         super().layout()
@@ -1267,8 +1265,8 @@ class Frame:
             self.needs_style = False
 
         if self.needs_layout:
-            self.document = DocumentLayout(self.nodes, self, self.tab.zoom)
-            self.document.layout(self.frame_width)
+            self.document = DocumentLayout(self.nodes, self)
+            self.document.layout(self.frame_width, self.tab.zoom)
             if self.tab.accessibility_is_on:
                 self.tab.needs_accessibility = True
             else:

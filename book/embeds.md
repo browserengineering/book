@@ -314,7 +314,7 @@ rules][widget-rendering] that sometimes involve CSS.
 
 ``` {.python}
 class EmbedLayout:
-    def __init__(self, node, parent, previous, frame, zoom):
+    def __init__(self, node, parent, previous, frame):
         # ...
 
     def get_ascent(self, font_multiplier=1.0):
@@ -324,6 +324,7 @@ class EmbedLayout:
         return 0
 
     def layout(self):
+        self.zoom = self.parent.zoom
         self.font = font(self.node, self.zoom)
         if self.previous:
             space = self.previous.font.measureText(" ")
@@ -335,8 +336,8 @@ class EmbedLayout:
 
 ``` {.python replace=previous/previous%2c%20frame}
 class InputLayout(EmbedLayout):
-    def __init__(self, node, parent, previous, zoom):
-        super().__init__(node, parent, previous, zoom)
+    def __init__(self, node, parent, previous):
+        super().__init__(node, parent, previous)
 
     def layout(self):
         super().layout()
@@ -365,9 +366,8 @@ but take its width and height from the image itself:
 
 ``` {.python replace=previous/previous%2c%20frame,self.node.image.height()/image_height,self.node.image.width()/image_width}
 class ImageLayout(EmbedLayout):
-    def __init__(self, node, parent, previous, zoom):
-        super().__init__(node, parent, previous, zoom)
-
+    def __init__(self, node, parent, previous):
+        super().__init__(node, parent, previous)
     def layout(self):
         super().layout()
         self.width = device_px(self.node.image.width(), self.zoom)
@@ -439,11 +439,9 @@ class BlockLayout:
             self.new_line()
         line = self.children[-1]
         if word:
-            child = child_class(node, line, self.previous_word, word,
-                self.zoom)
+            child = child_class(node, line, self.previous_word, word)
         else:
-            child = child_class(node, line, self.previous_word, frame,
-                self.zoom)
+            child = child_class(node, line, self.previous_word, frame)
         line.children.append(child)
         self.previous_word = child
         self.cursor_x += w + font(node, self.zoom).measureText(" ")
@@ -913,8 +911,8 @@ The `IframeLayout` layout code is also similar, inheriting from
 
 ``` {.python}
 class IframeLayout(EmbedLayout):
-    def __init__(self, node, parent, previous, parent_frame, zoom):
-        super().__init__(node, parent, previous, parent_frame, zoom)
+    def __init__(self, node, parent, previous, parent_frame):
+        super().__init__(node, parent, previous, parent_frame)
 
     def layout(self):
         # ...
