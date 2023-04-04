@@ -152,11 +152,9 @@ keys; using the `Ctrl` modifier key means you can type a `+`, `-`, or
 `0` into a text entry without triggering the zoom function.
 
 To handle modifier keys, we'll need to listen to both "key down" and
-"key up" events, and store whether the `Ctrl` key is pressed:
+"key up" events in the event loop, and store whether the `Ctrl` key is pressed:
 
 ``` {.python}
-if __name__ == "__main__":
-    # ...
     ctrl_down = False
     while True:
 		if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
@@ -177,8 +175,6 @@ Now we can have a case in the key handling code for "key down" events
 while the `Ctrl` key is held:
 
 ``` {.python}
-if __name__ == "__main__":
-    # ...
     ctrl_down = False
     while True:
 		if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
@@ -426,10 +422,9 @@ This theme of "pioneered by accessibility" recurred for a number of other
 technologies, such as text-to-speech, OCR, on-screen keyboards, and voice
 control.
 
-We'll trigger dark mode with `Ctrl-d`:
+We'll trigger dark mode in the event loop with `Ctrl-d`:
 
 ``` {.python}
-if __name__ == "__main__":
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             # ...
@@ -742,8 +737,8 @@ Let's start with the browser chrome, since it's the easiest. Here, we need
 to allow the user to go back, to type in the address bar, and to
 create and cycle through tabs, all with the keyboard. We'll also add a
 keyboard shortcut for quitting the browser.[^one-more] Let's make all
-these shortcuts use the `Ctrl` modifier key so they don't interfere
-with normal typing: `Ctrl-Left` to go back, `Ctrl-L` to type in the
+these shortcuts in the event loop use the `Ctrl` modifier key so they don't
+interfere with normal typing: `Ctrl-Left` to go back, `Ctrl-L` to type in the
 address bar, `Ctrl-T` to create a new tab, `Ctrl-Tab` to switch to the
 next tab, and `Ctrl-Q` to exit the browser:
 
@@ -752,7 +747,6 @@ minimizing or maximizing the browser window. Those require calling
 specialized OS APIs, so I won't implement them.
 
 ``` {.python}
-if __name__ == "__main__":
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             elif event.type == sdl2.SDL_KEYDOWN:
@@ -801,10 +795,9 @@ already have a `focus` property on each `Tab` indicating which `input`
 element is capturing keyboard input. Let's allow buttons and links to
 be focused as well. Of course, they don't capture keyboard input, but
 when the user pressed `Enter` we'll press the button or navigate to
-the link. We'll start by binding those keys:
+the link. We'll start by binding those keys in the event loop:
 
 ``` {.python}
-if __name__ == "__main__":
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             elif event.type == sdl2.SDL_KEYDOWN:
@@ -1755,10 +1748,9 @@ standard output.
 
 To start with, we'll want a key binding that turns the screen reader
 on and off. While real operating systems typically use more obscure
-shortcuts, I'll use `Ctrl-A` to turn on the screen reader:
+shortcuts, I'll use `Ctrl-A` to turn on the screen reader in the event loop:
 
 ``` {.python}
-if __name__ == "__main__":
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             # ...
@@ -2179,11 +2171,10 @@ Note that I'm using `absolute_bounds_for_obj` here, because the bounds
 we're interested in are the absolute coordinates on the screen, after
 any transformations like `translate`.
 
-So let's implement the read-on-hover feature. First we need to listen
-for mouse move events, which in SDL are called `MOUSEMOTION`:
+So let's implement the read-on-hover feature. First we need to listen for mouse
+move events in the event loop, which in SDL are called `MOUSEMOTION`:
 
 ``` {.python}
-if __name__ == "__main__":
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             # ...
