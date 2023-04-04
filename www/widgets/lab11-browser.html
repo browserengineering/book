@@ -26,7 +26,6 @@ const loadFont = fetch(
   .then((response) => response.arrayBuffer());
 
 Promise.all([ckLoaded, loadFont]).then(([CanvasKit, robotoData]) => {
-    console.log(CanvasKit);
     let font_manager = CanvasKit.FontMgr.FromData([robotoData]);
     let typeface = font_manager.MakeTypefaceFromData(
             robotoData);
