@@ -47,7 +47,8 @@ Promise.all([ckLoaded, loadFont]).then(([CanvasKit, robotoData]) => {
     let w;
     widget.run(async function() {
         constants.WIDTH = window.innerWidth;
-        let url = "https://localhost:8000/" + document.getElementById("input").value;
+        let url = "https://localhost:8000/" +
+            document.getElementById("input").value;
         let b = await (new Browser()).init();
         w = init_window(b);
         await b.load(url);
