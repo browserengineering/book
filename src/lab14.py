@@ -40,7 +40,8 @@ from lab13 import absolute_bounds, absolute_bounds_for_obj
 from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
 from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import DisplayItem, DrawText, DrawCompositedLayer, SaveLayer
-from lab13 import ClipRRect, Transform, DrawLine, DrawRRect, draw_rect
+from lab13 import ClipRRect, Transform, DrawLine, DrawRRect, draw_rect, \
+    add_main_args
 
 @wbetools.patch(Element)
 class Element:
@@ -1860,26 +1861,8 @@ class Browser:
             sdl2.SDL_GL_DeleteContext(self.gl_context)
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
-if __name__ == "__main__":
+def main_func(args):
     import sys
-    import argparse
-
-    parser = argparse.ArgumentParser(description='Chapter 13 code')
-    parser.add_argument("url", type=str, help="URL to load")
-    parser.add_argument('--single_threaded', action="store_true", default=False,
-        help='Whether to run the browser without a browser thread')
-    parser.add_argument('--disable_compositing', action="store_true",
-        default=False, help='Whether to composite some elements')
-    parser.add_argument('--disable_gpu', action='store_true',
-        default=False, help='Whether to disable use of the GPU')
-    parser.add_argument('--show_composited_layer_borders', action="store_true",
-        default=False, help='Whether to visually indicate composited layer borders')
-    args = parser.parse_args()
-
-    wbetools.USE_BROWSER_THREAD = not args.single_threaded
-    wbetools.USE_GPU = not args.disable_gpu
-    wbetools.USE_COMPOSITING = not args.disable_compositing and not args.disable_gpu
-    wbetools.SHOW_COMPOSITED_LAYER_BORDERS = args.show_composited_layer_borders
 
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
@@ -1949,3 +1932,8 @@ if __name__ == "__main__":
                 browser.render()
         browser.composite_raster_and_draw()
         browser.schedule_animation_frame()
+
+if __name__ == "__main__":
+    args = add_main_args()
+    main_func(args)
+
