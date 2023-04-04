@@ -248,18 +248,33 @@ class Tab:
 ```
 
 The `zoom` factor is supposed to multiply all CSS sizes, so we'll need
-access to it during layout. There's a few ways to do this, but the
-easiest is just to make it a constructor parameter to all layout object
-types. Here's `DocumentLayout` for example (I've omitted all the rest):
+access to it during layout. There's a few ways to do this, but one easy way
+is just to pass it as a parameter to `layout` for `DocumentLayout`:
 
 ``` {.python}
 class DocumentLayout:
-    def __init__(self, node, zoom):
-        # ...
+    def layout(self, zoom):
         self.zoom = zoom
+        child = BlockLayout(self.node, self, None)
+        # ...
+```
 
+``` {.python}
+class Tab:
+    def render(self):
+        # ...
+            self.document.layout(self.zoom)
+```
+
+Then pass it recursively by looking at the parent value for a layout object,
+in a similar way to how we compute other values like `y`. Here is `BlockLayout`;
+I've omitted the other classes, which all look similar and set zoom at the
+beginning of `layout`:
+
+``` {.python}
+class BlockLayout:
     def layout(self):
-        child = BlockLayout(self.node, self, None, self.zoom)
+        self.zoom = self.parent.zoom
         # ...
 ```
 
@@ -344,7 +359,7 @@ pixels and *does* need to be converted:
 ``` {.python}
 class DocumentLayout:
 	# ...
-    def layout(self):
+    def layout(self, zoom):
     	# ...
         self.width = WIDTH - 2 * device_px(HSTEP, self.zoom)
         self.x = device_px(HSTEP, self.zoom)
@@ -2140,7 +2155,7 @@ like this:
 
 ``` {.python}
 class BlockLayout:
-    def __init__(self, node, parent, previous, zoom):
+    def __init__(self, node, parent, previous):
         # ...
         node.layout_object = self
 ```

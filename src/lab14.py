@@ -136,7 +136,7 @@ def paint_outline(node, cmds, rect, zoom):
         cmds.append(DrawOutline(rect, color, thickness))
 
 class BlockLayout:
-    def __init__(self, node, parent, previous, zoom):
+    def __init__(self, node, parent, previous):
         self.node = node
         node.layout_object = self
         self.parent = parent
@@ -146,9 +146,9 @@ class BlockLayout:
         self.y = None
         self.width = None
         self.height = None
-        self.zoom = zoom
 
     def layout(self):
+        self.zoom = self.parent.zoom
         self.width = self.parent.width
         self.x = self.parent.x
 
@@ -161,7 +161,7 @@ class BlockLayout:
         if mode == "block":
             previous = None
             for child in self.node.children:
-                next = BlockLayout(child, self, previous, self.zoom)
+                next = BlockLayout(child, self, previous)
                 self.children.append(next)
                 previous = next
         else:
@@ -189,7 +189,7 @@ class BlockLayout:
         self.previous_word = None
         self.cursor_x = 0
         last_line = self.children[-1] if self.children else None
-        new_line = LineLayout(self.node, self, last_line, self.zoom)
+        new_line = LineLayout(self.node, self, last_line)
         self.children.append(new_line)
 
     def text(self, node):
@@ -202,7 +202,7 @@ class BlockLayout:
             if self.cursor_x + w > self.width:
                 self.new_line()
             line = self.children[-1]
-            text = TextLayout(node, word, line, self.previous_word, self.zoom)
+            text = TextLayout(node, word, line, self.previous_word)
             line.children.append(text)
             self.previous_word = text
             self.cursor_x += w + font.measureText(" ")
@@ -212,7 +212,7 @@ class BlockLayout:
         if self.cursor_x + w > self.width:
             self.new_line()
         line = self.children[-1]
-        input = InputLayout(node, line, self.previous_word, self.zoom)
+        input = InputLayout(node, line, self.previous_word)
         line.children.append(input)
         self.previous_word = input
         weight = node.style["font-weight"]
@@ -255,7 +255,7 @@ class BlockLayout:
             layout_mode(self.node), self.x, self.y, self.width, self.height, self.node)
 
 class LineLayout:
-    def __init__(self, node, parent, previous, zoom):
+    def __init__(self, node, parent, previous):
         self.node = node
         self.parent = parent
         self.previous = previous
@@ -264,9 +264,9 @@ class LineLayout:
         self.y = None
         self.width = None
         self.height = None
-        self.zoom = zoom
 
     def layout(self):
+        self.zoom = self.parent.zoom
         self.width = self.parent.width
         self.x = self.parent.x
 
@@ -363,16 +363,16 @@ def style(node, rules, tab):
         style(child, rules, tab)
 
 class DocumentLayout:
-    def __init__(self, node, zoom):
+    def __init__(self, node):
         self.node = node
         node.layout_object = self
         self.parent = None
         self.previous = None
         self.children = []
-        self.zoom = zoom
 
-    def layout(self):
-        child = BlockLayout(self.node, self, None, self.zoom)
+    def layout(self, zoom):
+        self.zoom = zoom
+        child = BlockLayout(self.node, self, None)
         self.children.append(child)
 
         self.width = WIDTH - 2 * device_px(HSTEP, self.zoom)
@@ -388,7 +388,7 @@ class DocumentLayout:
         return "DocumentLayout()"
 
 class TextLayout:
-    def __init__(self, node, word, parent, previous, zoom):
+    def __init__(self, node, word, parent, previous):
         self.node = node
         self.word = word
         self.children = []
@@ -398,10 +398,9 @@ class TextLayout:
         self.y = None
         self.width = None
         self.height = None
-        self.font = None
-        self.zoom = zoom
 
     def layout(self):
+        self.zoom = self.parent.zoom
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
         size = device_px(
@@ -435,7 +434,7 @@ class TextLayout:
             self.x, self.y, self.width, self.height, self.node, self.word)
 
 class InputLayout:
-    def __init__(self, node, parent, previous, zoom):
+    def __init__(self, node, parent, previous):
         self.node = node
         self.children = []
         self.parent = parent
@@ -445,9 +444,9 @@ class InputLayout:
         self.width = None
         self.height = None
         self.font = None
-        self.zoom = zoom
 
     def layout(self):
+        self.zoom = self.parent.zoom
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
         size = \
@@ -1094,8 +1093,8 @@ class Tab:
             self.needs_style = False
 
         if self.needs_layout:
-            self.document = DocumentLayout(self.nodes, self.zoom)
-            self.document.layout()
+            self.document = DocumentLayout(self.nodes)
+            self.document.layout(self.zoom)
             self.needs_accessibility = True
             self.needs_paint = True
             self.needs_layout = False
