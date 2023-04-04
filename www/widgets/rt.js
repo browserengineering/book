@@ -514,8 +514,6 @@ class skia {
         constructor(width, height, is_root=false) {
             if (is_root) {
                 let image_info = width
-                console.log('root: width=' + image_info.width)
-                console.log('height=' + image_info.height)
                 rt_constants.ROOT_CANVAS.width = image_info.width * rt_constants.ZOOM;
                 rt_constants.ROOT_CANVAS.height = image_info.height * rt_constants.ZOOM;
                this.surface = CanvasKit.MakeCanvasSurface('canvas');
@@ -599,9 +597,8 @@ class skia {
 
     static FontStyle;
 
-    static Typeface = function () {
-        return fontManager.MakeTypefaceFromData(
-            robotoData);
+    static Typeface = function (font_name, style_info) {
+        return null;
     }
 
     static BlendMode;
@@ -621,9 +618,26 @@ function init_skia(canvasKit, robotoData) {
             this.paint = new CanvasKit.Paint();
             if (!args)
                 return;
-            if (args["Color"]) {
-                console.log('setting color')
-                this.paint.setColor(args["Color"])
+            for (const [key, value] of Object.entries(args)) {
+                switch (key) {
+                    case "Color":
+                        this.paint.setColor(value);
+                        continue;
+                    case "AntiAlias":
+                        this.paint.setAntiAlias(value);
+                        continue;
+                    case "BlendMode":
+                        this.paint.setBlendMode(value);
+                        continue;
+                    case "Alphaf":
+                        this.paint.setAlphaf(value);
+                        continue;
+                    case "Style":
+                        this.paint.setStyle(value);
+                        continue;
+                    default:
+                        throw "Unknown Skia Paint value: " + key;
+                }
             }
         }
 
@@ -648,8 +662,9 @@ function init_skia(canvasKit, robotoData) {
     });
     skia.Path = wrap_class(CanvasKit.Path);
     skia.Font = wrap_class(class {
-        constructor(typeface, size) {
-            this.font = new CanvasKit.Font(typeface);
+        constructor(ignored_typeface, size) {
+            this.font = new CanvasKit.Font(
+                fontManager.MakeTypefaceFromData(robotoData));
             this.font.setSize(size / 1.333);
         }
 

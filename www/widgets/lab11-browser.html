@@ -19,7 +19,7 @@
 <script src="canvaskit.js"></script>
 <script type="module">
 const ckLoaded = CanvasKitInit({
-  locateFile: (file) => 'https://unpkg.com/canvaskit-wasm@0.19.0/bin/'+file});
+  locateFile: (file) => '/widgets/' + file});
 
 const loadFont = fetch(
   'https://storage.googleapis.com/skia-cdn/misc/Roboto-Regular.ttf')
