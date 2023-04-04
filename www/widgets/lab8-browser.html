@@ -25,7 +25,7 @@ import { Browser, constants } from "./lab8.js";
 import { handle_connection } from "./server8.js";
 
 socket.accept(8000, handle_connection);
-rt_constants.TKELEMENT = document.querySelector("#canvas");
+rt_constants.ROOT_CANVAS = document.querySelector("#canvas");
 
 let widget = new Widget(document.querySelector("#controls"));
 widget.run(async function() {
