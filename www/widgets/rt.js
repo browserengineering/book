@@ -34,9 +34,9 @@ rt_constants.ZOOM = 1.0;
 rt_constants.ROOT_CANVAS = null;
 rt_constants.URLS = {};
 
-let FONT_MANAGER;
-let CANVAS_KIT;
-let ROBOTO_DATA
+let fontManager;
+let CanvasKit;
+let robotoData
 
 class ExpectedError extends Error {
     constructor(msg) {
@@ -501,11 +501,11 @@ function patch_canvas(canvas) {
     };
 
     canvas.clipRect = (rect) => {
-        oldClipRect.call(canvas, rect, CANVAS_KIT.ClipOp.Intersect, false);
+        oldClipRect.call(canvas, rect, CanvasKit.ClipOp.Intersect, false);
     };
 
     canvas.clipRRect = (rect) => {
-        oldClipRRect.call(canvas, rect, CANVAS_KIT.ClipOp.Intersect, false);
+        oldClipRRect.call(canvas, rect, CanvasKit.ClipOp.Intersect, false);
     }
 }
 
@@ -515,11 +515,12 @@ class skia {
             if (is_root) {
                 let image_info = width
                 console.log('root: width=' + image_info.width)
+                console.log('height=' + image_info.height)
                 rt_constants.ROOT_CANVAS.width = image_info.width * rt_constants.ZOOM;
-                rt_constants.ROOT_CANVAS.width = image_info.height * rt_constants.ZOOM;
-               this.surface = CANVAS_KIT.MakeCanvasSurface('canvas');
+                rt_constants.ROOT_CANVAS.height = image_info.height * rt_constants.ZOOM;
+               this.surface = CanvasKit.MakeCanvasSurface('canvas');
             } else {
-                this.surface = CANVAS_KIT.MakeSurface(width, height);
+                this.surface = CanvasKit.MakeSurface(width, height);
             }
         }
 
@@ -535,7 +536,7 @@ class skia {
 
         draw(canvas, left, top) {
             canvas.drawImage(this.surface.makeImageSnapshot(), left, top,
-                new CANVAS_KIT.Paint());
+                new CanvasKit.Paint());
         }
 
         width() {
@@ -564,16 +565,16 @@ class skia {
 
     static Rect = {
         MakeLTRB: (left, top, right, bottom) => {
-            return CANVAS_KIT.LTRBRect(left, top, right, bottom);
+            return CanvasKit.LTRBRect(left, top, right, bottom);
         },
         MakeEmpty : () => {
-            return CANVAS_KIT.XYWHRect(0, 0, 0, 0);
+            return CanvasKit.XYWHRect(0, 0, 0, 0);
         }
     };
 
     static RRect = {
         MakeRectXY : (rect, x, y) => {
-            return CANVAS_KIT.RRectXY(rect, x, y);
+            return CanvasKit.RRectXY(rect, x, y);
         }
     };
 
@@ -581,7 +582,7 @@ class skia {
 
     static RRect = {
         MakeRectXY: function(rect, x, y) {
-            return CANVAS_KIT.RRectXY(rect, x, y);
+            return CanvasKit.RRectXY(rect, x, y);
         }
     };
 
@@ -599,25 +600,25 @@ class skia {
     static FontStyle;
 
     static Typeface = function () {
-        return FONT_MANAGER.MakeTypefaceFromData(
-            ROBOTO_DATA);
+        return fontManager.MakeTypefaceFromData(
+            robotoData);
     }
 
     static BlendMode;
 
     static ColorSetARGB = function(r, g, b, a) {
-        return CANVAS_KIT.Color(r, g, b, a);
+        return CanvasKit.Color(r, g, b, a);
     }
 }
 
 function init_skia(canvasKit, robotoData) {
-    CANVAS_KIT = canvasKit;
-    ROBOTO_DATA = robotoData;
-    FONT_MANAGER = CANVAS_KIT.FontMgr.FromData([robotoData]);
+    CanvasKit = canvasKit;
+    robotoData = robotoData;
+    fontManager = CanvasKit.FontMgr.FromData([robotoData]);
 
     skia.Paint = wrap_class(class {
         constructor(args) {
-            this.paint = new CANVAS_KIT.Paint();
+            this.paint = new CanvasKit.Paint();
             if (!args)
                 return;
             if (args["Color"]) {
@@ -642,13 +643,14 @@ function init_skia(canvasKit, robotoData) {
             this.paint.setColor(color);
         }
     }, (obj) => {
-        obj.kStroke_Style = CANVAS_KIT.PaintStyle.Stroke;
-        obj.kFill_Style = CANVAS_KIT.PaintStyle.Fill;
+        obj.kStroke_Style = CanvasKit.PaintStyle.Stroke;
+        obj.kFill_Style = CanvasKit.PaintStyle.Fill;
     });
-    skia.Path = wrap_class(CANVAS_KIT.Path);
+    skia.Path = wrap_class(CanvasKit.Path);
     skia.Font = wrap_class(class {
-        constructor(typeface) {
-            this.font = new CANVAS_KIT.Font(typeface);
+        constructor(typeface, size) {
+            this.font = new CanvasKit.Font(typeface);
+            this.font.setSize(size / 1.333);
         }
 
         getFont() {
@@ -656,32 +658,35 @@ function init_skia(canvasKit, robotoData) {
         }
 
         getMetrics() {
-            return {fAscent: 2.0, fDescent: 2.0};
+            return {
+                fAscent: -this.font.getSize(),
+                fDescent: this.font.getSize() * 0.3
+            };
         }
 
         measureText(t) {
             return this.font.measureText(t);
         }
     });
-    skia.ColorWHITE = CANVAS_KIT.WHITE;
-    skia.ColorRED = CANVAS_KIT.RED;
-    skia.ColorGREEN = CANVAS_KIT.GREEN;
-    skia.ColorBLUE = CANVAS_KIT.BLUE;
-    skia.ColorGRAY = CANVAS_KIT.Color(0x80, 0x80, 0x80, 0xFF);
-    skia.ColorBLACK = CANVAS_KIT.BLACK;
+    skia.ColorWHITE = CanvasKit.WHITE;
+    skia.ColorRED = CanvasKit.RED;
+    skia.ColorGREEN = CanvasKit.GREEN;
+    skia.ColorBLUE = CanvasKit.BLUE;
+    skia.ColorGRAY = CanvasKit.Color(0x80, 0x80, 0x80, 0xFF);
+    skia.ColorBLACK = CanvasKit.BLACK;
 
     skia.BlendMode = {
-        kSrcOver: CANVAS_KIT.BlendMode.SrcOver,
-        kMultiply: CANVAS_KIT.BlendMode.Multiply,
-        kDifference: CANVAS_KIT.BlendMode.Multiply           
+        kSrcOver: CanvasKit.BlendMode.SrcOver,
+        kMultiply: CanvasKit.BlendMode.Multiply,
+        kDifference: CanvasKit.BlendMode.Multiply
     }
     skia.FontStyle = wrap_class(class {
         constructor(weight, width, style) {}
     }, (f) => {
-        f.kBold_Weight = CANVAS_KIT.FontWeight.Bold,
-        f.kNormal_Weight = CANVAS_KIT.FontWeight.Normal,
-        f.kItalic_Slant = CANVAS_KIT.FontSlant.Italic,
-        f.kUpright_Slant = CANVAS_KIT.FontSlant.Upright
+        f.kBold_Weight = CanvasKit.FontWeight.Bold,
+        f.kNormal_Weight = CanvasKit.FontWeight.Normal,
+        f.kItalic_Slant = CanvasKit.FontSlant.Italic,
+        f.kUpright_Slant = CanvasKit.FontSlant.Upright
     });
 }
 

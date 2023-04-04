@@ -25,11 +25,8 @@ const loadFont = fetch(
   'https://storage.googleapis.com/skia-cdn/misc/Roboto-Regular.ttf')
   .then((response) => response.arrayBuffer());
 
-let CANVAS_KIT
-
 Promise.all([ckLoaded, loadFont]).then(([CanvasKit, robotoData]) => {
     console.log(CanvasKit);
-    CANVAS_KIT = CanvasKit;
     let font_manager = CanvasKit.FontMgr.FromData([robotoData]);
     let typeface = font_manager.MakeTypefaceFromData(
             robotoData);
