@@ -92,7 +92,7 @@ class socket {
             let [line1] = this.input.split("\r\n", 1);
             let [method, path, protocol] = line1.split(" ");
             this.url = this.scheme + "://" + this.host + path;
-            if (this.host == "localhost" &&rt_constants.URLS["local://" + this.port]) {
+            if (this.host == "localhost" && rt_constants.URLS["local://" + this.port]) {
                 let s = new socket({family: "inet", type: "stream", proto: "tcp"});
                 s.is_proxy_socket = true;
                 s.output = this.input;
@@ -481,7 +481,6 @@ class sdl2 {
     static SDL_BIG_ENDIAN = 0;
 }
 
-
 function patch_canvas(canvas) {
     var oldDrawPath = canvas.drawPath;
     var oldDrawRect = canvas.drawRect;
@@ -524,8 +523,10 @@ class skia {
         constructor(width, height, is_root=false) {
             if (is_root) {
                 let image_info = width
-                rt_constants.ROOT_CANVAS.width = image_info.width * rt_constants.ZOOM;
-                rt_constants.ROOT_CANVAS.height = image_info.height * rt_constants.ZOOM;
+                rt_constants.ROOT_CANVAS.width =
+                    image_info.width * rt_constants.ZOOM;
+                rt_constants.ROOT_CANVAS.height =
+                    image_info.height * rt_constants.ZOOM;
                this.surface = CanvasKit.MakeCanvasSurface('canvas');
             } else {
                 this.surface = CanvasKit.MakeSurface(width, height);
@@ -670,7 +671,9 @@ function init_skia(canvasKit, robotoData) {
         obj.kStroke_Style = CanvasKit.PaintStyle.Stroke;
         obj.kFill_Style = CanvasKit.PaintStyle.Fill;
     });
+
     skia.Path = wrap_class(CanvasKit.Path);
+
     skia.Font = wrap_class(class {
         constructor(ignored_typeface, size) {
             this.font = new CanvasKit.Font(
@@ -693,6 +696,7 @@ function init_skia(canvasKit, robotoData) {
             return this.font.measureText(t);
         }
     });
+
     skia.ColorWHITE = CanvasKit.WHITE;
     skia.ColorRED = CanvasKit.RED;
     skia.ColorGREEN = CanvasKit.GREEN;
