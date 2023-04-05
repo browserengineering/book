@@ -5,7 +5,7 @@ This file contains tests for Chapter 13 (Animations and Compositing).
 
   	>>> from test import Event
     >>> import threading
-    >>> import test12 as test
+    >>> import test11 as test
     >>> _ = test.socket.patch().start()
     >>> _ = test.ssl.patch().start()
     >>> _ = test.MockLock.patch().start()
