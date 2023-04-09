@@ -458,18 +458,21 @@ let on_error = function(e) { throw e; }
 class Widget {
     constructor(elt) {
         this.elt = elt;
-        this.controls = {
-            reset: elt.querySelector(".reset"),
-            back: elt.querySelector(".stepb"),
-            next: elt.querySelector(".stepf"),
-            animate: elt.querySelector(".play"),
-            input: elt.querySelector("#input-controls"),
-        };
-
-        if (this.controls.reset) this.controls.reset.addEventListener("click", this.reset.bind(this));
-        if (this.controls.back) this.controls.back.addEventListener("click", this.back.bind(this));
-        if (this.controls.next) this.controls.next.addEventListener("click", this.next.bind(this));
-        if (this.controls.animate) this.controls.animate.addEventListener("click", this.animate.bind(this));
+        if (elt) {
+            this.controls = {
+                reset: elt.querySelector(".reset"),
+                back: elt.querySelector(".stepb"),
+                next: elt.querySelector(".stepf"),
+                animate: elt.querySelector(".play"),
+                input: elt.querySelector("#input-controls"),
+            };
+            if (this.controls.reset) this.controls.reset.addEventListener("click", this.reset.bind(this));
+            if (this.controls.back) this.controls.back.addEventListener("click", this.back.bind(this));
+            if (this.controls.next) this.controls.next.addEventListener("click", this.next.bind(this));
+            if (this.controls.animate) this.controls.animate.addEventListener("click", this.animate.bind(this));
+        } else {
+            this.controls = {};
+        }
         window.addEventListener("resize", this.redraw.bind(this));
 
         this.step = -1;
@@ -518,7 +521,8 @@ class Widget {
     }
 
     reset(e) {
-        this.elt.classList.remove("running");
+        if (this.elt)
+            this.elt.classList.remove("running");
         this.step = -1;
         this.k = this.runner;
         if (this.timer) clearInterval(this.timer);
@@ -546,7 +550,8 @@ class Widget {
     }
 
     next(e) {
-        this.elt.classList.add("running");
+        if (this.elt)
+            this.elt.classList.add("running");
         console.assert(this.k, "Tried to step forward but no next state available");
         if (this.controls.next) this.controls.next.children[0].textContent = "Next";
         if (this.controls.input) this.controls.input.disabled = true;
