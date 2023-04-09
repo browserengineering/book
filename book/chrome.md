@@ -1072,7 +1072,7 @@ should now look something like this:
 
 If you run it, it should look something like this:
 
-::: {.widget height=691}
+::: {.widget height=605}
     lab7-browser.html
 :::
 
