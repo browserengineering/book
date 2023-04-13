@@ -368,7 +368,6 @@ class Tab:
             back = self.history.pop()
             self.load(back)
 
-
 class Task:
     def __init__(self, task_code, *args):
         self.task_code = task_code
@@ -384,13 +383,18 @@ class SingleThreadedTaskRunner:
     def __init__(self, tab):
         self.tab = tab
         self.needs_quit = False
-        self.lock = threading.Lock()
+        self.tasks = []
 
     def schedule_task(self, callback):
-        callback.run()
+        self.tasks.append(callback)
+
+    def run_tasks(self):
+        while self.tasks:
+            task = self.tasks.pop(0)
+            task.run()
 
     def clear_pending_tasks(self):
-        pass
+        self.tasks = []
 
     def start(self):    
         pass
@@ -752,7 +756,6 @@ if __name__ == "__main__":
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
     browser.load(args.url)
-
     event = sdl2.SDL_Event()
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
@@ -772,6 +775,7 @@ if __name__ == "__main__":
                 browser.handle_key(event.text.text.decode('utf8'))
         active_tab = browser.tabs[browser.active_tab]
         if not wbetools.USE_BROWSER_THREAD:
+            active_tab.task_runner.run_tasks()
             if active_tab.task_runner.needs_quit:
                 break
             if browser.needs_animation_frame:
