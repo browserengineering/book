@@ -420,7 +420,7 @@ class BlockLayout:
 ```
 
 Before we reset the `dirty_zoom` field, we need to set any dirty flags
-that depend on `zoom`, like `dirty_children`:
+that depend on `zoom`, like `dirty_width`:
 
 ``` {.python}
 class BlockLayout:
@@ -480,7 +480,7 @@ class BlockLayout:
             self.dirty_style = False
 ```
 
-Since `dirty_style` flag protects the `node.style` field, which is
+Since the `dirty_style` flag protects the `node.style` field, which is
 used in `recurse`, let's check it before we use it:
 
 ``` {.python}
@@ -542,17 +542,16 @@ set.
 One other subtlety you might notice: the parent of a `BlockLayout` can
 actually _also_ be a `DocumentLayout`. Does it also need to set its
 child's `dirty_width` field when it computes its width? Luckily, also
-no: a `DocumentLayout`'s width is a constant,[^unless-resize] so it
-never changes and so its child's `dirty_width` flag doesn't need to be
-set.
+no: a `DocumentLayout`'s width is a constant, so it never changes and
+so its child's `dirty_width` flag doesn't need to be set.
 
 ::: {.todo}
 Not true, the padding increases when you zoom.
 :::
 
-[^unless-resize]: Of course, if you've implemented browser window
-    resizing, then you _do_ need to think about the `DocumentLayout`'s
-    `width` changing.
+::: {.todo}
+Also not true because an iframe can resize when its width attribute is changed.
+:::
 
 So now we have `dirty_zoom`, `dirty_style`, and `dirty_width` flags,
 which protect the `zoom`, `style`, and `width` fields. And this means
@@ -573,7 +572,7 @@ class BlockLayout:
         # ...
 ```
 
-Try this out. Add a `print` statement to each layout object
+Try this out: add a `print` statement to each layout object
 constructor and run your browser on some web page---maybe our guest
 book server, or some of the animation examples from previous
 chapters---where JavaScript makes changes to the page. You should see
@@ -669,20 +668,18 @@ class LineLayout:
         self.dirty_y = False
 ```
 
-The `assert` here should never fire, because we always compute the `x`
-position in a top-down traversal of the layout tree, which means we
-would always recompute the parent's `x`, and reset its `dirty_x`,
-before recursing to its children. But invalidation code like this can
-be _very_ bug-prone, and what's worse, the bugs are often difficult to
-find, because often they rely on a precise sequence of modifications
-that cause a stale value to affect a user-visible computation. Being
-vigilant and defensive in code like this pays for itself.
+Of course, we could add invalidation to these additional layout
+objects. But invalidation code like this is _very_ bug-prone, and
+what's worse, the bugs are often difficult to find, because often they
+rely on a precise sequence of modifications that cause a stale value
+to affect a user-visible computation. Playing it safe and working on
+one thing at a time pays dividends.
 
 The `dirty_height` flag is kind of similar; for that we must:
 
 - Check all children's `dirty_height` when computing `height`;
-- Reset `dirty_height` by computing `height`.
-- Set the parent's `dirty_height` when `height` is recomputed;
+- Reset `dirty_height` by computing `height`;
+- Set the parent's `dirty_height` when `height` is recomputed.
 
 That code looks like this:
 
@@ -765,8 +762,8 @@ class BlockLayout:
 
 Note a couple of interesting things about this `dirty_y` code. First
 off, both when checking dirty flags and when setting them, we need to
-make sure the relevant element exists. This wasn't an issue before
-because `BlockLayout` elements always have parents.
+make sure the relevant next sibling exists. This wasn't an issue
+before because `BlockLayout` elements always have parents.
 
 Second, note that the `y` computation uses _either_ the previous
 node's `y` position and `height`, _or_ the parent node's `y` position.
@@ -827,8 +824,8 @@ up influencing the `height` of every later layout object, this is
 especially important, though it's worth adding this optimization for
 every layout field.
 
-Avoid redundant recursion
-=========================
+Avoiding redundant recursion
+============================
 
 All of the layout fields in `BlockLayout` are now wrapped in careful
 invalidation logic, ensuring that we only compute `x`, `y`, `width`,
@@ -868,10 +865,10 @@ So---in what cases do we need to make sure we call a particular
 `layout` method? Well, the `layout` method does three things: create
 layout objects, modify their layout properties, and recurse into more
 calls to `layout`. If a layout object's dirty flags are all unset, the
-`layout` object won't create layout objects or modify layout
-properties, and if that's true for all its descendants as well, their
-calls to `layout` won't do anything either and recursing won't matter.
-So we should be able to skip the recursive `layout` calls.
+`layout` call won't create layout objects or modify layout properties,
+and if that's true for all its descendants as well, their calls to
+`layout` won't do anything either and recursing won't matter. So we
+should be able to skip the recursive `layout` calls.
 
 To track this property, let's add a new `dirty_descendants` field to
 each `BlockLayout`:
