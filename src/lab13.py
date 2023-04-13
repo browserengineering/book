@@ -6,7 +6,6 @@ without exercises.
 
 import ctypes
 import dukpy
-import io
 import math
 import sdl2
 import skia
