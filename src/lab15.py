@@ -1117,7 +1117,6 @@ class FrameAccessibilityNode(AccessibilityNode):
 
 
 BROKEN_IMAGE = skia.Image.open("Broken_Image.png")
-WINDOW_COUNT = 0
 
 class Frame:
     def __init__(self, tab, parent_frame, frame_element):

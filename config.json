@@ -87,7 +87,10 @@
             "stylesheet": "browser15.css"
         },
         "invalidation.md": {
-            "disabled": true
+            "disabled": true,
+            "lab": "lab16.py",
+            "lab15": "lab15.py",
+            "tests": "lab16-tests.md"
         },
 
         "skipped.md": { "disabled": true },

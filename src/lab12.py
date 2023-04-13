@@ -50,6 +50,8 @@ class MeasureTime:
     def text(self):
         if self.count == 0: return ""
         avg = self.total_s / self.count
+        self.count = 0
+        self.total_s = 0
         return "Time in {} on average: {:>.0f}ms".format(
             self.name, avg * 1000)
 
