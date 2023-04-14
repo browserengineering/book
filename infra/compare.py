@@ -61,12 +61,6 @@ class Block:
         for key, value in cmds:
             if key == "replace":
                 replacements.extend([item.split("/", 1) for item in value.split(",")])
-            elif key == "sub":
-                if sub: self.errors.append("'sub' key with no corresponding 'with'")
-                sub = value
-            elif key == "with":
-                replacements.append((sub, value))
-                sub = None
         for find, replace in replacements:
             find = urllib.parse.unquote(find)
             replace = urllib.parse.unquote(replace)
