@@ -828,7 +828,6 @@ class Browser:
 
 if __name__ == "__main__":
     import sys
-
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
     browser.load(sys.argv[1])

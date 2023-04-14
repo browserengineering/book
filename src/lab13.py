@@ -1702,11 +1702,9 @@ class Browser:
             sdl2.SDL_GL_DeleteContext(self.gl_context)
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
-if __name__ == "__main__":
-    import sys
+def add_main_args():
     import argparse
-
-    parser = argparse.ArgumentParser(description='Chapter 13 code')
+    parser = argparse.ArgumentParser(description='Toy browser')
     parser.add_argument("url", type=str, help="URL to load")
     parser.add_argument('--single_threaded', action="store_true", default=False,
         help='Whether to run the browser without a browser thread')
@@ -1722,6 +1720,12 @@ if __name__ == "__main__":
     wbetools.USE_GPU = not args.disable_gpu
     wbetools.USE_COMPOSITING = not args.disable_compositing and not args.disable_gpu
     wbetools.SHOW_COMPOSITED_LAYER_BORDERS = args.show_composited_layer_borders
+    return args
+
+if __name__ == "__main__":
+    import sys
+
+    args = add_main_args()
 
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()

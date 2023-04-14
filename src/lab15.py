@@ -44,7 +44,7 @@ from lab14 import parse_color, draw_rect, DrawRRect, \
     is_focused, paint_outline, has_outline, \
     device_px, cascade_priority, style, \
     is_focusable, get_tabindex, announce_text, speak_text, \
-    CSSParser, DrawOutline
+    CSSParser, DrawOutline, main_func
 
 def request(url, top_level_url, payload=None):
     scheme, url = url.split("://", 1)
@@ -2220,8 +2220,7 @@ class Browser:
             sdl2.SDL_GL_DeleteContext(self.gl_context)
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
-if __name__ == "__main__":
-    import sys
+def add_main_args():
     import argparse
 
     parser = argparse.ArgumentParser(description='Chapter 13 code')
@@ -2244,69 +2243,8 @@ if __name__ == "__main__":
     wbetools.SHOW_COMPOSITED_LAYER_BORDERS = args.show_composited_layer_borders
     wbetools.FORCE_CROSS_ORIGIN_IFRAMES = args.force_cross_origin_iframes
 
-    sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
-    browser = Browser()
-    browser.load(args.url)
+    return args
 
-    event = sdl2.SDL_Event()
-    ctrl_down = False
-    while True:
-        if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            if event.type == sdl2.SDL_QUIT:
-                browser.handle_quit()
-                sdl2.SDL_Quit()
-                sys.exit()
-                break
-            elif event.type == sdl2.SDL_MOUSEBUTTONUP:
-                browser.handle_click(event.button)
-            elif event.type == sdl2.SDL_MOUSEMOTION:
-                browser.handle_hover(event.motion)
-            elif event.type == sdl2.SDL_KEYDOWN:
-                if ctrl_down:
-                    if event.key.keysym.sym == sdl2.SDLK_EQUALS:
-                        browser.increment_zoom(1)
-                    elif event.key.keysym.sym == sdl2.SDLK_MINUS:
-                        browser.increment_zoom(-1)
-                    elif event.key.keysym.sym == sdl2.SDLK_0:
-                        browser.reset_zoom()
-                    elif event.key.keysym.sym == sdl2.SDLK_LEFT:
-                        browser.go_back()
-                    elif event.key.keysym.sym == sdl2.SDLK_TAB:
-                        browser.cycle_tabs()
-                    elif event.key.keysym.sym == sdl2.SDLK_a:
-                        browser.toggle_accessibility()
-                    elif event.key.keysym.sym == sdl2.SDLK_d:
-                        browser.toggle_dark_mode()
-                    elif event.key.keysym.sym == sdl2.SDLK_m:
-                        browser.toggle_mute()
-                    elif event.key.keysym.sym == sdl2.SDLK_t:
-                        browser.add_tab()
-                    elif event.key.keysym.sym == sdl2.SDLK_q:
-                        browser.handle_quit()
-                        sdl2.SDL_Quit()
-                        sys.exit()
-                        break
-                elif event.key.keysym.sym == sdl2.SDLK_RETURN:
-                    browser.handle_enter()
-                elif event.key.keysym.sym == sdl2.SDLK_DOWN:
-                    browser.handle_down()
-                elif event.key.keysym.sym == sdl2.SDLK_TAB:
-                    browser.handle_tab()
-                elif event.key.keysym.sym == sdl2.SDLK_RCTRL or \
-                    event.key.keysym.sym == sdl2.SDLK_LCTRL:
-                    ctrl_down = True
-            elif event.type == sdl2.SDL_KEYUP:
-                if event.key.keysym.sym == sdl2.SDLK_RCTRL or \
-                    event.key.keysym.sym == sdl2.SDLK_LCTRL:
-                    ctrl_down = False
-            elif event.type == sdl2.SDL_TEXTINPUT and not ctrl_down:
-                browser.handle_key(event.text.text.decode('utf8'))
-        active_tab = browser.tabs[browser.active_tab]
-        if not wbetools.USE_BROWSER_THREAD:
-            if active_tab.task_runner.needs_quit:
-                break
-            if browser.needs_animation_frame:
-                browser.needs_animation_frame = False
-                browser.render()
-        browser.composite_raster_and_draw()
-        browser.schedule_animation_frame()
+if __name__ == "__main__":
+    args = add_main_args()
+    main_func(args)
