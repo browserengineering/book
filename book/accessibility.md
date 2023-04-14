@@ -866,7 +866,7 @@ the last the focusable node (or if there weren't any focusable nodes
 to begin with), we'll un-focus the page and move focus to the address
 bar:
 
-``` {.python replace=%20=%20focusable_nodes[idx]/_element(focusable_nodes[idx]),%20=%20None/_element(None)}
+``` {.python replace=%20%3d%20focusable_nodes[idx]/_element(focusable_nodes[idx]),%20%3d%20None/_element(None)}
 class Tab:
     def advance_tab(self):
         if idx < len(focusable_nodes):
@@ -1107,7 +1107,7 @@ class DrawOutline(DisplayItem):
 
 Now we can paint a 1 pixel black outline around an element like this:
 
-``` {.python replace=node.is_focused/has_outline(node),"black"/color,1/thickness}
+``` {.python replace=node.is_focused/has_outline(node),%22black%22/color,1/thickness}
 def paint_outline(node, cmds, rect, zoom):
     if node.is_focused:
         cmds.append(DrawOutline(rect, "black", 1))
