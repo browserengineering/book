@@ -8,6 +8,14 @@ import importlib
 from unittest import mock
 from pathlib import Path
 
+try:
+    from blessings import Terminal
+except ImportError:
+    class Terminal:
+        def bold(self, s): return s
+        def red(self, s): return s
+        def green(self, s): return s
+
 IGNORE_FILES = [
     "LICENSE",
     "__pycache__",
@@ -23,22 +31,11 @@ IGNORE_FILES = [
 ]
 
 def test_compare(chapter, value, language, fname):
-    print(f"Comparing {chapter}'s {language} for {fname} with {value}")
     with open("../book/" + chapter) as book, open(value) as code:
-        failure, count = compare.compare_files(book, code, language, fname)
-    if failure:
-        print(f"  Differences in {failure} / {count} blocks")
-    else:
-        print(f"  Matched {count} blocks")
-    return failure
+        return compare.compare_files(book, code, language, fname)
 
 def run_tests(chapter, file_name):
-    print(f"Testing {chapter} in {file_name}")
     failure, count = doctest.testfile(os.path.abspath(file_name), module_relative=False)
-    if failure:
-        print(f"  Failed {failure} / {count} tests")
-    else:
-        print(f"  Passed {count} tests")
 
     # This ugly code reloads all of our modules from scratch, in case
     # a test makes a mutation to a global for some reason
@@ -50,7 +47,7 @@ def run_tests(chapter, file_name):
             importlib.reload(mod)
     mock.patch.stopall()
         
-    return failure
+    return failure, count
 
 if __name__ == "__main__":
     import sys, argparse
@@ -68,27 +65,46 @@ if __name__ == "__main__":
     os.chdir(src_path)
     sys.path.insert(0, src_path)
 
+    t = Terminal()
     results = {}
     for chapter, metadata in data["chapters"].items():
         if args.chapter and args.chapter != "all" and chapter != args.chapter: continue
+        print(f"{t.bold(chapter)}: Running comparisons and tests")
         for key, value in metadata.items():
             if key == "disabled": continue
             if args.key and key != args.key: continue
 
             if key == "tests":
+                print(f"  {t.bold(value)}: Testing {chapter}...", end=" ")
                 results[value] = run_tests(chapter, value)
+                if not results[value][0]: print(t.green("pass"))
             elif key == "lab":
+                print(f"  {t.bold(value)}: Comparing {chapter}'s python...", end=" ")
                 results[value] = test_compare(chapter, value, "python", None)
+                if not results[value][0]: print(t.green("pass"))
             elif key == "stylesheet":
+                print(f"  {t.bold(value)}: Comparing {chapter}'s CSS...", end=" ")
                 results[value] = test_compare(chapter, value, "css", None)
+                if not results[value][0]: print(t.green("pass"))
             elif key == "runtime":
+                print(f"  {t.bold(value)}: Comparing {chapter}'s JS...", end=" ")
                 results[value] = test_compare(chapter, value, "javascript", None)
+                if not results[value][0]: print(t.green("pass"))
             elif isinstance(value, str) and ".py" in value:
-                results[value] = test_compare(chapter, value, "python", key.split(".")[0])
+                fn = key.split(".")[0]
+                print(f"  {t.bold(value)}: Comparing {chapter}'s {fn}...", end=" ")
+                results[value] = test_compare(chapter, value, "python", fn)
+                if not results[value][0]: print(t.green("pass"))
             elif isinstance(value, str) and ".js" in value:
-                results[value] = test_compare(chapter, value, "javascript", key.split(".")[0])
+                fn = key.split(".")[0]
+                print(f"  {t.bold(value)}: Comparing {chapter}'s {fn}...", end=" ")
+                results[value] = test_compare(chapter, value, "javascript", fn)
+                if not results[value][0]: print(t.green("pass"))
             elif isinstance(value, str) and ".css" in value:
-                results[value] = test_compare(chapter, value, "css", key.split(".")[0])
+                fn = key.split(".")[0]
+                print(f"  {t.bold(value)}: Comparing {chapter}'s {fn}...", end=" ")
+                results[value] = test_compare(chapter, value, "css", fn)
+                if not results[value][0]: print(t.green("pass"))
 
     if not results:
         if args.chapter:
@@ -114,4 +130,4 @@ if __name__ == "__main__":
                 print("\t", file)
             sys.exit(-1)
             
-    sys.exit(sum(results.values()))
+    sys.exit(sum([failures for failures, count in results.values()]))

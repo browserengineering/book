@@ -134,6 +134,7 @@ def compare_files(book, code, language, file):
             # it is a failure
             failure += 1
             lines = block.content.count('\n')
+            print()
             print(f"{block.loc}: Failed to match {lines} lines")
             for l2, l in cng:
                 if l2:
