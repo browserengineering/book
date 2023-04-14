@@ -513,6 +513,7 @@ class Browser:
     def render(self):
         assert not wbetools.USE_BROWSER_THREAD
         tab = self.tabs[self.active_tab]
+        tab.task_runner.run_tasks()
         tab.run_animation_frame(self.scroll)
 
     def commit(self, tab, data):
@@ -775,7 +776,6 @@ if __name__ == "__main__":
                 browser.handle_key(event.text.text.decode('utf8'))
         active_tab = browser.tabs[browser.active_tab]
         if not wbetools.USE_BROWSER_THREAD:
-            active_tab.task_runner.run_tasks()
             if active_tab.task_runner.needs_quit:
                 break
             if browser.needs_animation_frame:

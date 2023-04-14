@@ -79,7 +79,7 @@ consider [many different factors][chrome-scheduling].
 
 [chrome-scheduling]: https://blog.chromium.org/2015/04/scheduling-tasks-intelligently-for_30.html
 
-``` {.python}
+``` {.python expected=False}
 class TaskRunner:
     def run(self):
         if len(self.tasks) > 0:

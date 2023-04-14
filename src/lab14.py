@@ -1351,6 +1351,7 @@ class Browser:
     def render(self):
         assert not wbetools.USE_BROWSER_THREAD
         tab = self.tabs[self.active_tab]
+        tab.task_runner.run_tasks()
         tab.run_animation_frame(self.scroll)
 
     def commit(self, tab, data):
