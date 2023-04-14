@@ -36,6 +36,7 @@ Let's verify that we can request the image:
     ... b'<img src="http://test.test/img.png">')
     >>> browser = lab15.Browser()
     >>> browser.load(url)
+    >>> browser.render()
     >>> frame = browser.tabs[0].root_frame
     >>> headers, body = lab15.request(image_url, frame)
     >>> type(body)
@@ -70,6 +71,7 @@ Now let's test setting a different width and height:
 
     >>> browser = lab15.Browser()
     >>> browser.load(size_url)
+    >>> browser.render()
     >>> browser.tabs[0].advance_tab()
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
@@ -87,6 +89,7 @@ Let's load the original image in an iframe.
 
     >>> browser = lab15.Browser()
     >>> browser.load(iframe_url)
+    >>> browser.render()
     >>> browser.tabs[0].advance_tab()
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
@@ -105,6 +108,7 @@ And the sized one:
 
     >>> browser = lab15.Browser()
     >>> browser.load(iframe_size_url)
+    >>> browser.render()
     >>> browser.tabs[0].advance_tab()
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
@@ -125,6 +129,7 @@ Iframes can be sized too:
 
     >>> browser = lab15.Browser()
     >>> browser.load(sized_iframe_url)
+    >>> browser.render()
     >>> browser.tabs[0].advance_tab()
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
@@ -170,6 +175,7 @@ Clicking the sub-frame focuses it:
 
     >>> browser = lab15.Browser()
     >>> browser.load(sized_iframe_url)
+    >>> browser.render()
     >>> browser.tabs[0].advance_tab()
     >>> browser.render()
     >>> e = Event(50, 600)
@@ -187,6 +193,7 @@ And now scrolling affects just the child frame:
     >>> browser.tabs[0].root_frame.nodes.children[0].children[47].frame.scroll
     0
     >>> browser.handle_down()
+    >>> browser.render()
     >>> browser.scroll > 0
     False
     >>> browser.tabs[0].root_frame.nodes.children[0].children[47].frame.scroll
@@ -204,6 +211,7 @@ Let's verify that it still works.
 
     >>> browser = lab15.Browser()
     >>> browser.load(focus_url)
+    >>> browser.render()
     >>> browser.toggle_accessibility()
 
 Rendering will read out the accessibility instructions:
@@ -220,6 +228,7 @@ It also works for iframes:
 
     >>> browser = lab15.Browser()
     >>> browser.load(iframe_url)
+    >>> browser.render()
     >>> browser.toggle_accessibility()
 
 Rendering will read out the accessibility instructions:

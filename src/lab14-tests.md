@@ -50,6 +50,7 @@ An outline causes a `DrawOutline` with the given width and color:
 
     >>> browser = lab14.Browser()
     >>> browser.load(outline_url)
+    >>> browser.render()
     >>> browser.tabs[0].advance_tab()
     >>> browser.render()
 
