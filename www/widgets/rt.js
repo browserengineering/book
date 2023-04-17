@@ -957,3 +957,16 @@ class FileSystem {
 }
 
 const filesystem = new FileSystem();
+
+class threading {
+    static Timer = wrap_class(class {
+        constructor(refresh_rate_sec, callback) {
+            this.refresh_rate_ms = refresh_rate_sec * 1000;
+            this.callback = callback;
+        }
+
+        start() {
+            setTimeout(this.callbac, this.refresh_rate_ms)
+        }
+    });
+}

@@ -1,0 +1,15 @@
+[{"code": "key not in FONTS", "type": "dict"},
+ {"code": "url_origin(url) in self.allowed_origins", "type": "dict"},
+ {"code": "'src' in node.attributes", "type": "dict"},
+ {"code": "'href' in node.attributes", "type": "dict"},
+ {"code": "'action' in elt.attributes", "type": "dict"},
+ {"code": "'href' in elt.attributes", "type": "dict"},
+ {"code": "'name' in node.attributes", "type": "dict"},
+ {"code": "'content-security-policy' in headers", "type": "dict"},
+ {"code": "b'Browser'", "js": "'Browser'"},
+ {"code": "print", "js": "console.log"},
+ {"code": "'Time in {} on average: {:>.0f}ms'.format(self.name, avg * 1000)", "js": "('')"},
+ {"code": "self.task_code(*self.args)", "js": "self.task_code.apply(this, arguments)"},
+ {"code": "elt not in self.node_to_handle", "type": "dict"},
+]
+
