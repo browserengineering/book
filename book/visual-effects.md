@@ -814,7 +814,7 @@ real browser: the `transform` property, `position`ed elements,
 negative margins, and so many more. But color mixing works the same
 way each time.
 
-``` {.html.example}
+``` {.html .example}
 <div style="background-color:orange">
     Parent
     <div style="background-color:white;border-radius:5px">Child</div>
@@ -1100,7 +1100,7 @@ the [`mix-blend-mode` property][mix-blend-mode-def], like this:
 
 [wiki-blend-mode]: https://en.wikipedia.org/wiki/Blend_modes
 
-``` {.html.example}
+``` {.html .example}
 <div style="background-color:orange">
     Parent
     <div style="background-color:blue;mix-blend-mode:difference">
@@ -1226,7 +1226,7 @@ parent. Our browser doesn't support these, but there is one edge case
 where `overflow: clip` is relevant: rounded corners. Consider this
 example:
 
-``` {.html.example}
+``` {.html .example}
 <div 
   style="border-radius:30px;background-color:lightblue;overflow:clip">
     This test text exists here to ensure that the "div" element is

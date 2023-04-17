@@ -5,7 +5,7 @@ This file contains tests for Chapter 16 (Invalidation).
 
     >>> from test import Event
     >>> import threading
-    >>> import test14 as test
+    >>> import test11 as test
     >>> _ = test.socket.patch().start()
     >>> _ = test.ssl.patch().start()
     >>> _ = test.gtts.patch()
@@ -46,8 +46,8 @@ First of all, we can load and render it:
 
     >>> browser = lab16.Browser()
     >>> browser.load(url)
+    >>> browser.render()
     >>> frame = browser.tabs[0].root_frame
-    >>> frame.render()
     >>> lab16.print_tree(frame.document) # doctest: +ELLIPSIS
      DocumentLayout()
        BlockLayout(x=13.0, y=13.0, width=774.0, height=60.0, node=<html>)
