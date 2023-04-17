@@ -154,7 +154,7 @@ class Frame:
         if self.needs_layout:
             # Change here
             self.measure_layout.start()
-            self.document.layout(self.tab.zoom, self.frame_width)
+            self.document.layout(self.frame_width, self.tab.zoom)
             self.measure_layout.stop()
             if self.tab.accessibility_is_on:
                 self.tab.needs_accessibility = True
@@ -191,7 +191,8 @@ class LineLayout:
             self.parent.dirty_descendants = True
             self.parent.mark_dirty()
 
-    def layout(self, zoom):
+    def layout(self):
+        self.zoom = self.parent.zoom
         self.width = self.parent.width
         self.x = self.parent.x
 
@@ -201,7 +202,7 @@ class LineLayout:
             self.y = self.parent.y
 
         for word in self.children:
-            word.layout(zoom)
+            word.layout()
 
         if not self.children:
             self.height = 0
@@ -259,10 +260,12 @@ class BlockLayout:
             self.parent.dirty_descendants = True
             self.parent.mark_dirty()
 
-    def layout(self, zoom):
-        self.dirty_zoom = (zoom != self.zoom)
+    def layout(self):
         if self.dirty_zoom:
-            self.zoom = zoom
+            self.zoom = self.parent.zoom
+            for child in self.children:
+                child.mark_dirty()
+                child.dirty_zoom = True
             self.mark_dirty()
             self.dirty_width = True
             self.dirty_zoom = False
@@ -323,8 +326,7 @@ class BlockLayout:
             else:
                 self.children = []
                 self.new_line()
-                assert not self.dirty_zoom
-                self.recurse(self.node, zoom)
+                self.recurse(self.node)
                 self.dirty_descendants = True
                 self.mark_dirty()
             self.dirty_children = False
@@ -333,7 +335,7 @@ class BlockLayout:
             assert not self.dirty_children
             assert not self.dirty_zoom
             for child in self.children:
-                child.layout(zoom)
+                child.layout()
             self.dirty_descendants = False
 
         if self.dirty_height:
@@ -350,25 +352,25 @@ class BlockLayout:
                     self.next.mark_dirty()
             self.dirty_height = False
 
-    def recurse(self, node, zoom):
+    def recurse(self, node):
         assert not self.dirty_style
         if isinstance(node, Text):
-            self.text(node, zoom)
+            self.text(node)
         else:
             if node.tag == "br":
                 self.new_line()
             elif node.tag == "input" or node.tag == "button":
-                self.input(node, zoom)
+                self.input(node)
             elif node.tag == "img":
-                self.image(node, zoom)
+                self.image(node)
             elif node.tag == "iframe" and \
                  "src" in node.attributes:
-                self.iframe(node, zoom)
+                self.iframe(node)
             else:
                 for child in node.children:
-                    self.recurse(child, zoom)
+                    self.recurse(child)
 
-    def paint(self, display_list, zoom):
+    def paint(self, display_list):
         assert not self.dirty_children
         
         cmds = []
@@ -387,11 +389,11 @@ class BlockLayout:
                 radius = device_px(
                     float(self.node.style.get(
                         "border-radius", "0px")[:-2]),
-                    zoom)
+                    self.zoom)
                 cmds.append(DrawRRect(rect, radius, bgcolor))
  
         for child in self.children:
-            child.paint(cmds, zoom)
+            child.paint(cmds)
 
         if not is_atomic:
             cmds = paint_visual_effects(self.node, cmds, rect)
@@ -407,6 +409,7 @@ class DocumentLayout:
         self.previous = None
         self.children = []
 
+        self.zoom = None
         self.width = None
         self.height = None
         self.x = None
@@ -423,13 +426,16 @@ class DocumentLayout:
             self.parent.dirty_descendants = True
             self.parent.mark_dirty()
 
-    def layout(self, zoom, width):
+    def layout(self, width, zoom):
         if not self.children:
             child = BlockLayout(self.node, self, None, self.frame)
         else:
             child = self.children[0]
         self.children = [child]
 
+        if zoom != self.zoom:
+            self.zoom = zoom
+            child.dirty_zoom = True
         if width - 2 * device_px(HSTEP, zoom) != self.width:
             self.width = width - 2 * device_px(HSTEP, zoom)
             child.dirty_width = True
@@ -445,7 +451,7 @@ class DocumentLayout:
             child.dirty_y = True
             child.mark_dirty()
             self.dirty_y = False
-        child.layout(zoom)
+        child.layout()
         assert not child.dirty_height
         self.height = child.height + 2* device_px(VSTEP, zoom)
 

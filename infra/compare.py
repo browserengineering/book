@@ -7,77 +7,80 @@ import sys
 import tempfile
 import urllib.parse
 
-def get_blocks(file):
-    status = None
-    accumulator = ""
-    for line in file:
-        if line.startswith("##</>"):
-            yield status, accumulator
-            status = None
-            accumulator = ""
-        elif line.startswith("##<"):
-            metadata = line[len("##<"):-len(">")]
-            try:
-                status = json.loads(metadata)
-            except json.decoder.JSONDecodeError:
-                print("Could not decode " + metadata)
-                status = {}
-            accumulator = ""
-        elif status is not None:
-            if line:
-                accumulator += line + "\n"
-                
-# Lua code to extract all code blocks from a Markdown file via Pandoc
-FILTER = r'''
-function CodeBlock(el)
-  io.write("##<{")
-  local written = nil
-  io.write("\"classes\": [")
-  for i, cls in pairs(el.classes) do
-      if written then io.write(", ") end
-      io.write("\"" .. cls .. "\"")
-      written = true
-  end
-  io.write("]")
-  for k, v in pairs(el.attributes) do
-      io.write(", \"" .. k .. "\": \"" .. v:gsub("\"", "\\\"") .. "\"")
-  end
-  io.write("}>\n")
-  io.write(el.text .. "\n")
-  io.write("##</>\n\n")
-  io.flush()
-  return el
-end
-'''
+class Span:
+    def __init__(self, s):
+        self.filename, pos = s.split("@", 1)
+        self.start_line = None
+        for piece in pos.split(";"):
+            start, end = piece.split("-")
+            if not self.start_line:
+                self.start_line, self.start_char = start.split(":")
+            self.end_line, self.end_char = end.split(":")
 
-def indent(block, n=0):
-    n = int(n)
-    if n == 0: return block
-    indentation = " " * n
-    block = indentation + block.replace("\n", "\n" + indentation)
-    return block[:-n]
+    def __str__(self):
+        return f"{self.filename}:{self.start_line}"
 
-def replace(block, *cmds):
-    for find, replace in cmds:
-        find = urllib.parse.unquote(find)
-        replace = urllib.parse.unquote(replace)
-        block = block.replace(find, replace)
-    return block
+class Block:
+    def __init__(self, block):
+        meta, self.content = block
+        assert meta[0] == ""
+        self.classes = meta[1]
 
-def dropline(block, pattern):
-    return "\n".join([
-        line for line in block.split("\n")
-        if urllib.parse.unquote(pattern) not in line
-    ])
+        self.errors = []
+        if any(c.startswith("{.") for c in meta[1]):
+            self.errors.append(f"Mis-parsed block metadata")
+
+        attrs = dict(meta[2])
+        self.loc = Span(attrs["data-pos"])
+        self.file = attrs.get("file")
+        self.expected = attrs.get("expected", "True") == "True"
+        self.indent(int(attrs.get("indent", "0")))
+        if "dropline" in attrs:
+            self.dropline(attrs["dropline"])
+
+        # There are several ways to specify text replacements
+        cmds = [(key, val) for key, val in meta[2] if key in ["replace", "sub", "with"]]
+        if cmds:
+            self.replace(cmds)
+
+        self.stop = "stop" in attrs
+
+    def indent(self, n):
+        indentation = " " * n
+        self.content = indentation + self.content.strip().replace("\n", "\n" + indentation) + "\n"
+
+    def dropline(self, pattern):
+        self.content = "\n".join([
+            line for line in self.content.split("\n")
+            if urllib.parse.unquote(pattern) not in line
+        ])
+
+    def replace(self, cmds):
+        replacements = []
+        sub = None
+        for key, value in cmds:
+            if key == "replace":
+                replacements.extend([item.split("/", 1) for item in value.split(",")])
+        for find, replace in replacements:
+            find = urllib.parse.unquote(find)
+            replace = urllib.parse.unquote(replace)
+            self.content = self.content.replace(find, replace)
+
+BLOCK_CACHE = {}
 
 def tangle(file):
-    with open("/tmp/test", "wb") as f:
-        f.write(FILTER.encode("utf8"))
-        f.close()
-        cmd = ["pandoc", "--from", "markdown", "--to", "html", "--lua-filter", f.name, file]
-        out = subprocess.run(cmd, capture_output=True)
-    out.check_returncode()
-    return list(get_blocks(out.stdout.decode("utf8").split("\n")))
+    if file not in BLOCK_CACHE:
+        cmd = ["pandoc", "--from", "commonmark_x+sourcepos", "--to", "json", file]
+        out = subprocess.run(cmd, capture_output=True, check=True)
+        data = json.loads(out.stdout)
+        blocks = []
+        for block in data['blocks']:
+            if block['t'] == "CodeBlock":
+                val = Block(block['c'])
+                blocks.append(val)
+                if val.stop: break
+        BLOCK_CACHE[file] = blocks
+    return BLOCK_CACHE[file]
 
 def find_block(block, text):
     differ = difflib.Differ(charjunk=lambda c: c == " ", linejunk=str.isspace)
@@ -113,23 +116,26 @@ def compare_files(book, code, language, file):
     src = code.read()
     blocks = tangle(book.name)
     failure, count = 0, 0
-    for name, block in blocks:
-        if "example" in name.get("classes"): continue
-        if language and language not in name.get("classes"): continue
-        if name.get("file") != file: continue
-        block = indent(block, name.get("indent", "0"))
-        block = replace(block, *[item.split("/", 1) for item in name.get("replace", "/").split(",")])
-        block = dropline(block, name["dropline"]) if "dropline" in name else block
-        cng = find_block(block, src)
-        expected = name.get("expected", "True") == "True"
+    for block in blocks:
+        content = block.content
+        if block.errors:
+            for error in block.errors:
+                print(f"{block.loc}:", error)
+                failure += 1
+            continue
+        if "example" in block.classes: continue
+        if language and language not in block.classes: continue
+        if block.file != file: continue
+        cng = find_block(block.content, src)
         count += 1
-        if any(l2 for l2, l in cng) == expected:
+        if any(l2 for l2, l in cng) == block.expected:
             # If expected to pass (True) and there are lines,
             # or if expected to fail (False) and there are no lines,
             # it is a failure
             failure += 1
-            print("Block <{}> ({} lines)".format(name, block.count("\n")))
-            if "hide" in name: continue
+            lines = block.content.count('\n')
+            print()
+            print(f"{block.loc}: Failed to match {lines} lines")
             for l2, l in cng:
                 if l2:
                     print(">", l, end="")
@@ -138,6 +144,5 @@ def compare_files(book, code, language, file):
                 else:
                     print(" ", l, end="")
             print()
-        if name.get("last"): break
     return failure, count
     
