@@ -129,7 +129,7 @@ simple web page with a `script` tag:
 
 Then write a super simple script to `test.js`, maybe this:
 
-``` {.javascript.example}
+``` {.javascript .example}
 var x = 2
 x + x
 ```
@@ -220,7 +220,7 @@ class JSContext:
 We can call an exported function from JavaScript using Dukpy's
 `call_python` function. For example:
 
-``` {.javascript.example}
+``` {.javascript .example}
 call_python("log", "Hi from JS")
 ```
 
@@ -234,7 +234,7 @@ Since we ultimately want JavaScript to call a `console.log` function,
 not a `call_python` function, we need to define a `console` object
 and then give it a `log` property. We can do that *in JavaScript*:
 
-``` {.javascript.example}
+``` {.javascript .example}
 console = { log: function(x) { call_python("log", x); } }
 ```
 
@@ -294,7 +294,7 @@ Crashes in JavaScript code are frustrating to debug. You can cause a
 crash by writing bad code, or by explicitly raising an exception, like
 so:
 
-``` {.javascript.example}
+``` {.javascript .example}
 throw Error("bad");
 ```
 
@@ -396,7 +396,7 @@ class JSContext:
 In JavaScript, `querySelectorAll` is a method on the `document`
 object, which we need to define in the JavaScript runtime:
 
-``` {.javascript replace=return/var%20handles%20=}
+``` {.javascript replace=return/var%20handles%20%3d}
 document = { querySelectorAll: function(s) {
     return call_python("querySelectorAll", s);
 }}
@@ -713,7 +713,7 @@ on.
 
 When an event occurs, the browser calls `dispatchEvent` from Python:
 
-``` {.python replace=self.interp.evaljs/do_default%20=%20self.interp.evaljs}
+``` {.python replace=self.interp.evaljs/do_default%20%3d%20self.interp.evaljs}
 class JSContext:
     def dispatch_event(self, type, elt):
         handle = self.node_to_handle.get(elt, -1)
@@ -767,7 +767,7 @@ that change the page. The full DOM API provides a lot of such methods,
 but for simplicity I'm going to implement only `innerHTML`, which is
 used like this:
 
-``` {.javascript.example}
+``` {.javascript .example}
 node.innerHTML = "This is my <b>new</b> bit of content!";
 ```
 
@@ -886,7 +886,7 @@ def do_request(method, url, headers, body):
 We can then put our little input length checker into `comment.js`,
 with the `lengthCheck` function modified to use `innerHTML`:
 
-``` {.javascript file=comment replace=value.length%20>%20100/!allow_submit}
+``` {.javascript file=comment replace=value.length%20%3e%20100/!allow_submit}
 var label = document.querySelectorAll("label")[0];
 
 function lengthCheck() {
@@ -1220,7 +1220,7 @@ property is called `backgroundColor` in Javascript. Implement the
 return a string containing HTML source code. That source code should
 reflect the *current* attributes of the element; for example:
 
-``` {.javascript.example} 
+``` {.javascript .example} 
 element.innerHTML = '<span id=foo>Chris was here</span>';
 element.id = 'bar';
 // Prints "<span id=bar>Chris was here</span>":
