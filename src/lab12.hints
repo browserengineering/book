@@ -1,5 +1,4 @@
-[{"code": "key not in FONTS", "type": "dict"},
- {"code": "url_origin(url) in self.allowed_origins", "type": "dict"},
+[{"code": "url_origin(url) in self.allowed_origins", "type": "dict"},
  {"code": "'src' in node.attributes", "type": "dict"},
  {"code": "'href' in node.attributes", "type": "dict"},
  {"code": "'action' in elt.attributes", "type": "dict"},
@@ -15,6 +14,5 @@
  {"code": "run_load()", "js": "await run_load()"},
  {"code": "run_load", "js": "run_load"},
  {"code": "def __init__(self, task_code, *args):\n    self.task_code = task_code\n    self.args = args\n    self.__name__ = 'task'", "js": "  async init(task_code) {\n    this.task_code = task_code;\n    this.args = arguments;\n    this.__name__ = 'task'; \n  }"},
- {"line": 570, "code": "callback", "js": "callback"}
+ {"code": "callback", "js": "callback"}
 ]
-
