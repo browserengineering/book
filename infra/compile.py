@@ -199,7 +199,7 @@ LIBRARY_METHODS = [
     "Make",
 
     # skia.Image
-    "tobytes"
+    "tobytes",
 
     # threading
     "Condition",
