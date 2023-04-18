@@ -969,4 +969,33 @@ class threading {
             setTimeout(this.callbac, this.refresh_rate_ms)
         }
     });
+
+    static Thread = wrap_class(class {
+        constructor(target) {
+        }
+
+        start() {
+
+        }
+    });
+
+    static Condition = wrap_class(class {
+        constructor() {}
+
+        acquire() {}
+
+        wait() {}
+
+        notify_all() {}
+
+        release() {}
+    });
+
+    static Lock = wrap_class(class {
+        constructor() {}
+
+        acquire() {}
+
+        release() {}        
+    });
 }

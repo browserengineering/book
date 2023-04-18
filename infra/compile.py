@@ -201,11 +201,15 @@ LIBRARY_METHODS = [
     # skia.Image
     "tobytes",
 
-    # threading
-    "Condition",
-    "Lock",
-    "Timer",
-    "Thread"
+    # threading.Timer
+    # threading.Thread
+    "start",
+    # threading.Condition
+    "notify_all",
+    "wait",
+    # threading.Lock
+    "acquire",
+    "release"
 ]
 
 OUR_FNS = []

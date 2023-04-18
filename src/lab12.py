@@ -39,10 +39,10 @@ class MeasureTime:
         self.total_s = 0
         self.count = 0
 
-    def start(self):
+    def start_timing(self):
         self.start_time = time.time()
 
-    def stop(self):
+    def stop_timing(self):
         self.total_s += time.time() - self.start_time
         self.count += 1
         self.start_time = None
@@ -186,7 +186,7 @@ class Tab:
             self.task_runner = TaskRunner(self)
         else:
             self.task_runner = SingleThreadedTaskRunner(self)
-        self.task_runner.start()
+        self.task_runner.start_thread()
 
         self.measure_render = MeasureTime("render")
 
@@ -289,7 +289,7 @@ class Tab:
 
     def render(self):
         if not self.needs_render: return
-        self.measure_render.start()
+        self.measure_render.start_timing()
         style(self.nodes, sorted(self.rules,
             key=cascade_priority))
         self.document = DocumentLayout(self.nodes)
@@ -306,7 +306,7 @@ class Tab:
             y = obj.y
             self.display_list.append(
                 DrawLine(x, y, x, y + obj.height))
-        self.measure_render.stop()
+        self.measure_render.stop_timing()
         self.needs_render = False
 
     def click(self, x, y):
@@ -398,7 +398,7 @@ class SingleThreadedTaskRunner:
     def clear_pending_tasks(self):
         self.tasks = []
 
-    def start(self):    
+    def start_thread(self):    
         pass
 
     def set_needs_quit(self):
@@ -439,7 +439,7 @@ class TaskRunner:
         self.tasks.clear()
         self.pending_scroll = None
 
-    def start(self):
+    def start_thread(self):
         self.main_thread.start()
 
     def run(self):
@@ -546,11 +546,11 @@ class Browser:
         if not self.needs_raster_and_draw:
             self.lock.release()
             return
-        self.measure_raster_and_draw.start()
+        self.measure_raster_and_draw.start_timing()
         self.raster_chrome()
         self.raster_tab()
         self.draw()
-        self.measure_raster_and_draw.stop()
+        self.measure_raster_and_draw.stop_timing()
         self.needs_raster_and_draw = False
         self.lock.release()
 
