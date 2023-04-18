@@ -10,6 +10,6 @@
  {"code": "print", "js": "console.log"},
  {"code": "'Time in {} on average: {:>.0f}ms'.format(self.name, avg * 1000)", "js": "('')"},
  {"code": "self.task_code(*self.args)", "js": "self.task_code.apply(this, arguments)"},
- {"code": "elt not in self.node_to_handle", "type": "dict"},
+ {"code": "elt not in self.node_to_handle", "type": "dict"}
 ]
 
