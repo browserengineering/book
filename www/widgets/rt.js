@@ -5,7 +5,7 @@ export {
     socket, ssl, tkinter, dukpy, urllib, html, random, wbetools,
     truthy, comparator, pysplit, pyrsplit, asyncfilter,
     rt_constants, Widget, http_textarea, skia, sdl2, init_skia,
-    init_window
+    init_window, threading, time
     };
 
 function wrap_class(cls, fn) {
@@ -723,7 +723,7 @@ class ctypes {
 }
 
 class wbetools {
-
+    static USE_BROWSER_THREAD = false;
 }
 
 class Breakpoint {
@@ -998,4 +998,10 @@ class threading {
 
         release() {}        
     });
+}
+
+class time {
+    static time() {
+        return (new Date().getTime()) / 1000.0;
+    }
 }

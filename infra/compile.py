@@ -336,6 +336,8 @@ def compile_method(base, name, args, ctx):
     elif name == "count":
         assert len(args) == 1
         return base_js + ".split(" + args_js[0] + ").length - 1"
+    elif name == "Task":
+        print('what')
     else:
         raise UnsupportedConstruct()
 
@@ -739,7 +741,7 @@ def compile(tree, ctx, indent=0):
         assert not tree.orelse
         ctx2 = Context("while", ctx)
         test = compile_expr(tree.test, ctx)
-        out = " " * indent + "while (" + test + ") {\n"
+        out = " " * indent + "while (truthy(" + test + ")) {\n"
         out += "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in tree.body])
         out += "\n" + " " * indent + "}"
         return out

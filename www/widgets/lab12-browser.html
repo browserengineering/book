@@ -28,7 +28,6 @@ Promise.all([ckLoaded, loadFont]).then(([CanvasKit, robotoData]) => {
     let { handle_connection } = server10;
 
     init_skia(CanvasKit, robotoData)
-
     socket.accept(8000, handle_connection);
     rt_constants.ROOT_CANVAS = document.querySelector("#canvas");
 
@@ -40,6 +39,12 @@ Promise.all([ckLoaded, loadFont]).then(([CanvasKit, robotoData]) => {
         let b = await (new Browser()).init();
         w = init_window(b);
         await b.load(url);
+        await b.render();
+        setInterval(async function() {
+          await b.render();
+          await b.raster_and_draw();
+          await b.schedule_animation_frame();
+        }, 20);
     });
     widget.next();
   });

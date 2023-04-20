@@ -8,11 +8,11 @@
  {"code": "b'Browser'", "js": "'Browser'"},
  {"code": "print", "js": "console.log"},
  {"code": "'Time in {} on average: {:>.0f}ms'.format(self.name, avg * 1000)", "js": "('')"},
- {"code": "self.task_code(*self.args)", "js": "self.task_code.apply(this, this.args)"},
+ {"code": "self.task_code(*self.args)", "js": "await this.task_code.apply(this.obj, this.args)"},
  {"code": "elt not in self.node_to_handle", "type": "dict"},
  {"code": "run_callback", "js": "await run_callback()"},
  {"code": "run_load()", "js": "await run_load()"},
  {"code": "run_load", "js": "run_load"},
- {"code": "def __init__(self, task_code, *args):\n    self.task_code = task_code\n    self.args = args\n    self.__name__ = 'task'", "js": "  async init(task_code) {\n    this.task_code = task_code;\n    this.args = arguments;\n    this.__name__ = 'task'; \n  }"},
+ {"code": "def __init__(self, obj, task_code, *args):\n    self.obj = obj\n    self.task_code = task_code\n    self.args = args\n    self.__name__ = 'task'", "js": "  async init(obj, task_code) {\n    this.obj = obj;\n    this.task_code = task_code;\n    this.args = Array.prototype.slice.call(arguments, 2);\n    this.__name__ = 'task'; \n    return this;\n  }"},
  {"code": "callback", "js": "callback"}
 ]
