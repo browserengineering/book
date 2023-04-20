@@ -147,7 +147,7 @@ class JSContext:
 
         def run_load():
             headers, response = request(
-                full_url, self.tab.url, body)
+                full_url, self.tab.url, payload=body)
             task = Task(self, self.dispatch_xhr_onload, response, handle)
             self.tab.task_runner.schedule_task(task)
             if not isasync:
