@@ -39,7 +39,8 @@ are then available as the list `args`. Then, calling a function with
 
 ``` {.python}
 class Task:
-    def __init__(self, task_code, *args):
+    def __init__(self, obj, task_code, *args):
+        self.obj = obj
         self.task_code = task_code
         self.args = args
         self.__name__ = "task"
@@ -122,7 +123,7 @@ class Tab:
         for script in scripts:
             # ...
             header, body = request(script_url, url)
-            task = Task(self.run_script, script_url, body)
+            task = Task(self, self.run_script, script_url, body)
             self.task_runner.schedule_task(task)
 ```
 
@@ -255,7 +256,7 @@ class JSContext:
 
     def setTimeout(self, handle, time):
         def run_callback():
-            task = Task(self.dispatch_settimeout, handle)
+            task = Task(self, self.dispatch_settimeout, handle)
             self.tab.task_runner.schedule_task(task)
         threading.Timer(time / 1000.0, run_callback).start()
 
@@ -432,7 +433,7 @@ class JSContext:
         def run_load():
             headers, response = request(
                 full_url, self.tab.url, payload=body)
-            task = Task(self.dispatch_xhr_onload, response, handle)
+            task = Task(self, self.dispatch_xhr_onload, response, handle)
             self.tab.task_runner.schedule_task(task)
             if not isasync:
                 return response
@@ -557,7 +558,7 @@ class Browser:
     def schedule_animation_frame(self):
         def callback():
             active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.render)
+            task = Task(active_tab, active_tab.render)
             active_tab.task_runner.schedule_task(task)
         threading.Timer(REFRESH_RATE_SEC, callback).start()
 ```
@@ -809,7 +810,7 @@ class JSContext:
             self.requestAnimationFrame)
 
     def requestAnimationFrame(self):
-        task = Task(self.tab.render)
+        task = Task(self, self.tab.render)
         self.tab.task_runner.schedule_task(task)
 ```
 
@@ -999,10 +1000,10 @@ objects:
 
 ``` {.python}
 class MeasureTime:
-    def start(self):
+    def start_timing(self):
         self.start_time = time.time()
 
-    def stop(self):
+    def stop_timing(self):
         self.total_s += time.time() - self.start_time
         self.count += 1
         self.start_time = None
@@ -1017,9 +1018,9 @@ class Tab:
 
     def render(self):
         if not self.needs_render: return
-        self.measure_render.start()
+        self.measure_render.start_timing()
         # ...
-        self.measure_render.stop()
+        self.measure_render.stop_timing()
 ```
 
 And also raster-and-draw:
@@ -1033,9 +1034,9 @@ class Browser:
     def raster_and_draw(self):
         if not self.needs_raster_and_draw:
             return
-        self.measure_raster_and_draw.start()
+        self.measure_raster_and_draw.start_timing()
         # ...
-        self.measure_raster_and_draw.stop()
+        self.measure_raster_and_draw.stop_timing()
 ```
 
 We can print out the timing measures when we quit:
@@ -1163,7 +1164,7 @@ class TaskRunner:
         # ...
         self.main_thread = threading.Thread(target=self.run)
 
-    def start(self):
+    def start_thread(self):
         self.main_thread.start()
 
     def run(self):
@@ -1194,7 +1195,7 @@ example, here is loading:
 class Browser:
     def schedule_load(self, url, body=None):
         active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.load, url, body)
+        task = Task(active_tab, active_tab.load, url, body)
         active_tab.task_runner.schedule_task(task)
 
     def handle_enter(self):
@@ -1222,7 +1223,7 @@ class Browser:
         else:
             # ...
             active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.click, e.x, e.y - CHROME_PX)
+            task = Task(active_tab, active_tab.click, e.x, e.y - CHROME_PX)
             active_tab.task_runner.schedule_task(task)
 ```
 
@@ -1236,7 +1237,7 @@ class Browser:
             # ...
         elif self.focus == "content":
             active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.keypress, char)
+            task = Task(active_tab, active_tab.keypress, char)
             active_tab.task_runner.schedule_task(task)
 ```
 
@@ -1301,11 +1302,7 @@ class Tab:
         self.js.interp.evaljs("__runRAFHandlers()")
         self.render()
         commit_data = CommitForRaster(
-            url=self.url,
-            scroll=self.scroll,
-            height=document_height,
-            display_list=self.display_list,
-        )
+            self.url, self.scroll, document_height, self.display_list)
         self.display_list = None
         self.browser.commit(self, commit_data)
 ```
@@ -1320,7 +1317,7 @@ class Browser:
     def schedule_animation_frame(self):
         def callback():
             # ...
-            task = Task(active_tab.run_animation_frame)
+            task = Task(active_tab, active_tab.run_animation_frame)
             # ...
 ```
 
@@ -1534,7 +1531,7 @@ class Browser:
             scroll = self.scroll
             active_tab = self.tabs[self.active_tab]
             self.needs_animation_frame = False
-            task = Task(active_tab.run_animation_frame, scroll)
+            task = Task(active_tab, active_tab.run_animation_frame, scroll)
             active_tab.task_runner.schedule_task(task)
             self.lock.release()
         # ...
@@ -1599,11 +1596,7 @@ class Tab:
         if self.scroll_changed_in_tab:
             scroll = self.scroll
         commit_data = CommitForRaster(
-            url=self.url,
-            scroll=scroll,
-            height=document_height,
-            display_list=self.display_list,
-        )
+            self.url, scroll, document_height, self.display_list)
         # ...
 ```
 

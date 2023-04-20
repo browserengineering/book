@@ -14,5 +14,10 @@
  {"code": "run_load()", "js": "await run_load()"},
  {"code": "run_load", "js": "run_load"},
  {"code": "def __init__(self, obj, task_code, *args):\n    self.obj = obj\n    self.task_code = task_code\n    self.args = args\n    self.__name__ = 'task'", "js": "  async init(obj, task_code) {\n    this.obj = obj;\n    this.task_code = task_code;\n    this.args = Array.prototype.slice.call(arguments, 2);\n    this.__name__ = 'task'; \n    return this;\n  }"},
- {"code": "callback", "js": "callback"}
+ {"code": "callback", "js": "callback"},
+ {"code": "self.node_to_handle = {}", "js": "    this.node_to_handle = new Map();"},
+ {"code": "self.node_to_handle.get(elt, -1)", "js": "this.node_to_handle.get(elt) ?? -1"},
+ {"code": "self.node_to_handle[elt]", "js": "this.node_to_handle.get(elt)"},
+ {"code": "len(self.node_to_handle)", "js": "this.node_to_handle.size"},
+ {"code": "self.node_to_handle[elt] = handle", "js": "      this.node_to_handle.set(elt, handle);"}
 ]
