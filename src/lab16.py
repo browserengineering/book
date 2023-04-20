@@ -153,9 +153,9 @@ class Frame:
 
         if self.needs_layout:
             # Change here
-            self.measure_layout.start()
+            self.measure_layout.start_timing()
             self.document.layout(self.frame_width, self.tab.zoom)
-            self.measure_layout.stop()
+            self.measure_layout.stop_timing()
             if self.tab.accessibility_is_on:
                 self.tab.needs_accessibility = True
             else:

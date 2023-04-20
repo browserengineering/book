@@ -936,7 +936,7 @@ class Tab:
             self.task_runner = TaskRunner(self)
         else:
             self.task_runner = SingleThreadedTaskRunner(self)
-        self.task_runner.start()
+        self.task_runner.start_thread()
 
         self.measure_render = MeasureTime("render")
         self.composited_updates = []
@@ -1080,7 +1080,7 @@ class Tab:
         self.browser.commit(self, commit_data)
 
     def render(self):
-        self.measure_render.start()
+        self.measure_render.start_timing()
 
         if self.needs_style:
             if self.dark_mode:
@@ -1111,7 +1111,7 @@ class Tab:
             self.document.paint(self.display_list)
             self.needs_paint = False
 
-        self.measure_render.stop()
+        self.measure_render.stop_timing()
 
     def focus_element(self, node):
         if node and node != self.focus:
@@ -1527,7 +1527,7 @@ class Browser:
             self.needs_accessibility:
             self.lock.release()
             return
-        self.measure_composite_raster_and_draw.start()
+        self.measure_composite_raster_and_draw.start_timing()
         start_time = time.time()
         if self.needs_composite:
             self.composite()
@@ -1539,7 +1539,7 @@ class Browser:
             self.paint_draw_list()
             self.draw()
 
-        self.measure_composite_raster_and_draw.stop()
+        self.measure_composite_raster_and_draw.stop_timing()
 
         if self.needs_accessibility:
             self.update_accessibility()
