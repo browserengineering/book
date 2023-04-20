@@ -40,6 +40,12 @@ from lab15 import request, DrawImage, DocumentLayout, BlockLayout, \
     CommitData, draw_line, Browser
 import wbetools
 
+def mark_dirty(node):
+    if isinstance(node.parent, BlockLayout) and \
+        not node.parent.dirty_descendants:
+        node.parent.dirty_descendants = True
+        mark_dirty(node.parent)
+
 @wbetools.patch(Frame)
 class Frame:
     def load(self, url, body=None):
@@ -185,12 +191,6 @@ class LineLayout:
         self.dirty_x = True
         self.dirty_y = True
 
-    def mark_dirty(self):
-        if isinstance(self.parent, BlockLayout) and \
-            not self.parent.dirty_descendants:
-            self.parent.dirty_descendants = True
-            self.parent.mark_dirty()
-
     def layout(self):
         self.zoom = self.parent.zoom
         self.width = self.parent.width
@@ -207,7 +207,7 @@ class LineLayout:
         if not self.children:
             self.height = 0
             self.parent.dirty_height = True
-            self.parent.mark_dirty()
+            mark_dirty(self.parent)
             return
 
         max_ascent = max([-child.get_ascent(1.25) 
@@ -219,7 +219,7 @@ class LineLayout:
                            for child in self.children])
         self.height = max_ascent + max_descent
         self.parent.dirty_height = True
-        self.parent.mark_dirty()
+        mark_dirty(self.parent)
 
         self.dirty_width = False
         self.dirty_height = False
@@ -254,26 +254,20 @@ class BlockLayout:
         self.dirty_y = True
         self.dirty_descendants = True
 
-    def mark_dirty(self):
-        if isinstance(self.parent, BlockLayout) and \
-            not self.parent.dirty_descendants:
-            self.parent.dirty_descendants = True
-            self.parent.mark_dirty()
-
     def layout(self):
         if self.dirty_zoom:
             self.zoom = self.parent.zoom
             for child in self.children:
-                child.mark_dirty()
+                mark_dirty(child)
                 child.dirty_zoom = True
-            self.mark_dirty()
+            mark_dirty(self)
             self.dirty_width = True
             self.dirty_zoom = False
 
         if self.dirty_style:
             self.dirty_children = True
             self.dirty_width = True
-            self.mark_dirty()
+            mark_dirty(self)
             self.dirty_style = False
 
         if self.dirty_width:
@@ -285,7 +279,7 @@ class BlockLayout:
             self.dirty_children = True
             for child in self.children:
                 child.dirty_width = True
-                child.mark_dirty()
+                mark_dirty(child)
             self.dirty_width = False
 
         if self.dirty_x:
@@ -293,7 +287,7 @@ class BlockLayout:
             self.x = self.parent.x
             for child in self.children:
                 child.dirty_x = True
-                child.mark_dirty()
+                mark_dirty(child)
             self.dirty_x = False
 
         if self.dirty_y:
@@ -306,10 +300,10 @@ class BlockLayout:
                 self.y = self.parent.y
             for child in self.children:
                 child.dirty_y = True
-                child.mark_dirty()
+                mark_dirty(child)
             if self.next:
                 self.next.dirty_y = True
-                self.next.mark_dirty()
+                mark_dirty(self.next)
             self.dirty_y = False
 
         mode = layout_mode(self.node)
@@ -322,13 +316,13 @@ class BlockLayout:
                     self.children.append(next)
                     previous = next
                 self.dirty_descendants = True
-                self.mark_dirty()
+                mark_dirty(self)
             else:
                 self.children = []
                 self.new_line()
                 self.recurse(self.node)
                 self.dirty_descendants = True
-                self.mark_dirty()
+                mark_dirty(self)
             self.dirty_children = False
 
         if self.dirty_descendants:
@@ -346,10 +340,10 @@ class BlockLayout:
             if self.height != new_height:
                 self.height = new_height
                 self.parent.dirty_height = True
-                self.parent.mark_dirty()
+                mark_dirty(self.parent)
                 if self.next:
                     self.next.dirty_y = True
-                    self.next.mark_dirty()
+                    mark_dirty(self.next)
             self.dirty_height = False
 
     def recurse(self, node):
@@ -420,12 +414,6 @@ class DocumentLayout:
         self.dirty_x = True
         self.dirty_y = True
 
-    def mark_dirty(self):
-        if isinstance(self.parent, BlockLayout) and \
-            not self.parent.dirty_descendants:
-            self.parent.dirty_descendants = True
-            self.parent.mark_dirty()
-
     def layout(self, width, zoom):
         if not self.children:
             child = BlockLayout(self.node, self, None, self.frame)
@@ -439,17 +427,17 @@ class DocumentLayout:
         if width - 2 * device_px(HSTEP, zoom) != self.width:
             self.width = width - 2 * device_px(HSTEP, zoom)
             child.dirty_width = True
-            child.mark_dirty()
+            mark_dirty(child)
             self.dirty_width = False
         if device_px(HSTEP, zoom) != self.x:
             self.x = device_px(HSTEP, zoom)
             child.dirty_x = True
-            child.mark_dirty()
+            mark_dirty(child)
             self.dirty_x = False
         if device_px(VSTEP, zoom) != self.y:
             self.y = device_px(VSTEP, zoom)
             child.dirty_y = True
-            child.mark_dirty()
+            mark_dirty(child)
             self.dirty_y = False
         child.layout()
         assert not child.dirty_height
@@ -470,7 +458,7 @@ class JSContext:
         frame.set_needs_render()
 
         elt.layout_object.dirty_children = True
-        elt.layout_object.mark_dirty()
+        mark_dirty(elt.layout_object)
 
 @wbetools.patch(style)
 def style(node, rules, frame):
@@ -510,7 +498,7 @@ def style(node, rules, frame):
 
     if node.style != old_style and node.layout_object:
         node.layout_object.dirty_style = True
-        node.layout_object.mark_dirty()
+        mark_dirty(node.layout_object)
 
     for child in node.children:
         style(child, rules, frame)
