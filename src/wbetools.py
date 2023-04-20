@@ -21,6 +21,8 @@ def patch(existing_cls):
                 assert getattr(existing_cls, attr) is None, "Cannot patch a closure"
             elif attr == "__globals__":
                 old_obj = getattr(existing_cls, attr)
+                new_name = obj["__name__"]
+                old_name = old_obj["__name__"]
                 globs = set()
                 for instr in dis.Bytecode(new_cls):
                     if instr.opname == "LOAD_GLOBAL":
@@ -31,6 +33,9 @@ def patch(existing_cls):
                     if field not in old_obj:
                         old_obj[field] = obj[field]
                     if obj[field] != old_obj[field]:
+                        print()
+                        print(f"Difference for {field} between {new_name} and {old_name}")
+                        print(" ", obj[field], "vs", old_obj[field])
                         raise Exception(
                             f"{existing_cls.__qualname__}: patch uses global {field}, which differs")
         return existing_cls

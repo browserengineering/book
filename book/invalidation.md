@@ -101,10 +101,10 @@ do that in `BlockLayout`:
 
 ``` {.python}
 class BlockLayout:
-    def paint(self):
+    def paint(self, display_list):
         # ...
         if self.node.is_focused and "contenteditable" in self.node.attributes:
-            text_children = [
+            text_nodes = [
                 t for t in tree_to_list(self, [])
                 if isinstance(t, TextLayout)
             ]
@@ -1023,12 +1023,11 @@ time a dirty flag is set, we'll want to set the `dirty_descendants`
 flag on all ancestors:
 
 ``` {.python replace=BlockLayout:/LineLayout:}
-class BlockLayout:
-    def mark_dirty(self):
-        if isinstance(self.parent, BlockLayout) and \
-            not self.parent.dirty_descendants:
-            self.parent.dirty_descendants = True
-            self.parent.mark_dirty()
+def mark_dirty(node):
+    if isinstance(node.parent, BlockLayout) and \
+        not node.parent.dirty_descendants:
+        node.parent.dirty_descendants = True
+        mark_dirty(node.parent)
 ```
 
 Now we'll call this any time we set a dirty flag. The best way to make
