@@ -12,6 +12,120 @@ time in layout, not graphics. Yet just like compositing enabled smooth
 animations by avoiding redundant raster work, we can avoid redundant
 layout work using a technique called invalidation.
 
+Editing Content
+===============
+
+In [Chapter 13](animations.md), we use compositing to enable smooth
+animation of CSS properties like `transform` or `opacity`. Some CSS
+properties, however, can't be smoothly animated in this way, because
+as they change they not only modify the _display list_ but also the
+_layout tree_. This was a good reason to avoid animating
+_layout-inducing_ properties like `width`. However, while _animating_
+these properties is a bad practice, many other _interactions_
+unavoidably affect the layout tree, and yet we want them to be as
+smooth and low-latency as possible.
+
+One good example is editing text. Most people type at a rate of
+several characters per second, and even a delay of a few frames is
+very distracting. Yet editing text changes the document, and therefore
+requires constructing a new layout tree that reflects the new text.
+And, in fact, if you open up a large web page (like this one) and type
+into an input box on it (like the one below) in your browser, you'll
+see that it is quite laggy indeed:
+
+<input style="width:100%"/>
+
+Now, in the case of typing into an `input` element, our browser
+rebuilds the layout tree, but in fact the layout tree looks the same
+each time---the text inside an `input` element doesn't get its own
+layout object. But browsers support other forms of text editing which
+does affect the layout tree. For example, in a real browser you can
+give any element the `contenteditable` attribute to make it editable.
+Once you do so, the user can click on the element to add or modify
+text in it:
+
+::: {.example contenteditable=true}
+Click on this text to edit it.
+:::
+
+Let's implement this in our browser---it will make a good test of
+invalidation. To begin with, we need to make elements with a
+`contenteditable` property focusable:
+
+``` {.python}
+def is_focusable(node):
+    # ...
+    elif "contenteditable" in node.attributes:
+        return True
+    # ...
+```
+
+Once we're focused on an editable node, key presses should add text to
+it. In a real browser, the implementation would be a bit more complex
+in order to handle cursor movement, but I'm going to have key presses
+append to the last text node in the editable element. First we need to
+find that element:
+
+``` {.python}
+class Frame:
+    def keypress(self, char):
+        # ...
+        elif self.tab.focus and "contenteditable" in self.tab.focus.attributes:
+            text_nodes = [
+               t for t in tree_to_list(self.tab.focus, [])
+               if isinstance(t, Text)
+            ]
+            if text_nodes:
+                last_text = text_nodes[-1]
+            else:
+                last_text = Text("", self.tab.focus)
+                self.tab.focus.children.append(last_text)
+```
+
+Note that if the editable element has no text children I append a new
+one. Now we need to add the typed character to this element:
+
+``` {.python}
+class Frame:
+    def keypress(self, char):
+        elif self.tab.focus and "contenteditable" in self.tab.focus.attributes:
+            # ...
+            last_text.text += char
+            self.set_needs_render()
+```
+
+This is enough to make editing work, but it's convenient to also draw
+a cursor to show the user where the editing will happen and to provide
+visual confirmation that they've focused on the right element. Let's
+do that in `BlockLayout`:
+
+``` {.python}
+class BlockLayout:
+    def paint(self):
+        # ...
+        if self.node.is_focused and "contenteditable" in self.node.attributes:
+            cx = self.last_text.x + self.last_text.width
+            cy1 = self.last_text.y
+            cy2 = self.last_text.y + self.last_text.height
+            cmds.append(DrawLine(cx, cy1, cx, cy2))
+        # ...
+```
+
+The `last_text` field points to the last `TextLayout` descendant, and
+can be set in `recurse` when those descendants are created:
+
+``` {.python}
+class BlockLayout:
+    def recurse(self, node):
+        if isinstance(node, Text):
+            self.text(node)
+            self.last_text = self.previous_word
+```
+
+You should now be able to edit the example above in your own
+browser---but if you try it, you'll see that editing is extremely
+slow, with each character typed adding multiple frames of delay.
+
 Idempotence
 ===========
 
@@ -268,6 +382,18 @@ class JSContext:
     def innerHTML_set(self, handle, s, window_id):
         # ...
         elt.layout_object.dirty_children = True
+```
+
+Likewise, we need to set the dirty flag any time we modify the `text`
+of a `Text` object, since that can also affect the `children` of a
+`BlockLayout`:
+
+``` {.python}
+class Frame:
+    def keypress(self, char):
+        elif self.tab.focus and "contenteditable" in self.tab.focus.attributes:
+            # ...
+            self.tab.focus.layout_object.dirty_children = True
 ```
 
 It's important to make sure we set the dirty flag for _all_
@@ -913,6 +1039,7 @@ here's the full list of layout objects that need to be marked dirty in
 my browser:
 
  - In the `innerHTML_set` method in `JSContext`, the `elt.layout_object`
+ - In the `keypress` method in `Frame`, the `self.tab.focus.layout_object`
  - In the `style` function if `node.style != old_style`, the `node.layout_object`
  - In the `layout` method if `dirty_zoom`, `self`
  - In the `layout` method if `dirty_width`, `child` for each child

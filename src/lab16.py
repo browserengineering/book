@@ -46,6 +46,18 @@ def mark_dirty(node):
         node.parent.dirty_descendants = True
         mark_dirty(node.parent)
 
+@wbetools.patch(is_focusable)
+def is_focusable(node):
+    if get_tabindex(node) <= 0:
+        return False
+    elif "tabindex" in node.attributes:
+        return True
+    elif "contenteditable" in node.attributes:
+        return True
+    else:
+        return node.tag in ["input", "button", "a"]
+
+
 @wbetools.patch(Frame)
 class Frame:
     def load(self, url, body=None):
@@ -145,6 +157,29 @@ class Frame:
         # For testing only?
         self.measure_layout = MeasureTime("layout")
 
+    def keypress(self, char):
+        if self.tab.focus and self.tab.focus.tag == "input":
+            if not "value" in self.tab.focus.attributes:
+                self.activate_element(self.tab.focus)
+            if self.js.dispatch_event(
+                "keydown", self.tab.focus, self.window_id): return
+            self.tab.focus.attributes["value"] += char
+            self.set_needs_render()
+        elif self.tab.focus and "contenteditable" in self.tab.focus.attributes:
+            text_nodes = [
+                t for t in tree_to_list(self.tab.focus, [])
+                if isinstance(t, Text)
+            ]
+            if text_nodes:
+                last_text = text_nodes[-1]
+            else:
+                last_text = Text("", self.tab.focus)
+                self.tab.focus.children.append(last_text)
+            last_text.text += char
+            self.tab.focus.layout_object.dirty_children = True
+            mark_dirty(self.tab.focus.layout_object)
+            self.set_needs_render()
+
     def render(self):
         if self.needs_style:
             if self.tab.dark_mode:
@@ -235,6 +270,8 @@ class BlockLayout:
         self.previous = previous
         self.children = []
         self.frame = frame
+
+        self.last_text = None
 
         if previous: previous.next = self
         self.next = None
@@ -350,6 +387,7 @@ class BlockLayout:
         assert not self.dirty_style
         if isinstance(node, Text):
             self.text(node)
+            self.last_text = self.previous_word
         else:
             if node.tag == "br":
                 self.new_line()
@@ -388,6 +426,12 @@ class BlockLayout:
  
         for child in self.children:
             child.paint(cmds)
+
+        if self.node.is_focused and "contenteditable" in self.node.attributes:
+            cx = self.last_text.x + self.last_text.width
+            cy1 = self.last_text.y
+            cy2 = cy1 + self.last_text.height
+            cmds.append(DrawLine(cx, cy1, cx, cy2))
 
         if not is_atomic:
             cmds = paint_visual_effects(self.node, cmds, rect)

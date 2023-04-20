@@ -119,7 +119,7 @@ body.main { padding: 0 4ex; }
   .note form { display: inline; }
 }
 
-.todo, .quirk, .warning, .installation, .further { padding: 1em 1em 0; margin: 1em 0; }
+.todo, .quirk, .warning, .installation, .further, .example { padding: 1em 1em 0; margin: 1em 0; }
 .quirk:before, .warning:before, .installation:before {
     font-weight: bold; font-family: 'Vollkorn', 'Garamond', serif;
     text-align: center;
@@ -135,6 +135,8 @@ figure img { width: 100%; }
 .warning:before { content: "Warning"; color: red; }
 .installation { border: 2px solid blue; }
 .installation:before { content: "Installation"; color: blue; }
+.example { border: 2px solid gray; }
+.example:before { content: "Example"; color: gray; }
 .further { border: 2px solid green; padding-top: 0; }
 .further > :first-child:before { content: "Go further: "; font-weight: bold; color: green; }
 .widget { width: 100%; border: 2px solid navy; }
