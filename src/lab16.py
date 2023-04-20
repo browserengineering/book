@@ -271,8 +271,6 @@ class BlockLayout:
         self.children = []
         self.frame = frame
 
-        self.last_text = None
-
         if previous: previous.next = self
         self.next = None
 
@@ -387,7 +385,6 @@ class BlockLayout:
         assert not self.dirty_style
         if isinstance(node, Text):
             self.text(node)
-            self.last_text = self.previous_word
         else:
             if node.tag == "br":
                 self.new_line()
@@ -428,9 +425,18 @@ class BlockLayout:
             child.paint(cmds)
 
         if self.node.is_focused and "contenteditable" in self.node.attributes:
-            cx = self.last_text.x + self.last_text.width
-            cy1 = self.last_text.y
-            cy2 = cy1 + self.last_text.height
+            text_nodes = [
+                t for t in tree_to_list(self, [])
+                if isinstance(t, TextLayout)
+            ]
+            if text_nodes:
+                cx = text_nodes[-1].x + text_nodes[-1].width
+                cy1 = text_nodes[-1].y
+                cy2 = text_nodes[-1].y + text_nodes[-1].height
+            else:
+                cx = self.x
+                cy1 = self.y
+                cy2 = self.y + self.height
             cmds.append(DrawLine(cx, cy1, cx, cy2))
 
         if not is_atomic:

@@ -104,22 +104,20 @@ class BlockLayout:
     def paint(self):
         # ...
         if self.node.is_focused and "contenteditable" in self.node.attributes:
-            cx = self.last_text.x + self.last_text.width
-            cy1 = self.last_text.y
-            cy2 = self.last_text.y + self.last_text.height
+            text_children = [
+                t for t in tree_to_list(self, [])
+                if isinstance(t, TextLayout)
+            ]
+            if text_nodes:
+                cx = text_nodes[-1].x + text_nodes[-1].width
+                cy1 = text_nodes[-1].y
+                cy2 = text_nodes[-1].y + text_nodes[-1].height
+            else:
+                cx = self.x
+                cy1 = self.y
+                cy2 = self.y + self.height
             cmds.append(DrawLine(cx, cy1, cx, cy2))
         # ...
-```
-
-The `last_text` field points to the last `TextLayout` descendant, and
-can be set in `recurse` when those descendants are created:
-
-``` {.python}
-class BlockLayout:
-    def recurse(self, node):
-        if isinstance(node, Text):
-            self.text(node)
-            self.last_text = self.previous_word
 ```
 
 You should now be able to edit the example above in your own
