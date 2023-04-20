@@ -1,3 +1,4 @@
+import dis
 
 def record(type, *args):
     pass
@@ -19,17 +20,19 @@ def patch(existing_cls):
                 assert obj is None, "Cannot patch using a closure"
                 assert getattr(existing_cls, attr) is None, "Cannot patch a closure"
             elif attr == "__globals__":
-                continue
                 old_obj = getattr(existing_cls, attr)
-                for field in obj:
-                    if field not in old_obj:
-                        print(f"While patching {existing_cls}, __globals__.{field} not in old")
+                globs = set()
+                for instr in dis.Bytecode(new_cls):
+                    if instr.opname == "LOAD_GLOBAL":
+                        globs.add(instr.argval)
+                for field in globs:
+                    if field in __builtins__:
                         continue
+                    if field not in old_obj:
+                        old_obj[field] = obj[field]
                     if obj[field] != old_obj[field]:
-                        print(f"While patching {existing_cls}, __globals__.{field} differs")
-                for field in old_obj:
-                    if field not in obj:
-                        print(f"While patching {existing_cls}, __globals__.{field} not in new")
+                        raise Exception(
+                            f"{existing_cls.__qualname__}: patch uses global {field}, which differs")
         return existing_cls
     return decorator
 
