@@ -1779,6 +1779,10 @@ should now look something like this:
     python3 infra/outlines.py --html src/lab11.py
 :::
 
+If you run it, it should look something like [this
+page](widgets/lab11-browser.html); due to the browser sandbox, you
+will need to open that page in a new tab.
+
 Exercises
 =========
 

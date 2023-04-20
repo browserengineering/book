@@ -1531,7 +1531,8 @@ class Browser:
             scroll = self.scroll
             active_tab = self.tabs[self.active_tab]
             self.needs_animation_frame = False
-            task = Task(active_tab, active_tab.run_animation_frame, scroll)
+            task = Task(
+                active_tab, active_tab.run_animation_frame, scroll)
             active_tab.task_runner.schedule_task(task)
             self.lock.release()
         # ...
@@ -1791,6 +1792,10 @@ should now look something like this:
 ::: {.cmd .python .outline html=True}
     python3 infra/outlines.py --html src/lab12.py
 :::
+
+If you run it, it should look something like [this
+page](widgets/lab12-browser.html); due to the browser sandbox, you
+will need to open that page in a new tab.
 
 Exercises
 =========
