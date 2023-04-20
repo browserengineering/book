@@ -336,8 +336,6 @@ def compile_method(base, name, args, ctx):
     elif name == "count":
         assert len(args) == 1
         return base_js + ".split(" + args_js[0] + ").length - 1"
-    elif name == "Task":
-        print('what')
     else:
         raise UnsupportedConstruct()
 
