@@ -826,7 +826,7 @@ on each frame to do style and layout:
 ``` {.python}
 class Tab:
     def render(self):
-        self.measure_render.start()
+        self.measure_render.start_timing()
 
         for id, frame in self.window_id_to_frame.items():
             frame.render()
@@ -1251,7 +1251,7 @@ class Browser:
         if self.root_frame_focused:
             # ...
         active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.scrolldown)
+        task = Task(active_tab, active_tab.scrolldown)
         active_tab.task_runner.schedule_task(task)
         self.lock.release()
 ```
@@ -1618,7 +1618,7 @@ class Frame:
         for script in scripts:
             # ...
             task = Task(
-                self.js.run, script_url, body,
+                self.js, self.js.run, script_url, body,
                 self.window_id)
             # ...
 ```
@@ -1902,7 +1902,9 @@ In the browser, `postMessage` schedules a task on the `Tab`:
 ``` {.python}
 class JSContext:
     def postMessage(self, target_window_id, message, origin):
-        task = Task(self.tab.post_message, message, target_window_id)
+        task = Task(
+            self.tab, self.tab.post_message,
+            message, target_window_id)
         self.tab.task_runner.schedule_task(task)
 ```
 
