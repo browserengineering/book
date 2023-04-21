@@ -1528,14 +1528,12 @@ class Tab:
         root_frame_focused = not self.focused_frame or \
                 self.focused_frame == self.root_frame
         commit_data = CommitData(
-            url=self.root_frame.url,
-            scroll=scroll,
-            root_frame_focused=root_frame_focused,
-            height=math.ceil(self.root_frame.document.height),
-            display_list=self.display_list,
-            composited_updates=composited_updates,
-            accessibility_tree=self.accessibility_tree,
-            focus=self.focus
+            self.root_frame.url, scroll,
+            root_frame_focused,
+            math.ceil(self.root_frame.document.height),
+            self.display_list, composited_updates,
+            self.accessibility_tree,
+            self.focus
         )
         self.display_list = None
         self.root_frame.scroll_changed_in_frame = False

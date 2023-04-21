@@ -1065,14 +1065,10 @@ class Tab:
         self.composited_updates.clear()
 
         commit_data = CommitData(
-            url=self.url,
-            scroll=scroll,
-            height=document_height,
-            display_list=self.display_list,
-            composited_updates=composited_updates,
-            accessibility_tree=self.accessibility_tree,
-            focus=self.focus
-        )
+            self.url, scroll, document_height, self.display_list,
+            composited_updates,
+            self.accessibility_tree,
+            self.focus)
         self.display_list = None
         self.scroll_changed_in_tab = False
         self.accessibility_tree = None
