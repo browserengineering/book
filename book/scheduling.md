@@ -432,7 +432,7 @@ class JSContext:
         # ...
         def run_load():
             headers, response = request(
-                full_url, self.tab.url, payload=body)
+                full_url, self.tab.url, body)
             task = Task(self, self.dispatch_xhr_onload, response, handle)
             self.tab.task_runner.schedule_task(task)
             if not isasync:
@@ -1317,7 +1317,8 @@ class Browser:
     def schedule_animation_frame(self):
         def callback():
             # ...
-            task = Task(active_tab, active_tab.run_animation_frame)
+            task = Task(
+                active_tab, active_tab.run_animation_frame)
             # ...
 ```
 

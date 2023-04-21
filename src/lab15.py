@@ -913,7 +913,7 @@ class JSContext:
 
         def run_load():
             headers, response = request(
-                full_url, self.tab.url, payload=body)
+                full_url, self.tab.url, body)
             response = response.decode("utf8")
             task = Task(
                 self, self.dispatch_xhr_onload, response, handle, window_id)
@@ -1166,7 +1166,7 @@ class Frame:
         self.zoom = 1
         self.scroll = 0
         self.scroll_changed_in_frame = True
-        headers, body = request(url, self.url, payload=body)
+        headers, body = request(url, self.url, body)
         body = body.decode("utf8")
         self.url = url
 

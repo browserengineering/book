@@ -557,7 +557,8 @@ class Browser:
             active_tab = self.tabs[self.active_tab]
             self.needs_animation_frame = False
             self.lock.release()
-            task = Task(active_tab, active_tab.run_animation_frame, scroll)
+            task = Task(
+                active_tab, active_tab.run_animation_frame, scroll)
             active_tab.task_runner.schedule_task(task)
         self.lock.acquire(blocking=True)
         if self.needs_animation_frame and not self.animation_timer:

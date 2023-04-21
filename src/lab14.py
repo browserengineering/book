@@ -885,7 +885,7 @@ class JSContext:
 
         def run_load():
             headers, response = request(
-                full_url, self.tab.url, payload=body)
+                full_url, self.tab.url, body)
             task = Task(self, self.dispatch_xhr_onload, response, handle)
             self.tab.task_runner.schedule_task(task)
             if not isasync:
@@ -959,7 +959,7 @@ class Tab:
         self.scroll = 0
         self.scroll_changed_in_tab = True
         self.task_runner.clear_pending_tasks()
-        headers, body = request(url, self.url, payload=body)
+        headers, body = request(url, self.url, body)
         self.url = url
         self.accessibility_tree = None
         self.history.append(url)
