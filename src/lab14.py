@@ -867,7 +867,7 @@ class JSContext:
 
     def setTimeout(self, handle, time):
         def run_callback():
-            task = Task(self.dispatch_settimeout, handle)
+            task = Task(self, self.dispatch_settimeout, handle)
             self.tab.task_runner.schedule_task(task)
         threading.Timer(time / 1000.0, run_callback).start()
 
@@ -886,7 +886,7 @@ class JSContext:
         def run_load():
             headers, response = request(
                 full_url, self.tab.url, payload=body)
-            task = Task(self.dispatch_xhr_onload, response, handle)
+            task = Task(self, self.dispatch_xhr_onload, response, handle)
             self.tab.task_runner.schedule_task(task)
             if not isasync:
                 return response
@@ -951,7 +951,7 @@ class Tab:
             url_origin(url) in self.allowed_origins
 
     def script_run_wrapper(self, script, script_text):
-        return Task(self.js.run, script, script_text)
+        return Task(self, self.js.run, script, script_text)
 
     def load(self, url, body=None):
         self.focus_element(None)
@@ -985,7 +985,7 @@ class Tab:
                 continue
 
             header, body = request(script_url, url)
-            task = Task(self.js.run, script_url, body)
+            task = Task(self, self.js.run, script_url, body)
             self.task_runner.schedule_task(task)
 
         self.rules = self.default_style_sheet.copy()
@@ -1558,7 +1558,8 @@ class Browser:
             active_tab = self.tabs[self.active_tab]
             self.needs_animation_frame = False
             self.lock.release()
-            task = Task(active_tab.run_animation_frame, scroll)
+            task = Task(
+                active_tab, active_tab.run_animation_frame, scroll)
             active_tab.task_runner.schedule_task(task)
         self.lock.acquire(blocking=True)
         if self.needs_animation_frame and not self.animation_timer:
@@ -1583,7 +1584,7 @@ class Browser:
     def handle_tab(self):
         self.focus = "content"
         active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.advance_tab)
+        task = Task(active_tab, active_tab.advance_tab)
         active_tab.task_runner.schedule_task(task)
 
     def focus_addressbar(self):
@@ -1608,7 +1609,7 @@ class Browser:
     def set_active_tab(self, index):
         self.active_tab = index
         active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.set_needs_paint)
+        task = Task(active_tab, active_tab.set_needs_paint)
         active_tab.task_runner.schedule_task(task)
 
         self.clear_data()
@@ -1616,7 +1617,7 @@ class Browser:
 
     def go_back(self):
         active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.go_back)
+        task = Task(active_tab, active_tab.go_back)
         active_tab.task_runner.schedule_task(task)
         self.clear_data()
 
@@ -1670,7 +1671,7 @@ class Browser:
         self.lock.acquire(blocking=True)
         self.dark_mode = not self.dark_mode
         active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.toggle_dark_mode)
+        task = Task(active_tab, active_tab.toggle_dark_mode)
         active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
@@ -1691,7 +1692,8 @@ class Browser:
         else:
             self.focus = "content"
             active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.click, e.x, e.y - CHROME_PX)
+            task = Task(
+                active_tab, active_tab.click, e.x, e.y - CHROME_PX)
             active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
@@ -1710,13 +1712,13 @@ class Browser:
             self.set_needs_raster()
         elif self.focus == "content":
             active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.keypress, char)
+            task = Task(active_tab, active_tab.keypress, char)
             active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
     def schedule_load(self, url, body=None):
         active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.load, url, body)
+        task = Task(active_tab, active_tab.load, url, body)
         active_tab.task_runner.schedule_task(task)
 
     def handle_enter(self):
@@ -1728,21 +1730,21 @@ class Browser:
             self.set_needs_raster()
         elif self.focus == "content":
             active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.enter)
+            task = Task(active_tab, active_tab.enter)
             active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
     def increment_zoom(self, increment):
         self.lock.acquire(blocking=True)
         active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.zoom_by, increment)
+        task = Task(active_tab, active_tab.zoom_by, increment)
         active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
     def reset_zoom(self):
         self.lock.acquire(blocking=True)
         active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.reset_zoom)
+        task = Task(active_tab, active_tab.reset_zoom)
         active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
