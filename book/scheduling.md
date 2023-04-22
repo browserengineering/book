@@ -1496,10 +1496,15 @@ class Browser:
             self.active_tab_height)
         self.scroll = scroll
         self.set_needs_raster_and_draw()
+        self.needs_animation_frame = True
         self.lock.release()
 ```
 
-This code sets `needs_raster_and_draw` to apply the new scroll offset.
+This code sets `needs_raster_and_draw` to raster and draw with changed scroll
+offset, and sets `needs_animation_frame` to cause the main thread to receive
+the scroll offset asynchronously in the future. (Even with threaded scroll,
+it's important to synchronize the new value back to the main thread soon,
+since APIs like click handling depend on it.)
 
 The scroll offset also needs to change when the user switches tabs,
 but in this case we don't know the right scroll offset yet. We need
