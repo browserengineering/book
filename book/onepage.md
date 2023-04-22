@@ -23,6 +23,7 @@ main: true
 - [Scheduling Tasks and Threads](#scheduling)
 - [Animating and Compositing](#animations)
 - [Making Content Accessible](#accessibility)
+- [Supporting Embedded Content](#embeds)
 
 ::: {.cmd html=True}
     cat www/onepage/preface.html
@@ -44,4 +45,5 @@ main: true
     cat www/onepage/scheduling.html
     cat www/onepage/animations.html
     cat www/onepage/accessibility.html
+    cat www/onepage/embeds.html
 :::
