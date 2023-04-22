@@ -1,0 +1,30 @@
+# DukPy is used in Chapters 9+ for executing JavaScript
+dukpy
+
+# Skia is used in Chapters 11+ for advanced graphics
+skia-python
+pybind11
+numpy
+
+# SDL2 is used in Chapters 11+ for a Skia-compatible GUI
+PySDL2
+pysdl2-dll
+
+# OpenGL is used in Chapters 13+ for GPU-accellerated Skia
+PyOpenGL
+
+# gTTS is used in Chapter 14+ for reading accessibility text
+gTTS
+charset-normalizer
+six
+click
+requests
+urllib3
+idna
+certifi
+# PlaySound is used in Chapters 14+ for reading accessibility text
+# PyObjC is useful on macOS systems for accellerating playsound
+# And quieting an error message. Transitive dependencies of
+# PyObjC are not frozen because there are a lot and they may depend
+# on macOS version.
+playsound
