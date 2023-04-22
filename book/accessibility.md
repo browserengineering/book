@@ -196,12 +196,12 @@ class Browser:
 	# ...
     def increment_zoom(self, increment):
         active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab, active_tab.zoom_by, increment)
+        task = Task(active_tab.zoom_by, increment)
         active_tab.task_runner.schedule_task(task)
 
     def reset_zoom(self):
         active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab, active_tab.reset_zoom)
+        task = Task(active_tab.reset_zoom)
         active_tab.task_runner.schedule_task(task)
 ```
 
@@ -517,7 +517,7 @@ class Browser:
     def toggle_dark_mode(self):
         # ...
         active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab, active_tab.toggle_dark_mode)
+        task = Task(active_tab.toggle_dark_mode)
         active_tab.task_runner.schedule_task(task)
 ```
 
@@ -819,14 +819,14 @@ class Browser:
     def handle_tab(self):
         self.focus = "content"
         active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab, active_tab.advance_tab)
+        task = Task(active_tab.advance_tab)
         active_tab.task_runner.schedule_task(task)
 
     def handle_enter(self):
     	# ...
         elif self.focus == "content":
             active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab, active_tab.enter)
+            task = Task(active_tab.enter)
             active_tab.task_runner.schedule_task(task)
         # ...
 ```
@@ -1672,8 +1672,9 @@ class Tab:
     def run_animation_frame(self, scroll):
         # ...
         commit_data = CommitData(
+            accessibility_tree=self.accessibility_tree,
             # ...
-            self.accessibility_tree,
+        )
         # ...
         self.accessibility_tree = None
 
