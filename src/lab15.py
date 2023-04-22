@@ -9,7 +9,6 @@ import dukpy
 import gtts
 import math
 import os
-import playsound
 import sdl2
 import skia
 import socket
@@ -44,7 +43,7 @@ from lab14 import parse_color, draw_rect, DrawRRect, \
     is_focused, paint_outline, has_outline, \
     device_px, cascade_priority, style, \
     is_focusable, get_tabindex, announce_text, speak_text, \
-    CSSParser, DrawOutline, main_func
+    CSSParser, DrawOutline, main_func, Browser
 
 def request(url, top_level_url, payload=None):
     scheme, url = url.split("://", 1)
@@ -302,7 +301,7 @@ class BlockLayout:
                 radius = device_px(
                     float(self.node.style.get(
                         "border-radius", "0px")[:-2]),
-                    self.oom)
+                    self.zoom)
                 cmds.append(DrawRRect(rect, radius, bgcolor))
  
         for child in self.children:
@@ -1624,6 +1623,7 @@ def draw_line(canvas, x1, y1, x2, y2, color):
     paint.setStrokeWidth(1)
     canvas.drawPath(path, paint)
 
+@wbetools.patch(Browser)
 class Browser:
     def __init__(self):
         if wbetools.USE_GPU:

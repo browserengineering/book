@@ -9,7 +9,11 @@ import dukpy
 import math
 import os
 import gtts
-import playsound
+try:
+    import playsound
+except:
+    playsound = None
+    
 import sdl2
 import skia
 import socket
@@ -630,7 +634,8 @@ def speak_text(text):
     print("SPEAK:", text)
     tts = gtts.gTTS(text)
     tts.save(SPEECH_FILE)
-    playsound.playsound(SPEECH_FILE)
+    if playsound:
+        playsound.playsound(SPEECH_FILE)
     os.remove(SPEECH_FILE)
     
 class PseudoclassSelector:
