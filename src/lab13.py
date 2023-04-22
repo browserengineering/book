@@ -1421,7 +1421,6 @@ class Browser:
     def set_needs_raster(self):
         self.needs_raster = True
         self.needs_draw = True
-        self.needs_animation_frame = True
 
     def set_needs_composite(self):
         self.needs_composite = True
@@ -1538,6 +1537,7 @@ class Browser:
             self.active_tab_height)
         self.scroll = scroll
         self.set_needs_draw()
+        self.needs_animation_frame = True
         self.lock.release()
 
     def clear_data(self):
@@ -1602,6 +1602,7 @@ class Browser:
             self.url = self.address_bar
             self.focus = None
             self.set_needs_raster()
+            self.needs_animation_frame = True
         self.lock.release()
 
     def load(self, url):
