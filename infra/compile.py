@@ -345,6 +345,11 @@ def compile_function(name, args, ctx):
         return RENAME_FNS[name] + "(" + ", ".join(args_js) + ")"
     elif name in OUR_FNS:
         return "await " + name + "(" + ", ".join(args_js) + ")"
+    elif name == "Task":
+        fn, *rest = args_js
+        return "await (new " + name + "()).init(" \
+            "(args) => " + fn + "(...args), " + \
+            ", ".join(rest) + ")"
     elif name in OUR_CLASSES:
         return "await (new " + name + "()).init(" + ", ".join(args_js) + ")"
     elif name == "str":
