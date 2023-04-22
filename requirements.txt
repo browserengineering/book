@@ -28,6 +28,6 @@ certifi==2022.12.7
 # And quieting an error message. Transitive dependencies of
 # PyObjC are not frozen because there are a lot and they may depend
 # on macOS version.
-playsound==1.3.0
+playsound==1.3.0; sys_platform == "darwin"
 pyobjc==8.5; sys_platform == "darwin"
 pyobjc-core==8.5; sys_platform == "darwin"

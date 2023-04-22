@@ -9,7 +9,6 @@ import dukpy
 import gtts
 import math
 import os
-import playsound
 import sdl2
 import skia
 import socket
