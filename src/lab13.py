@@ -805,7 +805,7 @@ class JSContext:
 
         def run_load():
             headers, response = request(
-                full_url, self.tab.url, payload=body)
+                full_url, self.tab.url, body)
             task = Task(self.dispatch_xhr_onload, response, handle)
             self.tab.task_runner.schedule_task(task)
             if not isasync:
@@ -1062,7 +1062,7 @@ class Tab:
             self.task_runner = TaskRunner(self)
         else:
             self.task_runner = SingleThreadedTaskRunner(self)
-        self.task_runner.start()
+        self.task_runner.start_thread()
 
         self.measure_render = MeasureTime("render")
 
@@ -1082,7 +1082,7 @@ class Tab:
         self.scroll = 0
         self.scroll_changed_in_tab = True
         self.task_runner.clear_pending_tasks()
-        headers, body = request(url, self.url, payload=body)
+        headers, body = request(url, self.url, body)
         self.url = url
         self.history.append(url)
 
@@ -1197,7 +1197,7 @@ class Tab:
         self.browser.commit(self, commit_data)
 
     def render(self):
-        self.measure_render.start()
+        self.measure_render.start_timing()
 
         if self.needs_style:
             style(self.nodes, sorted(self.rules, key=cascade_priority), self)
@@ -1225,7 +1225,7 @@ class Tab:
                     DrawLine(x, y, x, y + obj.height))
             self.needs_paint = False
 
-        self.measure_render.stop()
+        self.measure_render.stop_timing()
 
     def click(self, x, y):
         self.render()
@@ -1495,7 +1495,7 @@ class Browser:
             self.lock.release()
             return
 
-        self.measure_composite_raster_and_draw.start()
+        self.measure_composite_raster_and_draw.start_timing()
         start_time = time.time()
         if self.needs_composite:
             self.composite()
@@ -1505,7 +1505,7 @@ class Browser:
         if self.needs_draw:
             self.paint_draw_list()
             self.draw()
-        self.measure_composite_raster_and_draw.stop()
+        self.measure_composite_raster_and_draw.stop_timing()
         self.needs_composite = False
         self.needs_raster = False
         self.needs_draw = False

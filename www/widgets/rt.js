@@ -5,7 +5,7 @@ export {
     socket, ssl, tkinter, dukpy, urllib, html, random, wbetools,
     truthy, comparator, pysplit, pyrsplit, asyncfilter,
     rt_constants, Widget, http_textarea, skia, sdl2, init_skia,
-    init_window
+    init_window, threading, time
     };
 
 function wrap_class(cls, fn) {
@@ -723,7 +723,7 @@ class ctypes {
 }
 
 class wbetools {
-
+    static USE_BROWSER_THREAD = false;
 }
 
 class Breakpoint {
@@ -957,3 +957,51 @@ class FileSystem {
 }
 
 const filesystem = new FileSystem();
+
+class threading {
+    static Timer = wrap_class(class {
+        constructor(refresh_rate_sec, callback) {
+            this.refresh_rate_ms = refresh_rate_sec * 1000;
+            this.callback = callback;
+        }
+
+        start() {
+            setTimeout(this.callbac, this.refresh_rate_ms)
+        }
+    });
+
+    static Thread = wrap_class(class {
+        constructor(target) {
+        }
+
+        start() {
+
+        }
+    });
+
+    static Condition = wrap_class(class {
+        constructor() {}
+
+        acquire() {}
+
+        wait() {}
+
+        notify_all() {}
+
+        release() {}
+    });
+
+    static Lock = wrap_class(class {
+        constructor() {}
+
+        acquire() {}
+
+        release() {}        
+    });
+}
+
+class time {
+    static time() {
+        return (new Date().getTime()) / 1000.0;
+    }
+}

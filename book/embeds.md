@@ -92,7 +92,7 @@ For example, in `load`, you'll want to do something like this:
 class Tab:
     def load(self, url, body=None):
         # ...
-        headers, body = request(url, self.url, payload=body)
+        headers, body = request(url, self.url, body)
         body = body.decode("utf8")
         # ...
 ```
@@ -826,7 +826,7 @@ on each frame to do style and layout:
 ``` {.python}
 class Tab:
     def render(self):
-        self.measure_render.start()
+        self.measure_render.start_timing()
 
         for id, frame in self.window_id_to_frame.items():
             frame.render()
@@ -1231,7 +1231,7 @@ class Tab:
         # ...
         commit_data = CommitData(
             # ...
-            root_frame_focused=root_frame_focused,
+            root_frame_focused,
             # ...
         )
         # ...
@@ -1617,8 +1617,7 @@ class Frame:
     def load(self, url, body=None):
         for script in scripts:
             # ...
-            task = Task(
-                self.js.run, script_url, body,
+            task = Task(self.js.run, script_url, body,
                 self.window_id)
             # ...
 ```
@@ -1902,7 +1901,8 @@ In the browser, `postMessage` schedules a task on the `Tab`:
 ``` {.python}
 class JSContext:
     def postMessage(self, target_window_id, message, origin):
-        task = Task(self.tab.post_message, message, target_window_id)
+        task = Task(self.tab.post_message,
+            message, target_window_id)
         self.tab.task_runner.schedule_task(task)
 ```
 

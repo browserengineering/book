@@ -199,7 +199,17 @@ LIBRARY_METHODS = [
     "Make",
 
     # skia.Image
-    "tobytes"
+    "tobytes",
+
+    # threading.Timer
+    # threading.Thread
+    "start",
+    # threading.Condition
+    "notify_all",
+    "wait",
+    # threading.Lock
+    "acquire",
+    "release"
 ]
 
 OUR_FNS = []
@@ -335,6 +345,11 @@ def compile_function(name, args, ctx):
         return RENAME_FNS[name] + "(" + ", ".join(args_js) + ")"
     elif name in OUR_FNS:
         return "await " + name + "(" + ", ".join(args_js) + ")"
+    elif name == "Task":
+        fn, *rest = args_js
+        return "await (new " + name + "()).init(" \
+            "(args) => " + fn + "(...args), " + \
+            ", ".join(rest) + ")"
     elif name in OUR_CLASSES:
         return "await (new " + name + "()).init(" + ", ".join(args_js) + ")"
     elif name == "str":
@@ -729,7 +744,7 @@ def compile(tree, ctx, indent=0):
         assert not tree.orelse
         ctx2 = Context("while", ctx)
         test = compile_expr(tree.test, ctx)
-        out = " " * indent + "while (" + test + ") {\n"
+        out = " " * indent + "while (truthy(" + test + ")) {\n"
         out += "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in tree.body])
         out += "\n" + " " * indent + "}"
         return out
