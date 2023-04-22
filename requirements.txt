@@ -27,4 +27,3 @@ certifi
 # And quieting an error message. Transitive dependencies of
 # PyObjC are not frozen because there are a lot and they may depend
 # on macOS version.
-playsound
