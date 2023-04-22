@@ -1222,7 +1222,7 @@ instead of checking `needs_render` at the start:[^timer-obsolete]
 ``` {.python}
 class Tab:
     def render(self):
-        self.measure_render.start()
+        self.measure_render.start_timing()
 
         if self.needs_style:
             # ...
@@ -1238,7 +1238,7 @@ class Tab:
             # ...
             self.needs_paint = False
 
-        self.measure_render.stop()
+        self.measure_render.stop_timing()
 ```
 
 [^timer-obsolete]: By the way, this *does* obsolete our timer for how long

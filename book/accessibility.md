@@ -1672,9 +1672,8 @@ class Tab:
     def run_animation_frame(self, scroll):
         # ...
         commit_data = CommitData(
-            accessibility_tree=self.accessibility_tree,
+            self.accessibility_tree,
             # ...
-        )
         # ...
         self.accessibility_tree = None
 
