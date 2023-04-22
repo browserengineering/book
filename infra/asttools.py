@@ -51,6 +51,7 @@ def iter_defs(module):
                     yield var.id, ast.Assign([var], val)
             else:
                 raise Exception("Invalid module member: " + ast.dump(item))
+        elif isinstance(item, ast.Try): pass
         else:
             raise Exception("Invalid module member: " + ast.dump(item))
 
