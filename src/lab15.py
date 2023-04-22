@@ -1753,7 +1753,6 @@ class Browser:
     def set_needs_raster(self):
         self.needs_raster = True
         self.needs_draw = True
-        self.needs_animation_frame = True
 
     def set_needs_composite(self):
         self.needs_composite = True
@@ -1947,6 +1946,7 @@ class Browser:
         active_tab = self.tabs[self.active_tab]
         task = Task(active_tab.scrolldown)
         active_tab.task_runner.schedule_task(task)
+        self.needs_animation_frame = True
         self.lock.release()        
 
     def handle_tab(self):

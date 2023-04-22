@@ -539,7 +539,6 @@ class Browser:
 
     def set_needs_raster_and_draw(self):
         self.needs_raster_and_draw = True
-        self.needs_animation_frame = True
 
     def raster_and_draw(self):
         self.lock.acquire(blocking=True)
@@ -581,6 +580,7 @@ class Browser:
             self.active_tab_height)
         self.scroll = scroll
         self.set_needs_raster_and_draw()
+        self.needs_animation_frame = True
         self.lock.release()
 
     def set_active_tab(self, index):
