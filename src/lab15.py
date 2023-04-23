@@ -28,7 +28,7 @@ from lab8 import layout_mode
 from lab10 import COOKIE_JAR, url_origin
 from lab11 import draw_text, get_font, linespace, \
     parse_blend_mode, CHROME_PX, SCROLL_STEP
-import OpenGL.GL as GL
+import OpenGL.GL
 from lab12 import MeasureTime
 from lab13 import diff_styles, \
     CompositedLayer, absolute_bounds, absolute_bounds_for_obj, \
@@ -1633,8 +1633,8 @@ class Browser:
                 self.sdl_window)
             print(("OpenGL initialized: vendor={}," + \
                 "renderer={}").format(
-                GL.glGetString(GL.GL_VENDOR),
-                GL.glGetString(GL.GL_RENDERER)))
+                OpenGL.GL.glGetString(OpenGL.GL.GL_VENDOR),
+                OpenGL.GL.glGetString(OpenGL.GL_RENDERER)))
 
             self.skia_context = skia.GrDirectContext.MakeGL()
 
