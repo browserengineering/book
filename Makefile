@@ -25,7 +25,8 @@ widgets: \
 	www/widgets/lab8-browser.html www/widgets/lab8.js www/widgets/server8.js \
 	www/widgets/lab9-browser.html www/widgets/lab9.js www/widgets/server9.js \
 	www/widgets/lab10-browser.html www/widgets/lab10.js www/widgets/server10.js \
-	www/widgets/lab11-browser.html www/widgets/lab11.js www/widgets/server10.js
+	www/widgets/lab11-browser.html www/widgets/lab11.js \
+	www/widgets/lab12-browser.html www/widgets/lab12.js
 
 src/lab%.full.py: src/lab%.py
 	python3 infra/inline.py $< > $@

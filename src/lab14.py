@@ -9,7 +9,11 @@ import dukpy
 import math
 import os
 import gtts
-import playsound
+try:
+    import playsound
+except:
+    playsound = None
+    
 import sdl2
 import skia
 import socket
@@ -630,7 +634,8 @@ def speak_text(text):
     print("SPEAK:", text)
     tts = gtts.gTTS(text)
     tts.save(SPEECH_FILE)
-    playsound.playsound(SPEECH_FILE)
+    if playsound:
+        playsound.playsound(SPEECH_FILE)
     os.remove(SPEECH_FILE)
     
 class PseudoclassSelector:
@@ -885,7 +890,7 @@ class JSContext:
 
         def run_load():
             headers, response = request(
-                full_url, self.tab.url, payload=body)
+                full_url, self.tab.url, body)
             task = Task(self.dispatch_xhr_onload, response, handle)
             self.tab.task_runner.schedule_task(task)
             if not isasync:
@@ -936,7 +941,7 @@ class Tab:
             self.task_runner = TaskRunner(self)
         else:
             self.task_runner = SingleThreadedTaskRunner(self)
-        self.task_runner.start()
+        self.task_runner.start_thread()
 
         self.measure_render = MeasureTime("render")
         self.composited_updates = []
@@ -959,7 +964,7 @@ class Tab:
         self.scroll = 0
         self.scroll_changed_in_tab = True
         self.task_runner.clear_pending_tasks()
-        headers, body = request(url, self.url, payload=body)
+        headers, body = request(url, self.url, body)
         self.url = url
         self.accessibility_tree = None
         self.history.append(url)
@@ -1065,14 +1070,10 @@ class Tab:
         self.composited_updates.clear()
 
         commit_data = CommitData(
-            url=self.url,
-            scroll=scroll,
-            height=document_height,
-            display_list=self.display_list,
-            composited_updates=composited_updates,
-            accessibility_tree=self.accessibility_tree,
-            focus=self.focus
-        )
+            self.url, scroll, document_height, self.display_list,
+            composited_updates,
+            self.accessibility_tree,
+            self.focus)
         self.display_list = None
         self.scroll_changed_in_tab = False
         self.accessibility_tree = None
@@ -1080,7 +1081,7 @@ class Tab:
         self.browser.commit(self, commit_data)
 
     def render(self):
-        self.measure_render.start()
+        self.measure_render.start_timing()
 
         if self.needs_style:
             if self.dark_mode:
@@ -1111,7 +1112,7 @@ class Tab:
             self.document.paint(self.display_list)
             self.needs_paint = False
 
-        self.measure_render.stop()
+        self.measure_render.stop_timing()
 
     def focus_element(self, node):
         if node and node != self.focus:
@@ -1386,7 +1387,6 @@ class Browser:
     def set_needs_raster(self):
         self.needs_raster = True
         self.needs_draw = True
-        self.needs_animation_frame = True
 
     def set_needs_composite(self):
         self.needs_composite = True
@@ -1527,7 +1527,7 @@ class Browser:
             self.needs_accessibility:
             self.lock.release()
             return
-        self.measure_composite_raster_and_draw.start()
+        self.measure_composite_raster_and_draw.start_timing()
         start_time = time.time()
         if self.needs_composite:
             self.composite()
@@ -1539,7 +1539,7 @@ class Browser:
             self.paint_draw_list()
             self.draw()
 
-        self.measure_composite_raster_and_draw.stop()
+        self.measure_composite_raster_and_draw.stop_timing()
 
         if self.needs_accessibility:
             self.update_accessibility()
@@ -1578,6 +1578,7 @@ class Browser:
             self.active_tab_height)
         self.scroll = scroll
         self.set_needs_draw()
+        self.needs_animation_frame = True
         self.lock.release()
 
     def handle_tab(self):

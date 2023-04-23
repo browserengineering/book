@@ -9,7 +9,6 @@ import dukpy
 import gtts
 import math
 import os
-import playsound
 import sdl2
 import skia
 import socket
@@ -44,7 +43,7 @@ from lab14 import parse_color, draw_rect, DrawRRect, \
     is_focused, paint_outline, has_outline, \
     device_px, cascade_priority, style, \
     is_focusable, get_tabindex, announce_text, speak_text, \
-    CSSParser, DrawOutline, main_func
+    CSSParser, DrawOutline, main_func, Browser
 
 def request(url, top_level_url, payload=None):
     scheme, url = url.split("://", 1)
@@ -302,7 +301,7 @@ class BlockLayout:
                 radius = device_px(
                     float(self.node.style.get(
                         "border-radius", "0px")[:-2]),
-                    self.oom)
+                    self.zoom)
                 cmds.append(DrawRRect(rect, radius, bgcolor))
  
         for child in self.children:
@@ -862,7 +861,8 @@ class JSContext:
             data=message)
 
     def postMessage(self, target_window_id, message, origin):
-        task = Task(self.tab.post_message, message, target_window_id)
+        task = Task(self.tab.post_message,
+            message, target_window_id)
         self.tab.task_runner.schedule_task(task)
 
     def innerHTML_set(self, handle, s, window_id):
@@ -910,9 +910,10 @@ class JSContext:
 
         def run_load():
             headers, response = request(
-                full_url, self.tab.url, payload=body)
+                full_url, self.tab.url, body)
             response = response.decode("utf8")
-            task = Task(self.dispatch_xhr_onload, response, handle, window_id)
+            task = Task(
+                self.dispatch_xhr_onload, response, handle, window_id)
             self.tab.task_runner.schedule_task(task)
             if not isasync:
                 return response
@@ -1162,7 +1163,7 @@ class Frame:
         self.zoom = 1
         self.scroll = 0
         self.scroll_changed_in_frame = True
-        headers, body = request(url, self.url, payload=body)
+        headers, body = request(url, self.url, body)
         body = body.decode("utf8")
         self.url = url
 
@@ -1190,8 +1191,7 @@ class Frame:
 
             header, body = request(script_url, url)
             body = body.decode("utf8")
-            task = Task(
-                self.js.run, script_url, body,
+            task = Task(self.js.run, script_url, body,
                 self.window_id)
             self.tab.task_runner.schedule_task(task)
 
@@ -1440,7 +1440,7 @@ class Tab:
             self.task_runner = TaskRunner(self)
         else:
             self.task_runner = SingleThreadedTaskRunner(self)
-        self.task_runner.start()
+        self.task_runner.start_thread()
 
         self.measure_render = MeasureTime("render")
         self.composited_updates = []
@@ -1524,14 +1524,12 @@ class Tab:
         root_frame_focused = not self.focused_frame or \
                 self.focused_frame == self.root_frame
         commit_data = CommitData(
-            url=self.root_frame.url,
-            scroll=scroll,
-            root_frame_focused=root_frame_focused,
-            height=math.ceil(self.root_frame.document.height),
-            display_list=self.display_list,
-            composited_updates=composited_updates,
-            accessibility_tree=self.accessibility_tree,
-            focus=self.focus
+            self.root_frame.url, scroll,
+            root_frame_focused,
+            math.ceil(self.root_frame.document.height),
+            self.display_list, composited_updates,
+            self.accessibility_tree,
+            self.focus
         )
         self.display_list = None
         self.root_frame.scroll_changed_in_frame = False
@@ -1539,7 +1537,7 @@ class Tab:
         self.browser.commit(self, commit_data)
 
     def render(self):
-        self.measure_render.start()
+        self.measure_render.start_timing()
 
         for id, frame in self.window_id_to_frame.items():
             frame.render()
@@ -1555,7 +1553,7 @@ class Tab:
             self.root_frame.paint(self.display_list)
             self.needs_paint = False
 
-        self.measure_render.stop()
+        self.measure_render.stop_timing()
 
     def click(self, x, y):
         self.render()
@@ -1622,6 +1620,7 @@ def draw_line(canvas, x1, y1, x2, y2, color):
     paint.setStrokeWidth(1)
     canvas.drawPath(path, paint)
 
+@wbetools.patch(Browser)
 class Browser:
     def __init__(self):
         if wbetools.USE_GPU:
@@ -1753,7 +1752,6 @@ class Browser:
     def set_needs_raster(self):
         self.needs_raster = True
         self.needs_draw = True
-        self.needs_animation_frame = True
 
     def set_needs_composite(self):
         self.needs_composite = True
@@ -1893,7 +1891,7 @@ class Browser:
             and not self.needs_raster and not self.needs_draw:
             self.lock.release()
             return
-        self.measure_composite_raster_and_draw.start()
+        self.measure_composite_raster_and_draw.start_timing()
         start_time = time.time()
         if self.needs_composite:
             self.composite()
@@ -1904,7 +1902,7 @@ class Browser:
             self.paint_draw_list()
             self.draw()
 
-        self.measure_composite_raster_and_draw.stop()
+        self.measure_composite_raster_and_draw.stop_timing()
 
         if self.needs_accessibility:
             self.update_accessibility()
@@ -1947,6 +1945,7 @@ class Browser:
         active_tab = self.tabs[self.active_tab]
         task = Task(active_tab.scrolldown)
         active_tab.task_runner.schedule_task(task)
+        self.needs_animation_frame = True
         self.lock.release()        
 
     def handle_tab(self):
@@ -2103,7 +2102,7 @@ class Browser:
 
     def reset_zoom(self):
         active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.reset_zoom)
+        task = Task(active_tab, active_tab.reset_zoom)
         active_tab.task_runner.schedule_task(task)
 
     def load(self, url):

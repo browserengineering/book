@@ -25,9 +25,8 @@ from lab6 import resolve_url, tree_to_list
 from lab7 import CHROME_PX
 from lab8 import INPUT_WIDTH_PX, layout_mode
 from lab9 import EVENT_DISPATCH_CODE
-from lab10 import COOKIE_JAR, request, url_origin
-from lab11 import FONTS, get_font, parse_color, parse_blend_mode, linespace
-from lab11 import SaveLayer, DrawRRect, DrawText, DrawRect, DrawLine, ClipRRect
+from lab10 import request, url_origin
+from lab11 import DrawLine
 from lab11 import draw_line, draw_text, draw_rect
 from lab11 import BlockLayout, DocumentLayout, LineLayout, TextLayout, InputLayout
 from lab11 import paint_visual_effects
@@ -39,10 +38,10 @@ class MeasureTime:
         self.total_s = 0
         self.count = 0
 
-    def start(self):
+    def start_timing(self):
         self.start_time = time.time()
 
-    def stop(self):
+    def stop_timing(self):
         self.total_s += time.time() - self.start_time
         self.count += 1
         self.start_time = None
@@ -148,7 +147,7 @@ class JSContext:
 
         def run_load():
             headers, response = request(
-                full_url, self.tab.url, payload=body)
+                full_url, self.tab.url, body)
             task = Task(self.dispatch_xhr_onload, response, handle)
             self.tab.task_runner.schedule_task(task)
             if not isasync:
@@ -186,7 +185,7 @@ class Tab:
             self.task_runner = TaskRunner(self)
         else:
             self.task_runner = SingleThreadedTaskRunner(self)
-        self.task_runner.start()
+        self.task_runner.start_thread()
 
         self.measure_render = MeasureTime("render")
 
@@ -204,7 +203,7 @@ class Tab:
         self.scroll = 0
         self.scroll_changed_in_tab = True
         self.task_runner.clear_pending_tasks()
-        headers, body = request(url, self.url, payload=body)
+        headers, body = request(url, self.url, body)
         self.url = url
         self.history.append(url)
 
@@ -278,18 +277,14 @@ class Tab:
         if self.scroll_changed_in_tab:
             scroll = self.scroll
         commit_data = CommitForRaster(
-            url=self.url,
-            scroll=scroll,
-            height=document_height,
-            display_list=self.display_list,
-        )
+            self.url, scroll, document_height, self.display_list)
         self.display_list = None
         self.browser.commit(self, commit_data)
         self.scroll_changed_in_tab = False
 
     def render(self):
         if not self.needs_render: return
-        self.measure_render.start()
+        self.measure_render.start_timing()
         style(self.nodes, sorted(self.rules,
             key=cascade_priority))
         self.document = DocumentLayout(self.nodes)
@@ -306,7 +301,7 @@ class Tab:
             y = obj.y
             self.display_list.append(
                 DrawLine(x, y, x, y + obj.height))
-        self.measure_render.stop()
+        self.measure_render.stop_timing()
         self.needs_render = False
 
     def click(self, x, y):
@@ -398,7 +393,7 @@ class SingleThreadedTaskRunner:
     def clear_pending_tasks(self):
         self.tasks = []
 
-    def start(self):    
+    def start_thread(self):    
         pass
 
     def set_needs_quit(self):
@@ -439,7 +434,7 @@ class TaskRunner:
         self.tasks.clear()
         self.pending_scroll = None
 
-    def start(self):
+    def start_thread(self):
         self.main_thread.start()
 
     def run(self):
@@ -539,18 +534,17 @@ class Browser:
 
     def set_needs_raster_and_draw(self):
         self.needs_raster_and_draw = True
-        self.needs_animation_frame = True
 
     def raster_and_draw(self):
         self.lock.acquire(blocking=True)
         if not self.needs_raster_and_draw:
             self.lock.release()
             return
-        self.measure_raster_and_draw.start()
+        self.measure_raster_and_draw.start_timing()
         self.raster_chrome()
         self.raster_tab()
         self.draw()
-        self.measure_raster_and_draw.stop()
+        self.measure_raster_and_draw.stop_timing()
         self.needs_raster_and_draw = False
         self.lock.release()
 
@@ -581,6 +575,7 @@ class Browser:
             self.active_tab_height)
         self.scroll = scroll
         self.set_needs_raster_and_draw()
+        self.needs_animation_frame = True
         self.lock.release()
 
     def set_active_tab(self, index):
@@ -629,6 +624,7 @@ class Browser:
 
     def schedule_load(self, url, body=None):
         active_tab = self.tabs[self.active_tab]
+        active_tab.task_runner.clear_pending_tasks()
         task = Task(active_tab.load, url, body)
         active_tab.task_runner.schedule_task(task)
 
