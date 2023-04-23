@@ -30,7 +30,8 @@ several characters per second, and even a delay of a few frames is
 very distracting. Yet editing text changes the document, and therefore
 requires constructing a new layout tree that reflects the new text.
 And, in fact, if you open up a large web page (like this one) and type
-into an input box on it (like the one below) in your browser, you'll
+into an input box on it (like the one below) in our toy browser,
+you'll
 see that it is quite laggy indeed:
 
 <input style="width:100%"/>
@@ -45,11 +46,11 @@ Once you do so, the user can click on the element to add or modify
 text in it:
 
 ::: {.example contenteditable=true}
-Click on this text to edit it.
+Click on this <i>formatted</i> <b>text</b> to edit it.
 :::
 
-Let's implement this in our browser---it will make a good test of
-invalidation. To begin with, we need to make elements with a
+Let's implement `contenteditable` in our browser---it will make a good
+test of invalidation. To begin with, we need to make elements with a
 `contenteditable` property focusable:
 
 ``` {.python}
@@ -122,7 +123,7 @@ class BlockLayout:
 
 You should now be able to edit the example above in your own
 browser---but if you try it, you'll see that editing is extremely
-slow, with each character typed adding multiple frames of delay.
+slow, with each character taking hundreds of milliseconds to type.
 
 Idempotence
 ===========
@@ -1022,7 +1023,7 @@ We'll want this flag to be set if any other dirty flag is set. So, any
 time a dirty flag is set, we'll want to set the `dirty_descendants`
 flag on all ancestors:
 
-``` {.python replace=BlockLayout:/LineLayout:}
+``` {.python}
 def mark_dirty(node):
     if isinstance(node.parent, BlockLayout) and \
         not node.parent.dirty_descendants:

@@ -20,6 +20,15 @@ def patch(existing_cls):
                 assert obj is None, "Cannot patch using a closure"
                 assert getattr(existing_cls, attr) is None, "Cannot patch a closure"
             elif attr == "__globals__":
+                # if we are patching a function, the new function
+                # might use a global variable (normally, another
+                # function) that's defined in the new scope but not
+                # the old one. To prevent this, we copy the new
+                # function into the old scope, as long as it's not
+                # already defined. (If it's already defined, we throw
+                # an error.) We only do this for variables that are
+                # actually used; to get that, we walk the bytecode
+                # looking for LOAD_GLOBAL operations.
                 old_obj = getattr(existing_cls, attr)
                 new_name = obj["__name__"]
                 old_name = old_obj["__name__"]
