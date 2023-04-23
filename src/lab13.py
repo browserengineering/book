@@ -54,10 +54,6 @@ class Element:
         self.style = {}
         self.animations = {}
 
-def center_point(rect):
-    return (rect.left() + (rect.right() - rect.left()) / 2,
-        rect.top() + (rect.bottom() - rect.top()) / 2)
-
 class DisplayItem:
     def __init__(self, rect, children=[], node=None):
         self.rect = rect

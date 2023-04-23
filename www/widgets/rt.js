@@ -617,6 +617,18 @@ class skia {
     static ColorSetARGB = function(r, g, b, a) {
         return CanvasKit.Color(r, g, b, a);
     }
+
+    static Matrix = wrap_class(class {
+        setTranslate(x, y)  {
+            this.x = x;
+            this.y = y;
+        }
+
+        mapRect(rect) {
+            // TODO: how do I get the bounds of this rect?
+            return rect;
+        }
+    });
 }
 
 function init_skia(canvasKit, robotoData) {

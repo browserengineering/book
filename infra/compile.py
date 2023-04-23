@@ -201,6 +201,10 @@ LIBRARY_METHODS = [
     # skia.Image
     "tobytes",
 
+    # skia.Matrix
+    "setTranslate",
+    "mapRect",
+
     # threading.Timer
     # threading.Thread
     "start",
@@ -909,7 +913,7 @@ if __name__ == "__main__":
     assert name.endswith(".py")
     if args.hints: read_hints(args.hints)
     INDENT = args.indent
-    tree = asttools.parse(args.python.read(), args.python.name)
+    tree = asttools.resolve_patches(asttools.parse(args.python.read(), args.python.name))
     load_outline(asttools.inline(tree))
     js = compile_module(tree)
 
