@@ -1450,9 +1450,9 @@ class Browser:
                     layer = CompositedLayer(self.skia_context, cmd)
                     self.composited_layers.append(layer)
                     break
-            else:
-                layer = CompositedLayer(self.skia_context, cmd)
-                self.composited_layers.append(layer)
+                else:
+                    layer = CompositedLayer(self.skia_context, cmd)
+                    self.composited_layers.append(layer)
 
         self.active_tab_height = 0
         for layer in self.composited_layers:

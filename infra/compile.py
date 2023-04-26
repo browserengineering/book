@@ -157,9 +157,16 @@ LIBRARY_METHODS = [
     # skia.Font
     "getMetrics",
 
-    # skia.Rect
+    # skia.*Rect
     "MakeEmpty",
     "MakeLTRB",
+    "MakeXYWH",
+    "left",
+    "top",
+    "width",
+    "height",
+    "isEmpty",
+    "roundOut",
 
     # skia.RRect
     "MakeRectXY",
@@ -184,12 +191,15 @@ LIBRARY_METHODS = [
     # skia.Paint
     "setStyle",
     "setColor",
+    "getAlphaf",
 
     # skia.Surface
     "makeImageSnapshot",
     "height",
     "getCanvas",
     "MakeRaster",
+    "MakeRenderTarget",
+    "flushAndSubmit",
 
     # skia.Path
     "moveTo",
@@ -197,6 +207,7 @@ LIBRARY_METHODS = [
 
     # skia.ImageInfo
     "Make",
+    "MakeN32Premul",
 
     # skia.Image
     "tobytes",
@@ -403,6 +414,8 @@ def compile_function(name, args, ctx):
     elif name == "Exception":
         assert len(args) == 1
         return "(new Error(" + args_js[0] + "))"
+    elif name == "super":
+        return "super."
     else:
         raise UnsupportedConstruct()
 
@@ -481,6 +494,7 @@ def compile_expr(tree, ctx):
             else:
                 return lhs + "[" + rhs + "]"
     elif isinstance(tree, ast.Call):
+        print(ast.dump(tree))
         args = tree.args[:]
         if tree.keywords:
             names = []
@@ -500,6 +514,12 @@ def compile_expr(tree, ctx):
             assert isinstance(tree.keywords[0].value, ast.Name)
             base = compile_expr(args[0], ctx)
             return "(" + base + ".slice().sort(comparator(" + tree.keywords[0].value.id + ")))"
+        elif isinstance(tree.func, ast.Name) and tree.func.id == "reversed":
+            print("reversed!!!")
+            assert len(tree.args) == 1
+            assert len(tree.keywords) == 0
+            base = compile_expr(args[0], ctx)
+            return "(" + base + ".reverse()"
         elif isinstance(tree.func, ast.Name):
             return "(" + compile_function(tree.func.id, args, ctx) + ")"
         else:
@@ -665,14 +685,17 @@ def compile(tree, ctx, indent=0):
             out += "\n" + " " * indent + "constants.{} = {}_constants.{};".format(const, tree.module, const)
         return out
     elif isinstance(tree, ast.ClassDef):
-        assert not tree.bases
         assert not tree.keywords
         assert not tree.decorator_list
         ctx[tree.name] = {"is_class": True}
         ctx2 = Context("class", ctx)
         parts = [compile(part, indent=indent + INDENT, ctx=ctx2) for part in tree.body]
         EXPORTS.append(tree.name)
-        return " " * indent + "class " + tree.name + " {\n" + "\n\n".join(parts) + "\n}"
+        extends = ''
+        if tree.bases:
+            assert len(tree.bases) == 1
+            extends = ' extends ' + tree.bases[0].id
+        return " " * indent + "class " + tree.name + extends + " {\n" + "\n\n".join(parts) + "\n}"
     elif isinstance(tree, ast.FunctionDef):
         if has_js_hide(tree.decorator_list):
             return ""
@@ -753,12 +776,19 @@ def compile(tree, ctx, indent=0):
         out += "\n" + " " * indent + "}"
         return out
     elif isinstance(tree, ast.For):
+        print('-----')
         assert not tree.orelse
         ctx2 = Context("for", ctx)
         lhs = compile_lhs(tree.target, ctx2)
         rhs = compile_expr(tree.iter, ctx)
+        print('got to here: ' + rhs)
+        for line in tree.body:
+            print(ast.dump(line))
+            print('...')
         body = "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in tree.body])
+        print(body)
         fstline = " " * indent + "for (let " + lhs + " of " + rhs + ") {\n"
+        print('---!!!')
         return fstline + body + "\n" + " " * indent + "}"
     elif isinstance(tree, ast.If) and ctx.type == "module":
         test = tree.test
