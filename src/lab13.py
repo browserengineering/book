@@ -1440,19 +1440,22 @@ class Browser:
                  cmd.parent.needs_compositing)
         ]
         for cmd in non_composited_commands:
+            did_break = False
             for layer in reversed(self.composited_layers):
                 if layer.can_merge(cmd):
                     layer.add(cmd)
+                    did_break = True
                     break
                 elif skia.Rect.Intersects(
                     layer.absolute_bounds(),
                     absolute_bounds(cmd)):
                     layer = CompositedLayer(self.skia_context, cmd)
                     self.composited_layers.append(layer)
+                    did_break = True
                     break
-                else:
-                    layer = CompositedLayer(self.skia_context, cmd)
-                    self.composited_layers.append(layer)
+            if not did_break:
+                layer = CompositedLayer(self.skia_context, cmd)
+                self.composited_layers.append(layer)
 
         self.active_tab_height = 0
         for layer in self.composited_layers:
