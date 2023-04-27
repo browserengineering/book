@@ -1003,9 +1003,9 @@ class CompositedLayer:
                     self.skia_context, skia.Budgeted.kNo,
                     skia.ImageInfo.MakeN32Premul(
                         irect.width(), irect.height()))
-                if self.surface is None:
+                if not self.surface:
                     self.surface = skia.Surface(irect.width(), irect.height())
-                assert self.surface is not None
+                assert self.surface
             else:
                 self.surface = skia.Surface(irect.width(), irect.height())
 

@@ -112,7 +112,10 @@ RENAME_FNS = {
     "int": "parseInt",
     "float": "parseFloat",
     "print": "console.log",
+    "AnimationClass": "AnimationClass"
 }
+
+SKIPPED_FNS = ["add_main_args"]
 
 # These are filled in as import statements are read
 RT_IMPORTS = []
@@ -164,10 +167,13 @@ LIBRARY_METHODS = [
     "MakeXYWH",
     "left",
     "top",
+    "bottom",
     "width",
     "height",
     "isEmpty",
     "roundOut",
+    "intersects",
+    "Intersects",
 
     # skia.RRect
     "MakeRectXY",
@@ -189,6 +195,12 @@ LIBRARY_METHODS = [
     "clear",
     "translate",
 
+    # skia.ColorSpace
+    "MakeSRGB",
+
+    # skia.GrDirectContext
+    "MakeGL",
+
     # skia.Paint
     "setStyle",
     "setColor",
@@ -198,6 +210,7 @@ LIBRARY_METHODS = [
     "makeImageSnapshot",
     "height",
     "getCanvas",
+    "MakeFromBackendRenderTarget",
     "MakeRaster",
     "MakeRenderTarget",
     "flushAndSubmit",
@@ -417,6 +430,8 @@ def compile_function(name, args, ctx):
         return "(new Error(" + args_js[0] + "))"
     elif name == "super":
         return "super."
+    elif name == "type":
+        return args_js[0] + ".constructor"
     else:
         raise UnsupportedConstruct()
 
@@ -435,6 +450,9 @@ def compile_op(op):
     elif isinstance(op, ast.NotEq): return "!=="
     elif isinstance(op, ast.And): return "&&"
     elif isinstance(op, ast.Or): return "||"
+    elif isinstance(op, ast.BitOr): return "|"
+    elif isinstance(op, ast.Is): return "=="
+    elif isinstance(op, ast.IsNot): return "!="
     else:
         raise UnsupportedConstruct()
     
@@ -696,6 +714,9 @@ def compile(tree, ctx, indent=0):
             extends = ' extends ' + tree.bases[0].id
         return " " * indent + "class " + tree.name + extends + " {\n" + "\n\n".join(parts) + "\n}"
     elif isinstance(tree, ast.FunctionDef):
+        if tree.name in SKIPPED_FNS:
+            return ""
+
         if has_js_hide(tree.decorator_list):
             return ""
         assert not tree.decorator_list
