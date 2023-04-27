@@ -19,5 +19,13 @@
  {"code": "self.node_to_handle[elt] = handle", "js": "      this.node_to_handle.set(elt, handle);"},
  {"code": "('DrawRect(top={} left={} ' + 'bottom={} right={} color={})').format(self.top, self.left, self.bottom, self.right, self.color)", "js": ""},
  {"code": "('TextLayout(x={}, y={}, width={}, height={}, ' + 'node={}, word={})').format(self.x, self.y, self.width, self.height, self.node, self.word)", "js": ""},
- {"code": "('NumericAnimation(' + 'old_value={old_value}, change_per_frame={change_per_frame}, ' + 'num_frames={num_frames})').format(old_value=self.old_value, change_per_frame=self.change_per_frame, num_frames=self.num_frames)", "js": ""}
+ {"code": "('NumericAnimation(' + 'old_value={old_value}, change_per_frame={change_per_frame}, ' + 'num_frames={num_frames})').format(old_value=self.old_value, change_per_frame=self.change_per_frame, num_frames=self.num_frames)", "js": ""},
+ {"code": "('TranslateAnimation(' + 'old_value=({old_x},{old_y}), ' + 'change_per_frame=({change_x},{change_y}), ' + 'num_frames={num_frames})').format(old_x=self.old_x, old_y=self.old_y, change_x=self.change_per_frame_x, change_y=self.change_per_frame_y, num_frames=self.num_frames)", "js": ""},
+ {"code": "self.s[self.i] in chars", "js": "str"},
+ {"code": "property not in new_transitions", "type": "dict"},
+ {"code": "property not in old_style", "type": "dict"},
+ {"code": "property not in new_style", "type": "dict"},
+ {"code": "'style' in node.attributes", "type": "dict"},
+ {"code": "property in ANIMATED_PROPERTIES", "type": "list"},
+ {"code": "node in self.composited_updates", "type": "list"}
 ]

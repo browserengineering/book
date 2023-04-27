@@ -10,9 +10,10 @@ INDENT = 2
 class UnsupportedConstruct(AssertionError): pass
 
 class MissingHint(Exception):
-    def __init__(self, tree, key, hint, error=None):
+    def __init__(self, tree, key, hint, line, error=None):
         if not error:
-            self.message = f"Could not find {key} key for `{asttools.unparse(tree)}`"
+            self.message = f"Could not find {key} key for " + \
+            f" `{asttools.unparse(tree)}` on line {line}"
         else:
             self.message = error
         self.key = key
@@ -72,8 +73,8 @@ def find_hint(t, key, error=None):
         break
     else:
         ln = t.lineno if hasattr(t, "lineno") else -1
-        hint = {"line": ln, "code": asttools.unparse(t, explain=True), key: "???"}
-        raise MissingHint(t, key, hint, error=error)
+        hint = {"code": asttools.unparse(t, explain=True), key: "???"}
+        raise MissingHint(t, key, hint, ln, error=error)
     h["used"] = True
     return h[key]
 
