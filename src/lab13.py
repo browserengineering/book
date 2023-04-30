@@ -28,8 +28,7 @@ from lab8 import INPUT_WIDTH_PX, layout_mode
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, request, url_origin
 from lab11 import FONTS, get_font, parse_color, parse_blend_mode, linespace
-from lab11 import draw_line, draw_text, get_font
-from lab11 import BlockLayout, DocumentLayout, LineLayout, TextLayout, InputLayout
+from lab11 import draw_line, draw_text
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
 from lab12 import Task, REFRESH_RATE_SEC
 

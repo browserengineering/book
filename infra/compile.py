@@ -428,8 +428,6 @@ def compile_function(name, args, ctx):
     elif name == "Exception":
         assert len(args) == 1
         return "(new Error(" + args_js[0] + "))"
-    elif name == "super":
-        return "super."
     elif name == "type":
         return args_js[0] + ".constructor"
     else:
@@ -538,6 +536,8 @@ def compile_expr(tree, ctx):
             base = compile_expr(args[0], ctx)
             return "(" + base + ".reverse()"
         elif isinstance(tree.func, ast.Name):
+            if tree.func.id == "super":
+                return "super"
             return "(" + compile_function(tree.func.id, args, ctx) + ")"
         else:
             raise UnsupportedConstruct()
