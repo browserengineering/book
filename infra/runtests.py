@@ -40,7 +40,8 @@ def run_tests(chapter, file_name):
     # This ugly code reloads all of our modules from scratch, in case
     # a test makes a mutation to a global for some reason
     src_dir = os.path.split(os.path.realpath(file_name))[0]
-    for name, mod in sorted(list(sys.modules.items())):
+    mods = list(sys.modules.items())
+    for name, mod in sorted(mods, key=lambda x: (len(x[0]), x[0])):
         if hasattr(mod, "__file__") and mod.__file__ and \
            os.path.realpath(mod.__file__).startswith(src_dir) and \
            mod.__file__.endswith("py"):
