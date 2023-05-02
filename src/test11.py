@@ -74,6 +74,18 @@ class socket:
         cls.URLs[url] = [method, response, body]
 
     @classmethod
+    def serve(cls, html):
+        html = html.encode("utf8") if isinstance(html, str) else html
+        response  = b"HTTP/1.0 200 OK\r\n"
+        response += b"Content-Type: text/html\r\n"
+        response += b"Content-Length: " + str(len(html)).encode("ascii") + b"\r\n"
+        response += b"\r\n" + html
+        prefix = "http://test/"
+        url = next(prefix + str(i) for i in range(1000) if prefix + str(i) not in cls.URLs)
+        cls.respond(url, response)
+        return url
+
+    @classmethod
     def made_request(cls, url):
         return url in cls.Requests
 
