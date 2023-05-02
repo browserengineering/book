@@ -153,6 +153,63 @@ LIBRARY_METHODS = [
 
     # dukpy
     "evaljs",
+
+    # skia.Font
+    "getMetrics",
+
+    # skia.Rect
+    "MakeEmpty",
+    "MakeLTRB",
+
+    # skia.RRect
+    "MakeRectXY",
+
+    # skia.Canvas
+    "saveLayer",
+    "restore",
+    "measureText",
+    "save",
+    "restore",
+    "drawRRect",
+    "Path",
+    "setStrokeWidth",
+    "clipRect",
+    "clipRRect",
+    "drawPath",
+    "drawString",
+    "drawRect",
+    "clear",
+    "translate",
+
+    # skia.Paint
+    "setStyle",
+    "setColor",
+
+    # skia.Surface
+    "makeImageSnapshot",
+    "height",
+    "getCanvas",
+    "MakeRaster",
+
+    # skia.Path
+    "moveTo",
+    "lineTo",
+
+    # skia.ImageInfo
+    "Make",
+
+    # skia.Image
+    "tobytes",
+
+    # threading.Timer
+    # threading.Thread
+    "start",
+    # threading.Condition
+    "notify_all",
+    "wait",
+    # threading.Lock
+    "acquire",
+    "release"
 ]
 
 OUR_FNS = []
@@ -288,6 +345,11 @@ def compile_function(name, args, ctx):
         return RENAME_FNS[name] + "(" + ", ".join(args_js) + ")"
     elif name in OUR_FNS:
         return "await " + name + "(" + ", ".join(args_js) + ")"
+    elif name == "Task":
+        fn, *rest = args_js
+        return "await (new " + name + "()).init(" \
+            "(args) => " + fn + "(...args), " + \
+            ", ".join(rest) + ")"
     elif name in OUR_CLASSES:
         return "await (new " + name + "()).init(" + ", ".join(args_js) + ")"
     elif name == "str":
@@ -629,7 +691,7 @@ def compile(tree, ctx, indent=0):
         elif tree.name == "__repr__":
             # This actually defines a 'toString' operator
             assert ctx.type == "class"
-            def_line = " " * indent + "toString(" + ", ".join(args) + ") {\n"
+            def_line = " " * indent + "async toString(" + ", ".join(args) + ") {\n"
             last_line = "\n" + " " * indent + "}"
             return def_line + body + last_line
         else:
@@ -682,7 +744,7 @@ def compile(tree, ctx, indent=0):
         assert not tree.orelse
         ctx2 = Context("while", ctx)
         test = compile_expr(tree.test, ctx)
-        out = " " * indent + "while (" + test + ") {\n"
+        out = " " * indent + "while (truthy(" + test + ")) {\n"
         out += "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in tree.body])
         out += "\n" + " " * indent + "}"
         return out

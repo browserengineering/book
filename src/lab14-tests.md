@@ -5,11 +5,11 @@ This file contains tests for Chapter 14 (Accessibility).
 
 	>>> from test import Event
     >>> import threading
-    >>> import test14 as test
+    >>> import test11 as test
     >>> _ = test.socket.patch().start()
     >>> _ = test.ssl.patch().start()
     >>> _ = test.gtts.patch()
-    >>> threading.Lock = test.MockLock
+    >>> _ = test.MockLock.patch().start()
     >>> import lab14
     >>> import time
     >>> import threading
@@ -23,12 +23,17 @@ Outlines
 
 The outline css property can be parsed:
 
-    >>> lab14.parse_outline("12px solid red")
+    >>> lab14.parse_outline("12px solid red", 1)
     (12, 'red')
+
+If zoom is set, it is incorporated:
+
+    >>> lab14.parse_outline("12px solid red", 2)
+    (24, 'red')
 
 Values other than "solid" for the secnod word are ignored:
 
-    >>> lab14.parse_outline("12px dashed red")
+    >>> lab14.parse_outline("12px dashed red", 1)
 
 An outline causes a `DrawOutline` with the given width and color:
 
@@ -45,6 +50,7 @@ An outline causes a `DrawOutline` with the given width and color:
 
     >>> browser = lab14.Browser()
     >>> browser.load(outline_url)
+    >>> browser.render()
     >>> browser.tabs[0].advance_tab()
     >>> browser.render()
 
@@ -81,7 +87,7 @@ The 2px wide black display list command is the focus ring for the `input`:
      DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=lightblue)
      DrawText(text=)
      DrawLine top=21.0 left=13.0 bottom=37.0 right=13.0
-     DrawOutline(top=21.0 left=13.0 bottom=37.0 right=213.0 border_color=black thickness=2)
+     DrawOutline(top=21.0 left=13.0 bottom=37.0 right=213.0 border_color=black thickness=1)
      DrawText(text=Link)
 
 And now it's for the `a`:
@@ -92,7 +98,7 @@ And now it's for the `a`:
      DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=lightblue)
      DrawText(text=)
      DrawText(text=Link)
-     DrawOutline(top=21.0 left=229.0 bottom=37.0 right=293.0 border_color=black thickness=2)
+     DrawOutline(top=21.0 left=229.0 bottom=37.0 right=293.0 border_color=black thickness=1)
 
 Tabindex changes the order:
 
@@ -113,7 +119,7 @@ This time the `a` element is focused first:
      DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=lightblue)
      DrawText(text=)
      DrawText(text=Link)
-     DrawOutline(top=21.0 left=229.0 bottom=37.0 right=293.0 border_color=black thickness=2)
+     DrawOutline(top=21.0 left=229.0 bottom=37.0 right=293.0 border_color=black thickness=1)
 
 And then the `input`:
 
@@ -123,7 +129,7 @@ And then the `input`:
      DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=lightblue)
      DrawText(text=)
      DrawLine top=21.0 left=13.0 bottom=37.0 right=13.0
-     DrawOutline(top=21.0 left=13.0 bottom=37.0 right=213.0 border_color=black thickness=2)
+     DrawOutline(top=21.0 left=13.0 bottom=37.0 right=213.0 border_color=black thickness=1)
      DrawText(text=Link)
 
 Regular elements aren't focusable, but if the `tabindex` attribute is set, they
@@ -219,10 +225,10 @@ The rules parsed by the browser style sheet should also indicate dark mode:
     TagSelector(tag=a, priority=1) {'color': 'lightblue'}
     TagSelector(tag=input, priority=1) {'background-color': 'blue'}
     TagSelector(tag=button, priority=1) {'background-color': 'orangered'}
-    PseudoclassSelector(focus, TagSelector(tag=input, priority=1)) {'outline': '2px solid white'}
-    PseudoclassSelector(focus, TagSelector(tag=button, priority=1)) {'outline': '2px solid white'}
-    PseudoclassSelector(focus, TagSelector(tag=div, priority=1)) {'outline': '2px solid white'}
-    PseudoclassSelector(focus, TagSelector(tag=a, priority=1)) {'outline': '2px solid white'}
+    PseudoclassSelector(focus, TagSelector(tag=input, priority=1)) {'outline': '1px solid white'}
+    PseudoclassSelector(focus, TagSelector(tag=button, priority=1)) {'outline': '1px solid white'}
+    PseudoclassSelector(focus, TagSelector(tag=div, priority=1)) {'outline': '1px solid white'}
+    PseudoclassSelector(focus, TagSelector(tag=a, priority=1)) {'outline': '1px solid white'}
 
 Focus
 =====
@@ -240,5 +246,5 @@ It also nd also causes a painted outline:
      DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=blue)
      DrawText(text=)
      DrawLine top=21.0 left=13.0 bottom=37.0 right=13.0
-     DrawOutline(top=21.0 left=13.0 bottom=37.0 right=213.0 border_color=white thickness=2)
+     DrawOutline(top=21.0 left=13.0 bottom=37.0 right=213.0 border_color=white thickness=1)
      DrawText(text=Link)

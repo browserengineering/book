@@ -347,7 +347,7 @@ basically don't call any functions for a `__repr__`:
 
     >>> Test.stmt("class foo:\n def __repr__(self):\n  return 'foo'")
     class foo {
-      toString() {
+      async toString() {
         return "foo";
       }
     }
@@ -393,7 +393,7 @@ The `while` and `for` loops translate pretty directly:
     >>> OUR_FNS.append("foo")
     >>> OUR_FNS.append("bar")
     >>> Test.stmt("while foo():\n bar()")
-    while ((await foo())) {
+    while (truthy((await foo()))) {
       (await bar());
     }
     >>> Test.stmt("for x in foo():\n bar(x)")

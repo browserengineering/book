@@ -102,7 +102,7 @@ words in the whole inline element.
 Inside the `text` method, this key line adds a word to the current
 line of text:
 
-``` {.python.lab6 indent=12}
+``` {.python file=lab6 indent=12}
 self.line.append((self.cursor_x, word, font, color))
 ```
 
@@ -1072,7 +1072,7 @@ should now look something like this:
 
 If you run it, it should look something like this:
 
-::: {.widget height=691}
+::: {.widget height=605}
     lab7-browser.html
 :::
 

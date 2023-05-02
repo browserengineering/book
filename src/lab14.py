@@ -6,11 +6,14 @@ without exercises.
 
 import ctypes
 import dukpy
-import io
 import math
 import os
 import gtts
-import playsound
+try:
+    import playsound
+except:
+    playsound = None
+    
 import sdl2
 import skia
 import socket
@@ -25,7 +28,7 @@ from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab4 import Text, Element, print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS
 from lab6 import TagSelector, DescendantSelector
-from lab6 import INHERITED_PROPERTIES, cascade_priority, compute_style
+from lab6 import INHERITED_PROPERTIES, compute_style
 from lab6 import resolve_url, tree_to_list
 from lab7 import CHROME_PX
 from lab8 import INPUT_WIDTH_PX, layout_mode
@@ -40,7 +43,8 @@ from lab13 import absolute_bounds, absolute_bounds_for_obj
 from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
 from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import DisplayItem, DrawText, DrawCompositedLayer, SaveLayer
-from lab13 import ClipRRect, Transform, DrawLine, DrawRRect, draw_rect
+from lab13 import ClipRRect, Transform, DrawLine, DrawRRect, draw_rect, \
+    add_main_args
 
 @wbetools.patch(Element)
 class Element:
@@ -91,12 +95,12 @@ def parse_color(color):
     else:
         return skia.ColorBLACK
 
-def parse_outline(outline_str):
+def parse_outline(outline_str, zoom):
     if not outline_str: return None
     values = outline_str.split(" ")
     if len(values) != 3: return None
     if values[1] != "solid": return None
-    return (int(values[0][:-2]), values[2])
+    return (device_px(int(values[0][:-2]), zoom), values[2])
 
 class DrawOutline(DisplayItem):
     def __init__(self, rect, color, thickness):
@@ -128,11 +132,11 @@ def is_focused(node):
     return node.is_focused
 
 def has_outline(node):
-    return parse_outline(node.style.get("outline"))
+    return parse_outline(node.style.get("outline"), 1)
 
-def paint_outline(node, cmds, rect):
+def paint_outline(node, cmds, rect, zoom):
     if has_outline(node):
-        thickness, color = parse_outline(node.style.get("outline"))
+        thickness, color = parse_outline(node.style.get("outline"), zoom)
         cmds.append(DrawOutline(rect, color, thickness))
 
 class BlockLayout:
@@ -147,7 +151,8 @@ class BlockLayout:
         self.width = None
         self.height = None
 
-    def layout(self, zoom):
+    def layout(self):
+        self.zoom = self.parent.zoom
         self.width = self.parent.width
         self.x = self.parent.x
 
@@ -165,24 +170,24 @@ class BlockLayout:
                 previous = next
         else:
             self.new_line()
-            self.recurse(self.node, zoom)
+            self.recurse(self.node)
 
         for child in self.children:
-            child.layout(zoom)
+            child.layout()
 
         self.height = sum([child.height for child in self.children])
 
-    def recurse(self, node, zoom):
+    def recurse(self, node):
         if isinstance(node, Text):
-            self.text(node, zoom)
+            self.text(node)
         else:
             if node.tag == "br":
                 self.new_line()
             elif node.tag == "input" or node.tag == "button":
-                self.input(node, zoom)
+                self.input(node)
             else:
                 for child in node.children:
-                    self.recurse(child, zoom)
+                    self.recurse(child)
 
     def new_line(self):
         self.previous_word = None
@@ -191,10 +196,10 @@ class BlockLayout:
         new_line = LineLayout(self.node, self, last_line)
         self.children.append(new_line)
 
-    def text(self, node, zoom):
+    def text(self, node):
         weight = node.style["font-weight"]
         style = node.style["font-style"]
-        size = device_px(float(node.style["font-size"][:-2]), zoom)
+        size = device_px(float(node.style["font-size"][:-2]), self.zoom)
         font = get_font(size, weight, size)
         for word in node.text.split():
             w = font.measureText(word)
@@ -206,8 +211,8 @@ class BlockLayout:
             self.previous_word = text
             self.cursor_x += w + font.measureText(" ")
 
-    def input(self, node, zoom):
-        w = device_px(INPUT_WIDTH_PX, zoom)
+    def input(self, node):
+        w = device_px(INPUT_WIDTH_PX, self.zoom)
         if self.cursor_x + w > self.width:
             self.new_line()
         line = self.children[-1]
@@ -216,7 +221,7 @@ class BlockLayout:
         self.previous_word = input
         weight = node.style["font-weight"]
         style = node.style["font-style"]
-        size = device_px(float(node.style["font-size"][:-2]), zoom)
+        size = device_px(float(node.style["font-size"][:-2]), self.zoom)
         font = get_font(size, weight, size)
         self.cursor_x += w + font.measureText(" ")
 
@@ -234,16 +239,19 @@ class BlockLayout:
             bgcolor = self.node.style.get("background-color",
                                      "transparent")
             if bgcolor != "transparent":
-                radius = float(self.node.style.get("border-radius", "0px")[:-2])
+                radius = device_px(
+                    float(self.node.style.get("border-radius", "0px")[:-2]),
+                        self.zoom)
                 cmds.append(DrawRRect(rect, radius, bgcolor))
  
         for child in self.children:
             child.paint(cmds)
 
-        paint_outline(self.node, cmds, rect)
-
         if not is_atomic:
             cmds = paint_visual_effects(self.node, cmds, rect)
+            paint_outline(
+                self.node, cmds, rect, self.zoom)
+
         display_list.extend(cmds)
 
     def __repr__(self):
@@ -261,7 +269,8 @@ class LineLayout:
         self.width = None
         self.height = None
 
-    def layout(self, zoom):
+    def layout(self):
+        self.zoom = self.parent.zoom
         self.width = self.parent.width
         self.x = self.parent.x
 
@@ -271,7 +280,7 @@ class LineLayout:
             self.y = self.parent.y
 
         for word in self.children:
-            word.layout(zoom)
+            word.layout()
 
         if not self.children:
             self.height = 0
@@ -299,7 +308,8 @@ class LineLayout:
                 outline_rect.join(child.rect())
 
         if focused_node:
-            paint_outline(focused_node, display_list, outline_rect)
+            paint_outline(
+                focused_node, display_list, outline_rect, self.zoom)
 
     def role(self):
         return "none"
@@ -365,14 +375,15 @@ class DocumentLayout:
         self.children = []
 
     def layout(self, zoom):
+        self.zoom = zoom
         child = BlockLayout(self.node, self, None)
         self.children.append(child)
 
-        self.width = WIDTH - 2 * device_px(HSTEP, zoom)
-        self.x = device_px(HSTEP, zoom)
-        self.y = device_px(VSTEP, zoom)
-        child.layout(zoom)
-        self.height = child.height + 2* device_px(VSTEP, zoom)
+        self.width = WIDTH - 2 * device_px(HSTEP, self.zoom)
+        self.x = device_px(HSTEP, self.zoom)
+        self.y = device_px(VSTEP, self.zoom)
+        child.layout()
+        self.height = child.height + 2* device_px(VSTEP, self.zoom)
 
     def paint(self, display_list):
         self.children[0].paint(display_list)
@@ -391,13 +402,13 @@ class TextLayout:
         self.y = None
         self.width = None
         self.height = None
-        self.font = None
 
-    def layout(self, zoom):
+    def layout(self):
+        self.zoom = self.parent.zoom
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
         size = device_px(
-            float(self.node.style["font-size"][:-2]), zoom)
+            float(self.node.style["font-size"][:-2]), self.zoom)
         self.font = get_font(size, weight, style)
 
         # Do not set self.y!!!
@@ -438,14 +449,15 @@ class InputLayout:
         self.height = None
         self.font = None
 
-    def layout(self, zoom):
+    def layout(self):
+        self.zoom = self.parent.zoom
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
         size = \
-            device_px(float(self.node.style["font-size"][:-2]), zoom)
+            device_px(float(self.node.style["font-size"][:-2]), self.zoom)
         self.font = get_font(size, weight, style)
 
-        self.width = device_px(INPUT_WIDTH_PX, zoom)
+        self.width = device_px(INPUT_WIDTH_PX, self.zoom)
         self.height = linespace(self.font)
 
         if self.previous:
@@ -464,7 +476,9 @@ class InputLayout:
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         if bgcolor != "transparent":
-            radius = float(self.node.style.get("border-radius", "0px")[:-2])
+            radius = device_px(
+                float(self.node.style.get("border-radius", "0px")[:-2]),
+                self.zoom)
             cmds.append(DrawRRect(rect, radius, bgcolor))
 
         if self.node.tag == "input":
@@ -485,8 +499,8 @@ class InputLayout:
             cx = rect.left() + self.font.measureText(text)
             cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom()))
 
-        paint_outline(self.node, cmds, rect)
         cmds = paint_visual_effects(self.node, cmds, rect)
+        paint_outline(self.node, cmds, rect, self.zoom)
         display_list.extend(cmds)
 
     def __repr__(self):
@@ -530,7 +544,7 @@ class AccessibilityNode:
     def __init__(self, node):
         self.node = node
         self.children = []
-        self.text = None
+        self.text = ""
 
         if node.layout_object:
             self.bounds = absolute_bounds_for_obj(node.layout_object)
@@ -620,7 +634,8 @@ def speak_text(text):
     print("SPEAK:", text)
     tts = gtts.gTTS(text)
     tts.save(SPEECH_FILE)
-    playsound.playsound(SPEECH_FILE)
+    if playsound:
+        playsound.playsound(SPEECH_FILE)
     os.remove(SPEECH_FILE)
     
 class PseudoclassSelector:
@@ -875,7 +890,7 @@ class JSContext:
 
         def run_load():
             headers, response = request(
-                full_url, self.tab.url, payload=body)
+                full_url, self.tab.url, body)
             task = Task(self.dispatch_xhr_onload, response, handle)
             self.tab.task_runner.schedule_task(task)
             if not isasync:
@@ -926,7 +941,7 @@ class Tab:
             self.task_runner = TaskRunner(self)
         else:
             self.task_runner = SingleThreadedTaskRunner(self)
-        self.task_runner.start()
+        self.task_runner.start_thread()
 
         self.measure_render = MeasureTime("render")
         self.composited_updates = []
@@ -949,7 +964,7 @@ class Tab:
         self.scroll = 0
         self.scroll_changed_in_tab = True
         self.task_runner.clear_pending_tasks()
-        headers, body = request(url, self.url, payload=body)
+        headers, body = request(url, self.url, body)
         self.url = url
         self.accessibility_tree = None
         self.history.append(url)
@@ -1055,14 +1070,10 @@ class Tab:
         self.composited_updates.clear()
 
         commit_data = CommitData(
-            url=self.url,
-            scroll=scroll,
-            height=document_height,
-            display_list=self.display_list,
-            composited_updates=composited_updates,
-            accessibility_tree=self.accessibility_tree,
-            focus=self.focus
-        )
+            self.url, scroll, document_height, self.display_list,
+            composited_updates,
+            self.accessibility_tree,
+            self.focus)
         self.display_list = None
         self.scroll_changed_in_tab = False
         self.accessibility_tree = None
@@ -1070,7 +1081,7 @@ class Tab:
         self.browser.commit(self, commit_data)
 
     def render(self):
-        self.measure_render.start()
+        self.measure_render.start_timing()
 
         if self.needs_style:
             if self.dark_mode:
@@ -1101,7 +1112,7 @@ class Tab:
             self.document.paint(self.display_list)
             self.needs_paint = False
 
-        self.measure_render.stop()
+        self.measure_render.stop_timing()
 
     def focus_element(self, node):
         if node and node != self.focus:
@@ -1342,6 +1353,7 @@ class Browser:
     def render(self):
         assert not wbetools.USE_BROWSER_THREAD
         tab = self.tabs[self.active_tab]
+        tab.task_runner.run_tasks()
         tab.run_animation_frame(self.scroll)
 
     def commit(self, tab, data):
@@ -1375,7 +1387,6 @@ class Browser:
     def set_needs_raster(self):
         self.needs_raster = True
         self.needs_draw = True
-        self.needs_animation_frame = True
 
     def set_needs_composite(self):
         self.needs_composite = True
@@ -1516,7 +1527,7 @@ class Browser:
             self.needs_accessibility:
             self.lock.release()
             return
-        self.measure_composite_raster_and_draw.start()
+        self.measure_composite_raster_and_draw.start_timing()
         start_time = time.time()
         if self.needs_composite:
             self.composite()
@@ -1528,7 +1539,7 @@ class Browser:
             self.paint_draw_list()
             self.draw()
 
-        self.measure_composite_raster_and_draw.stop()
+        self.measure_composite_raster_and_draw.stop_timing()
 
         if self.needs_accessibility:
             self.update_accessibility()
@@ -1567,6 +1578,7 @@ class Browser:
             self.active_tab_height)
         self.scroll = scroll
         self.set_needs_draw()
+        self.needs_animation_frame = True
         self.lock.release()
 
     def handle_tab(self):
@@ -1596,6 +1608,10 @@ class Browser:
 
     def set_active_tab(self, index):
         self.active_tab = index
+        active_tab = self.tabs[self.active_tab]
+        task = Task(active_tab.set_needs_paint)
+        active_tab.task_runner.schedule_task(task)
+
         self.clear_data()
         self.needs_animation_frame = True
 
@@ -1707,7 +1723,7 @@ class Browser:
     def handle_enter(self):
         self.lock.acquire(blocking=True)
         if self.focus == "address bar":
-            self.schedule_load(active_tab, self.address_bar)
+            self.schedule_load(self.address_bar)
             self.url = self.address_bar
             self.focus = None
             self.set_needs_raster()
@@ -1846,26 +1862,8 @@ class Browser:
             sdl2.SDL_GL_DeleteContext(self.gl_context)
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
-if __name__ == "__main__":
+def main_func(args):
     import sys
-    import argparse
-
-    parser = argparse.ArgumentParser(description='Chapter 13 code')
-    parser.add_argument("url", type=str, help="URL to load")
-    parser.add_argument('--single_threaded', action="store_true", default=False,
-        help='Whether to run the browser without a browser thread')
-    parser.add_argument('--disable_compositing', action="store_true",
-        default=False, help='Whether to composite some elements')
-    parser.add_argument('--disable_gpu', action='store_true',
-        default=False, help='Whether to disable use of the GPU')
-    parser.add_argument('--show_composited_layer_borders', action="store_true",
-        default=False, help='Whether to visually indicate composited layer borders')
-    args = parser.parse_args()
-
-    wbetools.USE_BROWSER_THREAD = not args.single_threaded
-    wbetools.USE_GPU = not args.disable_gpu
-    wbetools.USE_COMPOSITING = not args.disable_compositing and not args.disable_gpu
-    wbetools.SHOW_COMPOSITED_LAYER_BORDERS = args.show_composited_layer_borders
 
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
@@ -1935,3 +1933,8 @@ if __name__ == "__main__":
                 browser.render()
         browser.composite_raster_and_draw()
         browser.schedule_animation_frame()
+
+if __name__ == "__main__":
+    args = add_main_args()
+    main_func(args)
+

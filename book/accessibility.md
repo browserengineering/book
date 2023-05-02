@@ -113,8 +113,8 @@ and abilities.
 ::: {.further}
 In the United States, the European Union, and many other countries,
 website accessibility is in many cases legally required. For example,
-United States Government websites are required to be accessible under [Section
-508][sec508] of the [Rehabilitation Act Amendments of
+United States Government websites are required to be accessible under
+[Section 508][sec508] of the [Rehabilitation Act Amendments of
 1973 (with amendments added later)][rehab-act], and the government has a bunch of
 [regulations][a11yreg]. In the United States, non-government websites
 are also required to be accessible under the [Americans with
@@ -152,11 +152,9 @@ keys; using the `Ctrl` modifier key means you can type a `+`, `-`, or
 `0` into a text entry without triggering the zoom function.
 
 To handle modifier keys, we'll need to listen to both "key down" and
-"key up" events, and store whether the `Ctrl` key is pressed:
+"key up" events in the event loop, and store whether the `Ctrl` key is pressed:
 
 ``` {.python}
-if __name__ == "__main__":
-    # ...
     ctrl_down = False
     while True:
 		if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
@@ -177,8 +175,6 @@ Now we can have a case in the key handling code for "key down" events
 while the `Ctrl` key is held:
 
 ``` {.python}
-if __name__ == "__main__":
-    # ...
     ctrl_down = False
     while True:
 		if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
@@ -248,62 +244,37 @@ class Tab:
 ```
 
 The `zoom` factor is supposed to multiply all CSS sizes, so we'll need
-access to it during layout. There's a few ways to do this, but the
-easiest is just to pass it in as an argument to `layout`:
+access to it during layout. There's a few ways to do this, but one easy way
+is just to pass it as a parameter to `layout` for `DocumentLayout`:
+
+``` {.python}
+class DocumentLayout:
+    def layout(self, zoom):
+        self.zoom = zoom
+        child = BlockLayout(self.node, self, None)
+        # ...
+```
 
 ``` {.python}
 class Tab:
-	# ...
-	def render(self):
-			# ...
-			self.document.layout(self.zoom)
+    def render(self):
+        # ...
+            self.document.layout(self.zoom)
 ```
 
-The `LineLayout` and `DocumentLayout` classes just pass on the zoom to
-their children:
-
-``` {.python}
-class LineLayout:
-	# ...
-    def layout(self, zoom):
-        for word in self.children:
-            word.layout(zoom)
-
-class DocumentLayout:
-	# ...
-    def layout(self, zoom):
-    	# ...
-        child.layout(zoom)
-```
-
-However, `BlockLayout`, `TextLayout`, and `InputLayout` have to
-handle zoom specially, because the elements they represent have to be
-scaled by the `zoom` multiplier. First, pass the `zoom` argument into
-the `recurse` method and from there into `text` and `input`:
+Then pass it recursively by looking at the parent value for a layout object,
+in a similar way to how we compute other values like `y`. Here is `BlockLayout`;
+I've omitted the other classes, which all look similar and set zoom at the
+beginning of `layout`:
 
 ``` {.python}
 class BlockLayout:
-	# ...
-    def layout(self, zoom):
-    	# ...
-        self.recurse(self.node, zoom)
+    def layout(self):
+        self.zoom = self.parent.zoom
         # ...
-        for child in self.children:
-            child.layout(zoom)
-
-    def recurse(self, node, zoom):
-        if isinstance(node, Text):
-            self.text(node, zoom)
-        else:
-        	# ...
-            elif node.tag == "input" or node.tag == "button":
-                self.input(node, zoom)
-            else:
-                for child in node.children:
-                    self.recurse(child, zoom)
 ```
 
-These two methods now need to scale their font sizes to account for
+Various methods now need to scale their font sizes to account for
 `zoom`. Since scaling by `zoom` is a common operation, let's wrap it
 in a helper method, `device_px`:
 
@@ -324,23 +295,23 @@ We'll do this conversion to adjust the font sizes in the `text` and
 ``` {.python}
 class BlockLayout:
 	# ....
-    def text(self, node, zoom):
+    def text(self, node):
     	# ...
-        size = device_px(float(node.style["font-size"][:-2]), zoom)
+        size = device_px(float(node.style["font-size"][:-2]), self.zoom)
 
-    def input(self, node, zoom):
+    def input(self, node):
 	    # ...
-        size = device_px(float(node.style["font-size"][:-2]), zoom)
+        size = device_px(float(node.style["font-size"][:-2]), self.zoom)
 ```
 
 
 ``` {.python}
 class InputLayout:
     # ....
-    def layout(self, zoom):
+    def layout(self):
         # ...
         size = \
-            device_px(float(self.node.style["font-size"][:-2]), zoom)
+            device_px(float(self.node.style["font-size"][:-2]), self.zoom)
 ```
 
 As well as the font size in `TextLayout`:[^min-font-size]
@@ -358,10 +329,10 @@ sizes][relative-font-size].
 ``` {.python}
 class TextLayout:
 	# ...
-    def layout(self, zoom):
+    def layout(self):
     	# ...
         size = device_px(
-        	float(self.node.style["font-size"][:-2]), zoom)
+        	float(self.node.style["font-size"][:-2]), self.zoom)
 ```
 
 And the fixed `INPUT_WIDTH_PX` for text boxes:
@@ -369,8 +340,8 @@ And the fixed `INPUT_WIDTH_PX` for text boxes:
 ``` {.python }
 class BlockLayout:
 	# ...
-    def input(self, node, zoom):
-        w = device_px(INPUT_WIDTH_PX, zoom)	
+    def input(self, node):
+        w = device_px(INPUT_WIDTH_PX, self.zoom)	
 ```
 
 Finally, one tricky place we need to adjust for zoom is inside
@@ -386,11 +357,11 @@ class DocumentLayout:
 	# ...
     def layout(self, zoom):
     	# ...
-        self.width = WIDTH - 2 * device_px(HSTEP, zoom)
-        self.x = device_px(HSTEP, zoom)
-        self.y = device_px(VSTEP, zoom)
-        child.layout(zoom)
-        self.height = child.height + 2* device_px(VSTEP, zoom)
+        self.width = WIDTH - 2 * device_px(HSTEP, self.zoom)
+        self.x = device_px(HSTEP, self.zoom)
+        self.y = device_px(VSTEP, self.zoom)
+        child.layout()
+        self.height = child.height + 2* device_px(VSTEP, self.zoom)
 ```
 
 Now try it out. All of the fonts should get about 10% bigger each
@@ -451,10 +422,9 @@ This theme of "pioneered by accessibility" recurred for a number of other
 technologies, such as text-to-speech, OCR, on-screen keyboards, and voice
 control.
 
-We'll trigger dark mode with `Ctrl-d`:
+We'll trigger dark mode in the event loop with `Ctrl-d`:
 
 ``` {.python}
-if __name__ == "__main__":
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             # ...
@@ -767,8 +737,8 @@ Let's start with the browser chrome, since it's the easiest. Here, we need
 to allow the user to go back, to type in the address bar, and to
 create and cycle through tabs, all with the keyboard. We'll also add a
 keyboard shortcut for quitting the browser.[^one-more] Let's make all
-these shortcuts use the `Ctrl` modifier key so they don't interfere
-with normal typing: `Ctrl-Left` to go back, `Ctrl-L` to type in the
+these shortcuts in the event loop use the `Ctrl` modifier key so they don't
+interfere with normal typing: `Ctrl-Left` to go back, `Ctrl-L` to type in the
 address bar, `Ctrl-T` to create a new tab, `Ctrl-Tab` to switch to the
 next tab, and `Ctrl-Q` to exit the browser:
 
@@ -777,7 +747,6 @@ minimizing or maximizing the browser window. Those require calling
 specialized OS APIs, so I won't implement them.
 
 ``` {.python}
-if __name__ == "__main__":
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             elif event.type == sdl2.SDL_KEYDOWN:
@@ -826,10 +795,9 @@ already have a `focus` property on each `Tab` indicating which `input`
 element is capturing keyboard input. Let's allow buttons and links to
 be focused as well. Of course, they don't capture keyboard input, but
 when the user pressed `Enter` we'll press the button or navigate to
-the link. We'll start by binding those keys:
+the link. We'll start by binding those keys in the event loop:
 
 ``` {.python}
-if __name__ == "__main__":
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             elif event.type == sdl2.SDL_KEYDOWN:
@@ -898,7 +866,7 @@ the last the focusable node (or if there weren't any focusable nodes
 to begin with), we'll un-focus the page and move focus to the address
 bar:
 
-``` {.python replace=%20=%20focusable_nodes[idx]/_element(focusable_nodes[idx]),%20=%20None/_element(None)}
+``` {.python replace=%20%3d%20focusable_nodes[idx]/_element(focusable_nodes[idx]),%20%3d%20None/_element(None)}
 class Tab:
     def advance_tab(self):
         if idx < len(focusable_nodes):
@@ -1137,16 +1105,15 @@ class DrawOutline(DisplayItem):
             border_color=self.color, width=self.thickness)
 ```
 
-Now we can paint a 2 pixel black outline around an element like this:
+Now we can paint a 1 pixel black outline around an element like this:
 
-``` {.python replace=node.is_focused/has_outline(node),"black"/color,2/thickness}
-def paint_outline(node, cmds, rect):
+``` {.python replace=node.is_focused/has_outline(node),%22black%22/color,1/thickness}
+def paint_outline(node, cmds, rect, zoom):
     if node.is_focused:
-        cmds.append(DrawOutline(rect, "black", 2))
+        cmds.append(DrawOutline(rect, "black", 1))
 ```
 
-Call it in `InputLayout` to make sure text entries and buttons get
-outlines:
+Call it in `InputLayout` to make sure text entries and buttons get outlines.
 
 ``` {.python}
 class InputLayout:
@@ -1156,8 +1123,8 @@ class InputLayout:
             cx = rect.left() + self.font.measureText(text)
             cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom()))
 
-        paint_outline(self.node, cmds, rect)
         cmds = paint_visual_effects(self.node, cmds, rect)
+        paint_outline(self.node, cmds, rect, self.zoom)
         display_list.extend(cmds)
 ```
 
@@ -1185,7 +1152,8 @@ class LineLayout:
                 focused_node = node.parent
                 outline_rect.join(child.rect())
         if focused_node:
-            paint_outline(focused_node, display_list, outline_rect)
+            paint_outline(
+                focused_node, display_list, outline_rect, self.zoom)
 ```
 
 You should also add a `paint_outline` call to `BlockLayout`, since
@@ -1388,12 +1356,12 @@ parse that into a thickness and a color, assuming that we only want to
 support `solid` outlines:
 
 ``` {.python}
-def parse_outline(outline_str):
+def parse_outline(outline_str, zoom):
     if not outline_str: return None
     values = outline_str.split(" ")
     if len(values) != 3: return None
     if values[1] != "solid": return None
-    return (int(values[0][:-2]), values[2])
+    return (device_px(int(values[0][:-2]), zoom), values[2])
 ```
 
 Now we can use this `parse_outline` method when drawing an outline, in
@@ -1401,11 +1369,11 @@ Now we can use this `parse_outline` method when drawing an outline, in
 
 ``` {.python}
 def has_outline(node):
-    return parse_outline(node.style.get("outline"))
+    return parse_outline(node.style.get("outline"), 1)
 
-def paint_outline(node, cmds, rect):
+def paint_outline(node, cmds, rect, zoom):
     if has_outline(node):
-        thickness, color = parse_outline(node.style.get("outline"))
+        thickness, color = parse_outline(node.style.get("outline"), zoom)
         cmds.append(DrawOutline(rect, color, thickness))
 ```
 
@@ -1413,9 +1381,9 @@ The default two-pixel black outline can now be moved into the browser
 default style sheet, like this:
 
 ``` {.css}
-input:focus { outline: 2px solid black; }
-button:focus { outline: 2px solid black; }
-div:focus { outline: 2px solid black; }
+input:focus { outline: 1px solid black; }
+button:focus { outline: 1px solid black; }
+div:focus { outline: 1px solid black; }
 ```
 
 Moreover, we can now make the outline white when dark mode is
@@ -1424,10 +1392,10 @@ background:
 
 ``` {.css}
 @media (prefers-color-scheme: dark) {
-input:focus { outline: 2px solid white; }
-button:focus { outline: 2px solid white; }
-div:focus { outline: 2px solid white; }
-a:focus { outline: 2px solid white; }
+input:focus { outline: 1px solid white; }
+button:focus { outline: 1px solid white; }
+div:focus { outline: 1px solid white; }
+a:focus { outline: 1px solid white; }
 }
 ```
 
@@ -1572,7 +1540,7 @@ class AccessibilityNode:
     def __init__(self, node):
         self.node = node
         self.children = []
-        self.text = None
+        self.text = ""
 ```
 
 The `build` method on `AccessibilityNode` recursively creates the
@@ -1704,9 +1672,8 @@ class Tab:
     def run_animation_frame(self, scroll):
         # ...
         commit_data = CommitData(
-            accessibility_tree=self.accessibility_tree,
+            self.accessibility_tree,
             # ...
-        )
         # ...
         self.accessibility_tree = None
 
@@ -1780,10 +1747,9 @@ standard output.
 
 To start with, we'll want a key binding that turns the screen reader
 on and off. While real operating systems typically use more obscure
-shortcuts, I'll use `Ctrl-A` to turn on the screen reader:
+shortcuts, I'll use `Ctrl-A` to turn on the screen reader in the event loop:
 
 ``` {.python}
-if __name__ == "__main__":
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             # ...
@@ -1847,7 +1813,7 @@ the element tag, plus whether it's focused.
 class AccessibilityNode:
     def __init__(self, node):
         # ...
-        self.text = None
+        self.text = ""
 
     def build(self):
         for child_node in self.node.children:
@@ -2204,11 +2170,10 @@ Note that I'm using `absolute_bounds_for_obj` here, because the bounds
 we're interested in are the absolute coordinates on the screen, after
 any transformations like `translate`.
 
-So let's implement the read-on-hover feature. First we need to listen
-for mouse move events, which in SDL are called `MOUSEMOTION`:
+So let's implement the read-on-hover feature. First we need to listen for mouse
+move events in the event loop, which in SDL are called `MOUSEMOTION`:
 
 ``` {.python}
-if __name__ == "__main__":
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             # ...

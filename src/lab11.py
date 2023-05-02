@@ -6,7 +6,6 @@ without exercises.
 
 import ctypes
 import dukpy
-import io
 import math
 import sdl2
 import skia
@@ -259,7 +258,7 @@ class BlockLayout:
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         size = float(node.style["font-size"][:-2])
-        font = get_font(size, weight, size)
+        font = get_font(size, weight, style)
         for word in node.text.split():
             w = font.measureText(word)
             if self.cursor_x + w > self.width:
@@ -281,7 +280,7 @@ class BlockLayout:
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         size = float(node.style["font-size"][:-2])
-        font = get_font(size, weight, size)
+        font = get_font(size, weight, style)
         self.cursor_x += w + font.measureText(" ")
 
     def paint(self, display_list):
@@ -524,7 +523,7 @@ class Tab:
             url_origin(url) in self.allowed_origins
 
     def load(self, url, body=None):
-        headers, body = request(url, self.url, payload=body)
+        headers, body = request(url, self.url, body)
         self.scroll = 0
         self.url = url
         self.history.append(url)
@@ -829,7 +828,6 @@ class Browser:
 
 if __name__ == "__main__":
     import sys
-
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
     browser.load(sys.argv[1])

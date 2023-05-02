@@ -1055,7 +1055,7 @@ There's also a server now, but it's much simpler:
 
 If you run it, it should look something like this:
 
-::: {.widget height=691}
+::: {.widget height=605}
     lab8-browser.html
 :::
 

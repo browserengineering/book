@@ -1,17 +1,19 @@
 /* This file simulates Python packages used by the WBE browser */
 
-
 export {
-    breakpoint, filesystem,
+    breakpoint, filesystem, ctypes, math,
     socket, ssl, tkinter, dukpy, urllib, html, random, wbetools,
     truthy, comparator, pysplit, pyrsplit, asyncfilter,
-    rt_constants, Widget, http_textarea, 
+    rt_constants, Widget, http_textarea, skia, sdl2, init_skia,
+    init_window, threading, time
     };
 
-function wrap_class(cls) {
-    return function(...args) {
+function wrap_class(cls, fn) {
+    var f = function(...args) {
         return new cls(...args);
     }
+    if (fn) fn(f);
+    return f;
 }
 
 function http_ok(body, headers) {
@@ -30,8 +32,12 @@ function http_textarea(elt) {
 
 const rt_constants = {};
 rt_constants.ZOOM = 1.0;
-rt_constants.TKELEMENT = null;
+rt_constants.ROOT_CANVAS = null;
 rt_constants.URLS = {};
+
+let fontManager;
+let CanvasKit;
+let robotoData
 
 class ExpectedError extends Error {
     constructor(msg) {
@@ -154,7 +160,7 @@ class ssl {
 class tkinter { 
     static Tk = wrap_class(class {
         constructor() {
-            this.elt = rt_constants.TKELEMENT;
+            this.elt = rt_constants.ROOT_CANVAS;
         }
 
         bind(key, fn) {
@@ -280,14 +286,14 @@ class tkinter {
             }
 
             measure(text) {
-                let ctx = rt_constants.TKELEMENT.getContext('2d');
+                let ctx = rt_constants.ROOT_CANVAS.getContext('2d');
                 ctx.font = this.string;
                 return ctx.measureText(text).width / rt_constants.ZOOM;
             }
 
             metrics(field) {
                 if (!this.$metrics) {
-                    let ctx = rt_constants.TKELEMENT.getContext('2d');
+                    let ctx = rt_constants.ROOT_CANVAS.getContext('2d');
                     ctx.textBaseline = "alphabetic";
                     ctx.font = this.string;
                     let m = ctx.measureText("Hxy");
@@ -313,6 +319,15 @@ class tkinter {
             }
         })
     }
+}
+
+function init_window(browser) {
+    var w = tkinter.Tk()
+    w.bind("<Down>", (e) => browser.handle_down(e));
+    w.bind("<Button-1>", (e) => browser.handle_click(e));
+    w.bind("<Key>", (e) => browser.handle_key(e.char));
+    w.bind("<Return>", (e) => browser.handle_enter(e));
+    return w;
 }
 
 class urllib {
@@ -344,6 +359,12 @@ class html {
 class random {
     static random() {
         return Math.random();
+    }
+}
+
+class math {
+    static ceil(num) {
+        return Math.ceil(num);
     }
 }
 
@@ -430,8 +451,279 @@ class dukpy {
     })
 }
 
-class wbetools {
+class sdl2 {
+    static SDL_CreateWindow(name, option1, option2, width, height, shown) {
+        return {};
+    }
 
+    static SDL_CreateRGBSurfaceFrom(bytes, width, height, depth, pitch,
+        red, green, blue, alpha) {
+        return {};
+    }
+
+    static SDL_Rect(top, left, width, height) {
+        return {};
+    }
+
+    static SDL_BlitSurface(sdl_surface, sdl_rect, window_surface, window_rect) {
+    }
+
+    static SDL_GetWindowSurface(window) {
+    }
+
+    static SDL_UpdateWindowSurface(window) {
+    }
+
+    static SDL_WINDOWPOS_CENTERED = 0;
+    static SDL_WINDOWPOS_CENTERED = 0;
+    static SDL_WINDOW_SHOWN = 0;
+    static SDL_BYTEORDER = 0;
+    static SDL_BIG_ENDIAN = 0;
+}
+
+function patch_canvas(canvas) {
+    var oldDrawPath = canvas.drawPath;
+    var oldDrawRect = canvas.drawRect;
+    var oldDrawRRect = canvas.drawRRect;
+    var oldSaveLayer = canvas.saveLayer;
+    var oldClipRect = canvas.clipRRect;
+    var oldClipRRect = canvas.clipRRect;
+
+    canvas.drawPath = (path, paint) => {
+        oldDrawPath.call(canvas, path, paint.getPaint());
+    };
+
+    canvas.drawRect = (rect, paint) => {
+        oldDrawRect.call(canvas, rect, paint.getPaint());
+    };
+
+    canvas.drawRRect = (rrect, paint) => {
+        oldDrawRect.call(canvas, rrect, paint["paint"].getPaint());
+    };
+
+    canvas.drawString = (text, x, y, font, paint) => {
+        canvas.drawText(text, x, y, paint.getPaint(), font.getFont())       
+    };
+
+    canvas.saveLayer = (dict) => {
+        oldSaveLayer.call(canvas, dict["paint"].getPaint());
+    };
+
+    canvas.clipRect = (rect) => {
+        oldClipRect.call(canvas, rect, CanvasKit.ClipOp.Intersect, false);
+    };
+
+    canvas.clipRRect = (rect) => {
+        oldClipRRect.call(canvas, rect, CanvasKit.ClipOp.Intersect, false);
+    }
+}
+
+class skia {
+    static Surface = wrap_class(class {
+        constructor(width, height, is_root=false) {
+            if (is_root) {
+                let image_info = width
+                rt_constants.ROOT_CANVAS.width =
+                    image_info.width * rt_constants.ZOOM;
+                rt_constants.ROOT_CANVAS.height =
+                    image_info.height * rt_constants.ZOOM;
+               this.surface = CanvasKit.MakeCanvasSurface('canvas');
+            } else {
+                this.surface = CanvasKit.MakeSurface(width, height);
+            }
+        }
+
+        getCanvas() {
+            this.canvas = this.surface.getCanvas();
+            patch_canvas(this.canvas);
+            return this.canvas;
+        }
+
+        makeImageSnapshot() {
+            return {tobytes: () => this.surface.flush()}
+        }
+
+        draw(canvas, left, top) {
+            canvas.drawImage(this.surface.makeImageSnapshot(), left, top,
+                new CanvasKit.Paint());
+        }
+
+        width() {
+            return this.surface.width();
+        }
+
+        height() {
+            return this.surface.height();
+        }
+    }, (obj) => {
+        obj.MakeRaster = (image_info) => {
+            return obj(image_info, undefined, true);
+        }
+    });
+
+    static ImageInfo = wrap_class(class {
+        constructor(width, height) {
+            this.width = width
+            this.height = height            
+        }
+    }, (obj) => {
+        obj.Make = (width, height, ct, at) => {
+            return obj(width, height);
+        }
+    });
+
+    static Rect = {
+        MakeLTRB: (left, top, right, bottom) => {
+            return CanvasKit.LTRBRect(left, top, right, bottom);
+        },
+        MakeEmpty : () => {
+            return CanvasKit.XYWHRect(0, 0, 0, 0);
+        }
+    };
+
+    static RRect = {
+        MakeRectXY : (rect, x, y) => {
+            return CanvasKit.RRectXY(rect, x, y);
+        }
+    };
+
+    static Paint;
+
+    static RRect = {
+        MakeRectXY: function(rect, x, y) {
+            return CanvasKit.RRectXY(rect, x, y);
+        }
+    };
+
+    static Path;
+
+    static Font;
+
+    static ColorWHITE;
+    static colorRED;
+    static colorGREEN;
+    static colorBLUE;
+    static colorGRAY;
+    static colorBLACK;
+
+    static FontStyle;
+
+    static Typeface = function (font_name, style_info) {
+        return null;
+    }
+
+    static BlendMode;
+
+    static ColorSetARGB = function(r, g, b, a) {
+        return CanvasKit.Color(r, g, b, a);
+    }
+}
+
+function init_skia(canvasKit, robotoData) {
+    CanvasKit = canvasKit;
+    robotoData = robotoData;
+    fontManager = CanvasKit.FontMgr.FromData([robotoData]);
+
+    skia.Paint = wrap_class(class {
+        constructor(args) {
+            this.paint = new CanvasKit.Paint();
+            if (!args)
+                return;
+            for (const [key, value] of Object.entries(args)) {
+                switch (key) {
+                    case "Color":
+                        this.paint.setColor(value);
+                        continue;
+                    case "AntiAlias":
+                        this.paint.setAntiAlias(value);
+                        continue;
+                    case "BlendMode":
+                        this.paint.setBlendMode(value);
+                        continue;
+                    case "Alphaf":
+                        this.paint.setAlphaf(value);
+                        continue;
+                    case "Style":
+                        this.paint.setStyle(value);
+                        continue;
+                    default:
+                        throw "Unknown Skia Paint value: " + key;
+                }
+            }
+        }
+
+        getPaint() {
+            return this.paint;
+        }
+
+        setStyle(style) {
+            this.paint.setStyle(style);
+        }
+
+        setStrokeWidth(width) {
+            this.paint.setStrokeWidth(width);
+        }
+
+        setColor(color) {
+            this.paint.setColor(color);
+        }
+    }, (obj) => {
+        obj.kStroke_Style = CanvasKit.PaintStyle.Stroke;
+        obj.kFill_Style = CanvasKit.PaintStyle.Fill;
+    });
+
+    skia.Path = wrap_class(CanvasKit.Path);
+
+    skia.Font = wrap_class(class {
+        constructor(ignored_typeface, size) {
+            this.font = new CanvasKit.Font(
+                fontManager.MakeTypefaceFromData(robotoData));
+            this.font.setSize(size / 1.333);
+        }
+
+        getFont() {
+            return this.font;
+        }
+
+        getMetrics() {
+            return {
+                fAscent: -this.font.getSize(),
+                fDescent: this.font.getSize() * 0.3
+            };
+        }
+
+        measureText(t) {
+            return this.font.measureText(t);
+        }
+    });
+
+    skia.ColorWHITE = CanvasKit.WHITE;
+    skia.ColorRED = CanvasKit.RED;
+    skia.ColorGREEN = CanvasKit.GREEN;
+    skia.ColorBLUE = CanvasKit.BLUE;
+    skia.ColorGRAY = CanvasKit.Color(0x80, 0x80, 0x80, 0xFF);
+    skia.ColorBLACK = CanvasKit.BLACK;
+
+    skia.BlendMode = {
+        kSrcOver: CanvasKit.BlendMode.SrcOver,
+        kMultiply: CanvasKit.BlendMode.Multiply,
+        kDifference: CanvasKit.BlendMode.Multiply
+    }
+    skia.FontStyle = wrap_class(class {
+        constructor(weight, width, style) {}
+    }, (f) => {
+        f.kBold_Weight = CanvasKit.FontWeight.Bold,
+        f.kNormal_Weight = CanvasKit.FontWeight.Normal,
+        f.kItalic_Slant = CanvasKit.FontSlant.Italic,
+        f.kUpright_Slant = CanvasKit.FontSlant.Upright
+    });
+}
+
+class ctypes {
+}
+
+class wbetools {
+    static USE_BROWSER_THREAD = false;
 }
 
 class Breakpoint {
@@ -458,18 +750,21 @@ let on_error = function(e) { throw e; }
 class Widget {
     constructor(elt) {
         this.elt = elt;
-        this.controls = {
-            reset: elt.querySelector(".reset"),
-            back: elt.querySelector(".stepb"),
-            next: elt.querySelector(".stepf"),
-            animate: elt.querySelector(".play"),
-            input: elt.querySelector("#input-controls"),
-        };
-
-        if (this.controls.reset) this.controls.reset.addEventListener("click", this.reset.bind(this));
-        if (this.controls.back) this.controls.back.addEventListener("click", this.back.bind(this));
-        if (this.controls.next) this.controls.next.addEventListener("click", this.next.bind(this));
-        if (this.controls.animate) this.controls.animate.addEventListener("click", this.animate.bind(this));
+        if (elt) {
+            this.controls = {
+                reset: elt.querySelector(".reset"),
+                back: elt.querySelector(".stepb"),
+                next: elt.querySelector(".stepf"),
+                animate: elt.querySelector(".play"),
+                input: elt.querySelector("#input-controls"),
+            };
+            if (this.controls.reset) this.controls.reset.addEventListener("click", this.reset.bind(this));
+            if (this.controls.back) this.controls.back.addEventListener("click", this.back.bind(this));
+            if (this.controls.next) this.controls.next.addEventListener("click", this.next.bind(this));
+            if (this.controls.animate) this.controls.animate.addEventListener("click", this.animate.bind(this));
+        } else {
+            this.controls = {};
+        }
         window.addEventListener("resize", this.redraw.bind(this));
 
         this.step = -1;
@@ -483,7 +778,7 @@ class Widget {
     
     on_error(e) {
         if (e instanceof ExpectedError) {
-            alert(e);
+            console.log(e);
         } else {
             throw e;
         }
@@ -518,7 +813,8 @@ class Widget {
     }
 
     reset(e) {
-        this.elt.classList.remove("running");
+        if (this.elt)
+            this.elt.classList.remove("running");
         this.step = -1;
         this.k = this.runner;
         if (this.timer) clearInterval(this.timer);
@@ -546,7 +842,8 @@ class Widget {
     }
 
     next(e) {
-        this.elt.classList.add("running");
+        if (this.elt)
+            this.elt.classList.add("running");
         console.assert(this.k, "Tried to step forward but no next state available");
         if (this.controls.next) this.controls.next.children[0].textContent = "Next";
         if (this.controls.input) this.controls.input.disabled = true;
@@ -660,3 +957,51 @@ class FileSystem {
 }
 
 const filesystem = new FileSystem();
+
+class threading {
+    static Timer = wrap_class(class {
+        constructor(refresh_rate_sec, callback) {
+            this.refresh_rate_ms = refresh_rate_sec * 1000;
+            this.callback = callback;
+        }
+
+        start() {
+            setTimeout(this.callbac, this.refresh_rate_ms)
+        }
+    });
+
+    static Thread = wrap_class(class {
+        constructor(target) {
+        }
+
+        start() {
+
+        }
+    });
+
+    static Condition = wrap_class(class {
+        constructor() {}
+
+        acquire() {}
+
+        wait() {}
+
+        notify_all() {}
+
+        release() {}
+    });
+
+    static Lock = wrap_class(class {
+        constructor() {}
+
+        acquire() {}
+
+        release() {}        
+    });
+}
+
+class time {
+    static time() {
+        return (new Date().getTime()) / 1000.0;
+    }
+}

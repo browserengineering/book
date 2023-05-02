@@ -63,6 +63,7 @@ the tasks to run are provided by the operating system.
 ``` {.python replace=(self)/(self%2c%20tab)}
 class TaskRunner:
     def __init__(self):
+        self.tab = tab
         self.tasks = []
 
     def schedule_task(self, task):
@@ -78,7 +79,7 @@ consider [many different factors][chrome-scheduling].
 
 [chrome-scheduling]: https://blog.chromium.org/2015/04/scheduling-tasks-intelligently-for_30.html
 
-``` {.python}
+``` {.python expected=False}
 class TaskRunner:
     def run(self):
         if len(self.tasks) > 0:
@@ -92,7 +93,7 @@ To run those tasks, we need to call the `run` method on our
 ``` {.python expected=False}
 class Tab:
     def __init__(self):
-        self.task_runner = TaskRunner()
+        self.task_runner = TaskRunner(self)
 
 if __name__ == "__main__":
     while True:
@@ -300,18 +301,19 @@ erratic.
 
 ``` {.python expected=False}
 class TaskRunner:
-    def __init__(self):
+    def __init__(self, tab):
         # ...
         self.condition = threading.Condition()
 
     def schedule_task(self, task):
         self.condition.acquire(blocking=True)
         self.tasks.append(task)
+        self.condition.notify_all()
         self.condition.release()
 
     def run(self):
-        self.condition.acquire(blocking=True)
         task = None
+        self.condition.acquire(blocking=True)
         if len(self.tasks) > 0:
             task = self.tasks.pop(0)
         self.condition.release()
@@ -429,7 +431,7 @@ class JSContext:
         # ...
         def run_load():
             headers, response = request(
-                full_url, self.tab.url, payload=body)
+                full_url, self.tab.url, body)
             task = Task(self.dispatch_xhr_onload, response, handle)
             self.tab.task_runner.schedule_task(task)
             if not isasync:
@@ -773,7 +775,7 @@ animation maximally smooth. It works like this:
 
 [raf]: https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame
 
-``` {.javascript.example}
+``` {.javascript .example}
 function callback() { /* Modify DOM */ }
 requestAnimationFrame(callback);
 ```
@@ -906,7 +908,7 @@ class Browser:
         if self.needs_animation_frame and not self.animation_timer:
             self.animation_timer = \
                 threading.Timer(REFRESH_RATE_SEC, callback)
-            self.animation_timer.start()
+            self.animation_timer.start_timing()
 ```
 
 Note how I also checked for not having an animation timer object; this avoids
@@ -997,10 +999,10 @@ objects:
 
 ``` {.python}
 class MeasureTime:
-    def start(self):
+    def start_timing(self):
         self.start_time = time.time()
 
-    def stop(self):
+    def stop_timing(self):
         self.total_s += time.time() - self.start_time
         self.count += 1
         self.start_time = None
@@ -1015,9 +1017,9 @@ class Tab:
 
     def render(self):
         if not self.needs_render: return
-        self.measure_render.start()
+        self.measure_render.start_timing()
         # ...
-        self.measure_render.stop()
+        self.measure_render.stop_timing()
 ```
 
 And also raster-and-draw:
@@ -1031,9 +1033,9 @@ class Browser:
     def raster_and_draw(self):
         if not self.needs_raster_and_draw:
             return
-        self.measure_raster_and_draw.start()
+        self.measure_raster_and_draw.start_timing()
         # ...
-        self.measure_raster_and_draw.stop()
+        self.measure_raster_and_draw.stop_timing()
 ```
 
 We can print out the timing measures when we quit:
@@ -1161,7 +1163,7 @@ class TaskRunner:
         # ...
         self.main_thread = threading.Thread(target=self.run)
 
-    def start(self):
+    def start_thread(self):
         self.main_thread.start()
 
     def run(self):
@@ -1299,11 +1301,7 @@ class Tab:
         self.js.interp.evaljs("__runRAFHandlers()")
         self.render()
         commit_data = CommitForRaster(
-            url=self.url,
-            scroll=self.scroll,
-            height=document_height,
-            display_list=self.display_list,
-        )
+            self.url, self.scroll, document_height, self.display_list)
         self.display_list = None
         self.browser.commit(self, commit_data)
 ```
@@ -1494,10 +1492,15 @@ class Browser:
             self.active_tab_height)
         self.scroll = scroll
         self.set_needs_raster_and_draw()
+        self.needs_animation_frame = True
         self.lock.release()
 ```
 
-This code sets `needs_raster_and_draw` to apply the new scroll offset.
+This code sets `needs_raster_and_draw` to raster and draw with changed scroll
+offset, and sets `needs_animation_frame` to cause the main thread to receive
+the scroll offset asynchronously in the future. (Even with threaded scroll,
+it's important to synchronize the new value back to the main thread soon,
+since APIs like click handling depend on it.)
 
 The scroll offset also needs to change when the user switches tabs,
 but in this case we don't know the right scroll offset yet. We need
@@ -1597,11 +1600,7 @@ class Tab:
         if self.scroll_changed_in_tab:
             scroll = self.scroll
         commit_data = CommitForRaster(
-            url=self.url,
-            scroll=scroll,
-            height=document_height,
-            display_list=self.display_list,
-        )
+            self.url, scroll, document_height, self.display_list)
         # ...
 ```
 
@@ -1796,6 +1795,10 @@ should now look something like this:
 ::: {.cmd .python .outline html=True}
     python3 infra/outlines.py --html src/lab12.py
 :::
+
+If you run it, it should look something like [this
+page](widgets/lab12-browser.html); due to the browser sandbox, you
+will need to open that page in a new tab.
 
 Exercises
 =========

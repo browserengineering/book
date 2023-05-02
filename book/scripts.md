@@ -129,7 +129,7 @@ simple web page with a `script` tag:
 
 Then write a super simple script to `test.js`, maybe this:
 
-``` {.javascript.example}
+``` {.javascript .example}
 var x = 2
 x + x
 ```
@@ -220,7 +220,7 @@ class JSContext:
 We can call an exported function from JavaScript using Dukpy's
 `call_python` function. For example:
 
-``` {.javascript.example}
+``` {.javascript .example}
 call_python("log", "Hi from JS")
 ```
 
@@ -234,7 +234,7 @@ Since we ultimately want JavaScript to call a `console.log` function,
 not a `call_python` function, we need to define a `console` object
 and then give it a `log` property. We can do that *in JavaScript*:
 
-``` {.javascript.example}
+``` {.javascript .example}
 console = { log: function(x) { call_python("log", x); } }
 ```
 
@@ -294,7 +294,7 @@ Crashes in JavaScript code are frustrating to debug. You can cause a
 crash by writing bad code, or by explicitly raising an exception, like
 so:
 
-``` {.javascript.example}
+``` {.javascript .example}
 throw Error("bad");
 ```
 
@@ -396,7 +396,7 @@ class JSContext:
 In JavaScript, `querySelectorAll` is a method on the `document`
 object, which we need to define in the JavaScript runtime:
 
-``` {.javascript replace=return/var%20handles%20=}
+``` {.javascript replace=return/var%20handles%20%3d}
 document = { querySelectorAll: function(s) {
     return call_python("querySelectorAll", s);
 }}
@@ -586,7 +586,7 @@ Don't forget to export this function as `getAttribute`.
 We finally have enough of the DOM API to implement a little character
 count function for text areas:
 
-``` {.javascript file=comment}
+``` {.javascript file=comment expected=False}
 inputs = document.querySelectorAll('input')
 for (var i = 0; i < inputs.length; i++) {
     var name = inputs[i].getAttribute("name");
@@ -713,7 +713,7 @@ on.
 
 When an event occurs, the browser calls `dispatchEvent` from Python:
 
-``` {.python replace=self.interp.evaljs/do_default%20=%20self.interp.evaljs}
+``` {.python replace=self.interp.evaljs/do_default%20%3d%20self.interp.evaljs}
 class JSContext:
     def dispatch_event(self, type, elt):
         handle = self.node_to_handle.get(elt, -1)
@@ -737,7 +737,7 @@ snippet stores the named `type` and `handle` arguments to `evaljs`.
 With all this event-handling machinery in place, we can update the
 character count every time an input area changes:
 
-``` {.javascript file=comment}
+``` {.javascript file=comment expected=False}
 function lengthCheck() {
     var name = this.getAttribute("name");
     var value = this.getAttribute("value");
@@ -767,7 +767,7 @@ that change the page. The full DOM API provides a lot of such methods,
 but for simplicity I'm going to implement only `innerHTML`, which is
 used like this:
 
-``` {.javascript.example}
+``` {.javascript .example}
 node.innerHTML = "This is my <b>new</b> bit of content!";
 ```
 
@@ -886,18 +886,20 @@ def do_request(method, url, headers, body):
 We can then put our little input length checker into `comment.js`,
 with the `lengthCheck` function modified to use `innerHTML`:
 
-``` {.javascript file=comment}
-label = document.querySelectorAll("label")[0];
+``` {.javascript file=comment replace=value.length%20%3e%20100/!allow_submit}
+var label = document.querySelectorAll("label")[0];
 
 function lengthCheck() {
     var value = this.getAttribute("value");
     if (value.length > 100) {
-        label.innerHTML = "Comment too long!"
+        label.innerHTML = "Comment too long!";
     }
 }
 
-input = document.querySelectorAll("input")[0];
-input.addEventListener("keydown", lengthCheck);
+var inputs = document.querySelectorAll("input");
+for (var i = 0; i < inputs.length; i++) {
+    inputs[i].addEventListener("keydown", lengthCheck);
+}
 ```
 
 Try it out: write a long comment and you should see the page warning
@@ -905,7 +907,7 @@ you that the comment is too long. By the way, we might want to make it
 stand out more, so let's go ahead and add another URL to our web
 server, `/comment.css`, with the contents:
 
-``` {.css}
+``` {.css file=comment}
 label { font-weight: bold; color: red; }
 ```
 
@@ -1035,16 +1037,17 @@ is allowed, and then when submission is attempted it can check that
 variable and cancel that submission if necessary:
 
 ``` {.javascript file=comment}
-allow_submit = true;
+var allow_submit = true;
 
 function lengthCheck() {
-    allow_submit = input.getAttribute("value").length <= 100;
+    // ...
+    allow_submit = value.length <= 100;
     if (!allow_submit) {
         // ...
     }
 }
 
-form = document.querySelectorAll("form")[0];
+var form = document.querySelectorAll("form")[0];
 form.addEventListener("submit", function(e) {
     if (!allow_submit) e.preventDefault();
 });
@@ -1217,7 +1220,7 @@ property is called `backgroundColor` in Javascript. Implement the
 return a string containing HTML source code. That source code should
 reflect the *current* attributes of the element; for example:
 
-``` {.javascript.example} 
+``` {.javascript .example} 
 element.innerHTML = '<span id=foo>Chris was here</span>';
 element.id = 'bar';
 // Prints "<span id=bar>Chris was here</span>":
@@ -1230,7 +1233,7 @@ element itself, not just its children.
 
 [innerHTML]: https://developer.mozilla.org/en-US/docs/Web/API/Element/innerHTML
 
-*Script-added scripts and style sheets*: the `innerHTML` API could cause
+*Script-added scripts and style sheets*: The `innerHTML` API could cause
 `<script>` or `<link>`  elements to be added to the document, but currently
 our browser does not load them when this happens. Fix this.
 Likewise, when a `<link>` element is removed from the document, its style

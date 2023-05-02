@@ -5,7 +5,7 @@ from http import server
 # Based on code from https://stackoverflow.com/questions/12499171/
 class WBEServer(server.SimpleHTTPRequestHandler):
     def end_headers(self):
-        if self.path.startswith("widgets/"):
+        if self.path.find("widgets") >= 0:
             self.send_header("Cross-Origin-Opener-Policy", "same-origin");
             self.send_header("Cross-Origin-Embedder-Policy", "require-corp");
         self.send_header('Cache-Control', 'no-store, must-revalidate')

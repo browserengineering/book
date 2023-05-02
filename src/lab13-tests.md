@@ -5,10 +5,10 @@ This file contains tests for Chapter 13 (Animations and Compositing).
 
   	>>> from test import Event
     >>> import threading
-    >>> import test12 as test
+    >>> import test11 as test
     >>> _ = test.socket.patch().start()
     >>> _ = test.ssl.patch().start()
-    >>> threading.Lock = test.MockLock
+    >>> _ = test.MockLock.patch().start()
     >>> import lab13
     >>> import time
     >>> import threading
@@ -93,6 +93,7 @@ The `parse_transform` function parses the value of the `transform` CSS property.
 Unsupported values are ignored.
 
     >>> lab13.parse_transform("rotate(45deg)")
+    >>> lab13.parse_transform("translateY(10px)")
 
 Animations work:
 

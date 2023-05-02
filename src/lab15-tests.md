@@ -5,12 +5,11 @@ This file contains tests for Chapter 15 (Embedded Content).
 
     >>> from test import Event
     >>> import threading
-    >>> import test14 as test
+    >>> import test11 as test
     >>> _ = test.socket.patch().start()
     >>> _ = test.ssl.patch().start()
     >>> _ = test.gtts.patch()
-    >>> threading.Lock = test.MockLock
-    >>> import lab13
+    >>> _ = test.MockLock.patch().start()
     >>> import lab15
     >>> import time
     >>> import threading
@@ -37,14 +36,15 @@ Let's verify that we can request the image:
     ... b'<img src="http://test.test/img.png">')
     >>> browser = lab15.Browser()
     >>> browser.load(url)
+    >>> browser.render()
     >>> frame = browser.tabs[0].root_frame
     >>> headers, body = lab15.request(image_url, frame)
     >>> type(body)
     <class 'bytes'>
 
-Moreover, the `download_image` method works directly:
+The browser has now downloaded a Skia `Image` object:
 
-    >>> body, img = lab15.download_image("/img.png", frame)
+    >>> img = frame.nodes.children[0].children[0].image
     >>> img # doctest: +ELLIPSIS
     Image(5, 5, ..., AlphaType.kPremul_AlphaType)
     >>> img.width()
@@ -71,6 +71,7 @@ Now let's test setting a different width and height:
 
     >>> browser = lab15.Browser()
     >>> browser.load(size_url)
+    >>> browser.render()
     >>> browser.tabs[0].advance_tab()
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
@@ -88,14 +89,15 @@ Let's load the original image in an iframe.
 
     >>> browser = lab15.Browser()
     >>> browser.load(iframe_url)
+    >>> browser.render()
     >>> browser.tabs[0].advance_tab()
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
      SaveLayer(alpha=1.0)
-       ClipRRect(RRect(13, 18, 315, 170, 1))
+       ClipRRect(RRect(14, 19, 314, 169, 1))
          Transform(translate(14.0, 19.0))
            DrawImage(rect=Rect(13, 29, 18, 34))
-         DrawOutline(top=18.0 left=13.0 bottom=170.0 right=315.0 border_color=black thickness=2)
+     DrawOutline(top=18.0 left=13.0 bottom=170.0 right=315.0 border_color=black thickness=1.0)
 
 And the sized one:
 
@@ -106,14 +108,15 @@ And the sized one:
 
     >>> browser = lab15.Browser()
     >>> browser.load(iframe_size_url)
+    >>> browser.render()
     >>> browser.tabs[0].advance_tab()
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
      SaveLayer(alpha=1.0)
-       ClipRRect(RRect(13, 18, 315, 170, 1))
+       ClipRRect(RRect(14, 19, 314, 169, 1))
          Transform(translate(14.0, 19.0))
            DrawImage(rect=Rect(13, 18, 23, 38))
-         DrawOutline(top=18.0 left=13.0 bottom=170.0 right=315.0 border_color=black thickness=2)
+     DrawOutline(top=18.0 left=13.0 bottom=170.0 right=315.0 border_color=black thickness=1.0)
 
 Iframes can be sized too:
 
@@ -126,6 +129,7 @@ Iframes can be sized too:
 
     >>> browser = lab15.Browser()
     >>> browser.load(sized_iframe_url)
+    >>> browser.render()
     >>> browser.tabs[0].advance_tab()
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
@@ -154,10 +158,10 @@ Iframes can be sized too:
      DrawText(text=.)
      DrawText(text=.)
      SaveLayer(alpha=1.0)
-       ClipRRect(RRect(45, 478, 95, 508, 1))
+       ClipRRect(RRect(46, 479, 96, 509, 1))
          Transform(translate(46.0, 479.0))
            DrawImage(rect=Rect(13, 29, 18, 34))
-         DrawOutline(top=478.0 left=45.0 bottom=508.0 right=95.0 border_color=black thickness=2)
+     DrawOutline(top=478.0 left=45.0 bottom=510.0 right=97.0 border_color=black thickness=1.0)
 
 Now let's test scrolling of the root frame:
 
@@ -171,6 +175,7 @@ Clicking the sub-frame focuses it:
 
     >>> browser = lab15.Browser()
     >>> browser.load(sized_iframe_url)
+    >>> browser.render()
     >>> browser.tabs[0].advance_tab()
     >>> browser.render()
     >>> e = Event(50, 600)
@@ -188,10 +193,11 @@ And now scrolling affects just the child frame:
     >>> browser.tabs[0].root_frame.nodes.children[0].children[47].frame.scroll
     0
     >>> browser.handle_down()
+    >>> browser.render()
     >>> browser.scroll > 0
     False
     >>> browser.tabs[0].root_frame.nodes.children[0].children[47].frame.scroll
-    24.0
+    22.0
 
 Accessibility
 =============
@@ -205,6 +211,7 @@ Let's verify that it still works.
 
     >>> browser = lab15.Browser()
     >>> browser.load(focus_url)
+    >>> browser.render()
     >>> browser.toggle_accessibility()
 
 Rendering will read out the accessibility instructions:
@@ -221,6 +228,7 @@ It also works for iframes:
 
     >>> browser = lab15.Browser()
     >>> browser.load(iframe_url)
+    >>> browser.render()
     >>> browser.toggle_accessibility()
 
 Rendering will read out the accessibility instructions:
@@ -243,3 +251,14 @@ Rendering will read out the accessibility instructions:
     
     >>> document.children[0].children[0].attributes
     {'src': 'my-url', 'alt': 'This is alt text'}
+
+Here are some brief tests for the attribute parser. First, that it allows
+spaces:
+
+    >>> lab15.AttributeParser('tag a="a b c" b=def').parse()
+    ('tag', {'a': 'a b c', 'b': 'def'})
+
+Next, that it allows the equals sign within quoted text:
+
+    >>> lab15.AttributeParser('tag a="a=b c"').parse()
+    ('tag', {'a': 'a=b c'})

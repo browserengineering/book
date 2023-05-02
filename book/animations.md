@@ -105,7 +105,7 @@ add support for changing an element's `style` attribute from
 JavaScript. To do that, register a setter on the `style` attribute of
 `Node` in the JavaScript runtime:
 
-``` {.javascript file=runtime}
+``` {.javascript}
 Object.defineProperty(Node.prototype, 'style', {
     set: function(s) {
         call_python("style_set", this.handle, s.toString());
@@ -407,7 +407,7 @@ similar code in every display command, so let's give them all a new
 that's overridden for specific display commands. For example, we can make sure
 that every display command has a `children` field:
 
-``` {.python replace=children=[]/rect%2c%20children=[]%2c%20node=None}
+``` {.python replace=children%3d[]/rect%2c%20children%3d[]%2c%20node%3dNone}
 class DisplayItem:
     def __init__(self, children=[]):
         self.children = children
@@ -430,7 +430,7 @@ class DrawRect(DisplayItem):
 Commands that already had a `children` field need to pass it to the
 `__init__` call:
 
-``` {.python replace=children=children/rect%2c%20children=children}
+``` {.python replace=children%3dchildren/rect%2c%20children%3dchildren}
 class ClipRRect(DisplayItem):
     def __init__(self, rect, radius, children, should_clip=True):
         super().__init__(children=children)
@@ -1222,7 +1222,7 @@ instead of checking `needs_render` at the start:[^timer-obsolete]
 ``` {.python}
 class Tab:
     def render(self):
-        self.measure_render.start()
+        self.measure_render.start_timing()
 
         if self.needs_style:
             # ...
@@ -1238,7 +1238,7 @@ class Tab:
             # ...
             self.needs_paint = False
 
-        self.measure_render.stop()
+        self.measure_render.stop_timing()
 ```
 
 [^timer-obsolete]: By the way, this *does* obsolete our timer for how long
@@ -1391,7 +1391,6 @@ class Browser:
     def set_needs_raster(self):
         self.needs_raster = True
         self.needs_draw = True
-        self.needs_animation_frame = True
 
     def set_needs_composite(self):
         self.needs_composite = True
@@ -1856,7 +1855,7 @@ standardized transform syntax.
 
 ``` {.python}
 def parse_transform(transform_str):
-    if transform_str.find('translate') < 0:
+    if transform_str.find('translate(') < 0:
         return None
     left_paren = transform_str.find('(')
     right_paren = transform_str.find(')')

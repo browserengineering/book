@@ -8,6 +8,7 @@ import sdl2
 import skia
 import sys
 import unittest
+import threading
 from unittest import mock
 
 class socket:
@@ -272,3 +273,67 @@ class MockSkiaSurface:
 
 skia.Surface = MockSkiaSurface
 skia.Font = MockFont
+
+class MockTimer:
+	def __init__(self, sec, callback):
+		self.sec = sec
+		self.callback = callback
+
+	def start(self):
+		self.callback()
+
+	def cancel(self):
+		self.callback = None
+
+threading.Timer = MockTimer
+
+class MockTaskRunner:
+	def __init__(self, tab):
+		self.tab = tab
+
+	def schedule_task(self, callback):
+		callback()
+
+	def clear_pending_tasks(self):
+		pass
+
+	def start(self):
+		pass
+
+	def run(self):
+		pass
+
+class MockNoOpTaskRunner:
+	def __init__(self, tab):
+		self.tab = tab
+
+	def schedule_task(self, callback):
+		pass
+
+	def start(self):
+		pass
+
+	def run(self):
+		pass
+
+class MockLock:
+	def acquire(self, blocking): pass
+	def release(self): pass
+
+	@classmethod
+	def patch(cls):
+		return mock.patch("threading.Lock", wraps=cls)
+
+
+def print_display_list_skip_noops(display_list):
+		for item in display_list:
+				print_tree_skip_nooops(item)
+
+def print_tree_skip_nooops(node, indent=0):
+    if node.__repr__().find("no-op") >= 0:
+        extra = 0
+    else:
+        print(" " * indent, node)
+        extra = 2
+    for child in node.children:
+        print_tree_skip_nooops(child, indent + extra)

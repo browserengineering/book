@@ -1,0 +1,114 @@
+Tests for WBE Chapter 16
+========================
+
+This file contains tests for Chapter 16 (Invalidation).
+
+    >>> from test import Event
+    >>> import threading
+    >>> import test11 as test
+    >>> _ = test.socket.patch().start()
+    >>> _ = test.ssl.patch().start()
+    >>> _ = test.gtts.patch()
+    >>> _ = test.MockLock.patch().start()
+    >>> import lab16
+    >>> import time
+    >>> import threading
+    >>> import math
+    >>> import wbetools
+    >>> wbetools.USE_BROWSER_THREAD = False
+    >>> wbetools.USE_GPU = False
+
+Test web page
+=============
+
+Here's a simple test web page:
+
+    >>> html = """
+    ... <!doctype html>
+    ... <main>
+    ...   <section>
+    ...     <div>
+    ...       This is the inner div #1.
+    ...     </div>
+    ...     <div>
+    ...       This is the inner div #2. It has a very long body text
+    ...       that will surely spill over two lines.
+    ...     </div>
+    ...   </section>
+    ... </main>
+    ... """
+    >>> url = "http://test.test/test"
+    >>> test.socket.respond(url, b'HTTP/1.0 200 OK' +
+    ...   b'Content-Type: text/html\r\n\r\n' +
+    ...   html.encode('utf8'))
+
+First of all, we can load and render it:
+
+    >>> browser = lab16.Browser()
+    >>> browser.load(url)
+    >>> browser.render()
+    >>> frame = browser.tabs[0].root_frame
+    >>> lab16.print_tree(frame.document) # doctest: +ELLIPSIS
+     DocumentLayout()
+       BlockLayout(x=13.0, y=13.0, width=774.0, height=60.0, node=<html>)
+         BlockLayout(x=13.0, y=13.0, width=774.0, height=60.0, node=<body>)
+           BlockLayout(x=13.0, y=13.0, width=774.0, height=60.0, node=<main>)
+             BlockLayout(x=13.0, y=13.0, width=774.0, height=60.0, node=<section>)
+               BlockLayout(x=13.0, y=13.0, width=774.0, height=20.0, node=<div>)
+                 LineLayout(x=13.0, y=18.0, width=774.0, height=20.0, node=<div>)
+                   TextLayout(x=13.0, y=21.0, width=64.0, height=16.0, node=..., word=This)
+                   TextLayout(x=93.0, y=21.0, width=32.0, height=16.0, node=..., word=is)
+                   TextLayout(x=141.0, y=21.0, width=48.0, height=16.0, node=..., word=the)
+                   TextLayout(x=205.0, y=21.0, width=80.0, height=16.0, node=..., word=inner)
+                   TextLayout(x=301.0, y=21.0, width=48.0, height=16.0, node=..., word=div)
+                   TextLayout(x=365.0, y=21.0, width=48.0, height=16.0, node=..., word=#1.)
+               BlockLayout(x=13.0, y=13.0, width=774.0, height=40.0, node=<div>)
+                 LineLayout(x=13.0, y=38.0, width=774.0, height=20.0, node=<div>)
+                   TextLayout(x=13.0, y=41.0, width=64.0, height=16.0, node=..., word=This)
+                   TextLayout(x=93.0, y=41.0, width=32.0, height=16.0, node=..., word=is)
+                   TextLayout(x=141.0, y=41.0, width=48.0, height=16.0, node=..., word=the)
+                   TextLayout(x=205.0, y=41.0, width=80.0, height=16.0, node=..., word=inner)
+                   TextLayout(x=301.0, y=41.0, width=48.0, height=16.0, node=..., word=div)
+                   TextLayout(x=365.0, y=41.0, width=48.0, height=16.0, node=..., word=#2.)
+                   TextLayout(x=429.0, y=41.0, width=32.0, height=16.0, node=..., word=It)
+                   TextLayout(x=477.0, y=41.0, width=48.0, height=16.0, node=..., word=has)
+                   TextLayout(x=541.0, y=41.0, width=16.0, height=16.0, node=..., word=a)
+                   TextLayout(x=573.0, y=41.0, width=64.0, height=16.0, node=..., word=very)
+                   TextLayout(x=653.0, y=41.0, width=64.0, height=16.0, node=..., word=long)
+                 LineLayout(x=13.0, y=58.0, width=774.0, height=20.0, node=<div>)
+                   TextLayout(x=13.0, y=61.0, width=64.0, height=16.0, node=..., word=body)
+                   TextLayout(x=93.0, y=61.0, width=64.0, height=16.0, node=..., word=text)
+                   TextLayout(x=173.0, y=61.0, width=64.0, height=16.0, node=..., word=that)
+                   TextLayout(x=253.0, y=61.0, width=64.0, height=16.0, node=..., word=will)
+                   TextLayout(x=333.0, y=61.0, width=96.0, height=16.0, node=..., word=surely)
+                   TextLayout(x=445.0, y=61.0, width=80.0, height=16.0, node=..., word=spill)
+                   TextLayout(x=541.0, y=61.0, width=64.0, height=16.0, node=..., word=over)
+                   TextLayout(x=621.0, y=61.0, width=48.0, height=16.0, node=..., word=two)
+                   TextLayout(x=685.0, y=61.0, width=96.0, height=16.0, node=..., word=lines.)
+
+Next, we can execute some JavaScript to change the page:
+
+    >>> script = """
+    ... window.document.querySelectorAll("div")[1].innerHTML = 'Short body';
+    ... """
+    >>> frame.js.run("<test>", script, frame.window_id)
+    Script returned:  Short body
+    >>> frame.render()
+    >>> lab16.print_tree(frame.document) # doctest: +ELLIPSIS
+     DocumentLayout()
+       BlockLayout(x=13.0, y=13.0, width=774.0, height=40.0, node=<html>)
+         BlockLayout(x=13.0, y=13.0, width=774.0, height=40.0, node=<body>)
+           BlockLayout(x=13.0, y=13.0, width=774.0, height=40.0, node=<main>)
+             BlockLayout(x=13.0, y=13.0, width=774.0, height=40.0, node=<section>)
+               BlockLayout(x=13.0, y=13.0, width=774.0, height=20.0, node=<div>)
+                 LineLayout(x=13.0, y=18.0, width=774.0, height=20.0, node=<div>)
+                   TextLayout(x=13.0, y=21.0, width=64.0, height=16.0, node=..., word=This)
+                   TextLayout(x=93.0, y=21.0, width=32.0, height=16.0, node=..., word=is)
+                   TextLayout(x=141.0, y=21.0, width=48.0, height=16.0, node=..., word=the)
+                   TextLayout(x=205.0, y=21.0, width=80.0, height=16.0, node=..., word=inner)
+                   TextLayout(x=301.0, y=21.0, width=48.0, height=16.0, node=..., word=div)
+                   TextLayout(x=365.0, y=21.0, width=48.0, height=16.0, node=..., word=#1.)
+               BlockLayout(x=13.0, y=13.0, width=774.0, height=20.0, node=<div>)
+                 LineLayout(x=13.0, y=38.0, width=774.0, height=20.0, node=<div>)
+                   TextLayout(x=13.0, y=41.0, width=80.0, height=16.0, node=..., word=Short)
+                   TextLayout(x=109.0, y=41.0, width=64.0, height=16.0, node=..., word=body)

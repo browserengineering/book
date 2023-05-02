@@ -223,7 +223,7 @@ but before doing layout.
 This `style` function will also fill in the `style` field by parsing
 the element's `style` attribute:
     
-``` {.python replace=(node)/(node%2C%20rules),=%20value/=%20computed_value}
+``` {.python replace=(node)/(node%2C%20rules),%3d%20value/%3d%20computed_value}
 def style(node):
     # ...
     if isinstance(node, Element) and "style" in node.attributes:
@@ -279,7 +279,7 @@ HTML elements a list of property/value pairs apply to:[^media-queries]
     Media queries are super-important for building sites that work
     across many devices, like reading this book on a phone.
 
-``` {.css.example}
+``` {.css .example}
 selector { property-1: value-1; property-2: value-2; }
 ```
 
@@ -490,7 +490,7 @@ the page, this will require looping over all elements *and* all rules.
 When a rule applies, its property/values pairs are copied to the
 element's style information:
 
-``` {.python replace==%20value/=%20computed_value}
+``` {.python replace=%3d%20value/%3d%20computed_value}
 def style(node, rules):
     # ...
     for selector, body in rules:
@@ -879,13 +879,17 @@ method; we'll need to change it to use the node's `style` field:
 
 ``` {.python indent=4}
 class BlockLayout:
-    def text(self, node):
-        # ...
+
+    def get_font(self, node):
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         if style == "normal": style = "roman"
         size = int(float(node.style["font-size"][:-2]) * .75)
-        font = get_font(size, weight, style)
+        return get_font(size, weight, style)
+
+    def text(self, node):
+        # ...
+        font = self.get_font(node)
         # ...
 ```
 

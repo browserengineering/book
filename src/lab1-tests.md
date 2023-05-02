@@ -65,8 +65,10 @@ With an unusual `Transfer-Encoding` the request should fail:
     >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n" +
     ... b"Transfer-Encoding: chunked\r\n\r\n" +
     ... b"0\r\n\r\n")
-    >>> test.errors(lab1.request, url)
-    True
+    >>> lab1.request(url)
+    Traceback (most recent call last):
+      ...
+    AssertionError
 
 Likewise with `Content-Encoding`:
     
@@ -74,8 +76,10 @@ Likewise with `Content-Encoding`:
     >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n" +
     ... b"Content-Encoding: gzip\r\n\r\n" +
     ... b"\x00\r\n\r\n")
-    >>> test.errors(lab1.request, url)
-    True
+    >>> lab1.request(url)
+    Traceback (most recent call last):
+      ...
+    AssertionError
 
 Testing SSL support
 -------------------
@@ -98,6 +102,8 @@ SSL support also means some support for ports:
 
 Requesting the wrong port is an error:
 
-    >>> test.errors(lab1.request, "http://test.test:401/example3")
-    True
+    >>> lab1.request("http://test.test:401/example3")
+    Traceback (most recent call last):
+      ...
+    KeyError: 'http://test.test:401/example3'
 

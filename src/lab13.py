@@ -6,7 +6,6 @@ without exercises.
 
 import ctypes
 import dukpy
-import io
 import math
 import sdl2
 import skia
@@ -186,7 +185,7 @@ def draw_rect(
         paint.setColor(parse_color(fill_color))
     else:
         paint.setStyle(skia.Paint.kStroke_Style)
-        paint.setStrokeWidth(1);
+        paint.setStrokeWidth(width)
         paint.setColor(parse_color(border_color))
     rect = skia.Rect.MakeLTRB(l, t, r, b)
     canvas.drawRect(rect, paint)
@@ -285,7 +284,7 @@ class DrawCompositedLayer(DisplayItem):
 
 
 def parse_transform(transform_str):
-    if transform_str.find('translate') < 0:
+    if transform_str.find('translate(') < 0:
         return None
     left_paren = transform_str.find('(')
     right_paren = transform_str.find(')')
@@ -806,7 +805,7 @@ class JSContext:
 
         def run_load():
             headers, response = request(
-                full_url, self.tab.url, payload=body)
+                full_url, self.tab.url, body)
             task = Task(self.dispatch_xhr_onload, response, handle)
             self.tab.task_runner.schedule_task(task)
             if not isasync:
@@ -1008,6 +1007,8 @@ class CompositedLayer:
                     self.skia_context, skia.Budgeted.kNo,
                     skia.ImageInfo.MakeN32Premul(
                         irect.width(), irect.height()))
+                if self.surface is None:
+                    self.surface = skia.Surface(irect.width(), irect.height())
                 assert self.surface is not None
             else:
                 self.surface = skia.Surface(irect.width(), irect.height())
@@ -1061,7 +1062,7 @@ class Tab:
             self.task_runner = TaskRunner(self)
         else:
             self.task_runner = SingleThreadedTaskRunner(self)
-        self.task_runner.start()
+        self.task_runner.start_thread()
 
         self.measure_render = MeasureTime("render")
 
@@ -1081,7 +1082,7 @@ class Tab:
         self.scroll = 0
         self.scroll_changed_in_tab = True
         self.task_runner.clear_pending_tasks()
-        headers, body = request(url, self.url, payload=body)
+        headers, body = request(url, self.url, body)
         self.url = url
         self.history.append(url)
 
@@ -1196,7 +1197,7 @@ class Tab:
         self.browser.commit(self, commit_data)
 
     def render(self):
-        self.measure_render.start()
+        self.measure_render.start_timing()
 
         if self.needs_style:
             style(self.nodes, sorted(self.rules, key=cascade_priority), self)
@@ -1224,7 +1225,7 @@ class Tab:
                     DrawLine(x, y, x, y + obj.height))
             self.needs_paint = False
 
-        self.measure_render.stop()
+        self.measure_render.stop_timing()
 
     def click(self, x, y):
         self.render()
@@ -1390,6 +1391,7 @@ class Browser:
     def render(self):
         assert not wbetools.USE_BROWSER_THREAD
         tab = self.tabs[self.active_tab]
+        tab.task_runner.run_tasks()
         tab.run_animation_frame(self.scroll)
 
     def commit(self, tab, data):
@@ -1419,7 +1421,6 @@ class Browser:
     def set_needs_raster(self):
         self.needs_raster = True
         self.needs_draw = True
-        self.needs_animation_frame = True
 
     def set_needs_composite(self):
         self.needs_composite = True
@@ -1493,7 +1494,7 @@ class Browser:
             self.lock.release()
             return
 
-        self.measure_composite_raster_and_draw.start()
+        self.measure_composite_raster_and_draw.start_timing()
         start_time = time.time()
         if self.needs_composite:
             self.composite()
@@ -1503,7 +1504,7 @@ class Browser:
         if self.needs_draw:
             self.paint_draw_list()
             self.draw()
-        self.measure_composite_raster_and_draw.stop()
+        self.measure_composite_raster_and_draw.stop_timing()
         self.needs_composite = False
         self.needs_raster = False
         self.needs_draw = False
@@ -1536,6 +1537,7 @@ class Browser:
             self.active_tab_height)
         self.scroll = scroll
         self.set_needs_draw()
+        self.needs_animation_frame = True
         self.lock.release()
 
     def clear_data(self):
@@ -1600,6 +1602,7 @@ class Browser:
             self.url = self.address_bar
             self.focus = None
             self.set_needs_raster()
+            self.needs_animation_frame = True
         self.lock.release()
 
     def load(self, url):
@@ -1701,11 +1704,9 @@ class Browser:
             sdl2.SDL_GL_DeleteContext(self.gl_context)
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
-if __name__ == "__main__":
-    import sys
+def add_main_args():
     import argparse
-
-    parser = argparse.ArgumentParser(description='Chapter 13 code')
+    parser = argparse.ArgumentParser(description='Toy browser')
     parser.add_argument("url", type=str, help="URL to load")
     parser.add_argument('--single_threaded', action="store_true", default=False,
         help='Whether to run the browser without a browser thread')
@@ -1721,6 +1722,12 @@ if __name__ == "__main__":
     wbetools.USE_GPU = not args.disable_gpu
     wbetools.USE_COMPOSITING = not args.disable_compositing and not args.disable_gpu
     wbetools.SHOW_COMPOSITED_LAYER_BORDERS = args.show_composited_layer_borders
+    return args
+
+if __name__ == "__main__":
+    import sys
+
+    args = add_main_args()
 
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()

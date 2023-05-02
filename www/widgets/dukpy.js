@@ -11,7 +11,12 @@ addEventListener("message", (e) => {
     switch (e.data.type) {
     case "eval":
         dukpy = e.data.bindings;
-        let val = eval?.(e.data.body);
+        let val;
+        try {
+            val = eval?.(e.data.body);
+        } catch (e) {
+            console.log('Script crashed');
+        }
         if (val instanceof Function) val = null;
         $$POSTMESSAGE({"type": "return", "data": val});
         break;
