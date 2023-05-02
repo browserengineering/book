@@ -35,7 +35,7 @@ from lab14 import parse_color, parse_outline, draw_rect, DrawRRect, \
     is_focusable, get_tabindex, announce_text, speak_text, \
     CSSParser
 from lab15 import request, DrawImage, DocumentLayout, BlockLayout, \
-    InputLayout, LineLayout, TextLayout, ImageLayout, \
+    EmbedLayout, InputLayout, LineLayout, TextLayout, ImageLayout, \
     IframeLayout, JSContext, style, AccessibilityNode, Frame, Tab, \
     CommitData, draw_line, Browser
 import wbetools
@@ -430,18 +430,54 @@ class BlockLayout:
                 if isinstance(t, TextLayout)
             ]
             if text_nodes:
-                cx = text_nodes[-1].x + text_nodes[-1].width
-                cy1 = text_nodes[-1].y
-                cy2 = text_nodes[-1].y + text_nodes[-1].height
+                cmds.append(DrawCursor(text_nodes[-1], text_nodes[-1].width))
             else:
-                cx = self.x
-                cy1 = self.y
-                cy2 = self.y + self.height
-            cmds.append(DrawLine(cx, cy1, cx, cy2))
+                cmds.append(DrawCursor(self, 0))
 
         if not is_atomic:
             cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
+
+@wbetools.patch(InputLayout)
+class InputLayout(EmbedLayout):
+    def paint(self, display_list):
+        cmds = []
+
+        rect = skia.Rect.MakeLTRB(
+            self.x, self.y, self.x + self.width,
+            self.y + self.height)
+
+        bgcolor = self.node.style.get("background-color",
+                                 "transparent")
+        if bgcolor != "transparent":
+            radius = device_px(
+                float(self.node.style.get("border-radius", "0px")[:-2]),
+                self.zoom)
+            cmds.append(DrawRRect(rect, radius, bgcolor))
+
+        if self.node.tag == "input":
+            text = self.node.attributes.get("value", "")
+        elif self.node.tag == "button":
+            if len(self.node.children) == 1 and \
+               isinstance(self.node.children[0], Text):
+                text = self.node.children[0].text
+            else:
+                print("Ignoring HTML contents inside button")
+                text = ""
+
+        color = self.node.style["color"]
+        cmds.append(DrawText(self.x, self.y,
+                             text, self.font, color))
+
+        if self.node.is_focused and self.node.tag == "input":
+            cmds.append(DrawCursor(self, self.font.measureText(text)))
+
+        cmds = paint_visual_effects(self.node, cmds, rect)
+        paint_outline(self.node, cmds, rect, self.zoom)
+        display_list.extend(cmds)
+        
+def DrawCursor(elt, width):
+    return DrawLine(elt.x, elt.y, elt.x + width, elt.y + elt.height)
 
 @wbetools.patch(DocumentLayout)
 class DocumentLayout:

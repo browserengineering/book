@@ -110,15 +110,26 @@ class BlockLayout:
                 if isinstance(t, TextLayout)
             ]
             if text_nodes:
-                cx = text_nodes[-1].x + text_nodes[-1].width
-                cy1 = text_nodes[-1].y
-                cy2 = text_nodes[-1].y + text_nodes[-1].height
+                cmds.append(DrawCursor(text_nodes[-1], text_nodes[-1].width))
             else:
-                cx = self.x
-                cy1 = self.y
-                cy2 = self.y + self.height
-            cmds.append(DrawLine(cx, cy1, cx, cy2))
-        # ...
+                cmds.append(DrawCursor(self, 0))
+```
+
+Here, `DrawCursor` is just a wrapper around `DrawLine`:
+
+``` {.python}
+def DrawCursor(elt, width):
+    return DrawLine(elt.x, elt.y, elt.x + width, elt.y + elt.height)
+```
+
+We can also use this wrapper to draw the cursor in `InputLayout`:
+
+``` {.python}
+
+class InputLayout(EmbedLayout):
+    def paint(self, display_list):
+        if self.node.is_focused and self.node.tag == "input":
+            cmds.append(DrawCursor(self, self.font.measureText(text)))
 ```
 
 You should now be able to edit the example above in your own
