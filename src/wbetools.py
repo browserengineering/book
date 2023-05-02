@@ -42,11 +42,10 @@ def patch(existing_cls):
                     if field not in old_obj:
                         old_obj[field] = obj[field]
                     if obj[field] != old_obj[field]:
-                        print()
-                        print(f"Difference for {field} between {new_name} and {old_name}")
-                        print(" ", obj[field], "vs", old_obj[field])
-                        raise Exception(
-                            f"{existing_cls.__qualname__}: patch uses global {field}, which differs")
+                        msg = f"{existing_cls.__qualname__}: patch uses global {field}, which differs\n"
+                        msg += f"Difference for {field} between {new_name} and {old_name}\n"
+                        msg += f"  {obj[field]} vs {old_obj[field]}"
+                        raise Exception(msg)
         return existing_cls
     return decorator
 
