@@ -5,8 +5,14 @@ export {
     socket, ssl, tkinter, dukpy, urllib, html, random, wbetools,
     truthy, comparator, pysplit, pyrsplit, asyncfilter,
     rt_constants, Widget, http_textarea, skia, sdl2, init_skia,
-    init_window, threading, time
+    init_window, threading, time, OpenGL, patch_class
     };
+
+function patch_class(cls, patched_cls) {
+    for (let val of Object.getOwnPropertyNames(patched_cls.prototype)) {
+        cls.prototype[val] = patched_cls.prototype[val]
+    }
+}
 
 function wrap_class(cls, fn) {
     var f = function(...args) {
@@ -477,6 +483,7 @@ class sdl2 {
     static SDL_WINDOWPOS_CENTERED = 0;
     static SDL_WINDOWPOS_CENTERED = 0;
     static SDL_WINDOW_SHOWN = 0;
+    static SDL_WINDOW_OPENGL = 0;
     static SDL_BYTEORDER = 0;
     static SDL_BIG_ENDIAN = 0;
 }
@@ -729,6 +736,12 @@ function init_skia(canvasKit, robotoData) {
         f.kItalic_Slant = CanvasKit.FontSlant.Italic,
         f.kUpright_Slant = CanvasKit.FontSlant.Upright
     });
+}
+
+class OpenGL {
+    static GL = {
+        GL_RGBA8 : 0
+    }
 }
 
 class ctypes {

@@ -7,7 +7,7 @@
  {"code": "'content-security-policy' in headers", "type": "dict"},
  {"code": "b'Browser'", "js": "'Browser'"},
  {"code": "print", "js": "console.log"},
- {"code": "elt not in self.node_to_handle", "type": "dict"},
+ {"code": "elt not in self.node_to_handle", "type": "map"},
  {"code": "run_callback", "js": "await run_callback()"},
  {"code": "run_load()", "js": "await run_load()"},
  {"code": "run_load", "js": "run_load"},

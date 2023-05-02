@@ -23,7 +23,7 @@ Promise.all([ckLoaded, loadFont]).then(([CanvasKit, robotoData]) => {
   Promise.all([import("./rt.js"), import("./lab13.js"),
     import("./server10.js")]).then(
   ([rt, lab11, server10]) => {
-    let { init_skia, init_window, socket, Widget, rt_constants } = rt;
+    let { init_skia, init_window, socket, Widget, rt_constants} = rt;
     let { Browser, constants } = lab11;
     let { handle_connection } = server10;
 
