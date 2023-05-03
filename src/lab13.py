@@ -84,7 +84,7 @@ def map_translation(rect, translation):
 
 class Transform(DisplayItem):
     def __init__(self, translation, rect, node, children):
-        super().__init__(rect, children=children, node=node)
+        super().__init__(rect, children, node)
         self.translation = translation
 
     def execute(self, canvas):
@@ -211,7 +211,7 @@ class DrawRect(DisplayItem):
 
 class ClipRRect(DisplayItem):
     def __init__(self, rect, radius, children, should_clip=True):
-        super().__init__(rect, children=children)
+        super().__init__(rect, children)
         self.should_clip = should_clip
         self.radius = radius
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
@@ -237,7 +237,7 @@ class ClipRRect(DisplayItem):
 
 class SaveLayer(DisplayItem):
     def __init__(self, sk_paint, node, children, should_save=True):
-        super().__init__(skia.Rect.MakeEmpty(), children=children, node=node)
+        super().__init__(skia.Rect.MakeEmpty(), children, node)
         self.should_save = should_save
         self.sk_paint = sk_paint
 
@@ -1177,14 +1177,11 @@ class Tab:
         if not needs_composite:
             for node in self.composited_updates:
                 composited_updates[node] = node.save_layer
-        self.composited_updates.clear()
+        self.composited_updates = []
 
         commit_data = CommitData(
-            url=self.url,
-            scroll=scroll,
-            height=document_height,
-            display_list=self.display_list,
-            composited_updates=composited_updates,
+            self.url, scroll, document_height,
+            self.display_list, composited_updates,
         )
         self.display_list = None
         self.scroll_changed_in_tab = False

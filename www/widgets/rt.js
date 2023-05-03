@@ -583,6 +583,9 @@ class skia {
         MakeLTRB: (left, top, right, bottom) => {
             return CanvasKit.LTRBRect(left, top, right, bottom);
         },
+        MakeXYWH: (x, y, width, height) => {
+            return CanvasKit.XYWHRect(x, y, width, height);
+        },
         MakeEmpty : () => {
             return CanvasKit.XYWHRect(0, 0, 0, 0);
         }

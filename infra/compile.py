@@ -428,7 +428,6 @@ def compile_function(name, args, ctx):
         assert len(args) == 1
         return args_js[0] + ".entries()"
     elif name == "__init__":
-        print('hi mom')
         return ""
     elif name == "Exception":
         assert len(args) == 1
@@ -527,8 +526,6 @@ def compile_expr(tree, ctx):
             args += [ast.Dict(names, vals)]
 
         if isinstance(tree.func, ast.Attribute):
-            if tree.func.value == "__init__":
-                print(ast.dump(tree))
             return "(" + compile_method(tree.func.value, tree.func.attr, args, ctx) + ")"
         elif isinstance(tree.func, ast.Name) and tree.func.id == "sorted":
             assert len(tree.args) == 1
@@ -544,7 +541,6 @@ def compile_expr(tree, ctx):
             return "(" + base + ".reverse())"
         elif isinstance(tree.func, ast.Name):
             if tree.func.id == "super":
-                print(ast.dump(tree))
                 return "super"
             return "(" + compile_function(tree.func.id, args, ctx) + ")"
         else:
