@@ -221,28 +221,35 @@ class LineLayout:
         self.width = None
         self.height = None
 
-        self.dirty_width = True
-        self.dirty_height = True
-        self.dirty_x = True
-        self.dirty_y = True
+        self.zoom_field = DependentField(self, "zoom")
+        self.x_field = DependentField(self, "x")
+        self.y_field = DependentField(self, "y")
+        self.width_field = DependentField(self, "width")
+        self.height_field = DependentField(self, "height")
 
     def layout(self):
-        self.zoom = self.parent.zoom
-        self.width = self.parent.width
-        self.x = self.parent.x
+        parent_zoom = self.zoom_field.read(self.parent.zoom_field)
+        self.zoom = self.zoom_field.set(parent_zoom)
+
+        parent_width = self.width_field.read(self.parent.width_field)
+        self.width = self.width_field.set(parent_width)
+
+        parent_x = self.x_field.read(self.parent.x_field)
+        self.x = self.x_field.set(parent_x)
 
         if self.previous:
-            self.y = self.previous.y + self.previous.height
+            prev_y = self.y_field.read(self.previous.y_field)
+            prev_height = self.y_field.read(self.previous.height_field)
+            self.y = self.y_field.set(prev_y + prev_height)
         else:
-            self.y = self.parent.y
+            parent_y = self.y_field.read(self.parent.y_field)
+            self.y = self.y_field.set(parent_y)
 
         for word in self.children:
             word.layout()
 
         if not self.children:
-            self.height = 0
-            self.parent.dirty_height = True
-            mark_dirty(self.parent)
+            self.height = self.height_field.set(0)
             return
 
         max_ascent = max([-child.get_ascent(1.25) 
@@ -252,14 +259,37 @@ class LineLayout:
             child.y = baseline + child.get_ascent()
         max_descent = max([child.get_descent(1.25)
                            for child in self.children])
-        self.height = max_ascent + max_descent
-        self.parent.dirty_height = True
-        mark_dirty(self.parent)
 
-        self.dirty_width = False
-        self.dirty_height = False
-        self.dirty_x = False
-        self.dirty_y = False
+        self.height = self.height_field.set(max_ascent + max_descent)
+        
+class DependentField:
+    def __init__(self, base, name):
+        self.base = base
+        self.name = name
+        self.value = None
+        self.dirty = True
+        self.depends_on = set()
+        self.depended_on = set()
+
+    def read(self, field):
+        assert not field.dirty
+        if self.dirty:
+            self.depends_on.add(field)
+            field.depended_on.add(self)
+        return field.value
+
+    def get(self):
+        assert not self.dirty
+        return self.value
+
+    def set(self, value):
+        if value != self.value:
+            self.value = value
+            for field in self.depended_on:
+                mark_dirty(field.base)
+                field.dirty = True
+        self.dirty = False
+        return value
 
 @wbetools.patch(BlockLayout)
 class BlockLayout:
@@ -278,69 +308,49 @@ class BlockLayout:
         self.y = None
         self.width = None
         self.height = None
+        self.zoom = None
 
         self.dirty_children = True
-        self.dirty_zoom = True
-        self.zoom = None
+        self.zoom_field = DependentField(self, "zoom")
         self.dirty_style = True
-        self.dirty_width = True
-        self.dirty_height = True
-        self.dirty_x = True
-        self.dirty_y = True
+        self.width_field = DependentField(self, "width")
+        self.x_field = DependentField(self, "x")
+        self.y_field = DependentField(self, "y")
+        self.height_field = DependentField(self, "height")
         self.dirty_descendants = True
 
     def layout(self):
-        if self.dirty_zoom:
-            self.zoom = self.parent.zoom
-            for child in self.children:
-                mark_dirty(child)
-                child.dirty_zoom = True
-            mark_dirty(self)
-            self.dirty_width = True
-            self.dirty_zoom = False
+        parent_zoom = self.zoom_field.read(self.parent.zoom_field)
+        self.zoom = self.zoom_field.set(parent_zoom)
 
         if self.dirty_style:
             self.dirty_children = True
-            self.dirty_width = True
+            self.width_field.dirty = True
             mark_dirty(self)
             self.dirty_style = False
 
-        if self.dirty_width:
-            assert not self.parent.dirty_width
-            if "width" in self.node.style:
-                self.width = device_px(float(self.node.style["width"][:-2]), zoom)
-            else:
-                self.width = self.parent.width
+        assert not self.dirty_style
+        old_w = self.width
+        if "width" in self.node.style:
+            zoom = self.width_field.read(self.zoom_field)
+            self.width = self.width_field.set(float(self.node.style["width"][:-2], zoom))
+        else:
+            parent_width = self.width_field.read(self.parent.width_field)
+            self.width = self.width_field.set(parent_width)
+        if self.width != old_w:
             self.dirty_children = True
-            for child in self.children:
-                child.dirty_width = True
-                mark_dirty(child)
-            self.dirty_width = False
 
-        if self.dirty_x:
-            assert not self.parent.dirty_x
-            self.x = self.parent.x
-            for child in self.children:
-                child.dirty_x = True
-                mark_dirty(child)
-            self.dirty_x = False
+        parent_x = self.x_field.read(self.parent.x_field)
+        self.x = self.x_field.set(parent_x)
 
-        if self.dirty_y:
-            assert not self.previous or not self.previous.dirty_y
-            assert not self.previous or not self.previous.dirty_height
-            assert not self.parent.dirty_y
-            if self.previous:
-                self.y = self.previous.y + self.previous.height
-            else:
-                self.y = self.parent.y
-            for child in self.children:
-                child.dirty_y = True
-                mark_dirty(child)
-            if self.next:
-                self.next.dirty_y = True
-                mark_dirty(self.next)
-            self.dirty_y = False
-
+        if self.previous: # Never changes
+            prev_y = self.y_field.read(self.previous.y_field)
+            prev_height = self.y_field.read(self.previous.height_field)
+            self.y = self.y_field.set(prev_y + prev_height)
+        else:
+            parent_y = self.y_field.read(self.parent.y_field)
+            self.y = self.y_field.set(parent_y)
+            
         mode = layout_mode(self.node)
         if self.dirty_children:
             if mode == "block":
@@ -362,24 +372,17 @@ class BlockLayout:
 
         if self.dirty_descendants:
             assert not self.dirty_children
-            assert not self.dirty_zoom
+            assert not self.zoom_field.dirty
             for child in self.children:
                 child.layout()
             self.dirty_descendants = False
 
-        if self.dirty_height:
-            assert not self.dirty_children
-            for child in self.children:
-                assert not child.dirty_height
-            new_height = sum([child.height for child in self.children])
-            if self.height != new_height:
-                self.height = new_height
-                self.parent.dirty_height = True
-                mark_dirty(self.parent)
-                if self.next:
-                    self.next.dirty_y = True
-                    mark_dirty(self.next)
-            self.dirty_height = False
+        assert not self.dirty_children
+        new_height = sum([
+            self.height_field.read(child.height_field)
+            for child in self.children
+        ])
+        self.height = self.height_field.set(new_height)
 
     def recurse(self, node):
         assert not self.dirty_style
@@ -489,16 +492,16 @@ class DocumentLayout:
         self.previous = None
         self.children = []
 
-        self.zoom = None
+        self.zoom_field = DependentField(self, "zoom")
+        self.width_field = DependentField(self, "width")
+        self.height_field = DependentField(self, "height")
+        self.x_field = DependentField(self, "x")
+        self.y_field = DependentField(self, "y")
+
         self.width = None
         self.height = None
         self.x = None
         self.y = None
-
-        self.dirty_height = True
-        self.dirty_width = True
-        self.dirty_x = True
-        self.dirty_y = True
 
     def layout(self, width, zoom):
         if not self.children:
@@ -507,27 +510,13 @@ class DocumentLayout:
             child = self.children[0]
         self.children = [child]
 
-        if zoom != self.zoom:
-            self.zoom = zoom
-            child.dirty_zoom = True
-        if width - 2 * device_px(HSTEP, zoom) != self.width:
-            self.width = width - 2 * device_px(HSTEP, zoom)
-            child.dirty_width = True
-            mark_dirty(child)
-            self.dirty_width = False
-        if device_px(HSTEP, zoom) != self.x:
-            self.x = device_px(HSTEP, zoom)
-            child.dirty_x = True
-            mark_dirty(child)
-            self.dirty_x = False
-        if device_px(VSTEP, zoom) != self.y:
-            self.y = device_px(VSTEP, zoom)
-            child.dirty_y = True
-            mark_dirty(child)
-            self.dirty_y = False
+        self.zoom = self.zoom_field.set(zoom)
+        self.width = self.width_field.set(width - 2 * device_px(HSTEP, zoom))
+        self.x = self.x_field.set(device_px(HSTEP, zoom))
+        self.y = self.y_field.set(device_px(VSTEP, zoom))
         child.layout()
-        assert not child.dirty_height
-        self.height = child.height + 2* device_px(VSTEP, zoom)
+        child_height = self.height_field.read(child.height_field)
+        self.height = self.height_field.set(child_height + 2*device_px(VSTEP, zoom))
 
 @wbetools.patch(JSContext)
 class JSContext:
