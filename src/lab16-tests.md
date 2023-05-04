@@ -18,12 +18,50 @@ This file contains tests for Chapter 16 (Invalidation).
     >>> wbetools.USE_BROWSER_THREAD = False
     >>> wbetools.USE_GPU = False
 
+Editing a web page
+==================
+
+Here's a simple editable web page:
+
+    >>> url = test.socket.serve("""
+    ... <!doctype html>
+    ... <p contenteditable>Here is some content.</p>
+    ... """)
+    >>> browser = lab16.Browser()
+    >>> browser.load(url)
+    >>> browser.render()
+    >>> lab16.print_tree(browser.tabs[0].root_frame.nodes)
+     <html>
+       <body>
+         <p contenteditable="">
+           'Here is some content.'
+
+Now we can click on the page to focus on the editable element:
+
+    >>> tab = browser.tabs[0]
+    >>> tab.focus
+    >>> tab.click(25, 20)
+    >>> tab.focus
+    <p contenteditable="">
+
+Now that we're focused on the element, we can type into it:
+
+    >>> tab.keypress(" ")
+    >>> tab.keypress("H")
+    >>> tab.keypress("i")
+    >>> tab.keypress("!")
+    >>> lab16.print_tree(browser.tabs[0].root_frame.nodes)
+     <html>
+       <body>
+         <p contenteditable="">
+           'Here is some content. Hi!'
+
 Test web page
 =============
 
 Here's a simple test web page:
 
-    >>> html = """
+    >>> url = test.socket.serve("""
     ... <!doctype html>
     ... <main>
     ...   <section>
@@ -36,11 +74,7 @@ Here's a simple test web page:
     ...     </div>
     ...   </section>
     ... </main>
-    ... """
-    >>> url = "http://test.test/test"
-    >>> test.socket.respond(url, b'HTTP/1.0 200 OK' +
-    ...   b'Content-Type: text/html\r\n\r\n' +
-    ...   html.encode('utf8'))
+    ... """)
 
 First of all, we can load and render it:
 
