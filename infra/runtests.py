@@ -55,10 +55,10 @@ def run_tests(chapter, file_name):
 
     # This ugly code reloads all of our modules from scratch, in case
     # a test makes a mutation to a global for some reason
-    mods = list(sys.modules.items())
-    for name, mod in sorted(mods, key=lambda x: (len(x[0]), x[0])):
-        if is_our_module(mod):
-            reload_module(mod)
+    our_mods = sorted([mod for mod in sys.modules.values() if is_our_module(mod)],
+                      key=lambda x: (len(x.__name__), x.__name__))
+    for mod in our_mods:
+        reload_module(mod)
     mock.patch.stopall()
         
     return failure, count
