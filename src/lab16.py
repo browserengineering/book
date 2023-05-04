@@ -37,7 +37,7 @@ from lab14 import parse_color, parse_outline, draw_rect, DrawRRect, \
 from lab15 import request, DrawImage, DocumentLayout, BlockLayout, \
     EmbedLayout, InputLayout, LineLayout, TextLayout, ImageLayout, \
     IframeLayout, JSContext, style, AccessibilityNode, Frame, Tab, \
-    CommitData, draw_line, Browser
+    CommitData, draw_line, Browser, BROKEN_IMAGE
 import wbetools
 
 def mark_dirty(node):
@@ -477,7 +477,7 @@ class InputLayout(EmbedLayout):
         display_list.extend(cmds)
         
 def DrawCursor(elt, width):
-    return DrawLine(elt.x, elt.y, elt.x + width, elt.y + elt.height)
+    return DrawLine(elt.x + width, elt.y, elt.x + width, elt.y + elt.height)
 
 @wbetools.patch(DocumentLayout)
 class DocumentLayout:
