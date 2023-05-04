@@ -34,21 +34,31 @@ def test_compare(chapter, value, language, fname):
     with open("../book/" + chapter) as book, open(value) as code:
         return compare.compare_files(book, code, language, fname)
 
+def is_our_module(mod):
+    if not hasattr(mod, "__file__"): return False
+    file = mod.__file__
+    return file and file.endswith("py") and \
+        os.path.realpath(file).startswith(os.getcwd())
+
+def reload_module(mod):
+    assert is_our_module(mod), "Can't reload a builtin module"
+    # To reload the module we need to do two steps:
+    # - First, clear all current definitions
+    # - Second, reevaluate the module to reload with new definitions
+    for attr in dir(mod):
+        if attr not in ('__name__', '__file__'):
+            delattr(mod, attr)
+    importlib.reload(mod)
+
 def run_tests(chapter, file_name):
     failure, count = doctest.testfile(os.path.abspath(file_name), module_relative=False)
 
     # This ugly code reloads all of our modules from scratch, in case
     # a test makes a mutation to a global for some reason
-    src_dir = os.path.split(os.path.realpath(file_name))[0]
     mods = list(sys.modules.items())
     for name, mod in sorted(mods, key=lambda x: (len(x[0]), x[0])):
-        if hasattr(mod, "__file__") and mod.__file__ and \
-           os.path.realpath(mod.__file__).startswith(src_dir) and \
-           mod.__file__.endswith("py"):
-            for attr in dir(mod):
-                if attr not in ('__name__', '__file__'):
-                    delattr(mod, attr)
-            importlib.reload(mod)
+        if is_our_module(mod):
+            reload_module(mod)
     mock.patch.stopall()
         
     return failure, count
