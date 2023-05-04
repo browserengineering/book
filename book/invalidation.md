@@ -15,7 +15,7 @@ layout work using a technique called invalidation.
 Editing Content
 ===============
 
-In [Chapter 13](animations.md), we use compositing to enable smooth
+In [Chapter 13](animations.md), we used compositing to enable smooth
 animation of CSS properties like `transform` or `opacity`. Some CSS
 properties, however, can't be smoothly animated in this way, because
 as they change they not only modify the _display list_ but also the
@@ -39,11 +39,12 @@ see that it is quite laggy indeed:
 Now, in the case of typing into an `input` element, our browser
 rebuilds the layout tree, but in fact the layout tree looks the same
 each time---the text inside an `input` element doesn't get its own
-layout object. But browsers support other forms of text editing which
-does affect the layout tree. For example, in a real browser you can
-give any element the `contenteditable` attribute to make it editable.
-Once you do so, the user can click on the element to add or modify
-text in it:
+layout object. So that situation is easy to optimize. But browsers
+support other forms of text editing which do affect the layout tree.
+For example, in a real browser you can give any element the
+`contenteditable` attribute to make it editable. Once you do so, the
+user can click on the element to add or modify rich, formatted text in
+it:
 
 ::: {.example contenteditable=true}
 Click on this <i>formatted</i> <b>text</b> to edit it.
