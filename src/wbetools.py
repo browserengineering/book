@@ -5,8 +5,7 @@ def record(type, *args):
 
 def patch(existing_cls):
     def decorator(new_cls):
-        for attr in dir(new_cls):
-            obj = getattr(new_cls, attr)
+        for attr, obj in new_cls.__dict__.items():
             # Copies over all methods and all writable fields of functions
             # Uses a cute hack to get the `function` class.
             if isinstance(obj, type(decorator)) \
