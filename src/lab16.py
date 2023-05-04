@@ -93,7 +93,7 @@ class Frame:
             header, body = request(script_url, url)
             body = body.decode("utf8")
             task = Task(
-                self.js, self.js.run, script_url, body,
+                self.js.run, script_url, body,
                 self.window_id)
             self.tab.task_runner.schedule_task(task)
 
