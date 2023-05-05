@@ -355,7 +355,7 @@ class InputLayout(EmbedLayout):
         self.width = device_px(INPUT_WIDTH_PX, self.zoom)
         self.height = linespace(self.font)
 
-    def paint(self, display_list,):
+    def paint(self, display_list):
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
@@ -1940,6 +1940,7 @@ class Browser:
                 self.active_tab_height)
             self.scroll = scroll
             self.set_needs_draw()
+            self.needs_animation_frame = True
             self.lock.release()
             return
         active_tab = self.tabs[self.active_tab]

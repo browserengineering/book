@@ -22,16 +22,11 @@ Testing a multi-threaded program is quite complicated, so here we just mock
 the TaskRunner and run all the tests on the same thread as the Browser.
 
 	>>> lab12.TaskRunner = test.MockTaskRunner
-
-    >>> test_url = 'http://test.test/'
-    >>> test.socket.respond(test_url, b"HTTP/1.0 200 OK\r\n" +
-    ... b"content-type: text/html\r\n\r\n" +
-    ... b"<div>Text<</div>)")
-
-    >>> browser = lab12.Browser()
+    >>> test_url = test.socket.serve("<div>Text</div>)")
 
 Before load, there is no tab height or display list.
 
+    >>> browser = lab12.Browser()
 	>>> browser.active_tab_height == 0
 	True
     >>> browser.active_tab_display_list == None

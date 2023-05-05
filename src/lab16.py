@@ -34,10 +34,28 @@ from lab14 import parse_color, parse_outline, draw_rect, DrawRRect, \
     is_focusable, get_tabindex, announce_text, speak_text, \
     CSSParser
 from lab15 import request, DrawImage, DocumentLayout, BlockLayout, \
-    InputLayout, LineLayout, TextLayout, ImageLayout, \
+    EmbedLayout, InputLayout, LineLayout, TextLayout, ImageLayout, \
     IframeLayout, JSContext, style, AccessibilityNode, Frame, Tab, \
-    CommitData, draw_line, Browser
+    CommitData, draw_line, Browser, BROKEN_IMAGE
 import wbetools
+
+def mark_dirty(node):
+    if isinstance(node.parent, BlockLayout) and \
+        not node.parent.dirty_descendants:
+        node.parent.dirty_descendants = True
+        mark_dirty(node.parent)
+
+@wbetools.patch(is_focusable)
+def is_focusable(node):
+    if get_tabindex(node) <= 0:
+        return False
+    elif "tabindex" in node.attributes:
+        return True
+    elif "contenteditable" in node.attributes:
+        return True
+    else:
+        return node.tag in ["input", "button", "a"]
+
 
 @wbetools.patch(Frame)
 class Frame:
@@ -74,7 +92,7 @@ class Frame:
             header, body = request(script_url, url)
             body = body.decode("utf8")
             task = Task(
-                self.js, self.js.run, script_url, body,
+                self.js.run, script_url, body,
                 self.window_id)
             self.tab.task_runner.schedule_task(task)
 
@@ -138,6 +156,29 @@ class Frame:
         # For testing only?
         self.measure_layout = MeasureTime("layout")
 
+    def keypress(self, char):
+        if self.tab.focus and self.tab.focus.tag == "input":
+            if not "value" in self.tab.focus.attributes:
+                self.activate_element(self.tab.focus)
+            if self.js.dispatch_event(
+                "keydown", self.tab.focus, self.window_id): return
+            self.tab.focus.attributes["value"] += char
+            self.set_needs_render()
+        elif self.tab.focus and "contenteditable" in self.tab.focus.attributes:
+            text_nodes = [
+                t for t in tree_to_list(self.tab.focus, [])
+                if isinstance(t, Text)
+            ]
+            if text_nodes:
+                last_text = text_nodes[-1]
+            else:
+                last_text = Text("", self.tab.focus)
+                self.tab.focus.children.append(last_text)
+            last_text.text += char
+            self.tab.focus.layout_object.dirty_children = True
+            mark_dirty(self.tab.focus.layout_object)
+            self.set_needs_render()
+
     def render(self):
         if self.needs_style:
             if self.tab.dark_mode:
@@ -184,12 +225,6 @@ class LineLayout:
         self.dirty_x = True
         self.dirty_y = True
 
-    def mark_dirty(self):
-        if isinstance(self.parent, BlockLayout) and \
-            not self.parent.dirty_descendants:
-            self.parent.dirty_descendants = True
-            self.parent.mark_dirty()
-
     def layout(self):
         self.zoom = self.parent.zoom
         self.width = self.parent.width
@@ -206,7 +241,7 @@ class LineLayout:
         if not self.children:
             self.height = 0
             self.parent.dirty_height = True
-            self.parent.mark_dirty()
+            mark_dirty(self.parent)
             return
 
         max_ascent = max([-child.get_ascent(1.25) 
@@ -218,7 +253,7 @@ class LineLayout:
                            for child in self.children])
         self.height = max_ascent + max_descent
         self.parent.dirty_height = True
-        self.parent.mark_dirty()
+        mark_dirty(self.parent)
 
         self.dirty_width = False
         self.dirty_height = False
@@ -253,26 +288,20 @@ class BlockLayout:
         self.dirty_y = True
         self.dirty_descendants = True
 
-    def mark_dirty(self):
-        if isinstance(self.parent, BlockLayout) and \
-            not self.parent.dirty_descendants:
-            self.parent.dirty_descendants = True
-            self.parent.mark_dirty()
-
     def layout(self):
         if self.dirty_zoom:
             self.zoom = self.parent.zoom
             for child in self.children:
-                child.mark_dirty()
+                mark_dirty(child)
                 child.dirty_zoom = True
-            self.mark_dirty()
+            mark_dirty(self)
             self.dirty_width = True
             self.dirty_zoom = False
 
         if self.dirty_style:
             self.dirty_children = True
             self.dirty_width = True
-            self.mark_dirty()
+            mark_dirty(self)
             self.dirty_style = False
 
         if self.dirty_width:
@@ -284,7 +313,7 @@ class BlockLayout:
             self.dirty_children = True
             for child in self.children:
                 child.dirty_width = True
-                child.mark_dirty()
+                mark_dirty(child)
             self.dirty_width = False
 
         if self.dirty_x:
@@ -292,7 +321,7 @@ class BlockLayout:
             self.x = self.parent.x
             for child in self.children:
                 child.dirty_x = True
-                child.mark_dirty()
+                mark_dirty(child)
             self.dirty_x = False
 
         if self.dirty_y:
@@ -305,10 +334,10 @@ class BlockLayout:
                 self.y = self.parent.y
             for child in self.children:
                 child.dirty_y = True
-                child.mark_dirty()
+                mark_dirty(child)
             if self.next:
                 self.next.dirty_y = True
-                self.next.mark_dirty()
+                mark_dirty(self.next)
             self.dirty_y = False
 
         mode = layout_mode(self.node)
@@ -321,13 +350,13 @@ class BlockLayout:
                     self.children.append(next)
                     previous = next
                 self.dirty_descendants = True
-                self.mark_dirty()
+                mark_dirty(self)
             else:
                 self.children = []
                 self.new_line()
                 self.recurse(self.node)
                 self.dirty_descendants = True
-                self.mark_dirty()
+                mark_dirty(self)
             self.dirty_children = False
 
         if self.dirty_descendants:
@@ -345,10 +374,10 @@ class BlockLayout:
             if self.height != new_height:
                 self.height = new_height
                 self.parent.dirty_height = True
-                self.parent.mark_dirty()
+                mark_dirty(self.parent)
                 if self.next:
                     self.next.dirty_y = True
-                    self.next.mark_dirty()
+                    mark_dirty(self.next)
             self.dirty_height = False
 
     def recurse(self, node):
@@ -394,9 +423,60 @@ class BlockLayout:
         for child in self.children:
             child.paint(cmds)
 
+        if self.node.is_focused and "contenteditable" in self.node.attributes:
+            text_nodes = [
+                t for t in tree_to_list(self, [])
+                if isinstance(t, TextLayout)
+            ]
+            if text_nodes:
+                cmds.append(DrawCursor(text_nodes[-1], text_nodes[-1].width))
+            else:
+                cmds.append(DrawCursor(self, 0))
+
         if not is_atomic:
             cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
+
+@wbetools.patch(InputLayout)
+class InputLayout(EmbedLayout):
+    def paint(self, display_list):
+        cmds = []
+
+        rect = skia.Rect.MakeLTRB(
+            self.x, self.y, self.x + self.width,
+            self.y + self.height)
+
+        bgcolor = self.node.style.get("background-color",
+                                 "transparent")
+        if bgcolor != "transparent":
+            radius = device_px(
+                float(self.node.style.get("border-radius", "0px")[:-2]),
+                self.zoom)
+            cmds.append(DrawRRect(rect, radius, bgcolor))
+
+        if self.node.tag == "input":
+            text = self.node.attributes.get("value", "")
+        elif self.node.tag == "button":
+            if len(self.node.children) == 1 and \
+               isinstance(self.node.children[0], Text):
+                text = self.node.children[0].text
+            else:
+                print("Ignoring HTML contents inside button")
+                text = ""
+
+        color = self.node.style["color"]
+        cmds.append(DrawText(self.x, self.y,
+                             text, self.font, color))
+
+        if self.node.is_focused and self.node.tag == "input":
+            cmds.append(DrawCursor(self, self.font.measureText(text)))
+
+        cmds = paint_visual_effects(self.node, cmds, rect)
+        paint_outline(self.node, cmds, rect, self.zoom)
+        display_list.extend(cmds)
+        
+def DrawCursor(elt, width):
+    return DrawLine(elt.x + width, elt.y, elt.x + width, elt.y + elt.height)
 
 @wbetools.patch(DocumentLayout)
 class DocumentLayout:
@@ -419,12 +499,6 @@ class DocumentLayout:
         self.dirty_x = True
         self.dirty_y = True
 
-    def mark_dirty(self):
-        if isinstance(self.parent, BlockLayout) and \
-            not self.parent.dirty_descendants:
-            self.parent.dirty_descendants = True
-            self.parent.mark_dirty()
-
     def layout(self, width, zoom):
         if not self.children:
             child = BlockLayout(self.node, self, None, self.frame)
@@ -438,17 +512,17 @@ class DocumentLayout:
         if width - 2 * device_px(HSTEP, zoom) != self.width:
             self.width = width - 2 * device_px(HSTEP, zoom)
             child.dirty_width = True
-            child.mark_dirty()
+            mark_dirty(child)
             self.dirty_width = False
         if device_px(HSTEP, zoom) != self.x:
             self.x = device_px(HSTEP, zoom)
             child.dirty_x = True
-            child.mark_dirty()
+            mark_dirty(child)
             self.dirty_x = False
         if device_px(VSTEP, zoom) != self.y:
             self.y = device_px(VSTEP, zoom)
             child.dirty_y = True
-            child.mark_dirty()
+            mark_dirty(child)
             self.dirty_y = False
         child.layout()
         assert not child.dirty_height
@@ -469,7 +543,7 @@ class JSContext:
         frame.set_needs_render()
 
         elt.layout_object.dirty_children = True
-        elt.layout_object.mark_dirty()
+        mark_dirty(elt.layout_object)
 
 @wbetools.patch(style)
 def style(node, rules, frame):
@@ -509,7 +583,7 @@ def style(node, rules, frame):
 
     if node.style != old_style and node.layout_object:
         node.layout_object.dirty_style = True
-        node.layout_object.mark_dirty()
+        mark_dirty(node.layout_object)
 
     for child in node.children:
         style(child, rules, frame)
