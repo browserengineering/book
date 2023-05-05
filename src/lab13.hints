@@ -23,7 +23,7 @@
  {"code": "('TranslateAnimation(' + 'old_value=({old_x},{old_y}), ' + 'change_per_frame=({change_x},{change_y}), ' + 'num_frames={num_frames})').format(old_x=self.old_x, old_y=self.old_y, change_x=self.change_per_frame_x, change_y=self.change_per_frame_y, num_frames=self.num_frames)", "js": ""},
  {"code": "('layer: composited_bounds={} ' + 'absolute_bounds={} first_chunk={}').format(composited_bounds, absolute_bounds, self.display_items if len(self.display_items) > 0 else 'None')", "js": ""},
  {"code": "('OpenGL initialized: vendor={},' + 'renderer={}').format(OpenGL.GL.glGetString(OpenGL.GL.GL_VENDOR), OpenGL.GL.glGetString(OpenGL.GL.GL_RENDERER))", "js": ""},
- {"code": "self.s[self.i] in chars", "js": "str"},
+ {"code": "self.s[self.i] in chars", "js": "chars.find((c) => c == this.s[this.i])"},
  {"code": "property not in new_transitions", "type": "dict"},
  {"code": "property not in old_style", "type": "dict"},
  {"code": "property not in new_style", "type": "dict"},

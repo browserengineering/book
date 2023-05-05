@@ -580,14 +580,37 @@ class skia {
     });
 
     static Rect = {
+        fill_in: (rect) => {
+            rect.left = () => rect[0];
+            rect.top = () => rect[1];
+            rect.right = () => rect[2];
+            rect.bottom = () => rect[3];
+            rect.isEmpty = () => {
+                return rect.left() == rect.right() &&
+                    rect.top() == rect.bottom();
+            }
+            rect.join = (other_rect) => {
+                rect[0] = Math.min(rect.left(), other_rect.left());
+                rect[1] = Math.min(rect.top(), other_rect.top());
+                rect[2] = Math.max(rect.right(), other_rect.right());
+                rect[3] = Math.max(rect.bottom(), other_rect.bottom());
+            }
+        },
+
         MakeLTRB: (left, top, right, bottom) => {
-            return CanvasKit.LTRBRect(left, top, right, bottom);
+            let rect = CanvasKit.LTRBRect(left, top, right, bottom);
+            skia.Rect.fill_in(rect, left, top, right, bottom);
+            return rect;
         },
         MakeXYWH: (x, y, width, height) => {
-            return CanvasKit.XYWHRect(x, y, width, height);
+            let rect = CanvasKit.XYWHRect(x, y, width, height);
+            skia.Rect.fill_in(rect, x, y, x + width, y + height);
+            return rect;
         },
-        MakeEmpty : () => {
-            return CanvasKit.XYWHRect(0, 0, 0, 0);
+        MakeEmpty: () => {
+            let rect = CanvasKit.XYWHRect(0, 0, 0, 0);
+            skia.Rect.fill_in(rect, 0, 0, 0, 0);
+            return rect;
         }
     };
 
@@ -635,8 +658,9 @@ class skia {
         }
 
         mapRect(rect) {
-            // TODO: how do I get the bounds of this rect?
-            return rect;
+            return skia.Rect.LTRBRect(
+                rect.left() + x, rect.top() + y, rect.right() + x,
+                rect.bottom() + y);
         }
     });
 }
