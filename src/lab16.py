@@ -330,7 +330,7 @@ class BlockLayout:
         old_w = self.width
         if "width" in self.node.style:
             zoom = self.width_field.read(self.zoom_field)
-            self.width = self.width_field.set(float(self.node.style["width"][:-2], zoom))
+            self.width = self.width_field.set(device_px(float(self.node.style["width"][:-2]), zoom))
         else:
             parent_width = self.width_field.read(self.parent.width_field)
             self.width = self.width_field.set(parent_width)
