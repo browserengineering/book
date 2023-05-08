@@ -268,14 +268,11 @@ class DependentField:
         self.name = name
         self.value = None
         self.dirty = True
-        self.depends_on = set()
         self.depended_on = set()
 
     def read(self, field):
         assert not field.dirty
-        if self.dirty:
-            self.depends_on.add(field)
-            field.depended_on.add(self)
+        field.depended_on.add(self)
         return field.value
 
     def get(self):
