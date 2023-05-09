@@ -37,7 +37,7 @@ from lab14 import parse_color, parse_outline, draw_rect, DrawRRect, \
 from lab15 import request, DrawImage, DocumentLayout, BlockLayout, \
     EmbedLayout, InputLayout, LineLayout, TextLayout, ImageLayout, \
     IframeLayout, JSContext, style, AccessibilityNode, Frame, Tab, \
-    CommitData, draw_line, Browser, BROKEN_IMAGE
+    CommitData, draw_line, Browser, BROKEN_IMAGE, font
 import wbetools
 
 def mark_dirty(node):
