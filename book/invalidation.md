@@ -140,24 +140,19 @@ slow, with each character taking hundreds of milliseconds to type.
 Idempotence
 ===========
 
-Invalidation is a pretty simple idea: don't redo redundant layout
-work. It means not recreating layout objects if the existing ones are
-already the right ones, and not recomputing layout values (like a
-width or a *y* value) if it is already up to date. Yet invalidation
-has a well-earned reputation as a rats' nest, with even real browsers
-having dozens of known invalidation bugs as of this writing. That's
-because of a real risk that an invalidation bug accidentally forgets
-to recompute a value that changed, causing layout glitches, or
-recomputes way too many values that didn't change, dramatically
-slowing down layout.
+At a high level, the reason edits are slow is because each edit
+requires recomputing layout---and on a large page like this one, that
+takes our browser many, many milliseconds. But recomputing the layout
+isn't really necessary: when you type a single character, adding a
+single letter to a single word on a single line of the page, almost
+everything else on the page stays in the exact same place. So
+recomputing layout spends many, many milliseconds recomputing exactly
+the same layout coordinates that we already have. Invalidation means
+not doing that.
 
-So in this chapter, the challenge won't just be implementing
-invalidation. It'll be making sure that we implement invalidation
-_correctly_. That's going to involve thinking carefully about how each
-layout value is computed, and what values it depends on.
-
-Let's start by thinking about how layout objects are created. Right
-now, layout objects are created by `Tab`s when `render` is called:
+So, why do we need to recompute layout every time we type a new
+character? Well, to start with, our `render` method uses a brand new
+layout tree, every time we need to recompute layout:
 
 ``` {.python file=lab15}
 class Frame:
@@ -169,8 +164,10 @@ class Frame:
 ```
 
 Every time layout runs, the whole layout tree is discarded and a new
-one is created, starting with the root `DocumentLayout`. But this is
-wasteful: when layout _does_ need to run, it's typically due to a
+one is created, starting with the root `DocumentLayout`. Because we're
+creating a new tree, we're throwing away all of the old layout
+information, even the information that was already correct. But this
+is wasteful: when layout _does_ need to run, it's typically due to a
 small change, like `innerHTML` or `style` being set on some element.
 Recreating the layout tree is wasteful, and we'd like to avoid it.
 
@@ -186,6 +183,11 @@ layout objects are created only in a few places:
 - `LineLayout` objects are created by `BlockLayout`s in `new_line`
 - `TextLayout` objects are created by `BlockLayout`s in `text`
 - `InputLayout` objects are created by `BlockLayout`s in `input`
+
+In each of these locations, we want to reuse an existing layout
+object, instead of creating a new one, whenever possible. That'll save
+a bit of time and memory, but more importantly it'll later let us
+reuse already-computed layout information.
 
 Let's start with the first location. The `DocumentLayout` is created
 the same way each time, and its argument, `nodes`, is never assigned
@@ -218,15 +220,14 @@ created by `DocumentLayout`. Here's what that code looks like:
 class DocumentLayout:
     def layout(self, width, zoom):
         child = BlockLayout(self.node, self, None, self.frame)
-        self.children.append(child)
         # ...
 ```
 
 As you can see, the arguments to `BlockLayout` here also cannot
-change: the `node` field and `self` are never assigned to, while
-`None` is just a constant. This means `BlockLayout` construction also
-has no arguments, which means we don't need to redo this step if it's
-already occurred before.
+change: the `node` and `frame` fields, and `self`, are never assigned
+to, while `None` is just a constant. This means `BlockLayout`
+construction also has no arguments, which means we don't need to redo
+this step every time we do layout.
 
 We might therefore be tempted to skip the redundant work, with
 something like this:
@@ -238,20 +239,25 @@ class DocumentLayout:
             child = BlockLayout(self.node, self, None, self.frame)
         else:
             child = self.children[0]
-        self.children.append(child)
         # ...
 ```
 
 This reuses an existing `BlockLayout` object if possible. But note the
 code that *appends* the `BlockLayout` object to the `children` array.
+
+``` {.python}
+class DocumentLayout:
+    def layout(self, width, zoom):
+        # ...
+        self.children.append(child)
+        # ...
+```
+
 If we run this line of code twice, the `BlockLayout` will end up in
 the `children` array twice, turning our layout tree into a DAG and
-causing many strange problems.
-
-If you actually run our browser like this, you'll see odd behavior;
-for example, typing into an `<input>` element will trigger layout,
-create the duplicate `children` entries, and end up duplicating the
-web page on your screen.
+causing many strange problems: typing into an `<input>` element will
+trigger layout, create the duplicate `children` entries, and end up
+duplicating the web page on your screen.
 
 The core issue here is what's called *idempotence*: if we're keeping
 the layout tree around instead of rebuilding it from scratch each
