@@ -46,6 +46,39 @@ def mark_dirty(node):
         node.parent.dirty_descendants = True
         mark_dirty(node.parent)
 
+@wbetools.patch(Element)
+class Element:
+    def __init__(self, tag, attributes, parent):
+        self.tag = tag
+        self.attributes = attributes
+        self.children = []
+        self.parent = parent
+
+        self.style = {}
+        self.animations = {}
+
+        self.is_focused = False
+        self.layout_object = None
+
+        self.children_updated = ChangeSource(self, "children")
+        self.style_field = DependentField(self, "style")
+
+@wbetools.patch(Text)
+class Text:
+    def __init__(self, text, parent):
+        self.text = text
+        self.children = []
+        self.parent = parent
+
+        self.style = {}
+        self.animations = {}
+
+        self.is_focused = False
+        self.layout_object = None
+
+        self.children_updated = ChangeSource(self, "children")
+        self.style_field = DependentField(self, "style")
+
 @wbetools.patch(is_focusable)
 def is_focusable(node):
     if get_tabindex(node) <= 0:
@@ -176,8 +209,7 @@ class Frame:
                 last_text = Text("", self.tab.focus)
                 self.tab.focus.children.append(last_text)
             last_text.text += char
-            self.tab.focus.layout_object.dirty_children = True
-            mark_dirty(self.tab.focus.layout_object)
+            self.tab.focus.children_updated.notify()
             self.set_needs_render()
 
     def render(self):
@@ -221,11 +253,12 @@ class LineLayout:
         self.width = None
         self.height = None
 
-        self.zoom_field = DependentField(self, "zoom")
-        self.x_field = DependentField(self, "x")
-        self.y_field = DependentField(self, "y")
-        self.width_field = DependentField(self, "width")
-        self.height_field = DependentField(self, "height")
+        self.fields = FieldManager(self)
+        self.zoom_field = self.fields.add("zoom")
+        self.x_field = self.fields.add("x")
+        self.y_field = self.fields.add("y")
+        self.width_field = self.fields.add("width")
+        self.height_field = self.fields.add("height")
 
     def layout(self):
         parent_zoom = self.zoom_field.read(self.parent.zoom_field)
@@ -262,6 +295,26 @@ class LineLayout:
 
         self.height = self.height_field.set(max_ascent + max_descent)
         
+class ChangeSource:
+    def __init__(self, base, name):
+        self.depended_on = set()
+
+    def notify(self):
+        for field in self.depended_on:
+            mark_dirty(field.base)
+            field.dirty = True
+
+class FieldManager:
+    def __init__(self, base):
+        self.base = base
+        self.dirty = True
+        self.depended_on = set()
+
+    def add(self, name):
+        field = DependentField(self.base, name)
+        field.depended_on.add(self)
+        return field
+        
 class DependentField:
     def __init__(self, base, name):
         self.base = base
@@ -269,6 +322,9 @@ class DependentField:
         self.value = None
         self.dirty = True
         self.depended_on = set()
+
+    def depend(self, source):
+        source.depended_on.add(self)
 
     def read(self, field):
         assert not field.dirty
@@ -307,35 +363,26 @@ class BlockLayout:
         self.height = None
         self.zoom = None
 
-        self.dirty_children = True
-        self.zoom_field = DependentField(self, "zoom")
-        self.dirty_style = True
-        self.width_field = DependentField(self, "width")
-        self.x_field = DependentField(self, "x")
-        self.y_field = DependentField(self, "y")
-        self.height_field = DependentField(self, "height")
+        self.fields = FieldManager(self)
+        self.children_field = self.fields.add("children")
+        self.zoom_field = self.fields.add("zoom")
+        self.width_field = self.fields.add("width")
+        self.x_field = self.fields.add("x")
+        self.y_field = self.fields.add("y")
+        self.height_field = self.fields.add("height")
         self.dirty_descendants = True
 
     def layout(self):
         parent_zoom = self.zoom_field.read(self.parent.zoom_field)
         self.zoom = self.zoom_field.set(parent_zoom)
 
-        if self.dirty_style:
-            self.dirty_children = True
-            self.width_field.dirty = True
-            mark_dirty(self)
-            self.dirty_style = False
-
-        assert not self.dirty_style
-        old_w = self.width
-        if "width" in self.node.style:
+        node_style = self.width_field.read(self.node.style_field)
+        if "width" in node_style:
             zoom = self.width_field.read(self.zoom_field)
-            self.width = self.width_field.set(device_px(float(self.node.style["width"][:-2]), zoom))
+            self.width = self.width_field.set(device_px(float(node_style["width"][:-2]), zoom))
         else:
             parent_width = self.width_field.read(self.parent.width_field)
             self.width = self.width_field.set(parent_width)
-        if self.width != old_w:
-            self.dirty_children = True
 
         parent_x = self.x_field.read(self.parent.x_field)
         self.x = self.x_field.set(parent_x)
@@ -348,8 +395,9 @@ class BlockLayout:
             parent_y = self.y_field.read(self.parent.y_field)
             self.y = self.y_field.set(parent_y)
             
-        mode = layout_mode(self.node)
-        if self.dirty_children:
+        if self.children_field.dirty:
+            self.children_field.depend(self.node.children_updated)
+            mode = layout_mode(self.node)
             if mode == "block":
                 self.children = []
                 previous = None
@@ -357,24 +405,26 @@ class BlockLayout:
                     next = BlockLayout(child, self, previous, self.frame)
                     self.children.append(next)
                     previous = next
+                self.children_field.set(self.children)
                 self.dirty_descendants = True
                 mark_dirty(self)
             else:
+                self.children_field.depend(self.node.style_field)
+                self.children_field.read(self.width_field)
                 self.children = []
                 self.new_line()
                 self.recurse(self.node)
+                self.children_field.set(self.children)
                 self.dirty_descendants = True
                 mark_dirty(self)
-            self.dirty_children = False
 
         if self.dirty_descendants:
-            assert not self.dirty_children
-            assert not self.zoom_field.dirty
+            assert not self.children_field.dirty
             for child in self.children:
                 child.layout()
             self.dirty_descendants = False
 
-        assert not self.dirty_children
+        children = self.height_field.read(self.children_field)
         new_height = sum([
             self.height_field.read(child.height_field)
             for child in self.children
@@ -382,7 +432,6 @@ class BlockLayout:
         self.height = self.height_field.set(new_height)
 
     def recurse(self, node):
-        assert not self.dirty_style
         if isinstance(node, Text):
             self.text(node)
         else:
@@ -400,7 +449,7 @@ class BlockLayout:
                     self.recurse(child)
 
     def paint(self, display_list):
-        assert not self.dirty_children
+        assert not self.children_field.dirty
         
         cmds = []
 
@@ -489,11 +538,12 @@ class DocumentLayout:
         self.previous = None
         self.children = []
 
-        self.zoom_field = DependentField(self, "zoom")
-        self.width_field = DependentField(self, "width")
-        self.height_field = DependentField(self, "height")
-        self.x_field = DependentField(self, "x")
-        self.y_field = DependentField(self, "y")
+        self.fields = FieldManager(self)
+        self.zoom_field = self.fields.add("zoom")
+        self.width_field = self.fields.add("width")
+        self.height_field = self.fields.add("height")
+        self.x_field = self.fields.add("x")
+        self.y_field = self.fields.add("y")
 
         self.width = None
         self.height = None
@@ -529,19 +579,19 @@ class JSContext:
             child.parent = elt
         frame.set_needs_render()
 
-        elt.layout_object.dirty_children = True
-        mark_dirty(elt.layout_object)
+        elt.children_updated.notify()
 
 @wbetools.patch(style)
 def style(node, rules, frame):
     old_style = node.style
+    new_style = {}
 
-    node.style = {}
     for property, default_value in INHERITED_PROPERTIES.items():
         if node.parent:
-            node.style[property] = node.parent.style[property]
+            parent_style = node.style_field.read(node.parent.style_field)
+            new_style[property] = parent_style[property]
         else:
-            node.style[property] = default_value
+            new_style[property] = default_value
     for media, selector, body in rules:
         if media:
             if (media == "dark") != frame.tab.dark_mode: continue
@@ -549,15 +599,15 @@ def style(node, rules, frame):
         for property, value in body.items():
             computed_value = compute_style(node, property, value)
             if not computed_value: continue
-            node.style[property] = computed_value
+            new_style[property] = computed_value
     if isinstance(node, Element) and "style" in node.attributes:
         pairs = CSSParser(node.attributes["style"]).body()
         for property, value in pairs.items():
             computed_value = compute_style(node, property, value)
-            node.style[property] = computed_value
+            new_style[property] = computed_value
 
     if old_style:
-        transitions = diff_styles(old_style, node.style)
+        transitions = diff_styles(old_style, new_style)
         for property, (old_value, new_value, num_frames) \
             in transitions.items():
             if property in ANIMATED_PROPERTIES:
@@ -566,11 +616,10 @@ def style(node, rules, frame):
                 animation = AnimationClass(
                     old_value, new_value, num_frames)
                 node.animations[property] = animation
-                node.style[property] = animation.animate()
+                new_style[property] = animation.animate()
 
-    if node.style != old_style and node.layout_object:
-        node.layout_object.dirty_style = True
-        mark_dirty(node.layout_object)
+    node.style = node.style_field.set(new_style)
+    if node.layout_object: mark_dirty(node.layout_object)
 
     for child in node.children:
         style(child, rules, frame)
