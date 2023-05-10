@@ -61,7 +61,7 @@ class Element:
         self.layout_object = None
 
         self.children_updated = ChangeSource(self, "children")
-        self.style_field = DependentField(self, "style")
+        self.style_field = DependentField(self, "style", eager=True)
 
 @wbetools.patch(Text)
 class Text:
@@ -77,7 +77,7 @@ class Text:
         self.layout_object = None
 
         self.children_updated = ChangeSource(self, "children")
-        self.style_field = DependentField(self, "style")
+        self.style_field = DependentField(self, "style", eager=True)
 
 @wbetools.patch(is_focusable)
 def is_focusable(node):
@@ -298,33 +298,34 @@ class LineLayout:
 class ChangeSource:
     def __init__(self, base, name):
         self.depended_on = set()
+        self.base = base
+        self.name = name
 
     def notify(self):
         for field in self.depended_on:
-            mark_dirty(field.base)
-            field.dirty = True
+            field.notify()
 
-class FieldManager:
+class FieldManager(ChangeSource):
     def __init__(self, base):
-        self.base = base
-        self.dirty = True
-        self.depended_on = set()
+        super().__init__(base, "fields")
 
-    def add(self, name):
-        field = DependentField(self.base, name)
+    def add(self, name, eager=False):
+        field = DependentField(self.base, name, eager=eager)
         field.depended_on.add(self)
         return field
         
 class DependentField:
-    def __init__(self, base, name):
+    def __init__(self, base, name, eager=False):
         self.base = base
         self.name = name
         self.value = None
         self.dirty = True
+        self.eager = eager
         self.depended_on = set()
 
     def depend(self, source):
         source.depended_on.add(self)
+        self.dirty = True
 
     def read(self, field):
         assert not field.dirty
@@ -338,11 +339,15 @@ class DependentField:
     def set(self, value):
         if value != self.value:
             self.value = value
-            for field in self.depended_on:
-                mark_dirty(field.base)
-                field.dirty = True
+            self.notify()
         self.dirty = False
         return value
+
+    def notify(self):
+        self.dirty = True
+        if self.eager:
+            for field in self.depended_on:
+                field.notify()
 
 @wbetools.patch(BlockLayout)
 class BlockLayout:
@@ -364,13 +369,13 @@ class BlockLayout:
         self.zoom = None
 
         self.fields = FieldManager(self)
-        self.children_field = self.fields.add("children")
+        self.children_field = self.fields.add("children", eager=True)
         self.zoom_field = self.fields.add("zoom")
-        self.width_field = self.fields.add("width")
+        self.width_field = self.fields.add("width", eager=True)
         self.x_field = self.fields.add("x")
         self.y_field = self.fields.add("y")
         self.height_field = self.fields.add("height")
-        self.dirty_descendants = True
+        self.descendants = self.fields.add("descendants", eager=True)
 
     def layout(self):
         parent_zoom = self.zoom_field.read(self.parent.zoom_field)
@@ -405,24 +410,20 @@ class BlockLayout:
                     next = BlockLayout(child, self, previous, self.frame)
                     self.children.append(next)
                     previous = next
+                    self.descendants.depend(next.fields)
                 self.children_field.set(self.children)
-                self.dirty_descendants = True
-                mark_dirty(self)
             else:
-                self.children_field.depend(self.node.style_field)
+                self.children_field.read(self.node.style_field)
                 self.children_field.read(self.width_field)
                 self.children = []
                 self.new_line()
                 self.recurse(self.node)
                 self.children_field.set(self.children)
-                self.dirty_descendants = True
-                mark_dirty(self)
 
-        if self.dirty_descendants:
-            assert not self.children_field.dirty
+        if self.descendants.dirty:
             for child in self.children:
                 child.layout()
-            self.dirty_descendants = False
+            self.descendants.set(None) # Reset to clean but do not notify
 
         children = self.height_field.read(self.children_field)
         new_height = sum([
@@ -447,6 +448,28 @@ class BlockLayout:
             else:
                 for child in node.children:
                     self.recurse(child)
+
+    def new_line(self):
+        self.previous_word = None
+        self.cursor_x = self.x
+        last_line = self.children[-1] if self.children else None
+        new_line = LineLayout(self.node, self, last_line)
+        self.children.append(new_line)
+        self.descendants.depend(new_line.fields)
+
+    def add_inline_child(self, node, w, child_class, frame, word=None):
+        if self.cursor_x + w > self.x + self.width:
+            self.new_line()
+        line = self.children[-1]
+        if word:
+            child = child_class(node, line, self.previous_word, word)
+        else:
+            child = child_class(node, line, self.previous_word, frame)
+        line.children.append(child)
+        self.previous_word = child
+        self.cursor_x += w + font(node, self.zoom).measureText(" ")
+        # TODO: don't currently depend on child.fields because it doesn't exist
+        # but that is probably a bug (what if you change innerHTML on an inline element?)
 
     def paint(self, display_list):
         assert not self.children_field.dirty
@@ -619,7 +642,6 @@ def style(node, rules, frame):
                 new_style[property] = animation.animate()
 
     node.style = node.style_field.set(new_style)
-    if node.layout_object: mark_dirty(node.layout_object)
 
     for child in node.children:
         style(child, rules, frame)
