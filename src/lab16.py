@@ -606,42 +606,48 @@ class JSContext:
 
 @wbetools.patch(style)
 def style(node, rules, frame):
-    old_style = node.style
-    new_style = {}
-
-    for property, default_value in INHERITED_PROPERTIES.items():
-        if node.parent:
-            parent_style = node.style_field.read(node.parent.style_field)
-            new_style[property] = parent_style[property]
-        else:
-            new_style[property] = default_value
-    for media, selector, body in rules:
-        if media:
-            if (media == "dark") != frame.tab.dark_mode: continue
-        if not selector.matches(node): continue
-        for property, value in body.items():
-            computed_value = compute_style(node, property, value)
-            if not computed_value: continue
-            new_style[property] = computed_value
-    if isinstance(node, Element) and "style" in node.attributes:
-        pairs = CSSParser(node.attributes["style"]).body()
-        for property, value in pairs.items():
-            computed_value = compute_style(node, property, value)
-            new_style[property] = computed_value
-
-    if old_style:
-        transitions = diff_styles(old_style, new_style)
-        for property, (old_value, new_value, num_frames) \
-            in transitions.items():
-            if property in ANIMATED_PROPERTIES:
-                frame.set_needs_render()
-                AnimationClass = ANIMATED_PROPERTIES[property]
-                animation = AnimationClass(
-                    old_value, new_value, num_frames)
-                node.animations[property] = animation
-                new_style[property] = animation.animate()
-
-    node.style = node.style_field.set(new_style)
+    if node.style_field.dirty:
+        old_style = node.style
+        new_style = {}
+    
+        for property, default_value in INHERITED_PROPERTIES.items():
+            if node.parent:
+                parent_style = node.style_field.read(node.parent.style_field)
+                new_style[property] = parent_style[property]
+            else:
+                new_style[property] = default_value
+        for media, selector, body in rules:
+            if media:
+                if (media == "dark") != frame.tab.dark_mode: continue
+            if not selector.matches(node): continue
+            for property, value in body.items():
+                computed_value = compute_style(node, property, value)
+                if not computed_value: continue
+                if node.parent and property == "font-size" and value.endswith("%"):
+                    node.style_field.read(node.parent.style_field)
+                new_style[property] = computed_value
+        if isinstance(node, Element) and "style" in node.attributes:
+            pairs = CSSParser(node.attributes["style"]).body()
+            for property, value in pairs.items():
+                computed_value = compute_style(node, property, value)
+                if not computed_value: continue
+                if node.parent and property == "font-size" and value.endswith("%"):
+                    node.style_field.read(node.parent.style_field)
+                new_style[property] = computed_value
+    
+        if old_style:
+            transitions = diff_styles(old_style, new_style)
+            for property, (old_value, new_value, num_frames) \
+                in transitions.items():
+                if property in ANIMATED_PROPERTIES:
+                    frame.set_needs_render()
+                    AnimationClass = ANIMATED_PROPERTIES[property]
+                    animation = AnimationClass(
+                        old_value, new_value, num_frames)
+                    node.animations[property] = animation
+                    new_style[property] = animation.animate()
+    
+        node.style = node.style_field.set(new_style)
 
     for child in node.children:
         style(child, rules, frame)
