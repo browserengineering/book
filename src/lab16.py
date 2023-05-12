@@ -253,12 +253,16 @@ class LineLayout:
         self.width = None
         self.height = None
 
-        self.fields = FieldManager(self)
-        self.zoom_field = self.fields.add("zoom")
-        self.x_field = self.fields.add("x")
-        self.y_field = self.fields.add("y")
-        self.width_field = self.fields.add("width")
-        self.height_field = self.fields.add("height")
+        self.zoom_field = DependentField(self, "zoom")
+        self.x_field = DependentField(self, "x")
+        self.y_field = DependentField(self, "y")
+        self.width_field = DependentField(self, "width")
+        self.height_field = DependentField(self, "height")
+        self.parent.descendants.depend(self.zoom_field)
+        self.parent.descendants.depend(self.width_field)
+        self.parent.descendants.depend(self.height_field)
+        self.parent.descendants.depend(self.x_field)
+        self.parent.descendants.depend(self.y_field)
 
     def layout(self):
         parent_zoom = self.zoom_field.read(self.parent.zoom_field)
@@ -294,7 +298,6 @@ class LineLayout:
                            for child in self.children])
 
         self.height = self.height_field.set(max_ascent + max_descent)
-        self.fields.check()
         
 class DependentField:
     def __init__(self, base, name):
@@ -309,12 +312,13 @@ class DependentField:
         self.dirty = True
 
     def read(self, field):
-        assert not field.dirty
+        assert not field.dirty, str(field)
         self.depend(field)
         return field.value
 
     def set(self, value):
         if value != self.value:
+            if self.value is not None: print(f"Changing {self.name} of {self.base} from {self.value} to {value}")
             self.value = value
             self.notify()
         self.dirty = False
@@ -326,20 +330,8 @@ class DependentField:
                 field.dirty = True
                 field.notify()
 
-class FieldManager(DependentField):
-    def __init__(self, base):
-        super().__init__(base, "fields")
-        self.fields = []
-
-    def add(self, name):
-        field = DependentField(self.base, name)
-        field.depended_on.add(self)
-        self.fields.append(field)
-        return field
-
-    def check(self):
-        assert all([not field.dirty for field in self.fields])
-        self.dirty = False
+    def __str__(self):
+        return str(self.base) + "." + self.name
         
 @wbetools.patch(BlockLayout)
 class BlockLayout:
@@ -360,14 +352,19 @@ class BlockLayout:
         self.height = None
         self.zoom = None
 
-        self.fields = FieldManager(self)
-        self.children_field = self.fields.add("children")
-        self.zoom_field = self.fields.add("zoom")
-        self.width_field = self.fields.add("width")
-        self.x_field = self.fields.add("x")
-        self.y_field = self.fields.add("y")
-        self.height_field = self.fields.add("height")
-        self.descendants = self.fields.add("descendants")
+        self.children_field = DependentField(self, "children")
+        self.zoom_field = DependentField(self, "zoom")
+        self.width_field = DependentField(self, "width")
+        self.x_field = DependentField(self, "x")
+        self.y_field = DependentField(self, "y")
+        self.height_field = DependentField(self, "height")
+        self.descendants = DependentField(self, "descendants")
+        self.parent.descendants.depend(self.children_field)
+        self.parent.descendants.depend(self.zoom_field)
+        self.parent.descendants.depend(self.width_field)
+        self.parent.descendants.depend(self.height_field)
+        self.parent.descendants.depend(self.x_field)
+        self.parent.descendants.depend(self.y_field)
 
     def layout(self):
         if self.zoom_field.dirty:
@@ -406,7 +403,6 @@ class BlockLayout:
                     next = BlockLayout(child, self, previous, self.frame)
                     self.children.append(next)
                     previous = next
-                    self.descendants.depend(next.fields)
                 self.children_field.set(self.children)
             else:
                 self.children_field.read(self.node.style_field)
@@ -429,8 +425,6 @@ class BlockLayout:
             ])
             self.height = self.height_field.set(new_height)
 
-        self.fields.check()
-
     def recurse(self, node):
         if isinstance(node, Text):
             self.text(node)
@@ -447,28 +441,6 @@ class BlockLayout:
             else:
                 for child in node.children:
                     self.recurse(child)
-
-    def new_line(self):
-        self.previous_word = None
-        self.cursor_x = self.x
-        last_line = self.children[-1] if self.children else None
-        new_line = LineLayout(self.node, self, last_line)
-        self.children.append(new_line)
-        self.descendants.depend(new_line.fields)
-
-    def add_inline_child(self, node, w, child_class, frame, word=None):
-        if self.cursor_x + w > self.x + self.width:
-            self.new_line()
-        line = self.children[-1]
-        if word:
-            child = child_class(node, line, self.previous_word, word)
-        else:
-            child = child_class(node, line, self.previous_word, frame)
-        line.children.append(child)
-        self.previous_word = child
-        self.cursor_x += w + font(node, self.zoom).measureText(" ")
-        # TODO: don't currently depend on child.fields because it doesn't exist
-        # but that is probably a bug (what if you change innerHTML on an inline element?)
 
     def paint(self, display_list):
         assert not self.children_field.dirty
@@ -560,12 +532,12 @@ class DocumentLayout:
         self.previous = None
         self.children = []
 
-        self.fields = FieldManager(self)
-        self.zoom_field = self.fields.add("zoom")
-        self.width_field = self.fields.add("width")
-        self.height_field = self.fields.add("height")
-        self.x_field = self.fields.add("x")
-        self.y_field = self.fields.add("y")
+        self.zoom_field = DependentField(self, "zoom")
+        self.width_field = DependentField(self, "width")
+        self.height_field = DependentField(self, "height")
+        self.x_field = DependentField(self, "x")
+        self.y_field = DependentField(self, "y")
+        self.descendants = DependentField(self, "descendants")
 
         self.width = None
         self.height = None
@@ -583,10 +555,11 @@ class DocumentLayout:
         self.width = self.width_field.set(width - 2 * device_px(HSTEP, zoom))
         self.x = self.x_field.set(device_px(HSTEP, zoom))
         self.y = self.y_field.set(device_px(VSTEP, zoom))
-        child.layout()
+        if self.descendants.dirty:
+            child.layout()
+            self.descendants.set(None)
         child_height = self.height_field.read(child.height_field)
         self.height = self.height_field.set(child_height + 2*device_px(VSTEP, zoom))
-        self.fields.check()
 
 @wbetools.patch(JSContext)
 class JSContext:
@@ -597,12 +570,10 @@ class JSContext:
             "<html><body>" + s + "</body></html>").parse()
         new_nodes = doc.children[0].children
         elt = self.handle_to_node[handle]
-        elt.children = new_nodes
         for child in elt.children:
             child.parent = elt
+        elt.children = elt.children_field.set(new_nodes)
         frame.set_needs_render()
-
-        elt.children_field.notify()
 
 @wbetools.patch(style)
 def style(node, rules, frame):
@@ -621,18 +592,18 @@ def style(node, rules, frame):
                 if (media == "dark") != frame.tab.dark_mode: continue
             if not selector.matches(node): continue
             for property, value in body.items():
-                computed_value = compute_style(node, property, value)
-                if not computed_value: continue
                 if node.parent and property == "font-size" and value.endswith("%"):
                     node.style_field.read(node.parent.style_field)
+                computed_value = compute_style(node, property, value)
+                if not computed_value: continue
                 new_style[property] = computed_value
         if isinstance(node, Element) and "style" in node.attributes:
             pairs = CSSParser(node.attributes["style"]).body()
             for property, value in pairs.items():
-                computed_value = compute_style(node, property, value)
-                if not computed_value: continue
                 if node.parent and property == "font-size" and value.endswith("%"):
                     node.style_field.read(node.parent.style_field)
+                computed_value = compute_style(node, property, value)
+                if not computed_value: continue
                 new_style[property] = computed_value
     
         if old_style:
