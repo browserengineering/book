@@ -322,8 +322,9 @@ class DependentField:
 
     def notify(self):
         for field in self.depended_on:
-            field.dirty = True
-            field.notify()
+            if not field.dirty:
+                field.dirty = True
+                field.notify()
 
 class FieldManager(DependentField):
     def __init__(self, base):
