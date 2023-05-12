@@ -294,6 +294,7 @@ class LineLayout:
                            for child in self.children])
 
         self.height = self.height_field.set(max_ascent + max_descent)
+        self.fields.check()
         
 class DependentField:
     def __init__(self, base, name):
@@ -324,21 +325,20 @@ class DependentField:
             field.dirty = True
             field.notify()
 
-class FieldManager:
+class FieldManager(DependentField):
     def __init__(self, base):
-        self.depended_on = set()
-        self.base = base
-        self.name = "fields"
+        super().__init__(base, "fields")
+        self.fields = []
 
     def add(self, name):
         field = DependentField(self.base, name)
         field.depended_on.add(self)
+        self.fields.append(field)
         return field
 
-    def notify(self):
-        for field in self.depended_on:
-            field.dirty = True
-            field.notify()
+    def check(self):
+        assert all([not field.dirty for field in self.fields])
+        self.dirty = False
         
 @wbetools.patch(BlockLayout)
 class BlockLayout:
@@ -427,6 +427,8 @@ class BlockLayout:
                 for child in self.children
             ])
             self.height = self.height_field.set(new_height)
+
+        self.fields.check()
 
     def recurse(self, node):
         if isinstance(node, Text):
@@ -583,6 +585,7 @@ class DocumentLayout:
         child.layout()
         child_height = self.height_field.read(child.height_field)
         self.height = self.height_field.set(child_height + 2*device_px(VSTEP, zoom))
+        self.fields.check()
 
 @wbetools.patch(JSContext)
 class JSContext:
