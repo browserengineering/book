@@ -258,6 +258,8 @@ class LineLayout:
         self.y_field = DependentField(self, "y")
         self.width_field = DependentField(self, "width")
         self.height_field = DependentField(self, "height")
+        self.parent.descendants.depend(self.node.children_field)
+        self.parent.descendants.depend(self.node.style_field)
         self.parent.descendants.depend(self.zoom_field)
         self.parent.descendants.depend(self.width_field)
         self.parent.descendants.depend(self.height_field)
@@ -300,12 +302,13 @@ class LineLayout:
         self.height = self.height_field.set(max_ascent + max_descent)
         
 class DependentField:
-    def __init__(self, base, name):
+    def __init__(self, base, name, eager=False):
         self.base = base
         self.name = name
         self.value = None
         self.dirty = True
         self.depended_on = set()
+        self.eager = eager
 
     def depend(self, source):
         source.depended_on.add(self)
@@ -318,17 +321,20 @@ class DependentField:
 
     def set(self, value):
         if value != self.value:
-            if self.value is not None: print(f"Changing {self.name} of {self.base} from {self.value} to {value}")
-            self.value = value
             self.notify()
+            self.value = value
         self.dirty = False
         return value
 
+    def mark(self):
+        if not self.dirty:
+            self.dirty = True
+            if self.eager:
+                self.notify()
+
     def notify(self):
         for field in self.depended_on:
-            if not field.dirty:
-                field.dirty = True
-                field.notify()
+            field.mark()
 
     def __str__(self):
         return str(self.base) + "." + self.name
@@ -358,13 +364,16 @@ class BlockLayout:
         self.x_field = DependentField(self, "x")
         self.y_field = DependentField(self, "y")
         self.height_field = DependentField(self, "height")
-        self.descendants = DependentField(self, "descendants")
+        self.descendants = DependentField(self, "descendants", eager=True)
+        self.parent.descendants.depend(self.node.children_field)
+        self.parent.descendants.depend(self.node.style_field)
         self.parent.descendants.depend(self.children_field)
         self.parent.descendants.depend(self.zoom_field)
         self.parent.descendants.depend(self.width_field)
         self.parent.descendants.depend(self.height_field)
         self.parent.descendants.depend(self.x_field)
         self.parent.descendants.depend(self.y_field)
+        self.parent.descendants.depend(self.descendants)
 
     def layout(self):
         if self.zoom_field.dirty:
@@ -537,7 +546,7 @@ class DocumentLayout:
         self.height_field = DependentField(self, "height")
         self.x_field = DependentField(self, "x")
         self.y_field = DependentField(self, "y")
-        self.descendants = DependentField(self, "descendants")
+        self.descendants = DependentField(self, "descendants", eager=True)
 
         self.width = None
         self.height = None
