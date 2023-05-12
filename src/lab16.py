@@ -51,33 +51,33 @@ class Element:
     def __init__(self, tag, attributes, parent):
         self.tag = tag
         self.attributes = attributes
-        self.children = []
         self.parent = parent
 
-        self.style = {}
         self.animations = {}
 
         self.is_focused = False
         self.layout_object = None
 
-        self.children_updated = ChangeSource(self, "children")
-        self.style_field = DependentField(self, "style", eager=True)
+        self.children_field = DependentField(self, "children")
+        self.children = self.children_field.set([])
+        self.style_field = DependentField(self, "style")
+        self.style = {}
 
 @wbetools.patch(Text)
 class Text:
     def __init__(self, text, parent):
         self.text = text
-        self.children = []
         self.parent = parent
 
-        self.style = {}
         self.animations = {}
 
         self.is_focused = False
         self.layout_object = None
 
-        self.children_updated = ChangeSource(self, "children")
-        self.style_field = DependentField(self, "style", eager=True)
+        self.children_field = DependentField(self, "children")
+        self.children = self.children_field.set([])
+        self.style_field = DependentField(self, "style")
+        self.style = {}
 
 @wbetools.patch(is_focusable)
 def is_focusable(node):
@@ -209,7 +209,7 @@ class Frame:
                 last_text = Text("", self.tab.focus)
                 self.tab.focus.children.append(last_text)
             last_text.text += char
-            self.tab.focus.children_updated.notify()
+            self.tab.focus.children_field.notify()
             self.set_needs_render()
 
     def render(self):
@@ -295,32 +295,12 @@ class LineLayout:
 
         self.height = self.height_field.set(max_ascent + max_descent)
         
-class ChangeSource:
-    def __init__(self, base, name):
-        self.depended_on = set()
-        self.base = base
-        self.name = name
-
-    def notify(self):
-        for field in self.depended_on:
-            field.notify()
-
-class FieldManager(ChangeSource):
-    def __init__(self, base):
-        super().__init__(base, "fields")
-
-    def add(self, name, eager=False):
-        field = DependentField(self.base, name, eager=eager)
-        field.depended_on.add(self)
-        return field
-        
 class DependentField:
-    def __init__(self, base, name, eager=False):
+    def __init__(self, base, name):
         self.base = base
         self.name = name
         self.value = None
         self.dirty = True
-        self.eager = eager
         self.depended_on = set()
 
     def depend(self, source):
@@ -329,12 +309,8 @@ class DependentField:
 
     def read(self, field):
         assert not field.dirty
-        field.depended_on.add(self)
+        self.depend(field)
         return field.value
-
-    def get(self):
-        assert not self.dirty
-        return self.value
 
     def set(self, value):
         if value != self.value:
@@ -344,11 +320,26 @@ class DependentField:
         return value
 
     def notify(self):
-        self.dirty = True
-        if self.eager:
-            for field in self.depended_on:
-                field.notify()
+        for field in self.depended_on:
+            field.dirty = True
+            field.notify()
 
+class FieldManager:
+    def __init__(self, base):
+        self.depended_on = set()
+        self.base = base
+        self.name = "fields"
+
+    def add(self, name):
+        field = DependentField(self.base, name)
+        field.depended_on.add(self)
+        return field
+
+    def notify(self):
+        for field in self.depended_on:
+            field.dirty = True
+            field.notify()
+        
 @wbetools.patch(BlockLayout)
 class BlockLayout:
     def __init__(self, node, parent, previous, frame):
@@ -369,13 +360,13 @@ class BlockLayout:
         self.zoom = None
 
         self.fields = FieldManager(self)
-        self.children_field = self.fields.add("children", eager=True)
+        self.children_field = self.fields.add("children")
         self.zoom_field = self.fields.add("zoom")
-        self.width_field = self.fields.add("width", eager=True)
+        self.width_field = self.fields.add("width")
         self.x_field = self.fields.add("x")
         self.y_field = self.fields.add("y")
         self.height_field = self.fields.add("height")
-        self.descendants = self.fields.add("descendants", eager=True)
+        self.descendants = self.fields.add("descendants")
 
     def layout(self):
         parent_zoom = self.zoom_field.read(self.parent.zoom_field)
@@ -401,12 +392,12 @@ class BlockLayout:
             self.y = self.y_field.set(parent_y)
             
         if self.children_field.dirty:
-            self.children_field.depend(self.node.children_updated)
+            node_children = self.children_field.read(self.node.children_field)
             mode = layout_mode(self.node)
             if mode == "block":
                 self.children = []
                 previous = None
-                for child in self.node.children:
+                for child in node_children:
                     next = BlockLayout(child, self, previous, self.frame)
                     self.children.append(next)
                     previous = next
@@ -602,7 +593,7 @@ class JSContext:
             child.parent = elt
         frame.set_needs_render()
 
-        elt.children_updated.notify()
+        elt.children_field.notify()
 
 @wbetools.patch(style)
 def style(node, rules, frame):
