@@ -369,27 +369,31 @@ class BlockLayout:
         self.descendants = self.fields.add("descendants")
 
     def layout(self):
-        parent_zoom = self.zoom_field.read(self.parent.zoom_field)
-        self.zoom = self.zoom_field.set(parent_zoom)
+        if self.zoom_field.dirty:
+            parent_zoom = self.zoom_field.read(self.parent.zoom_field)
+            self.zoom = self.zoom_field.set(parent_zoom)
 
-        node_style = self.width_field.read(self.node.style_field)
-        if "width" in node_style:
-            zoom = self.width_field.read(self.zoom_field)
-            self.width = self.width_field.set(device_px(float(node_style["width"][:-2]), zoom))
-        else:
-            parent_width = self.width_field.read(self.parent.width_field)
-            self.width = self.width_field.set(parent_width)
+        if self.width_field.dirty:
+            node_style = self.width_field.read(self.node.style_field)
+            if "width" in node_style:
+                zoom = self.width_field.read(self.zoom_field)
+                self.width = self.width_field.set(device_px(float(node_style["width"][:-2]), zoom))
+            else:
+                parent_width = self.width_field.read(self.parent.width_field)
+                self.width = self.width_field.set(parent_width)
 
-        parent_x = self.x_field.read(self.parent.x_field)
-        self.x = self.x_field.set(parent_x)
+        if self.x_field.dirty:
+            parent_x = self.x_field.read(self.parent.x_field)
+            self.x = self.x_field.set(parent_x)
 
-        if self.previous: # Never changes
-            prev_y = self.y_field.read(self.previous.y_field)
-            prev_height = self.y_field.read(self.previous.height_field)
-            self.y = self.y_field.set(prev_y + prev_height)
-        else:
-            parent_y = self.y_field.read(self.parent.y_field)
-            self.y = self.y_field.set(parent_y)
+        if self.y_field.dirty:
+            if self.previous: # Never changes
+                prev_y = self.y_field.read(self.previous.y_field)
+                prev_height = self.y_field.read(self.previous.height_field)
+                self.y = self.y_field.set(prev_y + prev_height)
+            else:
+                parent_y = self.y_field.read(self.parent.y_field)
+                self.y = self.y_field.set(parent_y)
             
         if self.children_field.dirty:
             node_children = self.children_field.read(self.node.children_field)
@@ -416,12 +420,13 @@ class BlockLayout:
                 child.layout()
             self.descendants.set(None) # Reset to clean but do not notify
 
-        children = self.height_field.read(self.children_field)
-        new_height = sum([
-            self.height_field.read(child.height_field)
-            for child in self.children
-        ])
-        self.height = self.height_field.set(new_height)
+        if self.height_field.dirty:
+            children = self.height_field.read(self.children_field)
+            new_height = sum([
+                self.height_field.read(child.height_field)
+                for child in self.children
+            ])
+            self.height = self.height_field.set(new_height)
 
     def recurse(self, node):
         if isinstance(node, Text):
