@@ -33,18 +33,12 @@ from lab14 import parse_color, parse_outline, draw_rect, DrawRRect, \
     is_focused, paint_outline, has_outline, \
     device_px, cascade_priority, style, \
     is_focusable, get_tabindex, announce_text, speak_text, \
-    CSSParser
+    CSSParser, main_func
 from lab15 import request, DrawImage, DocumentLayout, BlockLayout, \
     EmbedLayout, InputLayout, LineLayout, TextLayout, ImageLayout, \
     IframeLayout, JSContext, style, AccessibilityNode, Frame, Tab, \
-    CommitData, draw_line, Browser, BROKEN_IMAGE, font
+    CommitData, draw_line, Browser, BROKEN_IMAGE, font, add_main_args
 import wbetools
-
-def mark_dirty(node):
-    if isinstance(node.parent, BlockLayout) and \
-        not node.parent.dirty_descendants:
-        node.parent.dirty_descendants = True
-        mark_dirty(node.parent)
 
 @wbetools.patch(Element)
 class Element:
@@ -89,7 +83,6 @@ def is_focusable(node):
         return True
     else:
         return node.tag in ["input", "button", "a"]
-
 
 @wbetools.patch(Frame)
 class Frame:
@@ -434,23 +427,6 @@ class BlockLayout:
             ])
             self.height = self.height_field.set(new_height)
 
-    def recurse(self, node):
-        if isinstance(node, Text):
-            self.text(node)
-        else:
-            if node.tag == "br":
-                self.new_line()
-            elif node.tag == "input" or node.tag == "button":
-                self.input(node)
-            elif node.tag == "img":
-                self.image(node)
-            elif node.tag == "iframe" and \
-                 "src" in node.attributes:
-                self.iframe(node)
-            else:
-                for child in node.children:
-                    self.recurse(child)
-
     def paint(self, display_list):
         assert not self.children_field.dirty
         
@@ -633,92 +609,5 @@ def style(node, rules, frame):
         style(child, rules, frame)
 
 if __name__ == "__main__":
-    import sys
-    import argparse
-
-    parser = argparse.ArgumentParser(description='Chapter 13 code')
-    parser.add_argument("url", type=str, help="URL to load")
-    parser.add_argument('--single_threaded', action="store_true", default=False,
-        help='Whether to run the browser without a browser thread')
-    parser.add_argument('--disable_compositing', action="store_true",
-        default=False, help='Whether to composite some elements')
-    parser.add_argument('--disable_gpu', action='store_true',
-        default=False, help='Whether to disable use of the GPU')
-    parser.add_argument('--show_composited_layer_borders', action="store_true",
-        default=False, help='Whether to visually indicate composited layer borders')
-    parser.add_argument("--force_cross_origin_iframes", action="store_true",
-        default=False, help="Whether to treat all iframes as cross-origin")
-    args = parser.parse_args()
-
-    wbetools.USE_BROWSER_THREAD = not args.single_threaded
-    wbetools.USE_GPU = not args.disable_gpu
-    wbetools.USE_COMPOSITING = not args.disable_compositing and not args.disable_gpu
-    wbetools.SHOW_COMPOSITED_LAYER_BORDERS = args.show_composited_layer_borders
-    wbetools.FORCE_CROSS_ORIGIN_IFRAMES = args.force_cross_origin_iframes
-
-    sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
-    browser = Browser()
-    browser.load(args.url)
-
-    event = sdl2.SDL_Event()
-    ctrl_down = False
-    while True:
-        if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            if event.type == sdl2.SDL_QUIT:
-                browser.handle_quit()
-                sdl2.SDL_Quit()
-                sys.exit()
-                break
-            elif event.type == sdl2.SDL_MOUSEBUTTONUP:
-                browser.handle_click(event.button)
-            elif event.type == sdl2.SDL_MOUSEMOTION:
-                browser.handle_hover(event.motion)
-            elif event.type == sdl2.SDL_KEYDOWN:
-                if ctrl_down:
-                    if event.key.keysym.sym == sdl2.SDLK_EQUALS:
-                        browser.increment_zoom(1)
-                    elif event.key.keysym.sym == sdl2.SDLK_MINUS:
-                        browser.increment_zoom(-1)
-                    elif event.key.keysym.sym == sdl2.SDLK_0:
-                        browser.reset_zoom()
-                    elif event.key.keysym.sym == sdl2.SDLK_LEFT:
-                        browser.go_back()
-                    elif event.key.keysym.sym == sdl2.SDLK_TAB:
-                        browser.cycle_tabs()
-                    elif event.key.keysym.sym == sdl2.SDLK_a:
-                        browser.toggle_accessibility()
-                    elif event.key.keysym.sym == sdl2.SDLK_d:
-                        browser.toggle_dark_mode()
-                    elif event.key.keysym.sym == sdl2.SDLK_m:
-                        browser.toggle_mute()
-                    elif event.key.keysym.sym == sdl2.SDLK_t:
-                        browser.add_tab()
-                    elif event.key.keysym.sym == sdl2.SDLK_q:
-                        browser.handle_quit()
-                        sdl2.SDL_Quit()
-                        sys.exit()
-                        break
-                elif event.key.keysym.sym == sdl2.SDLK_RETURN:
-                    browser.handle_enter()
-                elif event.key.keysym.sym == sdl2.SDLK_DOWN:
-                    browser.handle_down()
-                elif event.key.keysym.sym == sdl2.SDLK_TAB:
-                    browser.handle_tab()
-                elif event.key.keysym.sym == sdl2.SDLK_RCTRL or \
-                    event.key.keysym.sym == sdl2.SDLK_LCTRL:
-                    ctrl_down = True
-            elif event.type == sdl2.SDL_KEYUP:
-                if event.key.keysym.sym == sdl2.SDLK_RCTRL or \
-                    event.key.keysym.sym == sdl2.SDLK_LCTRL:
-                    ctrl_down = False
-            elif event.type == sdl2.SDL_TEXTINPUT and not ctrl_down:
-                browser.handle_key(event.text.text.decode('utf8'))
-        active_tab = browser.tabs[browser.active_tab]
-        if not wbetools.USE_BROWSER_THREAD:
-            if active_tab.task_runner.needs_quit:
-                break
-            if browser.needs_animation_frame:
-                browser.needs_animation_frame = False
-                browser.render()
-        browser.composite_raster_and_draw()
-        browser.schedule_animation_frame()
+    args = add_main_args()
+    main_func(args)
