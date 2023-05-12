@@ -39,49 +39,49 @@ Introduction
 Part 1: Drawing Graphics
 ========================
 
-(@) [Downloading Web Pages](http.md)\
+1. [Downloading Web Pages](http.md)\
     URLs and HTTP requests
-(@) [Drawing to the Screen](graphics.md)\
+2. [Drawing to the Screen](graphics.md)\
     Creating windows and drawing to a canvas
-(@) [Formatting Text](text.md)\
+3. [Formatting Text](text.md)\
     Word wrapping and line spacing
 
 Part 2: Viewing Documents
 =========================
 
-(@) [Constructing a Document Tree](html.md)\
+4. [Constructing a Document Tree](html.md)\
     Parsing and fixing HTML
-(@) [Laying Out Pages](layout.md)\
+5. [Laying Out Pages](layout.md)\
     Inline and block layout, plus the box model
-(@) [Applying Author Styles](styles.md)\
+6. [Applying Author Styles](styles.md)\
     Parsing and applying CSS
-(@) [Handling Buttons and Links](chrome.md)\
+7. [Handling Buttons and Links](chrome.md)\
     Hyperlinks and browser chrome
 
 Part 3: Running Applications
 ============================
 
-(@) [Sending Information to Servers](forms.md)\
+8. [Sending Information to Servers](forms.md)\
     Form submission and web servers
-(@) [Running Interactive Scripts](scripts.md)\
+9. [Running Interactive Scripts](scripts.md)\
     Changing the DOM and reacting to events
-(@) [Keeping Data Private](security.md)\
+10. [Keeping Data Private](security.md)\
     Cookies and logins, XSS and CSRF
 
 Part 4: Modern Browsers
 =======================
 
-(@) [Adding Visual Effects](visual-effects.md)\
+11. [Adding Visual Effects](visual-effects.md)\
     Blending, clipping, and compositing
-(@) [Scheduling Tasks and Threads](scheduling.md)\
+12. [Scheduling Tasks and Threads](scheduling.md)\
     The event loop and the rendering pipeline
-(@) [Animating and Compositing](animations.md)\
+13. [Animating and Compositing](animations.md)\
     Smooth animations using the GPU
-(@) [Making Content Accessible](accessibility.md)\
+14. [Making Content Accessible](accessibility.md)\
     Keyboard input, zooming, and the accessibility tree
-(@) [Supporting Embedded Content](embeds.md)\
+15. [Supporting Embedded Content](embeds.md)\
     Images, iframes, and scripting
-(@) [Reusing Previous Computation](invalidation.md)\
+16. [Reusing Previous Computation](invalidation.md)\
     Editing, invalidation, reflow
 
 ::: {.outro}
