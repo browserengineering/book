@@ -290,6 +290,12 @@ class BlockLayout:
         self.dirty_descendants = True
 
     def layout(self):
+        old_zoom = self.zoom
+        old_width = self.width
+        old_height = self.height
+        old_x = self.x
+        old_y = self.y
+
         if self.dirty_zoom:
             self.zoom = self.parent.zoom
             for child in self.children:
