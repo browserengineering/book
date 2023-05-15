@@ -679,7 +679,7 @@ server. When you click on things or take actions in the application,
 that runs client code, which sends then data to the server via HTTP
 requests.
 
-[^exceptions]: Here's I'm talking in general terms. There are some
+[^exceptions]: Here I'm talking in general terms. There are some
     browser applications without a server, and others where the client
     code is exceptionally simple and almost all the code is on the
     server.
