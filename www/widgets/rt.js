@@ -588,13 +588,35 @@ class skia {
             rect.isEmpty = () => {
                 return rect.left() == rect.right() &&
                     rect.top() == rect.bottom();
-            }
+            };
             rect.join = (other_rect) => {
                 rect[0] = Math.min(rect.left(), other_rect.left());
                 rect[1] = Math.min(rect.top(), other_rect.top());
                 rect[2] = Math.max(rect.right(), other_rect.right());
                 rect[3] = Math.max(rect.bottom(), other_rect.bottom());
-            }
+            };
+            rect.roundOut = () => {
+                return skia.Rect.MakeLTRB(
+                    Math.floor(rect.left()),
+                    Math.floor(rect.top()),
+                    Math.ceil(rect.right()),
+                    Math.ceil(rect.bottom()));
+            };
+            rect.width = () => {
+                return rect.right() - rect.left();
+            };
+            rect.height = () => {
+                return rect.bottom() - rect.top();
+            };
+            rect.intersects = (other_rect) => {
+                if (rect.top() > other_rect.bottom() ||
+                    rect.bottom() < other_rect.top())
+                    return false;
+                if (rect.left() > other_rect.right() ||
+                    other_rect.left() > rect.right())
+                    return false;
+                return true;
+            };
         },
 
         MakeLTRB: (left, top, right, bottom) => {

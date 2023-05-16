@@ -174,6 +174,7 @@ LIBRARY_METHODS = [
     "roundOut",
     "intersects",
     "Intersects",
+    "join",
 
     # skia.RRect
     "MakeRectXY",
