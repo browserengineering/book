@@ -40,6 +40,45 @@ from lab15 import request, DrawImage, DocumentLayout, BlockLayout, \
     CommitData, draw_line, Browser, BROKEN_IMAGE, font, add_main_args
 import wbetools
 
+class ProtectedField:
+    def __init__(self, base, name, eager=False):
+        self.base = base
+        self.name = name
+        self.value = None
+        self.dirty = True
+        self.depended_on = set()
+        self.eager = eager
+
+    def depend(self, source):
+        source.depended_on.add(self)
+        self.dirty = True
+
+    def read(self, field):
+        assert not field.dirty, str(field)
+        self.depend(field)
+        return field.value
+
+    def set(self, value):
+        if value != self.value:
+            self.value = value
+            self.notify()
+        self.dirty = False
+        return value
+
+    def mark(self):
+        if not self.dirty:
+            self.dirty = True
+            if self.eager:
+                self.notify()
+
+    def notify(self):
+        for field in self.depended_on:
+            field.mark()
+
+    def __str__(self):
+        return str(self.base) + "." + self.name
+        
+
 @wbetools.patch(Element)
 class Element:
     def __init__(self, tag, attributes, parent):
@@ -52,9 +91,9 @@ class Element:
         self.is_focused = False
         self.layout_object = None
 
-        self.children_field = DependentField(self, "children")
+        self.children_field = ProtectedField(self, "children")
         self.children = self.children_field.set([])
-        self.style_field = DependentField(self, "style")
+        self.style_field = ProtectedField(self, "style")
         self.style = {}
 
 @wbetools.patch(Text)
@@ -68,9 +107,9 @@ class Text:
         self.is_focused = False
         self.layout_object = None
 
-        self.children_field = DependentField(self, "children")
+        self.children_field = ProtectedField(self, "children")
         self.children = self.children_field.set([])
-        self.style_field = DependentField(self, "style")
+        self.style_field = ProtectedField(self, "style")
         self.style = {}
 
 @wbetools.patch(is_focusable)
@@ -246,11 +285,11 @@ class LineLayout:
         self.width = None
         self.height = None
 
-        self.zoom_field = DependentField(self, "zoom")
-        self.x_field = DependentField(self, "x")
-        self.y_field = DependentField(self, "y")
-        self.width_field = DependentField(self, "width")
-        self.height_field = DependentField(self, "height")
+        self.zoom_field = ProtectedField(self, "zoom")
+        self.x_field = ProtectedField(self, "x")
+        self.y_field = ProtectedField(self, "y")
+        self.width_field = ProtectedField(self, "width")
+        self.height_field = ProtectedField(self, "height")
         self.parent.descendants.depend(self.node.children_field)
         self.parent.descendants.depend(self.node.style_field)
         self.parent.descendants.depend(self.zoom_field)
@@ -294,44 +333,6 @@ class LineLayout:
 
         self.height = self.height_field.set(max_ascent + max_descent)
         
-class DependentField:
-    def __init__(self, base, name, eager=False):
-        self.base = base
-        self.name = name
-        self.value = None
-        self.dirty = True
-        self.depended_on = set()
-        self.eager = eager
-
-    def depend(self, source):
-        source.depended_on.add(self)
-        self.dirty = True
-
-    def read(self, field):
-        assert not field.dirty, str(field)
-        self.depend(field)
-        return field.value
-
-    def set(self, value):
-        if value != self.value:
-            self.notify()
-            self.value = value
-        self.dirty = False
-        return value
-
-    def mark(self):
-        if not self.dirty:
-            self.dirty = True
-            if self.eager:
-                self.notify()
-
-    def notify(self):
-        for field in self.depended_on:
-            field.mark()
-
-    def __str__(self):
-        return str(self.base) + "." + self.name
-        
 @wbetools.patch(BlockLayout)
 class BlockLayout:
     def __init__(self, node, parent, previous, frame):
@@ -342,22 +343,19 @@ class BlockLayout:
         self.children = []
         self.frame = frame
 
-        if previous: previous.next = self
-        self.next = None
-
         self.x = None
         self.y = None
         self.width = None
         self.height = None
         self.zoom = None
 
-        self.children_field = DependentField(self, "children")
-        self.zoom_field = DependentField(self, "zoom")
-        self.width_field = DependentField(self, "width")
-        self.x_field = DependentField(self, "x")
-        self.y_field = DependentField(self, "y")
-        self.height_field = DependentField(self, "height")
-        self.descendants = DependentField(self, "descendants", eager=True)
+        self.children_field = ProtectedField(self, "children")
+        self.zoom_field = ProtectedField(self, "zoom")
+        self.width_field = ProtectedField(self, "width")
+        self.x_field = ProtectedField(self, "x")
+        self.y_field = ProtectedField(self, "y")
+        self.height_field = ProtectedField(self, "height")
+        self.descendants = ProtectedField(self, "descendants", eager=True)
         self.parent.descendants.depend(self.node.children_field)
         self.parent.descendants.depend(self.node.style_field)
         self.parent.descendants.depend(self.children_field)
@@ -396,8 +394,8 @@ class BlockLayout:
                 self.y = self.y_field.set(parent_y)
             
         if self.children_field.dirty:
-            node_children = self.children_field.read(self.node.children_field)
             mode = layout_mode(self.node)
+            node_children = self.children_field.read(self.node.children_field)
             if mode == "block":
                 self.children = []
                 previous = None
@@ -517,12 +515,12 @@ class DocumentLayout:
         self.previous = None
         self.children = []
 
-        self.zoom_field = DependentField(self, "zoom")
-        self.width_field = DependentField(self, "width")
-        self.height_field = DependentField(self, "height")
-        self.x_field = DependentField(self, "x")
-        self.y_field = DependentField(self, "y")
-        self.descendants = DependentField(self, "descendants", eager=True)
+        self.zoom_field = ProtectedField(self, "zoom")
+        self.width_field = ProtectedField(self, "width")
+        self.height_field = ProtectedField(self, "height")
+        self.x_field = ProtectedField(self, "x")
+        self.y_field = ProtectedField(self, "y")
+        self.descendants = ProtectedField(self, "descendants", eager=True)
 
         self.width = None
         self.height = None
