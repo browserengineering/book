@@ -5,9 +5,6 @@ from http import server
 # Based on code from https://stackoverflow.com/questions/12499171/
 class WBEServer(server.SimpleHTTPRequestHandler):
     def end_headers(self):
-        print(self)
-        if not hasattr(self, 'path'):
-            return
         if self.path.find("widgets") >= 0:
             self.send_header("Cross-Origin-Opener-Policy", "same-origin");
             self.send_header("Cross-Origin-Embedder-Policy", "require-corp");
