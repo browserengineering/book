@@ -60,8 +60,8 @@ class ProtectedField:
 
     def set(self, value):
         if value != self.value:
-            self.value = value
             self.notify()
+            self.value = value
         self.dirty = False
         return value
 
@@ -77,7 +77,19 @@ class ProtectedField:
 
     def __str__(self):
         return str(self.base) + "." + self.name
-        
+
+CSS_PROPERTIES = {
+    "transition": "",
+    "transform": "none",
+    "opacity": "1.0",
+    "mix-blend-mode": "normal",
+    "border-radius": "0px",
+    "overflow": "visible",
+    "outline": "none",
+    "background-color": "transparent",
+    "image-rendering": "auto",
+    "width": "auto",
+} | INHERITED_PROPERTIES
 
 @wbetools.patch(Element)
 class Element:
@@ -93,7 +105,9 @@ class Element:
 
         self.children_field = ProtectedField(self, "children")
         self.children = self.children_field.set([])
-        self.style_field = ProtectedField(self, "style")
+        self.style_field = {}
+        for property in CSS_PROPERTIES:
+            self.style_field[property] = ProtectedField(self, property)
         self.style = {}
 
 @wbetools.patch(Text)
@@ -109,7 +123,9 @@ class Text:
 
         self.children_field = ProtectedField(self, "children")
         self.children = self.children_field.set([])
-        self.style_field = ProtectedField(self, "style")
+        self.style_field = {}
+        for property in CSS_PROPERTIES:
+            self.style_field[property] = ProtectedField(self, property)
         self.style = {}
 
 @wbetools.patch(is_focusable)
@@ -291,7 +307,8 @@ class LineLayout:
         self.width_field = ProtectedField(self, "width")
         self.height_field = ProtectedField(self, "height")
         self.parent.descendants.depend(self.node.children_field)
-        self.parent.descendants.depend(self.node.style_field)
+        for property in self.node.style_field:
+            self.parent.descendants.depend(self.node.style_field[property])
         self.parent.descendants.depend(self.zoom_field)
         self.parent.descendants.depend(self.width_field)
         self.parent.descendants.depend(self.height_field)
@@ -357,7 +374,8 @@ class BlockLayout:
         self.height_field = ProtectedField(self, "height")
         self.descendants = ProtectedField(self, "descendants", eager=True)
         self.parent.descendants.depend(self.node.children_field)
-        self.parent.descendants.depend(self.node.style_field)
+        for property in self.node.style_field:
+            self.parent.descendants.depend(self.node.style_field[property])
         self.parent.descendants.depend(self.children_field)
         self.parent.descendants.depend(self.zoom_field)
         self.parent.descendants.depend(self.width_field)
@@ -372,10 +390,10 @@ class BlockLayout:
             self.zoom = self.zoom_field.set(parent_zoom)
 
         if self.width_field.dirty:
-            node_style = self.width_field.read(self.node.style_field)
-            if "width" in node_style:
+            width_prop = self.width_field.read(self.node.style_field["width"])
+            if width_prop.endswith("px"):
                 zoom = self.width_field.read(self.zoom_field)
-                self.width = self.width_field.set(device_px(float(node_style["width"][:-2]), zoom))
+                self.width = self.width_field.set(device_px(float(width_prop[:-2]), zoom))
             else:
                 parent_width = self.width_field.read(self.parent.width_field)
                 self.width = self.width_field.set(parent_width)
@@ -405,7 +423,6 @@ class BlockLayout:
                     previous = next
                 self.children_field.set(self.children)
             else:
-                self.children_field.read(self.node.style_field)
                 self.children_field.read(self.width_field)
                 self.children = []
                 self.new_line()
@@ -424,6 +441,15 @@ class BlockLayout:
                 for child in self.children
             ])
             self.height = self.height_field.set(new_height)
+
+    def text(self, node):
+        self.children_field.read(node.style_field["font-weight"])
+        self.children_field.read(node.style_field["font-style"])
+        self.children_field.read(node.style_field["font-size"])
+        node_font = font(node, self.zoom)
+        for word in node.text.split():
+            w = node_font.measureText(word)
+            self.add_inline_child(node, w, TextLayout, self.frame, word)
 
     def paint(self, display_list):
         assert not self.children_field.dirty
@@ -560,48 +586,53 @@ class JSContext:
 
 @wbetools.patch(style)
 def style(node, rules, frame):
-    if node.style_field.dirty:
-        old_style = node.style
-        new_style = {}
+    old_style = node.style
+    new_style = CSS_PROPERTIES.copy()
     
-        for property, default_value in INHERITED_PROPERTIES.items():
-            if node.parent:
-                parent_style = node.style_field.read(node.parent.style_field)
-                new_style[property] = parent_style[property]
-            else:
-                new_style[property] = default_value
-        for media, selector, body in rules:
-            if media:
-                if (media == "dark") != frame.tab.dark_mode: continue
-            if not selector.matches(node): continue
-            for property, value in body.items():
-                if node.parent and property == "font-size" and value.endswith("%"):
-                    node.style_field.read(node.parent.style_field)
-                computed_value = compute_style(node, property, value)
-                if not computed_value: continue
-                new_style[property] = computed_value
-        if isinstance(node, Element) and "style" in node.attributes:
-            pairs = CSSParser(node.attributes["style"]).body()
-            for property, value in pairs.items():
-                if node.parent and property == "font-size" and value.endswith("%"):
-                    node.style_field.read(node.parent.style_field)
-                computed_value = compute_style(node, property, value)
-                if not computed_value: continue
-                new_style[property] = computed_value
-    
-        if old_style:
-            transitions = diff_styles(old_style, new_style)
-            for property, (old_value, new_value, num_frames) \
-                in transitions.items():
-                if property in ANIMATED_PROPERTIES:
-                    frame.set_needs_render()
-                    AnimationClass = ANIMATED_PROPERTIES[property]
-                    animation = AnimationClass(
-                        old_value, new_value, num_frames)
-                    node.animations[property] = animation
-                    new_style[property] = animation.animate()
-    
-        node.style = node.style_field.set(new_style)
+    for property, default_value in INHERITED_PROPERTIES.items():
+        field = node.style_field[property]
+        if node.parent:
+            parent_field = node.parent.style_field[property]
+            new_style[property] = field.read(parent_field)
+        else:
+            new_style[property] = default_value
+    for media, selector, body in rules:
+        if media:
+            if (media == "dark") != frame.tab.dark_mode: continue
+        if not selector.matches(node): continue
+        for property, value in body.items():
+            if node.parent and property == "font-size" and value.endswith("%"):
+                parent_field = node.parent.style_field[property]
+                node.style_field[property].read(parent_field)
+            computed_value = compute_style(node, property, value)
+            if not computed_value: continue
+            new_style[property] = computed_value
+    if isinstance(node, Element) and "style" in node.attributes:
+        pairs = CSSParser(node.attributes["style"]).body()
+        for property, value in pairs.items():
+            if node.parent and property == "font-size" and value.endswith("%"):
+                parent_field = node.parent.style_field.get(property)
+                node.style_field[property].read(parent_field)
+            computed_value = compute_style(node, property, value)
+            if not computed_value: continue
+            new_style[property] = computed_value
+
+    if old_style:
+        transitions = diff_styles(old_style, new_style)
+        for property, (old_value, new_value, num_frames) \
+            in transitions.items():
+            if property in ANIMATED_PROPERTIES:
+                frame.set_needs_render()
+                AnimationClass = ANIMATED_PROPERTIES[property]
+                animation = AnimationClass(
+                    old_value, new_value, num_frames)
+                node.animations[property] = animation
+                new_style[property] = animation.animate()
+
+    for property, value in new_style.items():
+        if property in node.style_field:
+            node.style_field[property].set(value)
+    node.style = new_style
 
     for child in node.children:
         style(child, rules, frame)
