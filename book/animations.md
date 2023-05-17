@@ -221,7 +221,7 @@ First, we'll need to install the OpenGL library:
 and import it:
 
 ``` {.python}
-import OpenGL.GL as GL
+import OpenGL.GL
 ```
 
 Now we'll need to configure SDL to use OpenGL and and start/stop a [GL
@@ -251,8 +251,8 @@ class Browser:
                 self.sdl_window)
             print(("OpenGL initialized: vendor={}," + \
                 "renderer={}").format(
-                GL.glGetString(GL.GL_VENDOR),
-                GL.glGetString(GL.GL_RENDERER)))
+                OpenGL.GL.glGetString(OpenGL.GL.GL_VENDOR),
+                OpenGL.GL.glGetString(OpenGL.GL.GL_RENDERER)))
 
     def handle_quit(self):
         # ...
@@ -292,7 +292,7 @@ class Browser:
                 self.skia_context,
                 skia.GrBackendRenderTarget(
                     WIDTH, HEIGHT, 0, 0,
-                    skia.GrGLFramebufferInfo(0, GL.GL_RGBA8)),
+                    skia.GrGLFramebufferInfo(0, OpenGL.GL.GL_RGBA8)),
                     skia.kBottomLeft_GrSurfaceOrigin,
                     skia.kRGBA_8888_ColorType,
                     skia.ColorSpace.MakeSRGB())
@@ -430,10 +430,10 @@ class DrawRect(DisplayItem):
 Commands that already had a `children` field need to pass it to the
 `__init__` call:
 
-``` {.python replace=children%3dchildren/rect%2c%20children%3dchildren}
+``` {.python replace=children)/rect%2c%20children)}
 class ClipRRect(DisplayItem):
     def __init__(self, rect, radius, children, should_clip=True):
-        super().__init__(children=children)
+        super().__init__(children)
         # ...
 ```
 
@@ -779,7 +779,7 @@ class CompositedLayer:
                 self.skia_context, skia.Budgeted.kNo,
                 skia.ImageInfo.MakeN32Premul(
                     irect.width(), irect.height()))
-            assert self.surface is not None
+            assert self.surface
         canvas = self.surface.getCanvas()
 ```
 
@@ -1887,7 +1887,7 @@ Skia canvas `translate` method:
 ``` {.python replace=self.translation%20or/USE_COMPOSITING%20and%20self.translation%20or}
 class Transform(DisplayItem):
     def __init__(self, translation, rect, node, children):
-        super().__init__(rect, children=children, node=node)
+        super().__init__(rect, children, node)
         self.translation = translation
 
     def execute(self, canvas):
