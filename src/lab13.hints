@@ -28,5 +28,6 @@
  {"code": "property not in new_style", "type": "dict"},
  {"code": "'style' in node.attributes", "type": "dict"},
  {"code": "property in ANIMATED_PROPERTIES", "type": "list"},
- {"code": "node in self.composited_updates", "type": "list"}
+ {"code": "node in self.composited_updates", "type": "list"},
+ {"code": "old_transitions", "type": "dict"}
 ]

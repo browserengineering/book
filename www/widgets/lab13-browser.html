@@ -40,7 +40,7 @@ Promise.all([ckLoaded, loadFont]).then(([CanvasKit, robotoData]) => {
         w = init_window(b);
         await b.load(url);
         await b.render();
-        var repeat = setInterval(async function() {
+        setInterval(async function() {
           await b.render();
           await b.composite_raster_and_draw();
           await b.schedule_animation_frame();

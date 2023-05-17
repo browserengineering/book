@@ -806,10 +806,17 @@ def compile(tree, ctx, indent=0, patches=[]):
         out += "\n" + " " * indent + "}"
         return out
     elif isinstance(tree, ast.For):
+        try:
+            t = find_hint(tree.iter, "type")
+        except MissingHint:
+            t = "list"
+        assert t in ["dict", "list"]
         assert not tree.orelse
         ctx2 = Context("for", ctx)
         lhs = compile_lhs(tree.target, ctx2)
         rhs = compile_expr(tree.iter, ctx)
+        if t == "dict":
+            rhs = "Object.entries(" + rhs + ")"
         body = "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in tree.body])
         fstline = " " * indent + "for (let " + lhs + " of " + rhs + ") {\n"
         return fstline + body + "\n" + " " * indent + "}"

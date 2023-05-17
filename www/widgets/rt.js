@@ -480,6 +480,9 @@ class sdl2 {
     static SDL_UpdateWindowSurface(window) {
     }
 
+    static SDL_DestroyWindow(window) {
+    }
+
     static SDL_WINDOWPOS_CENTERED = 0;
     static SDL_WINDOWPOS_CENTERED = 0;
     static SDL_WINDOW_SHOWN = 0;
