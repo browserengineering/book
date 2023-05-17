@@ -65,6 +65,9 @@ class ProtectedField:
         self.dirty = False
         return value
 
+    def copy(self, other):
+        return self.set(self.read(other))
+
     def mark(self):
         if not self.dirty:
             self.dirty = True
@@ -316,22 +319,18 @@ class LineLayout:
         self.parent.descendants.depend(self.y_field)
 
     def layout(self):
-        parent_zoom = self.zoom_field.read(self.parent.zoom_field)
-        self.zoom = self.zoom_field.set(parent_zoom)
+        self.zoom = self.zoom_field.copy(self.parent.zoom_field)
 
-        parent_width = self.width_field.read(self.parent.width_field)
-        self.width = self.width_field.set(parent_width)
+        self.width = self.width_field.copy(self.parent.width_field)
 
-        parent_x = self.x_field.read(self.parent.x_field)
-        self.x = self.x_field.set(parent_x)
+        self.x = self.x_field.copy(self.parent.x_field)
 
         if self.previous:
             prev_y = self.y_field.read(self.previous.y_field)
             prev_height = self.y_field.read(self.previous.height_field)
             self.y = self.y_field.set(prev_y + prev_height)
         else:
-            parent_y = self.y_field.read(self.parent.y_field)
-            self.y = self.y_field.set(parent_y)
+            self.y = self.y_field.copy(self.parent.y_field)
 
         for word in self.children:
             word.layout()
@@ -386,8 +385,7 @@ class BlockLayout:
 
     def layout(self):
         if self.zoom_field.dirty:
-            parent_zoom = self.zoom_field.read(self.parent.zoom_field)
-            self.zoom = self.zoom_field.set(parent_zoom)
+            self.zoom = self.zoom_field.copy(self.parent.zoom_field)
 
         if self.width_field.dirty:
             width_prop = self.width_field.read(self.node.style_field["width"])
@@ -395,12 +393,10 @@ class BlockLayout:
                 zoom = self.width_field.read(self.zoom_field)
                 self.width = self.width_field.set(device_px(float(width_prop[:-2]), zoom))
             else:
-                parent_width = self.width_field.read(self.parent.width_field)
-                self.width = self.width_field.set(parent_width)
+                self.width = self.width_field.copy(self.parent.width_field)
 
         if self.x_field.dirty:
-            parent_x = self.x_field.read(self.parent.x_field)
-            self.x = self.x_field.set(parent_x)
+            self.x = self.x_field.copy(self.parent.x_field)
 
         if self.y_field.dirty:
             if self.previous: # Never changes
@@ -408,8 +404,7 @@ class BlockLayout:
                 prev_height = self.y_field.read(self.previous.height_field)
                 self.y = self.y_field.set(prev_y + prev_height)
             else:
-                parent_y = self.y_field.read(self.parent.y_field)
-                self.y = self.y_field.set(parent_y)
+                self.y = self.y_field.copy(self.parent.y_field)
             
         if self.children_field.dirty:
             mode = layout_mode(self.node)
@@ -423,7 +418,6 @@ class BlockLayout:
                     previous = next
                 self.children_field.set(self.children)
             else:
-                self.children_field.read(self.width_field)
                 self.children = []
                 self.new_line()
                 self.recurse(self.node)
@@ -450,6 +444,19 @@ class BlockLayout:
         for word in node.text.split():
             w = node_font.measureText(word)
             self.add_inline_child(node, w, TextLayout, self.frame, word)
+
+    def add_inline_child(self, node, w, child_class, frame, word=None):
+        width = self.children_field.read(self.width_field)
+        if self.cursor_x + w > width:
+            self.new_line()
+        line = self.children[-1]
+        if word:
+            child = child_class(node, line, self.previous_word, word)
+        else:
+            child = child_class(node, line, self.previous_word, frame)
+        line.children.append(child)
+        self.previous_word = child
+        self.cursor_x += w + font(node, self.zoom).measureText(' ')
 
     def paint(self, display_list):
         assert not self.children_field.dirty
