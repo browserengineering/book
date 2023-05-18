@@ -78,6 +78,10 @@ class ProtectedField:
         for field in self.depended_on:
             field.mark()
 
+    def get(self):
+        assert not self.dirty
+        return self.value
+
     def __str__(self):
         return str(self.base) + "." + self.name
 
@@ -590,6 +594,15 @@ class JSContext:
             child.parent = elt
         elt.children = elt.children_field.set(new_nodes)
         frame.set_needs_render()
+
+    def style_set(self, handle, s, window_id):
+        frame = self.tab.window_id_to_frame[window_id]
+        self.throw_if_cross_origin(frame)
+        elt = self.handle_to_node[handle]
+        elt.attributes['style'] = s
+        frame.set_needs_render()
+        for field, item in elt.style.item():
+            item.notify()
 
 @wbetools.patch(style)
 def style(node, rules, frame):
