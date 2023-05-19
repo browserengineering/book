@@ -82,8 +82,8 @@ class ProtectedField:
         assert not self.dirty
         return self.value
 
-    def __str__(self):
-        return str(self.base) + "." + self.name
+    def __repr__(self):
+        return "ProtectedField({}, {})".format(self.base, self.name)
 
 CSS_PROPERTIES = {
     "transition": "",
