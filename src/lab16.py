@@ -606,7 +606,7 @@ class JSContext:
 
 @wbetools.patch(style)
 def style(node, rules, frame):
-    if any([prop.dirty for prop in node.style.values()]):
+    if any([prop.dirty for prop in node.style_field.values()]):
         old_style = node.style
         new_style = CSS_PROPERTIES.copy()
         
