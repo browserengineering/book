@@ -41,21 +41,21 @@ from lab15 import request, DrawImage, DocumentLayout, BlockLayout, \
 import wbetools
 
 class ProtectedField:
-    def __init__(self, base, name, eager=False):
+    def __init__(self, base, name):
         self.base = base
         self.name = name
         self.value = None
         self.dirty = True
-        self.depended_on = set()
-        self.eager = eager
+        self.depended_lazy = set()
+        self.depended_eager = set()
 
-    def depend(self, source):
-        source.depended_on.add(self)
+    def control(self, source):
+        source.depended_eager.add(self)
         self.dirty = True
 
     def read(self, field):
         assert not field.dirty, str(field)
-        self.depend(field)
+        field.depended_lazy.add(self)
         return field.value
 
     def set(self, value):
@@ -69,13 +69,15 @@ class ProtectedField:
         return self.set(self.read(other))
 
     def mark(self):
-        if not self.dirty:
-            self.dirty = True
-            if self.eager:
-                self.notify()
+        if self.dirty: return
+        self.dirty = True
+        for field in self.depended_eager:
+            field.notify()
 
     def notify(self):
-        for field in self.depended_on:
+        for field in self.depended_lazy:
+            field.mark()
+        for field in self.depended_eager:
             field.mark()
 
     def get(self):
@@ -313,14 +315,14 @@ class LineLayout:
         self.y_field = ProtectedField(self, "y")
         self.width_field = ProtectedField(self, "width")
         self.height_field = ProtectedField(self, "height")
-        self.parent.descendants.depend(self.node.children_field)
+        self.parent.descendants.control(self.node.children_field)
         for property in self.node.style_field:
-            self.parent.descendants.depend(self.node.style_field[property])
-        self.parent.descendants.depend(self.zoom_field)
-        self.parent.descendants.depend(self.width_field)
-        self.parent.descendants.depend(self.height_field)
-        self.parent.descendants.depend(self.x_field)
-        self.parent.descendants.depend(self.y_field)
+            self.parent.descendants.control(self.node.style_field[property])
+        self.parent.descendants.control(self.zoom_field)
+        self.parent.descendants.control(self.width_field)
+        self.parent.descendants.control(self.height_field)
+        self.parent.descendants.control(self.x_field)
+        self.parent.descendants.control(self.y_field)
 
     def layout(self):
         self.zoom = self.zoom_field.copy(self.parent.zoom_field)
@@ -375,17 +377,17 @@ class BlockLayout:
         self.x_field = ProtectedField(self, "x")
         self.y_field = ProtectedField(self, "y")
         self.height_field = ProtectedField(self, "height")
-        self.descendants = ProtectedField(self, "descendants", eager=True)
-        self.parent.descendants.depend(self.node.children_field)
+        self.descendants = ProtectedField(self, "descendants")
+        self.parent.descendants.control(self.node.children_field)
         for property in self.node.style_field:
-            self.parent.descendants.depend(self.node.style_field[property])
-        self.parent.descendants.depend(self.children_field)
-        self.parent.descendants.depend(self.zoom_field)
-        self.parent.descendants.depend(self.width_field)
-        self.parent.descendants.depend(self.height_field)
-        self.parent.descendants.depend(self.x_field)
-        self.parent.descendants.depend(self.y_field)
-        self.parent.descendants.depend(self.descendants)
+            self.parent.descendants.control(self.node.style_field[property])
+        self.parent.descendants.control(self.children_field)
+        self.parent.descendants.control(self.zoom_field)
+        self.parent.descendants.control(self.width_field)
+        self.parent.descendants.control(self.height_field)
+        self.parent.descendants.control(self.x_field)
+        self.parent.descendants.control(self.y_field)
+        self.parent.descendants.control(self.descendants)
 
     def layout(self):
         if self.zoom_field.dirty:
@@ -557,7 +559,7 @@ class DocumentLayout:
         self.height_field = ProtectedField(self, "height")
         self.x_field = ProtectedField(self, "x")
         self.y_field = ProtectedField(self, "y")
-        self.descendants = ProtectedField(self, "descendants", eager=True)
+        self.descendants = ProtectedField(self, "descendants")
 
         self.width = None
         self.height = None
