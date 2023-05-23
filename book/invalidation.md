@@ -5,46 +5,40 @@ prev: embeds
 next: skipped
 ...
 
-So far, we've focused on improving animation performance by improving
-our browser's graphics subsystem. But that hasn't helped
-layout-inducing animations, since those typically spend most of their
-time in layout, not graphics. Yet just like compositing enabled smooth
-animations by avoiding redundant raster work, we can avoid redundant
-layout work using a technique called invalidation.
+So far, we've worked on animation performance by improving our
+browser's graphics subsystem. But that hasn't helped animations and
+interactions that affect layout, like user- or JavaScript-driven
+edits. Luckily, Yet like compositing enabled smooth animations by
+avoiding redundant raster work, we can avoid redundant layout work
+using a technique called invalidation.
 
 Editing Content
 ===============
 
-In [Chapter 13](animations.md), we used compositing to enable smooth
-animation of CSS properties like `transform` or `opacity`. Some CSS
-properties, however, can't be smoothly animated in this way, because
-as they change they not only modify the _display list_ but also the
-_layout tree_. This was a good reason to avoid animating
-_layout-inducing_ properties like `width`. However, while _animating_
-these properties is a bad practice, many other _interactions_
-unavoidably affect the layout tree, and yet we want them to be as
-smooth and low-latency as possible.
+In [Chapter 13](animations.md), we used compositing smoothly animate
+CSS properties like `transform` or `opacity`. However, other CSS
+properties like `width` can't be animated in this way. That's because
+these _layout-inducing_ animations change not only the _display list_
+but also the _layout tree_. Layout-inducing animations are a bad
+practice for this reason. Unfortunately, plenty of other interactions
+affect the layout tree and yet need to be as smooth as possible.
 
-One good example is editing text. Most people type at a rate of
-several characters per second, and even a delay of a few frames is
-very distracting. Yet editing text changes the document, and therefore
-requires constructing a new layout tree that reflects the new text.
-And, in fact, if you open up a large web page (like this one) and type
-into an input box on it (like the one below) in our toy browser,
-you'll
-see that it is quite laggy indeed:
+One good example is editing text. People type pretty quickly, so even
+a few frames' delay is very distracting. But editing changes the HTML
+tree and therefore requires a new layout tree that reflects the new
+text. But on large pages (like this one) constructing the layout tree
+can take quite a while. Try, for example, typing into this input box
+from our toy browser:
 
 <input style="width:100%"/>
 
-Now, in the case of typing into an `input` element, our browser
-rebuilds the layout tree, but in fact the layout tree looks the same
-each time---the text inside an `input` element doesn't get its own
-layout object. So that situation is easy to optimize. But browsers
-support other forms of text editing which do affect the layout tree.
-For example, in a real browser you can give any element the
-`contenteditable` attribute to make it editable. Once you do so, the
-user can click on the element to add or modify rich, formatted text in
-it:
+Typing into an `input` element could be special-cased,[^no-resize] but
+there are other text editing APIs. For example, the `contenteditable`
+attribute makes any element editable:
+
+[^no-resize]: For example, the `input` element doesn't change size as
+    you type, and the text in the `input` element doesn't get its own
+    layout object.
 
 ::: {.example contenteditable=true}
 Click on this <i>formatted</i> <b>text</b> to edit it.
@@ -63,10 +57,9 @@ def is_focusable(node):
 ```
 
 Once we're focused on an editable node, key presses should add text to
-it. In a real browser, the implementation would be a bit more complex
-in order to handle cursor movement, but I'm going to have key presses
-append to the last text node in the editable element. First we need to
-find that element:
+it. A real browser would need to handle cursor movement and all kinds
+of complications, but I'm just going to add characters to the last
+text node in the editable element. First we need to find that element:
 
 ``` {.python}
 class Frame:
@@ -97,9 +90,8 @@ class Frame:
 ```
 
 This is enough to make editing work, but it's convenient to also draw
-a cursor to show the user where the editing will happen and to provide
-visual confirmation that they've focused on the right element. Let's
-do that in `BlockLayout`:
+a cursor confirm that the element is focused and show where edits will
+go. Let's do that in `BlockLayout`:
 
 ``` {.python}
 class BlockLayout:
@@ -123,17 +115,16 @@ def DrawCursor(elt, width):
     return DrawLine(elt.x, elt.y, elt.x + width, elt.y + elt.height)
 ```
 
-We can also use this wrapper to draw the cursor in `InputLayout`:
+We might as well also use this wrapper in `InputLayout`:
 
 ``` {.python}
-
 class InputLayout(EmbedLayout):
     def paint(self, display_list):
         if self.node.is_focused and self.node.tag == "input":
             cmds.append(DrawCursor(self, self.font.measureText(text)))
 ```
 
-You should now be able to edit the example above in your own
+You should now be able to edit the examples on this page in your toy
 browser---but if you try it, you'll see that editing is extremely
 slow, with each character taking hundreds of milliseconds to type.
 
