@@ -131,18 +131,15 @@ slow, with each character taking hundreds of milliseconds to type.
 Idempotence
 ===========
 
-At a high level, the reason edits are slow is because each edit
-requires recomputing layout---and on a large page like this one, that
-takes our browser many, many milliseconds. But recomputing the layout
-isn't really necessary: when you type a single character, adding a
-single letter to a single word on a single line of the page, almost
-everything else on the page stays in the exact same place. So
-recomputing layout spends many, many milliseconds recomputing exactly
-the same layout coordinates that we already have. Invalidation means
-not doing that.
+At a high level, edits are slow is because each edit recomputes
+layout---and on a large page like this one, that takes our browser
+many, many milliseconds. But is recomputing layout necessary? Adding a
+single letter to a single word on a single line of the page doesn't
+exactly change the page dramatically: almost everything stays in the
+exact same place. Recomputing layout on every edit wastes a lot of
+time recomputing the exact the same layout we already had.
 
-So, why do we need to recompute layout every time we type a new
-character? Well, to start with, our `render` method uses a brand new
+So why do we recompute layout? Basically, `render` creates a brand new
 layout tree, every time we need to recompute layout:
 
 ``` {.python file=lab15}
@@ -154,18 +151,14 @@ class Frame:
             # ...
 ```
 
-Every time layout runs, the whole layout tree is discarded and a new
-one is created, starting with the root `DocumentLayout`. Because we're
-creating a new tree, we're throwing away all of the old layout
-information, even the information that was already correct. But this
-is wasteful: when layout _does_ need to run, it's typically due to a
-small change, like `innerHTML` or `style` being set on some element.
-Recreating the layout tree is wasteful, and we'd like to avoid it.
+By creating a new tree, we're throwing away all of the old layout
+information, even those bits that were already correct. Invalidation
+begins with not doing that.
 
-But before jumping right to coding, let's read over the existing code
-to understand where layout objects are created: search the code for
-`Layout`, which all layout class names end with. You should see that
-layout objects are created only in a few places:
+But before jumping right to coding, let's review how layout objects
+are created. Search your browser code for `Layout`, which all layout
+class names end with. You should see that layout objects are created
+only in a few places:
 
 - `DocumentLayout` objects are created by the `Tab` in `render`
 - `BlockLayout` objects are created by either:
@@ -174,21 +167,18 @@ layout objects are created only in a few places:
 - `LineLayout` objects are created by `BlockLayout` in `new_line`
 - All others are created by `BlockLayout` in `add_inline_child`
 
-In each of these locations, we want to reuse an existing layout
-object, instead of creating a new one, whenever possible. That'll save
-a bit of time and memory, but more importantly it'll later let us
-reuse already-computed layout information.
+We want to _avoid_ creating layout objects, instead reusing them
+whenever possible.
 
-Let's start with the first location. The `DocumentLayout` is created
-the same way each time, and its argument, `nodes`, is never assigned
-to once the page finishes loading. And the `DocumentLayout`
-constructor just copies its arguments into the `DocumentLayout`'s
-fields. This means every execution of this line of code creates an
-identical object.
+Let's start with `DocumentLayout`. It's created in `render`, and its
+two parameters, `nodes` and `self`, are the same every time. This
+means every execution of this line of code creates effectively
+identical objects.[^side-effects] That seems wasteful, so let's create
+the `DocumentLayout` just once, in `load`:
 
-Because the `DocumentLayout` is constructed the same way each time, we
-only need to do it once. Let's move that one line of code from
-`render` to `load`:
+[^side-effects]: This wouldn't be true if the `DocumentLayout`
+    constructor had side-effects or read global state, but it doesn't
+    do that.
 
 ``` {.python}
 class Frame:
@@ -203,8 +193,7 @@ class Frame:
             # ...
 ```
 
-Let's move on to the next case, where `BlockLayout` objects are
-created by `DocumentLayout`. Here's what that code looks like:
+The `DocumentLayout` then constructs a `BlockLayout`:
 
 ``` {.python file=lab15}
 class DocumentLayout:
@@ -213,14 +202,8 @@ class DocumentLayout:
         # ...
 ```
 
-As you can see, the arguments to `BlockLayout` here also cannot
-change: the `node` and `frame` fields, and `self`, are never assigned
-to, while `None` is just a constant. This means `BlockLayout`
-construction also has no arguments, which means we don't need to redo
-this step every time we do layout.
-
-We might therefore be tempted to skip the redundant work, with
-something like this:
+Again, the constructor parameters cannot change, so again we can skip
+re-constructing this layout object, with code like this:
 
 ``` {.python replace=.append(child)/%20%3d%20[child]}
 class DocumentLayout:
@@ -232,9 +215,11 @@ class DocumentLayout:
         # ...
 ```
 
-This reuses an existing `BlockLayout` object if possible. But note
-that right after `child` is created, it is *appended to* the the
-`children` array:
+However, if you try them, these changes don't actually work, because
+reusing a layout object also means we are running `layout` multiple
+times on the same object. That's not what we were doing before, and it
+doesn't work. For example, after the `DocumentLayout` creates its
+child `BlockLayout`, it *appends* it to the `children` array:
 
 ``` {.python}
 class DocumentLayout:
@@ -244,38 +229,31 @@ class DocumentLayout:
         # ...
 ```
 
-If we run this line of code twice, the `BlockLayout` will end up in
-the `children` array twice, which would cause all sorts of strange
+If we do layout more than once, the same `BlockLayout` will end up in
+the `children` array more than once, causing all sorts of strange
 problems. The layout tree wouldn't even be a tree any more!
 
-The core issue here is what's called *idempotence*: if we're keeping
-the layout tree around instead of rebuilding it from scratch each
-time, we're going to be calling `layout` multiple times, and we need
-repeated calls not to make any extra changes. More formally, a
-function is idempotent if calling it twice in a row with the same
-inputs and dependencies yields the same result. Assignments to fields
-are idempotent---if you assign a field the same value twice, it's gets
-the same value as assigning it once---but methods like `append`
-aren't.
+The core issue here is what's called *idempotence*: we need repeated
+calls to `layout` to work. More formally, a function is idempotent if
+calling it twice in a row with the same inputs and dependencies yields
+the same result. Assignments to fields are idempotent---you can assign
+a field the same value twice without changing it---but methods like
+`append` aren't.
 
-Here, the issue is easy to fix by replacing the `children` array
-instead of just modifying it:
+So before we move on, we need to replace any non-idempotent methods
+like `append` with idempotent ones like assignment:
 
 ``` {.python}
 class DocumentLayout:
     def layout(self, width, zoom):
-        if not self.children:
-            child = BlockLayout(self.node, self, None, self.frame)
-        else:
-            child = self.children[0]
+        # ...
         self.children = [child]
         # ...
 ```
 
-But we have similar issues in `BlockLayout`, which creates all the
-other types of layout objects and `append`s them to its `children`
-array. Here, the easy fix is to reset the `children` array at the top
-of `layout`:
+Likewise in `BlockLayout`, which creates other layout objects and
+`append`s them to its `children` array. Here, the easy fix is to reset
+the `children` array at the top of `layout`:
 
 ``` {.python}
 class BlockLayout:
@@ -284,11 +262,11 @@ class BlockLayout:
         # ...
 ```
 
-Now the `BlockLayout`'s `layout` function is idempotent again, because
+This makes the `BlockLayout`'s `layout` function idempotent because
 each call will recreate the `children` array the same way each time.
 
-Take a moment to read all of our other `layout` methods and look for
-any method calls to make sure they're idempotent. I found:
+Let's check all other `layout` methods for idempotency by reading them
+and noting any non-idempotent method calls. I found:
 
 - In `new_line`, `BlockLayout` will append to its `children` array;
 - In `text` and `input`, `BlockLayout` will append to the `children`
@@ -297,28 +275,22 @@ any method calls to make sure they're idempotent. I found:
   the `TextLayout` and `InputLayout` methods
 - Basically every layout method calls `display_px`
 
-Luckily, none of these break idempotence. The `new_line` method is
-only called through `layout`, which resets the `children` array, so
-the `children` array ends up the same each time it is called.
-Similarly, `text` and `input` are also only called through `layout`,
-which means all of the `LineLayout` children are reset. Meanwhile,
+Luckily, the `new_line` and `add_inline_child` methods are only called
+through `layout`, which resets the `children` array. Meanwhile,
 `get_font` acts as a cache, so multiple calls return the same font
-object, while `display_px` just does some math so always returns the
-same result given the same inputs.
+object, and `display_px` just does math, so always returns the same
+result given the same inputs. So all of our `layout` methods are now
+idempotent, and the browser should work correctly again.
 
-So every layout method is now idempotent, which means the browser
-should again work correctly, even though some layout objects are
-reused between layouts. Idempotency is important because it means it
-doesn't matter _how many_ times a function was called: one call, two
-calls, ten calls, no matter what the result is the same. And this
-means that avoiding redundant work is safe: if we find that we're
-calling the function twice with the same inputs and dependencies, we
-can just skip the second call without breaking anything else. So let's
-turn to that.
+Idempotency means it doesn't matter _how many_ times a function is
+called, and that gives us the freedom to skip redundant work. That
+makes it the foundation for the rest of this chapter, which is all
+about knowing what work is truly redundant.
 
 ::: {.further}
 
 :::
+
 
 Dependencies
 ============
