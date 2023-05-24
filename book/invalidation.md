@@ -1018,16 +1018,53 @@ def tree_to_list(tree, list):
 With all of these changes made, your browser should work again, and it
 should now skipping line layout for most elements.
 
+::: {.further}
+
+:::
+
+
 
 Widths for inline elements
 ==========================
 
-Now that `BlockLayout` protects its `width`, let's make sure all the
-other layout objects do. We've already done `DocumentLayout`.
-`LineLayout` is also pretty similar. However, the other layout methods
-are a bit more complex.
+For uniformity, let's make all of the other layout object types also
+protect their `width`; that means `LineLayout`, `TextLayout`, and then
+`EmbedLayout` and its variants. `LineLayout` is pretty easy:
 
-In `InputLayout` width depends on the zoom level:
+``` {.python}
+class LineLayout:
+    def __init__(self, node, parent, previous):
+        # ...
+        self.width = ProtectedField()
+        # ...
+
+    def layout(self):
+        # ...
+        if self.width.dirty:
+            self.width.copy(self.parent.width)
+        # ...
+```
+
+In `TextLayout`, we again need to handle `font`:
+
+``` {.python}
+class TextLayout:
+    def __init__(self, node, parent, previous, word):
+        # ...
+        self.width = ProtectedField()
+        # ...
+
+    def layout(self):
+        # ...
+        if self.width.dirty:
+            style = self.width.read(self.node.style)
+            zoom = self.width.read(self.zoom)
+            self.font = font(style, zoom)
+            self.width = self.font.measureText(self.word)
+        # ...
+```
+
+In `EmbedLayout`, we just need to protect the `width` field:
 
 ``` {.python}
 class EmbedLayout:
@@ -1035,7 +1072,15 @@ class EmbedLayout:
         # ...
         self.width = ProtectedField()
         # ...
+```
 
+There's also a reference to `width` in the `layout` method for
+computing `x` positions. For now you can just use `get` here.
+
+Now all that's left are the various types of replaced content. In
+`InputLayout`, the width only depends on the zoom level:
+
+``` {.python}
 class InputLayout(EmbedLayout):
     def layout(self):
         # ...
@@ -1045,167 +1090,21 @@ class InputLayout(EmbedLayout):
         # ...
 ```
 
-Finally, when it comes to `width`, let's look at `TextLayout`. Here,
-the width is computed based the `font`:
-
-``` {.python file=lab15}
-class TextLayout:
-    def layout(self):
-        # ...
-        self.font = font(self.node, zoom)
-        self.width = self.font.measureText(self.word)
-```
-
-For `iframe` and `img` elements, the width depends on the zoom level
-and also the element's `width` and `height` attributes. Luckily, our
-browser doesn't provide any way to change those attributes, so we
-don't need to track them as dependencies.^[That said, a real browser
-*would* need to make those attributes `ProtectedField`s as well.] So
-we just need to handle the `zoom` dependency, which looks the same as
-above:
-
-``` {.python}
-class ImageLayout(EmbedLayout):
-    def layout(self):
-        if width_attr and height_attr:
-            zoom = self.width.read(self.zoom)
-            self.width.set(device_px(int(width_attr), zoom))
-            # ...
-```
-
-You can repeat this pattern to handle the other uses of `width` in
-`ImageLayout` and `IframeLayout`.
-
-Finally, `TextLayout`. Here, the width depends on the font:
-
-``` {.python}
-class TextLayout:
-    def __init__(self, node, parent, previous, frame, word):
-        # ...
-        self.width = ProtectedField()
-        # ...
-
-    def layout(self):
-        # ...
-        if self.width.dirty:
-            self.font = font(self.node, self.zoom.get())
-            self.width.set(self.font.measureText(self.word))
-        # ...
-```
-
-As you can see, the `font` is computed based on `self.zoom`, which we
-can handle with `read`. However, it also depends on `node`, or more
-precisely, the node's `style` field:
-
-``` {.python file=lab15}
-def font(node, zoom):
-    weight = node.style['font-weight']
-    style = node.style['font-style']
-    size = float(node.style['font-size'][:-2])
-    font_size = device_px(size, zoom)
-    return get_font(font_size, weight, style)
-```
-
-A similar issue exists in the `BlockLayout`'s `text` method, where the
-`node_font` influences the arguments to `add_inline_child` and
-therefore the `children` field:
-
-``` {.python file=lab15}
-class BlockLayout
-    def text(self, node):
-        node_font = font(node, self.zoom.get())
-        for word in node.text.split():
-            w = node_font.measureText(word)
-            self.add_inline_child(node, w, TextLayout, self.frame, word)
-```
-
-We know these are dependencies we need to capture; more generally:
-
-- If we're using the `get` method during layout, it's being used to
-  compute another layout field, so we need to use `read` instead to
-  keep track of the dependency.
-- If we're modifying something used during layout, like the style, it
-  needs to be behind a `ProtectedField` so it can track dependencies.
+`IframeLayout` and `ImageLayout` are very similar, with the width
+depending on the zoom level and also the element's `width` and
+`height` attributes. Luckily, our browser doesn't provide any way to
+change those attributes, so we don't need to track them as
+dependencies.^[That said, a real browser *would* need to make those
+attributes `ProtectedField`s as well.] So they're handled just like
+`InputLayout`.
 
 
-
-
-Now, we can depend have the `TextLayout` width, and the width used in
-the `text` method, depend on the style:
-
-``` {.python}
-class BlockLayout:
-    def text(self, node):
-        # ...
-        zoom = self.width.read(self.zoom)
-        style = self.children.read(node.style)
-        node_font = font(style, zoom)
-        # ...
-
-class TextLayout:
-    def layout(self):
-        # ...
-        zoom = self.width.read(self.zoom)
-        style = self.width.read(self.node.style)
-        self.font = font(style, zoom)
-        # ...
-```
-
-Here I've changed `font` to take the style, not the node, as its
-argument:
-
-``` {.python}
-def font(style, zoom):
-    weight = style['font-weight']
-    style = style['font-style']
-    size = float(style['font-size'][:-2])
-    font_size = device_px(size, zoom)
-    return get_font(font_size, weight, style)
-
-```
-
-Thanks to these changes, all of the dependencies of line wrapping are
-now wrapped in `ProtectedField`s, which means that the `children`
-dirty flag will correctly tell us whether or not we can skip re-doing
-it:
-
-``` {.python}
-class BlockLayout:
-    def layout(self):
-        # ...
-        if self.children_field.dirty:
-            mode = layout_mode(self.node)
-            node_children = self.children_field.read(self.node.children_field)
-            if mode == "block":
-                # ...
-            else:
-                # ...
-        # ...
-```
-
-We've just done quite a number of significant changes to our layout
-algorithm, so let's take a moment to clean up. You'll need to go
-through every reference to the `children` and `style` fields on nodes,
-and the `width`, `zoom`, and `children` fields on layout objects. The
-references that happen during style or layout should all use the
-protected field method `read` to get the current value. (This will
-require, for example, a small refactor of `compute_style`.) References
-outside the style and layout phases---for example, those during
-paint---should use this simpler `get` method:
-
-``` {.python}
-class ProtectedField:
-    def get(self):
-        assert not self.dirty
-        return self.value
-```
-
-I'll leave you to make these changes on your own. They are all fairly
-straightforward, if a bit tedious. Once they're all made, you should
-be able to run your browser again without error. If you further add
-`print` statements to each layout object constructor, you should be
-able to see far fewer layout objects being created with each change,
-which was our goal.
+Once again, make sure you go through the associated `paint` methods
+and make sure you're always calling `get` when you use `width`. Check
+that your browser works, including with interactions like
+`contenteditabel`. If anything's wrong, you just need to make sure
+that you're always refering to `width` via methods like `get` and
+`read` that check dirty flags.
 
 ::: {.further}
 
@@ -1216,15 +1115,32 @@ which was our goal.
 Invalidating layout fields
 ==========================
 
-So far, we've made sure we're not recreating layout objects
-needlessly, but we are still recomputing each of their sizes and
-positions---except for `zoom` and `width`, which we've already had to
-handle. Anyway, recomputing these layout fields, typically `x`, `y`,
-and `height`, wastes time. Let's wrap all of those to in protected
-fields.
+Protecting every `width` field is good. And every time we protect
+another field, we save some layout work and potentially also some
+memory (if we can avoid re-allocating something). So let's expand our
+invalidation efforts to every other layout field, such as `x`, `y`,
+and `height`. As with `width`, let's start with `DocumentLayout` and
+`BlockLayout`, which tend to be simpler.
 
-Let's start with `x` positions. A `BlockLayout`'s `x` position is just
-its parent's `x` position, so we can just `copy` it over:
+Let's start with `x` positions. On `DocumentLayout`, we can just `set`
+the `x` position:
+
+``` {.python}
+class DocumentLayout:
+    def __init__(self, node, parent, previous, frame):
+        # ...
+        self.x = ProtectedField()
+        # ...
+
+    def layout(self, width, zoom):
+        # ...
+        if self.x.dirty:
+            self.x.set(device_px(HSTEP, zoom))
+        # ...
+```
+
+A `BlockLayout`'s `x` position is just its parent's `x` position, so
+we can just `copy` it over:
 
 ``` {.python}
 class BlockLayout:
@@ -1240,24 +1156,24 @@ class BlockLayout:
         # ...
 ```
 
-On `DocumentLayout`, we can just `set` the `x` position:
+Easy. Next let's do `height`s. For `DocumentLayout`, we just read the
+child's height:
 
 ``` {.python}
 class DocumentLayout:
     def __init__(self, node, parent, previous, frame):
         # ...
-        self.x = ProtectedField()
+        self.height = ProtectedField()
         # ...
 
     def layout(self, width, zoom):
         # ...
-        self.x.set(device_px(HSTEP, zoom))
-        # ...
+        if self.height.dirty:
+            child_height = self.height.read(child.height)
+            self.height.set(child_height + 2 * device_px(VSTEP, zoom))
 ```
 
-Let's skip the other layout objects for now, and instead move on to
-`height`s. For `BlockLayout`, these are computed based on the
-children's heights:
+`BlockLayout` is similar, except it loops over multiple children:
 
 ``` {.python}
 class BlockLayout:
@@ -1277,55 +1193,79 @@ class BlockLayout:
             self.height.set(new_height)
 ```
 
-Note that for this field, unlike the previous ones, parents'
-properties depend on their children, not the other way around. This
-means the `height` field depends on the `children` field as well as
-each of their heights. However, `ProtectedField` makes this easy to
-ensure, because we know we need to `read` the `children` field to get
-the list of children out.
+Note that we have to `read` the `children` field before using it.
+That's because `height`, unlike the previous layout fields, depends on
+the childrens' fields, not the parent's. Luckily, just using the
+`ProtectedField` methods handles this correctly.
 
-`DocumentLayout` is even simpler:
+Finally, with `height` done, let's do the last layout field, `y`
+position. Just like `x`, `y` is just `set` in `DocumentLayout`:
 
 ``` {.python}
 class DocumentLayout:
-    def __init__(self, node, parent, previous, frame):
+    def __init__(self, node, frame):
         # ...
-        self.height = ProtectedField()
-        # ...
+        self.y = ProtectedField()
 
     def layout(self, width, zoom):
         # ...
-        child_height = self.height.read(child.height)
-        self.height.set(child_height + 2 * device_px(VSTEP, zoom))
+        if self.y.dirty:
+            self.y.set(device_px(VSTEP, zoom))
         # ...
 ```
 
-So that's `BlockLayout` and `DocumentLayout`. Now let's think about
-the other layout object types: `LineLayout`, `TextLayout`, and
-`EmbedLayout` and its subtypes.
+In `BlockLayout`, we need to sometimes refer to fields of the
+`previous` sibling:
 
-Line and inline layout works a little differently from block layout.
-Let's review:
+``` {.python}
+class BlockLayout:
+    def __init__(self, node, parent, previous, frame):
+        # ...
+        self.y = ProtectedField()
 
-1. The tree structure is always a `BlockLayout` containing one or more
-   `LineLayout`s which in turn contain one or more of the others.
-2. The `LineLayout` computes its `zoom`, `x`, `y`, and `width`, then
-   recurses to its children.
-3. Those children compute their `zoom`, `x`, `width`, and `height`,
-   but also their `font`
-4. Later children use previous children's `font` to add spaces between
-   words
-5. Once they're done, the `LineLayout` calls `get_ascent` and
-   `get_descent` methods to compute its own `height` and the `y` of
-   each child
+    def layout(self):
+        # ...
+        if self.y.dirty:
+            if self.previous:
+                prev_y = self.y.read(self.previous.y)
+                prev_height = self.y.read(self.previous.height)
+                self.y.set(prev_y + prev_height)
+            else:
+                self.y.copy(self.parent.y)
+        # ...
+```
 
-The dependency structure is a little complex. Don't try to get it all
-in your head; instead, focus on the fact that besides `zoom`, `x`,
-`y`, `width`, and `height`, these layout objects also compute a
-`font`, an ascent, and a descent.
+So that's all the layout fields on `BlockLayout` and `DocumentLayout`.
+Do go through and fix up these layout types' `paint` methods (and also
+the `DrawCursor` helper)---but note that the browser won't quite run
+right now, because the `BlockLayout` assumes its children's `height`
+fields are protected, but if those fields are `LineLayout`s they aren't.
 
-We'll make all three of these fields protected. Let's start with
-`TextLayout`:
+::: {.further}
+
+:::
+
+
+
+Protecting inline layout
+========================
+
+Layout for `LineLayout`, `TextLayout`, and `EmbedLayout` and its
+subtypes works a little differently. Yes, each of these layout objects
+has `x`, `y`, and `height` fields. But they also compute `font` fields
+and have `get_ascent` and `get_descent` methods that are called by
+other layout objects. We'll protect all of these fields.[^dps] Since
+we now have quite a bit of `ProtectedField` experience, we'll do all
+the fields in one go.
+
+[^dps]: Including rewriting `ascent` and `descent` to be protected
+    fields. It's possible to protect methods as well, using something
+    called "destination passing style", where the destination of a
+    method's return value is passed to it as an argument, somewhat
+    like out parameters in C. But converting to fields is usually
+    cleaner.
+
+Let's start with `TextLayout`:
 
 ``` {.python}
 class TextLayout:
@@ -1340,16 +1280,10 @@ class TextLayout:
         # ...
 ```
 
-Note that I've converted `ascent` and `descent` from methods to
-protected fields. This will make it easier to manage using
-`ProtectedField`.^[An alternative to rewriting this is to use what's
-called "destination passing style", where to destination of a method's
-return value is passed to it as an argument. But rewriting usually
-leads to cleaner code.]
+Note the new `ascent` and `descent` fields.
 
-We'll need to compute these fields in `layout`. Let's start with
-`font`, `width`, `height`, `ascent`, and `descent`, because these are
-all similar and fairly straightforward:
+We'll need to compute these fields in `layout`. All of the
+font-related ones are fairly straightforward:
 
 ``` {.python}
 class TextLayout:
@@ -1378,11 +1312,13 @@ class TextLayout:
             self.height.set(linespace(font))
 ```
 
-It looks a bit odd to compute `font` again inside each `if` statement,
-but remember that each of those `read` calls establishes a dependency
-for one layout field upon another. I like to think of each `font` as
-being scoped to its `if` statement.^[Python scoping doesn't actually
-work like this, but many languages like C++ and JavaScript do.]
+Note that I've changed `width` to read the `font` field instead of
+directly reading `zoom` and `styel`. It *does* looks a bit odd to
+compute `font` again inside each `if` statement, but remember that
+each of those `read` calls establishes a dependency for one layout
+field upon another. I like to think of each `font` as being scoped to
+its `if` statement.^[Python scoping doesn't actually work like this,
+but many languages like C++ and JavaScript do.]
 
 We also need to compute the `x` position of a `TextLayout`. That can
 use the previous sibling's font, *x* position, and width:
@@ -1396,14 +1332,13 @@ class TextLayout:
                 prev_x = self.x.read(self.previous.x)
                 prev_font = self.x.read(self.previous.font)
                 prev_width = self.x.read(self.previous.width)
-                space = self.previous.font.measureText(' ')
-                self.x.set(prev_x + prev_font.measureText(" ") + prev_width)
+                self.x.set(prev_x + font.measureText(' ') + prev_width)
             else:
                 self.x.copy(self.parent.x)
 ```
 
-That's it for `TextLayout`. `EmbedLayout` is basically identical,
-except that its `ascent` and `descent` are simpler:
+So that's `TextLayout`. `EmbedLayout` is basically identical, except
+that its `ascent` and `descent` are simpler:
 
 ``` {.python}
 class EmbedLayout:
@@ -1417,22 +1352,29 @@ class EmbedLayout:
             self.descent.set(0)
 ```
 
+::: {.todo}
+There's a timing issue here. `ascent` and `descent` depend on
+`height`, which was computed by the subclass, which calls `layout` at
+the start, not end, of the layout pass. I propose we refactor `layout`
+on `EmbedLayout` into `layout_start` and `layout_end` methods which
+handle the common parts.
+:::
+
 Then, each of the `EmbedLayout` subtypes have their own way of
-computing their height. These also need to be converted to use
-`ProtectedField`, but that's typically simple. For example, for
-`InputLayout`, it looks like this:
+computing their height. Here's `InputLayout`:
 
 ``` {.python}
 class InputLayout(EmbedLayout):
     def layout(self):
         # ...
-        font = self.height.read(self.font)
-        self.height = linespace(font)
+        if self.height.dirty:
+            font = self.height.read(self.font)
+            self.height = linespace(font)
 ```
 
-Specifically `ImageLayout` has one extra quirk, which is that it also
-computes an `img_height` field, which also needs to be converted to a
-`ProtectedField`:
+Here's `ImageLayout`; it has an `img_height` field, which I'm not
+going to protect and instead treat as an intermediate step in
+computing `height`:
 
 ``` {.python}
 class ImageLayout(EmbedLayout):
@@ -1442,36 +1384,44 @@ class ImageLayout(EmbedLayout):
 
     def layout(self):
         # ...
-        img_height = self.height.read(self.img_height)
-        font = self.height.read(self.font)
-        self.height.set(max(img_height, linespace(font)))
+        if self.height.dirty:
+            font = self.height.read(self.font)
+            self.height.set(max(self.img_height, linespace(font)))
 ```
 
-So that covers all of the inline layout objects. What about
-`LineLayout`? These only have the usual five layout fields: `zoom`,
-`x`, `y`, `width`, and `height`:
+Finally, here's `IframeLayout`, which is straightforward:
+
+``` {.python}
+class IframeLayout(EmbedLayout):
+    def layout(self):
+        # ...
+        if self.height.dirty:
+            zoom = self.height.read(self.zoom)
+            if height_attr:
+                self.height.set(device_px(int(height_attr) + 2, zoom))
+            else:
+                self.height.set(device_px(IFRAME_HEIGHT_PX + 2, zoom))
+        # ...
+```
+
+So that covers all of the inline layout objects. All that's left is
+`LineLayout`. Here are `x` and `y`:
 
 ``` {.python}
 class LineLayout:
     def __init__(self, node, parent, previous):
         # ...
-        self.zoom = ProtectedField()
         self.x = ProtectedField()
         self.y = ProtectedField()
-        self.width = ProtectedField()
-        self.height = ProtectedField()
+        # ...
 ```
 
-Most of them are computed in straightforward ways:
+The computations are straightforward:
 
 ``` {.python}
 class LineLayout:
     def layout(self):
-        if self.zoom.dirty:
-            self.zoom.copy(self.parent.zoom)
-
-        if self.width.dirty:
-            self.width.copy(self.parent.width)
+        # ...
 
         if self.x.dirty:
             self.x.copy(self.x.width)
@@ -1481,6 +1431,8 @@ class LineLayout:
                 prev_y = self.y.read(self.previous.y)
                 prev_height = self.y.read(self.previous.height)
                 self.y.set(prev_y + self.prev_height)
+            else:
+                self.y.copy(self.parent.y)
 
         # ...
 ```
@@ -1507,11 +1459,15 @@ class LineLayout:
     def layout(self):
         # ...
         if self.height.dirty:
-            children = self.height.read(self.children)
-            if not children:
+            if not self.children:
                 self.height.set(0)
                 return
 ```
+
+Note that we don't need to `read` the `children` field because in
+`LineLayout` it isn't protected---because it's filled in by
+`BlockLayout` when the `LineLayout` is created, and then never
+modified.
 
 Next, let's recompute the ascent and descent:
 
@@ -1520,17 +1476,15 @@ class LineLayout:
     def layout(self):
         # ...
         if self.ascent.dirty:
-            children = self.ascent.read(self.children)
-            self.ascent = max([
+            self.ascent.set(max([
                 -self.ascent.read(child.ascent)
-                for child in children
-            ])
+                for child in self.children
+            ]))
 
         if self.descent.dirty:
-            children = self.descent.read(self.children)
             self.descent = max([
                 self.descent.read(child.descent)
-                for child in children
+                for child in self.children
             ])
 ```
 
@@ -1542,10 +1496,10 @@ class LineLayout:
         # ...
         for child in self.children:
             if child.y.dirty:
-                y = child.y.read(self.y)
-                y += child.y.read(self.ascent)
-                y += child.y.read(child.ascent)
-                child.y.set(y)
+                new_y = child.y.read(self.y)
+                new_y += child.y.read(self.ascent)
+                new_y += child.y.read(child.ascent)
+                child.y.set(new_y)
 ```
 
 Finally, we recompute the line's height:
@@ -1562,16 +1516,17 @@ class LineLayout:
 
 As a result of these changes, all of our layout objects' fields should
 now be `ProtectedField`s. Take a moment to make sure all uses of these
-fields use `read` and `get`, and make sure your browser still runs. I
-recommend testing your browser on this page, which has a
-`contenteditable` element toward the type. Try typing into it, and
-test what happens if you type multiple words or enough text to force
-it to wrap over multiple lines. The browser should smoothly update
-with every change.
+fields use `read` and `get`, and make sure your browser still runs.
+Test `contenteditable`, and make sure the browser smoothly updates
+with every change. You will likely need to now fix a few uses of
+`height` and `y` inside `Frame` and `Tab`, like for clamping scroll
+positions.
 
 ::: {.further}
 
 :::
+
+
 
 Skipping no-op updates
 ======================

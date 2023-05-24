@@ -7,6 +7,7 @@ without exercises.
 import sdl2
 import skia
 import ctypes
+import math
 from lab4 import print_tree
 from lab4 import HTMLParser
 from lab13 import Text, Element
@@ -98,11 +99,17 @@ def paint_outline(node, cmds, rect, zoom):
 def has_outline(node):
     return parse_outline(node.style.get().get('outline'), 1)
 
+def unprotect(v):
+    if isinstance(v, float):
+        return v
+    else:
+        return v.get()
+
 @wbetools.patch(absolute_bounds_for_obj)
 def absolute_bounds_for_obj(obj):
-    w = obj.width
-    if not isinstance(w, float): w = w.get()
-    rect = skia.Rect.MakeXYWH(obj.x, obj.y, w, obj.height)
+    rect = skia.Rect.MakeXYWH(
+        unprotect(obj.x), unprotect(obj.y),
+        unprotect(obj.width), unprotect(obj.height))
     cur = obj.node
     while cur:
         rect = map_translation(rect, parse_transform(cur.style.get().get('transform', '')))
@@ -195,9 +202,9 @@ class DocumentLayout:
 
         self.zoom = ProtectedField()
         self.width = ProtectedField()
-        self.height = None
-        self.x = None
-        self.y = None
+        self.height = ProtectedField()
+        self.x = ProtectedField()
+        self.y = ProtectedField()
 
     def layout(self, width, zoom):
         self.zoom.set(zoom)
@@ -207,19 +214,24 @@ class DocumentLayout:
             child = self.children[0]
         self.children = [child]
 
-        self.width.set(width - 2 * device_px(HSTEP, zoom))
-        self.x = device_px(HSTEP, zoom)
-        self.y = device_px(VSTEP, zoom)
+        if self.width.dirty:
+            self.width.set(width - 2 * device_px(HSTEP, zoom))
+        if self.x.dirty:
+            self.x.set(device_px(HSTEP, zoom))
+        if self.y.dirty:
+            self.y.set(device_px(VSTEP, zoom))
         child.layout()
-        self.height = child.height + 2 * device_px(VSTEP, zoom)
+        if self.height.dirty:
+            child_height = self.height.read(child.height)
+            self.height.set(child_height + 2 * device_px(VSTEP, zoom))
 
     def paint(self, display_list, dark_mode, scroll):
         cmds = []
         self.children[0].paint(cmds)
         if scroll != None and scroll != 0:
             rect = skia.Rect.MakeLTRB(
-                self.x, self.y,
-                self.x + self.width, self.y + self.height)
+                self.x.get(), self.y.get(),
+                self.x.get() + self.width.get(), self.y.get() + self.height.get())
             cmds = [Transform((0, -scroll), rect, self.node, cmds)]
 
         display_list.extend(cmds)
@@ -236,9 +248,9 @@ class BlockLayout:
         self.children = ProtectedField()
         self.zoom = ProtectedField()
         self.width = ProtectedField()
-        self.height = None
-        self.x = None
-        self.y = None
+        self.height = ProtectedField()
+        self.x = ProtectedField()
+        self.y = ProtectedField()
 
     def layout(self):
         if self.zoom.dirty:
@@ -246,12 +258,16 @@ class BlockLayout:
 
         if self.width.dirty:
             self.width.copy(self.parent.width)
-        self.x = self.parent.x
+        if self.x.dirty:
+            self.x.copy(self.parent.x)
 
-        if self.previous:
-            self.y = self.previous.y + self.previous.height
-        else:
-            self.y = self.parent.y
+        if self.y.dirty:
+            if self.previous:
+                prev_y = self.y.read(self.previous.y)
+                prev_height = self.y.read(self.previous.height)
+                self.y.set(prev_y + prev_height)
+            else:
+                self.y.copy(self.parent.y)
 
         mode = layout_mode(self.node)
         if mode == "block":
@@ -274,7 +290,13 @@ class BlockLayout:
         for child in self.children.get():
             child.layout()
 
-        self.height = sum([child.height for child in self.children.get()])
+        if self.height.dirty:
+            children = self.height.read(self.children)
+            new_height = sum([
+                self.height.read(child.height)
+                for child in children
+            ])
+            self.height.set(new_height)
 
     def input(self, node):
         zoom = self.children.read(self.zoom)
@@ -331,8 +353,8 @@ class BlockLayout:
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
-            self.x, self.y, self.x + self.width.get(),
-            self.y + self.height)
+            self.x.get(), self.y.get(), self.x.get() + self.width.get(),
+            self.y.get() + self.height.get())
 
         is_atomic = not isinstance(self.node, Text) and \
             (self.node.tag == "input" or self.node.tag == "button")
@@ -356,7 +378,7 @@ class BlockLayout:
                 if isinstance(t, TextLayout)
             ]
             if text_nodes:
-                cmds.append(DrawCursor(text_nodes[-1], text_nodes[-1].width))
+                cmds.append(DrawCursor(text_nodes[-1], text_nodes[-1].width.get()))
             else:
                 cmds.append(DrawCursor(self, 0))
 
@@ -365,7 +387,7 @@ class BlockLayout:
         display_list.extend(cmds)
 
 def DrawCursor(elt, width):
-    return DrawLine(elt.x + width, elt.y, elt.x + width, elt.y + elt.height)
+    return DrawLine(elt.x.get() + width, elt.y.get(), elt.x.get() + width, elt.y.get() + elt.height.get())
 
 @wbetools.patch(LineLayout)
 class LineLayout:
@@ -375,31 +397,57 @@ class LineLayout:
         self.previous = previous
         self.children = []
         self.zoom = ProtectedField()
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
+        self.x = ProtectedField()
+        self.y = ProtectedField()
+        self.width = ProtectedField()
+        self.height = ProtectedField()
+        self.ascent = ProtectedField()
+        self.descent = ProtectedField()
 
     def layout(self):
         if self.zoom.dirty:
             self.zoom.copy(self.parent.zoom)
-        self.width = self.parent.width.get()
-        self.x = self.parent.x
-        if self.previous:
-            self.y = self.previous.y + self.previous.height
-        else:
-            self.y = self.parent.y
+        if self.width.dirty:
+            self.width.copy(self.parent.width)
+        if self.x.dirty:
+            self.x.copy(self.parent.x)
+        if self.y.dirty:
+            if self.previous:
+                prev_y = self.y.read(self.previous.y)
+                prev_height = self.y.read(self.previous.height)
+                self.y.set(prev_y + prev_height)
+            else:
+                self.y.copy(self.parent.y)
+
         for word in self.children:
             word.layout()
-        if not self.children:
-            self.height = 0
-            return
-        max_ascent = max([-child.get_ascent(1.25) for child in self.children])
-        baseline = self.y + max_ascent
+
+        if self.height.dirty:
+            if not self.children:
+                self.height.set(0)
+                return
+
+        if self.ascent.dirty:
+            self.ascent.set(max([
+                -self.ascent.read(child.ascent) for child in self.children
+            ]))
+
+        if self.descent.dirty:
+            self.descent.set(max([
+                self.descent.read(child.descent) for child in self.children
+            ]))
+
         for child in self.children:
-            child.y = baseline + child.get_ascent()
-        max_descent = max([child.get_descent(1.25) for child in self.children])
-        self.height = max_ascent + max_descent
+            if child.y.dirty:
+                new_y = child.y.read(self.y)
+                new_y += child.y.read(self.ascent)
+                new_y += child.y.read(child.ascent)
+                child.y.set(new_y)
+
+        if self.height.dirty:
+            max_ascent = self.height.read(self.ascent)
+            max_descent = self.height.read(self.descent)
+            self.height.set(max_ascent + max_descent)
 
     def paint(self, display_list):
         outline_rect = skia.Rect.MakeEmpty()
@@ -422,35 +470,51 @@ class TextLayout:
         self.parent = parent
         self.previous = previous
         self.zoom = ProtectedField()
-        self.width = None
-        self.height = None
-        self.x = None
-        self.y = None
-        self.font = None
-
-    def get_ascent(self, font_multiplier=1.0):
-        return self.font.getMetrics().fAscent * font_multiplier
-
-    def get_descent(self, font_multiplier=1.0):
-        return self.font.getMetrics().fDescent * font_multiplier
+        self.width = ProtectedField()
+        self.height = ProtectedField()
+        self.x = ProtectedField()
+        self.y = ProtectedField()
+        self.font = ProtectedField()
+        self.ascent = ProtectedField()
+        self.descent = ProtectedField()
 
     def layout(self):
         if self.zoom.dirty:
             self.zoom.copy(self.parent.zoom)
 
-        self.font = font(self.node.style.get(), self.zoom.get())
-        self.width = self.font.measureText(self.word)
+        if self.font.dirty:
+            style = self.font.read(self.node.style)
+            zoom = self.font.read(self.zoom)
+            self.font.set(font(style, zoom))
 
-        if self.previous:
-            space = self.previous.font.measureText(' ')
-            self.x = self.previous.x + space + self.previous.width
-        else:
-            self.x = self.parent.x
-        self.height = linespace(self.font)
+        if self.width.dirty:
+            f = self.width.read(self.font)
+            self.width.set(f.measureText(self.word))
+
+        if self.ascent.dirty:
+            f = self.ascent.read(self.font)
+            self.ascent.set(f.getMetrics().fAscent * 1.25)
+
+        if self.descent.dirty:
+            f = self.descent.read(self.font)
+            self.descent.set(f.getMetrics().fDescent * 1.25)
+
+        if self.height.dirty:
+            f = self.height.read(self.font)
+            self.height.set(linespace(f))
+
+        if self.x.dirty:
+            if self.previous:
+                prev_x = self.x.read(self.previous.x)
+                prev_font = self.x.read(self.previous.font)
+                prev_width = self.x.read(self.previous.width)
+                self.x.set(prev_x + prev_font.measureText(' ') + prev_width)
+            else:
+                self.x.copy(self.parent.x)
 
     def paint(self, display_list):
         color = self.node.style.get()['color']
-        display_list.append(DrawText(self.x, self.y, self.word, self.font, color))
+        display_list.append(DrawText(self.x.get(), self.y.get(), self.word, self.font.get(), color))
 
 @wbetools.patch(EmbedLayout)
 class EmbedLayout:
@@ -463,64 +527,58 @@ class EmbedLayout:
 
         self.children = []
         self.zoom = ProtectedField()
-        self.width = None
-        self.height = None
-        self.x = None
-        self.y = None
-        self.font = None
-
-    def get_ascent(self, font_multiplier=1.0):
-        return -self.height
-
-    def get_descent(self, font_multiplier=1.0):
-        return 0
+        self.width = ProtectedField()
+        self.height = ProtectedField()
+        self.x = ProtectedField()
+        self.y = ProtectedField()
+        self.font = ProtectedField()
+        self.ascent = ProtectedField()
+        self.descent = ProtectedField()
 
     def layout(self):
-        self.zoom.copy(self.parent.zoom)
-        self.font = font(self.node.style.get(), self.zoom.get())
-        if self.previous:
-            space = self.previous.font.measureText(' ')
-            self.x = self.previous.x + space + self.previous.width
-        else:
-            self.x = self.parent.x
+        if self.zoom.dirty:
+            self.zoom.copy(self.parent.zoom)
+
+        if self.font.dirty:
+            style = self.font.read(self.node.style)
+            zoom = self.font.read(self.zoom)
+            self.font.set(font(style, zoom))
+
+        if self.x.dirty:
+            if self.previous:
+                prev_x = self.x.read(self.previous.x)
+                prev_font = self.x.read(self.previous.font)
+                prev_width = self.x.read(self.previous.width)
+                self.x.set(prev_x + prev_font.measureText(' ') + prev_width)
+            else:
+                self.x.copy(self.parent.x)
+
+    def layout_after(self):
+        if self.ascent.dirty:
+            height = self.ascent.read(self.height)
+            self.ascent.set(-height * 1.25)
+        
+        if self.descent.dirty:
+            self.descent.set(0)
 
 @wbetools.patch(InputLayout)
 class InputLayout(EmbedLayout):
     def layout(self):
         EmbedLayout.layout(self)
-        self.width = device_px(INPUT_WIDTH_PX, self.zoom.get())
-        self.height = linespace(self.font)
-
-    def paint(self, display_list):
-        cmds = []
-        rect = skia.Rect.MakeLTRB(self.x, self.y, self.x + self.width, self.y + self.height)
-        bgcolor = self.node.style.get().get('background-color', 'transparent')
-        if bgcolor != 'transparent':
-            radius = device_px(float(self.node.style.get().get('border-radius', '0px')[:-2]), self.zoom.get())
-            cmds.append(DrawRRect(rect, radius, bgcolor))
-        if self.node.tag == 'input':
-            text = self.node.attributes.get('value', '')
-        elif self.node.tag == 'button':
-            if len(self.node.children) == 1 and isinstance(self.node.children[0], Text):
-                text = self.node.children[0].text
-            else:
-                print('Ignoring HTML contents inside button')
-                text = ''
-        color = self.node.style.get()['color']
-        cmds.append(DrawText(self.x, self.y, text, self.font, color))
-        if self.node.is_focused and self.node.tag == 'input':
-            cx = rect.left() + self.font.measureText(text)
-            cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom()))
-        cmds = paint_visual_effects(self.node, cmds, rect)
-        paint_outline(self.node, cmds, rect, self.zoom.get())
-        display_list.extend(cmds)
+        if self.width.dirty:
+            zoom = self.width.read(self.zoom)
+            self.width.set(device_px(INPUT_WIDTH_PX, zoom))
+        if self.height.dirty:
+            font = self.height.read(self.font)
+            self.height.set(linespace(font))
+        EmbedLayout.layout_after(self)
 
     def paint(self, display_list):
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
-            self.x, self.y, self.x + self.width,
-            self.y + self.height)
+            self.x.get(), self.y.get(), self.x.get() + self.width.get(),
+            self.y.get() + self.height.get())
 
         bgcolor = self.node.style.get().get("background-color",
                                  "transparent")
@@ -541,11 +599,11 @@ class InputLayout(EmbedLayout):
                 text = ""
 
         color = self.node.style.get()["color"]
-        cmds.append(DrawText(self.x, self.y,
-                             text, self.font, color))
+        cmds.append(DrawText(self.x.get(), self.y.get(),
+                             text, self.font.get(), color))
 
         if self.node.is_focused and self.node.tag == "input":
-            cmds.append(DrawCursor(self, self.font.measureText(text)))
+            cmds.append(DrawCursor(self, self.font.get().measureText(text)))
 
         cmds = paint_visual_effects(self.node, cmds, rect)
         paint_outline(self.node, cmds, rect, self.zoom.get())
@@ -561,23 +619,29 @@ class ImageLayout(EmbedLayout):
         image_height = self.node.image.height()
         aspect_ratio = image_width / image_height
 
+        w_zoom = self.width.read(self.zoom)
+        h_zoom = self.height.read(self.zoom)
         if width_attr and height_attr:
-            self.width = device_px(int(width_attr), self.zoom.get())
-            self.img_height = device_px(int(height_attr), self.zoom.get())
+            self.width.set(device_px(int(width_attr), w_zoom))
+            self.img_height = device_px(int(height_attr), h_zoom)
         elif width_attr:
-            self.width = device_px(int(width_attr), self.zoom.get())
-            self.img_height = self.width / aspect_ratio
+            self.width.set(device_px(int(width_attr), w_zoom))
+            w = self.height.read(self.width)
+            self.img_height = w / aspect_ratio
         elif height_attr:
-            self.img_height = device_px(int(height_attr), self.zoom.get())
+            self.img_height = device_px(int(height_attr), h_zoom)
             self.width.set(self.img_height * aspect_ratio)
         else:
-            self.width = device_px(image_width, self.zoom.get())
-            self.img_height = device_px(image_height, self.zoom.get())
-        self.height = max(self.img_height, linespace(self.font))
+            self.width.set(device_px(image_width, w_zoom))
+            self.img_height = device_px(image_height, h_zoom)
+        if self.height.dirty:
+            font = self.height.read(self.font)
+            self.height.set(max(self.img_height, linespace(self.font)))
+        EmbedLayout.layout_after(self)
 
     def paint(self, display_list):
         cmds = []
-        rect = skia.Rect.MakeLTRB(self.x, self.y + self.height - self.img_height, self.x + self.width, self.y + self.height)
+        rect = skia.Rect.MakeLTRB(self.x.get(), self.y.get() + self.height.get() - self.img_height, self.x.get() + self.width.get(), self.y.get() + self.height)
         quality = self.node.style.get().get('image-rendering', 'auto')
         cmds.append(DrawImage(self.node.image, rect, quality))
         display_list.extend(cmds)
@@ -588,21 +652,29 @@ class IframeLayout(EmbedLayout):
         EmbedLayout.layout(self)
         width_attr = self.node.attributes.get('width')
         height_attr = self.node.attributes.get('height')
-        if width_attr:
-            self.width = device_px(int(width_attr) + 2, self.zoom.get())
-        else:
-            self.width = device_px(IFRAME_WIDTH_PX + 2, self.zoom.get())
-        if height_attr:
-            self.height = device_px(int(height_attr) + 2, self.zoom.get())
-        else:
-            self.height = device_px(IFRAME_HEIGHT_PX + 2, self.zoom.get())
+        if self.width.dirty:
+            w_zoom = self.width.read(self.zoom)
+            if width_attr:
+                self.width.set(device_px(int(width_attr) + 2, w_zoom))
+            else:
+                self.width.set(device_px(IFRAME_WIDTH_PX + 2, w_zoom))
+        
+        if self.height.dirty:
+            zoom = self.height.read(self.zoom)
+            if height_attr:
+                self.height.set(device_px(int(height_attr) + 2, zoom))
+            else:
+                self.height.set(device_px(IFRAME_HEIGHT_PX + 2, zoom))
+
         if self.node.frame:
             self.node.frame.frame_height = self.height - device_px(2, self.zoom.get())
-            self.node.frame.frame_width = self.width - device_px(2, self.zoom.get())
+            self.node.frame.frame_width = self.width.get() - device_px(2, self.zoom.get())
+            self.node.frame.set_needs_render()
+        EmbedLayout.layout_after(self)
 
     def paint(self, display_list):
         frame_cmds = []
-        rect = skia.Rect.MakeLTRB(self.x, self.y, self.x + self.width, self.y + self.height)
+        rect = skia.Rect.MakeLTRB(self.x.get(), self.y.get(), self.x.get() + self.width.get(), self.y.get() + self.height.get())
         bgcolor = self.node.style.get().get('background-color', 'transparent')
         if bgcolor != 'transparent':
             radius = device_px(float(self.node.style.get().get('border-radius', '0px')[:-2]), self.zoom.get())
@@ -610,9 +682,9 @@ class IframeLayout(EmbedLayout):
         if self.node.frame:
             self.node.frame.paint(frame_cmds)
         diff = device_px(1, self.zoom.get())
-        offset = (self.x + diff, self.y + diff)
+        offset = (self.x.get() + diff, self.y.get() + diff)
         cmds = [Transform(offset, rect, self.node, frame_cmds)]
-        inner_rect = skia.Rect.MakeLTRB(self.x + diff, self.y + diff, self.x + self.width - diff, self.y + self.height - diff)
+        inner_rect = skia.Rect.MakeLTRB(self.x.get() + diff, self.y.get() + diff, self.x.get() + self.width.get() - diff, self.y.get() + self.height.get() - diff)
         cmds = paint_visual_effects(self.node, cmds, inner_rect)
         paint_outline(self.node, cmds, rect, self.zoom.get())
         display_list.extend(cmds)
@@ -815,6 +887,84 @@ class Frame:
             last_text.text += char
             self.tab.focus.layout_object.children.mark()
             self.set_needs_render()
+
+    def scroll_to(self, elt):
+        assert not (self.needs_style or self.needs_layout)
+        objs = [
+            obj for obj in tree_to_list(self.document, [])
+            if obj.node == self.tab.focus
+        ]
+        if not objs: return
+        obj = objs[0]
+
+        if self.scroll < obj.y.get() < self.scroll + self.frame_height:
+            return
+        new_scroll = obj.y.get() - SCROLL_STEP
+        self.scroll = self.clamp_scroll(new_scroll)
+        self.scroll_changed_in_frame = True
+        self.set_needs_render()
+
+    def clamp_scroll(self, scroll):
+        height = math.ceil(self.document.height.get())
+        maxscroll = height - self.frame_height
+        return max(0, min(scroll, maxscroll))
+    
+@wbetools.patch(Tab)
+class Tab:
+    def run_animation_frame(self, scroll):
+        if not self.root_frame.scroll_changed_in_frame:
+            self.root_frame.scroll = scroll
+
+        needs_composite = False
+        for (window_id, frame) in self.window_id_to_frame.items():
+            frame.js.dispatch_RAF(frame.window_id)
+    
+            for node in tree_to_list(frame.nodes, []):
+                for (property_name, animation) in \
+                    node.animations.items():
+                    value = animation.animate()
+                    if value:
+                        node.style[property_name] = value
+                        if wbetools.USE_COMPOSITING and \
+                            property_name == "opacity":
+                            self.composited_updates.append(node)
+                            self.set_needs_paint()
+                        else:
+                            frame.set_needs_layout()
+            if frame.needs_style or frame.needs_layout:
+                needs_composite = True
+
+        self.render()
+
+        if self.focus and self.focused_frame.needs_focus_scroll:
+            self.focused_frame.scroll_to(self.focus)
+            self.focused_frame.needs_focus_scroll = False
+
+        scroll = None
+        if self.root_frame.scroll_changed_in_frame:
+            scroll = self.root_frame.scroll
+
+        composited_updates = {}
+        if not needs_composite:
+            for node in self.composited_updates:
+                composited_updates[node] = node.save_layer
+        self.composited_updates.clear()
+
+        root_frame_focused = not self.focused_frame or \
+                self.focused_frame == self.root_frame
+        commit_data = CommitData(
+            self.root_frame.url, scroll,
+            root_frame_focused,
+            math.ceil(self.root_frame.document.height.get()),
+            self.display_list, composited_updates,
+            self.accessibility_tree,
+            self.focus
+        )
+        self.display_list = None
+        self.root_frame.scroll_changed_in_frame = False
+
+        self.browser.commit(self, commit_data)
+    
 
 if __name__ == "__main__":
     args = add_main_args()
