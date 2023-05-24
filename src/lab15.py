@@ -933,6 +933,7 @@ class JSContext:
     def requestAnimationFrame(self):
         self.tab.browser.set_needs_animation_frame(self.tab)
 
+@wbetools.patch(style)
 def style(node, rules, frame):
     old_style = node.style
 
