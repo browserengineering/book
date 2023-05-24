@@ -134,7 +134,10 @@ def paint_visual_effects(node, cmds, rect):
     return [transform]
 
 class ProtectedField:
-    def __init__(self):
+    def __init__(self, node, name):
+        self.node = node
+        self.name = name
+
         self.value = None
         self.dirty = True
         self.depended_on = set()
@@ -148,7 +151,10 @@ class ProtectedField:
             field.mark()
 
     def set(self, value):
-        self.notify()
+        if self.value != None:
+            print("Change", self)
+        if value != self.value:
+            self.notify()
         self.value = value
         self.dirty = False
 
@@ -163,6 +169,9 @@ class ProtectedField:
     def copy(self, field):
         self.set(self.read(field))
 
+    def __repr__(self):
+        return "ProtectedField({}, {})".format(self.node, self.name)
+
 @wbetools.patch(Element)
 class Element:
     def __init__(self, tag, attributes, parent):
@@ -171,7 +180,7 @@ class Element:
         self.children = []
         self.parent = parent
 
-        self.style = ProtectedField()
+        self.style = ProtectedField(self, "style")
         self.animations = {}
 
         self.is_focused = False
@@ -184,7 +193,7 @@ class Text:
         self.children = []
         self.parent = parent
 
-        self.style = ProtectedField()
+        self.style = ProtectedField(self, "style")
         self.animations = {}
 
         self.is_focused = False
@@ -200,11 +209,11 @@ class DocumentLayout:
         self.previous = None
         self.children = []
 
-        self.zoom = ProtectedField()
-        self.width = ProtectedField()
-        self.height = ProtectedField()
-        self.x = ProtectedField()
-        self.y = ProtectedField()
+        self.zoom = ProtectedField(self.node, "zoom")
+        self.width = ProtectedField(self.node, "width")
+        self.height = ProtectedField(self.node, "height")
+        self.x = ProtectedField(self.node, "x")
+        self.y = ProtectedField(self.node, "y")
 
     def layout(self, width, zoom):
         self.zoom.set(zoom)
@@ -245,12 +254,12 @@ class BlockLayout:
         self.previous = previous
         self.frame = frame
 
-        self.children = ProtectedField()
-        self.zoom = ProtectedField()
-        self.width = ProtectedField()
-        self.height = ProtectedField()
-        self.x = ProtectedField()
-        self.y = ProtectedField()
+        self.children = ProtectedField(self.node, "children")
+        self.zoom = ProtectedField(self.node, "zoom")
+        self.width = ProtectedField(self.node, "width")
+        self.height = ProtectedField(self.node, "height")
+        self.x = ProtectedField(self.node, "x")
+        self.y = ProtectedField(self.node, "y")
 
     def layout(self):
         if self.zoom.dirty:
@@ -396,13 +405,13 @@ class LineLayout:
         self.parent = parent
         self.previous = previous
         self.children = []
-        self.zoom = ProtectedField()
-        self.x = ProtectedField()
-        self.y = ProtectedField()
-        self.width = ProtectedField()
-        self.height = ProtectedField()
-        self.ascent = ProtectedField()
-        self.descent = ProtectedField()
+        self.zoom = ProtectedField(self.node, "zoom")
+        self.x = ProtectedField(self.node, "x")
+        self.y = ProtectedField(self.node, "y")
+        self.width = ProtectedField(self.node, "width")
+        self.height = ProtectedField(self.node, "height")
+        self.ascent = ProtectedField(self.node, "ascent")
+        self.descent = ProtectedField(self.node, "descent")
 
     def layout(self):
         if self.zoom.dirty:
@@ -469,14 +478,14 @@ class TextLayout:
         self.children = []
         self.parent = parent
         self.previous = previous
-        self.zoom = ProtectedField()
-        self.width = ProtectedField()
-        self.height = ProtectedField()
-        self.x = ProtectedField()
-        self.y = ProtectedField()
-        self.font = ProtectedField()
-        self.ascent = ProtectedField()
-        self.descent = ProtectedField()
+        self.zoom = ProtectedField(self.node, "zoom")
+        self.width = ProtectedField(self.node, "width")
+        self.height = ProtectedField(self.node, "height")
+        self.x = ProtectedField(self.node, "x")
+        self.y = ProtectedField(self.node, "y")
+        self.font = ProtectedField(self.node, "font")
+        self.ascent = ProtectedField(self.node, "ascent")
+        self.descent = ProtectedField(self.node, "descent")
 
     def layout(self):
         if self.zoom.dirty:
@@ -526,14 +535,14 @@ class EmbedLayout:
         self.previous = previous
 
         self.children = []
-        self.zoom = ProtectedField()
-        self.width = ProtectedField()
-        self.height = ProtectedField()
-        self.x = ProtectedField()
-        self.y = ProtectedField()
-        self.font = ProtectedField()
-        self.ascent = ProtectedField()
-        self.descent = ProtectedField()
+        self.zoom = ProtectedField(self.node, "zoom")
+        self.width = ProtectedField(self.node, "width")
+        self.height = ProtectedField(self.node, "height")
+        self.x = ProtectedField(self.node, "x")
+        self.y = ProtectedField(self.node, "y")
+        self.font = ProtectedField(self.node, "font")
+        self.ascent = ProtectedField(self.node, "ascent")
+        self.descent = ProtectedField(self.node, "descent")
 
     def layout(self):
         if self.zoom.dirty:
@@ -690,37 +699,39 @@ class IframeLayout(EmbedLayout):
         display_list.extend(cmds)
 
 def style(node, rules, frame):
-    old_style = node.style.value
-    new_style = {}
-    for property, default_value in INHERITED_PROPERTIES.items():
-        if node.parent:
-            parent_style = node.style.read(node.parent.style)
-            new_style[property] = parent_style[property]
-        else:
-            new_style[property] = default_value
-    for media, selector, body in rules:
-        if media:
-            if (media == 'dark') != frame.tab.dark_mode: continue
-        if not selector.matches(node): continue
-        for property, value in body.items():
-            computed_value = compute_style(node, property, value)
-            if not computed_value: continue
-            new_style[property] = computed_value
-    if isinstance(node, Element) and 'style' in node.attributes:
-        pairs = CSSParser(node.attributes['style']).body()
-        for property, value in pairs.items():
-            computed_value = compute_style(node, property, value)
-            new_style[property] = computed_value
-    if old_style:
-        transitions = diff_styles(old_style, new_style)
-        for property, (old_value, new_value, num_frames) in transitions.items():
-            if property in ANIMATED_PROPERTIES:
-                tab.set_needs_render()
-                AnimationClass = ANIMATED_PROPERTIES[property]
-                animation = AnimationClass(old_value, new_value, num_frames)
-                node.animations[property] = animation
-                new_style[property] = animation.animate()
-    node.style.set(new_style)
+    if node.style.dirty:
+        old_style = node.style.value
+        new_style = {}
+        for property, default_value in INHERITED_PROPERTIES.items():
+            if node.parent:
+                parent_style = node.style.read(node.parent.style)
+                new_style[property] = parent_style[property]
+            else:
+                new_style[property] = default_value
+        for media, selector, body in rules:
+            if media:
+                if (media == 'dark') != frame.tab.dark_mode: continue
+            if not selector.matches(node): continue
+            for property, value in body.items():
+                computed_value = compute_style(node, property, value)
+                if not computed_value: continue
+                new_style[property] = computed_value
+        if isinstance(node, Element) and 'style' in node.attributes:
+            pairs = CSSParser(node.attributes['style']).body()
+            for property, value in pairs.items():
+                computed_value = compute_style(node, property, value)
+                new_style[property] = computed_value
+        if old_style:
+            transitions = diff_styles(old_style, new_style)
+            for property, (old_value, new_value, num_frames) in transitions.items():
+                if property in ANIMATED_PROPERTIES:
+                    tab.set_needs_render()
+                    AnimationClass = ANIMATED_PROPERTIES[property]
+                    animation = AnimationClass(old_value, new_value, num_frames)
+                    node.animations[property] = animation
+                    new_style[property] = animation.animate()
+        node.style.set(new_style)
+
     for child in node.children:
         style(child, rules, frame)
 

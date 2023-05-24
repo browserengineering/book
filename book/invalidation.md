@@ -1531,78 +1531,114 @@ positions.
 Skipping no-op updates
 ======================
 
-Now that our browser runs, let's look at what impact protected fields
-have had on recomputation. To do this, we can add a `print` statement
-inside the `set` method on `ProtectedField`s:
+If you try your browser again, you'll probably notice that despite all
+of this invalidation work with `ProtectedField`, it's not obvious that
+editing is any faster. Let's try to figure out why. Add a `print`
+statement inside the `set` method on `ProtectedField`s to see which
+fields are getting recomputed:
 
 ``` {.python}
 class ProtectedField:
     def set(self, value):
-        if self.value is not None:
+        if self.value != None:
             print("Change", self)
         self.notify()
         self.value = value
         self.dirty = False
 ```
 
-Here, I check `self.value` so as to not print anything if the
-protected field is being set for the first time, like during initial
-page layout.
+The `if` statement skips printing during initial page layout. Try
+editing some text with `contenteditable` on a large web page (like
+this one)---you'll see a *screenful* of output, thousands of lines of
+printed nonsense. It's a little hard to understand why, so let's add a
+nice printable form for `ProtectedField`s:[^why-print-node]
 
-Now try editing some text with `contenteditable` (like on this page),
-or running some JavaScript, or otherwise modifying a page. You should
-see a screenful of output. To make it a little easier to read, let's
-add a nice printable form for `ProtectedField`s:
+[^why-print-node]: Note that I print the node, not the layout object,
+because layout objects' printable forms print layout field values,
+which might be dirty and unreadable.
 
 ``` {.python}
 class ProtectedField:
-    def __init__(self, base, name):
-        self.base = base
+    def __init__(self, node, name):
+        self.node = node
         self.name = name
         # ...
 
     def __repr__(self):
-        return "ProtectedField({}, {})".format(self.base, self.name)
+        return "ProtectedField({}, {})".format(self.node, self.name)
 ```
 
-You'll want to pass `self` for the base everywhere a `ProtectedField`
-is created, and a name that matches the field name. Now retry editing,
-say, this page. If you scroll to the beginning of the output, you'll
-see that the first thing that's updated is the `contenteditable`
-element's `children`, followed by the associated layout object's
-`children` field:
+Name all of your `ProtectedField`s, like this:
 
-    Change ProtectedField(<div ...>, children)
-    Change ProtectedField(BlockLayout(...), children)
+``` {.python}
+class DocumentLayout:
+    def __init__(self, node, frame):
+        # ...
+        self.zoom = ProtectedField(node, "zoom")
+        self.width = ProtectedField(node, "width")
+        self.height = ProtectedField(node, "height")
+        self.x = ProtectedField(node, "x")
+        self.y = ProtectedField(node, "y")
+```
 
-This creates a bunch of new layout objects; since they're being laid
-out for the first time, they're not printed. Therefore the next thing
-that's recomputed is the `contenteditable` element's layout object's
-`height`:
-
-    Change ProtectedField(BlockLayout(...), height)
-
-Now, that makes sense: the `height` could have changed, if typing into
-the `contenteditable` wrapped over more lines. But what happens next
-makes less sense: every other `y` on the page is recomputed:
-
-    Change ProtectedField(BlockLayout(...), y)
-    Change ProtectedField(BlockLayout(...), y)
-    Change ProtectedField(BlockLayout(...), y)
-    Change ProtectedField(BlockLayout(...), y)
+If you look at your output again, you should now see two phases.
+First, there's a lot of `style` recomputation:
+    
+    Change ProtectedField(<body>, style)
+    Change ProtectedField(<header>, style)
+    Change ProtectedField(<h1 class="title">, style)
+    Change ProtectedField('Reusing Previous Computations', style)
+    Change ProtectedField(<a href="https://twitter.com/browserbook">, style)
+    Change ProtectedField('Twitter', style)
+    Change ProtectedField(' ·\n', style)
     ...
 
-Why does this happen? Well, let's think step by step. When we change
-the edited element's `height`, we notify everyone who depended on it.
-But since an element's `y` position depends on the previous element's
-`height`, that means recomputing its `y` position. Eventually, that
-influences the `y` of the _next_ element, and so on.
+Then, we recompute four layout fields repeatedly:
 
-What makes this all wasteful is that in most cases the `height` didn't
-change. For example, if you just type a few characters into the
-`contenteditable` on this page, it won't change height, and nothing on
-the page needs to move. They key here is to not nodify dependants if
-the value didn't change:
+    Change ProtectedField(<html lang="en-US" xml:lang="en-US">, zoom)
+    Change ProtectedField(<html lang="en-US" xml:lang="en-US">, zoom)
+    Change ProtectedField(<head>, zoom)
+    Change ProtectedField(<head>, children)
+    Change ProtectedField(<head>, height)
+    Change ProtectedField(<body>, zoom)
+    Change ProtectedField(<body>, y)
+    Change ProtectedField(<header>, zoom)
+    Change ProtectedField(<header>, y)
+    ...
+
+Let's fix these. First, let's tackle `style`. The reason `style` is
+being recomputed repeatedly is just that we don't skip `style`
+recomputation if it isn't dirty. Let's do that:
+
+``` {.python}
+def style(node, rules, frame):
+    if node.style.dirty:
+        # ...
+
+    for child in node.children:
+        style(child, rules, frame)
+```
+
+There should now be barely any style recomputation at all. But what
+about those layout field recomputations? Why are those happening?
+Well, the very first field being recomputed here is `zoom`, which
+itself traces back to `DocumentLayout`:
+
+``` {.python}
+class DocumentLayout:
+    def layout(self, width, zoom):
+        self.zoom.set(zoom)
+        # ...
+```
+
+Every time we lay out the page, we `set` the zoom parameter, and we
+have to do that because the user might have zoomed in or out. But
+every time we `set` a field, that notifies every dependant field. The
+combination of these two things means we are recomputing the `zoom`
+field, and everything that depends on `zoom`, on every frame.
+
+What makes this all wasteful is that `zoom` usually doesn't change.
+So we want to not nodify dependants if the value didn't change:
 
 ``` {.python}
 class ProtectedField:
@@ -1618,10 +1654,22 @@ class ProtectedField:
 This change is safe, because if the new value is the same as the old
 value, any downstream computations don't actually need to change.
 
-This small tweak should reduce the number of field changes for most
-edits. When you reach the end of a line, however, you'll still see the
-cascade of changes to `y` positions, which is correct because those
-`y` positions now need to change.
+This small tweak should reduce the number of field changes down to the
+minimum:
+
+    Change ProtectedField(<html lang="en-US" xml:lang="en-US">, zoom)
+    Change ProtectedField(<div class="demo" contenteditable="true">, children)
+    Change ProtectedField(<div class="demo" contenteditable="true">, height)
+
+The only things happeneing here are recreating the `contenteditable`
+element's `children` (which we have to do, to incorporate the new
+text) and checking that its `height` didn't change (necessary in case
+we wrapped onto more lines). As a bonus, editing should now also feel
+*much* snappier.
+
+::: {.further}
+
+:::
 
 
 Avoiding redundant recursion
