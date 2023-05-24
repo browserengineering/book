@@ -1680,28 +1680,31 @@ ensuring that we only compute `x`, `y`, `width`, `height`, or other
 values when absolutely necessary. That's good: it causes faster layout
 updates on complex web pages.
 
-But on the largest web pages it's not enough. For example, on my
-computer, a no-op layout of this page, where no layout field is
-actually recomputed, still takes approximately 70 milliseconds---way
-too long for smooth animations or a good editing experience. It takes
-this long because our browser still needs to traverse the layout tree,
-diligently checking that it has no work to do at each node.
+But on the largest web pages it's still not enough. For example, on my
+computer, the initial layout for this page takes about 300
+milliseconds, while each character typed into a `contenteditable`
+takes only 3. That's way faster, but 3 milliseconds is still a
+substantial fraction of our 16 millisecond frame budget, and we'd like
+to bring it down. Since we know we're not recomputing many layout
+fields, all that time must be spent merely traversing the layout tree
+looking for work to do. Luckily, there's a way to skip needless
+traversals, and it involves pushing invalidation one step further.
 
-There's a solution to this problem, and it involves pushing our
-invalidation approach one step further. So far, we've thought about
-the *data* dependencies of a particular layout computation, for
-example with a node's `height` depending on the `height` of its
-children. But computations also have *control* dependencies, which
-refers to the sequence of steps needed to actually run a certain piece
-of code. For example, computing a node's `height` depends on calling
+So far, we've thought about the *data* dependencies of a particular
+layout computation, for example with a node's `height` depending on
+its children's `height`s. But computations also have *control*
+dependencies: the sequence of steps that lead to that computation
+occurring. For example, computing a node's `height` depends on calling
 that node's `layout` method, which depends on calling its parent's
 `layout` method, and so on. We can apply invalidation to control
-dependencies just like we do to data dependencies.
+dependencies just like we do to data dependencies---though there are
+some differences.
 
-So---in what cases do we need to make sure we call a particular layout
-object's `layout` method? Well, the `layout` method does three things:
-create layout objects, compute layout properties, and recurse into
-more calls to `layout`. Those steps can be skipped if:
+Let's start with first principles. In what cases do we need to make
+sure we call a particular layout object's `layout` method? Well, the
+`layout` method does three things: create layout objects, compute
+layout properties, and recurse into more calls to `layout`. Those
+steps can be skipped if:
 
 - The layout object's `children` field isn't dirty, meaning we don't
   need to create new layout objects;
@@ -1710,13 +1713,8 @@ more calls to `layout`. Those steps can be skipped if:
 - The layout object's children's `layout` methods also don't need to
   be called.
 
-If all of these are tree, we should be able to skip calling the layout
-object's `layout` method. In a bit web page, that can save a lot of
-time.
-
-At a high level, we can implement all of this with a new dirty flag,
-which I call `descendants`.[^ancestors] We'll add it to every kind of
-layout object:
+So let's add a new dirty flag, which I call `descendants`,[^ancestors]
+to track when these conditions are true:
 
 [^ancestors]: You will also see these called *ancestor* dirty bits
     instead. It's the same thing, just following the flow of dirty
@@ -1726,13 +1724,15 @@ layout object:
 class BlockLayout:
     def __init__(self, node, parent, previous, frame):
         # ...
-        self.descendants = ProtectedField(self, "descendants")
+        self.descendants = ProtectedField(node, "descendants")
 ```
 
-This field will be dirty if any of the descendants of this layout
-object, need their `layout` method called. We'll want this field to be
-marked when any descendant's layout field is marked, so we need to
-establish dependencies. Something like this is *close* to working:
+We can add this to every other kind of layout object, too.
+
+This field doesn't store a value, just a dirty flag, but it's
+convenient to use the `ProtectedField` machinery. We want this flag
+dirty if any descendant has a dirty `children` or layout field.
+Something like this is *close* to working:
 
 ``` {.python}
 class BlockLayout:
@@ -1746,25 +1746,28 @@ class BlockLayout:
 ```
 
 Note that it is the *parent's* `descendants` field that depends on
-this node's layout fields. That's because it's one of the parent's
-descendants that needs its `layout` method called.
+this node's layout fields. That's because this element is one of its
+parent's (not its own) descendants.
 
-However, this won't quite work, because `read` asserts that the field
-being read is not dirty, and here the fields being read were just
-created and are therefore dirty. We need a variant of `read`, which
-I'll call `control` because it's for control dependencies:
+However, this code doesn't quite work, for a couple of reasons.
+
+First of all, `read` asserts that the field being read is not dirty,
+and here the fields being read were just created and are therefore
+dirty. We need a variant of `read`, which I'll call `control` because
+it's for control dependencies:
 
 ``` {.python}
 class ProtectedField:
     def control(self, source):
         source.depended_on.add(self)
         self.dirty = True
+```
 
-    def read(self, field):
-        assert not field.dirty
-        field.depended_on.add(self)
-        return field.value
+Note that the `control` method doesn't actually read the source field's
+value; that's why it's safe to use even when the source field is dirty.
+The `descendants` field can use it:
 
+```
 class BlockLayout:
     def __init__(self, node, parent, previous, frame):
         # ...
@@ -1775,12 +1778,7 @@ class BlockLayout:
         self.parent.descendants.control(self.y)
 ```
 
-Note that the `control` method doesn't actually read the source field's
-value; that's why it's safe to use even when the source field is dirty.
-
-So far, we've made the `descendants` field depend on child layout
-fields. We also need it to depend on the child `children` field, since
-again, that is computed by calling `layout`:
+We also need `descendants` to control the `children` field:
 
 ``` {.python}
 class BlockLayout:
@@ -1789,9 +1787,17 @@ class BlockLayout:
         self.parent.descendants.control(self.children)
 ```
 
-Moreover, the notion of descendant dirty bits is recursive: if a
-child's descendants are dirty, that means this node's descendants are
-dirty. We establish this recursion like so:
+Any changes to the style also means we may need to redo layout:
+
+``` {python}
+class BlockLayout:
+    def __init__(self, node, parent, previous, frame):
+        # ...
+        self.parent.descendants.control(self.node.style)
+```
+
+Finally, we need `descendants` to include not just direct children but
+also distant descendants. We can do that with a bit of recursion:
 
 ``` {.python}
 class BlockLayout:
@@ -1800,29 +1806,19 @@ class BlockLayout:
         self.parent.descendants.control(self.descendants)
 ```
 
-Finally, any changes to the style or node tree also means we may need
-to redo layout:
-
-``` {python}
-class BlockLayout:
-    def __init__(self, node, parent, previous, frame):
-        # ...
-        self.parent.descendants.control(self.node.children)
-        self.parent.descendants.control(self.node.style)
-```
-
-Make sure to replicate this code in every layout object type. In the
-`LineLayout`, `TextLayout`, and `EmbedLayout` types, further make sure
-that the parent's `descendants` also `depend` on the `font`, `ascent`,
-and `descent` fields that those layout objects have. Now that we have
-descendant dirty bits, let's use them to skip unneeded recursions
+Replicate this code in every layout object type. In `DocumentLayout`
+you won't need to `control` any fields, since `DocumentLayout` has no
+parent, and in the other layout objects also `control` the `font`,
+`ascent`, and `descent` fields that those layout objects have, and
+don't `control` the `children` field, which is unprotected.
 
 
 Eager and lazy propagation
 ==========================
 
-Our ultimate goal is to use the `descendants` dirty bit to avoid
-recursing into a layout object's children inside the `layout` method:
+Now that we have descendant dirty bits, let's use them to skip
+unneeded recursions. We'd like to use the `descendants` dirty bit to
+skip recursing in the `layout` method:
 
 ``` {.python}
 class BlockLayout:
@@ -1835,12 +1831,12 @@ class BlockLayout:
         # ...
 ```
 
-However, this won't work. More precisely, your browser will likely
-crash inside a `get` call somewhere during paint because your browser
-will skip recursing even into layout objects that are dirty.
+Here the `set` call clears the dirty bit. However, this code doesn't
+work. If you run it, your browser will crash when it skips recomputing
+a field that was dirty.
 
-This is a consequence of us implementing *lazy* marking. Consider how
-the `mark` method is implemented:
+This is a consequence of us implementing *lazy* marking. Recall how
+the `mark` method works:
 
 ``` {.python}
 class ProtectedField:
@@ -1853,43 +1849,36 @@ When a protected field is marked, *its* dirty field is set, but any
 other fields that depend on it aren't set yet.
 
 Lazy marking works for data dependencies but not for control
-dependencies. That's because dirty bits are marked when dependencies
-are computed. For data dependencies, those are computed before the
-dirty bit is checked, which means every field that needs to be
-recomputed is marked before its dirty bit is checked.
+dependencies. That's because data dependencies are computed before the
+dirty bit is checked, meaning the dirty bit gets marked before it's
+checked. Lazy marking also allows us to skip no-op updates, so it's
+important for data dependencies to be fast.
 
-But for control dependencies we need something else. For example,
-suppose the `width` of some layout object is marked. Then its parent's
-`descendants` field, which depends on `width`, needs to be marked
-right away, _before_ the `width` is recomputed, because after all it
-is used to determine _whether_ the `width` is recomputed.
+But for control dependencies we need eager marking. If the `width` of
+some layout object is marked, we need its parent's `descendants`
+field, which depends on `width`, needs to be marked right away,
+_before_ the `width` is recomputed. After all, that `descendats` field
+is used to determine _whether_ the `width` is recomputed!
 
-Let's add an eager marking mode to `ProtectedField`. I'll give each
-protected field two sets of fields that depend on it: those that will
-be marked lazily, and those that will be marked eagerly:
+For eager marking, I'll give each protected field a second sets of
+fields to mark eagerly:
 
 ``` {.python}
 class ProtectedField:
-    def __init__(self, base, name):
+    def __init__(self, node, name):
         # ...
         self.depended_lazy = set()
         self.depended_eager = set()
 ```
 
-The existing `read` method for data dependencies will be lazy:
+The `read` method will be lazy, but `control` will be eager:
 
 ``` {.python}
 class ProtectedField:
     def read(self, field):
-        assert not field.dirty
         field.depended_lazy.add(self)
-        return field.value
-```
+        return field.get()
 
-However, the `control` method for control dependencies will be eager:
-
-``` {.python}
-class ProtectedField:
     def control(self, source):
         source.depended_eager.add(self)
         self.dirty = True
@@ -1914,13 +1903,27 @@ class ProtectedField:
         if self.dirty: return
         self.dirty = True
         for field in self.depended_eager:
-            field.notify()
+            field.mark()
 ```
 
 With these changes, the descendant dirty bits should now be set
 correctly, and we can now skip recursively calling layout when the
-descendants aren't dirty. Even on larger web pages, layout should now
-be a millisecond or less, and editing should become fairly smooth.
+descendants aren't dirty:
+
+``` {.python}
+class BlockLayout:
+    def layout(self):
+        # ...
+        if self.descendants.dirty:
+            for child in self.children:
+                child.layout()
+            self.descendants.set(None)
+        # ...
+```
+
+You can replicate this on all the other layout types. Even on larger
+web pages, layout should now be under a millisecond, and editing
+should be fairly smooth.
 
 
 Granular style invalidation
@@ -1933,6 +1936,10 @@ interactions should be fairly fast as well. However,
 [^other-phases]: It might still be pretty laggy on large pages due to
     the composite-raster-draw cycle being fairly slow, depending on
     which exericses you implemented in [Chapter 13](animations.md).
+
+::: {.todo}
+This section is unfinished.
+:::
 
 
 Summary
