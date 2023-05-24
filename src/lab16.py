@@ -156,8 +156,8 @@ class ProtectedField:
             field.mark()
 
     def set(self, value):
-        if self.value != None:
-            print("Change", self)
+        # if self.value != None:
+        #     print("Change", self)
         if value != self.value:
             self.notify()
         self.value = value

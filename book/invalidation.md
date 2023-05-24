@@ -1536,7 +1536,7 @@ editing is any faster. Let's try to figure out why. Add a `print`
 statement inside the `set` method on `ProtectedField`s to see which
 fields are getting recomputed:
 
-``` {.python}
+``` {.python expected=False}
 class ProtectedField:
     def set(self, value):
         if self.value != None:
@@ -1642,8 +1642,6 @@ So we want to not nodify dependants if the value didn't change:
 ``` {.python}
 class ProtectedField:
     def set(self, value):
-        if self.value != None:
-            print("Change", self)
         if value != self.value:
             self.notify()
         self.value = value
