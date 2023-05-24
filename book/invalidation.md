@@ -93,7 +93,7 @@ This is enough to make editing work, but it's convenient to also draw
 a cursor confirm that the element is focused and show where edits will
 go. Let's do that in `BlockLayout`:
 
-``` {.python}
+``` {.python replace=.width/.width.get()}
 class BlockLayout:
     def paint(self, display_list):
         # ...
@@ -111,14 +111,14 @@ class BlockLayout:
 
 Here, `DrawCursor` is just a wrapper around `DrawLine`:
 
-``` {.python}
+``` {.python replace=.x/.x.get(),.y/.y.get(),.height/.height.get()}
 def DrawCursor(elt, width):
     return DrawLine(elt.x + width, elt.y, elt.x + width, elt.y + elt.height)
 ```
 
 We might as well also use this wrapper in `InputLayout`:
 
-``` {.python}
+``` {.python replace=self.font/self.font.get()}
 class InputLayout(EmbedLayout):
     def paint(self, display_list):
         if self.node.is_focused and self.node.tag == "input":
@@ -222,7 +222,7 @@ times on the same object. That's not what we were doing before, and it
 doesn't work. For example, after the `DocumentLayout` creates its
 child `BlockLayout`, it *appends* it to the `children` array:
 
-``` {.python}
+``` {.python file=lab15}
 class DocumentLayout:
     def layout(self, width, zoom):
         # ...
@@ -336,11 +336,11 @@ field hasn't changed_.
 
 To do that, we're going to use a dirty flag:
 
-``` {.python}
+``` {.python expected=False}
 class BlockLayout:
     def __init__(self, node, parent, previous, frame):
         # ...
-        self.dirty_children = True
+        self.children_dirty = True
 ```
 
 We've seen dirty flags before---like `needs_layout` and
@@ -354,7 +354,7 @@ protected field as unusable. Then, before using the protected field,
 the dirty flag must be checked. Finally, once the field is up to date,
 the flag is reset to `False`.
 
-Let's implement this for the `dirty_children` flag, starting with
+Let's implement this for the `children_dirty` flag, starting with
 setting the flag. Dirty flags start out set, just like in the code
 above, but they also have to be set if any _dependencies_ of the
 fields they protect change. In this case, the dirty flag protects the
@@ -362,23 +362,23 @@ fields they protect change. In this case, the dirty flag protects the
 `children` field of the associated `Element`. That means that any time
 an `Element`'s `children` field is modified, we need to set the flag:
 
-``` {.python}
+``` {.python expected=False}
 class JSContext:
     def innerHTML_set(self, handle, s, window_id):
         # ...
-        elt.layout_object.dirty_children = True
+        elt.layout_object.children_dirty = True
 ```
 
 Likewise, we need to set the dirty flag any time we modify the `text`
 of a `Text` object, since that can also affect the `children` of a
 `BlockLayout`:
 
-``` {.python}
+``` {.python expected=False}
 class Frame:
     def keypress(self, char):
         elif self.tab.focus and "contenteditable" in self.tab.focus.attributes:
             # ...
-            self.tab.focus.layout_object.dirty_children = True
+            self.tab.focus.layout_object.children_dirty = True
 ```
 
 It's important to make sure we set the dirty flag for _all_
@@ -390,20 +390,20 @@ protects. `BlockLayout` uses its `children` field in three places: to
 recursively call `layout` on all its children; to compute its
 `height`; and to `paint` itself. Let's add a check in each place:
 
-``` {.python replace=self.height/new_height}
+``` {.python replace=self.height/new_height expected=False}
 class BlockLayout:
     def layout(self):
         # ...
         
-        assert not self.dirty_children
+        assert not self.children_dirty
         for child in self.children:
             child.layout()
             
-        assert not self.dirty_children
+        assert not self.children_dirty
         self.height = sum([child.height for child in self.children])
 
     def paint(self, display_list):
-        assert not self.dirty_children
+        assert not self.children_dirty
         # ...
 ```
 
@@ -419,28 +419,28 @@ protected field. In this case, we want to reset the dirty flag when
 we've recomputed the `children` array, meaning right after that `if`
 statement:
 
-``` {.python}
+``` {.python expected=False}
 class BlockLayout:
     def layout(self):
         if mode == "block":
             # ...
         else:
             # ...
-        self.dirty_children = False
+        self.children_dirty = False
 ```
 
 Before going further, rerun your browser and test it on a web page
 with `contenteditable`. The browser should run like normal without
 triggering the assertion.
 
-With the `dirty_children` flag properly set and reset, we can now use
+With the `children_dirty` flag properly set and reset, we can now use
 it to avoid redundant work. Right now `layout` recreates the
 `children` array every time, but it doesn't need to if the children
 array isn't dirty. Let's find the line at the top of `layout` that
 resets the `children` array, and move it into the two branches of the
 `if` statement:
 
-``` {.python}
+``` {.python expected=False}
 class BlockLayout:
     def layout(self):
         if mode == "block":
@@ -455,11 +455,11 @@ Now the block layout mode case has all the code to compute the
 `children` array. We can skip it if the `children` array is up to
 date:
 
-``` {.python}
+``` {.python expected=False}
 class BlockLayout:
     def layout(self):
         if mode == "block":
-            if self.dirty_children:
+            if self.children_dirty:
                 # ...
 ```
 
@@ -475,8 +475,8 @@ inner-most `if` conditional. You should see see that only
 Protected fields
 ================
 
-Dirty flags, like `dirty_children`, are the traditional way to write a
-browser layout engine, but they have some downsides. As you've seen,
+Dirty flags like `children_dirty` are the traditional approach to
+layout invalidation, but they have some downsides. As you've seen,
 using them correctly means paying careful attention to how any given
 field is computed and used, and tracking dependencies between various
 computations across the browser. In our simple browser, that's pretty
@@ -487,7 +487,7 @@ So let's try to put a more user-friendly face on dirty flags. As a
 first step, let's try to combine a dirty flag and the field it
 protects into a single object:
 
-``` {.python}
+``` {.python replace=(self)/(self%2c%20node%2c%20name)}
 class ProtectedField:
     def __init__(self):
         self.value = None
@@ -497,7 +497,7 @@ class ProtectedField:
 We can pretty easily replace our existing dirty flag with this simple
 abstraction:
 
-``` {.python}
+``` {.python ignore=ProtectedField}
 class BlockLayout:
     def __init__(self, node, parent, previous, frame):
         # ...
@@ -548,7 +548,7 @@ class BlockLayout:
             if self.children.dirty:
                 children = []
                 previous = None
-                for child in node_children:
+                for child in self.node.children:
                     next = BlockLayout(child, self, previous, self.frame)
                     children.append(next)
                     previous = next
@@ -568,7 +568,7 @@ class ProtectedField:
 Now we can use `get` to read the `children` field in `layout` and in
 lots of other places besides:
 
-``` {.python}
+``` {.python expected=False}
 class BlockLayout:
     def layout(self):
         # ...
@@ -595,7 +595,7 @@ Armed with the `ProtectedField` class, let's take a look at how a
 `BlockLayout` element creates `LineLayout`s and their children. It all
 happens inside this `if` statement:
 
-``` {.python}
+``` {.python file=lab15 ignore=self.children}
 class BlockLayout:
     def layout(self):
         if mode == "block":
@@ -614,9 +614,9 @@ field. Let's start with `zoom`, which almost every method reads.
 
 Zoom is initially set on the `DocumentLayout`, so let's start there:
 
-``` {.python}
+``` {.python ignore=ProtectedField}
 class DocumentLayout:
-    def __init__(self, node, parent, previous, frame):
+    def __init__(self, node, frame):
         # ...
         self.zoom = ProtectedField()
         # ...
@@ -631,7 +631,7 @@ That's easy enough, but when we get to `BlockLayout` it gets more
 complex. Naturally, each `BlockLayout` has its own `zoom` field, which
 we can protect:
 
-``` {.python}
+``` {.python ignore=ProtectedField}
 class BlockLayout:
     def __init__(self, node, parent, previous, frame):
         # ...
@@ -643,7 +643,7 @@ However, in the `BlockLayout`, the `zoom` field comes from its
 parent's `zoom` field. We might be tempted to write something like
 this:
 
-``` {.python}
+``` {.python dropline=self.parent.zoom.get() replace=set(parent_zoom)/copy(self.parent.zoom)}
 class BlockLayout:
     def layout(self):
         if self.zoom.dirty:
@@ -664,7 +664,7 @@ tree's `children` field depends on. So since a child's `zoom` field
 depends on its parents' `zoom` field, we need to mark all the children
 when the `zoom` field changes:
 
-``` {.python.example}
+``` {.python .example}
 class BlockLayout:
     def layout(self):
         if self.zoom.dirty:
@@ -680,16 +680,16 @@ fields that depend on it.
 
 To do that, we're going to need to track dependencies at run time:
 
-``` {.python}
+``` {.python replace=(self)/(self%2c%20node%2c%20name),depended_on/depended_lazy}
 class ProtectedField:
-    def __init__(self, eager=False):
+    def __init__(self):
         # ...
         self.depended_on = set()
 ```
 
 We can mark all of the dependencies with `notify`:
 
-``` {.python}
+``` {.python replace=depended_on/depended_lazy}
 class ProtectedField:
     def notify(self):
         for field in self.depended_on:
@@ -710,7 +710,7 @@ class ProtectedField:
 Now we can establish dependencies once and automatically have
 dependant fields get marked:
 
-``` {.python.example}
+``` {.python .example}
 class BlockLayout:
     def __init__(self, node, parent, previous, frame):
         # ...
@@ -723,7 +723,7 @@ child's `zoom` need to depend on its parent's? It's because we read
 from the parent's zoom, with `get`, when computing the child's. We can
 make a variant of `get` that captures this pattern:
 
-``` {.python}
+``` {.python replace=depended_on/depended_lazy}
 class ProtectedField:
     def read(self, field):
         field.depended_on.add(self)
@@ -733,7 +733,7 @@ class ProtectedField:
 Now the `zoom` computation just needs to use `read`, and all of the
 marking and dependency logic will be handled automatically:
 
-``` {.python}
+``` {.python dropline=self.parent.zoom replace=set(parent_zoom)/copy(self.parent.zoom)}
 class BlockLayout:
     def layout(self):
         if self.zoom.dirty:
@@ -746,8 +746,8 @@ common, so let's add a shortcut for it:
 
 ``` {.python}
 class ProtectedField:
-    def copy(self, other):
-        self.set(self.read(other))
+    def copy(self, field):
+        self.set(self.read(field))
 ```
 
 This makes the code a little shorter:
@@ -788,9 +788,9 @@ field.
 
 Like `zoom`, `width` is initially set in `DocumentLayout`:
 
-``` {.python}
+``` {.python ignore=ProtectedField}
 class DocumentLayout:
-    def __init__(self, node, parent, previous, frame):
+    def __init__(self, node, frame):
         # ...
         self.width = ProtectedField()
         # ...
@@ -803,7 +803,7 @@ class DocumentLayout:
 
 Then, `BlockLayout` copies it from the parent:
 
-``` {.python}
+``` {.python ignore=ProtectedField}
 class BlockLayout:
     def __init__(self, node, parent, previous, frame):
         # ...
@@ -851,7 +851,7 @@ The same kind of dependency needs to be added to `image` and `iframe`.
 In `text`, however, we need to be a little more careful. This method
 computes the `w` parameter using a font returned by `font`:
 
-``` {.python}
+``` {.python replace=node.style/style}
 class BlockLayout:
     def text(self, node):
         zoom = self.children.read(self.zoom)
@@ -865,7 +865,7 @@ Note that the font depends on the node's `style`, which can change,
 for example via the `style_set` function. To handle this, we'll need
 to protect `style`:
 
-``` {.python}
+``` {.python ignore=ProtectedField}
 class Element:
     def __init__(self, tag, attributes, parent):
         # ...
@@ -873,7 +873,7 @@ class Element:
         # ...
 
 class Text:
-    def __init__(self, tag, attributes, parent):
+    def __init__(self, text, parent):
         # ...
         self.style = ProtectedField()
         # ...
@@ -1004,7 +1004,7 @@ working. There's one tricky case: `tree_to_list`, which might deal
 with both protected and unprotected `children` fields. I fixed this
 with a type test:
 
-``` {.python}
+``` {.python replace=list)/l),ProtectedField/list,if/if%20not}
 def tree_to_list(tree, list):
     # ...
     children = tree.children
@@ -1031,7 +1031,7 @@ For uniformity, let's make all of the other layout object types also
 protect their `width`; that means `LineLayout`, `TextLayout`, and then
 `EmbedLayout` and its variants. `LineLayout` is pretty easy:
 
-``` {.python}
+``` {.python ignore=ProtectedField}
 class LineLayout:
     def __init__(self, node, parent, previous):
         # ...
@@ -1047,7 +1047,7 @@ class LineLayout:
 
 In `TextLayout`, we again need to handle `font`:
 
-``` {.python}
+``` {.python expected=False}
 class TextLayout:
     def __init__(self, node, parent, previous, word):
         # ...
@@ -1060,13 +1060,13 @@ class TextLayout:
             style = self.width.read(self.node.style)
             zoom = self.width.read(self.zoom)
             self.font = font(style, zoom)
-            self.width = self.font.measureText(self.word)
+            self.width.set(self.font.measureText(self.word))
         # ...
 ```
 
 In `EmbedLayout`, we just need to protect the `width` field:
 
-``` {.python}
+``` {.python ignore=ProtectedField}
 class EmbedLayout:
     def __init__(self, node, parent, previous, frame):
         # ...
@@ -1125,9 +1125,9 @@ and `height`. As with `width`, let's start with `DocumentLayout` and
 Let's start with `x` positions. On `DocumentLayout`, we can just `set`
 the `x` position:
 
-``` {.python}
+``` {.python ignore=ProtectedField}
 class DocumentLayout:
-    def __init__(self, node, parent, previous, frame):
+    def __init__(self, node, frame):
         # ...
         self.x = ProtectedField()
         # ...
@@ -1142,7 +1142,7 @@ class DocumentLayout:
 A `BlockLayout`'s `x` position is just its parent's `x` position, so
 we can just `copy` it over:
 
-``` {.python}
+``` {.python ignore=ProtectedField}
 class BlockLayout:
     def __init__(self, node, parent, previous, frame):
         # ...
@@ -1159,9 +1159,9 @@ class BlockLayout:
 Easy. Next let's do `height`s. For `DocumentLayout`, we just read the
 child's height:
 
-``` {.python}
+``` {.python ignore=ProtectedField}
 class DocumentLayout:
-    def __init__(self, node, parent, previous, frame):
+    def __init__(self, node, frame):
         # ...
         self.height = ProtectedField()
         # ...
@@ -1175,7 +1175,7 @@ class DocumentLayout:
 
 `BlockLayout` is similar, except it loops over multiple children:
 
-``` {.python}
+``` {.python ignore=ProtectedField}
 class BlockLayout:
     def __init__(self, node, parent, previous, frame):
         # ...
@@ -1188,7 +1188,7 @@ class BlockLayout:
             children = self.height.read(self.children)
             new_height = sum([
                 self.height.read(child.height)
-                for child in self.children
+                for child in children
             ])
             self.height.set(new_height)
 ```
@@ -1201,7 +1201,7 @@ the childrens' fields, not the parent's. Luckily, just using the
 Finally, with `height` done, let's do the last layout field, `y`
 position. Just like `x`, `y` is just `set` in `DocumentLayout`:
 
-``` {.python}
+``` {.python ignore=ProtectedField}
 class DocumentLayout:
     def __init__(self, node, frame):
         # ...
@@ -1217,7 +1217,7 @@ class DocumentLayout:
 In `BlockLayout`, we need to sometimes refer to fields of the
 `previous` sibling:
 
-``` {.python}
+``` {.python ignore=ProtectedField}
 class BlockLayout:
     def __init__(self, node, parent, previous, frame):
         # ...
@@ -1267,7 +1267,7 @@ the fields in one go.
 
 Let's start with `TextLayout`:
 
-``` {.python}
+``` {.python ignore=ProtectedField}
 class TextLayout:
     def __init__(self, node, parent, previous, word):
         # ...
@@ -1296,29 +1296,32 @@ class TextLayout:
             self.font.set(font(style, zoom))
             
         if self.width.dirty:
-            font = self.width.read(self.font)
-            self.width.set(font.measureText(self.word))
+            f = self.width.read(self.font)
+            self.width.set(f.measureText(self.word))
 
         if self.ascent.dirty:
-            font = self.ascent.read(self.font)
-            self.ascent.set(font.getMetrics().fAscent)
+            f = self.ascent.read(self.font)
+            self.ascent.set(f.getMetrics().fAscent * 1.25)
 
         if self.descent.dirty:
-            font = self.descent.read(self.font)
-            self.descent.set(font.getMetrics().fDescent)
+            f = self.descent.read(self.font)
+            self.descent.set(f.getMetrics().fDescent * 1.25)
 
         if self.height.dirty:
-            font = self.height.read(self.font)
-            self.height.set(linespace(font))
+            f = self.height.read(self.font)
+            self.height.set(linespace(f))
 ```
 
 Note that I've changed `width` to read the `font` field instead of
-directly reading `zoom` and `styel`. It *does* looks a bit odd to
+directly reading `zoom` and `style`. It *does* looks a bit odd to
 compute `font` again inside each `if` statement, but remember that
 each of those `read` calls establishes a dependency for one layout
 field upon another. I like to think of each `font` as being scoped to
-its `if` statement.^[Python scoping doesn't actually work like this,
-but many languages like C++ and JavaScript do.]
+its `if` statement.[^python-scope]
+
+[^python-scope]: Python scoping doesn't actually work like this, but
+many languages like C++ and JavaScript do. Python scoping is also why
+I named the font object `f`.
 
 We also need to compute the `x` position of a `TextLayout`. That can
 use the previous sibling's font, *x* position, and width:
@@ -1332,7 +1335,7 @@ class TextLayout:
                 prev_x = self.x.read(self.previous.x)
                 prev_font = self.x.read(self.previous.font)
                 prev_width = self.x.read(self.previous.width)
-                self.x.set(prev_x + font.measureText(' ') + prev_width)
+                self.x.set(prev_x + prev_font.measureText(' ') + prev_width)
             else:
                 self.x.copy(self.parent.x)
 ```
@@ -1369,7 +1372,7 @@ class InputLayout(EmbedLayout):
         # ...
         if self.height.dirty:
             font = self.height.read(self.font)
-            self.height = linespace(font)
+            self.height.set(linespace(font))
 ```
 
 Here's `ImageLayout`; it has an `img_height` field, which I'm not
@@ -1378,10 +1381,6 @@ computing `height`:
 
 ``` {.python}
 class ImageLayout(EmbedLayout):
-    def __init__(self, node, parent, previous, frame):
-        super().__init__(node, parent, previous, frame)
-        self.img_height = ProtectedField()
-
     def layout(self):
         # ...
         if self.height.dirty:
@@ -1407,7 +1406,7 @@ class IframeLayout(EmbedLayout):
 So that covers all of the inline layout objects. All that's left is
 `LineLayout`. Here are `x` and `y`:
 
-``` {.python}
+``` {.python ignore=ProtectedField}
 class LineLayout:
     def __init__(self, node, parent, previous):
         # ...
@@ -1424,13 +1423,13 @@ class LineLayout:
         # ...
 
         if self.x.dirty:
-            self.x.copy(self.x.width)
+            self.x.copy(self.parent.x)
 
         if self.y.dirty:
             if self.previous:
                 prev_y = self.y.read(self.previous.y)
                 prev_height = self.y.read(self.previous.height)
-                self.y.set(prev_y + self.prev_height)
+                self.y.set(prev_y + prev_height)
             else:
                 self.y.copy(self.parent.y)
 
@@ -1444,7 +1443,7 @@ add `ascent` and `descent` fields to the `LineLayout` to store the
 maximum ascent and descent, and then have the `height` and the
 children's `y` field depend on those:
 
-``` {.python}
+``` {.python ignore=ProtectedField}
 class LineLayout:
     def __init__(self, node, parent, previous):
         # ...
@@ -1482,10 +1481,10 @@ class LineLayout:
             ]))
 
         if self.descent.dirty:
-            self.descent = max([
+            self.descent.set(max([
                 self.descent.read(child.descent)
                 for child in self.children
-            ])
+            ]))
 ```
 
 Next, we can recompute the `y` position of each child:
@@ -1643,7 +1642,7 @@ So we want to not nodify dependants if the value didn't change:
 ``` {.python}
 class ProtectedField:
     def set(self, value):
-        if self.value is not None:
+        if self.value != None:
             print("Change", self)
         if value != self.value:
             self.notify()
@@ -1734,7 +1733,7 @@ convenient to use the `ProtectedField` machinery. We want this flag
 dirty if any descendant has a dirty `children` or layout field.
 Something like this is *close* to working:
 
-``` {.python}
+``` {.python expected=False}
 class BlockLayout:
     def __init__(self, node, parent, previous, frame):
         # ...
@@ -1756,7 +1755,7 @@ and here the fields being read were just created and are therefore
 dirty. We need a variant of `read`, which I'll call `control` because
 it's for control dependencies:
 
-``` {.python}
+``` {.python replace=depended_on/depended_eager}
 class ProtectedField:
     def control(self, source):
         source.depended_on.add(self)
@@ -1825,7 +1824,7 @@ class BlockLayout:
     def layout(self):
         # ...
         if self.descendants.dirty:
-            for child in self.children:
+            for child in self.children.get():
                 child.layout()
             self.descendants.set(None)
         # ...
@@ -1915,7 +1914,7 @@ class BlockLayout:
     def layout(self):
         # ...
         if self.descendants.dirty:
-            for child in self.children:
+            for child in self.children.get():
                 child.layout()
             self.descendants.set(None)
         # ...

@@ -178,6 +178,12 @@ class ProtectedField:
     def copy(self, field):
         self.set(self.read(field))
 
+    def __str__(self):
+        if self.dirty:
+            return "<dirty>"
+        else:
+            return str(self.value)
+
     def __repr__(self):
         return "ProtectedField({}, {})".format(self.node, self.name)
 
@@ -476,12 +482,14 @@ class LineLayout:
 
         if self.ascent.dirty:
             self.ascent.set(max([
-                -self.ascent.read(child.ascent) for child in self.children
+                -self.ascent.read(child.ascent)
+                for child in self.children
             ]))
 
         if self.descent.dirty:
             self.descent.set(max([
-                self.descent.read(child.descent) for child in self.children
+                self.descent.read(child.descent)
+                for child in self.children
             ]))
 
         for child in self.children:
@@ -542,8 +550,8 @@ class TextLayout:
             self.zoom.copy(self.parent.zoom)
 
         if self.font.dirty:
-            style = self.font.read(self.node.style)
             zoom = self.font.read(self.zoom)
+            style = self.font.read(self.node.style)
             self.font.set(font(style, zoom))
 
         if self.width.dirty:
@@ -627,7 +635,7 @@ class EmbedLayout:
     def layout_after(self):
         if self.ascent.dirty:
             height = self.ascent.read(self.height)
-            self.ascent.set(-height * 1.25)
+            self.ascent.set(-height)
         
         if self.descent.dirty:
             self.descent.set(0)
@@ -707,7 +715,7 @@ class ImageLayout(EmbedLayout):
             self.img_height = device_px(image_height, h_zoom)
         if self.height.dirty:
             font = self.height.read(self.font)
-            self.height.set(max(self.img_height, linespace(self.font)))
+            self.height.set(max(self.img_height, linespace(font)))
         EmbedLayout.layout_after(self)
 
     def paint(self, display_list):
@@ -817,7 +825,7 @@ class JSContext:
         self.throw_if_cross_origin(frame)
         elt = self.handle_to_node[handle]
         elt.attributes['style'] = s
-        elt.style.notify()
+        elt.style.mark()
         frame.set_needs_render()
 
 @wbetools.patch(Frame)

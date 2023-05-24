@@ -33,6 +33,7 @@ class Block:
         attrs = dict(meta[2])
         self.loc = Span(attrs["data-pos"])
         self.file = attrs.get("file")
+        self.ignore = attrs.get("ignore")
         self.expected = attrs.get("expected", "True") == "True"
         self.indent(int(attrs.get("indent", "0")))
         if "dropline" in attrs:
@@ -85,7 +86,7 @@ def tangle(file):
 def find_block(block, text):
     differ = difflib.Differ(charjunk=lambda c: c == " ", linejunk=str.isspace)
     block_lines = [
-        i for i in block.splitlines(keepends=True)
+        i for i in block.content.splitlines(keepends=True)
         if "..." not in i and not i.isspace()
     ]
     d = differ.compare(block_lines, text.splitlines(keepends=True))
@@ -96,9 +97,11 @@ def find_block(block, text):
         l = l[2:]
         if type == "?":
             continue
+        elif block.ignore and urllib.parse.unquote(block.ignore) in l:
+            continue
         elif type == "+":
             # if the "+" immediately follows a "-", check for whitespace differences
-            if same and last_type == "-" and n != block.count("\n"):
+            if same and last_type == "-" and n != block.content.count("\n"):
                 if same[-1][1].strip() == l.strip():
                     same[-1] = (False, same[-1][1])
                 else:
@@ -126,7 +129,7 @@ def compare_files(book, code, language, file):
         if "example" in block.classes: continue
         if language and language not in block.classes: continue
         if block.file != file: continue
-        cng = find_block(block.content, src)
+        cng = find_block(block, src)
         count += 1
         if any(l2 for l2, l in cng) == block.expected:
             # If expected to pass (True) and there are lines,
