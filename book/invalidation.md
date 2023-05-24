@@ -808,9 +808,12 @@ class BlockLayout:
         # ...
 ```
 
-`BlockLayout` also uses its `width` field when doing line wrapping,
-inside `add_inline_child`. Since `add_inline_child` adds children,
-we'll make the `children` field depend on the `width`:
+However, `width` is more complex than `zoom` because `width` is also
+used in a bunch of other places during line wrapping.
+
+For example, `add_inline_child` reads from the `width` to determine
+whether to add a new line. We thus need the `children` field to depend
+on the `width`:
 
 ``` {.python}
 class BlockLayout:
@@ -821,18 +824,37 @@ class BlockLayout:
         # ...
 ```
 
-Finally, the `font` function, called from `text`, reads `node.style`:
+While we're here, note that the decision over whether or not to add a
+new line also depends on `w`, which is an input to `add_inline_child`.
+If you look through `add_inline_child`'s callers, you'll see that most
+of the time, this argument depends on `zoom`:
 
 ``` {.python}
-def font(node, zoom):
-    weight = node.style['font-weight']
-    style = node.style['font-style']
-    size = float(node.style['font-size'][:-2])
-    font_size = device_px(size, zoom)
-    return get_font(font_size, weight, style)
+class BlockLayout:
+    def input(self, node):
+        zoom = self.children.read(self.zoom)
+        w = device_px(INPUT_WIDTH_PX, zoom)
+        self.add_inline_child(node, w, InputLayout, self.frame)
 ```
 
-To handle this, we'll need to protect `style`:
+The same kind of dependency needs to be added to `image` and `iframe`.
+
+In `text`, however, we need to be a little more careful. This method
+computes the `w` parameter using a font returned by `font`:
+
+``` {.python}
+class BlockLayout:
+    def text(self, node):
+        zoom = self.children.read(self.zoom)
+        node_font = font(node.style, zoom)
+        for word in node.text.split():
+            w = node_font.measureText(word)
+            self.add_inline_child(node, w, TextLayout, self.frame, word)
+```
+
+Note that the font depends on the node's `style`, which can change,
+for example via the `style_set` function. To handle this, we'll need
+to protect `style`:
 
 ``` {.python}
 class Element:
@@ -873,7 +895,12 @@ def style(node, rules, frame):
             new_style[property] = default_value
 ```
 
-Styles can also be changed from the `style_set` method:
+If `style_set` changes a style, we can mark the `style`
+field:[^protect-style-attr]
+
+[^protect-style-attr] Technically, we should handle this by making the
+    `style` attribute a protected field, and depending on it inside
+    `style`, but I'm taking a short-cut in the interest of simplicity.
 
 ``` {.python}
 class JSContext:
@@ -882,14 +909,23 @@ class JSContext:
         elt.style.mark()
 ```
 
-Technically, we should handle this by making the `style` attribute a
-protected field, and depending on it inside `style`, but let's take a
-short-cut here and skip that in the interest of simplicity.
+Finally, in `text` (and also in `add_inline_child`) we can depend on
+the `style` field:
 
-We've now put the `style`, `width`, and `zoom` properties---at least
-for `DocumentLayout` and `BlockLayout`---inside a protected field. So
-we can finally make line layout use protected fields. To begin with,
-we only want to do line layout if the `children` field is dirty:
+``` {.python}
+class BlockLayout:
+    def text(self, node):
+        zoom = self.children.read(self.zoom)
+        style = self.children.read(node.style)
+        node_font = font(style, zoom)
+        # ...
+```
+
+Make sure all other uses of the `style` field use either `read` or
+`get`; it should be pretty clear which is which. We've now protected
+the `width` and `style` properties, so we can finally skip line layout
+when it's unchanged. To begin with, we only want to do line layout if
+the `children` field is dirty:
 
 ``` {.python}
 class BlockLayout:
@@ -902,11 +938,10 @@ class BlockLayout:
                 # ...
 ```
 
-Now, we need to change `add_inline_child` and `new_line`, because they
-reference the `children` field and that field is now protected. There
-are couple of ways you could fix this, but in the interests of
-expediency,[^perhaps-local] I'm going to use a second, unprotected
-field, `temp_children`:
+We also need to fix up `add_inline_child`'s and `new_line`'s
+references to `children`. There are couple of possible fixes, but in
+the interests of expediency,[^perhaps-local] I'm going to use a
+second, unprotected field, `temp_children`:
 
 [^perhaps-local]: Perhaps the nicest design would thread a local
     `children` variable through all of the methods involved in line
@@ -952,12 +987,11 @@ class BlockLayout:
         # ...
 ```
 
-That was a lot of changes, but in the end, we ended up protecting the
-`style` field on DOM nodes and the `children`, `width`, and `zoom`
-fields on `DocumentLayout` and `BlockLayout` elements.
-
-Go through your browser and make sure all references to these fields
-use `get`; one tricky case is `tree_to_list`, which might have to deal
+In total, we ended up protecting the `style` field on DOM nodes and
+the `children`, `width`, and `zoom` fields on `DocumentLayout` and
+`BlockLayout` elements. If you've been going through and adding the
+appropriate `read` and `get` calls, your browser should be close to
+working. There's one tricky case: `tree_to_list`, which might deal
 with both protected and unprotected `children` fields. I fixed this
 with a type test:
 
@@ -973,7 +1007,8 @@ def tree_to_list(tree, list):
 ```
 
 With all of these changes made, your browser should work again, and it
-should now not be redoing line layout for most elements.
+should now skipping line layout for most elements.
+
 
 Handling dependencies
 =====================
