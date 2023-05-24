@@ -176,12 +176,12 @@ class DocumentLayout:
     def __repr__(self):
         return "DocumentLayout()"
 
-def font(node, zoom):
-    weight = node.style["font-weight"]
-    style = node.style["font-style"]
-    size = float(node.style["font-size"][:-2])
+def font(style, zoom):
+    weight = style["font-weight"]
+    variant = style["font-style"]
+    size = float(style["font-size"][:-2])
     font_size = device_px(size, zoom)
-    return get_font(font_size, weight, style)
+    return get_font(font_size, weight, variant)
 
 class BlockLayout:
     def __init__(self, node, parent, previous, frame):
@@ -257,10 +257,10 @@ class BlockLayout:
             child = child_class(node, line, self.previous_word, frame)
         line.children.append(child)
         self.previous_word = child
-        self.cursor_x += w + font(node, self.zoom).measureText(" ")
+        self.cursor_x += w + font(node.style, self.zoom).measureText(" ")
 
     def text(self, node):
-        node_font = font(node, self.zoom)
+        node_font = font(node.style, self.zoom)
         for word in node.text.split():
             w = node_font.measureText(word)
             self.add_inline_child(node, w, TextLayout, self.frame, word)
@@ -337,7 +337,7 @@ class EmbedLayout:
 
     def layout(self):
         self.zoom = self.parent.zoom
-        self.font = font(self.node, self.zoom)
+        self.font = font(self.node.style, self.zoom)
         if self.previous:
             space = self.previous.font.measureText(" ")
             self.x = \
@@ -474,7 +474,7 @@ class TextLayout:
 
     def layout(self):
         self.zoom = self.parent.zoom
-        self.font = font(self.node, self.zoom)
+        self.font = font(self.node.style, self.zoom)
 
         # Do not set self.y!!!
         self.width = self.font.measureText(self.word)

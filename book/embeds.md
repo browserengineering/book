@@ -325,7 +325,7 @@ class EmbedLayout:
 
     def layout(self):
         self.zoom = self.parent.zoom
-        self.font = font(self.node, self.zoom)
+        self.font = font(self.node.style, self.zoom)
         if self.previous:
             space = self.previous.font.measureText(" ")
             self.x = \
@@ -419,12 +419,12 @@ let's make a function for that:
 [^actual]: Yes, this is how real browsers do it too.
 
 ``` {.python}
-def font(node, zoom):
-    weight = node.style["font-weight"]
-    style = node.style["font-style"]
-    size = float(node.style["font-size"][:-2])
+def font(style, zoom):
+    weight = style["font-weight"]
+    variant = style["font-style"]
+    size = float(style["font-size"][:-2])
     font_size = device_px(size, zoom)
-    return get_font(font_size, weight, style)
+    return get_font(font_size, weight, variant)
 ```
 
 There's also shared code that handles line layout; let's put that into
@@ -444,7 +444,7 @@ class BlockLayout:
             child = child_class(node, line, self.previous_word, frame)
         line.children.append(child)
         self.previous_word = child
-        self.cursor_x += w + font(node, self.zoom).measureText(" ")
+        self.cursor_x += w + font(node.style, self.zoom).measureText(" ")
 ```
 
 We can redefine  `text` and `input` in a satisfying way now:
@@ -452,7 +452,7 @@ We can redefine  `text` and `input` in a satisfying way now:
 ``` {.python replace=TextLayout/TextLayout%2c%20self.frame,InputLayout/InputLayout%2c%20self.frame}
 class BlockLayout:
     def text(self, node):
-        node_font = font(node, self.zoom)
+        node_font = font(node.style, self.zoom)
         for word in node.text.split():
             w = node_font.measureText(word)
             self.add_inline_child(node, w, TextLayout, word)
