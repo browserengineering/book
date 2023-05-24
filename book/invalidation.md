@@ -106,13 +106,14 @@ class BlockLayout:
                 cmds.append(DrawCursor(text_nodes[-1], text_nodes[-1].width))
             else:
                 cmds.append(DrawCursor(self, 0))
+        # ...
 ```
 
 Here, `DrawCursor` is just a wrapper around `DrawLine`:
 
 ``` {.python}
 def DrawCursor(elt, width):
-    return DrawLine(elt.x, elt.y, elt.x + width, elt.y + elt.height)
+    return DrawLine(elt.x + width, elt.y, elt.x + width, elt.y + elt.height)
 ```
 
 We might as well also use this wrapper in `InputLayout`:
@@ -554,9 +555,37 @@ class BlockLayout:
                 self.children.set(children)
 ```
 
-So far these changes have lead to some small readability improvements,
-but `ProtectedField`s can track dependencies for us. For example,
-consider the code in `keypress` that handles edits:
+Finally, when it comes time to use the `children` field, the
+`ProtectedField` can check that it isn't dirty:
+
+``` {.python}
+class ProtectedField:
+    def get(self):
+        assert not self.dirty
+        return self.value
+```
+
+Now we can use `get` to read the `children` field in `layout` and in
+lots of other places besides:
+
+``` {.python}
+class BlockLayout:
+    def layout(self):
+        # ...
+        for child in self.children.get():
+            child.layout()
+
+        self.height = sum([child.height for child in self.children.get()])
+```
+
+`ProtectedField` is a nice convenience: it frees us from remembering
+that two fields (`children` and `dirty_children`) go together, and it
+makes sure we always check and reset dirty bits when we're supposed
+to.
+
+However, the true value of `ProtectedField` comes in when we think
+about dependencies. Consider the code in `keypress` that handles
+edits:
 
 ``` {.python}
 class Frame:
@@ -566,12 +595,13 @@ class Frame:
             self.tab.focus.layout_object.children.mark()
 ```
 
-Do you notice that this method *modifies* an `Element`'s `children`
-field, but notifies a layout object about it? That makes sense,
-because the layout object's `children` field depends on the
-`Element`'s `children` field, but tracking this dependency manually is
-error-prone. Instead, let's wrap make each `Element` have a protected
-`children` field:
+Do you notice that this method *modifies* an `Element` but `mark`s a
+layout object? We need to mark the layout object's `children` field
+because it _depends on_ depends on the `Element`, but tracking this
+dependency manually is error-prone. Let's make `ProtectedField` track
+this dependency for us.
+
+First, let's protect `Element`'s `children` field:
 
 ``` {.python}
 class Element:
@@ -580,33 +610,12 @@ class Element:
         self.children = ProtectedField()
 ```
 
-In the `keypress` handler, we want to call a method on the `Element`'s
-`children` field, because that's what the `keypress` handler actually
-modifies. But the dirty field we want *set* is on the layout object's
-`children` field. To accomplish that, we'll need some kind of link
-between the two `ProtectedField`s. Specifically, we'll need to the
-`Element`'s children field to know that the layout object's `children`
-field depends on it:
+You can do the same for `Text`, so that they have the same interface.
 
-``` {.python}
-class ProtectedField:
-    def __init__(self, eager=False):
-        # ...
-        self.depended_on = set()
-```
-
-We can now add a new `notify` method that sets all of the dirty flags
-that depend on the notified field:
-
-``` {.python}
-class ProtectedField:
-    def notify(self):
-        for field in self.depended_on:
-            field.mark()
-```
-
-The keypress handler can now call `notify` on the `Element`'s
-`children`:
+In the `keypress` handler, it is actually the `Element`'s `children`
+field that changes, but the field that becomes dirty is the layout
+object's `children` field, which depends on the `Element`'s. Let's
+invent a method to do that:
 
 ``` {.python}
 class Frame:
@@ -616,7 +625,8 @@ class Frame:
             self.tab.focus.children.notify()
 ```
 
-We can also `notify` any time we `set` a value:
+In `innerHTML_set`, we instead replace the element's children, so we
+want to update the value and also notify all dependants:
 
 ``` {.python}
 class ProtectedField:
@@ -626,39 +636,80 @@ class ProtectedField:
         self.dirty = False
 ```
 
-The only remaining question is how to establish the dependency in the
-first place. Just like with our `set` method, we want *depending on a
-value* and *establishing a dependency* to be the same operation, so
-that we can't accidentally forget one of them. So let's add a method
-that *reads* a protected field, but simultaneously establishes a
-dependency:
+`innerHTML_set` can call this method when it changes the children:
+
+``` {.python}
+class JSContext:
+    def innerHTML_set(self, handle, s, window_id):
+        # ...
+        elt.children.set(new_nodes)
+```
+
+Now we need to figure out how to implement `notify`. The key is that a
+layout object's `children` depend on the associated `Element`'s
+`children`. We can track that dependency at runtime:
+
+``` {.python}
+class ProtectedField:
+    def __init__(self, eager=False):
+        # ...
+        self.depended_on = set()
+```
+
+Then, `notify` can automatically `mark` all of the fields that depend
+on this one:
+
+``` {.python}
+class ProtectedField:
+    def notify(self):
+        for field in self.depended_on:
+            field.mark()
+```
+
+We could establish this dependency manually, like this:
+
+``` {.python.example}
+class BlockLayout:
+    def __init__(self, node, parent, previous, frame):
+        # ...
+        this.node.children.depended_on.add(self.children)
+```
+
+However, this is error prone---we could forget a dependency. So let's
+instead as: why _does_ the layout object's `children` depend on the
+node's `children`? The answer is that we read from the node's children
+to create the layout object's children:
+
+``` {.python.example}
+class BlockLayout:
+    def layout(self):
+        if mode == "block":
+            if self.children.dirty:
+                for child in self.node.children.get():
+                    # ...
+```
+
+So let's make a variant of `get` that also establishes a dependency
+for us:
 
 ``` {.python}
 class ProtectedField:
     def read(self, field):
-        assert not field.dirty
-        field.depended_on(self)
-        return field.value
+        field.depended_on.add(self)
+        return field.get()
 ```
 
-To use this method, you call it on the field you're currently
-computing, passing in the field whose value you want as an argument:
+Now `read` both gets protected values and also establishes
+dependences:
 
 ``` {.python}
 class BlockLayout:
     def layout(self):
         if mode == "block":
             if self.children.dirty:
-                node_children = self.children.read(self.node.children)
-                # ...
+                for child in self.children.read(self.node.children):
+                    # ...
 ```
-
-Here the `BlockLayout`'s `children` field reads the associated
-`Element`'s `children` field, thus establishing that the former
-depends upon the latter. And note that the `read` method explicitly
-checks that the field being read is not dirty; this guarantees that
-the returned value (which should be used in place of `node.children`)
-is up to date.
 
 By encapsulating a value and its dirty field into a single object,
 `ProtectedField` makes sure that dirty flags are set, checked, and
@@ -690,19 +741,18 @@ class BlockLayout:
 
 Here the `new_line` and `recurse` methods add new layout objects to
 the `children` array. We'd like to skip this if the `children` field
-isn't dirty, but to do that, we need to make sure that all of the
-dependencies that `new_line` and `recurse` read set the `children`
-dirty bit.
+isn't dirty, but to do that, we need to make sure that everything
+`new_line` and `recurse` read can mark the `children` field.
 
-To do that, let's read through the `new_line` and `recurse` methods,
-as well as the methods that they call (like `text`,
-`add_inline_child`, and `font`). Focus on the fields of `self` and
-`node` being read. You should notice that the `font` function reads
-from `node.style`, the `add_inline_child` method reads the `width`
-field, and lots of methods read the `zoom` field.
-
+Let's start by surveying the `new_line` and `recurse` methods, plus
+anything they call (like `text`, `add_inline_child`, and `font`). In
+total, they read three important fields of `self` and `node`: the
+`font` function reads from `node.style`; the `add_inline_child` method
+reads the `width` field; and lots of methods read the `zoom` field.
 All of these dependencies can change, so we need to wrap all of them
-with `ProtectedField`. Let's start with `zoom`. It is initially set on
+with `ProtectedField`.
+
+Let's start with `zoom`. It is initially set on
 the `DocumentLayout`, so let's start there:
 
 ``` {.python}
@@ -714,7 +764,7 @@ class DocumentLayout:
 
     def layout(self, width, zoom):
         # ...
-        self.zoom = self.zoom.set(zoom)
+        self.zoom.set(zoom)
         # ...
 ```
 
@@ -747,7 +797,7 @@ common, so let's add a shortcut for it:
 ``` {.python}
 class ProtectedField:
     def copy(self, other):
-        return self.set(self.read(other))
+        self.set(self.read(other))
 ```
 
 This makes the code a little shorter:
@@ -760,12 +810,8 @@ class BlockLayout:
         # ...
 ```
 
-We can also wrap the `zoom` field for all of the other types of layout
-objects, each of which have their own `zoom` fields.
-
 Next, let's wrap `width` field. Like `zoom`, it's initially set in
 `DocumentLayout`:
-
 
 ``` {.python}
 class DocumentLayout:
@@ -776,7 +822,7 @@ class DocumentLayout:
 
     def layout(self, width, zoom):
         # ...
-        self.width = self.width.set(width - 2 * device_px(HSTEP, zoom))
+        self.width.set(width - 2 * device_px(HSTEP, zoom))
         # ...
 ```
 
@@ -794,72 +840,22 @@ class BlockLayout:
         if self.width.dirty:
             self.width.copy(self.parent.width)
         # ...
-
 ```
 
-The `LineLayout` does the same thing. However, in `InputLayout`, the
-width depends on the zoom level instead of the parent's width:
-
-``` {.python}
-class EmbedLayout:
-    def __init__(self, node, parent, previous, frame):
-        # ...
-        self.width = ProtectedField()
-        # ...
-
-class InputLayout(EmbedLayout):
-    def layout(self):
-        # ...
-        zoom = self.width.read(self.zoom)
-        self.width.set(device_px(INPUT_WIDTH_PX, zoom))
-        # ...
-```
-
-For `iframe` and `img` elements, the width depends on the zoom level
-and also the element's `width` and `height` attributes. The `zoom`
-dependency works like for `InputLayout`, but what about `width` and
-`height`? Luckily, our browser doesn't provide any way to change those
-values, so we don't need to track them as dependencies.^[That said, a
-real browser *would* need to make those attributes `ProtectedField`s
-as well.]
-
-Another place the width is used is inside `add_inline_child`. This
-whole method is about adding children, so we'll just make the
-`children` field depend on the `width`:
+`BlockLayout` also uses its `width` field when doing line wrapping,
+inside `add_inline_child`. Since `add_inline_child` adds children,
+we'll make the `children` field depend on the `width`:
 
 ``` {.python}
 class BlockLayout:
     def add_inline_child(self, node, w, child_class, frame, word=None):
-        width = self.children_field.read(self.width_field)
+        width = self.children.read(self.width)
+        if self.cursor_x + w > width:
+            self.new_line()
         # ...
-
 ```
 
-Finally, when it comes to `width`, let's look at `TextLayout`. Here,
-the width is computed based the `font`:
-
-``` {.python file=lab15}
-class TextLayout:
-    def layout(self):
-        # ...
-        self.font = font(self.node, zoom)
-        self.width = self.font.measureText(self.word)
-```
-
-A similar issue exists in the `BlockLayout`'s `text` method, where the
-`node_font` influences the arguments to `add_inline_child` and
-therefore the `children` field:
-
-``` {.python file=lab15}
-class BlockLayout
-    def text(self, node):
-        node_font = font(node, self.zoom)
-        for word in node.text.split():
-            w = node_font.measureText(word)
-            self.add_inline_child(node, w, TextLayout, self.frame, word)
-```
-
-Ultimately, the `font` method reads the node's `style`:
+Finally, the `font` function, called from `text`, reads `node.style`:
 
 ``` {.python}
 def font(node, zoom):
@@ -870,12 +866,7 @@ def font(node, zoom):
     return get_font(font_size, weight, style)
 ```
 
-So the point is that all of this depends on the style, and the style
-itself can change if, for example, new elements are added or the
-`style` attribute is assigned to.
-
-To handle this, we'll need to replace `style`, also, by a protected
-field:
+To handle this, we'll need to protect `style`:
 
 ``` {.python}
 class Element:
@@ -891,30 +882,20 @@ class Text:
         # ...
 ```
 
-This style field is computed in the `style` method, which build a
-dictionary of new style properties in multiple phases. Let's build
-that new dictionary in a local variable, and set it at the end:
+This style field is computed in the `style` method, which builds the
+map of style properties through multiple phases. Let's build that new
+dictionary in a local variable, and `set` it once complete:
 
 ``` {.python}
 def style(node, rules, frame):
     old_style = node.style.value
-    new_style = CSS_PROPERTIES.copy()
+    new_style = {}
     # ...
     node.style.set(new_style)
 ```
 
-It can also be changed in the `style_set` method:
-
-``` {.python}
-class JSContext:
-    def style_set(self, handle, s, window_id):
-        # ...
-        elt.style_field.notify()
-```
-
-Also, in a couple of places we need to read from the parent node's
-style, line when we handle inheritance. We need to mark dependencies
-in that case:
+Inside `style`, a couple of lines read from the parent node's style.
+We need to mark dependencies in these cases:
 
 ``` {.python}
 def style(node, rules, frame):
@@ -925,6 +906,226 @@ def style(node, rules, frame):
         else:
             new_style[property] = default_value
 ```
+
+Styles can also be changed from the `style_set` method:
+
+``` {.python}
+class JSContext:
+    def style_set(self, handle, s, window_id):
+        # ...
+        elt.style.mark()
+```
+
+Technically, we should handle this by making the `style` attribute a
+protected field, and depending on it inside `style`, but let's take a
+short-cut here and skip that in the interest of simplicity.
+
+We've now put the `style`, `width`, and `zoom` properties---at least
+for `DocumentLayout` and `BlockLayout`---inside a protected field. So
+we can finally make line layout use protected fields. To begin with,
+we only want to do line layout if the `children` field is dirty:
+
+``` {.python}
+class BlockLayout:
+    def layout(self):
+        # ...
+        if mode == "block":
+            # ...
+        else:
+            if self.children.dirty:
+                # ...
+```
+
+Now, we need to change `add_inline_child` and `new_line`, because they
+reference the `children` field and that field is now protected. There
+are couple of ways you could fix this, but in the interests of
+expediency,[^perhaps-local] I'm going to use a second, unprotected
+field, `temp_children`:
+
+[^perhaps-local]: Perhaps the nicest design would thread a local
+    `children` variable through all of the methods involved in line
+    layout, similar to how we handle `paint`.
+
+``` {.python}
+class BlockLayout:
+    def layout(self):
+        # ...
+        if mode == "block":
+            # ...
+        else:
+            if self.children.dirty:
+                self.temp_children = []
+                self.new_line()
+                self.recurse(self.node)
+                self.children.set(self.temp_children)
+                self.temp_children = None
+```
+
+Note that I reset `temp_children` once we're done with it, to make
+sure that no other part of the code accidentally uses it. This way,
+`new_line` can modify `temp_children`, which will eventually become
+the value of `children`:
+
+``` {.python}
+class BlockLayout:
+    def new_line(self):
+        self.previous_word = None
+        self.cursor_x = 0
+        last_line = self.temp_children[-1] if self.temp_children else None
+        new_line = LineLayout(self.node, self, last_line)
+        self.temp_children.append(new_line)
+```
+
+You'll want to do something similar in `add_inline_child`:
+
+``` {.python}
+class BlockLayout:
+    def add_inline_child(self, node, w, child_class, frame, word=None):
+        # ...
+        line = self.temp_children[-1]
+        # ...
+```
+
+That was a lot of changes, but in the end, we ended up protecting the
+`style` field on DOM nodes and the `children`, `width`, and `zoom`
+fields on `DocumentLayout` and `BlockLayout` elements.
+
+Go through your browser and make sure all references to these fields
+use `get`; one tricky case is `tree_to_list`, which might have to deal
+with both protected and unprotected `children` fields. I fixed this
+with a type test:
+
+``` {.python}
+def tree_to_list(tree, list):
+    list.append(tree)
+    children = tree.children
+    if isinstance(children, ProtectedField):
+        children = children.get()
+    for child in children:
+        tree_to_list(child, list)
+    return list
+```
+
+With all of these changes made, your browser should work again, and it
+should now not be redoing line layout for most elements.
+
+
+Widths for inline elements
+==========================
+
+We can also wrap the `zoom` field for all of the other types of layout
+objects, each of which have their own `zoom` fields. Search for `zoom`
+in the rest of your layout code---you should see references to it both
+within `layout` and `paint` methods. For now, you can replace `zoom`
+with `zoom.get()` to keep that code working.
+
+Now that `BlockLayout` protects its `width`, let's make sure all the
+other layout objects do. We've already done `DocumentLayout`.
+`LineLayout` is also pretty similar. However, the other layout methods
+are a bit more complex.
+
+In `InputLayout` width depends on the zoom level:
+
+``` {.python}
+class EmbedLayout:
+    def __init__(self, node, parent, previous, frame):
+        # ...
+        self.width = ProtectedField()
+        # ...
+
+class InputLayout(EmbedLayout):
+    def layout(self):
+        # ...
+        if self.width.dirty:
+            zoom = self.width.read(self.zoom)
+            self.width.set(device_px(INPUT_WIDTH_PX, zoom))
+        # ...
+```
+
+Finally, when it comes to `width`, let's look at `TextLayout`. Here,
+the width is computed based the `font`:
+
+``` {.python file=lab15}
+class TextLayout:
+    def layout(self):
+        # ...
+        self.font = font(self.node, zoom)
+        self.width = self.font.measureText(self.word)
+```
+
+For `iframe` and `img` elements, the width depends on the zoom level
+and also the element's `width` and `height` attributes. Luckily, our
+browser doesn't provide any way to change those attributes, so we
+don't need to track them as dependencies.^[That said, a real browser
+*would* need to make those attributes `ProtectedField`s as well.] So
+we just need to handle the `zoom` dependency, which looks the same as
+above:
+
+``` {.python}
+class ImageLayout(EmbedLayout):
+    def layout(self):
+        if width_attr and height_attr:
+            zoom = self.width.read(self.zoom)
+            self.width.set(device_px(int(width_attr), zoom))
+            # ...
+```
+
+You can repeat this pattern to handle the other uses of `width` in
+`ImageLayout` and `IframeLayout`.
+
+Finally, `TextLayout`. Here, the width depends on the font:
+
+``` {.python}
+class TextLayout:
+    def __init__(self, node, parent, previous, frame, word):
+        # ...
+        self.width = ProtectedField()
+        # ...
+
+    def layout(self):
+        # ...
+        if self.width.dirty:
+            self.font = font(self.node, self.zoom.get())
+            self.width.set(self.font.measureText(self.word))
+        # ...
+```
+
+As you can see, the `font` is computed based on `self.zoom`, which we
+can handle with `read`. However, it also depends on `node`, or more
+precisely, the node's `style` field:
+
+``` {.python file=lab15}
+def font(node, zoom):
+    weight = node.style['font-weight']
+    style = node.style['font-style']
+    size = float(node.style['font-size'][:-2])
+    font_size = device_px(size, zoom)
+    return get_font(font_size, weight, style)
+```
+
+A similar issue exists in the `BlockLayout`'s `text` method, where the
+`node_font` influences the arguments to `add_inline_child` and
+therefore the `children` field:
+
+``` {.python file=lab15}
+class BlockLayout
+    def text(self, node):
+        node_font = font(node, self.zoom.get())
+        for word in node.text.split():
+            w = node_font.measureText(word)
+            self.add_inline_child(node, w, TextLayout, self.frame, word)
+```
+
+We know these are dependencies we need to capture; more generally:
+
+- If we're using the `get` method during layout, it's being used to
+  compute another layout field, so we need to use `read` instead to
+  keep track of the dependency.
+- If we're modifying something used during layout, like the style, it
+  needs to be behind a `ProtectedField` so it can track dependencies.
+
+
+
 
 Now, we can depend have the `TextLayout` width, and the width used in
 the `text` method, depend on the style:
@@ -1715,8 +1916,17 @@ correctly, and we can now skip recursively calling layout when the
 descendants aren't dirty. Even on larger web pages, layout should now
 be a millisecond or less, and editing should become fairly smooth.
 
+
 Granular style invalidation
 ===========================
+
+Thanks to all of this invalidation work, we should now have a pretty
+fast editing experience,[^other-phases] and many JavaScript-driven
+interactions should be fairly fast as well. However, 
+
+[^other-phases]: It might still be pretty laggy on large pages due to
+    the composite-raster-draw cycle being fairly slow, depending on
+    which exericses you implemented in [Chapter 13](animations.md).
 
 
 Summary
@@ -1736,6 +1946,7 @@ should now look something like this:
 ::: {.cmd .python .outline html=True}
     python3 infra/outlines.py --html src/lab16.py
 :::
+
 
 Exercises
 =========
