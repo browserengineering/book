@@ -583,139 +583,6 @@ that two fields (`children` and `dirty_children`) go together, and it
 makes sure we always check and reset dirty bits when we're supposed
 to.
 
-However, the true value of `ProtectedField` comes in when we think
-about dependencies. Consider the code in `keypress` that handles
-edits:
-
-``` {.python}
-class Frame:
-    def keypress(self, char):
-        elif self.tab.focus and "contenteditable" in self.tab.focus.attributes:
-            # ...
-            self.tab.focus.layout_object.children.mark()
-```
-
-Do you notice that this method *modifies* an `Element` but `mark`s a
-layout object? We need to mark the layout object's `children` field
-because it _depends on_ depends on the `Element`, but tracking this
-dependency manually is error-prone. Let's make `ProtectedField` track
-this dependency for us.
-
-First, let's protect `Element`'s `children` field:
-
-``` {.python}
-class Element:
-    def __init__(self, tag, attributes, parent):
-        # ...
-        self.children = ProtectedField()
-```
-
-You can do the same for `Text`, so that they have the same interface.
-
-In the `keypress` handler, it is actually the `Element`'s `children`
-field that changes, but the field that becomes dirty is the layout
-object's `children` field, which depends on the `Element`'s. Let's
-invent a method to do that:
-
-``` {.python}
-class Frame:
-    def keypress(self, char):
-        elif self.tab.focus and "contenteditable" in self.tab.focus.attributes:
-            # ...
-            self.tab.focus.children.notify()
-```
-
-In `innerHTML_set`, we instead replace the element's children, so we
-want to update the value and also notify all dependants:
-
-``` {.python}
-class ProtectedField:
-    def set(self, value):
-        self.notify()
-        self.value = value
-        self.dirty = False
-```
-
-`innerHTML_set` can call this method when it changes the children:
-
-``` {.python}
-class JSContext:
-    def innerHTML_set(self, handle, s, window_id):
-        # ...
-        elt.children.set(new_nodes)
-```
-
-Now we need to figure out how to implement `notify`. The key is that a
-layout object's `children` depend on the associated `Element`'s
-`children`. We can track that dependency at runtime:
-
-``` {.python}
-class ProtectedField:
-    def __init__(self, eager=False):
-        # ...
-        self.depended_on = set()
-```
-
-Then, `notify` can automatically `mark` all of the fields that depend
-on this one:
-
-``` {.python}
-class ProtectedField:
-    def notify(self):
-        for field in self.depended_on:
-            field.mark()
-```
-
-We could establish this dependency manually, like this:
-
-``` {.python.example}
-class BlockLayout:
-    def __init__(self, node, parent, previous, frame):
-        # ...
-        this.node.children.depended_on.add(self.children)
-```
-
-However, this is error prone---we could forget a dependency. So let's
-instead as: why _does_ the layout object's `children` depend on the
-node's `children`? The answer is that we read from the node's children
-to create the layout object's children:
-
-``` {.python.example}
-class BlockLayout:
-    def layout(self):
-        if mode == "block":
-            if self.children.dirty:
-                for child in self.node.children.get():
-                    # ...
-```
-
-So let's make a variant of `get` that also establishes a dependency
-for us:
-
-``` {.python}
-class ProtectedField:
-    def read(self, field):
-        field.depended_on.add(self)
-        return field.get()
-```
-
-Now `read` both gets protected values and also establishes
-dependences:
-
-``` {.python}
-class BlockLayout:
-    def layout(self):
-        if mode == "block":
-            if self.children.dirty:
-                for child in self.children.read(self.node.children):
-                    # ...
-```
-
-By encapsulating a value and its dirty field into a single object,
-`ProtectedField` makes sure that dirty flags are set, checked, and
-reset correctly. That will be key to using invalidation in the rest of
-our layout engine.
-
 ::: {.further}
 
 :::
@@ -739,21 +606,13 @@ class BlockLayout:
             self.recurse(self.node)
 ```
 
-Here the `new_line` and `recurse` methods add new layout objects to
-the `children` array. We'd like to skip this if the `children` field
-isn't dirty, but to do that, we need to make sure that everything
-`new_line` and `recurse` read can mark the `children` field.
+Basically, these lines handle line wrapping: they check widths, create
+new lines, and so on. We'd like to skip this work if the `children`
+field isn't dirty, but to do that, we first need to make sure that
+everything `new_line` and `recurse` read can mark the `children`
+field. Let's start with `zoom`, which almost every method reads.
 
-Let's start by surveying the `new_line` and `recurse` methods, plus
-anything they call (like `text`, `add_inline_child`, and `font`). In
-total, they read three important fields of `self` and `node`: the
-`font` function reads from `node.style`; the `add_inline_child` method
-reads the `width` field; and lots of methods read the `zoom` field.
-All of these dependencies can change, so we need to wrap all of them
-with `ProtectedField`.
-
-Let's start with `zoom`. It is initially set on
-the `DocumentLayout`, so let's start there:
+Zoom is initially set on the `DocumentLayout`, so let's start there:
 
 ``` {.python}
 class DocumentLayout:
@@ -768,7 +627,9 @@ class DocumentLayout:
         # ...
 ```
 
-Now, each `BlockLayout` has its own `zoom` field:
+That's easy enough, but when we get to `BlockLayout` it gets more
+complex. Naturally, each `BlockLayout` has its own `zoom` field, which
+we can protect:
 
 ``` {.python}
 class BlockLayout:
@@ -779,8 +640,89 @@ class BlockLayout:
 ```
 
 However, in the `BlockLayout`, the `zoom` field comes from its
-parent's `zoom` field, so we need to add a dependency using `read` and
-`set`:
+parent's `zoom` field. We might be tempted to write something like
+this:
+
+``` {.python}
+class BlockLayout:
+    def layout(self):
+        if self.zoom.dirty:
+            parent_zoom = self.parent.zoom.get()
+            self.zoom.set(parent_zoom)
+        # ...
+```
+
+However, recall that with dirty bits we must always think about
+setting them, checking them, and resetting them. The `get` method
+automatically checks the dirty bits, and the `set` method
+automatically resets them, but who *sets* the `zoom` dirty bit?
+
+Generally, we need to set a dirty bit when something it depends on
+changes. That's why we call `mark` in the `innerHTML_set` and
+`keypress` handlers: those change the DOM tree, which the layout
+tree's `children` field depends on. So since a child's `zoom` field
+depends on its parents' `zoom` field, we need to mark all the children
+when the `zoom` field changes:
+
+``` {.python.example}
+class BlockLayout:
+    def layout(self):
+        if self.zoom.dirty:
+            # ...
+            for child in self.children.get():
+                child.zoom.mark()
+```
+
+That said, doing this every time we modify any protected field is a
+pain, and it's easy to forget a dependency. We want to make this
+seamless: we want writing to a field to automatically mark all the
+fields that depend on it.
+
+To do that, we're going to need to track dependencies at run time:
+
+``` {.python}
+class ProtectedField:
+    def __init__(self, eager=False):
+        # ...
+        self.depended_on = set()
+```
+
+When you `set` a value, you notify all dependants, because those now
+have to be recomputed:
+
+``` {.python}
+class ProtectedField:
+    def set(self, value):
+        self.notify()
+        self.value = value
+        self.dirty = False
+```
+
+Now we can establish dependencies once and automatically have
+dependant fields get marked:
+
+``` {.python.example}
+class BlockLayout:
+    def __init__(self, node, parent, previous, frame):
+        # ...
+        self.parent.zoom.depended_on.add(self.children)
+```
+
+That's definitely less error-prone, but it'd be even better if we
+didn't have to think about dependencies at all. Think: why _does_ the
+child's `zoom` need to depend on its parent's? It's because we read
+from the parent's zoom, with `get`, when computing the child's. We can
+make a variant of `get` that captures this pattern:
+
+``` {.python}
+class ProtectedField:
+    def read(self, field):
+        field.depended_on.add(self)
+        return field.get()
+```
+
+Now the `zoom` computation just needs to use `read`, and all of the
+marking and dependency logic will be handled automatically:
 
 ``` {.python}
 class BlockLayout:
@@ -788,7 +730,6 @@ class BlockLayout:
         if self.zoom.dirty:
             parent_zoom = self.zoom.read(self.parent.zoom)
             self.zoom.set(parent_zoom)
-        # ...
 ```
 
 In fact, this pattern where we just copy our parent's value is pretty
@@ -810,8 +751,33 @@ class BlockLayout:
         # ...
 ```
 
-Next, let's wrap `width` field. Like `zoom`, it's initially set in
-`DocumentLayout`:
+Make sure to go through every other layout object type (there are now
+quite a few!) and protect their `zoom` fields also. Anywhere else that
+you see the `zoom` field refered to, you can use `get` to extract the
+actual zoom value. You can check that you succeeded by running your
+browser and making sure that nothing crashes, even when you increase
+or decrease the zoom level.
+
+Protecting `zoom` doesn't speed up our browser much, since it really
+was just copied up and down the tree. That said, the dependency
+tracking system in `ProtectedField` makes handling complex
+invalidation scenarios much easier, and it will push us toward making
+every field protected.
+
+::: {.further}
+
+:::
+
+
+Protecting widths
+=================
+
+Protecting `zoom` was relatively simple, but it points the way toward
+protecting complex layout fields. Working toward our goal of
+invalidating line breaking, let's next work on protecting the `width`
+field.
+
+Like `zoom`, `width` is initially set in `DocumentLayout`:
 
 ``` {.python}
 class DocumentLayout:
@@ -1008,6 +974,147 @@ def tree_to_list(tree, list):
 
 With all of these changes made, your browser should work again, and it
 should now not be redoing line layout for most elements.
+
+Handling dependencies
+=====================
+
+However, the true value of `ProtectedField` comes in when we think
+about dependencies. Consider the code in `keypress` that handles
+edits:
+
+``` {.python}
+class Frame:
+    def keypress(self, char):
+        elif self.tab.focus and "contenteditable" in self.tab.focus.attributes:
+            # ...
+            self.tab.focus.layout_object.children.mark()
+```
+
+Do you notice that this method *modifies* an `Element` but `mark`s a
+layout object? We need to mark the layout object's `children` field
+because it _depends on_ depends on the `Element`, but tracking this
+dependency manually is error-prone. Let's make `ProtectedField` track
+this dependency for us.
+
+First, let's protect `Element`'s `children` field:
+
+``` {.python}
+class Element:
+    def __init__(self, tag, attributes, parent):
+        # ...
+        self.children = ProtectedField()
+```
+
+You can do the same for `Text`, so that they have the same interface.
+
+In the `keypress` handler, it is actually the `Element`'s `children`
+field that changes, but the field that becomes dirty is the layout
+object's `children` field, which depends on the `Element`'s. Let's
+invent a method to do that:
+
+``` {.python}
+class Frame:
+    def keypress(self, char):
+        elif self.tab.focus and "contenteditable" in self.tab.focus.attributes:
+            # ...
+            self.tab.focus.children.notify()
+```
+
+In `innerHTML_set`, we instead replace the element's children, so we
+want to update the value and also notify all dependants:
+
+``` {.python}
+class ProtectedField:
+    def set(self, value):
+        self.notify()
+        self.value = value
+        self.dirty = False
+```
+
+`innerHTML_set` can call this method when it changes the children:
+
+``` {.python}
+class JSContext:
+    def innerHTML_set(self, handle, s, window_id):
+        # ...
+        elt.children.set(new_nodes)
+```
+
+Now we need to figure out how to implement `notify`. The key is that a
+layout object's `children` depend on the associated `Element`'s
+`children`. We can track that dependency at runtime:
+
+``` {.python}
+class ProtectedField:
+    def __init__(self, eager=False):
+        # ...
+        self.depended_on = set()
+```
+
+Then, `notify` can automatically `mark` all of the fields that depend
+on this one:
+
+``` {.python}
+class ProtectedField:
+    def notify(self):
+        for field in self.depended_on:
+            field.mark()
+```
+
+We could establish this dependency manually, like this:
+
+``` {.python.example}
+class BlockLayout:
+    def __init__(self, node, parent, previous, frame):
+        # ...
+        this.node.children.depended_on.add(self.children)
+```
+
+However, this is error prone---we could forget a dependency. So let's
+instead as: why _does_ the layout object's `children` depend on the
+node's `children`? The answer is that we read from the node's children
+to create the layout object's children:
+
+``` {.python.example}
+class BlockLayout:
+    def layout(self):
+        if mode == "block":
+            if self.children.dirty:
+                for child in self.node.children.get():
+                    # ...
+```
+
+So let's make a variant of `get` that also establishes a dependency
+for us:
+
+``` {.python}
+class ProtectedField:
+    def read(self, field):
+        field.depended_on.add(self)
+        return field.get()
+```
+
+Now `read` both gets protected values and also establishes
+dependences:
+
+``` {.python}
+class BlockLayout:
+    def layout(self):
+        if mode == "block":
+            if self.children.dirty:
+                for child in self.children.read(self.node.children):
+                    # ...
+```
+
+By encapsulating a value and its dirty field into a single object,
+`ProtectedField` makes sure that dirty flags are set, checked, and
+reset correctly. That will be key to using invalidation in the rest of
+our layout engine.
+
+::: {.further}
+
+:::
+
 
 
 Widths for inline elements
