@@ -1805,15 +1805,6 @@ class BlockLayout:
         self.parent.descendants.control(self.children)
 ```
 
-Any changes to the style also means we may need to redo layout:
-
-``` {python}
-class BlockLayout:
-    def __init__(self, node, parent, previous, frame):
-        # ...
-        self.parent.descendants.control(self.node.style)
-```
-
 Finally, we need `descendants` to include not just direct children but
 also distant descendants. We can do that with a bit of recursion:
 
@@ -1922,6 +1913,28 @@ class ProtectedField:
         self.dirty = True
         for field in self.depended_eager:
             field.mark()
+```
+
+There's one more subtlety here: multi-step dependencies. For example,
+imagine changing the `style` of a `<b>` tag from JavaScript. That
+might affect the `style` of a `Text` child of that tag, which might
+affect the `height` of its `TextLayout`. Because of this chain, we
+want the `style` change to mark a bunch of `descendants` flags. But,
+because none of the `descendants` flags directly `control` the `style`
+field, it doesn't have any eager dependants and no dirty flags are
+propagated to the `descendants` field.
+
+To solve this, we need to add one more rule: when one field reads
+another, any fields controling the first need to also control the
+second:
+
+``` {.python}
+class ProtectedField:
+    def read(self, field):
+        field.depended_lazy.add(self)
+        for dependant in self.depended_eager:
+            dependant.control(field)
+        return field.get()
 ```
 
 With these changes, the descendant dirty bits should now be set

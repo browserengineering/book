@@ -169,6 +169,8 @@ class ProtectedField:
 
     def read(self, field):
         field.depended_lazy.add(self)
+        for dependant in self.depended_eager:
+            dependant.control(field)
         return field.get()
 
     def control(self, source):
@@ -281,7 +283,6 @@ class BlockLayout:
         self.y = ProtectedField(node, "y")
 
         self.descendants = ProtectedField(node, "descendants")
-        self.parent.descendants.control(self.node.style)
         self.parent.descendants.control(self.children)
         self.parent.descendants.control(self.zoom)
         self.parent.descendants.control(self.width)
@@ -445,7 +446,6 @@ class LineLayout:
         self.descent = ProtectedField(node, "descent")
 
         self.descendants = ProtectedField(node, "descendants")
-        self.parent.descendants.control(self.node.style)
         self.parent.descendants.control(self.zoom)
         self.parent.descendants.control(self.width)
         self.parent.descendants.control(self.height)
@@ -534,7 +534,6 @@ class TextLayout:
         self.descent = ProtectedField(node, "descent")
 
         self.descendants = ProtectedField(node, "descendants")
-        self.parent.descendants.control(self.node.style)
         self.parent.descendants.control(self.font)
         self.parent.descendants.control(self.zoom)
         self.parent.descendants.control(self.width)
@@ -604,7 +603,6 @@ class EmbedLayout:
         self.descent = ProtectedField(node, "descent")
 
         self.descendants = ProtectedField(node, "descendants")
-        self.parent.descendants.control(self.node.style)
         self.parent.descendants.control(self.font)
         self.parent.descendants.control(self.zoom)
         self.parent.descendants.control(self.width)
