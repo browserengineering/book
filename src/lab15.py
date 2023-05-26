@@ -1634,7 +1634,7 @@ class Browser:
             print(("OpenGL initialized: vendor={}," + \
                 "renderer={}").format(
                 OpenGL.GL.glGetString(OpenGL.GL.GL_VENDOR),
-                OpenGL.GL.glGetString(OpenGL.GL_RENDERER)))
+                OpenGL.GL.glGetString(OpenGL.GL.GL_RENDERER)))
 
             self.skia_context = skia.GrDirectContext.MakeGL()
 
@@ -1643,7 +1643,7 @@ class Browser:
                 self.skia_context,
                 skia.GrBackendRenderTarget(
                     WIDTH, HEIGHT, 0, 0, 
-                    skia.GrGLFramebufferInfo(0, GL.GL_RGBA8)),
+                    skia.GrGLFramebufferInfo(0, OpenGL.GL.GL_RGBA8)),
                     skia.kBottomLeft_GrSurfaceOrigin,
                     skia.kRGBA_8888_ColorType,
                     skia.ColorSpace.MakeSRGB())
