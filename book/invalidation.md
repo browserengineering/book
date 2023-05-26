@@ -46,7 +46,7 @@ For example, in a real browser you can give any element the
 user can click on the element to add or modify rich, formatted text in
 it:
 
-::: {.example contenteditable=true}
+::: {.demo contenteditable=true}
 Click on this <i>formatted</i> <b>text</b> to edit it.
 :::
 
