@@ -10,9 +10,10 @@ INDENT = 2
 class UnsupportedConstruct(AssertionError): pass
 
 class MissingHint(Exception):
-    def __init__(self, tree, key, hint, error=None):
+    def __init__(self, tree, key, hint, line, error=None):
         if not error:
-            self.message = f"Could not find {key} key for `{asttools.unparse(tree)}`"
+            self.message = f"Could not find {key} key for " + \
+            f" `{asttools.unparse(tree)}` on line {line}"
         else:
             self.message = error
         self.key = key
@@ -72,8 +73,8 @@ def find_hint(t, key, error=None):
         break
     else:
         ln = t.lineno if hasattr(t, "lineno") else -1
-        hint = {"line": ln, "code": asttools.unparse(t, explain=True), key: "???"}
-        raise MissingHint(t, key, hint, error=error)
+        hint = {"code": asttools.unparse(t, explain=True), key: "???"}
+        raise MissingHint(t, key, hint, ln, error=error)
     h["used"] = True
     return h[key]
 
@@ -111,7 +112,10 @@ RENAME_FNS = {
     "int": "parseInt",
     "float": "parseFloat",
     "print": "console.log",
+    "AnimationClass": "AnimationClass"
 }
+
+SKIPPED_FNS = ["add_main_args"]
 
 # These are filled in as import statements are read
 RT_IMPORTS = []
@@ -157,9 +161,20 @@ LIBRARY_METHODS = [
     # skia.Font
     "getMetrics",
 
-    # skia.Rect
+    # skia.*Rect
     "MakeEmpty",
     "MakeLTRB",
+    "MakeXYWH",
+    "left",
+    "top",
+    "bottom",
+    "width",
+    "height",
+    "isEmpty",
+    "roundOut",
+    "intersects",
+    "Intersects",
+    "join",
 
     # skia.RRect
     "MakeRectXY",
@@ -181,15 +196,25 @@ LIBRARY_METHODS = [
     "clear",
     "translate",
 
+    # skia.ColorSpace
+    "MakeSRGB",
+
+    # skia.GrDirectContext
+    "MakeGL",
+
     # skia.Paint
     "setStyle",
     "setColor",
+    "getAlphaf",
 
     # skia.Surface
     "makeImageSnapshot",
     "height",
     "getCanvas",
+    "MakeFromBackendRenderTarget",
     "MakeRaster",
+    "MakeRenderTarget",
+    "flushAndSubmit",
 
     # skia.Path
     "moveTo",
@@ -197,9 +222,14 @@ LIBRARY_METHODS = [
 
     # skia.ImageInfo
     "Make",
+    "MakeN32Premul",
 
     # skia.Image
     "tobytes",
+
+    # skia.Matrix
+    "setTranslate",
+    "mapRect",
 
     # threading.Timer
     # threading.Thread
@@ -217,7 +247,7 @@ OUR_CLASSES = []
 OUR_CONSTANTS = []
 OUR_METHODS = []
 
-OUR_SYNC_METHODS = ["__repr__", "__init__"]
+OUR_SYNC_METHODS = ["__repr__"]
 
 FILES = []
 
@@ -272,6 +302,8 @@ def compile_method(base, name, args, ctx):
         if name in OUR_SYNC_METHODS:
             return base_js + "." + name + "(" + ", ".join(args_js) + ")"
         else:
+            if name == "__init__":
+                name = "init"
             return "await " + base_js + "." + name + "(" + ", ".join(args_js) + ")"
     elif name in RENAME_METHODS:
         return base_js + "." + RENAME_METHODS[name] + "(" + ", ".join(args_js) + ")"
@@ -396,9 +428,13 @@ def compile_function(name, args, ctx):
     elif name == "enumerate":
         assert len(args) == 1
         return args_js[0] + ".entries()"
+    elif name == "__init__":
+        return ""
     elif name == "Exception":
         assert len(args) == 1
         return "(new Error(" + args_js[0] + "))"
+    elif name == "type":
+        return args_js[0] + ".constructor"
     else:
         raise UnsupportedConstruct()
 
@@ -417,6 +453,9 @@ def compile_op(op):
     elif isinstance(op, ast.NotEq): return "!=="
     elif isinstance(op, ast.And): return "&&"
     elif isinstance(op, ast.Or): return "||"
+    elif isinstance(op, ast.BitOr): return "|"
+    elif isinstance(op, ast.Is): return "=="
+    elif isinstance(op, ast.IsNot): return "!="
     else:
         raise UnsupportedConstruct()
     
@@ -496,7 +535,14 @@ def compile_expr(tree, ctx):
             assert isinstance(tree.keywords[0].value, ast.Name)
             base = compile_expr(args[0], ctx)
             return "(" + base + ".slice().sort(comparator(" + tree.keywords[0].value.id + ")))"
+        elif isinstance(tree.func, ast.Name) and tree.func.id == "reversed":
+            assert len(tree.args) == 1
+            assert len(tree.keywords) == 0
+            base = compile_expr(args[0], ctx)
+            return "(" + base + ".reverse())"
         elif isinstance(tree.func, ast.Name):
+            if tree.func.id == "super":
+                return "super"
             return "(" + compile_function(tree.func.id, args, ctx) + ")"
         else:
             raise UnsupportedConstruct()
@@ -533,12 +579,14 @@ def compile_expr(tree, ctx):
                     conjuncts.append("(" + (" && " if negate else " || ").join(parts) + ")")
                 else:
                     t = find_hint(tree, "type")
-                    assert t in ["str", "dict", "list"]
+                    assert t in ["str", "dict", "list", "map"]
                     cmp = "===" if negate else "!=="
                     if t in ["str", "list"]:
                         conjuncts.append("(" + rhs + ".indexOf(" + lhs + ") " + cmp + " -1)")
                     elif t == "dict":
                         conjuncts.append("(typeof " + rhs + "[" + lhs + "] " + cmp + " \"undefined\")")
+                    elif t == "map":
+                        conjuncts.append("(" + rhs + ".get(" + lhs + ") " + cmp + " \"undefined\")")
             elif isinstance(op, ast.Eq) and \
                  (isinstance(comp, ast.List) or isinstance(tree.left, ast.List)):
                 conjuncts.append("(JSON.stringify(" + lhs + ") === JSON.stringify(" + rhs + "))")
@@ -629,7 +677,7 @@ def has_js_hide(decorator_list):
     ])
 
 @catch_issues
-def compile(tree, ctx, indent=0):
+def compile(tree, ctx, indent=0, patches=[]):
     if isinstance(tree, ast.Import):
         assert len(tree.names) == 1
         assert not tree.names[0].asname
@@ -643,7 +691,6 @@ def compile(tree, ctx, indent=0):
         assert tree.module
         assert all(name.asname is None for name in tree.names)
         names = [name.name for name in tree.names]
-
         to_import = []
         to_bind = []
         for name in names:
@@ -661,15 +708,25 @@ def compile(tree, ctx, indent=0):
             out += "\n" + " " * indent + "constants.{} = {}_constants.{};".format(const, tree.module, const)
         return out
     elif isinstance(tree, ast.ClassDef):
-        assert not tree.bases
-        assert not tree.keywords
-        assert not tree.decorator_list
+        if tree.decorator_list:
+            assert tree.decorator_list[0].func.value.id == "wbetools"
         ctx[tree.name] = {"is_class": True}
         ctx2 = Context("class", ctx)
         parts = [compile(part, indent=indent + INDENT, ctx=ctx2) for part in tree.body]
-        EXPORTS.append(tree.name)
-        return " " * indent + "class " + tree.name + " {\n" + "\n\n".join(parts) + "\n}"
+        if tree.name not in patches:
+            EXPORTS.append(tree.name)
+        extends = ''
+        if tree.bases:
+            assert len(tree.bases) == 1
+            extends = ' extends ' + tree.bases[0].id
+        class_name = tree.name
+        if class_name in patches:
+            class_name = class_name + "Patch"
+        return " " * indent + "class " + class_name + extends + " {\n" + "\n\n".join(parts) + "\n}"
     elif isinstance(tree, ast.FunctionDef):
+        if tree.name in SKIPPED_FNS:
+            return ""
+
         if has_js_hide(tree.decorator_list):
             return ""
         assert not tree.decorator_list
@@ -749,10 +806,17 @@ def compile(tree, ctx, indent=0):
         out += "\n" + " " * indent + "}"
         return out
     elif isinstance(tree, ast.For):
+        try:
+            t = find_hint(tree.iter, "type")
+        except MissingHint:
+            t = "list"
+        assert t in ["dict", "list"]
         assert not tree.orelse
         ctx2 = Context("for", ctx)
         lhs = compile_lhs(tree.target, ctx2)
         rhs = compile_expr(tree.iter, ctx)
+        if t == "dict":
+            rhs = "Object.entries(" + rhs + ")"
         body = "\n".join([compile(line, indent=indent + INDENT, ctx=ctx2) for line in tree.body])
         fstline = " " * indent + "for (let " + lhs + " of " + rhs + ") {\n"
         return fstline + body + "\n" + " " * indent + "}"
@@ -864,11 +928,19 @@ def compile(tree, ctx, indent=0):
     else:
         raise UnsupportedConstruct()
     
-def compile_module(tree):
+def compile_module(tree, patches):
     assert isinstance(tree, ast.Module)
     ctx = Context("module", {})
 
-    items = [compile(item, indent=0, ctx=ctx) for item in tree.body]
+    items = \
+        [compile(item, indent=0, ctx=ctx, patches=patches) \
+        for item in tree.body]
+
+    for (name, patch) in patches.items():
+        items.append(compile(patch[0], indent=0, ctx=ctx, patches=patches))
+        items.append(
+            "patch_class({cls}, {cls}Patch)\n".format(
+            cls=name))
 
     exports = ""
     rt_imports = ""
@@ -879,7 +951,7 @@ def compile_module(tree):
 
     imports_str = "import {{ {} }} from \"./{}.js\";"
 
-    rt_imports_arr = [ 'breakpoint', 'comparator', 'filesystem', 'asyncfilter', 'pysplit', 'pyrsplit', 'truthy' ]
+    rt_imports_arr = [ 'breakpoint', 'comparator', 'filesystem', 'asyncfilter', 'pysplit', 'pyrsplit', 'truthy', 'patch_class' ]
     rt_imports_arr += set([ mod.split(".")[0] for mod in RT_IMPORTS])
     rt_imports = imports_str.format(", ".join(sorted(rt_imports_arr)), "rt")
 
@@ -909,9 +981,9 @@ if __name__ == "__main__":
     assert name.endswith(".py")
     if args.hints: read_hints(args.hints)
     INDENT = args.indent
-    tree = asttools.parse(args.python.read(), args.python.name)
+    (tree, patches) = asttools.resolve_patches_and_return_them(asttools.parse(args.python.read(), args.python.name))
     load_outline(asttools.inline(tree))
-    js = compile_module(tree)
+    js = compile_module(tree, patches)
 
     for fn in FILES:
         path = os.path.join(os.path.dirname(args.python.name), fn)

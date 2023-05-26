@@ -81,8 +81,6 @@ And then there's a lot of special cases
 
     >>> Test.expr("body.encode('utf8')")
     (body)
-    >>> Test.expr("', '.join(fields)")
-    (fields.join(", "))
     >>> Test.expr("text.isspace()")
     (/^\s*$/.test(text))
     >>> Test.expr("text.isalnum()")

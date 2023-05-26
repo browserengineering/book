@@ -30,7 +30,10 @@ class Element:
 
     def __repr__(self):
         attrs = [" " + k + "=\"" + v + "\"" for k, v  in self.attributes.items()]
-        return "<" + self.tag + "".join(attrs) + ">"
+        attr_str = ""
+        for attr in attrs:
+            attr_str += attr
+        return "<" + self.tag + attr_str + ">"
 
 def print_tree(node, indent=0):
     print(" " * indent, node)

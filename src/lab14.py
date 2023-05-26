@@ -22,7 +22,7 @@ import threading
 import time
 import urllib.parse
 import wbetools
-import OpenGL.GL as GL
+import OpenGL.GL
 
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab4 import Text, Element, print_tree, HTMLParser
@@ -1269,8 +1269,8 @@ class Browser:
                 self.sdl_window)
             print(("OpenGL initialized: vendor={}," + \
                 "renderer={}").format(
-                GL.glGetString(GL.GL_VENDOR),
-                GL.glGetString(GL.GL_RENDERER)))
+                OpenGL.GL.glGetString(OpenGL.GL.GL_VENDOR),
+                OpenGL.GL.glGetString(OpenGL.GL.GL_RENDERER)))
 
             self.skia_context = skia.GrDirectContext.MakeGL()
 

@@ -15,7 +15,7 @@ import threading
 import time
 import urllib.parse
 import wbetools
-import OpenGL.GL as GL
+import OpenGL.GL
 
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab4 import Text, Element, print_tree, HTMLParser
@@ -28,8 +28,7 @@ from lab8 import INPUT_WIDTH_PX, layout_mode
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, request, url_origin
 from lab11 import FONTS, get_font, parse_color, parse_blend_mode, linespace
-from lab11 import draw_line, draw_text, get_font
-from lab11 import BlockLayout, DocumentLayout, LineLayout, TextLayout, InputLayout
+from lab11 import draw_line, draw_text
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
 from lab12 import Task, REFRESH_RATE_SEC
 
@@ -53,10 +52,6 @@ class Element:
 
         self.style = {}
         self.animations = {}
-
-def center_point(rect):
-    return (rect.left() + (rect.right() - rect.left()) / 2,
-        rect.top() + (rect.bottom() - rect.top()) / 2)
 
 class DisplayItem:
     def __init__(self, rect, children=[], node=None):
@@ -89,7 +84,7 @@ def map_translation(rect, translation):
 
 class Transform(DisplayItem):
     def __init__(self, translation, rect, node, children):
-        super().__init__(rect, children=children, node=node)
+        super().__init__(rect, children, node)
         self.translation = translation
 
     def execute(self, canvas):
@@ -216,7 +211,7 @@ class DrawRect(DisplayItem):
 
 class ClipRRect(DisplayItem):
     def __init__(self, rect, radius, children, should_clip=True):
-        super().__init__(rect, children=children)
+        super().__init__(rect, children)
         self.should_clip = should_clip
         self.radius = radius
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
@@ -242,7 +237,7 @@ class ClipRRect(DisplayItem):
 
 class SaveLayer(DisplayItem):
     def __init__(self, sk_paint, node, children, should_save=True):
-        super().__init__(skia.Rect.MakeEmpty(), children=children, node=node)
+        super().__init__(skia.Rect.MakeEmpty(), children, node)
         self.should_save = should_save
         self.sk_paint = sk_paint
 
@@ -1007,9 +1002,9 @@ class CompositedLayer:
                     self.skia_context, skia.Budgeted.kNo,
                     skia.ImageInfo.MakeN32Premul(
                         irect.width(), irect.height()))
-                if self.surface is None:
+                if not self.surface:
                     self.surface = skia.Surface(irect.width(), irect.height())
-                assert self.surface is not None
+                assert self.surface
             else:
                 self.surface = skia.Surface(irect.width(), irect.height())
 
@@ -1182,14 +1177,11 @@ class Tab:
         if not needs_composite:
             for node in self.composited_updates:
                 composited_updates[node] = node.save_layer
-        self.composited_updates.clear()
+        self.composited_updates = []
 
         commit_data = CommitData(
-            url=self.url,
-            scroll=scroll,
-            height=document_height,
-            display_list=self.display_list,
-            composited_updates=composited_updates,
+            self.url, scroll, document_height,
+            self.display_list, composited_updates,
         )
         self.display_list = None
         self.scroll_changed_in_tab = False
@@ -1321,8 +1313,8 @@ class Browser:
                 self.sdl_window)
             print(("OpenGL initialized: vendor={}," + \
                 "renderer={}").format(
-                GL.glGetString(GL.GL_VENDOR),
-                GL.glGetString(GL.GL_RENDERER)))
+                OpenGL.GL.glGetString(OpenGL.GL.GL_VENDOR),
+                OpenGL.GL.glGetString(OpenGL.GL.GL_RENDERER)))
 
             self.skia_context = skia.GrDirectContext.MakeGL()
 
@@ -1331,7 +1323,7 @@ class Browser:
                 self.skia_context,
                 skia.GrBackendRenderTarget(
                     WIDTH, HEIGHT, 0, 0, 
-                    skia.GrGLFramebufferInfo(0, GL.GL_RGBA8)),
+                    skia.GrGLFramebufferInfo(0, OpenGL.GL.GL_RGBA8)),
                     skia.kBottomLeft_GrSurfaceOrigin,
                     skia.kRGBA_8888_ColorType,
                     skia.ColorSpace.MakeSRGB())
@@ -1444,17 +1436,20 @@ class Browser:
                  cmd.parent.needs_compositing)
         ]
         for cmd in non_composited_commands:
+            did_break = False
             for layer in reversed(self.composited_layers):
                 if layer.can_merge(cmd):
                     layer.add(cmd)
+                    did_break = True
                     break
                 elif skia.Rect.Intersects(
                     layer.absolute_bounds(),
                     absolute_bounds(cmd)):
                     layer = CompositedLayer(self.skia_context, cmd)
                     self.composited_layers.append(layer)
+                    did_break = True
                     break
-            else:
+            if not did_break:
                 layer = CompositedLayer(self.skia_context, cmd)
                 self.composited_layers.append(layer)
 

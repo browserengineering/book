@@ -40,7 +40,7 @@ attribute makes any element editable:
     you type, and the text in the `input` element doesn't get its own
     layout object.
 
-::: {.example contenteditable=true}
+::: {.demo contenteditable=true}
 Click on this <i>formatted</i> <b>text</b> to edit it.
 :::
 
