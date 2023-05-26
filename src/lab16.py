@@ -817,7 +817,10 @@ class JSContext:
         elt.children = new_nodes
         for child in elt.children:
             child.parent = elt
-        elt.layout_object.children.mark()
+        obj = elt.layout_object
+        while not isinstance(obj, BlockLayout):
+            obj = obj.parent
+        obj.children.mark()
         frame.set_needs_render()
 
     def style_set(self, handle, s, window_id):
@@ -966,7 +969,10 @@ class Frame:
                 last_text = Text("", self.tab.focus)
                 self.tab.focus.children.append(last_text)
             last_text.text += char
-            self.tab.focus.layout_object.children.mark()
+            obj = self.tab.focus.layout_object
+            while not isinstance(obj, BlockLayout):
+                obj = obj.parent
+            obj.children.mark()
             self.set_needs_render()
 
     def scroll_to(self, elt):

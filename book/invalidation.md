@@ -366,7 +366,10 @@ an `Element`'s `children` field is modified, we need to set the flag:
 class JSContext:
     def innerHTML_set(self, handle, s, window_id):
         # ...
-        elt.layout_object.children_dirty = True
+        obj = elt.layout_object
+        while not isinstance(obj, BlockLayout):
+            obj = obj.parent
+        obj.children_dirty = True
 ```
 
 Likewise, we need to set the dirty flag any time we modify the `text`
@@ -378,7 +381,10 @@ class Frame:
     def keypress(self, char):
         elif self.tab.focus and "contenteditable" in self.tab.focus.attributes:
             # ...
-            self.tab.focus.layout_object.children_dirty = True
+            obj =  self.tab.focus.layout_object
+            while not isinstance(obj, BlockLayout):
+                obj = obj.parent
+            obj.children_dirty = True
 ```
 
 It's important to make sure we set the dirty flag for _all_
@@ -523,7 +529,7 @@ class Frame:
     def keypress(self, char):
         elif self.tab.focus and "contenteditable" in self.tab.focus.attributes:
             # ...
-            self.tab.focus.layout_object.children.mark()
+            obj.children.mark()
 ```
 
 To reset the dirty flag, let's make the caller pass in a new value for
@@ -579,7 +585,7 @@ class BlockLayout:
 ```
 
 `ProtectedField` is a nice convenience: it frees us from remembering
-that two fields (`children` and `dirty_children`) go together, and it
+that two fields (`children` and `children_dirty`) go together, and it
 makes sure we always check and reset dirty bits when we're supposed
 to.
 
@@ -1764,7 +1770,7 @@ Note that the `control` method doesn't actually read the source field's
 value; that's why it's safe to use even when the source field is dirty.
 The `descendants` field can use it:
 
-```
+``` {.python}
 class BlockLayout:
     def __init__(self, node, parent, previous, frame):
         # ...
