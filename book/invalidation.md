@@ -1347,12 +1347,22 @@ class TextLayout:
 ```
 
 So that's `TextLayout`. `EmbedLayout` is basically identical, except
-that its `ascent` and `descent` are simpler:
+that its `ascent` and `descent` are simpler. However, there's a bit of
+a catch with how `EmbedLayout`'s subclasses work: `EmbedLayout`
+handles computing the `zoom`, `x`, `y`, and `font` fields, each
+subclass handles computing the `width` and `height` fields, and then
+the `ascent` and `descent` should be handled by `EmbedLayout` but
+depend on `height`. To avoid this, I'll split the `EmbedLayout`'s
+`layout` method into a `layout_before` method, containing `zoom`, `x`,
+`y`, and `font`, and a new `layout_after` method that computes
+`ascent` and `descent`:
 
 ``` {.python}
 class EmbedLayout:
-    def layout(self):
+    def layout_before(self):
         # ...
+    
+    def layout_after(self):
         if self.ascent.dirty:
             height = self.ascent.read(self.height)
             self.ascent.set(-height)
@@ -1361,16 +1371,20 @@ class EmbedLayout:
             self.descent.set(0)
 ```
 
-::: {.todo}
-There's a timing issue here. `ascent` and `descent` depend on
-`height`, which was computed by the subclass, which calls `layout` at
-the start, not end, of the layout pass. I propose we refactor `layout`
-on `EmbedLayout` into `layout_start` and `layout_end` methods which
-handle the common parts.
-:::
+Each of the `EmbedLayout` subclasses can call `layout_before` at the
+start of `layout` and `layout_after` at the end. Here's `InputLayout`,
+but make the same change to each one:
 
-Then, each of the `EmbedLayout` subtypes have their own way of
-computing their height. Here's `InputLayout`:
+``` {.python}
+class InputLayout(EmbedLayout):
+    def layout(self):
+        self.layout_before()
+        # ...
+        self.layout_after()
+```
+
+Speaking, each `EmbedLayout` subtype has its own way of computing its
+height. Here's `InputLayout`:
 
 ``` {.python}
 class InputLayout(EmbedLayout):
@@ -1379,6 +1393,7 @@ class InputLayout(EmbedLayout):
         if self.height.dirty:
             font = self.height.read(self.font)
             self.height.set(linespace(font))
+        # ...
 ```
 
 Here's `ImageLayout`; it has an `img_height` field, which I'm not

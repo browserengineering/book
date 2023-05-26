@@ -615,7 +615,7 @@ class EmbedLayout:
         self.parent.descendants.control(self.descent)
         self.parent.descendants.control(self.descendants)
 
-    def layout(self):
+    def layout_before(self):
         if self.zoom.dirty:
             self.zoom.copy(self.parent.zoom)
 
@@ -644,14 +644,14 @@ class EmbedLayout:
 @wbetools.patch(InputLayout)
 class InputLayout(EmbedLayout):
     def layout(self):
-        EmbedLayout.layout(self)
+        self.layout_before()
         if self.width.dirty:
             zoom = self.width.read(self.zoom)
             self.width.set(device_px(INPUT_WIDTH_PX, zoom))
         if self.height.dirty:
             font = self.height.read(self.font)
             self.height.set(linespace(font))
-        EmbedLayout.layout_after(self)
+        self.layout_after()
 
     def paint(self, display_list):
         cmds = []
@@ -692,7 +692,7 @@ class InputLayout(EmbedLayout):
 @wbetools.patch(ImageLayout)
 class ImageLayout(EmbedLayout):
     def layout(self):
-        EmbedLayout.layout(self)
+        self.layout_before()
         width_attr = self.node.attributes.get('width')
         height_attr = self.node.attributes.get('height')
         image_width = self.node.image.width()
@@ -717,7 +717,7 @@ class ImageLayout(EmbedLayout):
         if self.height.dirty:
             font = self.height.read(self.font)
             self.height.set(max(self.img_height, linespace(font)))
-        EmbedLayout.layout_after(self)
+        self.layout_after()
 
     def paint(self, display_list):
         cmds = []
@@ -729,7 +729,7 @@ class ImageLayout(EmbedLayout):
 @wbetools.patch(IframeLayout)
 class IframeLayout(EmbedLayout):
     def layout(self):
-        EmbedLayout.layout(self)
+        self.layout_before()
         width_attr = self.node.attributes.get('width')
         height_attr = self.node.attributes.get('height')
         if self.width.dirty:
@@ -750,7 +750,7 @@ class IframeLayout(EmbedLayout):
             self.node.frame.frame_height = self.height - device_px(2, self.zoom.get())
             self.node.frame.frame_width = self.width.get() - device_px(2, self.zoom.get())
             self.node.frame.set_needs_render()
-        EmbedLayout.layout_after(self)
+        self.layout_after()
 
     def paint(self, display_list):
         frame_cmds = []
