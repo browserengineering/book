@@ -1315,7 +1315,7 @@ class TextLayout:
 
         if self.height.dirty:
             f = self.height.read(self.font)
-            self.height.set(linespace(f))
+            self.height.set(linespace(f) * 1.25)
 ```
 
 Note that I've changed `width` to read the `font` field instead of

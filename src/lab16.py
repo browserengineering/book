@@ -568,7 +568,7 @@ class TextLayout:
 
         if self.height.dirty:
             f = self.height.read(self.font)
-            self.height.set(linespace(f))
+            self.height.set(linespace(f) * 1.25)
 
         if self.x.dirty:
             if self.previous:
@@ -580,8 +580,9 @@ class TextLayout:
                 self.x.copy(self.parent.x)
 
     def paint(self, display_list):
+        leading = self.height.get() / 1.25 * .25 / 2
         color = self.node.style.get()['color']
-        display_list.append(DrawText(self.x.get(), self.y.get(), self.word, self.font.get(), color))
+        display_list.append(DrawText(self.x.get(), self.y.get() + leading, self.word, self.font.get(), color))
 
 @wbetools.patch(EmbedLayout)
 class EmbedLayout:
