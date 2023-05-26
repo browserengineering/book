@@ -19,7 +19,6 @@ from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, url_origin
 from lab11 import draw_text, get_font, linespace, \
     parse_blend_mode, CHROME_PX, SCROLL_STEP
-import OpenGL.GL as GL
 from lab12 import MeasureTime
 from lab13 import diff_styles, \
     CompositedLayer, absolute_bounds, absolute_bounds_for_obj, \

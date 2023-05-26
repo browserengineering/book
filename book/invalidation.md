@@ -120,7 +120,7 @@ Here, `DrawCursor` is just a wrapper around `DrawLine`:
 
 ``` {.python}
 def DrawCursor(elt, width):
-    return DrawLine(elt.x, elt.y, elt.x + width, elt.y + elt.height)
+    return DrawLine(elt.x + width, elt.y, elt.x + width, elt.y + elt.height)
 ```
 
 We can also use this wrapper to draw the cursor in `InputLayout`:

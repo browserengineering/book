@@ -5,8 +5,14 @@ export {
     socket, ssl, tkinter, dukpy, urllib, html, random, wbetools,
     truthy, comparator, pysplit, pyrsplit, asyncfilter,
     rt_constants, Widget, http_textarea, skia, sdl2, init_skia,
-    init_window, threading, time
+    init_window, threading, time, OpenGL, patch_class
     };
+
+function patch_class(cls, patched_cls) {
+    for (let val of Object.getOwnPropertyNames(patched_cls.prototype)) {
+        cls.prototype[val] = patched_cls.prototype[val]
+    }
+}
 
 function wrap_class(cls, fn) {
     var f = function(...args) {
@@ -474,9 +480,13 @@ class sdl2 {
     static SDL_UpdateWindowSurface(window) {
     }
 
+    static SDL_DestroyWindow(window) {
+    }
+
     static SDL_WINDOWPOS_CENTERED = 0;
     static SDL_WINDOWPOS_CENTERED = 0;
     static SDL_WINDOW_SHOWN = 0;
+    static SDL_WINDOW_OPENGL = 0;
     static SDL_BYTEORDER = 0;
     static SDL_BIG_ENDIAN = 0;
 }
@@ -573,11 +583,59 @@ class skia {
     });
 
     static Rect = {
-        MakeLTRB: (left, top, right, bottom) => {
-            return CanvasKit.LTRBRect(left, top, right, bottom);
+        fill_in: (rect) => {
+            rect.left = () => rect[0];
+            rect.top = () => rect[1];
+            rect.right = () => rect[2];
+            rect.bottom = () => rect[3];
+            rect.isEmpty = () => {
+                return rect.left() == rect.right() &&
+                    rect.top() == rect.bottom();
+            };
+            rect.join = (other_rect) => {
+                rect[0] = Math.min(rect.left(), other_rect.left());
+                rect[1] = Math.min(rect.top(), other_rect.top());
+                rect[2] = Math.max(rect.right(), other_rect.right());
+                rect[3] = Math.max(rect.bottom(), other_rect.bottom());
+            };
+            rect.roundOut = () => {
+                return skia.Rect.MakeLTRB(
+                    Math.floor(rect.left()),
+                    Math.floor(rect.top()),
+                    Math.ceil(rect.right()),
+                    Math.ceil(rect.bottom()));
+            };
+            rect.width = () => {
+                return rect.right() - rect.left();
+            };
+            rect.height = () => {
+                return rect.bottom() - rect.top();
+            };
+            rect.intersects = (other_rect) => {
+                if (rect.top() > other_rect.bottom() ||
+                    rect.bottom() < other_rect.top())
+                    return false;
+                if (rect.left() > other_rect.right() ||
+                    other_rect.left() > rect.right())
+                    return false;
+                return true;
+            };
         },
-        MakeEmpty : () => {
-            return CanvasKit.XYWHRect(0, 0, 0, 0);
+
+        MakeLTRB: (left, top, right, bottom) => {
+            let rect = CanvasKit.LTRBRect(left, top, right, bottom);
+            skia.Rect.fill_in(rect, left, top, right, bottom);
+            return rect;
+        },
+        MakeXYWH: (x, y, width, height) => {
+            let rect = CanvasKit.XYWHRect(x, y, width, height);
+            skia.Rect.fill_in(rect, x, y, x + width, y + height);
+            return rect;
+        },
+        MakeEmpty: () => {
+            let rect = CanvasKit.XYWHRect(0, 0, 0, 0);
+            skia.Rect.fill_in(rect, 0, 0, 0, 0);
+            return rect;
         }
     };
 
@@ -617,6 +675,19 @@ class skia {
     static ColorSetARGB = function(r, g, b, a) {
         return CanvasKit.Color(r, g, b, a);
     }
+
+    static Matrix = wrap_class(class {
+        setTranslate(x, y)  {
+            this.x = x;
+            this.y = y;
+        }
+
+        mapRect(rect) {
+            return skia.Rect.LTRBRect(
+                rect.left() + x, rect.top() + y, rect.right() + x,
+                rect.bottom() + y);
+        }
+    });
 }
 
 function init_skia(canvasKit, robotoData) {
@@ -717,6 +788,12 @@ function init_skia(canvasKit, robotoData) {
         f.kItalic_Slant = CanvasKit.FontSlant.Italic,
         f.kUpright_Slant = CanvasKit.FontSlant.Upright
     });
+}
+
+class OpenGL {
+    static GL = {
+        GL_RGBA8 : 0
+    }
 }
 
 class ctypes {
