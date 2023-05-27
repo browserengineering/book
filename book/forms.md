@@ -387,11 +387,14 @@ class Tab:
         self.focus = None
 ```
 
-Now when we click on an input element, we need to set `focus`:
+Now when we click on an input element, we need to set `focus` (and
+clear focus if nothing was found to focus on):
 
 ``` {.python}
 class Tab:
     def click(self, x, y):
+        self.focus = None
+        # ...
         while elt:
             elif elt.tag == "input":
                 self.focus = elt
