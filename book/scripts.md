@@ -603,7 +603,7 @@ key press. Let's implement that next.
 
 ::: {.further}
 `Node` objects in JavaScript correspond to `Element` nodes in the
-browser. They thus have JavaScript object *properties* also HTML
+browser. They thus have JavaScript object *properties* as well as HTML
 *attributes*. They're easy to confuse, and to make matters worse,
 many JavaScript object properties [*reflect*][reflection]
 attribute values automatically. For example, the `id` property on
@@ -1102,7 +1102,7 @@ enhancement mechanism for the web. For example, any method or property on any
 object (including built-in ones like `Element`) can be dynamically
 overridden at any time. This makes it possible to [polyfill] differences
 between browsers, adding features that look built-in to other
-JavaScript that wants to use them.
+JavaScript code.
 :::
 
 [javaLang]: https://en.wikipedia.org/wiki/Java_(programming_language)
@@ -1192,7 +1192,7 @@ the case of nodes being added and removed (such as with `innerHTML`).
 [html5-varnames]: http://www.whatwg.org/specs/web-apps/current-work/#named-access-on-the-window-object
 
 *Event Bubbling*: Right now, you can attach a `click` handler to `a`
-elements, but not to anything else. Fix this. One challenge you'll
+(anchor) elements, but not to anything else. Fix this. One challenge you'll
 face is that when you click on an element, you also click on all its
 ancestors. On the web, this sort of quirk is handled by [*event
 bubbling*][eventBubbling]: when an event is generated on an element,

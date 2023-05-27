@@ -179,7 +179,7 @@ class BlockLayout:
 
 I've called this method `layout_intermediate`, but only so you can add
 it to the code right away and then compare it with the existing
-`layout` method.
+`recurse` method.
 
 This code is tricky, so read it carefully. It involves two trees: the
 HTML tree, which `node` and `child` point to; and the layout tree,
@@ -191,7 +191,7 @@ from `node.children` (in the HTML tree) and writes to `self.children`
 
 So we have two ways to lay out an element: either calling `recurse`
 and `flush`, or this `layout_intermediate` function. To determine
-which one a layout object should to use, we'll need to know what kind
+which one a layout object should use, we'll need to know what kind
 of content its HTML node contains: text and text-related tags like
 `<b>`, or blocks like `<p>` and `<h1>`. That function looks something
 like this:

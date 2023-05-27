@@ -203,7 +203,7 @@ callback. That last part will happen via `__runSetTimeout`:[^mem-leak]
 
 [^mem-leak]: Note that we never remove `callback` from the
     `SET_TIMEOUT_REQUESTS` dictionary. This could lead to a memory
-    leak, if the callback it holding on to the last reference to some
+    leak, if the callback is holding on to the last reference to some
     large data structure. We saw a similar issue in [Chapter
     9](scripts.md). In general, avoiding memory leaks when you have
     data structures shared between the browser and the browser
@@ -231,7 +231,7 @@ all run independently and communicate only via special message-passing APIs.
 [workers]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API
 
 [^later-bug]: This code has a *very* subtle bug, wherein a page might
-    create a `setTimeout`, an then have that timer trigger later, when
+    create a `setTimeout`, and then have that timer trigger later, when
     a user is visiting another web page. In our browser, that would
     allow one page to run JavaScript that modifies a different
     page---a huge security vulnerability! I *think* you can avoid this

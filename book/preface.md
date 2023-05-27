@@ -93,7 +93,7 @@ to finish this many-year-long project.
 listening to my endless musings about the web, and encouraging me to
 turn my idea for a browser book into reality. I am also grateful to
 [Dan Gildea][dan-gildea] for providing feedback on my browser-book
-concept on multiple occassions. Finally, I'm grateful to Pavel for
+concept on multiple occasions. Finally, I'm grateful to Pavel for
 doing the hard work getting this project off the ground and allowing
 me to join the adventure. (Turns out Pavel and I had the same idea!)
 

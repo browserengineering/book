@@ -243,8 +243,8 @@ that the URL starts with `http://` and then strip that off:
     own is good for learning. Plus, it makes this book easier to
     follow in a language besides Python.
 
-
 ``` {.python expected=False}
+# url = http://example.org/index.html
 assert url.startswith("http://")
 url = url[len("http://"):]
 ```
@@ -478,7 +478,7 @@ In HTML, there are *tags* and *text*. Each tag starts with a `<` and
 ends with a `>`; generally speaking, tags tell you what kind of thing
 some content is, while text is the actual content.[^22] Most tags come
 in pairs of a start and an end tag; for example, the title of the page
-is enclosed a pair of tags: `<title>` and `</title>`. Each tag, inside
+is enclosed in a pair of tags: `<title>` and `</title>`. Each tag, inside
 the angle brackets, has a tag name (like `title` here), and then
 optionally a space followed by *attributes*, and its pair has a `/`
 followed by the tag name (and no attributes). Some tags do not have
@@ -705,9 +705,9 @@ some specific file on your computer is opened. You can use that file
 for quick testing.
 
 *data:* Yet another scheme is *data*, which
-allow inlining HTML content into the URL itself. Try navigating to
-`data:text/html,Hello world!` in a real browser to see what happens. Add support
-for this scheme to your browser. The *data* scheme is especially
+allows inlining HTML content into the URL itself. Try navigating to
+`data:text/html,Hello world!` in a real browser to see what happens. Add
+support for this scheme to your browser. The *data* scheme is especially
 convenient for making tests without having to put them in separate files.
 
 *Body tag:* Only show text in an HTML document if it is between

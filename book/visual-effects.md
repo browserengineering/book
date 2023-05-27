@@ -96,7 +96,7 @@ class Browser:
             WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
 ```
 
-To set up Skia to draw to this window, we also need create a
+To set up Skia to draw to this window, we also need to create a
 *surface* for it:[^surface]
 
 [^surface]: In Skia and SDL, a *surface* is a representation of a
