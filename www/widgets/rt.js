@@ -22,6 +22,7 @@ function wrap_class(cls, fn) {
     return f;
 }
 
+
 function http_ok(body, headers) {
     let text = "HTTP/1.0 200 OK\r\n";
     for (let [k, v] of Object.entries(headers || {})) {
@@ -40,6 +41,7 @@ const rt_constants = {};
 rt_constants.ZOOM = 1.0;
 rt_constants.ROOT_CANVAS = null;
 rt_constants.URLS = {};
+rt_constants.WINDOW = null;
 
 let fontManager;
 let CanvasKit;
@@ -164,55 +166,90 @@ class ssl {
 }
 
 class tkinter { 
-    static Tk = wrap_class(class {
-        constructor() {
-            this.elt = rt_constants.ROOT_CANVAS;
+    static Tk = function(...args) {
+        if (rt_constants.WINDOW) {
+            console.log('reused')
+            return rt_constants.WINDOW;
         }
 
-        bind(key, fn) {
-            if (['<Up>', '<Down>', '<Left>', '<Right>'].indexOf(key) !== -1) {
-                window.addEventListener("keydown", function(e) {
-                    if (e.key == 'Arrow' + key.substr(1, key.length-2)) {
-                        e.preventDefault();
-                        fn({}).catch(on_error);
-                    }
-                });
-            } else if (key == '<Return>') {
-                window.addEventListener("keydown", function(e) {
-                    if (e.key == 'Enter') {
-                        e.preventDefault();
-                        fn({}).catch(on_error);
-                    }
-                });
-            } else if (['<Button-1>', '<Button-2>', '<Button-3>'].indexOf(key) !== -1) {
-                this.elt.addEventListener("mousedown", function(e) {
-                    if (e.button == key.substr(8, 1) - 1) {
-                        fn({ x: e.offsetX, y: e.offsetY }).catch(on_error);
-                    }
-                });
-            } else if (key == '<Configure>') {
-                window.addEventListener("resize", function(e) {
-                    fn({}).catch(on_error);
-                });
-            } else if (key == '<Key>') {
-                window.addEventListener("keydown", function(e) {
-                    if (e.key.length == 1) {
-                        e.preventDefault();
-                        fn({ char: e.key }).catch(on_error);
-                    };
-                });
-            } else if (key.length == 1) {
-                window.addEventListener("keydown", function(e) {
-                    if (e.key == key) {
-                        e.preventDefault();
-                        fn({ char: e.key }).catch(on_error);
-                    }
-                });
-            } else {
-                console.error("Trying to bind unsupported event", key);
+        return wrap_class(class {
+            constructor() {
+                this.elt = rt_constants.ROOT_CANVAS;
+                this.bindings = {}
+                this.event_names_to_key = {}
+                rt_constants.WINDOW = this;
             }
-        }
-    })
+
+            bind(key, callback) {
+                let event_name, fn;
+
+                if (['<Up>', '<Down>', '<Left>', '<Right>'].indexOf(key) !== -1) {
+                    event_name = "keydown";
+                    fn = function(e) {
+                        if (e.key == 'Arrow' + key.substr(1, key.length-2)) {
+                            e.preventDefault();
+                            callback({}).catch(on_error);
+                        }
+                    };
+                } else if (key == '<Return>') {
+                    event_name = "keydown";
+                    fn = function(e) {
+                        if (e.key == 'Enter') {
+                            e.preventDefault();
+                            callback({}).catch(on_error);
+                        }
+                    };
+                } else if (['<Button-1>', '<Button-2>', '<Button-3>'].indexOf(key) !== -1) {
+                    event_name = "mousedown";
+                    fn = function(e) {
+                        if (e.button == key.substr(8, 1) - 1) {
+                            callback({ x: e.offsetX, y: e.offsetY }).catch(on_error);
+                        }
+                    };
+                } else if (key == '<Configure>') {
+                    event_name = "resize";
+                    fn = function(e) {
+                        callback({}).catch(on_error);
+                    };
+                } else if (key == '<Key>') {
+                    event_name = "keydown";
+                    fn = function(e) {
+                        if (e.key.length == 1) {
+                            e.preventDefault();
+                            callback({ char: e.key }).catch(on_error);
+                        };
+                    };
+                } else if (key.length == 1) {
+                    event_name = "keydown";
+                    fn = function(e) {
+                        if (e.key == key) {
+                            e.preventDefault();
+                            callback({ char: e.key }).catch(on_error);
+                        }
+                    };
+                } else {
+                    console.error("Trying to bind unsupported event", key);
+                }
+                if (key in this.bindings) {
+                    this.bindings[key] = fn;
+                    return;
+                }
+                this.bindings[key] = fn;
+                if (!(event_name in this.event_names_to_key)) {
+                    this.event_names_to_key[event_name] = []
+
+                    window.addEventListener(event_name, function(e) {
+                        let arr = this.event_names_to_key[event_name];
+                        for (let index in arr) {
+                            this.bindings[arr[index]](e);
+                        }
+                    }.bind(this));
+                }
+
+                this.event_names_to_key[event_name].push(key)
+            }
+        })(...args);
+    }
 
     static Canvas = wrap_class(class {
         constructor(tk, params) {
@@ -328,12 +365,11 @@ class tkinter {
 }
 
 function init_window(browser) {
-    var w = tkinter.Tk()
+    let w = tkinter.Tk();
     w.bind("<Down>", (e) => browser.handle_down(e));
     w.bind("<Button-1>", (e) => browser.handle_click(e));
     w.bind("<Key>", (e) => browser.handle_key(e.char));
     w.bind("<Return>", (e) => browser.handle_enter(e));
-    return w;
 }
 
 class urllib {
