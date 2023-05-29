@@ -287,7 +287,7 @@ storing their user name in the session data:[^timing-attack]
     difference. Therefore, you get a clue about the password from *how
     long* it takes to check a password guess; this is called a
     [timing side channel][timing-attack]. This book is about the
-    browser, not the server, but a real web application has to do do a
+    browser, not the server, but a real web application has to do a
     [constant-time string comparison][constant-time]!
     
 [timing-attack]: https://en.wikipedia.org/wiki/Timing_attack

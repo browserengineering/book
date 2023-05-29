@@ -271,8 +271,8 @@ used <a href="https://www.microsoft.com/en-us/legal/copyright/permissions">with 
 </figure>
 </div>
 
-The era of the [”first browser
-war”](https://en.wikipedia.org/wiki/Browser_wars#First_Browser_War_(1995%E2%80%932001))
+The era of the ["first browser
+war"](https://en.wikipedia.org/wiki/Browser_wars#First_Browser_War_(1995%E2%80%932001))
 ensued: a competition between Netscape Navigator and [Internet Explorer]. There
 were also other browsers with smaller market shares; one notable example is
 [Opera](https://en.wikipedia.org/wiki/Opera_(web_browser)). The
@@ -446,7 +446,7 @@ For example, do you think it'll compete effectively against other non-web
 technologies and platforms?
 
 *What became of the original ideas?* The way the web works in practice is
-significantly different than the memex; one key differences is that there is no
+significantly different than the memex; one key difference is that there is no
 built-in way for the *user* of the web to add links between pages or notate
 them. Why do you think this is? Can you think of other goals from the original
 work that remain unrealized?

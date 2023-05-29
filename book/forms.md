@@ -51,7 +51,7 @@ Content-Length: 16
 name=1&comment=2
 ```
 
-In other words, it's lot like the regular `GET` requests we've already
+In other words, it's a lot like the regular `GET` requests we've already
 seen, except that it has a body---you've already seen HTTP responses
 with bodies, but requests can have them too. Note the `Content-Length`
 header; it's mandatory for `POST` requests. The server responds to
@@ -387,11 +387,14 @@ class Tab:
         self.focus = None
 ```
 
-Now when we click on an input element, we need to set `focus`:
+Now when we click on an input element, we need to set `focus` (and
+clear focus if nothing was found to focus on):
 
 ``` {.python}
 class Tab:
     def click(self, x, y):
+        self.focus = None
+        # ...
         while elt:
             elif elt.tag == "input":
                 self.focus = elt
@@ -604,7 +607,7 @@ def submit_form(self, elt):
     self.load(url, body)
 ```
 
-The new argument `load` is then passed through to `request`:
+The new `body` argument to `load` is then passed through to `request`:
 
 ``` {.python indent=4}
 def load(self, url, body=None):
@@ -676,7 +679,7 @@ vote, looking at pictures of your baby cousin, or checking your
 email---there are typically[^exceptions] two programs involved: client
 code that runs in the browser, and server code that runs on the
 server. When you click on things or take actions in the application,
-that runs client code, which sends then data to the server via HTTP
+that runs client code, which then sends data to the server via HTTP
 requests.
 
 [^exceptions]: Here I'm talking in general terms. There are some

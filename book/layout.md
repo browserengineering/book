@@ -179,7 +179,7 @@ class BlockLayout:
 
 I've called this method `layout_intermediate`, but only so you can add
 it to the code right away and then compare it with the existing
-`layout` method.
+`recurse` method.
 
 This code is tricky, so read it carefully. It involves two trees: the
 HTML tree, which `node` and `child` point to; and the layout tree,
@@ -191,7 +191,7 @@ from `node.children` (in the HTML tree) and writes to `self.children`
 
 So we have two ways to lay out an element: either calling `recurse`
 and `flush`, or this `layout_intermediate` function. To determine
-which one a layout object should to use, we'll need to know what kind
+which one a layout object should use, we'll need to know what kind
 of content its HTML node contains: text and text-related tags like
 `<b>`, or blocks like `<p>` and `<h1>`. That function looks something
 like this:
@@ -254,15 +254,25 @@ class BlockLayout:
         if mode == "block":
             previous = None
             for child in self.node.children:
-                # ...
+                next = BlockLayout(child, self, previous)
+                self.children.append(next)
+                previous = next
         else:
-            # ...
+            self.display_list = []
+
+            self.cursor_x = 0
+            self.cursor_y = 0
+            self.weight = "normal"
+            self.style = "roman"
+            self.size = 16
+
+            self.line = []
             self.recurse(self.node)
             self.flush()
 ```
 
 Finally, since `BlockLayout`s can now have children, the `layout`
-method needs to recursively call `layout` so those children can
+method next needs to recursively call `layout` so those children can
 construct their children, and so on recursively:
 
 ``` {.python}
@@ -707,12 +717,13 @@ The browser's `draw` method now just uses `top` and `bottom` to
 decide which commands to `execute`:
 
 ``` {.python}
-def draw(self):
-    self.canvas.delete("all")
-    for cmd in self.display_list:
-        if cmd.top > self.scroll + HEIGHT: continue
-        if cmd.bottom < self.scroll: continue
-        cmd.execute(self.scroll, self.canvas)
+clas Browser:
+    def draw(self):
+        self.canvas.delete("all")
+        for cmd in self.display_list:
+            if cmd.top > self.scroll + HEIGHT: continue
+            if cmd.bottom < self.scroll: continue
+            cmd.execute(self.scroll, self.canvas)
 ```
 
 Try your browser on a page---maybe this one---with code snippets on
