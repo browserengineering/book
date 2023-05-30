@@ -144,4 +144,8 @@ if __name__ == "__main__":
                 print("\t", file)
             sys.exit(-1)
             
-    sys.exit(sum([failures for failures, count in results.values()]))
+    failures = sum([failures for failures, count in results.values()])
+    total = sum([count for failures, count in results.values()])
+    if failures:
+        print(f"Failed {failures} of {total} tests")
+        sys.exit(failures)

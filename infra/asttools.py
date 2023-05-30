@@ -82,14 +82,6 @@ def load(filename):
         inline_cache[filename] = ast
     return inline_cache[filename]
 
-def parse(source, filename='<unknown>'):
-    return AST39.parse(source, filename)
-
-def inline(tree):
-    tree2 = ResolveImports().visit(copy.deepcopy(tree))
-    tree3 = ResolvePatches().double_visit(tree2)
-    return ast.fix_missing_locations(tree3)
-        
 class ResolveImports(ast.NodeTransformer):
     def visit_ImportFrom(self, cmd):
         assert cmd.level == 0
@@ -116,6 +108,21 @@ class ResolveImports(ast.NodeTransformer):
 class ResolvePatches(ast.NodeTransformer):
     def __init__(self):
         self.patches = {}
+
+    def visit_FunctionDef(self, cmd):
+        if not cmd.decorator_list:
+            patches = self.patches.get(cmd.name, [])
+            if patches:
+                body2 = patches[-1].body
+                return ast.FunctionDef(cmd.name, cmd.args, body2, [])
+            else:
+                return cmd
+        else:
+            assert len(cmd.decorator_list) == 1
+            assert is_patch_decorator(cmd.decorator_list[0])
+            assert cmd.decorator_list[0].args[0].id == cmd.name
+            self.patches.setdefault(cmd.name, []).append(cmd)
+            return None
 
     def visit_ClassDef(self, cmd):
         if not cmd.decorator_list:
