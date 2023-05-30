@@ -234,15 +234,19 @@ class DocumentLayout:
         self.descendants = ProtectedField(node, "descendants")
 
     def layout_needed(self):
-        return any([self.width.dirty, self.height.dirty,
-                    self.zoom.dirty, self.x.dirty, self.y.dirty,
-                    self.descendants.dirty])
+        if self.zoom.dirty: return True
+        if self.width.dirty: return True
+        if self.height.dirty: return True
+        if self.x.dirty: return True
+        if self.y.dirty: return True
+        if self.descendants.dirty: return True
+        return False
 
     def layout(self, width, zoom):
         self.zoom.set(zoom)
         self.width.set(width - 2 * device_px(HSTEP, zoom))
-
         if not self.layout_needed(): return
+
         if not self.children:
             child = BlockLayout(self.node, self, None, self.frame)
         else:
@@ -295,10 +299,14 @@ class BlockLayout:
         self.parent.descendants.control(self.descendants)
 
     def layout_needed(self):
-        return any([self.zoom.dirty, self.width.dirty, self.height.dirty,
-                    self.x.dirty, self.y.dirty,
-                    self.children.dirty, self.descendants.dirty])
-        
+        if self.zoom.dirty: return True
+        if self.width.dirty: return True
+        if self.height.dirty: return True
+        if self.x.dirty: return True
+        if self.y.dirty: return True
+        if self.children.dirty: return True
+        if self.descendants.dirty: return True
+        return False
 
     def layout(self):
         if not self.layout_needed(): return
@@ -460,10 +468,15 @@ class LineLayout:
         self.parent.descendants.control(self.descendants)
 
     def layout_needed(self):
-        return any([self.zoom.dirty, self.width.dirty, self.height.dirty,
-                    self.x.dirty, self.y.dirty,
-                    self.ascent.dirty, self.descent.dirty,
-                    self.descendants.dirty])
+        if self.zoom.dirty: return True
+        if self.width.dirty: return True
+        if self.height.dirty: return True
+        if self.x.dirty: return True
+        if self.y.dirty: return True
+        if self.ascent.dirty: return True
+        if self.descent.dirty: return True
+        if self.descendants.dirty: return True
+        return False
 
     def layout(self):
         if not self.layout_needed(): return
@@ -547,10 +560,16 @@ class TextLayout:
         self.parent.descendants.control(self.descendants)
 
     def layout_needed(self):
-        return any([self.zoom.dirty, self.width.dirty, self.height.dirty,
-                    self.x.dirty, self.y.dirty,
-                    self.ascent.dirty, self.descent.dirty,
-                    self.font.dirty, self.descendants.dirty])
+        if self.zoom.dirty: return True
+        if self.width.dirty: return True
+        if self.height.dirty: return True
+        if self.x.dirty: return True
+        if self.y.dirty: return True
+        if self.ascent.dirty: return True
+        if self.descent.dirty: return True
+        if self.font.dirty: return True
+        if self.descendants.dirty: return True
+        return False
 
     def layout(self):
         if not self.layout_needed(): return
@@ -617,10 +636,16 @@ class EmbedLayout:
         self.parent.descendants.control(self.descendants)
 
     def layout_needed(self):
-        return any([self.zoom.dirty, self.width.dirty, self.height.dirty,
-                    self.x.dirty, self.y.dirty,
-                    self.ascent.dirty, self.descent.dirty,
-                    self.font.dirty, self.descendants.dirty])
+        if self.zoom.dirty: return True
+        if self.width.dirty: return True
+        if self.height.dirty: return True
+        if self.x.dirty: return True
+        if self.y.dirty: return True
+        if self.ascent.dirty: return True
+        if self.descent.dirty: return True
+        if self.font.dirty: return True
+        if self.descendants.dirty: return True
+        return False
 
     def layout_before(self):
         self.zoom.copy(self.parent.zoom)

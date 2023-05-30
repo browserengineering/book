@@ -446,7 +446,7 @@ array isn't dirty. Let's find the line at the top of `layout` that
 resets the `children` array, and move it into the two branches of the
 `if` statement:
 
-``` {.python expected=False}
+``` {.python}
 class BlockLayout:
     def layout(self):
         if mode == "block":
@@ -945,7 +945,8 @@ class BlockLayout:
     def layout(self):
         # ...
         if mode == "block":
-            # ...
+            if self.children.dirty:
+                # ...
         else:
             if self.children.dirty:
                 # ...
@@ -1662,39 +1663,20 @@ we wrapped onto more lines). As a bonus, editing should now also feel
 :::
 
 
-Avoiding redundant recursion
-============================
+Descendant dirty bits
+=====================
 
 All of the layout fields are now wrapped in invalidation logic,
-ensuring that we only compute `x`, `y`, `width`, `height`, or other
-values when absolutely necessary. That's good: it causes faster layout
-updates on complex web pages.
+which means that when if any layout field needs to be recomputed, a
+dirty bit somewhere in the layout tree is set. But we're still
+*visiting* every layout object to actually recompute them. Instead, we
+should use the dirty bits to guide our traversal of the layout tree
+and minimize the number of layout objects we need to visit.
 
-But on the largest web pages it's still not enough. For example, on my
-computer, the initial layout for this page takes about 300
-milliseconds, while each character typed into a `contenteditable`
-takes only 3. That's way faster, but 3 milliseconds is still a
-substantial fraction of our 16 millisecond frame budget, and we'd like
-to bring it down. Since we know we're not recomputing many layout
-fields, all that time must be spent merely traversing the layout tree
-looking for work to do. Luckily, there's a way to skip needless
-traversals, and it involves pushing invalidation one step further.
-
-So far, we've thought about the *data* dependencies of a particular
-layout computation, for example with a node's `height` depending on
-its children's `height`s. But computations also have *control*
-dependencies: the sequence of steps that lead to that computation
-occurring. For example, computing a node's `height` depends on calling
-that node's `layout` method, which depends on calling its parent's
-`layout` method, and so on. We can apply invalidation to control
-dependencies just like we do to data dependencies---though there are
-some differences.
-
-Let's start with first principles. In what cases do we need to make
-sure we call a particular layout object's `layout` method? Well, the
-`layout` method does three things: create layout objects, compute
-layout properties, and recurse into more calls to `layout`. Those
-steps can be skipped if:
+The basic idea revolves around the question: do we even need to call
+`layout` on a given node? The `layout` method does three things:
+create layout objects, compute layout properties, and recurse into
+more calls to `layout`. Those steps can be skipped if:
 
 - The layout object's `children` field isn't dirty, meaning we don't
   need to create new layout objects;
@@ -1703,8 +1685,16 @@ steps can be skipped if:
 - The layout object's children's `layout` methods also don't need to
   be called.
 
+Note that we're now thinking about *control* decisions (does a
+particular piece of code even need to be run) instead of *data*
+dependencies (what that code returns). For example, computing a node's
+`height` depends on calling that node's `layout` method, which depends
+on calling its parent's `layout` method, and so on. We can apply
+invalidation to control dependencies just like we do to data
+dependencies---though there are some differences.
+
 So let's add a new dirty flag, which I call `descendants`,[^ancestors]
-to track when these conditions are true:
+to track the control dependencies for a node's descendants:
 
 [^ancestors]: You will also see these called *ancestor* dirty bits
     instead. It's the same thing, just following the flow of dirty
@@ -1787,15 +1777,30 @@ class BlockLayout:
         self.parent.descendants.control(self.descendants)
 ```
 
+Finally, the `control` calls take care of setting the dirty bit, but
+we also need to reset it when the descendants are laid out. Since
+we're not actually using the value inside the protected field, I'll
+just `set` it to a dummy value:
+
+``` {.python}
+class BlockLayout:
+    def __init__(self, node, parent, previous, frame):
+        # ...
+        for child in self.children.get():
+            child.layout()
+        self.descendants.set(None)
+        # ...
+```
+
 Replicate this code in every layout object type. In `DocumentLayout`
 you won't need to `control` any fields, since `DocumentLayout` has no
 parent, and in the other layout objects also `control` the `font`,
-`ascent`, and `descent` fields that those layout objects have, and
-don't `control` the `children` field, which is unprotected.
+`ascent`, and `descent` fields that those layout objects have while
+not `control`ing the `children` field, which is unprotected.
 
 
-Eager and lazy propagation
-==========================
+Skipping redundant traversals
+=============================
 
 Now that we have descendant dirty bits, let's use them to skip
 unneeded recursions. We'd like to use the `descendants` dirty bit to
@@ -1804,17 +1809,28 @@ skip recursing in the `layout` method:
 ``` {.python}
 class BlockLayout:
     def layout(self):
-        # ...
-        if self.descendants.dirty:
-            for child in self.children.get():
-                child.layout()
-            self.descendants.set(None)
+        if not self.layout_needed(): return
         # ...
 ```
 
-Here the `set` call clears the dirty bit. However, this code doesn't
-work. If you run it, your browser will crash when it skips recomputing
-a field that was dirty.
+Here, the `layout_needed` method can just check all of the dirty bits
+in turn:
+
+``` {.python}
+class BlockLayout:
+    def layout_needed(self):
+        if self.zoom.dirty: return True
+        if self.width.dirty: return True
+        if self.height.dirty: return True
+        if self.x.dirty: return True
+        if self.y.dirty: return True
+        if self.children.dirty: return True
+        if self.descendants.dirty: return True
+        return False
+```
+
+However, this idea doesn't quite work. If you run it, your browser
+will crash when it skips recomputing a field that was dirty.
 
 This is a consequence of us implementing *lazy* marking. Recall how
 the `mark` method works:
@@ -1910,23 +1926,24 @@ class ProtectedField:
 ```
 
 With these changes, the descendant dirty bits should now be set
-correctly, and we can now skip recursively calling layout when the
-descendants aren't dirty:
+correctly, and the `layout_needed` approach above should work. You can
+replicate this on all the other layout types. On `DocumentLayout`, you
+need to be a little careful about the order because it receives the
+frame width and zoom level as arguments:
 
 ``` {.python}
-class BlockLayout:
-    def layout(self):
-        # ...
-        if self.descendants.dirty:
-            for child in self.children.get():
-                child.layout()
-            self.descendants.set(None)
-        # ...
+class DocumentLayout:
+    def layout(self, width, zoom):
+        self.zoom.set(zoom)
+        self.width.set(width - 2 * device_px(HSTEP, zoom))
+        if not self.layout_needed(): return
 ```
 
-You can replicate this on all the other layout types. Even on larger
-web pages, layout should now be under a millisecond, and editing
-should be fairly smooth.
+The other layout object types, however, should work just like
+`BlockLayout`, though of course the set of fields they check in
+`layout_needed` will differ. Once you've done this, layout should be
+under a millisecond even on large pages, and editing text should be
+fairly smooth.
 
 
 Granular style invalidation
