@@ -168,7 +168,6 @@ class ssl {
 class tkinter { 
     static Tk = function(...args) {
         if (rt_constants.WINDOW) {
-            console.log('reused')
             return rt_constants.WINDOW;
         }
 
