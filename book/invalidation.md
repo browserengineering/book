@@ -857,7 +857,7 @@ The same kind of dependency needs to be added to `image` and `iframe`.
 In `text`, however, we need to be a little more careful. This method
 computes the `w` parameter using a font returned by `font`:
 
-``` {.python replace=node.style/style}
+``` {.python replace=node.style/self.children%2c%20node.style}
 class BlockLayout:
     def text(self, node):
         zoom = self.children.read(self.zoom)
@@ -889,7 +889,7 @@ This style field is computed in the `style` method, which builds the
 map of style properties through multiple phases. Let's build that new
 dictionary in a local variable, and `set` it once complete:
 
-``` {.python}
+``` {.python expected=False}
 def style(node, rules, frame):
     old_style = node.style.value
     new_style = {}
@@ -900,7 +900,7 @@ def style(node, rules, frame):
 Inside `style`, a couple of lines read from the parent node's style.
 We need to mark dependencies in these cases:
 
-``` {.python}
+``` {.python expected=False}
 def style(node, rules, frame):
     for property, default_value in INHERITED_PROPERTIES.items():
         if node.parent:
@@ -927,7 +927,7 @@ class JSContext:
 Finally, in `text` (and also in `add_inline_child`) we can depend on
 the `style` field:
 
-``` {.python}
+``` {.python dropline=read(node.style) replace=style/self.children%2c%20node.style}
 class BlockLayout:
     def text(self, node):
         zoom = self.children.read(self.zoom)
@@ -1291,7 +1291,7 @@ Note the new `ascent` and `descent` fields.
 We'll need to compute these fields in `layout`. All of the
 font-related ones are fairly straightforward:
 
-``` {.python}
+``` {.python dropline=self.font.read(self.node.style) replace=font(style/font(self.font%2c%20self.node.style}
 class TextLayout:
     def layout(self):
         # ...
@@ -1630,7 +1630,7 @@ Let's fix these. First, let's tackle `style`. The reason `style` is
 being recomputed repeatedly is just that we don't skip `style`
 recomputation if it isn't dirty. Let's do that:
 
-``` {.python}
+``` {.python replace=node.style.dirty/needs_style}
 def style(node, rules, frame):
     if node.style.dirty:
         # ...
