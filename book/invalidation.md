@@ -1962,15 +1962,206 @@ Granular style invalidation
 
 Thanks to all of this invalidation work, we should now have a pretty
 fast editing experience,[^other-phases] and many JavaScript-driven
-interactions should be fairly fast as well. However, 
+interactions should be fairly fast as well. However, we have
+inadvertantly broken smooth animations.
 
 [^other-phases]: It might still be pretty laggy on large pages due to
     the composite-raster-draw cycle being fairly slow, depending on
     which exericses you implemented in [Chapter 13](animations.md).
 
-::: {.todo}
-This section is unfinished.
-:::
+Here's the basic issue: suppose an element's `opacity` or `transform`
+property changes, for example through JavaScript. That property isn't
+layout-inducing, so it _should_ be animated entirely through
+compositing. However, once we added the protected fields, changing any
+style property invalidates the `Element`'s `style` field, and that in
+turn invalidates the `children` field, causing the layout tree to be
+rebuilt. That's no good.
+
+Ultimately the core problem here is *over*-invalidation caused by
+`ProtectedField`s that are too coarse-grained. It doesn't make sense
+to depend on the whole `style` dictionary at once; instead, it's
+better to depend on each style property individually. To do that, we
+need `style` to be a dictionary of `ProtectedField`s, not a
+`ProtectedField` of a dictionary:
+
+``` {.python}
+class Element:
+    def __init__(self, tag, attributes, parent):
+        # ...
+        self.style = dict([
+            (property, ProtectedField(self, property))
+            for property in CSS_PROPERTIES
+        ])
+        # ...
+```
+
+Do the same thing for `Text`. The `CSS_PROPERTIES` dictionary contains
+each CSS property that we support, and also their default values:
+
+``` {.python}
+CSS_PROPERTIES = {
+    "font-size": "inherit", "font-weight": "inherit",
+    "font-style": "inherit", "color": "inherit",
+    "opacity": "1.0", "transition": "",
+    "transform": "none", "mix-blend-mode": "normal",
+    "border-radius": "0px", "overflow": "visible",
+    "outline": "none", "background-color": "transparent",
+    "image-rendering": "auto",
+}
+```
+
+Now, in `style`, we will need to recompute a node's style if *any* of
+their style properties are dirty:
+
+``` {.python}
+def style(node, rules, frame):
+    needs_style = any([field.dirty for field in node.style.values()])
+    if needs_style:
+        # ...
+    for child in node.children:
+        style(child, rules, frame)
+```
+
+To keep with the existing code, we'll make `old_style` and `new_style`
+just map properties to values:
+
+``` {.python}
+def style(node, rules, frame):
+    if needs_style:
+        old_style = dict([
+            (property, field.value)
+            for property, field in node.style.items()
+        ])
+        new_style = CSS_PROPERTIES.copy()
+        # ...
+```
+
+Then, when we resolve inheritance, we specifically have one field of
+our style depend on one field of the parent's style:
+
+``` {.python}
+def style(node, rules, frame):
+    if needs_style:
+        for property, default_value in INHERITED_PROPERTIES.items():
+            if node.parent:
+                parent_field = node.parent.style[property]
+                parent_value = node.style[property].read(parent_field)
+                new_style[property] = parent_value
+```
+
+Likewise when resolving percentage font sizes:
+
+``` {.python}
+def style(node, rules, frame):
+    if needs_style:
+        if new_style["font-size"].endswith("%"):
+            if node.parent:
+                parent_field = node.parent.style["font-size"]
+                parent_font_size = node.style["font-size"].read(parent_field)
+```
+
+Then, once the `new_style` is all computed, we individually set every
+field of the node's `style`:
+
+``` {.python}
+def style(node, rules, frame):
+    if needs_style:
+        # ...
+        for property, field in node.style.items():
+            field.set(new_style[property])
+```
+
+We now have `style` mapping property names to `ProtectedField`s, so
+all that's left is to update the rest of the browser to match. Mostly,
+this means replacing `style.get()[property]` with
+`style[property].get()`:
+
+``` {.python}
+def paint_visual_effects(node, cmds, rect):
+    opacity = float(node.style["opacity"].get())
+    blend_mode = parse_blend_mode(node.style["mix-blend-mode"].get())
+    translation = parse_transform(node.style["transform"].get())
+    border_radius = float(node.style["border-radius"].get()[:-2])
+    # ...
+```
+
+Make sure to do this for all instances of accessing a specific style
+property.
+
+However, the `font` method needs a little bit of work. Until now,
+we've read the node's `style` and passed that to `font`:
+
+``` {.python expected=False}
+class BlockLayout:
+    def text(self, node):
+        zoom = self.children.read(self.zoom)
+        style = self.children.read(node.style)
+        node_font = font(style, zoom)
+        # ...
+```
+
+That won't work anymore, because now we need to read three different
+properties of `style`. To keep things compact, I'm going to rewrite
+`font` to pass in `self.children`, or whoever is going to be affected
+by the font, as an argument:
+
+``` {.python}
+def font(who, css_style, zoom):
+    weight = who.read(css_style['font-weight'])
+    style = who.read(css_style['font-style'])
+    try:
+        size = float(who.read(css_style['font-size'])[:-2])
+    except ValueError:
+        size = 16
+    font_size = device_px(size, zoom)
+    return get_font(font_size, weight, style)
+```
+
+Now we can simply pass `self.children` in for the `who` parameter when
+requesting a font during line breaking:
+
+``` {.python}
+class BlockLayout:
+    def text(self, node):
+        zoom = self.children.read(self.zoom)
+        node_font = font(self.children, node.style, zoom)
+        # ...
+```
+
+Meanwhile, when computing a `font` field, we pass it in:
+
+``` {.python}
+class TextLayout:
+    def layout(self):
+        if self.font.dirty:
+            zoom = self.font.read(self.zoom)
+            self.font.set(font(self.font, self.node.style, zoom))
+```
+
+This "destination-passing style" is an easy way to write a helper
+function for use in computing various `ProtectedField`s. Make sure to
+update all other uses of the `font` method to this new interface.
+
+Finally, now that we've added granular invalidation to `style`, we can
+invalidate just the animating property when handling animations:
+
+``` {.python}
+class Tab:
+    def run_animation_frame(self, scroll):
+        for (window_id, frame) in self.window_id_to_frame.items():
+            for node in tree_to_list(frame.nodes, []):
+                for (property_name, animation) in \
+                    node.animations.items():
+                    value = animation.animate()
+                    if value:
+                        node.style[property_name].set(value)
+                        # ...
+```
+
+When a property like `opacity` or `transform` is changed, it won't
+invalidate any layout fields (because none of those fields depend on
+these properties) and so animations will once again skip layout
+entirely.
 
 
 Summary

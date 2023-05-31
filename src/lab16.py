@@ -174,18 +174,12 @@ class ProtectedField:
         return "ProtectedField({}, {})".format(self.node, self.name)
     
 CSS_PROPERTIES = {
-    "font-size": "inherit",
-    "font-weight": "inherit",
-    "font-style": "inherit",
-    "color": "inherit",
-    "opacity": "1.0",
-    "transition": "",
-    "transform": "none",
-    "mix-blend-mode": "normal",
-    "border-radius": "0px",
-    "overflow": "visible",
-    "outline": "none",
-    "background-color": "transparent",
+    "font-size": "inherit", "font-weight": "inherit",
+    "font-style": "inherit", "color": "inherit",
+    "opacity": "1.0", "transition": "",
+    "transform": "none", "mix-blend-mode": "normal",
+    "border-radius": "0px", "overflow": "visible",
+    "outline": "none", "background-color": "transparent",
     "image-rendering": "auto",
 }
 
@@ -769,7 +763,10 @@ class IframeLayout(EmbedLayout):
 def style(node, rules, frame):
     needs_style = any([field.dirty for field in node.style.values()])
     if needs_style:
-        old_style = dict([(property, field.value) for property, field in node.style.items()])
+        old_style = dict([
+            (property, field.value)
+            for property, field in node.style.items()
+        ])
         new_style = CSS_PROPERTIES.copy()
         for property, default_value in INHERITED_PROPERTIES.items():
             if node.parent:
