@@ -12,9 +12,7 @@ from lab4 import print_tree
 from lab4 import HTMLParser
 from lab13 import Text, Element
 from lab6 import resolve_url
-from lab6 import tree_to_list
-from lab6 import INHERITED_PROPERTIES
-from lab6 import compute_style
+from lab6 import tree_to_list, INHERITED_PROPERTIES
 from lab8 import layout_mode
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, url_origin
@@ -69,24 +67,6 @@ def tree_to_list(tree, l):
     for child in children:
         tree_to_list(child, l)
     return l
-
-@wbetools.patch(compute_style)
-def compute_style(node, property, value):
-    if property == 'font-size':
-        if value.endswith('px'):
-            return value
-        elif value.endswith('%'):
-            if node.parent:
-                parent_font_size = node.parent.style.get()['font-size']
-            else:
-                parent_font_size = INHERITED_PROPERTIES['font-size']
-            node_pct = float(value[:-1]) / 100
-            parent_px = float(parent_font_size[:-2])
-            return str(node_pct * parent_px) + 'px'
-        else:
-            return None
-    else:
-        return value
 
 @wbetools.patch(paint_outline)
 def paint_outline(node, cmds, rect, zoom):
@@ -781,14 +761,20 @@ def style(node, rules, frame):
                 if (media == 'dark') != frame.tab.dark_mode: continue
             if not selector.matches(node): continue
             for property, value in body.items():
-                computed_value = compute_style(node, property, value)
-                if not computed_value: continue
-                new_style[property] = computed_value
+                new_style[property] = value
         if isinstance(node, Element) and 'style' in node.attributes:
             pairs = CSSParser(node.attributes['style']).body()
             for property, value in pairs.items():
-                computed_value = compute_style(node, property, value)
-                new_style[property] = computed_value
+                new_style[property] = value
+        if new_style["font-size"].endswith("%"):
+            if node.parent:
+                parent_style = node.style.read(node.parent.style)
+                parent_font_size = parent_style["font-size"]
+            else:
+                parent_font_size = INHERITED_PROPERTIES["font-size"]
+            node_pct = float(new_style["font-size"][:-1]) / 100
+            parent_px = float(parent_font_size[:-2])
+            new_style["font-size"] = str(node_pct * parent_px) + "px"
         if old_style:
             transitions = diff_styles(old_style, new_style)
             for property, (old_value, new_value, num_frames) in transitions.items():

@@ -21,9 +21,7 @@ import wbetools
 from lab4 import print_tree
 from lab13 import Text, Element
 from lab6 import resolve_url
-from lab6 import tree_to_list
-from lab6 import INHERITED_PROPERTIES
-from lab6 import compute_style
+from lab6 import tree_to_list, INHERITED_PROPERTIES
 from lab8 import layout_mode
 from lab10 import COOKIE_JAR, url_origin
 from lab11 import draw_text, get_font, linespace, \
@@ -948,14 +946,19 @@ def style(node, rules, frame):
             if (media == "dark") != frame.tab.dark_mode: continue
         if not selector.matches(node): continue
         for property, value in body.items():
-            computed_value = compute_style(node, property, value)
-            if not computed_value: continue
-            node.style[property] = computed_value
+            node.style[property] = value
     if isinstance(node, Element) and "style" in node.attributes:
         pairs = CSSParser(node.attributes["style"]).body()
         for property, value in pairs.items():
-            computed_value = compute_style(node, property, value)
-            node.style[property] = computed_value
+            node.style[property] = value
+    if node.style["font-size"].endswith("%"):
+        if node.parent:
+            parent_font_size = node.parent.style["font-size"]
+        else:
+            parent_font_size = INHERITED_PROPERTIES["font-size"]
+        node_pct = float(node.style["font-size"][:-1]) / 100
+        parent_px = float(parent_font_size[:-2])
+        node.style["font-size"] = str(node_pct * parent_px) + "px"
 
     if old_style:
         transitions = diff_styles(old_style, node.style)

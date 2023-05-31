@@ -15,7 +15,7 @@ from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS, layout_mode, DrawRect
 from lab6 import CSSParser, TagSelector, DescendantSelector
-from lab6 import INHERITED_PROPERTIES, style, cascade_priority, compute_style
+from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import DrawText, resolve_url, tree_to_list
 
 class LineLayout:
