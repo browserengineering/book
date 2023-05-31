@@ -818,16 +818,9 @@ invalidation scenarios much easier, and it will push us toward making
 every field protected.
 
 ::: {.further}
-A classic bug in all dirty-bit-based systems is [under-invalidation],
-where you change one field but forget to set the dirty bit on a field
-that depends on it. The `read` method prevents that because it makes
-sure that when you read a value, you simultaneously ensure (by
-establishing a dependency) that your field will be invalidated if the
-dependency changes. That prevents an important and hard-to-find class
-of bugs.
+
 :::
 
-[under-invalidation]: https://developer.chrome.com/articles/layoutng/#under-invalidation
 
 
 Protecting widths
