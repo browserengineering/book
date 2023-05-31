@@ -2234,21 +2234,25 @@ should now look something like this:
 Exercises
 =========
 
-*Emptying an element*: Implement the `replaceChildren` DOM method when
-called with no arguments. This method should delete all the children
-of a given element. Make sure to handle invalidation properly.
+*Emptying an element*: Implement the [`replaceChildren` DOM
+method][replacechildren-mdn] when called with no arguments. This
+method should delete all the children of a given element. Make sure to
+handle invalidation properly.
 
 *Protecting layout phases*: Replace the `needs_style` and
 `needs_layout` dirty bits by protecting the `document` field on
 `Tab`s. Make sure animations still work correctly: animations of
-`opacity` shouldn't trigger layout, while animations of other
-properties should.
+`opacity` or `transform` shouldn't trigger layout, while animations of
+other properties should.
 
-*Transfering children*: Implement the `replaceChildren` DOM method
-when called with multiple arguments. Here the arguments are elements
-from elsewhere in the document,[^unless-createelement] which are then
-removed from their current parent and then attached to this one. Make
-sure to handle invalidation properly.
+*Transfering children*: Implement the [`replaceChildren` DOM
+method][replacechildren-mdn] when called with multiple arguments. Here
+the arguments are elements from elsewhere in the
+document,[^unless-createelement] which are then removed from their
+current parent and then attached to this one. Make sure to handle
+invalidation properly.
+
+[replacechildren-mdn]: https://developer.mozilla.org/en-US/docs/Web/API/Element/replaceChildren
 
 [^unless-createelement]: Unless you've implemented the "createElement"
     or "removeChild" exercises [in Chapter 9](scripts.md#exercises),
@@ -2264,19 +2268,23 @@ elements, which allow JavaScript code to change an `iframe` element's
 causes both the parent and the child frame to be re-laid-out to match
 the new size.
 
-*Matching children*: Add support for the `appendChild` method if you
-[haven't already](scripts.md#exercises). What's interesting about
-`appendChild` is that, while it *does* change a layout object's
-`children` field, it only does so by adding new children to the end.
-In this case, you can keep all of the existing layout object children.
-Apply this optimization, at least in the case of block-mode
-`BlockLayout`s.
+*Matching children*: Add support for [the `appendChild`
+method][appendchild-mdn] if you [haven't
+already](scripts.md#exercises). What's interesting about `appendChild`
+is that, while it *does* change a layout object's `children` field, it
+only does so by adding new children to the end. In this case, you can
+keep all of the existing layout object children. Apply this
+optimization, at least in the case of block-mode `BlockLayout`s.
 
-*Invalidating `previous`*: Add support for the `insertBefore` method
-if you [haven't already](scripts.md#exercises). Like `appendChild`,
-this method only modifies the `children` field in minor ways, and we
-want to skip rebuilding layout objects if we can. However, this method
-also changes the `previous` field of a layout object; protect that
-field on all block-mode `BlockLayout`s and then apply this
-optimization to avoid rebuilding as much of the layout tree as
-possible.
+[appendchild-mdn]: https://developer.mozilla.org/en-US/docs/Web/API/Node/appendChild
+
+*Invalidating `previous`*: Add support for [the `insertBefore`
+method][insertbefore-mdn] if you [haven't
+already](scripts.md#exercises). Like `appendChild`, this method only
+modifies the `children` field in minor ways, and we want to skip
+rebuilding layout objects if we can. However, this method also changes
+the `previous` field of a layout object; protect that field on all
+block-mode `BlockLayout`s and then apply this optimization to avoid
+rebuilding as much of the layout tree as possible.
+
+[insertbefore-mdn]: https://developer.mozilla.org/en-US/docs/Web/API/Node/insertBefore
