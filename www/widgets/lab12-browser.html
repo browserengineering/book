@@ -32,15 +32,17 @@ Promise.all([ckLoaded, loadFont]).then(([CanvasKit, robotoData]) => {
     rt_constants.ROOT_CANVAS = document.querySelector("#canvas");
 
     let widget = new Widget(document.querySelector("#controls"));
-    let w;
+    let interval;
     widget.run(async function() {
+        if (interval)
+          clearInterval(interval)
         constants.WIDTH = window.innerWidth;
         let url = "https://localhost:8000/";
         let b = await (new Browser()).init();
-        w = init_window(b);
+        init_window(b);
         await b.load(url);
         await b.render();
-        setInterval(async function() {
+        interval = setInterval(async function() {
           await b.render();
           await b.raster_and_draw();
           await b.schedule_animation_frame();
