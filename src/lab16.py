@@ -90,17 +90,10 @@ def font(who, css_style, zoom):
 def has_outline(node):
     return parse_outline(node.style['outline'].get(), 1)
 
-def unprotect(v):
-    if isinstance(v, float):
-        return v
-    else:
-        return v.get()
-
 @wbetools.patch(absolute_bounds_for_obj)
 def absolute_bounds_for_obj(obj):
     rect = skia.Rect.MakeXYWH(
-        unprotect(obj.x), unprotect(obj.y),
-        unprotect(obj.width), unprotect(obj.height))
+        obj.x.get(), obj.y.get(), obj.width.get(), obj.height.get())
     cur = obj.node
     while cur:
         rect = map_translation(rect, parse_transform(cur.style['transform'].get()))
