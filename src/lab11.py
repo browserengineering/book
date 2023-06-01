@@ -16,7 +16,7 @@ from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab4 import Text, Element, print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS
 from lab6 import CSSParser, TagSelector, DescendantSelector
-from lab6 import INHERITED_PROPERTIES, style, cascade_priority, compute_style
+from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import resolve_url, tree_to_list
 from lab7 import CHROME_PX
 from lab8 import INPUT_WIDTH_PX, layout_mode

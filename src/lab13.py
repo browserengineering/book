@@ -21,7 +21,7 @@ from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab4 import Text, Element, print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS
 from lab6 import TagSelector, DescendantSelector
-from lab6 import INHERITED_PROPERTIES, cascade_priority, compute_style
+from lab6 import INHERITED_PROPERTIES, cascade_priority
 from lab6 import resolve_url, tree_to_list
 from lab7 import CHROME_PX
 from lab8 import INPUT_WIDTH_PX, layout_mode
@@ -920,14 +920,19 @@ def style(node, rules, tab):
     for selector, body in rules:
         if not selector.matches(node): continue
         for property, value in body.items():
-            computed_value = compute_style(node, property, value)
-            if not computed_value: continue
-            node.style[property] = computed_value
+            node.style[property] = value
     if isinstance(node, Element) and "style" in node.attributes:
         pairs = CSSParser(node.attributes["style"]).body()
         for property, value in pairs.items():
-            computed_value = compute_style(node, property, value)
-            node.style[property] = computed_value
+            node.style[property] = value
+    if node.style["font-size"].endswith("%"):
+        if node.parent:
+            parent_font_size = node.parent.style["font-size"]
+        else:
+            parent_font_size = INHERITED_PROPERTIES["font-size"]
+        node_pct = float(node.style["font-size"][:-1]) / 100
+        parent_px = float(parent_font_size[:-2])
+        node.style["font-size"] = str(node_pct * parent_px) + "px"
 
     if old_style:
         transitions = diff_styles(old_style, node.style)
