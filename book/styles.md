@@ -811,6 +811,7 @@ relative to the default font size:[^why-parse]
 
 ``` {.python}
 def style(node, rules):
+    # ...
     if node.style["font-size"].endswith("%"):
         if node.parent:
             parent_font_size = node.parent.style["font-size"]
