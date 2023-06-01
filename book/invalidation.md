@@ -496,15 +496,16 @@ inner-most `if` conditional. You should see see that only
 `BlockLayout`s corresponding to changed nodes are re-created.
 
 ::: {.further}
-A classic dirty bit bug is [under-invalidation][under-invalidation],
-where you change one field but forget to set the dirty bit on a field
-that depends on it. These bugs are [hard to find][hard-to-find],
-because they typically only show up if you make a very specific
-sequence of changes.
+If you've heard the saying that "the two hardest problems in computer
+science are cache invalidation and naming things", you can start to
+see how managing dirty flags can explode in complexity as you get more
+and more of them. That saying [originates][quote-originates] from Phil
+Karlton, who was one of the chief engineers (officially, "Principal
+Curmudgeon") at Netscape. Perhaps he meant exactly the kind of
+invalidation this chapter covers.
 :::
 
-[under-invalidation]: https://developer.chrome.com/articles/layoutng/#under-invalidation
-[hard-to-find]: https://developer.chrome.com/articles/layoutng/#correctness
+[quote-originates]: https://twitter.com/timbray/status/817025379109990402
 
 
 Protected fields
@@ -818,8 +819,18 @@ invalidation scenarios much easier, and it will push us toward making
 every field protected.
 
 ::: {.further}
-
+A classic dirty bit bug is [under-invalidation][under-invalidation],
+where you change one field but forget to set the dirty bit on a field
+that depends on it. These bugs are [hard to find][hard-to-find],
+because they typically only show up if you make a very specific
+sequence of changes. The `read` method helps avoid these bugs because
+the easiest way to read a value out of a `ProtectedField` also
+establishes the dependency.
 :::
+
+[under-invalidation]: https://developer.chrome.com/articles/layoutng/#under-invalidation
+[hard-to-find]: https://developer.chrome.com/articles/layoutng/#correctness
+
 
 
 
