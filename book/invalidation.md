@@ -2262,11 +2262,12 @@ invalidation properly.
 information, so that the `style` phase doesn't need to traverse nodes
 whose styles are unchanged.
 
-*Modifying iframes*: Add the `width` and `height` setters on `iframe`
-elements, which allow JavaScript code to change an `iframe` element's
-`width` or `height` attribute. Make sure adjusting these attributes
-causes both the parent and the child frame to be re-laid-out to match
-the new size.
+*Modifying widths*: Add the `width` and `height` setters on `iframe`
+and `image` elements, which allow JavaScript code to change the
+element's `width` or `height` attribute. Make sure invalidation works
+correctly when changing these values. For `iframe` elements, make sure
+adjusting these attributes causes both the parent and the child frame
+to be re-laid-out to match the new size.
 
 *Matching children*: Add support for [the `appendChild`
 method][appendchild-mdn] if you [haven't
