@@ -1064,7 +1064,7 @@ With all of these changes made, your browser should work again, and it
 should now skipping line layout for most elements.
 
 ::: {.further}
-In real browsers, the layout phase is often split in two, first
+In real browsers, the layout phase is sometimes split in two, first
 constructing a layout tree and then a separate [fragment
 tree][fragment-tree].[^our-book-simple] In Chrome, the fragment tree
 is immutable, and invalidation is done by comparing the previous
