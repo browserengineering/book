@@ -496,13 +496,12 @@ inner-most `if` conditional. You should see see that only
 `BlockLayout`s corresponding to changed nodes are re-created.
 
 ::: {.further}
-If you've heard the saying that "the two hardest problems in computer
-science are cache invalidation and naming things", you can start to
-see how managing dirty flags can explode in complexity as you get more
-and more of them. That saying [originates][quote-originates] from Phil
-Karlton, who was one of the chief engineers (officially, "Principal
-Curmudgeon") at Netscape. Perhaps he meant exactly the kind of
-invalidation this chapter covers.
+If you've heard [Phil Karlton's saying][quote-originates] that "the
+two hardest problems in computer science are cache invalidation and
+naming things", you know that managing more and more dirty flags explodes
+complexity. Phil worked at Netscape (officially as "Principal
+Curmudgeon") and may have meant exactly the kind of invalidation this
+chapter covers.
 :::
 
 [quote-originates]: https://twitter.com/timbray/status/817025379109990402
