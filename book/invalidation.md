@@ -129,6 +129,16 @@ You should now be able to edit the examples on this page in your toy
 browser---but if you try it, you'll see that editing is extremely
 slow, with each character taking hundreds of milliseconds to type.
 
+::: {.further}
+Actually, text editing is [exceptionally
+hard](https://lord.io/text-editing-hates-you-too/), including tricky
+concepts like caret affinity (which line the cursor is on, if a long
+line is wrapped in the middle of a word), unicode handling,
+[bidirectional text](http://unicode.org/faq/bidi.html), and mixing
+text formatting with editing.
+:::
+
+
 Idempotence
 ===========
 
@@ -289,8 +299,20 @@ makes it the foundation for the rest of this chapter, which is all
 about knowing what work is truly redundant.
 
 ::: {.further}
-
+HTTP also features a [notion of idempotence][idempotence-mdn], but
+that notion is subtly different from the one we're discussing here
+because HTTP involves both a client and a server. In HTTP, idempotence
+only covers the effects of a request on the server state, not the
+response. So, for example, requesting the same page twice with `GET`
+might result in different responses (if the page has changed) but the
+request is still idempotent because it didn't make any change to the
+server. And HTTP idempotence also only covers client-visible state, so
+for example it's possible that the first `GET` request goes to cache
+while the second doesn't, or it's possible that each one adds a
+separate log entry.
 :::
+
+[idempotence-mdn]: https://developer.mozilla.org/en-US/docs/Glossary/Idempotent
 
 
 Dependencies
@@ -474,8 +496,15 @@ inner-most `if` conditional. You should see see that only
 `BlockLayout`s corresponding to changed nodes are re-created.
 
 ::: {.further}
-
+A classic dirty bit bug is [under-invalidation][under-invalidation],
+where you change one field but forget to set the dirty bit on a field
+that depends on it. These bugs are [hard to find][hard-to-find],
+because they typically only show up if you make a very specific
+sequence of changes.
 :::
+
+[under-invalidation]: https://developer.chrome.com/articles/layoutng/#under-invalidation
+[hard-to-find]: https://developer.chrome.com/articles/layoutng/#correctness
 
 
 Protected fields
@@ -590,8 +619,17 @@ makes sure we always check and reset dirty bits when we're supposed
 to.
 
 ::: {.further}
-
+The `ProtectedField` class defined here is a type of [monad][monad],
+a programming pattern used in programming languages like
+[Haskell][haskell]. In brief, a monad describes a way to connect
+computations, but the specifics are [famously
+confusing][monad-tutorials]. Luckily, in this chapter we don't really
+need to think about monads in general, just `ProtectedField`.
 :::
+
+[monad]: https://en.wikipedia.org/wiki/Monad_(functional_programming)
+[haskell]: https://www.haskell.org/
+[monad-tutorials]: https://wiki.haskell.org/Monad_tutorials_timeline
 
 
 Recursive dirty bits
@@ -782,6 +820,7 @@ every field protected.
 ::: {.further}
 
 :::
+
 
 
 Protecting widths
@@ -1025,9 +1064,18 @@ With all of these changes made, your browser should work again, and it
 should now skipping line layout for most elements.
 
 ::: {.further}
-
+In real browsers, the layout phase is sometimes split in two, first
+constructing a layout tree and then a separate [fragment
+tree][fragment-tree].[^our-book-simple] In Chrome, the fragment tree
+is immutable, and invalidation is done by comparing the previous
+and new fragment trees instead of by using dirty bits, though the
+overall algorithm ends up pretty similar to what this book describes.
 :::
 
+[fragment-tree]: https://developer.chrome.com/articles/renderingng-data-structures/#the-immutable-fragment-tree
+
+[^our-book-simple]: This book doesn't separate out the fragment tree
+    because our layout algorithm is simple enough not to need it.
 
 
 Widths for inline elements
