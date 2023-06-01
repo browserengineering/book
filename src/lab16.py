@@ -71,41 +71,46 @@ def tree_to_list(tree, l):
 @wbetools.patch(paint_outline)
 def paint_outline(node, cmds, rect, zoom):
     if has_outline(node):
-        thickness, color = parse_outline(node.style.get().get('outline'), zoom)
+        thickness, color = parse_outline(node.style['outline'].get(), zoom)
         cmds.append(DrawOutline(rect, color, thickness))
+
+@wbetools.patch(font)
+def font(who, css_style, zoom):
+    weight = who.read(css_style['font-weight'])
+    style = who.read(css_style['font-style'])
+    try:
+        size = float(who.read(css_style['font-size'])[:-2])
+    except ValueError:
+        size = 16
+    font_size = device_px(size, zoom)
+    return get_font(font_size, weight, style)
+
 
 @wbetools.patch(has_outline)
 def has_outline(node):
-    return parse_outline(node.style.get().get('outline'), 1)
-
-def unprotect(v):
-    if isinstance(v, float):
-        return v
-    else:
-        return v.get()
+    return parse_outline(node.style['outline'].get(), 1)
 
 @wbetools.patch(absolute_bounds_for_obj)
 def absolute_bounds_for_obj(obj):
     rect = skia.Rect.MakeXYWH(
-        unprotect(obj.x), unprotect(obj.y),
-        unprotect(obj.width), unprotect(obj.height))
+        obj.x.get(), obj.y.get(), obj.width.get(), obj.height.get())
     cur = obj.node
     while cur:
-        rect = map_translation(rect, parse_transform(cur.style.get().get('transform', '')))
+        rect = map_translation(rect, parse_transform(cur.style['transform'].get()))
         cur = cur.parent
     return rect
 
 @wbetools.patch(paint_visual_effects)
 def paint_visual_effects(node, cmds, rect):
-    opacity = float(node.style.get().get('opacity', '1.0'))
-    blend_mode = parse_blend_mode(node.style.get().get('mix-blend-mode'))
-    translation = parse_transform(node.style.get().get('transform', ''))
-    border_radius = float(node.style.get().get('border-radius', '0px')[:-2])
-    if node.style.get().get('overflow', 'visible') == 'clip':
+    opacity = float(node.style["opacity"].get())
+    blend_mode = parse_blend_mode(node.style["mix-blend-mode"].get())
+    translation = parse_transform(node.style["transform"].get())
+    border_radius = float(node.style["border-radius"].get()[:-2])
+    if node.style["overflow"].get() == 'clip':
         clip_radius = border_radius
     else:
         clip_radius = 0
-    needs_clip = node.style.get().get('overflow', 'visible') == 'clip'
+    needs_clip = node.style['overflow'].get() == 'clip'
     needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or needs_clip or opacity != 1.0
     save_layer = SaveLayer(skia.Paint(BlendMode=blend_mode, Alphaf=opacity), node, [ClipRRect(rect, clip_radius, cmds, should_clip=needs_clip)], should_save=needs_blend_isolation)
     transform = Transform(translation, rect, node, [save_layer])
@@ -167,6 +172,16 @@ class ProtectedField:
 
     def __repr__(self):
         return "ProtectedField({}, {})".format(self.node, self.name)
+    
+CSS_PROPERTIES = {
+    "font-size": "inherit", "font-weight": "inherit",
+    "font-style": "inherit", "color": "inherit",
+    "opacity": "1.0", "transition": "",
+    "transform": "none", "mix-blend-mode": "normal",
+    "border-radius": "0px", "overflow": "visible",
+    "outline": "none", "background-color": "transparent",
+    "image-rendering": "auto",
+}
 
 @wbetools.patch(Element)
 class Element:
@@ -176,7 +191,10 @@ class Element:
         self.children = []
         self.parent = parent
 
-        self.style = ProtectedField(self, "style")
+        self.style = dict([
+            (property, ProtectedField(self, property))
+            for property in CSS_PROPERTIES
+        ])
         self.animations = {}
 
         self.is_focused = False
@@ -189,7 +207,10 @@ class Text:
         self.children = []
         self.parent = parent
 
-        self.style = ProtectedField(self, "style")
+        self.style = dict([
+            (property, ProtectedField(self, property))
+            for property in CSS_PROPERTIES
+        ])
         self.animations = {}
 
         self.is_focused = False
@@ -341,8 +362,7 @@ class BlockLayout:
 
     def text(self, node):
         zoom = self.children.read(self.zoom)
-        style = self.children.read(node.style)
-        node_font = font(style, zoom)
+        node_font = font(self.children, node.style, zoom)
         for word in node.text.split():
             w = node_font.measureText(word)
             self.add_inline_child(node, w, TextLayout, self.frame, word)
@@ -365,9 +385,8 @@ class BlockLayout:
             child = child_class(node, line, self.previous_word, frame)
         line.children.append(child)
         self.previous_word = child
-        style = self.children.read(node.style)
         zoom = self.children.read(self.zoom)
-        self.cursor_x += w + font(style, zoom).measureText(' ')
+        self.cursor_x += w + font(self.children, node.style, zoom).measureText(' ')
 
     def paint(self, display_list):
         cmds = []
@@ -380,12 +399,10 @@ class BlockLayout:
             (self.node.tag == "input" or self.node.tag == "button")
 
         if not is_atomic:
-            bgcolor = self.node.style.get().get(
-                "background-color", "transparent")
+            bgcolor = self.node.style["background-color"].get()
             if bgcolor != "transparent":
                 radius = device_px(
-                    float(self.node.style.get().get(
-                        "border-radius", "0px")[:-2]),
+                    float(self.node.style["border-radius"].get()[:-2]),
                     self.zoom.get())
                 cmds.append(DrawRRect(rect, radius, bgcolor))
  
@@ -529,8 +546,7 @@ class TextLayout:
 
         if self.font.dirty:
             zoom = self.font.read(self.zoom)
-            style = self.font.read(self.node.style)
-            self.font.set(font(style, zoom))
+            self.font.set(font(self.font, self.node.style, zoom))
 
         if self.width.dirty:
             f = self.width.read(self.font)
@@ -559,7 +575,7 @@ class TextLayout:
 
     def paint(self, display_list):
         leading = self.height.get() / 1.25 * .25 / 2
-        color = self.node.style.get()['color']
+        color = self.node.style['color'].get()
         display_list.append(DrawText(self.x.get(), self.y.get() + leading, self.word, self.font.get(), color))
 
 @wbetools.patch(EmbedLayout)
@@ -597,9 +613,8 @@ class EmbedLayout:
             self.zoom.copy(self.parent.zoom)
 
         if self.font.dirty:
-            style = self.font.read(self.node.style)
             zoom = self.font.read(self.zoom)
-            self.font.set(font(style, zoom))
+            self.font.set(font(self.font, self.node.style, zoom))
 
         if self.x.dirty:
             if self.previous:
@@ -637,11 +652,10 @@ class InputLayout(EmbedLayout):
             self.x.get(), self.y.get(), self.x.get() + self.width.get(),
             self.y.get() + self.height.get())
 
-        bgcolor = self.node.style.get().get("background-color",
-                                 "transparent")
+        bgcolor = self.node.style["background-color"].get()
         if bgcolor != "transparent":
             radius = device_px(
-                float(self.node.style.get().get("border-radius", "0px")[:-2]),
+                float(self.node.style["border-radius"].get()[:-2]),
                 self.zoom.get())
             cmds.append(DrawRRect(rect, radius, bgcolor))
 
@@ -655,7 +669,7 @@ class InputLayout(EmbedLayout):
                 print("Ignoring HTML contents inside button")
                 text = ""
 
-        color = self.node.style.get()["color"]
+        color = self.node.style["color"].get()
         cmds.append(DrawText(self.x.get(), self.y.get(),
                              text, self.font.get(), color))
 
@@ -699,7 +713,7 @@ class ImageLayout(EmbedLayout):
     def paint(self, display_list):
         cmds = []
         rect = skia.Rect.MakeLTRB(self.x.get(), self.y.get() + self.height.get() - self.img_height, self.x.get() + self.width.get(), self.y.get() + self.height)
-        quality = self.node.style.get().get('image-rendering', 'auto')
+        quality = self.node.style["image-rendering"].get()
         cmds.append(DrawImage(self.node.image, rect, quality))
         display_list.extend(cmds)
 
@@ -732,9 +746,9 @@ class IframeLayout(EmbedLayout):
     def paint(self, display_list):
         frame_cmds = []
         rect = skia.Rect.MakeLTRB(self.x.get(), self.y.get(), self.x.get() + self.width.get(), self.y.get() + self.height.get())
-        bgcolor = self.node.style.get().get('background-color', 'transparent')
+        bgcolor = self.node.style["background-color"].get()
         if bgcolor != 'transparent':
-            radius = device_px(float(self.node.style.get().get('border-radius', '0px')[:-2]), self.zoom.get())
+            radius = device_px(float(self.node.style["border-radius"].get()[:-2]), self.zoom.get())
             frame_cmds.append(DrawRRect(rect, radius, bgcolor))
         if self.node.frame:
             self.node.frame.paint(frame_cmds)
@@ -747,13 +761,18 @@ class IframeLayout(EmbedLayout):
         display_list.extend(cmds)
 
 def style(node, rules, frame):
-    if node.style.dirty:
-        old_style = node.style.value
-        new_style = {}
+    needs_style = any([field.dirty for field in node.style.values()])
+    if needs_style:
+        old_style = dict([
+            (property, field.value)
+            for property, field in node.style.items()
+        ])
+        new_style = CSS_PROPERTIES.copy()
         for property, default_value in INHERITED_PROPERTIES.items():
             if node.parent:
-                parent_style = node.style.read(node.parent.style)
-                new_style[property] = parent_style[property]
+                parent_field = node.parent.style[property]
+                parent_value = node.style[property].read(parent_field)
+                new_style[property] = parent_value
             else:
                 new_style[property] = default_value
         for media, selector, body in rules:
@@ -768,8 +787,8 @@ def style(node, rules, frame):
                 new_style[property] = value
         if new_style["font-size"].endswith("%"):
             if node.parent:
-                parent_style = node.style.read(node.parent.style)
-                parent_font_size = parent_style["font-size"]
+                parent_field = node.parent.style["font-size"]
+                parent_font_size = node.style["font-size"].read(parent_field)
             else:
                 parent_font_size = INHERITED_PROPERTIES["font-size"]
             node_pct = float(new_style["font-size"][:-1]) / 100
@@ -784,7 +803,8 @@ def style(node, rules, frame):
                     animation = AnimationClass(old_value, new_value, num_frames)
                     node.animations[property] = animation
                     new_style[property] = animation.animate()
-        node.style.set(new_style)
+        for property, field in node.style.items():
+            field.set(new_style[property])
 
     for child in node.children:
         style(child, rules, frame)
@@ -995,7 +1015,7 @@ class Tab:
                     node.animations.items():
                     value = animation.animate()
                     if value:
-                        node.style[property_name] = value
+                        node.style[property_name].set(value)
                         if wbetools.USE_COMPOSITING and \
                             property_name == "opacity":
                             self.composited_updates.append(node)
