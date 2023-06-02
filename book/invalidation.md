@@ -546,15 +546,14 @@ Protected fields
 
 Dirty flags like `children_dirty` are the traditional approach to
 layout invalidation, but they have some downsides. As you've seen,
-using them correctly means paying careful attention to how any given
-field is computed and used, and tracking dependencies between various
-computations across the browser. In our simple browser, that's pretty
-doable by hand, but a real browser's layout system is much more
-complex, and mistakes become impossible to avoid.
+using them correctly means paying careful attention to the
+dependencies between various fields and tracking when fields are used.
+In our simple browser, you could do it by hand, but a real browser's
+layout system is much more complex, and mistakes become impossible to
+avoid.
 
-So let's try to put a more user-friendly face on dirty flags. As a
-first step, let's try to combine a dirty flag and the field it
-protects into a single object:
+We need a better approach. As a first step, let's try to combine a
+dirty flag and the field it protects into a single object:
 
 ``` {.python replace=(self)/(self%2c%20node%2c%20name)}
 class ProtectedField:
@@ -563,8 +562,8 @@ class ProtectedField:
         self.dirty = True
 ```
 
-We can pretty easily replace our existing dirty flag with this simple
-abstraction:
+That clarifies which dirty flag protects which field. We can replace
+our existing dirty flag with this simple abstraction:
 
 ``` {.python ignore=ProtectedField}
 class BlockLayout:
@@ -574,9 +573,8 @@ class BlockLayout:
         # ...
 ```
 
-On key press and `innerHTML`, we need to set the dirty flag. Let's put
-that behind a method; I'll say that we `mark` a dependent field to set
-its dirty flag:
+Next, let's add methods for each step of the dirty flag life cycle.
+I'll say that we `mark` a protected field to set its dirty flag:
 
 ``` {.python}
 class ProtectedField:
@@ -585,7 +583,9 @@ class ProtectedField:
         self.dirty = True
 ```
 
-Then call the method, here and in `innerHTML_set`:
+Note that I added an "early exit": marking an already-dirty field
+doesn't do anything. That'll become relevant later. Call `mark` in
+`keypress` in `innerHTML_set`:
 
 ``` {.python}
 class Frame:
@@ -593,39 +593,14 @@ class Frame:
         elif self.tab.focus and "contenteditable" in self.tab.focus.attributes:
             # ...
             obj.children.mark()
+
+class JSContext:
+    def innerHTML_set(self, handle, s, window_id):
+        # ...
+        obj.children.mark()
 ```
 
-To reset the dirty flag, let's make the caller pass in a new value for
-the field. This guarantees that the dirty flag and the value are
-updated together:
-
-``` {.python}
-class ProtectedField:
-    def set(self, value):
-        self.value = value
-        self.dirty = False
-```
-
-Using this method in `BlockLayout` will require changing `BlockLayout`
-to first add all the children to a local variable, and then `set` that
-variable into the `children` field:
-
-``` {.python}
-class BlockLayout:
-    def layout(self):
-        if mode == "block":
-            if self.children.dirty:
-                children = []
-                previous = None
-                for child in self.node.children:
-                    next = BlockLayout(child, self, previous, self.frame)
-                    children.append(next)
-                    previous = next
-                self.children.set(children)
-```
-
-Finally, when it comes time to use the `children` field, the
-`ProtectedField` can check that it isn't dirty:
+Before getting a `ProtectedField`'s value, let's check the dirty flag:
 
 ``` {.python}
 class ProtectedField:
@@ -647,23 +622,47 @@ class BlockLayout:
         self.height = sum([child.height for child in self.children.get()])
 ```
 
-`ProtectedField` is a nice convenience: it frees us from remembering
-that two fields (`children` and `children_dirty`) go together, and it
-makes sure we always check and reset dirty flag when we're supposed
-to.
+The nice thing about `get` is it makes the dirty flag operations
+automatic, and therefore impossible to forget. It also make the code a
+little nicer.
+
+Finally, to reset the dirty flag, let's make the caller pass in a new
+value for the field. This guarantees that the dirty flag and the value
+are updated together:
+
+``` {.python}
+class ProtectedField:
+    def set(self, value):
+        self.value = value
+        self.dirty = False
+```
+
+To use `set` in `BlockLayout`, I'll build the children array in a
+local variable and then `set` the `children` field:
+
+``` {.python}
+class BlockLayout:
+    def layout(self):
+        if mode == "block":
+            if self.children.dirty:
+                children = []
+                previous = None
+                for child in self.node.children:
+                    next = BlockLayout(child, self, previous, self.frame)
+                    children.append(next)
+                    previous = next
+                self.children.set(children)
+```
+
+As with `get`, the `set` method automates the dirty flag operations,
+making them hard to mess up. `ProtectedField` frees us from
+remembering that two fields (`children` and `children_dirty`) go
+together and makes sure we always check and reset dirty flag when
+we're supposed to.
 
 ::: {.further}
-The `ProtectedField` class defined here is a type of [monad][monad],
-a programming pattern used in programming languages like
-[Haskell][haskell]. In brief, a monad describes a way to connect
-computations, but the specifics are [famously
-confusing][monad-tutorials]. Luckily, in this chapter we don't really
-need to think about monads in general, just `ProtectedField`.
-:::
 
-[monad]: https://en.wikipedia.org/wiki/Monad_(functional_programming)
-[haskell]: https://www.haskell.org/
-[monad-tutorials]: https://wiki.haskell.org/Monad_tutorials_timeline
+:::
 
 
 Recursive invaliation
@@ -852,8 +851,17 @@ invalidation scenarios much easier, and it will push us toward making
 every field protected.
 
 ::: {.further}
-
+The `ProtectedField` class defined here is a type of [monad][monad],
+a programming pattern used in programming languages like
+[Haskell][haskell]. In brief, a monad describes a way to connect
+computations, but the specifics are [famously
+confusing][monad-tutorials]. Luckily, in this chapter we don't really
+need to think about monads in general, just `ProtectedField`.
 :::
+
+[monad]: https://en.wikipedia.org/wiki/Monad_(functional_programming)
+[haskell]: https://www.haskell.org/
+[monad-tutorials]: https://wiki.haskell.org/Monad_tutorials_timeline
 
 
 
