@@ -732,7 +732,7 @@ class JSContext:
 
     def run(self, script, code):
         try:
-            print("Script returned: ", self.interp.evaljs(code))
+            self.interp.evaljs(code)
         except dukpy.JSRuntimeError as e:
             print("Script", script, "crashed", e)
 

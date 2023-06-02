@@ -126,7 +126,6 @@ Next, we can execute some JavaScript to change the page:
     ... window.document.querySelectorAll("div")[1].innerHTML = 'Short body';
     ... """
     >>> frame.js.run("<test>", script, frame.window_id)
-    Script returned:  Short body
     >>> frame.render()
     >>> lab16.print_tree(frame.document) # doctest: +ELLIPSIS
      DocumentLayout()
