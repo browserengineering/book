@@ -585,19 +585,19 @@ class ProtectedField:
 
 Note that I added an "early exit": marking an already-dirty field
 doesn't do anything. That'll become relevant later. Call `mark` in
-`keypress` in `innerHTML_set`:
+`innerHTML_set` and `keypress`:
 
 ``` {.python}
+class JSContext:
+    def innerHTML_set(self, handle, s, window_id):
+        # ...
+        obj.children.mark()
+
 class Frame:
     def keypress(self, char):
         elif self.tab.focus and "contenteditable" in self.tab.focus.attributes:
             # ...
             obj.children.mark()
-
-class JSContext:
-    def innerHTML_set(self, handle, s, window_id):
-        # ...
-        obj.children.mark()
 ```
 
 Before getting a `ProtectedField`'s value, let's check the dirty flag:
