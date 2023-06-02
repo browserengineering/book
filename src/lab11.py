@@ -549,7 +549,7 @@ class Tab:
                 continue
             header, body = request(script_url, url)
             try:
-                print("Script returned: ", self.js.run(body))
+                self.js.run(body)
             except dukpy.JSRuntimeError as e:
                 print("Script", script, "crashed", e)
 
