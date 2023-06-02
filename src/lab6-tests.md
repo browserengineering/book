@@ -126,33 +126,37 @@ with a scannerless parser like used here:
 Testing compute_style
 =====================
 
+Let's make a simple HTML tree:
+
     >>> html = lab6.Element("html", {}, None)
     >>> body = lab6.Element("body", {}, html)
     >>> div = lab6.Element("div", {}, body)
+    >>> html.children.append(body)
+    >>> body.children.append(div)
+    
+Let's give all of them a percentage font size:
 
-Other than `font-size`, this just returns the value:
+    >>> html.attributes["style"] = "font-size:150%"
+    >>> body.attributes["style"] = "font-size:150%"
+    >>> div.attributes["style"] = "font-size:150%"
+    >>> lab6.style(html, [])
 
-    >>> lab6.compute_style(body, "property", "value")
-    'value'
+The font size of the `<div>` is computed relatively:
 
-Values for `font-size` ending in "px" return the value:
+    >>> lab6.INHERITED_PROPERTIES["font-size"]
+    '16px'
+    >>> 16 * 1.5 * 1.5 * 1.5
+    54.0
+    >>> div.style["font-size"]
+    '54.0px'
+    
+If we change the `<body>` to be absolute, then the `<div>` is relative
+to that:
 
-    >>> lab6.compute_style(body, "font-size", "12px")
-    '12px'
-
-Percentage values are computed against the parent
-
-    >>> html.style = {"font-size": "30px"}
-    >>> lab6.compute_style(body, "font-size", "100%")
-    '30.0px'
-    >>> lab6.compute_style(body, "font-size", "80%")
-    '24.0px'
-
-    >>> body.style = {"font-size": "10px"}
-    >>> lab6.compute_style(div, "font-size", "100%")
-    '10.0px'
-    >>> lab6.compute_style(div, "font-size", "80%")
-    '8.0px'
+    >>> body.attributes["style"] = "font-size:10px"
+    >>> lab6.style(html, [])
+    >>> div.style["font-size"]
+    '15.0px'
 
 Testing style
 =============

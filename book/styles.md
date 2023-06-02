@@ -223,7 +223,7 @@ but before doing layout.
 This `style` function will also fill in the `style` field by parsing
 the element's `style` attribute:
     
-``` {.python replace=(node)/(node%2C%20rules),%3d%20value/%3d%20computed_value}
+``` {.python replace=(node)/(node%2C%20rules)}
 def style(node):
     # ...
     if isinstance(node, Element) and "style" in node.attributes:
@@ -490,7 +490,7 @@ the page, this will require looping over all elements *and* all rules.
 When a rule applies, its property/values pairs are copied to the
 element's style information:
 
-``` {.python replace=%3d%20value/%3d%20computed_value}
+``` {.python}
 def style(node, rules):
     # ...
     for selector, body in rules:
@@ -792,19 +792,16 @@ implementing those other properties in this book.
 [css-computed]: https://www.w3.org/TR/CSS2/cascade.html#value-stages
 
 ``` {.python}
-def compute_style(node, property, value):
-    if property == "font-size":
-        if value.endswith("px"):
-            return value
-        elif value.endswith("%"):
-            # ...
-        else:
-            return None
-    else:
-        return value
+def style(node, rules):
+    # ...
+    if node.style["font-size"].endswith("%"):
+        # ...
+
+    for child in node.children:
+        style(child, rules)
 ```
 
-Percentage sizes also have to handle a tricky edge case: percentage
+Resolving percentage sizes has just one tricky edge case: percentage
 sizes for the root `html` element. In that case the percentage is
 relative to the default font size:[^why-parse]
 
@@ -812,39 +809,23 @@ relative to the default font size:[^why-parse]
     our `style` field stores strings; in a real browser the computed
     style is stored parsed so this doesn't have to happen.
 
-``` {.python indent=12}
-if node.parent:
-    parent_font_size = node.parent.style["font-size"]
-else:
-    parent_font_size = INHERITED_PROPERTIES["font-size"]
-node_pct = float(value[:-1]) / 100
-parent_px = float(parent_font_size[:-2])
-return str(node_pct * parent_px) + "px"
-```
-
-Now `style` can call `computed_style` any time it reads a property
-value out of a style sheet:
-
 ``` {.python}
 def style(node, rules):
     # ...
-    for selector, body in rules:
-        if not selector.matches(node): continue
-        for property, value in body.items():
-            computed_value = compute_style(node, property, value)
-            if not computed_value: continue
-            node.style[property] = computed_value
-    # ...
+    if node.style["font-size"].endswith("%"):
+        if node.parent:
+            parent_font_size = node.parent.style["font-size"]
+        else:
+            parent_font_size = INHERITED_PROPERTIES["font-size"]
+        node_pct = float(node.style["font-size"][:-1]) / 100
+        parent_px = float(parent_font_size[:-2])
+        node.style["font-size"] = str(node_pct * parent_px) + "px"
 ```
 
-Note that because the `style` function recurses at the end of the
-function, the node's parent already has a `font-size` value stored
-when `compute_style` is called.
-
-The loop that handles `style` attributes should likewise call
-`computed_style`. Remember that `style` attributes overwrite CSS
-rules; that means the loop above, which handles rules, should come
-*before* the loop that handles the style attribute.
+Note that this happens after all of the different sources of style
+values are handled (so we are working with the final `font-size`
+value) but before we recurse (so children can assume *our* `font-size`
+has been resolved to a pixel value).
 
 ::: {.further}
 Styling a page can be slow, so real browsers apply tricks like [bloom
