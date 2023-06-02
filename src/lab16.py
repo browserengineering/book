@@ -44,7 +44,7 @@ def is_focusable(node):
         return False
     elif "tabindex" in node.attributes:
         return True
-    elif "contenteditable" in node.attributes:
+    elif node.attributes.get("contenteditable", "false") == "true":
         return True
     else:
         return node.tag in ["input", "button", "a"]
@@ -423,8 +423,9 @@ class BlockLayout:
             cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
 
-def DrawCursor(elt, width):
-    return DrawLine(elt.x.get() + width, elt.y.get(), elt.x.get() + width, elt.y.get() + elt.height.get())
+def DrawCursor(elt, offset):
+    x = elt.x.get() + offset
+    return DrawLine(x, elt.y.get(), x, elt.y.get() + elt.height.get())
 
 @wbetools.patch(LineLayout)
 class LineLayout:

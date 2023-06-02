@@ -5,61 +5,62 @@ prev: embeds
 next: skipped
 ...
 
-So far, we've worked on animation performance by improving our
-browser's graphics subsystem. But that hasn't helped animations and
-interactions that affect layout, like user- or JavaScript-driven
-edits. Luckily, Yet like compositing enabled smooth animations by
-avoiding redundant raster work, we can avoid redundant layout work
-using a technique called invalidation.
+We [previously](animations.md) improved animation performance by
+improving our browser's graphics subsystem. But that doesn't help
+interactions that affect layout, like text editing or JavaScript DOM
+modifications. Luckily, we can avoid redundant layout work using a
+technique called invalidation. While invalidation is traditionally
+complex and bug-prone, a principled approach and simple abstractions
+can make it managable.
 
 Editing Content
 ===============
 
-In [Chapter 13](animations.md), we used compositing smoothly animate
-CSS properties like `transform` or `opacity`. However, other CSS
-properties like `width` can't be animated in this way. That's because
-these _layout-inducing_ animations change not only the _display list_
-but also the _layout tree_. Layout-inducing animations are a bad
-practice for this reason. Unfortunately, plenty of other interactions
-affect the layout tree and yet need to be as smooth as possible.
+In [Chapter 13](animations.md), we used compositing to smoothly
+animate CSS properties like `transform` or `opacity`. However, other
+CSS properties are _layout-inducing_ and can't be animated this way,
+because they change not only the _display list_ but also the _layout
+tree_. And while layout-inducing animations are best avoided, lots of
+other interactions require changing the layout tree yet need to be as
+smooth as possible.
 
 One good example is editing text. People type pretty quickly, so even
-a few frames' delay is very distracting. But editing changes the HTML
-tree and therefore requires a new layout tree that reflects the new
-text. But on large pages (like this one) constructing the layout tree
-can take quite a while. Try, for example, typing into this input box
-from our toy browser:
+a few frames' delay is distracting. But editing changes the HTML tree
+and therefore requires changing the layout tree to reflect new text.
+Currently, that forces our browser to rebuild the layout tree from
+scratch, which can take multiple frames on complex pages like this
+one. Try, for example, typing into this input box:
 
 <input style="width:100%"/>
 
 Typing into an `input` element could be special-cased,[^no-resize] but
-there are other text editing APIs. For example, the `contenteditable`
-attribute makes any element editable:
+there are other text editing APIs that can't be. For example, the
+`contenteditable` attribute makes any element editable:
 
-[^no-resize]: For example, the `input` element doesn't change size as
-    you type, and the text in the `input` element doesn't get its own
-    layout object.
+[^no-resize]: The `input` element doesn't change size as you type, and
+    the text in the `input` element doesn't get its own layout object,
+    so the layout tree is actually the same after each edit.
 
 ::: {.demo contenteditable=true}
 Click on this <i>formatted</i> <b>text</b> to edit it.
 :::
 
-Let's implement `contenteditable` in our browser---it will make a good
-test of invalidation. To begin with, we need to make elements with a
-`contenteditable` property focusable:
+Let's implement `contenteditable` in our browser---it's a useful
+feature and also a good test of invalidation. To begin with, we need
+to make elements with a `contenteditable` property focusable:
 
 ``` {.python}
 def is_focusable(node):
     # ...
-    elif "contenteditable" in node.attributes:
+    elif node.attributes.get("contenteditable", "false") == "true":
         return True
     # ...
 ```
 
-Once we're focused on an editable node, key presses should add text to
-it. A real browser would need to handle cursor movement and all kinds
-of complications, but I'm just going to add characters to the last
-text node in the editable element. First we need to find that element:
+Once we're focused on an editable node, typing should edit it. A real
+browser would handle cursor movement and all kinds of complications,
+but I'll keep it simple and just add each character to the last text
+node in the editable element. First we need to find that element:
 
 ``` {.python}
 class Frame:
@@ -77,8 +78,8 @@ class Frame:
                 self.tab.focus.children.append(last_text)
 ```
 
-Note that if the editable element has no text children I append a new
-one. Now we need to add the typed character to this element:
+Note that if the editable element has no text children I create a new
+one. Then we add the typed character to this element:
 
 ``` {.python}
 class Frame:
@@ -112,8 +113,9 @@ class BlockLayout:
 Here, `DrawCursor` is just a wrapper around `DrawLine`:
 
 ``` {.python replace=.x/.x.get(),.y/.y.get(),.height/.height.get()}
-def DrawCursor(elt, width):
-    return DrawLine(elt.x + width, elt.y, elt.x + width, elt.y + elt.height)
+def DrawCursor(elt, offset):
+    x = elt.x + offset
+    return DrawLine(x, elt.y, x, elt.y + elt.height)
 ```
 
 We might as well also use this wrapper in `InputLayout`:
@@ -125,33 +127,36 @@ class InputLayout(EmbedLayout):
             cmds.append(DrawCursor(self, self.font.measureText(text)))
 ```
 
-You should now be able to edit the examples on this page in your toy
-browser---but if you try it, you'll see that editing is extremely
-slow, with each character taking hundreds of milliseconds to type.
+You can now edit the examples on this page in your toy browser---but
+each key stroke will take hundreds of milliseconds to type, making for
+a slow and frustrating editing experience. Let's now work toward
+making that faster.
 
 ::: {.further}
-Actually, text editing is [exceptionally
-hard](https://lord.io/text-editing-hates-you-too/), including tricky
-concepts like caret affinity (which line the cursor is on, if a long
-line is wrapped in the middle of a word), unicode handling,
-[bidirectional text](http://unicode.org/faq/bidi.html), and mixing
-text formatting with editing.
+Actually, text editing is [exceptionally hard][editing-hates-you],
+including tricky concepts like caret affinity (which line the cursor
+is on, if a long line is wrapped in the middle of a word), unicode
+handling, [bidirectional text](http://unicode.org/faq/bidi.html), and
+mixing text formatting with editing. So it's a good thing browsers
+implement all this complexity and hide it behind the `contenteditable`
+API!
 :::
 
+[editing-hates-you]: https://lord.io/text-editing-hates-you-too/
 
 Idempotence
 ===========
 
-At a high level, edits are slow is because each edit recomputes
-layout---and on a large page like this one, that takes our browser
-many, many milliseconds. But is recomputing layout necessary? Adding a
+At a high level, the reason editing is slow is that each edit
+recomputes the page's layout tree---and on a large page like this one,
+that takes a long time. But is recomputing layout necessary? Adding a
 single letter to a single word on a single line of the page doesn't
 exactly change the page dramatically: almost everything stays in the
-exact same place. Recomputing layout on every edit wastes a lot of
-time recomputing the exact the same layout we already had.
+exact same place. If we could reuse the old layout, instead of
+throwing it away, editing could conceivably be pretty snappy.
 
-So why do we recompute layout? Basically, `render` creates a brand new
-layout tree, every time we need to recompute layout:
+The layout recomputation happens in `render` every time the layout
+changes:
 
 ``` {.python file=lab15}
 class Frame:
@@ -162,14 +167,14 @@ class Frame:
             # ...
 ```
 
-By creating a new tree, we're throwing away all of the old layout
-information, even those bits that were already correct. Invalidation
-begins with not doing that.
+When we create a new `DocumentLayout`, we throwing away all of the old
+layout information and start from scratch. Invalidation begins with
+not doing that.
 
 But before jumping right to coding, let's review how layout objects
 are created. Search your browser code for `Layout`, which all layout
 class names end with. You should see that layout objects are created
-only in a few places:
+in just a few places:
 
 - `DocumentLayout` objects are created by the `Tab` in `render`
 - `BlockLayout` objects are created by either:
@@ -179,7 +184,9 @@ only in a few places:
 - All others are created by `BlockLayout` in `add_inline_child`
 
 We want to _avoid_ creating layout objects, instead reusing them
-whenever possible.
+whenever possible. That both saves time immediately (allocating new
+objects takes time) and sets us up for more speedups by keeping around
+the old layout information.
 
 Let's start with `DocumentLayout`. It's created in `render`, and its
 two parameters, `nodes` and `self`, are the same every time. This
@@ -226,11 +233,13 @@ class DocumentLayout:
         # ...
 ```
 
-However, if you try them, these changes don't actually work, because
-reusing a layout object also means we are running `layout` multiple
-times on the same object. That's not what we were doing before, and it
-doesn't work. For example, after the `DocumentLayout` creates its
-child `BlockLayout`, it *appends* it to the `children` array:
+But don't run your browser with these changes just yet! By reusing
+layout objects, we end up running `layout` multiple times on the same
+object. That's not what the `layout` method expects, so it causes all
+sorts of weird behavior.
+
+For example, after the `DocumentLayout` creates its child
+`BlockLayout`, it *appends* it to the `children` array:
 
 ``` {.python file=lab15}
 class DocumentLayout:
@@ -240,19 +249,19 @@ class DocumentLayout:
         # ...
 ```
 
-If we do layout more than once, the same `BlockLayout` will end up in
-the `children` array more than once, causing all sorts of strange
-problems. The layout tree wouldn't even be a tree any more!
+Calling `layout` more than once would append the same element to the
+`children` array more than once, causing all sorts of strange
+problems.
 
-The core issue here is what's called *idempotence*: we need repeated
-calls to `layout` to work. More formally, a function is idempotent if
-calling it twice in a row with the same inputs and dependencies yields
-the same result. Assignments to fields are idempotent---you can assign
-a field the same value twice without changing it---but methods like
-`append` aren't.
+This issue is called *idempotence*: repeated calls to `layout` need to
+not repeatedly change state. More formally, a function is idempotent
+if calling it twice in a row with the same inputs and dependencies
+yields the same result. Idempotent functions are like assignments:
+assigning a field the same value for a second time doesn't change its
+state. Methods like `append`, however, aren't idempotent.
 
-So before we move on, we need to replace any non-idempotent methods
-like `append` with idempotent ones like assignment:
+We'll need to fix any non-idempotent method calls. In
+`DocumentLayout`, we can switch from `append` to assignment:
 
 ``` {.python}
 class DocumentLayout:
@@ -262,9 +271,9 @@ class DocumentLayout:
         # ...
 ```
 
-Likewise in `BlockLayout`, which creates other layout objects and
-`append`s them to its `children` array. Here, the easy fix is to reset
-the `children` array at the top of `layout`:
+However, `BlockLayout` also calls `append` on its `children` array.
+That's going to be harder to fix, so for now, reset the `children`
+array at the top of `layout`:
 
 ``` {.python}
 class BlockLayout:
@@ -274,10 +283,15 @@ class BlockLayout:
 ```
 
 This makes the `BlockLayout`'s `layout` function idempotent because
-each call will recreate the `children` array the same way each time.
+each call will assign a new `children` array.
 
 Let's check all other `layout` methods for idempotency by reading them
-and noting any non-idempotent method calls. I found:
+and noting any non-idempotent method calls. I found:[^exercises]
+
+[^exercises]: If you've being doing exercises throughout this book,
+    there might be more, in which case it might be harder to follow
+    along, depending on how you've implemented them. But the core idea
+    is replacing non-idempotent calls with idempotent ones.
 
 - In `new_line`, `BlockLayout` will append to its `children` array;
 - In `text` and `input`, `BlockLayout` will append to the `children`
