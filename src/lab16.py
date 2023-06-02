@@ -243,9 +243,10 @@ class DocumentLayout:
         return False
 
     def layout(self, width, zoom):
+        if not self.layout_needed(): return
+
         self.zoom.set(zoom)
         self.width.set(width - 2 * device_px(HSTEP, zoom))
-        if not self.layout_needed(): return
 
         if not self.children:
             child = BlockLayout(self.node, self, None, self.frame)
@@ -774,6 +775,8 @@ class IframeLayout(EmbedLayout):
         if self.node.frame:
             self.node.frame.frame_height = self.height - device_px(2, self.zoom.get())
             self.node.frame.frame_width = self.width.get() - device_px(2, self.zoom.get())
+            self.node.frame.document.width.mark()
+            self.node.frame.document.height.mark()
             self.node.frame.set_needs_render()
         self.layout_after()
 
@@ -1024,6 +1027,21 @@ class Frame:
     
 @wbetools.patch(Tab)
 class Tab:
+    def zoom_by(self, increment):
+        if increment > 0:
+            self.zoom *= 1.1
+        else:
+            self.zoom *= 1 / 1.1
+        for id, frame in self.window_id_to_frame.items():
+            frame.document.zoom.mark()
+        self.set_needs_render_all_frames()
+
+    def reset_zoom(self):
+        self.zoom = 1
+        for id, frame in self.window_id_to_frame.items():
+            frame.document.zoom.mark()
+        self.set_needs_render_all_frames()
+
     def run_animation_frame(self, scroll):
         if not self.root_frame.scroll_changed_in_frame:
             self.root_frame.scroll = scroll

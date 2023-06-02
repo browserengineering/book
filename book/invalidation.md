@@ -1926,24 +1926,39 @@ class ProtectedField:
 ```
 
 With these changes, the descendant dirty bits should now be set
-correctly, and the `layout_needed` approach above should work. You can
-replicate this on all the other layout types. On `DocumentLayout`, you
-need to be a little careful about the order because it receives the
-frame width and zoom level as arguments:
+correctly, and the `layout_needed` approach above should work as long
+as you include all of the protected fields for each layout type. In
+`DocumentLayout`, you do need to be a little careful, since it
+receives the frame width and zoom level as an argument. You need to
+make sure to `mark` those fields if they changed. The `width` changes
+when the `frame_width` changes, here:
 
 ``` {.python}
-class DocumentLayout:
-    def layout(self, width, zoom):
-        self.zoom.set(zoom)
-        self.width.set(width - 2 * device_px(HSTEP, zoom))
-        if not self.layout_needed(): return
+class IframeLayout(EmbedLayout):
+    def layout(self):
+        if self.node.frame:
+            # ...
+            self.node.frame.document.height.mark()
+            self.node.frame.set_needs_render()
 ```
 
-The other layout object types, however, should work just like
-`BlockLayout`, though of course the set of fields they check in
-`layout_needed` will differ. Once you've done this, layout should be
-under a millisecond even on large pages, and editing text should be
-fairly smooth.
+The `zoom` level changes in `Tab`:
+
+``` {.python}
+class Tab:
+    def zoom_by(self, increment):
+        # ...
+        for id, frame in self.window_id_to_frame.items():
+            frame.document.zoom.mark()
+
+    def reset_zoom(self):
+        # ...
+        for id, frame in self.window_id_to_frame.items():
+            frame.document.zoom.mark()
+```
+
+Once you've done this, layout should now take less than a millisecond
+even on large pages, and editing text should be fairly smooth.
 
 
 Granular style invalidation
