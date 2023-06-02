@@ -499,12 +499,13 @@ inner-most `if` conditional. You should see see that only
 If you've heard [Phil Karlton's saying][quote-originates] that "the
 two hardest problems in computer science are cache invalidation and
 naming things", you know that managing more and more dirty flags explodes
-complexity. Phil worked at Netscape (officially as "Principal
-Curmudgeon") and may have meant exactly the kind of invalidation this
-chapter covers.
+complexity. Phil worked at Netscape (officially as "[Principal
+Curmudgeon][curmudgeon]") and may have meant exactly the kind of
+invalidation this chapter covers.
 :::
 
-[quote-originates]: https://twitter.com/timbray/status/817025379109990402
+[quote-originates]: https://www.karlton.org/2017/12/naming-things-hard/
+[curmudgeon]: https://www.karlton.org/karlton/
 
 
 Protected fields
