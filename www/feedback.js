@@ -22,16 +22,21 @@ function ctrl_key_name() {
 
 document.addEventListener("DOMContentLoaded", function() {
     if (window.localStorage["edit"] == "true") {
+        console.log('turn on')
         typo_mode();
-    } else {
-        window.addEventListener("keydown", function(e) {
-            if (window.localStorage["edit"] === "true") return;
-            if (e.key != "e") return;
-            if (!ctrl_key_pressed(e)) return;
-            e.preventDefault();
-            setup_text_feedback();
-        });
     }
+    window.addEventListener("keydown", function(e) {
+        if (e.key != "e") return;
+        if (!ctrl_key_pressed(e)) return;
+        e.preventDefault();
+        if (window.localStorage["edit"] === "true") {
+            console.log('reload');
+            window.localStorage["edit"] = "false";
+            location.reload();
+        } else {
+            setup_text_feedback();
+        }
+    });
 
     let feedback_button = document.querySelector("#feedback-button");
     if (feedback_button) {
@@ -323,7 +328,9 @@ function setup_text_feedback() {
                 "You can use them to ",
                 Element("em", "fix typos"), " and ",
                 Element("em", "leave comments"), " on the text. ",
-                "I review the feedback to improve the book.",
+                "We review the feedback to improve the book.",
+                " (You can press ", Element("kbd", ctrl_key_name() + "-E"),
+                " again to turn them back off.)"
             ]),
             Element("div", { className: "inputs" }, [
                 Element("label", { "for": "name" }, "Your name: "),
