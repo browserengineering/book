@@ -30,7 +30,6 @@ document.addEventListener("DOMContentLoaded", function() {
         if (!ctrl_key_pressed(e)) return;
         e.preventDefault();
         if (window.localStorage["edit"] === "true") {
-            console.log('reload');
             window.localStorage["edit"] = "false";
             location.reload();
         } else {
