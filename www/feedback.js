@@ -22,7 +22,6 @@ function ctrl_key_name() {
 
 document.addEventListener("DOMContentLoaded", function() {
     if (window.localStorage["edit"] == "true") {
-        console.log('turn on')
         typo_mode();
     }
     window.addEventListener("keydown", function(e) {
