@@ -1788,8 +1788,8 @@ we wrapped onto more lines). As a bonus, editing should now also feel
 :::
 
 
-Avoiding redundant recursion
-============================
+Skipping traversals
+===================
 
 All of the layout fields are now wrapped in invalidation logic,
 ensuring that we only compute `x`, `y`, `width`, `height`, or other
@@ -1920,8 +1920,8 @@ parent, and in the other layout objects also `control` the `font`,
 don't `control` the `children` field, which is unprotected.
 
 
-Eager and lazy propagation
-==========================
+Eager and lazy dirty bits
+=========================
 
 Now that we have descendant dirty flags, let's use them to skip
 unneeded recursions. We'd like to use the `descendants` dirty flags to
@@ -2054,6 +2054,36 @@ You can replicate this on all the other layout types. Even on larger
 web pages, layout should now be under a millisecond, and editing
 should be fairly smooth.
 
+::: {.further}
+
+The `ProtectedField` class can also be viewed as an instance of an
+[observer pattern][observer-pattern], where different pieces of code can
+observe state elsewhere by triggering callbacks when the state changes. This
+kind of pattern is common in UI frameworks that have a lot of state with
+complex dependencies; one early example is the
+[key-value observation pattern][kvo] for macOS.
+
+In the case of our browser, the "observation callbacks" (`mark`/`notify`) simply
+set a dirty bit to be cleaned up later, but they could also have been
+implemented to *eagerly* re-compute layout directly. For this reason, a
+rendering pipeline with dirty bits--as implemented in our browser--can be
+viewed as a [*lazy* evaluation][lazy-eval] approach to an observer pattern that
+batches updates to improve performance.
+
+[lazy-eval]: https://en.wikipedia.org/wiki/Lazy_evaluation
+
+Real browsers use dirty bits and lazy evaluation, but in most cases
+don't actually implement an automatic dependency-tracking class like
+`ProtectedField`. One reason for that is performance: with something
+like `ProtectedField`, it's easy to accidentally make performance worse
+by over-using it in too many performance-sensitive places, or cause a lot of cascading work invalidating dependent protected fields. Another reason may
+simply be practical: most browser engine code bases have a lot of historical
+code, and it takes a lot of time to refactor them to use new approaches.
+
+:::
+
+[observer-pattern]: https://en.wikipedia.org/wiki/Observer_pattern
+[kvo]: https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/KeyValueObserving/KeyValueObserving.html
 
 Granular style invalidation
 ===========================
