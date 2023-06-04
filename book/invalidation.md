@@ -1788,8 +1788,8 @@ we wrapped onto more lines). As a bonus, editing should now also feel
 :::
 
 
-Avoiding redundant work
-=======================
+Skipping traversals
+===================
 
 All of the layout fields are now wrapped in invalidation logic,
 ensuring that we only compute `x`, `y`, `width`, `height`, or other
