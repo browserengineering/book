@@ -526,17 +526,16 @@ children; when editing text, it shouldn't happen at all, and that will
 make editing somewhat smoother.
 
 ::: {.further}
-[Under-invalidation][under-invalidation] is the technical name for the
-bug where you forget to set the dirty flag on a field when you change
-a dependency. These bugs are [hard to find][hard-to-find], because
-they typically only show up if you make a very specific sequence of
-changes. The characteristic symptom of this bug is that a particular
-change needs to happen multiple times to "take". In other words, this
-kind of bug creates accidental non-idempotency!
+If you've heard [Phil Karlton's saying][quote-originates] that "the
+two hardest problems in computer science are cache invalidation and
+naming things", you know that managing more and more dirty flags explodes
+complexity. Phil worked at Netscape (officially as "[Principal
+Curmudgeon][curmudgeon]") so I like to imagine him saying that quote
+while talking about layout invalidation.
 :::
 
-[under-invalidation]: https://developer.chrome.com/articles/layoutng/#under-invalidation
-[hard-to-find]: https://developer.chrome.com/articles/layoutng/#correctness
+[quote-originates]: https://www.karlton.org/2017/12/naming-things-hard/
+[curmudgeon]: https://www.karlton.org/karlton/
 
 
 Protected fields
@@ -659,8 +658,17 @@ together and makes sure we always check and reset dirty flag when
 we're supposed to.
 
 ::: {.further}
-
+[Under-invalidation][under-invalidation] is the technical name for the
+bug where you forget to set the dirty flag on a field when you change
+a dependency. These bugs are [hard to find][hard-to-find], because
+they typically only show up if you make a very specific sequence of
+changes. The characteristic symptom of this bug is that a particular
+change needs to happen multiple times to "take". In other words, this
+kind of bug creates accidental non-idempotency!
 :::
+
+[under-invalidation]: https://developer.chrome.com/articles/layoutng/#under-invalidation
+[hard-to-find]: https://developer.chrome.com/articles/layoutng/#correctness
 
 
 Recursive invaliation
@@ -860,6 +868,8 @@ need to think about monads in general, just `ProtectedField`.
 [monad]: https://en.wikipedia.org/wiki/Monad_(functional_programming)
 [haskell]: https://www.haskell.org/
 [monad-tutorials]: https://wiki.haskell.org/Monad_tutorials_timeline
+
+
 
 
 

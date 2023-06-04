@@ -214,9 +214,6 @@ check that all of these requests were made:
 
     >>> browser = lab10.Browser()
     >>> browser.load(url)
-    Script returned:  None
-    Script returned:  None
-    Script returned:  None
     >>> [test.socket.made_request(url + "css"),
     ...  test.socket.made_request(url + "js")]
     [True, True]
@@ -236,8 +233,6 @@ Now let's reload the page, but with CSP enabled for `test.test` and
     ... body.encode("utf8"))
     >>> browser = lab10.Browser()
     >>> browser.load(url)
-    Script returned:  None
-    Script returned:  None
     Blocked script http://other.test/js due to CSP
     Blocked style http://other.test/css due to CSP
 
