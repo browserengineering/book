@@ -529,7 +529,7 @@ make editing somewhat smoother.
 If you've heard [Phil Karlton's saying][quote-originates] that "the
 two hardest problems in computer science are cache invalidation and
 naming things", you know that managing more and more dirty flags explodes
-complexity. Phil worked at Netscape (officially as "[Principal
+complexity. Phil worked at Netscape at one point (officially as "[Principal
 Curmudgeon][curmudgeon]") so I like to imagine him saying that quote
 while talking about layout invalidation.
 :::
