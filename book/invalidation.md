@@ -11,7 +11,8 @@ interactions that affect layout, like text editing or JavaScript DOM
 modifications. Luckily, we can avoid redundant layout work using a
 technique called invalidation. While invalidation is traditionally
 complex and bug-prone, a principled approach and simple abstractions
-can make it managable.
+can make it managable, and the complexity is necessary to make key
+user interactions like text input much faster.
 
 Editing Content
 ===============
@@ -28,8 +29,8 @@ One good example is editing text. People type pretty quickly, so even
 a few frames' delay is distracting. But editing changes the HTML tree
 and therefore requires changing the layout tree to reflect new text.
 Currently, that forces our browser to rebuild the layout tree from
-scratch, which can take multiple frames on complex pages like this
-one. Try, for example, typing into this input box:
+scratch, which can drop multiple frames on complex pages like this
+one. Try, for example, typing into this input box in our toy browser:
 
 <input style="width:100%"/>
 
@@ -84,8 +85,8 @@ class Frame:
                 self.tab.focus.children.append(last_text)
 ```
 
-Note that if the editable element has no text children I create a new
-one. Then we add the typed character to this element:
+Note that if the editable element has no text children, we create a
+new one. Then we add the typed character to this element:
 
 ``` {.python}
 class Frame:
@@ -173,7 +174,7 @@ class Frame:
             # ...
 ```
 
-When we create a new `DocumentLayout`, we throwing away all of the old
+When we create a new `DocumentLayout`, we throw away all of the old
 layout information and start from scratch. Invalidation begins with
 not doing that.
 
@@ -255,16 +256,13 @@ class DocumentLayout:
         # ...
 ```
 
-Calling `layout` more than once would append the same element to the
-`children` array more than once, causing all sorts of strange
-problems.
-
-This issue is called *idempotence*: repeated calls to `layout` need to
-not repeatedly change state. More formally, a function is idempotent
-if calling it twice in a row with the same inputs and dependencies
-yields the same result. Idempotent functions are like assignments:
-assigning a field the same value for a second time doesn't change its
-state. Methods like `append`, however, aren't idempotent.
+But we don't want to `append` the same child more than once! The issue
+here is called *idempotence*: repeated calls to `layout` need to not
+repeatedly change state. More formally, a function is idempotent if
+calling it twice in a row with the same inputs and dependencies yields
+the same result. Idempotent functions are like assignments: assigning
+a field the same value for a second time doesn't change its state.
+Methods like `append`, however, aren't idempotent.
 
 We'll need to fix any non-idempotent method calls. In
 `DocumentLayout`, we can switch from `append` to assignment:
