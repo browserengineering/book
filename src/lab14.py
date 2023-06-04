@@ -1285,7 +1285,7 @@ class Browser:
                 self.skia_context,
                 skia.GrBackendRenderTarget(
                     WIDTH, HEIGHT, 0, 0, 
-                    skia.GrGLFramebufferInfo(0, GL.GL_RGBA8)),
+                    skia.GrGLFramebufferInfo(0, OpenGL.GL.GL_RGBA8)),
                     skia.kBottomLeft_GrSurfaceOrigin,
                     skia.kRGBA_8888_ColorType,
                     skia.ColorSpace.MakeSRGB())
