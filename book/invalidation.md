@@ -1979,15 +1979,21 @@ as you include all of the protected fields for each layout type. In
 `DocumentLayout`, you do need to be a little careful, since it
 receives the frame width and zoom level as an argument. You need to
 make sure to `mark` those fields if they changed. The `width` changes
-when the `frame_width` changes, here:
+when the `frame_width` changes, here:[^or-protect-them]
+
+[^or-protect-them]: We need to mark the root layout object's `width`
+    because the `frame_width` is passed into `DocumentLayout`'s
+    `layout` method as the `width` parameter. We could have protected
+    the `frame_width` field instead, and then this `mark` would happen
+    automatically; I'm skipping that for expediency, but it would have
+    been a bit safer.
 
 ``` {.python}
 class IframeLayout(EmbedLayout):
     def layout(self):
         if self.node.frame:
             # ...
-            self.node.frame.document.height.mark()
-            self.node.frame.set_needs_render()
+            self.node.frame.document.width.mark()
 ```
 
 The `zoom` level changes in `Tab`:

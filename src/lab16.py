@@ -770,8 +770,6 @@ class IframeLayout(EmbedLayout):
             self.node.frame.frame_height = self.height - device_px(2, self.zoom.get())
             self.node.frame.frame_width = self.width.get() - device_px(2, self.zoom.get())
             self.node.frame.document.width.mark()
-            self.node.frame.document.height.mark()
-            self.node.frame.set_needs_render()
         self.layout_after()
 
     def paint(self, display_list):

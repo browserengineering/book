@@ -954,7 +954,14 @@ class Frame:
         self.frame_height = 0
 ```
 
-And we can set those when the parent frame is laid out:
+And we can set those when the parent frame is laid out:[^no-set-needs]
+
+[^no-set-needs]: You might be surprised that I'm not calling
+    `set_needs_render` on the child frame here. Our toy browser is so
+    limited that it's safe not to: the `width` and `height` attributes
+    can't change, and when the `zoom` changes we invalidate all of the
+    frames. But if our browser had, for example, the `setAttribute`
+    method, then we'd need to force that child frame to render.
 
 ``` {.python}
 class IframeLayout(EmbedLayout):
