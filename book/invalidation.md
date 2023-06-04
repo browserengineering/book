@@ -5,48 +5,56 @@ prev: embeds
 next: skipped
 ...
 
-So far, we've worked on animation performance by improving our
-browser's graphics subsystem. But that hasn't helped animations and
-interactions that affect layout, like user- or JavaScript-driven
-edits. Luckily, Yet like compositing enabled smooth animations by
-avoiding redundant raster work, we can avoid redundant layout work
-using a technique called invalidation.
+We [previously](animations.md) improved animation performance by
+improving our browser's graphics subsystem. But that doesn't help
+interactions that affect layout, like text editing or JavaScript DOM
+modifications. Luckily, we can avoid redundant layout work using a
+technique called invalidation. While invalidation is traditionally
+complex and bug-prone, a principled approach and simple abstractions
+can make it managable, and the complexity is necessary to make key
+user interactions like text input much faster.
 
 Editing Content
 ===============
 
-In [Chapter 13](animations.md), we used compositing smoothly animate
-CSS properties like `transform` or `opacity`. However, other CSS
-properties like `width` can't be animated in this way. That's because
-these _layout-inducing_ animations change not only the _display list_
-but also the _layout tree_. Layout-inducing animations are a bad
-practice for this reason. Unfortunately, plenty of other interactions
-affect the layout tree and yet need to be as smooth as possible.
+In [Chapter 13](animations.md), we used compositing to smoothly
+animate CSS properties like `transform` or `opacity`. However, other
+CSS properties are _layout-inducing_ and can't be animated this way,
+because they change not only the _display list_ but also the _layout
+tree_. And while layout-inducing animations are best avoided, lots of
+other interactions require changing the layout tree yet need to be as
+smooth as possible.
 
 One good example is editing text. People type pretty quickly, so even
-a few frames' delay is very distracting. But editing changes the HTML
-tree and therefore requires a new layout tree that reflects the new
-text. But on large pages (like this one) constructing the layout tree
-can take quite a while. Try, for example, typing into this input box
-from our toy browser:
+a few frames' delay is distracting. But editing changes the HTML tree
+and therefore requires changing the layout tree to reflect new text.
+Currently, that forces our browser to rebuild the layout tree from
+scratch, which can drop multiple frames on complex pages like this
+one. Try, for example, typing into this input box in our toy browser:
 
 <input style="width:100%"/>
 
 Typing into an `input` element could be special-cased,[^no-resize] but
-there are other text editing APIs. For example, the `contenteditable`
-attribute makes any element editable:
+there are other text editing APIs that can't be. For example, the
+`contenteditable` attribute makes any element editable:
 
-[^no-resize]: For example, the `input` element doesn't change size as
-    you type, and the text in the `input` element doesn't get its own
-    layout object.
+[^no-resize]: The `input` element doesn't change size as you type, and
+    the text in the `input` element doesn't get its own layout object,
+    so the layout tree is actually the same after each edit.
 
 ::: {.demo contenteditable=true}
 Click on this <i>formatted</i> <b>text</b> to edit it.
 :::
 
-Let's implement `contenteditable` in our browser---it will make a good
-test of invalidation. To begin with, we need to make elements with a
-`contenteditable` property focusable:
+Let's implement `contenteditable` in our browser---it's a useful
+feature and also a good test of invalidation. To begin with, we need
+to make elements with a `contenteditable` property
+focusable:[^other-values]
+
+[^other-values]: Actually, in real browsers, `contenteditable` can be
+    set to `true` or `false`, and `false` is useful in case you want
+    to have a non-editable element inside an editable one. But I'm
+    going to skip supporting that.
 
 ``` {.python}
 def is_focusable(node):
@@ -56,10 +64,10 @@ def is_focusable(node):
     # ...
 ```
 
-Once we're focused on an editable node, key presses should add text to
-it. A real browser would need to handle cursor movement and all kinds
-of complications, but I'm just going to add characters to the last
-text node in the editable element. First we need to find that element:
+Once we're focused on an editable node, typing should edit it. A real
+browser would handle cursor movement and all kinds of complications,
+but I'll keep it simple and just add each character to the last text
+node in the editable element. First we need to find that element:
 
 ``` {.python}
 class Frame:
@@ -77,8 +85,8 @@ class Frame:
                 self.tab.focus.children.append(last_text)
 ```
 
-Note that if the editable element has no text children I append a new
-one. Now we need to add the typed character to this element:
+Note that if the editable element has no text children, we create a
+new one. Then we add the typed character to this element:
 
 ``` {.python}
 class Frame:
@@ -112,8 +120,9 @@ class BlockLayout:
 Here, `DrawCursor` is just a wrapper around `DrawLine`:
 
 ``` {.python replace=.x/.x.get(),.y/.y.get(),.height/.height.get()}
-def DrawCursor(elt, width):
-    return DrawLine(elt.x + width, elt.y, elt.x + width, elt.y + elt.height)
+def DrawCursor(elt, offset):
+    x = elt.x + offset
+    return DrawLine(x, elt.y, x, elt.y + elt.height)
 ```
 
 We might as well also use this wrapper in `InputLayout`:
@@ -125,33 +134,36 @@ class InputLayout(EmbedLayout):
             cmds.append(DrawCursor(self, self.font.measureText(text)))
 ```
 
-You should now be able to edit the examples on this page in your toy
-browser---but if you try it, you'll see that editing is extremely
-slow, with each character taking hundreds of milliseconds to type.
+You can now edit the examples on this page in your toy browser---but
+each key stroke will take hundreds of milliseconds to type, making for
+a slow and frustrating editing experience. Let's now work toward
+making that faster.
 
 ::: {.further}
-Actually, text editing is [exceptionally
-hard](https://lord.io/text-editing-hates-you-too/), including tricky
-concepts like caret affinity (which line the cursor is on, if a long
-line is wrapped in the middle of a word), unicode handling,
-[bidirectional text](http://unicode.org/faq/bidi.html), and mixing
-text formatting with editing.
+Actually, text editing is [exceptionally hard][editing-hates-you],
+including tricky concepts like caret affinity (which line the cursor
+is on, if a long line is wrapped in the middle of a word), unicode
+handling, [bidirectional text](http://unicode.org/faq/bidi.html), and
+mixing text formatting with editing. So it's a good thing browsers
+implement all this complexity and hide it behind the `contenteditable`
+API!
 :::
 
+[editing-hates-you]: https://lord.io/text-editing-hates-you-too/
 
 Idempotence
 ===========
 
-At a high level, edits are slow is because each edit recomputes
-layout---and on a large page like this one, that takes our browser
-many, many milliseconds. But is recomputing layout necessary? Adding a
+At a high level, the reason editing is slow is that each edit
+recomputes the page's layout tree---and on a large page like this one,
+that takes a long time. But is recomputing layout necessary? Adding a
 single letter to a single word on a single line of the page doesn't
 exactly change the page dramatically: almost everything stays in the
-exact same place. Recomputing layout on every edit wastes a lot of
-time recomputing the exact the same layout we already had.
+exact same place. If we could reuse the old layout, instead of
+throwing it away, editing could conceivably be pretty snappy.
 
-So why do we recompute layout? Basically, `render` creates a brand new
-layout tree, every time we need to recompute layout:
+The layout recomputation happens in `render` every time the layout
+changes:
 
 ``` {.python file=lab15}
 class Frame:
@@ -162,14 +174,14 @@ class Frame:
             # ...
 ```
 
-By creating a new tree, we're throwing away all of the old layout
-information, even those bits that were already correct. Invalidation
-begins with not doing that.
+When we create a new `DocumentLayout`, we throw away all of the old
+layout information and start from scratch. Invalidation begins with
+not doing that.
 
 But before jumping right to coding, let's review how layout objects
 are created. Search your browser code for `Layout`, which all layout
 class names end with. You should see that layout objects are created
-only in a few places:
+in just a few places:
 
 - `DocumentLayout` objects are created by the `Tab` in `render`
 - `BlockLayout` objects are created by either:
@@ -179,7 +191,9 @@ only in a few places:
 - All others are created by `BlockLayout` in `add_inline_child`
 
 We want to _avoid_ creating layout objects, instead reusing them
-whenever possible.
+whenever possible. That both saves time immediately (allocating new
+objects takes time) and sets us up for more speedups by keeping around
+the old layout information.
 
 Let's start with `DocumentLayout`. It's created in `render`, and its
 two parameters, `nodes` and `self`, are the same every time. This
@@ -226,11 +240,13 @@ class DocumentLayout:
         # ...
 ```
 
-However, if you try them, these changes don't actually work, because
-reusing a layout object also means we are running `layout` multiple
-times on the same object. That's not what we were doing before, and it
-doesn't work. For example, after the `DocumentLayout` creates its
-child `BlockLayout`, it *appends* it to the `children` array:
+But don't run your browser with these changes just yet! By reusing
+layout objects, we end up running `layout` multiple times on the same
+object. That's not what the `layout` method expects, so it causes all
+sorts of weird behavior.
+
+For example, after the `DocumentLayout` creates its child
+`BlockLayout`, it *appends* it to the `children` array:
 
 ``` {.python file=lab15}
 class DocumentLayout:
@@ -240,19 +256,16 @@ class DocumentLayout:
         # ...
 ```
 
-If we do layout more than once, the same `BlockLayout` will end up in
-the `children` array more than once, causing all sorts of strange
-problems. The layout tree wouldn't even be a tree any more!
-
-The core issue here is what's called *idempotence*: we need repeated
-calls to `layout` to work. More formally, a function is idempotent if
+But we don't want to `append` the same child more than once! The issue
+here is called *idempotence*: repeated calls to `layout` need to not
+repeatedly change state. More formally, a function is idempotent if
 calling it twice in a row with the same inputs and dependencies yields
-the same result. Assignments to fields are idempotent---you can assign
-a field the same value twice without changing it---but methods like
-`append` aren't.
+the same result. Idempotent functions are like assignments: assigning
+a field the same value for a second time doesn't change its state.
+Methods like `append`, however, aren't idempotent.
 
-So before we move on, we need to replace any non-idempotent methods
-like `append` with idempotent ones like assignment:
+We'll need to fix any non-idempotent method calls. In
+`DocumentLayout`, we can switch from `append` to assignment:
 
 ``` {.python}
 class DocumentLayout:
@@ -262,9 +275,9 @@ class DocumentLayout:
         # ...
 ```
 
-Likewise in `BlockLayout`, which creates other layout objects and
-`append`s them to its `children` array. Here, the easy fix is to reset
-the `children` array at the top of `layout`:
+However, `BlockLayout` also calls `append` on its `children` array.
+That's going to be harder to fix, so for now, reset the `children`
+array at the top of `layout`:
 
 ``` {.python}
 class BlockLayout:
@@ -274,10 +287,15 @@ class BlockLayout:
 ```
 
 This makes the `BlockLayout`'s `layout` function idempotent because
-each call will recreate the `children` array the same way each time.
+each call will assign a new `children` array.
 
 Let's check all other `layout` methods for idempotency by reading them
-and noting any non-idempotent method calls. I found:
+and noting any non-idempotent method calls. I found:[^exercises]
+
+[^exercises]: If you've being doing exercises throughout this book,
+    there might be more, in which case it might be harder to follow
+    along, depending on how you've implemented them. But the core idea
+    is replacing non-idempotent calls with idempotent ones.
 
 - In `new_line`, `BlockLayout` will append to its `children` array;
 - In `text` and `input`, `BlockLayout` will append to the `children`
@@ -319,9 +337,9 @@ Dependencies
 ============
 
 So far, we've only looked at one place where layout objects are
-created. Let's look at another: `BlockLayout`s created by
-`BlockLayout`s in their `layout` method. Here's the relevant code;
-it only runs in block layout mode:
+created. Let's look at another: `BlockLayout`s created when laying out
+another `BlockLayout`. Here's the relevant code; it only runs in block
+layout mode:
 
 ``` {.python file=lab15 dropline=self.children%20%3d}
 class BlockLayout:
@@ -341,22 +359,25 @@ Here, the arguments to `BlockLayout` are a little more complicated
 than the ones passed in `DocumentLayout`. The second argument, `self`,
 is never assigned to, but `child` and `previous` both contain elements
 read from `node.children`, and that `children` array can change---as a
-result of `contenteditable` edits or, potentially, `innerHTML` calls.
+result of `contenteditable` edits or `innerHTML` calls.[^or-others]
 Moreover, in order to even run this code, the node's `layout_mode` has
 to be `"block"`, and `layout_mode` itself also reads the node's
 `children`.[^and-tags]
 
+[^or-others]: Or any other exercises and extensions that you've implemented.
+
 [^and-tags]: It also looks at the node's `tag` and the node's
-    childrens' `tag`s, but a node's `tag` can't change, so we don't
-    need to have a dirty flag for them.
-    
-We want to avoid redundant `BlockLayout` creation, but recall that
-idempotency means that calling a function again _with the same inputs
-and dependencies_ yields the same result. Here, the inputs can change,
-so we can only avoid redundant re-execution _if the node's `children`
+    childrens' `tag`s, but a node's `tag` can't change, so I don't
+    think of those as dependencies. In invalidation we care only about
+    dependencies that can change.
+
+To avoid redundant `BlockLayout` creation, recall that idempotency
+means that calling a function again _with the same inputs and
+dependencies_ yields the same result. Here, the inputs can change, so
+we can only avoid redundant re-execution _if the node's `children`
 field hasn't changed_.
 
-To do that, we're going to use a dirty flag:
+To know whether that's the case, we're going to use a dirty flag:
 
 ``` {.python expected=False}
 class BlockLayout:
@@ -369,22 +390,23 @@ We've seen dirty flags before---like `needs_layout` and
 `needs_draw`---but layout is more complex and we're going to need to
 think about dirty flags a bit more rigorously.
 
-Every dirty flag protects a certain field; this one protects the
-`children` field for a `BlockLayout`. A dirty flag has a certain life
-cycle. First, it is set to `True` when a change occurs, marking the
+Every dirty flag protects a certain field; this one protects a
+`BlockLayout`'s `children` field. A dirty flag has a certain life
+cycle: it can be set, checked, and reset. The dirty flag is set to
+`True` when an input or dependency of the field changes, marking the
 protected field as unusable. Then, before using the protected field,
-the dirty flag must be checked. Finally, once the field is up to date,
-the flag is reset to `False`.
+the dirty flag must be checked. Finally, once the field is recomputed,
+the flag is reset to `False` to indicate that the value is up to date.
 
-Let's implement this for the `children_dirty` flag, starting with
-setting the flag. Dirty flags start out set, just like in the code
-above, but they also have to be set if any _dependencies_ of the
-fields they protect change. In this case, the dirty flag protects the
-`children` field of a `BlockLayout`, which in turn depends on the
-`children` field of the associated `Element`. That means that any time
-an `Element`'s `children` field is modified, we need to set the flag:
+So let's analyze the `children_dirty` flag in this way. Dirty flags
+have to be set if any _dependencies_ of the fields they protect
+change. In this case, the dirty flag protects the `children` field of
+a `BlockLayout`, which in turn depends on the `children` field of the
+associated `Element`. That means that any time an `Element`'s
+`children` field is modified, we need to set the dirty flag for the
+associated `BlockLayout`:
 
-``` {.python expected=False}
+``` {.python replace=children_dirty%20%3d%20True/children.mark()}
 class JSContext:
     def innerHTML_set(self, handle, s, window_id):
         # ...
@@ -394,29 +416,31 @@ class JSContext:
         obj.children_dirty = True
 ```
 
-Likewise, we need to set the dirty flag any time we modify the `text`
-of a `Text` object, since that can also affect the `children` of a
-`BlockLayout`:
+Likewise, we need to set the dirty flag any time we edit a
+`contenteditable` element, since that can also affect the `children`
+of a node:
 
-``` {.python expected=False}
+``` {.python replace=children_dirty%20%3d%20True/children.mark()}
 class Frame:
     def keypress(self, char):
         elif self.tab.focus and "contenteditable" in self.tab.focus.attributes:
             # ...
-            obj =  self.tab.focus.layout_object
+            obj = self.tab.focus.layout_object
             while not isinstance(obj, BlockLayout):
                 obj = obj.parent
             obj.children_dirty = True
 ```
 
-It's important to make sure we set the dirty flag for _all_
-dependencies of the protected fields. Otherwise, we'll fail to
-recompute the protected fields, causing unpredictable layout glitches.
+It's important that _all_ dependencies of the protected field set the
+dirty bit. Otherwise, we'll fail to recompute the protected fields,
+causing unpredictable layout glitches. And this can be challenging,
+since it requires being vigilent about which fields depend on which
+others.
 
-Next, we need to check the dirty flag before using any field that it
-protects. `BlockLayout` uses its `children` field in three places: to
-recursively call `layout` on all its children; to compute its
-`height`; and to `paint` itself. Let's add a check in each place:
+Anyway, the next step is, check the dirty flag before using the
+protected field. `BlockLayout` uses its `children` field in three
+places: to recursively call `layout` on all its children; to compute
+its `height`; and to `paint` itself. Let's add a check in each place:
 
 ``` {.python replace=self.height/new_height expected=False}
 class BlockLayout:
@@ -435,17 +459,15 @@ class BlockLayout:
         # ...
 ```
 
-Adding these checks before using any protected field helps avoid bugs
-caused by computing fields in the wrong order. It's very easy to
-compute some field before computing its dependencies---a problem we
-talked about in [Chapter 5](layout.md)---which causes the
-characteristic invalidation problem of some change needing multiple
-layouts to "take".
+It's tempting to skip these assertions, since the children will always
+be up to date when this code is called, but adding these checks helps
+avoid bugs down the line as you add more invalidation. It's very easy
+to compute some field but skip computing its dependencies, or compute
+fields in the wrong order, and that will cause hard-to-diagnose bugs.
 
-Finally, we can reset the flag when we're done recomputing the
-protected field. In this case, we want to reset the dirty flag when
-we've recomputed the `children` array, meaning right after that `if`
-statement:
+Finally, when the field is recomputed we need to reset the dirty flag.
+Here, we reset the flag when we've recomputed the `children` array,
+meaning right after that `if mode` statement:
 
 ``` {.python expected=False}
 class BlockLayout:
@@ -457,16 +479,19 @@ class BlockLayout:
         self.children_dirty = False
 ```
 
-Before going further, rerun your browser and test it on a web page
-with `contenteditable`. The browser should run like normal without
-triggering the assertion.
+Run your browser again and test it on this page. When editing, the
+browser should run like normal without triggering any assertions. It's
+important to work incrementally and test often---because if you make a
+mistake, it can be pretty difficult to figure out what it was.
 
-With the `children_dirty` flag properly set and reset, we can now use
-it to avoid redundant work. Right now `layout` recreates the
-`children` array every time, but it doesn't need to if the children
-array isn't dirty. Let's find the line at the top of `layout` that
-resets the `children` array, and move it into the two branches of the
-`if` statement:
+With the `children_dirty` flag properly set and reset, we can finally
+use it to avoid redundant work. Right now `layout` recreates the
+`BlockLayout`s every time it's called, but it doesn't need to if
+`children` isn't dirty. Let's skip the `BlockLayout` creation in that
+case.
+
+First, find the line at the top of `layout` that resets the `children`
+array, and move it into the two branches of the `if` statement:
 
 ``` {.python expected=False}
 class BlockLayout:
@@ -479,29 +504,34 @@ class BlockLayout:
             # ...
 ```
 
-Now the block layout mode case has all the code to compute the
-`children` array. We can skip it if the `children` array is up to
-date:
+Now, in the block case, we can skip recreating the `children` array if
+it's not dirty:
 
 ``` {.python expected=False}
 class BlockLayout:
     def layout(self):
         if mode == "block":
             if self.children_dirty:
-                # ...
+                self.children = []
+                previous = None
+                for child in self.node.children:
+                    next = BlockLayout(child, self, previous, self.frame)
+                    self.children.append(next)
+                    previous = next
 ```
 
-Try this out, perhaps after throw a `print` statement inside that
-inner-most `if` conditional. You should see see that only
-`BlockLayout`s corresponding to changed nodes are re-created.
+Try this out again. If you add a `print` statement inside that
+inner-most `if`, you'll see every time we recreate the `BlockLayout`
+children; when editing text, it shouldn't happen at all, and that will
+make editing somewhat smoother.
 
 ::: {.further}
 If you've heard [Phil Karlton's saying][quote-originates] that "the
 two hardest problems in computer science are cache invalidation and
 naming things", you know that managing more and more dirty flags explodes
-complexity. Phil worked at Netscape (officially as "[Principal
-Curmudgeon][curmudgeon]") and may have meant exactly the kind of
-invalidation this chapter covers.
+complexity. Phil worked at Netscape at one point (officially as "[Principal
+Curmudgeon][curmudgeon]") so I like to imagine him saying that quote
+while talking about layout invalidation.
 :::
 
 [quote-originates]: https://www.karlton.org/2017/12/naming-things-hard/
@@ -513,15 +543,14 @@ Protected fields
 
 Dirty flags like `children_dirty` are the traditional approach to
 layout invalidation, but they have some downsides. As you've seen,
-using them correctly means paying careful attention to how any given
-field is computed and used, and tracking dependencies between various
-computations across the browser. In our simple browser, that's pretty
-doable by hand, but a real browser's layout system is much more
-complex, and mistakes become impossible to avoid.
+using them correctly means paying careful attention to the
+dependencies between various fields and tracking when fields are used.
+In our simple browser, you could do it by hand, but a real browser's
+layout system is much more complex, and mistakes become impossible to
+avoid.
 
-So let's try to put a more user-friendly face on dirty flags. As a
-first step, let's try to combine a dirty flag and the field it
-protects into a single object:
+We need a better approach. As a first step, let's try to combine a
+dirty flag and the field it protects into a single object:
 
 ``` {.python replace=(self)/(self%2c%20node%2c%20name)}
 class ProtectedField:
@@ -530,8 +559,8 @@ class ProtectedField:
         self.dirty = True
 ```
 
-We can pretty easily replace our existing dirty flag with this simple
-abstraction:
+That clarifies which dirty flag protects which field. We can replace
+our existing dirty flag with this simple abstraction:
 
 ``` {.python ignore=ProtectedField}
 class BlockLayout:
@@ -541,9 +570,8 @@ class BlockLayout:
         # ...
 ```
 
-On key press and `innerHTML`, we need to set the dirty flag. Let's put
-that behind a method; I'll say that we `mark` a dependent field to set
-its dirty flag:
+Next, let's add methods for each step of the dirty flag life cycle.
+I'll say that we `mark` a protected field to set its dirty flag:
 
 ``` {.python}
 class ProtectedField:
@@ -552,9 +580,16 @@ class ProtectedField:
         self.dirty = True
 ```
 
-Then call the method, here and in `innerHTML_set`:
+Note that I added an "early exit": marking an already-dirty field
+doesn't do anything. That'll become relevant later. Call `mark` in
+`innerHTML_set` and `keypress`:
 
 ``` {.python}
+class JSContext:
+    def innerHTML_set(self, handle, s, window_id):
+        # ...
+        obj.children.mark()
+
 class Frame:
     def keypress(self, char):
         elif self.tab.focus and "contenteditable" in self.tab.focus.attributes:
@@ -562,37 +597,7 @@ class Frame:
             obj.children.mark()
 ```
 
-To reset the dirty flag, let's make the caller pass in a new value for
-the field. This guarantees that the dirty flag and the value are
-updated together:
-
-``` {.python}
-class ProtectedField:
-    def set(self, value):
-        self.value = value
-        self.dirty = False
-```
-
-Using this method in `BlockLayout` will require changing `BlockLayout`
-to first add all the children to a local variable, and then `set` that
-variable into the `children` field:
-
-``` {.python}
-class BlockLayout:
-    def layout(self):
-        if mode == "block":
-            if self.children.dirty:
-                children = []
-                previous = None
-                for child in self.node.children:
-                    next = BlockLayout(child, self, previous, self.frame)
-                    children.append(next)
-                    previous = next
-                self.children.set(children)
-```
-
-Finally, when it comes time to use the `children` field, the
-`ProtectedField` can check that it isn't dirty:
+Before getting a `ProtectedField`'s value, let's check the dirty flag:
 
 ``` {.python}
 class ProtectedField:
@@ -614,27 +619,60 @@ class BlockLayout:
         self.height = sum([child.height for child in self.children.get()])
 ```
 
-`ProtectedField` is a nice convenience: it frees us from remembering
-that two fields (`children` and `children_dirty`) go together, and it
-makes sure we always check and reset dirty bits when we're supposed
-to.
+The nice thing about `get` is it makes the dirty flag operations
+automatic, and therefore impossible to forget. It also make the code a
+little nicer.
+
+Finally, to reset the dirty flag, let's make the caller pass in a new
+value for the field. This guarantees that the dirty flag and the value
+are updated together:
+
+``` {.python}
+class ProtectedField:
+    def set(self, value):
+        self.value = value
+        self.dirty = False
+```
+
+To use `set` in `BlockLayout`, I'll build the children array in a
+local variable and then `set` the `children` field:
+
+``` {.python}
+class BlockLayout:
+    def layout(self):
+        if mode == "block":
+            if self.children.dirty:
+                children = []
+                previous = None
+                for child in self.node.children:
+                    next = BlockLayout(child, self, previous, self.frame)
+                    children.append(next)
+                    previous = next
+                self.children.set(children)
+```
+
+As with `get`, the `set` method automates the dirty flag operations,
+making them hard to mess up. `ProtectedField` frees us from
+remembering that two fields (`children` and `children_dirty`) go
+together and makes sure we always check and reset dirty flag when
+we're supposed to.
 
 ::: {.further}
-The `ProtectedField` class defined here is a type of [monad][monad],
-a programming pattern used in programming languages like
-[Haskell][haskell]. In brief, a monad describes a way to connect
-computations, but the specifics are [famously
-confusing][monad-tutorials]. Luckily, in this chapter we don't really
-need to think about monads in general, just `ProtectedField`.
+[Under-invalidation][under-invalidation] is the technical name for the
+bug where you forget to set the dirty flag on a field when you change
+a dependency. These bugs are [hard to find][hard-to-find], because
+they typically only show up if you make a very specific sequence of
+changes. The characteristic symptom of this bug is that a particular
+change needs to happen multiple times to "take". In other words, this
+kind of bug creates accidental non-idempotency!
 :::
 
-[monad]: https://en.wikipedia.org/wiki/Monad_(functional_programming)
-[haskell]: https://www.haskell.org/
-[monad-tutorials]: https://wiki.haskell.org/Monad_tutorials_timeline
+[under-invalidation]: https://developer.chrome.com/articles/layoutng/#under-invalidation
+[hard-to-find]: https://developer.chrome.com/articles/layoutng/#correctness
 
 
-Recursive dirty bits
-====================
+Recursive invaliation
+=====================
 
 Armed with the `ProtectedField` class, let's take a look at how a
 `BlockLayout` element creates `LineLayout`s and their children. It all
@@ -697,12 +735,12 @@ class BlockLayout:
         # ...
 ```
 
-However, recall that with dirty bits we must always think about
+However, recall that with dirty flags we must always think about
 setting them, checking them, and resetting them. The `get` method
-automatically checks the dirty bits, and the `set` method
-automatically resets them, but who *sets* the `zoom` dirty bit?
+automatically checks the dirty flags, and the `set` method
+automatically resets them, but who *sets* the `zoom` dirty flags?
 
-Generally, we need to set a dirty bit when something it depends on
+Generally, we need to set a dirty flags when something it depends on
 changes. That's why we call `mark` in the `innerHTML_set` and
 `keypress` handlers: those change the DOM tree, which the layout
 tree's `children` field depends on. So since a child's `zoom` field
@@ -819,17 +857,18 @@ invalidation scenarios much easier, and it will push us toward making
 every field protected.
 
 ::: {.further}
-A classic dirty bit bug is [under-invalidation][under-invalidation],
-where you change one field but forget to set the dirty bit on a field
-that depends on it. These bugs are [hard to find][hard-to-find],
-because they typically only show up if you make a very specific
-sequence of changes. The `read` method helps avoid these bugs because
-the easiest way to read a value out of a `ProtectedField` also
-establishes the dependency.
+The `ProtectedField` class defined here is a type of [monad][monad],
+a programming pattern used in programming languages like
+[Haskell][haskell]. In brief, a monad describes a way to connect
+computations, but the specifics are [famously
+confusing][monad-tutorials]. Luckily, in this chapter we don't really
+need to think about monads in general, just `ProtectedField`.
 :::
 
-[under-invalidation]: https://developer.chrome.com/articles/layoutng/#under-invalidation
-[hard-to-find]: https://developer.chrome.com/articles/layoutng/#correctness
+[monad]: https://en.wikipedia.org/wiki/Monad_(functional_programming)
+[haskell]: https://www.haskell.org/
+[monad-tutorials]: https://wiki.haskell.org/Monad_tutorials_timeline
+
 
 
 
@@ -1079,7 +1118,7 @@ In real browsers, the layout phase is sometimes split in two, first
 constructing a layout tree and then a separate [fragment
 tree][fragment-tree].[^our-book-simple] In Chrome, the fragment tree
 is immutable, and invalidation is done by comparing the previous
-and new fragment trees instead of by using dirty bits, though the
+and new fragment trees instead of by using dirty flags, though the
 overall algorithm ends up pretty similar to what this book describes.
 :::
 
@@ -1793,7 +1832,7 @@ steps can be skipped if:
 So let's add a new dirty flag, which I call `descendants`,[^ancestors]
 to track when these conditions are true:
 
-[^ancestors]: You will also see these called *ancestor* dirty bits
+[^ancestors]: You will also see these called *ancestor* dirty flags
     instead. It's the same thing, just following the flow of dirty
     bits instead of the flow of control.
 
@@ -1884,8 +1923,8 @@ don't `control` the `children` field, which is unprotected.
 Eager and lazy dirty bits
 =========================
 
-Now that we have descendant dirty bits, let's use them to skip
-unneeded recursions. We'd like to use the `descendants` dirty bit to
+Now that we have descendant dirty flags, let's use them to skip
+unneeded recursions. We'd like to use the `descendants` dirty flags to
 skip recursing in the `layout` method:
 
 ``` {.python}
@@ -1899,7 +1938,7 @@ class BlockLayout:
         # ...
 ```
 
-Here the `set` call clears the dirty bit. However, this code doesn't
+Here the `set` call clears the dirty flags. However, this code doesn't
 work. If you run it, your browser will crash when it skips recomputing
 a field that was dirty.
 
@@ -1918,7 +1957,7 @@ other fields that depend on it aren't set yet.
 
 Lazy marking works for data dependencies but not for control
 dependencies. That's because data dependencies are computed before the
-dirty bit is checked, meaning the dirty bit gets marked before it's
+dirty flags is checked, meaning the dirty flags gets marked before it's
 checked. Lazy marking also allows us to skip no-op updates, so it's
 important for data dependencies to be fast.
 
@@ -1996,7 +2035,7 @@ class ProtectedField:
         return field.get()
 ```
 
-With these changes, the descendant dirty bits should now be set
+With these changes, the descendant dirty flags should now be set
 correctly, and we can now skip recursively calling layout when the
 descendants aren't dirty:
 
@@ -2281,7 +2320,7 @@ method should delete all the children of a given element. Make sure to
 handle invalidation properly.
 
 *Protecting layout phases*: Replace the `needs_style` and
-`needs_layout` dirty bits by protecting the `document` field on
+`needs_layout` dirty flags by protecting the `document` field on
 `Tab`s. Make sure animations still work correctly: animations of
 `opacity` or `transform` shouldn't trigger layout, while animations of
 other properties should.
@@ -2299,7 +2338,7 @@ invalidation properly.
     or "removeChild" exercises [in Chapter 9](scripts.md#exercises),
     in which case they can also be "detached" elements.
 
-*Descendant bits for style*: Add descendant dirty bits for `style`
+*Descendant bits for style*: Add descendant dirty flags for `style`
 information, so that the `style` phase doesn't need to traverse nodes
 whose styles are unchanged.
 
