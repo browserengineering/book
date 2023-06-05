@@ -114,7 +114,7 @@ running scripts:
 class Tab:
     def run_script(self, url, body):
         try:
-            print("Script returned: ", self.js.run(body))
+            self.js.run(body)
         except dukpy.JSRuntimeError as e:
             print("Script", url, "crashed", e)
 

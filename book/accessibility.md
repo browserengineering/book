@@ -2007,6 +2007,7 @@ class JSContext:
     def setAttribute(self, handle, attr, value):
         elt = self.handle_to_node[handle]
         elt.attributes[attr] = value
+        self.tab.set_needs_render()
 ```
 
 Now we can implement the `alert` role. To do so, we'll search the
