@@ -954,7 +954,13 @@ class Frame:
         self.frame_height = 0
 ```
 
-And we can set those when the parent frame is laid out:
+And we can set those when the parent frame is laid out:[^no-set-needs]
+
+[^no-set-needs]: You might be surprised that I'm not calling
+    `set_needs_render` on the child frame here. That's a shortcut: the
+    `width` and `height` attributes can only change through
+    `setAttribute`, while `zoom` can only change in `zoom_by` and
+    `reset_zoom`. All of those handlers already invalidate all frames.
 
 ``` {.python}
 class IframeLayout(EmbedLayout):

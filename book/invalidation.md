@@ -493,7 +493,7 @@ case.
 First, find the line at the top of `layout` that resets the `children`
 array, and move it into the two branches of the `if` statement:
 
-``` {.python expected=False}
+``` {.python}
 class BlockLayout:
     def layout(self):
         if mode == "block":
@@ -729,9 +729,8 @@ this:
 ``` {.python dropline=self.parent.zoom.get() replace=set(parent_zoom)/copy(self.parent.zoom)}
 class BlockLayout:
     def layout(self):
-        if self.zoom.dirty:
-            parent_zoom = self.parent.zoom.get()
-            self.zoom.set(parent_zoom)
+        parent_zoom = self.parent.zoom.get()
+        self.zoom.set(parent_zoom)
         # ...
 ```
 
@@ -750,10 +749,9 @@ when the `zoom` field changes:
 ``` {.python .example}
 class BlockLayout:
     def layout(self):
-        if self.zoom.dirty:
-            # ...
-            for child in self.children.get():
-                child.zoom.mark()
+        # ...
+        for child in self.children.get():
+            child.zoom.mark()
 ```
 
 That said, doing this every time we modify any protected field is a
@@ -819,9 +817,8 @@ marking and dependency logic will be handled automatically:
 ``` {.python dropline=self.parent.zoom replace=set(parent_zoom)/copy(self.parent.zoom)}
 class BlockLayout:
     def layout(self):
-        if self.zoom.dirty:
-            parent_zoom = self.zoom.read(self.parent.zoom)
-            self.zoom.set(parent_zoom)
+        parent_zoom = self.zoom.read(self.parent.zoom)
+        self.zoom.set(parent_zoom)
 ```
 
 In fact, this pattern where we just copy our parent's value is pretty
@@ -838,8 +835,7 @@ This makes the code a little shorter:
 ``` {.python}
 class BlockLayout:
     def layout(self):
-        if self.zoom.dirty:
-            self.zoom.copy(self.parent.zoom)
+        self.zoom.copy(self.parent.zoom)
         # ...
 ```
 
@@ -850,11 +846,12 @@ actual zoom value. You can check that you succeeded by running your
 browser and making sure that nothing crashes, even when you increase
 or decrease the zoom level.
 
-Protecting `zoom` doesn't speed up our browser much, since it really
-was just copied up and down the tree. That said, the dependency
-tracking system in `ProtectedField` makes handling complex
-invalidation scenarios much easier, and it will push us toward making
-every field protected.
+By the way, note that I didn't bother testing the `dirty` flag before
+executing this code. That's because computing `zoom` takes barely any
+time at all: it's just a copy. Testing dirty bits takes time and
+clutters the code, so it's not worth doing for trivial fields like
+this one. But that doesn't mean protecting `zoom` isn't worth it!
+Our overall goal of not rebuilding the layout tree is still important.
 
 ::: {.further}
 The `ProtectedField` class defined here is a type of [monad][monad],
@@ -876,10 +873,9 @@ need to think about monads in general, just `ProtectedField`.
 Protecting widths
 =================
 
-Protecting `zoom` was relatively simple, but it points the way toward
-protecting complex layout fields. Working toward our goal of
-invalidating line breaking, let's next work on protecting the `width`
-field.
+Protecting `zoom` points the way toward protecting complex layout
+fields. Working toward our goal of invalidating line breaking, let's
+next work on protecting the `width` field.
 
 Like `zoom`, `width` is initially set in `DocumentLayout`:
 
@@ -907,10 +903,12 @@ class BlockLayout:
 
     def layout(self):
         # ...
-        if self.width.dirty:
-            self.width.copy(self.parent.width)
+        self.width.copy(self.parent.width)
         # ...
 ```
+
+Note that I am again not testing the `dirty` flag because the actual
+computation occurring here is trivial.
 
 However, `width` is more complex than `zoom` because `width` is also
 used in a bunch of other places during line wrapping.
@@ -1036,11 +1034,16 @@ class BlockLayout:
     def layout(self):
         # ...
         if mode == "block":
-            # ...
+            if self.children.dirty:
+                # ...
         else:
             if self.children.dirty:
                 # ...
 ```
+
+Here, it *is* important to check the dirty flag, because the
+computation we are skipping here---line breaking and rebuilding the
+layout tree---is pretty expensive.
 
 We also need to fix up `add_inline_child`'s and `new_line`'s
 references to `children`. There are couple of possible fixes, but in
@@ -1144,8 +1147,7 @@ class LineLayout:
 
     def layout(self):
         # ...
-        if self.width.dirty:
-            self.width.copy(self.parent.width)
+        self.width.copy(self.parent.width)
         # ...
 ```
 
@@ -1160,11 +1162,10 @@ class TextLayout:
 
     def layout(self):
         # ...
-        if self.width.dirty:
-            style = self.width.read(self.node.style)
-            zoom = self.width.read(self.zoom)
-            self.font = font(style, zoom)
-            self.width.set(self.font.measureText(self.word))
+        style = self.width.read(self.node.style)
+        zoom = self.width.read(self.zoom)
+        self.font = font(style, zoom)
+        self.width.set(self.font.measureText(self.word))
         # ...
 ```
 
@@ -1188,9 +1189,8 @@ Now all that's left are the various types of replaced content. In
 class InputLayout(EmbedLayout):
     def layout(self):
         # ...
-        if self.width.dirty:
-            zoom = self.width.read(self.zoom)
-            self.width.set(device_px(INPUT_WIDTH_PX, zoom))
+        zoom = self.width.read(self.zoom)
+        self.width.set(device_px(INPUT_WIDTH_PX, zoom))
         # ...
 ```
 
@@ -1219,12 +1219,14 @@ that you're always refering to `width` via methods like `get` and
 Invalidating layout fields
 ==========================
 
-Protecting every `width` field is good. And every time we protect
-another field, we save some layout work and potentially also some
-memory (if we can avoid re-allocating something). So let's expand our
-invalidation efforts to every other layout field, such as `x`, `y`,
-and `height`. As with `width`, let's start with `DocumentLayout` and
-`BlockLayout`, which tend to be simpler.
+By protecting the `width` field, we were able to avoid re-building the
+layout tree when it changes. This saves some layout work and
+potentially also some memory, but it doesn't take layout time down to
+zero, because we still have to *traverse* the whole layout tree. We
+can use invalidation to skip this work too, but to do that, we first
+have to expand invalidation to every other layout field, such as `x`,
+`y`, and `height`. As with `width`, let's start with `DocumentLayout`
+and `BlockLayout`, which tend to be simpler.
 
 Let's start with `x` positions. On `DocumentLayout`, we can just `set`
 the `x` position:
@@ -1238,8 +1240,7 @@ class DocumentLayout:
 
     def layout(self, width, zoom):
         # ...
-        if self.x.dirty:
-            self.x.set(device_px(HSTEP, zoom))
+        self.x.set(device_px(HSTEP, zoom))
         # ...
 ```
 
@@ -1255,8 +1256,7 @@ class BlockLayout:
 
     def layout(self):
         # ...
-        if self.x.dirty:
-            self.x.copy(self.parent.x)
+        self.x.copy(self.parent.x)
         # ...
 ```
 
@@ -1272,9 +1272,8 @@ class DocumentLayout:
 
     def layout(self, width, zoom):
         # ...
-        if self.height.dirty:
-            child_height = self.height.read(child.height)
-            self.height.set(child_height + 2 * device_px(VSTEP, zoom))
+        child_height = self.height.read(child.height)
+        self.height.set(child_height + 2 * device_px(VSTEP, zoom))
 ```
 
 `BlockLayout` is similar, except it loops over multiple children:
@@ -1288,13 +1287,12 @@ class BlockLayout:
 
     def layout(self):
         # ...
-        if self.height.dirty:
-            children = self.height.read(self.children)
-            new_height = sum([
-                self.height.read(child.height)
-                for child in children
-            ])
-            self.height.set(new_height)
+        children = self.height.read(self.children)
+        new_height = sum([
+            self.height.read(child.height)
+            for child in children
+        ])
+        self.height.set(new_height)
 ```
 
 Note that we have to `read` the `children` field before using it.
@@ -1313,8 +1311,7 @@ class DocumentLayout:
 
     def layout(self, width, zoom):
         # ...
-        if self.y.dirty:
-            self.y.set(device_px(VSTEP, zoom))
+        self.y.set(device_px(VSTEP, zoom))
         # ...
 ```
 
@@ -1329,13 +1326,12 @@ class BlockLayout:
 
     def layout(self):
         # ...
-        if self.y.dirty:
-            if self.previous:
-                prev_y = self.y.read(self.previous.y)
-                prev_height = self.y.read(self.previous.height)
-                self.y.set(prev_y + prev_height)
-            else:
-                self.y.copy(self.parent.y)
+        if self.previous:
+            prev_y = self.y.read(self.previous.y)
+            prev_height = self.y.read(self.previous.height)
+            self.y.set(prev_y + prev_height)
+        else:
+            self.y.copy(self.parent.y)
         # ...
 ```
 
@@ -1394,38 +1390,28 @@ class TextLayout:
     def layout(self):
         # ...
 
-        if self.font.dirty:
-            zoom = self.font.read(self.zoom)
-            style = self.font.read(self.node.style)
-            self.font.set(font(style, zoom))
-            
-        if self.width.dirty:
-            f = self.width.read(self.font)
-            self.width.set(f.measureText(self.word))
+        zoom = self.font.read(self.zoom)
+        style = self.font.read(self.node.style)
+        self.font.set(font(style, zoom))
+        
+        f = self.width.read(self.font)
+        self.width.set(f.measureText(self.word))
 
-        if self.ascent.dirty:
-            f = self.ascent.read(self.font)
-            self.ascent.set(f.getMetrics().fAscent * 1.25)
+        f = self.ascent.read(self.font)
+        self.ascent.set(f.getMetrics().fAscent * 1.25)
 
-        if self.descent.dirty:
-            f = self.descent.read(self.font)
-            self.descent.set(f.getMetrics().fDescent * 1.25)
+        f = self.descent.read(self.font)
+        self.descent.set(f.getMetrics().fDescent * 1.25)
 
-        if self.height.dirty:
-            f = self.height.read(self.font)
-            self.height.set(linespace(f) * 1.25)
+        f = self.height.read(self.font)
+        self.height.set(linespace(f) * 1.25)
 ```
 
 Note that I've changed `width` to read the `font` field instead of
 directly reading `zoom` and `style`. It *does* looks a bit odd to
-compute `font` again inside each `if` statement, but remember that
-each of those `read` calls establishes a dependency for one layout
-field upon another. I like to think of each `font` as being scoped to
-its `if` statement.[^python-scope]
-
-[^python-scope]: Python scoping doesn't actually work like this, but
-many languages like C++ and JavaScript do. Python scoping is also why
-I named the font object `f`.
+compute `f` repeatedly, but remember that each of those `read` calls
+establishes a dependency for one layout field upon another. I like to
+think of each `f` as being scoped to its field's computation.
 
 We also need to compute the `x` position of a `TextLayout`. That can
 use the previous sibling's font, *x* position, and width:
@@ -1434,14 +1420,13 @@ use the previous sibling's font, *x* position, and width:
 class TextLayout:
     def layout(self):
         # ...
-        if self.x.dirty:
-            if self.previous:
-                prev_x = self.x.read(self.previous.x)
-                prev_font = self.x.read(self.previous.font)
-                prev_width = self.x.read(self.previous.width)
-                self.x.set(prev_x + prev_font.measureText(' ') + prev_width)
-            else:
-                self.x.copy(self.parent.x)
+        if self.previous:
+            prev_x = self.x.read(self.previous.x)
+            prev_font = self.x.read(self.previous.font)
+            prev_width = self.x.read(self.previous.width)
+            self.x.set(prev_x + prev_font.measureText(' ') + prev_width)
+        else:
+            self.x.copy(self.parent.x)
 ```
 
 So that's `TextLayout`. `EmbedLayout` is basically identical, except
@@ -1461,12 +1446,10 @@ class EmbedLayout:
         # ...
     
     def layout_after(self):
-        if self.ascent.dirty:
-            height = self.ascent.read(self.height)
-            self.ascent.set(-height)
+        height = self.ascent.read(self.height)
+        self.ascent.set(-height)
         
-        if self.descent.dirty:
-            self.descent.set(0)
+        self.descent.set(0)
 ```
 
 Each of the `EmbedLayout` subclasses can call `layout_before` at the
@@ -1488,9 +1471,8 @@ height. Here's `InputLayout`:
 class InputLayout(EmbedLayout):
     def layout(self):
         # ...
-        if self.height.dirty:
-            font = self.height.read(self.font)
-            self.height.set(linespace(font))
+        font = self.height.read(self.font)
+        self.height.set(linespace(font))
         # ...
 ```
 
@@ -1502,9 +1484,8 @@ computing `height`:
 class ImageLayout(EmbedLayout):
     def layout(self):
         # ...
-        if self.height.dirty:
-            font = self.height.read(self.font)
-            self.height.set(max(self.img_height, linespace(font)))
+        font = self.height.read(self.font)
+        self.height.set(max(self.img_height, linespace(font)))
 ```
 
 Finally, here's `IframeLayout`, which is straightforward:
@@ -1513,12 +1494,11 @@ Finally, here's `IframeLayout`, which is straightforward:
 class IframeLayout(EmbedLayout):
     def layout(self):
         # ...
-        if self.height.dirty:
-            zoom = self.height.read(self.zoom)
-            if height_attr:
-                self.height.set(device_px(int(height_attr) + 2, zoom))
-            else:
-                self.height.set(device_px(IFRAME_HEIGHT_PX + 2, zoom))
+        zoom = self.height.read(self.zoom)
+        if height_attr:
+            self.height.set(device_px(int(height_attr) + 2, zoom))
+        else:
+            self.height.set(device_px(IFRAME_HEIGHT_PX + 2, zoom))
         # ...
 ```
 
@@ -1541,16 +1521,14 @@ class LineLayout:
     def layout(self):
         # ...
 
-        if self.x.dirty:
-            self.x.copy(self.parent.x)
+        self.x.copy(self.parent.x)
 
-        if self.y.dirty:
-            if self.previous:
-                prev_y = self.y.read(self.previous.y)
-                prev_height = self.y.read(self.previous.height)
-                self.y.set(prev_y + prev_height)
-            else:
-                self.y.copy(self.parent.y)
+        if self.previous:
+            prev_y = self.y.read(self.previous.y)
+            prev_height = self.y.read(self.previous.height)
+            self.y.set(prev_y + prev_height)
+        else:
+            self.y.copy(self.parent.y)
 
         # ...
 ```
@@ -1576,10 +1554,9 @@ Now, in `layout`, we'll first handle the case of no children:
 class LineLayout:
     def layout(self):
         # ...
-        if self.height.dirty:
-            if not self.children:
-                self.height.set(0)
-                return
+        if not self.children:
+            self.height.set(0)
+            return
 ```
 
 Note that we don't need to `read` the `children` field because in
@@ -1593,17 +1570,15 @@ Next, let's recompute the ascent and descent:
 class LineLayout:
     def layout(self):
         # ...
-        if self.ascent.dirty:
-            self.ascent.set(max([
-                -self.ascent.read(child.ascent)
-                for child in self.children
-            ]))
+        self.ascent.set(max([
+            -self.ascent.read(child.ascent)
+            for child in self.children
+        ]))
 
-        if self.descent.dirty:
-            self.descent.set(max([
-                self.descent.read(child.descent)
-                for child in self.children
-            ]))
+        self.descent.set(max([
+            self.descent.read(child.descent)
+            for child in self.children
+        ]))
 ```
 
 Next, we can recompute the `y` position of each child:
@@ -1613,11 +1588,10 @@ class LineLayout:
     def layout(self):
         # ...
         for child in self.children:
-            if child.y.dirty:
-                new_y = child.y.read(self.y)
-                new_y += child.y.read(self.ascent)
-                new_y += child.y.read(child.ascent)
-                child.y.set(new_y)
+            new_y = child.y.read(self.y)
+            new_y += child.y.read(self.ascent)
+            new_y += child.y.read(child.ascent)
+            child.y.set(new_y)
 ```
 
 Finally, we recompute the line's height:
@@ -1626,10 +1600,9 @@ Finally, we recompute the line's height:
 class LineLayout:
     def layout(self):
         # ...
-        if self.height.dirty:
-            max_ascent = self.height.read(self.ascent)
-            max_descent = self.height.read(self.descent)
-            self.height.set(max_ascent + max_descent)
+        max_ascent = self.height.read(self.ascent)
+        max_descent = self.height.read(self.descent)
+        self.height.set(max_ascent + max_descent)
 ```
 
 As a result of these changes, all of our layout objects' fields should
@@ -1792,35 +1765,16 @@ Skipping traversals
 ===================
 
 All of the layout fields are now wrapped in invalidation logic,
-ensuring that we only compute `x`, `y`, `width`, `height`, or other
-values when absolutely necessary. That's good: it causes faster layout
-updates on complex web pages.
+which means that when if any layout field needs to be recomputed, a
+dirty bit somewhere in the layout tree is set. But we're still
+*visiting* every layout object to actually recompute them. Instead, we
+should use the dirty bits to guide our traversal of the layout tree
+and minimize the number of layout objects we need to visit.
 
-But on the largest web pages it's still not enough. For example, on my
-computer, the initial layout for this page takes about 300
-milliseconds, while each character typed into a `contenteditable`
-takes only 3. That's way faster, but 3 milliseconds is still a
-substantial fraction of our 16 millisecond frame budget, and we'd like
-to bring it down. Since we know we're not recomputing many layout
-fields, all that time must be spent merely traversing the layout tree
-looking for work to do. Luckily, there's a way to skip needless
-traversals, and it involves pushing invalidation one step further.
-
-So far, we've thought about the *data* dependencies of a particular
-layout computation, for example with a node's `height` depending on
-its children's `height`s. But computations also have *control*
-dependencies: the sequence of steps that lead to that computation
-occurring. For example, computing a node's `height` depends on calling
-that node's `layout` method, which depends on calling its parent's
-`layout` method, and so on. We can apply invalidation to control
-dependencies just like we do to data dependencies---though there are
-some differences.
-
-Let's start with first principles. In what cases do we need to make
-sure we call a particular layout object's `layout` method? Well, the
-`layout` method does three things: create layout objects, compute
-layout properties, and recurse into more calls to `layout`. Those
-steps can be skipped if:
+The basic idea revolves around the question: do we even need to call
+`layout` on a given node? The `layout` method does three things:
+create layout objects, compute layout properties, and recurse into
+more calls to `layout`. Those steps can be skipped if:
 
 - The layout object's `children` field isn't dirty, meaning we don't
   need to create new layout objects;
@@ -1829,8 +1783,16 @@ steps can be skipped if:
 - The layout object's children's `layout` methods also don't need to
   be called.
 
+Note that we're now thinking about *control* decisions (does a
+particular piece of code even need to be run) instead of *data*
+dependencies (what that code returns). For example, computing a node's
+`height` depends on calling that node's `layout` method, which depends
+on calling its parent's `layout` method, and so on. We can apply
+invalidation to control dependencies just like we do to data
+dependencies---though there are some differences.
+
 So let's add a new dirty flag, which I call `descendants`,[^ancestors]
-to track when these conditions are true:
+to track the control dependencies for a node's descendants:
 
 [^ancestors]: You will also see these called *ancestor* dirty flags
     instead. It's the same thing, just following the flow of dirty
@@ -1913,11 +1875,26 @@ class BlockLayout:
         self.parent.descendants.control(self.descendants)
 ```
 
+Finally, the `control` calls take care of setting the dirty bit, but
+we also need to reset it when the descendants are laid out. Since
+we're not actually using the value inside the protected field, I'll
+just `set` it to a dummy value:
+
+``` {.python}
+class BlockLayout:
+    def __init__(self, node, parent, previous, frame):
+        # ...
+        for child in self.children.get():
+            child.layout()
+        self.descendants.set(None)
+        # ...
+```
+
 Replicate this code in every layout object type. In `DocumentLayout`
 you won't need to `control` any fields, since `DocumentLayout` has no
 parent, and in the other layout objects also `control` the `font`,
-`ascent`, and `descent` fields that those layout objects have, and
-don't `control` the `children` field, which is unprotected.
+`ascent`, and `descent` fields that those layout objects have while
+not `control`ing the `children` field, which is unprotected.
 
 
 Eager and lazy dirty bits
@@ -1930,17 +1907,28 @@ skip recursing in the `layout` method:
 ``` {.python}
 class BlockLayout:
     def layout(self):
-        # ...
-        if self.descendants.dirty:
-            for child in self.children.get():
-                child.layout()
-            self.descendants.set(None)
+        if not self.layout_needed(): return
         # ...
 ```
 
-Here the `set` call clears the dirty flags. However, this code doesn't
-work. If you run it, your browser will crash when it skips recomputing
-a field that was dirty.
+Here, the `layout_needed` method can just check all of the dirty bits
+in turn:
+
+``` {.python}
+class BlockLayout:
+    def layout_needed(self):
+        if self.zoom.dirty: return True
+        if self.width.dirty: return True
+        if self.height.dirty: return True
+        if self.x.dirty: return True
+        if self.y.dirty: return True
+        if self.children.dirty: return True
+        if self.descendants.dirty: return True
+        return False
+```
+
+However, this idea doesn't quite work. If you run it, your browser
+will crash when it skips recomputing a field that was dirty.
 
 This is a consequence of us implementing *lazy* marking. Recall how
 the `mark` method works:
@@ -2035,24 +2023,46 @@ class ProtectedField:
         return field.get()
 ```
 
-With these changes, the descendant dirty flags should now be set
-correctly, and we can now skip recursively calling layout when the
-descendants aren't dirty:
+With these changes, the descendant dirty bits should now be set
+correctly, and the `layout_needed` approach above should work as long
+as you include all of the protected fields for each layout type. In
+`DocumentLayout`, you do need to be a little careful, since it
+receives the frame width and zoom level as an argument. You need to
+make sure to `mark` those fields if they changed. The `width` changes
+when the `frame_width` changes, here:[^or-protect-them]
+
+[^or-protect-them]: We need to mark the root layout object's `width`
+    because the `frame_width` is passed into `DocumentLayout`'s
+    `layout` method as the `width` parameter. We could have protected
+    the `frame_width` field instead, and then this `mark` would happen
+    automatically; I'm skipping that for expediency, but it would have
+    been a bit safer.
 
 ``` {.python}
-class BlockLayout:
+class IframeLayout(EmbedLayout):
     def layout(self):
-        # ...
-        if self.descendants.dirty:
-            for child in self.children.get():
-                child.layout()
-            self.descendants.set(None)
-        # ...
+        if self.node.frame:
+            # ...
+            self.node.frame.document.width.mark()
 ```
 
-You can replicate this on all the other layout types. Even on larger
-web pages, layout should now be under a millisecond, and editing
-should be fairly smooth.
+The `zoom` level changes in `Tab`:
+
+``` {.python}
+class Tab:
+    def zoom_by(self, increment):
+        # ...
+        for id, frame in self.window_id_to_frame.items():
+            frame.document.zoom.mark()
+
+    def reset_zoom(self):
+        # ...
+        for id, frame in self.window_id_to_frame.items():
+            frame.document.zoom.mark()
+```
+
+Once you've done this, layout should now take less than a millisecond
+even on large pages, and editing text should be fairly smooth.
 
 ::: {.further}
 

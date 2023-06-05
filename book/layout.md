@@ -717,7 +717,7 @@ The browser's `draw` method now just uses `top` and `bottom` to
 decide which commands to `execute`:
 
 ``` {.python}
-clas Browser:
+class Browser:
     def draw(self):
         self.canvas.delete("all")
         for cmd in self.display_list:
