@@ -11,7 +11,7 @@ interactions that affect layout, like text editing or JavaScript DOM
 modifications. Luckily, we can avoid redundant layout work by only
 recomputing some of it, and treating the layout tree like a form of
 cache. This *invalidaiton* technique focuses on figuring out which
-parts of the tree need updates, and recomputing only themthem. While
+parts of the tree need updates, and recomputing only them. While
 invalidation is traditionally complex and bug-prone, a principled
 approach and simple abstractions can make it managable, and the
 complexity is necessary to make key user interactions like text input
@@ -47,11 +47,12 @@ there are other text editing APIs that can't be. For example, the
     the text in the `input` element doesn't get its own layout object,
     so the layout tree is actually the same after each edit.
 
-[^amazing-ce]: The contenteditable attribute is pretty amazing, since you can
-set it on any element on any web site, and thereby turn it into a living
-document. In fact, this is how we implemented the "typo" feature for this book
-(type `Ctrl-E` to turn it on if you haven't tried it yet). The source
-code is [here](/feedback.js); see the `typo_mode` function.
+[^amazing-ce]: The contenteditable attribute is pretty amazing, since
+you can set it on any element on any web site, and thereby turn it into
+a living document. In fact, this is how we implemented the "typo"
+feature for this book(type `Ctrl-E` (`Cmd-E` on a Mac) to turn it on if
+you haven't tried it yet). The source code is [here](/feedback.js); see
+the `typo_mode` function.
 
 ::: {.demo contenteditable=true}
 Click on this <i>formatted</i> <b>text</b> to edit it. It even supports
@@ -323,8 +324,8 @@ and noting any subroutine calls. I found:[^exercises]
 
 Luckily, the `new_line` and `add_inline_child` methods are only called
 through `layout`, which resets the `children` array. Meanwhile,
-`get_font` acts as a cache,^[A cache can be itself viewed as a form
-of idempotence.] so multiple calls return the same font
+`get_font` acts as a cache,^[The presence of a cache is a sure sign that
+idempotent methods are present.] so multiple calls return the same font
 object, and `display_px` just does math, so always returns the same
 result given the same inputs. So all of our `layout` methods are now
 idempotent, and the browser should work correctly again.
