@@ -330,7 +330,8 @@ class BlockLayout:
                 children = []
                 previous = None
                 for child in self.node.children:
-                    next = BlockLayout(child, self, previous, self.frame)
+                    next = BlockLayout(
+                        child, self, previous, self.frame)
                     children.append(next)
                     previous = next
                 self.children.set(children)
@@ -423,13 +424,15 @@ class BlockLayout:
         for child in self.children.get():
             child.paint(cmds)
 
-        if self.node.is_focused and "contenteditable" in self.node.attributes:
+        if self.node.is_focused \
+            and "contenteditable" in self.node.attributes:
             text_nodes = [
                 t for t in tree_to_list(self, [])
                 if isinstance(t, TextLayout)
             ]
             if text_nodes:
-                cmds.append(DrawCursor(text_nodes[-1], text_nodes[-1].width.get()))
+                cmds.append(DrawCursor(text_nodes[-1],
+                    text_nodes[-1].width.get()))
             else:
                 cmds.append(DrawCursor(self, 0))
 
@@ -992,7 +995,8 @@ class Frame:
                 "keydown", self.tab.focus, self.window_id): return
             self.tab.focus.attributes["value"] += char
             self.set_needs_render()
-        elif self.tab.focus and "contenteditable" in self.tab.focus.attributes:
+        elif self.tab.focus and \
+            "contenteditable" in self.tab.focus.attributes:
             text_nodes = [
                t for t in tree_to_list(self.tab.focus, [])
                if isinstance(t, Text)
