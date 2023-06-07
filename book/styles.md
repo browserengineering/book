@@ -780,7 +780,7 @@ it shouldn't be another 50% bigger than the rest of the heading text?
 
 So, in fact, browsers resolve percentages to absolute pixel units
 before storing them in the `style` and before those values are
-inherited; it's called a ["computed style"][^css-computed]. Of the
+inherited; it's called a "computed style".[^css-computed] Of the
 properties our toy browser supports, only `font-size` needs to be
 computed in this way:
 
