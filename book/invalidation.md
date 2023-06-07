@@ -104,8 +104,8 @@ new one. Then we add the typed character to this element:
 ``` {.python}
 class Frame:
     def keypress(self, char):
-        elif self.tab.focus \
-            and "contenteditable" in self.tab.focus.attributes:
+        elif self.tab.focus and \
+            "contenteditable" in self.tab.focus.attributes:
             # ...
             last_text.text += char
             self.set_needs_render()
@@ -442,8 +442,8 @@ of a node:
 ``` {.python replace=children_dirty%20%3d%20True/children.mark()}
 class Frame:
     def keypress(self, char):
-        elif self.tab.focus and "contenteditable" in \
-            self.tab.focus.attributes:
+        elif self.tab.focus and \
+            "contenteditable" in self.tab.focus.attributes:
             # ...
             obj = self.tab.focus.layout_object
             while not isinstance(obj, BlockLayout):
@@ -613,8 +613,8 @@ class JSContext:
 
 class Frame:
     def keypress(self, char):
-        elif self.tab.focus and "contenteditable" \
-            in self.tab.focus.attributes:
+        elif self.tab.focus and \
+            "contenteditable" in self.tab.focus.attributes:
             # ...
             obj.children.mark()
 ```
@@ -2296,7 +2296,7 @@ class BlockLayout:
 
 Meanwhile, when computing a `font` field, we pass it in:
 
-``` {.python}
+``` {.python expected=False}
 class TextLayout:
     def layout(self):
         if self.font.dirty:
