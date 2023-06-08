@@ -901,8 +901,8 @@ Protecting widths
 =================
 
 Protecting `zoom` points the way toward protecting complex layout
-fields. Working toward our goal of invalidating line breaking, let's
-next work on protecting the `width` field.
+fields. Let's work towards a goal of invalidating line breaking, starting
+with protecting the `width` field.
 
 Like `zoom`, `width` is initially set in `DocumentLayout`:
 
@@ -946,14 +946,15 @@ on the `width`:
 
 ``` {.python}
 class BlockLayout:
-    def add_inline_child(self, node, w, child_class, frame, word=None):
+    def add_inline_child(self, node, w, child_class,
+        frame, word=None):
         width = self.children.read(self.width)
         if self.cursor_x + w > width:
             self.new_line()
         # ...
 ```
 
-While we're here, note that the decision over whether or not to add a
+While we're here, note that the decision for whether or not to add a
 new line also depends on `w`, which is an input to `add_inline_child`.
 If you look through `add_inline_child`'s callers, you'll see that most
 of the time, this argument depends on `zoom`:
@@ -978,7 +979,8 @@ class BlockLayout:
         node_font = font(node.style, zoom)
         for word in node.text.split():
             w = node_font.measureText(word)
-            self.add_inline_child(node, w, TextLayout, self.frame, word)
+            self.add_inline_child(
+                node, w, TextLayout, self.frame, word)
 ```
 
 Note that the font depends on the node's `style`, which can change,
@@ -1028,7 +1030,7 @@ If `style_set` changes a style, we can mark the `style`
 field:[^protect-style-attr]
 
 [^protect-style-attr]: We would ideally make the `style` attribute a
-    protected field, and have the `style `field depend on it, but I'm
+    protected field, and have the `style ` field depend on it, but I'm
     taking a short-cut in the interest of simplicity.
 
 ``` {.python}
@@ -1044,7 +1046,7 @@ the `style` field:
 ``` {.python dropline=read(node.style) replace=style/self.children%2c%20node.style}
 class BlockLayout:
     def text(self, node):
-        zoom = self.children.read(self.zoom)
+        # ...
         style = self.children.read(node.style)
         node_font = font(style, zoom)
         # ...
@@ -1106,7 +1108,8 @@ class BlockLayout:
     def new_line(self):
         self.previous_word = None
         self.cursor_x = 0
-        last_line = self.temp_children[-1] if self.temp_children else None
+        last_line = self.temp_children[-1] \
+            if self.temp_children else None
         new_line = LineLayout(self.node, self, last_line)
         self.temp_children.append(new_line)
 ```
@@ -1115,7 +1118,8 @@ You'll want to do something similar in `add_inline_child`:
 
 ``` {.python}
 class BlockLayout:
-    def add_inline_child(self, node, w, child_class, frame, word=None):
+    def add_inline_child(self, node, w, child_class,
+        frame, word=None):
         # ...
         line = self.temp_children[-1]
         # ...
@@ -1146,7 +1150,7 @@ should now skipping line layout for most elements.
 ::: {.further}
 In real browsers, the layout phase is sometimes split in two, first
 constructing a layout tree and then a separate [fragment
-tree][fragment-tree].[^our-book-simple] In Chrome, the fragment tree
+tree][fragment-tree].[^our-book-simple] In Chromium, the fragment tree
 is immutable, and invalidation is done by comparing the previous
 and new fragment trees instead of by using dirty flags, though the
 overall algorithm ends up pretty similar to what this book describes.

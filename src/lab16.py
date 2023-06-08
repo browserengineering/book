@@ -380,16 +380,19 @@ class BlockLayout:
         node_font = font(self.children, node.style, zoom)
         for word in node.text.split():
             w = node_font.measureText(word)
-            self.add_inline_child(node, w, TextLayout, self.frame, word)
+            self.add_inline_child(
+                node, w, TextLayout, self.frame, word)
 
     def new_line(self):
         self.previous_word = None
         self.cursor_x = 0
-        last_line = self.temp_children[-1] if self.temp_children else None
+        last_line = self.temp_children[-1] \
+            if self.temp_children else None
         new_line = LineLayout(self.node, self, last_line)
         self.temp_children.append(new_line)
 
-    def add_inline_child(self, node, w, child_class, frame, word=None):
+    def add_inline_child(self, node, w, child_class,
+        frame, word=None):
         width = self.children.read(self.width)
         if self.cursor_x + w > width:
             self.new_line()
