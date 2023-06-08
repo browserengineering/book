@@ -50,7 +50,7 @@ there are other text editing APIs that can't be. For example, the
 [^amazing-ce]: The contenteditable attribute is pretty amazing, since
 you can set it on any element on any web site, and thereby turn it into
 a living document. In fact, this is how we implemented the "typo"
-feature for this book(type `Ctrl-E` (`Cmd-E` on a Mac) to turn it on if
+feature for this book: type `Ctrl-E` (or `Cmd-E` on a Mac) to turn it on if
 you haven't tried it yet). The source code is [here](/feedback.js); see
 the `typo_mode` function.
 
