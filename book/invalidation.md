@@ -1030,7 +1030,7 @@ If `style_set` changes a style, we can mark the `style`
 field:[^protect-style-attr]
 
 [^protect-style-attr]: We would ideally make the `style` attribute a
-    protected field, and have the `style ` field depend on it, but I'm
+    protected field, and have the `style` field depend on it, but I'm
     taking a short-cut in the interest of simplicity.
 
 ``` {.python}
