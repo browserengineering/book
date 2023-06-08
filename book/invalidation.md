@@ -50,7 +50,7 @@ there are other text editing APIs that can't be. For example, the
 [^amazing-ce]: The contenteditable attribute is pretty amazing, since
 you can set it on any element on any web site, and thereby turn it into
 a living document. In fact, this is how we implemented the "typo"
-feature for this book(type `Ctrl-E` (`Cmd-E` on a Mac) to turn it on if
+feature for this book: type `Ctrl-E` (or `Cmd-E` on a Mac) to turn it on if
 you haven't tried it yet). The source code is [here](/feedback.js); see
 the `typo_mode` function.
 
@@ -328,7 +328,7 @@ object, and `display_px` just does math, so always returns the same
 result given the same inputs. So all of our `layout` methods are now
 idempotent, and the browser should work correctly again.
 
-A great thing about dempotency is it doesn't matter _how many_ times a
+A great thing about idempotency is it doesn't matter _how many_ times a
 function is called, and that gives us the freedom to skip redundant
 work, if we happen to know it was done in the past. That makes it the
 foundation for the rest of this chapter, which is all about knowing
