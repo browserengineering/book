@@ -55,8 +55,7 @@ you haven't tried it yet). The source code is [here](/feedback.js); see
 the `typo_mode` function.
 
 ::: {.demo contenteditable=true}
-Click on this <i>formatted</i> <b>text</b> to edit it. It even supports
-rich text edits!
+Click on this <i>formatted</i> <b>text</b> to edit it, including rich text!
 :::
 
 Let's implement `contenteditable` in our browser---it's a useful
@@ -324,8 +323,7 @@ and noting any subroutine calls. I found:[^exercises]
 
 Luckily, the `new_line` and `add_inline_child` methods are only called
 through `layout`, which resets the `children` array. Meanwhile,
-`get_font` acts as a cache,^[The presence of a cache is a sure sign that
-idempotent methods are present.] so multiple calls return the same font
+`get_font` acts as a cache, so multiple calls return the same font
 object, and `display_px` just does math, so always returns the same
 result given the same inputs. So all of our `layout` methods are now
 idempotent, and the browser should work correctly again.
