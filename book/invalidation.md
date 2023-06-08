@@ -2388,6 +2388,15 @@ correctly when changing these values. For `iframe` elements, make sure
 adjusting these attributes causes both the parent and the child frame
 to be re-laid-out to match the new size.
 
+*Resizing the browser*: Perhaps, back in [Chapter
+2](graphics.md#exercises), you implemented support for resizing the
+browser. (And most likely, you dropped support for it when we switched
+to SDL.) Reimplement support for resizing your browser; you'll need to
+pass the `SDL_WINDOW_RESIZABLE` flag to `SDL_CreateWindow` and listen
+for `SDL_WINDOWEVENT_RESIZED` events. Make sure invalidation works:
+resizing the window show resize the page. How much does invalidation
+help make resizing fast? Test both vertical and horizontal resizing.
+
 *Matching children*: Add support for [the `appendChild`
 method][appendchild-mdn] if you [haven't
 already](scripts.md#exercises). What's interesting about `appendChild`
