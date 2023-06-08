@@ -761,7 +761,7 @@ However, recall that with dirty flags we must always think about
 setting them, checking them, and resetting them. The `get` method
 automatically checks the dirty flags, and the `set` method
 automatically resets them, but who *marks* the `zoom` dirty flags?
-(Without marking them when they change, we won't be able to avoid
+(Without marking them when they change, we will incorrectly skip too much
 layout work.)
 
 Generally, we need to mark a dirty flag when something it depends on
