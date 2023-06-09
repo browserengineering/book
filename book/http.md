@@ -589,10 +589,9 @@ s = ctx.wrap_socket(s, server_hostname=host)
 ```
 
 When you wrap `s`, you pass a `server_hostname` argument, and it
-should match the argument you passed to `s.connect`. Note that I save
-the new socket back into the `s` variable. That's because you don't
-want to send over the original socket; it would be unencrypted and
-also confusing.
+should match the `Host` header. Note that I save the new socket back
+into the `s` variable. That's because you don't want to send over the
+original socket; it would be unencrypted and also confusing.
 
 ::: {.installation}
 On macOS, you'll need to [run a program called "Install
