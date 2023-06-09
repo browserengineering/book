@@ -1167,7 +1167,7 @@ Widths for inline elements
 
 For uniformity, let's make all of the other layout object types also
 protect their `width`; that means `LineLayout`, `TextLayout`, and then
-`EmbedLayout` and its variants. `LineLayout` is pretty easy:
+`EmbedLayout` and its subclasses. `LineLayout` is pretty easy:
 
 ``` {.python ignore=ProtectedField}
 class LineLayout:
@@ -1182,7 +1182,8 @@ class LineLayout:
         # ...
 ```
 
-In `TextLayout`, we again need to handle `font`:
+In `TextLayout`, we again need to handle `font` (and hence have `width`
+depend on `style`):
 
 ``` {.python expected=False}
 class TextLayout:
@@ -1242,9 +1243,8 @@ that you're always refering to `width` via methods like `get` and
 `read` that check dirty flags.
 
 ::: {.further}
-
+TODO
 :::
-
 
 
 Invalidating layout fields
@@ -1373,19 +1373,17 @@ right now, because the `BlockLayout` assumes its children's `height`
 fields are protected, but if those fields are `LineLayout`s they aren't.
 
 ::: {.further}
-
+TODO
 :::
-
-
 
 Protecting inline layout
 ========================
 
 Layout for `LineLayout`, `TextLayout`, and `EmbedLayout` and its
-subtypes works a little differently. Yes, each of these layout objects
+classes works a little differently. Yes, each of these layout objects
 has `x`, `y`, and `height` fields. But they also compute `font` fields
 and have `get_ascent` and `get_descent` methods that are called by
-other layout objects. We'll protect all of these fields.[^dps] Since
+other layout objects. We'll protect all of these.[^dps] Since
 we now have quite a bit of `ProtectedField` experience, we'll do all
 the fields in one go.
 
@@ -1396,7 +1394,7 @@ the fields in one go.
     like out parameters in C. But converting to fields is usually
     cleaner.
 
-Let's start with `TextLayout`:
+Let's start with `TextLayout`. Note the new `ascent` and `descent` fields:
 
 ``` {.python ignore=ProtectedField}
 class TextLayout:
@@ -1410,8 +1408,6 @@ class TextLayout:
         self.descent = ProtectedField()
         # ...
 ```
-
-Note the new `ascent` and `descent` fields.
 
 We'll need to compute these fields in `layout`. All of the
 font-related ones are fairly straightforward:
@@ -1455,7 +1451,8 @@ class TextLayout:
             prev_x = self.x.read(self.previous.x)
             prev_font = self.x.read(self.previous.font)
             prev_width = self.x.read(self.previous.width)
-            self.x.set(prev_x + prev_font.measureText(' ') + prev_width)
+            self.x.set(
+                prev_x + prev_font.measureText(' ') + prev_width)
         else:
             self.x.copy(self.parent.x)
 ```
@@ -1495,8 +1492,7 @@ class InputLayout(EmbedLayout):
         self.layout_after()
 ```
 
-Speaking, each `EmbedLayout` subtype has its own way of computing its
-height. Here's `InputLayout`:
+As for computing height in subclasses, here's `InputLayout`:
 
 ``` {.python}
 class InputLayout(EmbedLayout):
@@ -1507,9 +1503,9 @@ class InputLayout(EmbedLayout):
         # ...
 ```
 
-Here's `ImageLayout`; it has an `img_height` field, which I'm not
-going to protect and instead treat as an intermediate step in
-computing `height`:
+And here's `ImageLayout`; it has an `img_height` field, which I'm not
+going to protect and instead treat as an intermediate step in computing
+`height`:
 
 ``` {.python}
 class ImageLayout(EmbedLayout):
@@ -1545,7 +1541,7 @@ class LineLayout:
         # ...
 ```
 
-The computations are straightforward:
+The computations for these are straightforward:
 
 ``` {.python}
 class LineLayout:
@@ -1569,7 +1565,9 @@ and descent across all children and uses that to set the `height` and
 the children's `y`. I think the simplest way to handle this code is to
 add `ascent` and `descent` fields to the `LineLayout` to store the
 maximum ascent and descent, and then have the `height` and the
-children's `y` field depend on those:
+children's `y` field depend on those.
+
+Let's do that, starting with declaring the protected fields:
 
 ``` {.python ignore=ProtectedField}
 class LineLayout:
@@ -1645,10 +1643,8 @@ with every change. You will likely need to now fix a few uses of
 positions.
 
 ::: {.further}
-
+TODO
 :::
-
-
 
 Skipping no-op updates
 ======================

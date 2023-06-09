@@ -600,7 +600,8 @@ class TextLayout:
             prev_x = self.x.read(self.previous.x)
             prev_font = self.x.read(self.previous.font)
             prev_width = self.x.read(self.previous.width)
-            self.x.set(prev_x + prev_font.measureText(' ') + prev_width)
+            self.x.set(
+                prev_x + prev_font.measureText(' ') + prev_width)
         else:
             self.x.copy(self.parent.x)
 

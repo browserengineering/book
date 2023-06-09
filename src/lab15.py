@@ -479,7 +479,7 @@ class TextLayout:
 
         if self.previous:
             space = self.previous.font.measureText(" ")
-            self.x = self.previous.x + space + self.previous.width
+            self.x =self.previous.x + space + self.previous.width
         else:
             self.x = self.parent.x
 
