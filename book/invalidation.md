@@ -1380,7 +1380,7 @@ Protecting inline layout
 ========================
 
 Layout for `LineLayout`, `TextLayout`, and `EmbedLayout` and its
-classes works a little differently. Yes, each of these layout objects
+subclasses works a little differently. Yes, each of these layout objects
 has `x`, `y`, and `height` fields. But they also compute `font` fields
 and have `get_ascent` and `get_descent` methods that are called by
 other layout objects. We'll protect all of these.[^dps] Since
