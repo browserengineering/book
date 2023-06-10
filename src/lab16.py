@@ -808,7 +808,8 @@ def style(node, rules, frame):
         for property, default_value in INHERITED_PROPERTIES.items():
             if node.parent:
                 parent_field = node.parent.style[property]
-                parent_value = node.style[property].read(parent_field)
+                parent_value = \
+                    node.style[property].read(parent_field)
                 new_style[property] = parent_value
             else:
                 new_style[property] = default_value
@@ -825,7 +826,8 @@ def style(node, rules, frame):
         if new_style["font-size"].endswith("%"):
             if node.parent:
                 parent_field = node.parent.style["font-size"]
-                parent_font_size = node.style["font-size"].read(parent_field)
+                parent_font_size = \
+                    node.style["font-size"].read(parent_field)
             else:
                 parent_font_size = INHERITED_PROPERTIES["font-size"]
             node_pct = float(new_style["font-size"][:-1]) / 100

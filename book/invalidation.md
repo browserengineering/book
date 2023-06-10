@@ -1665,11 +1665,13 @@ class ProtectedField:
         self.dirty = False
 ```
 
-The `if` statement skips printing during initial page layout. Try
+The `if` statement skips printing during initial page layout, so it
+will only show how well our invalidation optimizations are working. Try
 editing some text with `contenteditable` on a large web page (like
 this one)---you'll see a *screenful* of output, thousands of lines of
 printed nonsense. It's a little hard to understand why, so let's add a
-nice printable form for `ProtectedField`s:[^why-print-node]
+nice printable form for `ProtectedField`s, plus a new `name` parameter
+for debugging puposes:[^why-print-node]
 
 [^why-print-node]: Note that I print the node, not the layout object,
 because layout objects' printable forms print layout field values,
@@ -1706,7 +1708,8 @@ First, there's a lot of `style` recomputation:
     Change ProtectedField(<header>, style)
     Change ProtectedField(<h1 class="title">, style)
     Change ProtectedField('Reusing Previous Computations', style)
-    Change ProtectedField(<a href="https://twitter.com/browserbook">, style)
+    Change ProtectedField(
+        <a href="https://twitter.com/browserbook">, style)
     Change ProtectedField('Twitter', style)
     Change ProtectedField(' ·\n', style)
     ...
@@ -1756,37 +1759,37 @@ combination of these two things means we are recomputing the `zoom`
 field, and everything that depends on `zoom`, on every frame.
 
 What makes this all wasteful is that `zoom` usually doesn't change.
-So we want to not nodify dependants if the value didn't change:
+So we should notify dependants only if the value didn't change:
 
 ``` {.python}
 class ProtectedField:
     def set(self, value):
         if value != self.value:
             self.notify()
-        self.value = value
-        self.dirty = False
+        # ...
 ```
 
 This change is safe, because if the new value is the same as the old
-value, any downstream computations don't actually need to change.
+value, any downstream computations don't actually need to change. As a
+bonus, editing should now also feel snappier.
 
 This small tweak should reduce the number of field changes down to the
 minimum:
 
     Change ProtectedField(<html lang="en-US" xml:lang="en-US">, zoom)
-    Change ProtectedField(<div class="demo" contenteditable="true">, children)
-    Change ProtectedField(<div class="demo" contenteditable="true">, height)
+    Change ProtectedField(
+        <div class="demo" contenteditable="true">, children)
+    Change ProtectedField(
+        <div class="demo" contenteditable="true">, height)
 
-The only things happeneing here are recreating the `contenteditable`
+The only things happening here are recreating the `contenteditable`
 element's `children` (which we have to do, to incorporate the new
 text) and checking that its `height` didn't change (necessary in case
-we wrapped onto more lines). As a bonus, editing should now also feel
-*much* snappier.
+we wrapped onto more lines).
 
 ::: {.further}
-
+TODO
 :::
-
 
 Skipping traversals
 ===================
@@ -1800,11 +1803,11 @@ and minimize the number of layout objects we need to visit.
 
 The basic idea revolves around the question: do we even need to call
 `layout` on a given node? The `layout` method does three things:
-create layout objects, compute layout properties, and recurse into
+create child layout objects, compute layout properties, and recurse into
 more calls to `layout`. Those steps can be skipped if:
 
 - The layout object's `children` field isn't dirty, meaning we don't
-  need to create new layout objects;
+  need to create new chldren layout objects;
 - The layout object's layout fields aren't dirty, meaning we don't
   need to compute layout properties; and
 - The layout object's children's `layout` methods also don't need to
@@ -1821,9 +1824,9 @@ dependencies---though there are some differences.
 So let's add a new dirty flag, which I call `descendants`,[^ancestors]
 to track the control dependencies for a node's descendants:
 
-[^ancestors]: You will also see these called *ancestor* dirty flags
-    instead. It's the same thing, just following the flow of dirty
-    bits instead of the flow of control.
+[^ancestors]: In some code bases, you will see these
+called *ancestor* dirty flags instead. It's the same thing, just
+following the flow of dirty bits instead of the flow of control.
 
 ``` {.python}
 class BlockLayout:
@@ -1979,7 +1982,7 @@ important for data dependencies to be fast.
 But for control dependencies we need eager marking. If the `width` of
 some layout object is marked, we need its parent's `descendants`
 field, which depends on `width`, needs to be marked right away,
-_before_ the `width` is recomputed. After all, that `descendats` field
+_before_ the `width` is recomputed. After all, that `descendants` field
 is used to determine _whether_ the `width` is recomputed!
 
 For eager marking, I'll give each protected field a second sets of
@@ -2038,7 +2041,7 @@ field, it doesn't have any eager dependants and no dirty flags are
 propagated to the `descendants` field.
 
 To solve this, we need to add one more rule: when one field reads
-another, any fields controling the first need to also control the
+another, any fields controlling the first need to also control the
 second:
 
 ``` {.python}
@@ -2210,7 +2213,8 @@ def style(node, rules, frame):
         for property, default_value in INHERITED_PROPERTIES.items():
             if node.parent:
                 parent_field = node.parent.style[property]
-                parent_value = node.style[property].read(parent_field)
+                parent_value = \
+                    node.style[property].read(parent_field)
                 new_style[property] = parent_value
 ```
 
@@ -2222,7 +2226,8 @@ def style(node, rules, frame):
         if new_style["font-size"].endswith("%"):
             if node.parent:
                 parent_field = node.parent.style["font-size"]
-                parent_font_size = node.style["font-size"].read(parent_field)
+                parent_font_size = \
+                    node.style["font-size"].read(parent_field)
 ```
 
 Then, once the `new_style` is all computed, we individually set every
@@ -2381,7 +2386,9 @@ whose styles are unchanged.
 
 *Modifying widths*: Add the `width` and `height` setters on `iframe`
 and `image` elements, which allow JavaScript code to change the
-element's `width` or `height` attribute. Make sure invalidation works
+element's `width` or `height` attribute.^[The `setAttribute` method
+you already added in [Chapter 14](/accessibility.md) is another way
+to change width and height.] Make sure invalidation works
 correctly when changing these values. For `iframe` elements, make sure
 adjusting these attributes causes both the parent and the child frame
 to be re-laid-out to match the new size.
