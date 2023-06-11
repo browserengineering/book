@@ -1708,8 +1708,7 @@ First, there's a lot of `style` recomputation:
     Change ProtectedField(<header>, style)
     Change ProtectedField(<h1 class="title">, style)
     Change ProtectedField('Reusing Previous Computations', style)
-    Change ProtectedField(
-        <a href="https://twitter.com/browserbook">, style)
+    Change ProtectedField(<a href="...">, style)
     Change ProtectedField('Twitter', style)
     Change ProtectedField(' ·\n', style)
     ...
