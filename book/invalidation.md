@@ -1804,7 +1804,7 @@ create child layout objects, compute layout properties, and recurse into
 more calls to `layout`. Those steps can be skipped if:
 
 - The layout object's `children` field isn't dirty, meaning we don't
-  need to create new chldren layout objects;
+  need to create new child layout objects;
 - The layout object's layout fields aren't dirty, meaning we don't
   need to compute layout properties; and
 - The layout object's children's `layout` methods also don't need to
