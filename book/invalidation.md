@@ -1776,10 +1776,8 @@ This small tweak should reduce the number of field changes down to the
 minimum:
 
     Change ProtectedField(<html lang="en-US" xml:lang="en-US">, zoom)
-    Change ProtectedField(
-        <div class="demo" contenteditable="true">, children)
-    Change ProtectedField(
-        <div class="demo" contenteditable="true">, height)
+    Change ProtectedField(<div class="demo" ...>, children)
+    Change ProtectedField(<div class="demo" ...>, height)
 
 The only things happening here are recreating the `contenteditable`
 element's `children` (which we have to do, to incorporate the new
