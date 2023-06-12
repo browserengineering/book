@@ -1206,8 +1206,20 @@ class EmbedLayout:
         # ...
 ```
 
-There's also a reference to `width` in the `layout` method for
-computing `x` positions. For now you can just use `get` here.
+Any time we protect a field like this, you'll need to replace any uses
+with a call to `get`, like this:
+
+``` {.python}
+class EmbedLayout:
+    def layout(self):
+        if self.previous:
+            space = self.previous.font.measureText(' ')
+            self.x = self.previous.x + space + self.previous.width.get()
+```
+
+Eventually, we'll protect the `x` field, too, and then these calls to
+`get` will get replaced with `read`, but using `get` for now will let
+us focus on one field at a time.
 
 Now all that's left are the various types of replaced content. In
 `InputLayout`, the width only depends on the zoom level:
