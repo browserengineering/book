@@ -1082,10 +1082,6 @@ stores an array, and so we can read and write the contents of the
 array (in methods like `add_inline_child`) without causing the
 field to become dirty.
 
-[^perhaps-local]: Perhaps the nicest design would thread a local
-    `children` variable through all of the methods involved in line
-    layout, similar to how we handle `paint`.
-
 ``` {.python}
 class BlockLayout:
     def layout(self):
