@@ -1075,10 +1075,12 @@ computation we are skipping here---line breaking and rebuilding the
 layout tree---is pretty expensive.
 
 We also need to fix up `add_inline_child`'s and `new_line`'s
-references to `children`. I'll solve this by first setting `this.children`
-to an empty array, then filling it in. This is a bit of an expediency, because
-the `ProtectedValue` for `children` stores an array, and we can read and write
-the contents of the array without causing the field to become dirty.
+references to `children`. I'll solve this by first setting
+`this.children` to an empty array, then filling it in. This is
+a bit of an expediency, because the `ProtectedValue` for `children`
+stores an array, and so we can read and write the contents of the
+array (in the methods like `add_inline_child`) without causing the
+field to become dirty.
 
 [^perhaps-local]: Perhaps the nicest design would thread a local
     `children` variable through all of the methods involved in line
