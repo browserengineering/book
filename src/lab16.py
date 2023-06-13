@@ -338,8 +338,8 @@ class BlockLayout:
                 self.children.set(children)
         else:
             if self.children.dirty:
-                self.new_line()
                 self.children.set([])
+                self.new_line()
                 self.recurse(self.node)
 
         for child in self.children.get():
@@ -386,7 +386,7 @@ class BlockLayout:
         self.previous_word = None
         self.cursor_x = 0
         last_line = self.children.get()[-1] \
-            if self.self.children.get() else None
+            if self.children.get() else None
         new_line = LineLayout(self.node, self, last_line)
         self.children.get().append(new_line)
 
