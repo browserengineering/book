@@ -35,7 +35,8 @@ from lab14 import parse_color, parse_outline, draw_rect, DrawRRect, \
 from lab15 import request, DrawImage, DocumentLayout, BlockLayout, \
     EmbedLayout, InputLayout, LineLayout, TextLayout, ImageLayout, \
     IframeLayout, JSContext, style, AccessibilityNode, Frame, Tab, \
-    CommitData, draw_line, Browser, BROKEN_IMAGE, font, add_main_args
+    CommitData, draw_line, Browser, BROKEN_IMAGE, font, add_main_args, \
+    IFRAME_WIDTH_PX, IFRAME_HEIGHT_PX
 import wbetools
 
 @wbetools.patch(is_focusable)
@@ -750,7 +751,11 @@ class ImageLayout(EmbedLayout):
 
     def paint(self, display_list):
         cmds = []
-        rect = skia.Rect.MakeLTRB(self.x.get(), self.y.get() + self.height.get() - self.img_height, self.x.get() + self.width.get(), self.y.get() + self.height)
+        rect = skia.Rect.MakeLTRB(
+            self.x.get(),
+            self.y.get() + self.height.get() - self.img_height,
+            self.x.get() + self.width.get(),
+            self.y.get() + self.height.get())
         quality = self.node.style["image-rendering"].get()
         cmds.append(DrawImage(self.node.image, rect, quality))
         display_list.extend(cmds)
@@ -775,8 +780,10 @@ class IframeLayout(EmbedLayout):
             self.height.set(device_px(IFRAME_HEIGHT_PX + 2, zoom))
 
         if self.node.frame:
-            self.node.frame.frame_height = self.height - device_px(2, self.zoom.get())
-            self.node.frame.frame_width = self.width.get() - device_px(2, self.zoom.get())
+            self.node.frame.frame_height = \
+                self.height.get() - device_px(2, self.zoom.get())
+            self.node.frame.frame_width = \
+                self.width.get() - device_px(2, self.zoom.get())
             self.node.frame.document.width.mark()
         self.layout_after()
 
