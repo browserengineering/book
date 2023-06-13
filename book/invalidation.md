@@ -172,45 +172,55 @@ Why Invalidation?
 =================
 
 Fundamentally, the reason editing this page is slow in our browser is
-that the page is pretty big.[^other-reasons] In fact, handling the
-keypress---just appending a character to a `Text` node---is almost
-instant. But afterwards, the browser has to redisplay the whole page.
-This means even tiny changes take a long time on a large page.
+that this page is pretty big.[^other-reasons] After all, it's not
+handling the keypress that's slow---that just appends a character to a
+`Text` node, which takes almost no time. It's what happens afterwards
+that takes time: the browser has to rerender the whole page. Even tiny
+changes take a long time on a large page.
 
-If we want interactions to be fast---even on large, complex
-pages---we're going to need to ensure that the browser's rendering
-pipeline takes time *proportional to the size of the change*, not
-proportional to the size of the page. This property is sometimes
-called *incrementality*, and it really constrains our browser. For
-example, incrementality means that during rendering, we can't even
-*traverse* the whole page, since that would take time proportional to
-the whole page, not the change being made.
+[^other-reasons]: I'm sure there are all sorts of performance
+    improvements possible without implementing the invalidation
+    techniques from this chapter, but they are essential toward
+    achieving incrementalism, which is a kind of asymptotic guarantee
+    that simple optimizations won't achieve.
+
+If we want interactions to be fast, even on large, complex pages,
+we're going to need re-rendering the page to take time *proportional
+to the size of the change*, not proportional to the size of the page.
+This property is sometimes called *incrementality*, and it really
+constrains our browser. For example, incrementality means that during
+rendering, we can't even *traverse* the whole page, since that would
+take time proportional to the whole page, not the change being made.
 
 Now, note that when the page is first loaded, rendering is definitely
 going to take time proportional to the size of the page. So to achieve
-incrementality, we're going to need to treat the initial render and
-later re-renders differently. We think of the initial render as
-creating a cache that later renders invalidate and recompute. If we're
-careful to only invalidate a small part of the cache, this scheme will
-involve only doing the work necessary to incorporate the change.
+incrementality, we're going to need to think of the initial render and
+later re-renders differently. The initial render will create a cache
+that later renders invalidate and recompute parts of.[^big-change] If
+we're only invalidate a small part each time, this will only take time
+proportional to the changed portion of the page.
 
-In general, every part of the browser rendering pipeline needs to be
-incremental, but this chapter focuses on layout, which is complex
-enough to illustrate the idea while being simple enough to be
-understandable. By incrementalizing layout, we'll be able to skip the
-two most expensive parts of layout: building the layout tree, and
-traversing it to compute layout fields. Ultimately, we'll make layout
-recomputation nearly instant (under a millisecond) when typing on this
-page.
+[^big-change]: While initial and later renders are conceptually
+    different, they'll use the same code path. Basically, the initial
+    render will be one big change from no page to the initial page,
+    while later re-renders will incorporate smaller changes.
 
-Getting there is going to be a bit of a rocky road, though. The key to
-making all of this work is tracking dependencies. The whole idea is to
-only recompute what needs to be recomputed---but to know if something
-needs to be recomputed, we'll need to know if it depends on something
-that's changed. We've been doing a simple form of dependency tracking
-already, with our `needs_style` and `needs_layout` flags, but to
-achieve incrementality we'll need to track much finer-grained
-dependencies, which means we'll need to track way, way more of them.
+In a real browser, every step of the rendering pipeline needs to be
+incremental, but this chapter focuses on layout. Layout is important
+and makes a good illustration of the idea. Incrementalizing layout
+means skipping the two most expensive parts of layout: building the
+layout tree and traversing it to compute layout fields. Ultimately,
+re-layouts will take under a millisecond when typing on this page.
+
+Getting there is going to be a bit of a rocky road, though. The whole
+idea is to only recompute what needs to be recomputed---but to know if
+something needs to be recomputed, we'll need to know if it depends on
+something that's changed. So the key will be tracking dependencies.
+Our `needs_style` and `needs_layout` flags already involve a bit of
+simple dependency reasoning, but to achieve incrementality we'll need
+to track much finer-grained dependencies, which means we'll need to
+track way, way more of them.
+
 So in fact most of this chapter is devoted to tracking dependencies,
 and the abstractions we can use to help us do it. We'll need to
 execute several large refactors of our layout engine, and only at the
@@ -222,9 +232,10 @@ and for you, to see how real browsers make interactive pages fast.
 Implementing incremental layout is complex, but it's a core part of
 the web. Remember that the web is a *declarative* platform: web pages
 only concern themselves with *describing* how the page looks,
-and it's up to the browser to implement that description. All of the
-complexity this creates inside a browser is complexity that web page
-authors don't have to think about.
+and it's up to the browser to implement that description. To us browser
+engineers, creates a whole bunch of complexity. But remember that the
+browser is a platform: implementing these algorithms in the browser
+means web page authors don't need to implement them instead.
 :::
 
 
