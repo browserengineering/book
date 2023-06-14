@@ -274,6 +274,7 @@ class DocumentLayout:
 
         display_list.extend(cmds)
 
+
 @wbetools.patch(BlockLayout)
 class BlockLayout:
     def __init__(self, node, parent, previous, frame):
