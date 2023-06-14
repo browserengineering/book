@@ -1938,8 +1938,9 @@ class BlockLayout:
 
 With these changes, the descendant dirty bits should now be set
 correctly, and the `layout_needed` approach above should work as long
-as you include all of the protected fields for each layout type. In
-`DocumentLayout`, you do need to be a little careful, since it
+as you include all of the protected fields for each layout type.
+
+In`DocumentLayout`, you do need to be a little careful, since it
 receives the frame width and zoom level as an argument. You need to
 make sure to `mark` those fields if they changed. The `width` changes
 when the `frame_width` changes, here:[^or-protect-them]
