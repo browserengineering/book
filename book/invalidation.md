@@ -784,22 +784,22 @@ pain, and it's easy to forget a dependency. What we need is something
 seamless: `set`-ting to a field should automatically mark all the
 fields that depend on it.
 
-To do that, we're going to need to keep around an `invalidates` set
-of fields that this field invalidates:
+To do that, we're going to need to keep around a `depended_on` set
+of fields that depend on this one:
 
-``` {.python replace=(self)/(self%2c%20node%2c%20name%2c%20parent%3dNone),}
+``` {.python replace=(self)/(self%2c%20node%2c%20name%2c%20parent%3dNone),depended_on/depended_lazy}
 class ProtectedField:
     def __init__(self):
         # ...
-        self.invalidates = set()
+        self.depended_on = set()
 ```
 
 We can mark all of the dependencies with `notify`:
 
-``` {.python}
+``` {.python replace=depended_on/depended_lazy}
 class ProtectedField:
     def notify(self):
-        for field in self.invalidates:
+        for field in self.depended_on:
             field.mark()
 ```
 
@@ -821,7 +821,7 @@ dependant fields get marked:
 class BlockLayout:
     def __init__(self, node, parent, previous, frame):
         # ...
-        self.parent.zoom.invalidates.add(self.zoom)
+        self.parent.zoom.depended_on.add(self.zoom)
 ```
 
 That's definitely less error-prone, but it'd be even better if we
@@ -830,10 +830,10 @@ child's `zoom` need to depend on its parent's? It's because we read
 from the parent's zoom, with `get`, when computing the child's. We can
 make a variant of `get` that captures this pattern:
 
-``` {.python}
+``` {.python replace=depended_on/depended_lazy}
 class ProtectedField:
     def read(self, field):
-        field.invalidates.add(self)
+        field.depended_on.add(self)
         return field.get()
 ```
 
