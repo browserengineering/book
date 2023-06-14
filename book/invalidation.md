@@ -1075,6 +1075,7 @@ computation we are skipping here---line breaking and rebuilding the
 layout tree---is pretty expensive.
 
 We also need to fix up `add_inline_child`'s and `new_line`'s
+<<<<<<< HEAD
 references to `children`. There are a couple of possible fixes, but in
 the interests of expediency,[^perhaps-local] I'm going to use a
 second, unprotected field, `temp_children`:
@@ -1082,6 +1083,14 @@ second, unprotected field, `temp_children`:
 [^perhaps-local]: Perhaps the nicest design would thread a local
 `children` variable through all of the methods involved in line
 layout, similar to how we handle `paint`.
+=======
+references to `children`. I'll solve this by first setting
+`this.children` to an empty array, then filling it in. This is
+a bit of an expediency, because the `ProtectedValue` for `children`
+stores an array, and so we can read and write the contents of the
+array (in methods like `add_inline_child`) without causing the
+field to become dirty.
+>>>>>>> 4da6b3a438a009ca9d534b77bdc0211513cbc710
 
 ``` {.python}
 class BlockLayout:
@@ -1091,11 +1100,9 @@ class BlockLayout:
             # ...
         else:
             if self.children.dirty:
-                self.temp_children = []
+                self.children.set([])
                 self.new_line()
                 self.recurse(self.node)
-                self.children.set(self.temp_children)
-                self.temp_children = None
 ```
 
 Note that I reset `temp_children` once we're done with it, to make
@@ -1108,10 +1115,10 @@ class BlockLayout:
     def new_line(self):
         self.previous_word = None
         self.cursor_x = 0
-        last_line = self.temp_children[-1] \
-            if self.temp_children else None
+        last_line = self.children.get()[-1] \
+            if self.children.get() else None
         new_line = LineLayout(self.node, self, last_line)
-        self.temp_children.append(new_line)
+        self.children.get().append(new_line)
 ```
 
 You'll want to do something similar in `add_inline_child`:
@@ -1121,7 +1128,7 @@ class BlockLayout:
     def add_inline_child(self, node, w, child_class,
         frame, word=None):
         # ...
-        line = self.temp_children[-1]
+        line = self.children.get()[-1]
         # ...
 ```
 
@@ -1819,12 +1826,17 @@ invalidation to control dependencies just like we do to data
 dependencies---though there are some differences.
 
 So let's add a new dirty flag, which I call `has_dirty_descendants`,
+<<<<<<< HEAD
 to track whether anty descendants have a dirty
 `ProtectedField`.[^ancestors]
 
 [^ancestors]: In some code bases, you will see these
 called *ancestor* dirty flags instead. It's the same thing, just
 following the flow of dirty bits instead of the flow of control.
+=======
+[^ancestors] to track whether anty descendants have a dirty
+`ProtectedField`.
+>>>>>>> 4da6b3a438a009ca9d534b77bdc0211513cbc710
 
 ``` {.python}
 class BlockLayout:
@@ -1835,6 +1847,7 @@ class BlockLayout:
 
 Add this to every other kind of layout object, too.
 
+<<<<<<< HEAD
 This field doesn't store a value, but just a dirty flag. We want this flag
 dirty if any descendant has a dirty `children` or layout field.
 This can be achieved by walking up the layout tree, setting
@@ -1849,10 +1862,26 @@ objects need this feature.)
 class ProtectedField:
     def __init__(self, node, name, parent=None):
         # ...
+=======
+This field doesn't store a value, just a dirty flag. We want this flag
+dirty if any descendant has a dirty `children` or layout field. When any
+of them are dirtied, we need to walk up the layout tree setting
+`has_dirty_descendants` to true on each ancestor.
+
+
+This will be easy to do with an addition (and optional) `parent` parameter to a
+`ProtectedField`. (It's optional because only `ProtectedField`s on layout
+objects need this feature.)
+
+``` {.python}
+class ProtectedField:
+    def __init__(self, node, name, parent=None):
+>>>>>>> 4da6b3a438a009ca9d534b77bdc0211513cbc710
         self.parent = parent
 ```
 
 Then, whenever `mark` or `notify` is called, we set the bits:
+<<<<<<< HEAD
 
 
 ``` {.python}
@@ -1874,11 +1903,25 @@ class ProtectedField:
 
 For each layout object type, pass the parameter for each `ProtectedField`.
 Here's `BlockLayout`, for example:
+=======
+
 
 ``` {.python}
-class BlockLayout:
-    def __init__(self, node, parent, previous, frame):
+class ProtectedField:
+    def set_ancestor_dirty_bits(self):
+        parent = self.parent
+        while parent:
+            parent.has_dirty_descendants = True
+            parent = parent.parent
+
+    def mark(self):
         # ...
+        self.set_ancestor_dirty_bits()
+>>>>>>> 4da6b3a438a009ca9d534b77bdc0211513cbc710
+
+    def notify(self):
+        # ...
+<<<<<<< HEAD
         self.children = ProtectedField(node, "children", self.parent)
         self.zoom = ProtectedField(node, "zoom", self.parent)
         self.width = ProtectedField(node, "width", self.parent)
@@ -1888,17 +1931,35 @@ class BlockLayout:
 ```
 
 And then the bit needs to be cleared after `layout`:
+=======
+        self.set_ancestor_dirty_bits()
+```
+
+For each layout object type, pass the parameter for each `ProtectedField`.
+Here's `BlockLayout`, for example:
+>>>>>>> 4da6b3a438a009ca9d534b77bdc0211513cbc710
 
 ``` {.python}
 class BlockLayout:
     def layout(self):
         # ...
+<<<<<<< HEAD
         for child in self.children.get():
             child.layout()
 
         self.has_dirty_descendants = False    
 ```
 
+=======
+        self.children = ProtectedField(node, "children", self.parent)
+        self.zoom = ProtectedField(node, "zoom", self.parent)
+        self.width = ProtectedField(node, "width", self.parent)
+        self.height = ProtectedField(node, "height", self.parent)
+        self.x = ProtectedField(node, "x", self.parent)
+        self.y = ProtectedField(node, "y", self.parent)
+```
+
+>>>>>>> 4da6b3a438a009ca9d534b77bdc0211513cbc710
 Now that we have descendant dirty flags, let's use them to skip
 unneeded recursions. We'd like to use the `descendants` dirty flags to
 skip recursing in the `layout` method:
