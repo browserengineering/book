@@ -867,7 +867,7 @@ class JSContext:
                 obj.width.mark()
             if attr == "height":
                 obj.height.mark()
-        frame.set_needs_render()
+        self.tab.set_needs_render_all_frames()
 
     def style_set(self, handle, s, window_id):
         frame = self.tab.window_id_to_frame[window_id]
