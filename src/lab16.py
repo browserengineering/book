@@ -861,9 +861,12 @@ class JSContext:
         elt = self.handle_to_node[handle]
         elt.attributes[attr] = value
         obj = elt.layout_object
-        while not isinstance(obj, BlockLayout):
-            obj = obj.parent
-        obj.children.mark()
+        if isinstance(obj, IframeLayout) or \
+           isinstance(obj, ImageLayout):
+            if attr == "width":
+                obj.width.mark()
+            if attr == "height":
+                obj.height.mark()
         self.tab.set_needs_render_all_frames()
 
     def style_set(self, handle, s, window_id):

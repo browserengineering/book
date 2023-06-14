@@ -1228,12 +1228,22 @@ class InputLayout(EmbedLayout):
 
 `IframeLayout` and `ImageLayout` are very similar, with the width
 depending on the zoom level and also the element's `width` and
-`height` attributes. Luckily, our browser doesn't provide any way to
-change those attributes, so we don't need to track them as
-dependencies.^[That said, a real browser *would* need to make those
-attributes `ProtectedField`s as well.] So they're handled just like
-`InputLayout`.
+`height` attributes. So, we'll need to invalidate the `width` field
+if those attributes are changed from JavaScript:
 
+``` {.python}
+class JSContext:
+    def setAttribute(self, handle, attr, value, window_id):
+        # ...
+        obj = elt.layout_object
+        if isinstance(obj, IframeLayout) or \
+           isinstance(obj, ImageLayout):
+            if attr == "width":
+                obj.width.mark()
+```
+
+Otherwise, `IframeLayout` and `ImageLayout` are handled just like
+`InputLayout`.
 
 Once again, make sure you go through the associated `paint` methods
 and make sure you're always calling `get` when you use `width`. Check
@@ -1527,6 +1537,19 @@ class IframeLayout(EmbedLayout):
         else:
             self.height.set(device_px(IFRAME_HEIGHT_PX + 2, zoom))
         # ...
+```
+
+You'll need to remember to invalidate the `height` if the `height`
+attribute changes:
+
+``` {.python}
+class JSContext:
+    def setAttribute(self, handle, attr, value, window_id):
+        if isinstance(obj, IframeLayout) or \
+           isinstance(obj, ImageLayout):
+            # ...
+            if attr == "height":
+                obj.height.mark()
 ```
 
 So that covers all of the inline layout objects. All that's left is
