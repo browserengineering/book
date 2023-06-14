@@ -1075,7 +1075,6 @@ computation we are skipping here---line breaking and rebuilding the
 layout tree---is pretty expensive.
 
 We also need to fix up `add_inline_child`'s and `new_line`'s
-<<<<<<< HEAD
 references to `children`. There are a couple of possible fixes, but in
 the interests of expediency,[^perhaps-local] I'm going to use a
 second, unprotected field, `temp_children`:
@@ -1083,14 +1082,6 @@ second, unprotected field, `temp_children`:
 [^perhaps-local]: Perhaps the nicest design would thread a local
 `children` variable through all of the methods involved in line
 layout, similar to how we handle `paint`.
-=======
-references to `children`. I'll solve this by first setting
-`this.children` to an empty array, then filling it in. This is
-a bit of an expediency, because the `ProtectedValue` for `children`
-stores an array, and so we can read and write the contents of the
-array (in methods like `add_inline_child`) without causing the
-field to become dirty.
->>>>>>> 4da6b3a438a009ca9d534b77bdc0211513cbc710
 
 ``` {.python}
 class BlockLayout:
@@ -1842,13 +1833,6 @@ class BlockLayout:
 
 Add this to every other kind of layout object, too.
 
-<<<<<<< HEAD
-This field doesn't store a value, but just a dirty flag. We want this flag
-dirty if any descendant has a dirty `children` or layout field.
-This can be achieved by walking up the layout tree, setting
-`has_dirty_descendants` to true on each ancestor.
-
-
 This will be easy to do with an additional (and optional) `parent` parameter to
 a `ProtectedField`. (It's optional because only `ProtectedField`s on layout
 objects need this feature.)
@@ -1857,26 +1841,10 @@ objects need this feature.)
 class ProtectedField:
     def __init__(self, node, name, parent=None):
         # ...
-=======
-This field doesn't store a value, just a dirty flag. We want this flag
-dirty if any descendant has a dirty `children` or layout field. When any
-of them are dirtied, we need to walk up the layout tree setting
-`has_dirty_descendants` to true on each ancestor.
-
-
-This will be easy to do with an addition (and optional) `parent` parameter to a
-`ProtectedField`. (It's optional because only `ProtectedField`s on layout
-objects need this feature.)
-
-``` {.python}
-class ProtectedField:
-    def __init__(self, node, name, parent=None):
->>>>>>> 4da6b3a438a009ca9d534b77bdc0211513cbc710
         self.parent = parent
 ```
 
 Then, whenever `mark` or `notify` is called, we set the bits:
-<<<<<<< HEAD
 
 
 ``` {.python}
@@ -1898,7 +1866,6 @@ class ProtectedField:
 
 For each layout object type, pass the parameter for each `ProtectedField`.
 Here's `BlockLayout`, for example:
-=======
 
 
 ``` {.python}
@@ -1912,11 +1879,13 @@ class ProtectedField:
     def mark(self):
         # ...
         self.set_ancestor_dirty_bits()
->>>>>>> 4da6b3a438a009ca9d534b77bdc0211513cbc710
 
     def notify(self):
         # ...
-<<<<<<< HEAD
+
+class BlockLayout:
+    def __init__(self, node, parent, previous, frame):
+        # ...    
         self.children = ProtectedField(node, "children", self.parent)
         self.zoom = ProtectedField(node, "zoom", self.parent)
         self.width = ProtectedField(node, "width", self.parent)
@@ -1926,35 +1895,20 @@ class ProtectedField:
 ```
 
 And then the bit needs to be cleared after `layout`:
-=======
-        self.set_ancestor_dirty_bits()
-```
 
 For each layout object type, pass the parameter for each `ProtectedField`.
 Here's `BlockLayout`, for example:
->>>>>>> 4da6b3a438a009ca9d534b77bdc0211513cbc710
 
 ``` {.python}
 class BlockLayout:
     def layout(self):
         # ...
-<<<<<<< HEAD
         for child in self.children.get():
             child.layout()
 
         self.has_dirty_descendants = False    
 ```
 
-=======
-        self.children = ProtectedField(node, "children", self.parent)
-        self.zoom = ProtectedField(node, "zoom", self.parent)
-        self.width = ProtectedField(node, "width", self.parent)
-        self.height = ProtectedField(node, "height", self.parent)
-        self.x = ProtectedField(node, "x", self.parent)
-        self.y = ProtectedField(node, "y", self.parent)
-```
-
->>>>>>> 4da6b3a438a009ca9d534b77bdc0211513cbc710
 Now that we have descendant dirty flags, let's use them to skip
 unneeded recursions. We'd like to use the `descendants` dirty flags to
 skip recursing in the `layout` method:
