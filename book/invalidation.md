@@ -1826,8 +1826,7 @@ invalidation to control dependencies just like we do to data
 dependencies---though there are some differences.
 
 So let's add a new dirty flag, which I call `has_dirty_descendants`,
-<<<<<<< HEAD
-to track whether anty descendants have a dirty
+to track whether any descendants have a dirty
 `ProtectedField`.[^ancestors]
 
 [^ancestors]: In some code bases, you will see these
