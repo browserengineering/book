@@ -1869,20 +1869,6 @@ Here's `BlockLayout`, for example:
 
 
 ``` {.python}
-class ProtectedField:
-    def set_ancestor_dirty_bits(self):
-        parent = self.parent
-        while parent:
-            parent.has_dirty_descendants = True
-            parent = parent.parent
-
-    def mark(self):
-        # ...
-        self.set_ancestor_dirty_bits()
-
-    def notify(self):
-        # ...
-
 class BlockLayout:
     def __init__(self, node, parent, previous, frame):
         # ...    
@@ -1895,9 +1881,6 @@ class BlockLayout:
 ```
 
 And then the bit needs to be cleared after `layout`:
-
-For each layout object type, pass the parameter for each `ProtectedField`.
-Here's `BlockLayout`, for example:
 
 ``` {.python}
 class BlockLayout:
