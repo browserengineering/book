@@ -572,7 +572,7 @@ to avoid.
 We need a better approach. As a first step, let's try to combine a
 dirty flag and the field it protects into a single object:
 
-``` {.python replace=(self)/(self%2c%20node%2c%20name)}
+``` {.python replace=(self)/(self%2c%20node%2c%20name%2c%20parent%3dNone)}
 class ProtectedField:
     def __init__(self):
         self.value = None
@@ -787,7 +787,7 @@ fields that depend on it.
 To do that, we're going to need to keep around a `depended_on` set
 of fields that depend on this one:
 
-``` {.python replace=(self)/(self%2c%20node%2c%20name),depended_on/depended_lazy}
+``` {.python replace=(self)/(self%2c%20node%2c%20name%2c%20parent%3dNone),depended_on/depended_lazy}
 class ProtectedField:
     def __init__(self):
         # ...
@@ -1075,13 +1075,13 @@ computation we are skipping here---line breaking and rebuilding the
 layout tree---is pretty expensive.
 
 We also need to fix up `add_inline_child`'s and `new_line`'s
-references to `children`. There are couple of possible fixes, but in
+references to `children`. There are a couple of possible fixes, but in
 the interests of expediency,[^perhaps-local] I'm going to use a
 second, unprotected field, `temp_children`:
 
 [^perhaps-local]: Perhaps the nicest design would thread a local
-    `children` variable through all of the methods involved in line
-    layout, similar to how we handle `paint`.
+`children` variable through all of the methods involved in line
+layout, similar to how we handle `paint`.
 
 ``` {.python}
 class BlockLayout:
@@ -1677,7 +1677,7 @@ for debugging puposes:[^why-print-node]
 because layout objects' printable forms print layout field values,
 which might be dirty and unreadable.
 
-``` {.python}
+``` {.python replace=%2c%20name/%2c%20name%2c%20parent%3dNone}
 class ProtectedField:
     def __init__(self, node, name):
         self.node = node
@@ -1792,7 +1792,7 @@ Skipping traversals
 ===================
 
 All of the layout fields are now wrapped in invalidation logic,
-which means that when if any layout field needs to be recomputed, a
+which means that if any layout field needs to be recomputed, a
 dirty bit somewhere in the layout tree is set. But we're still
 *visiting* every layout object to actually recompute them. Instead, we
 should use the dirty bits to guide our traversal of the layout tree
@@ -1818,8 +1818,9 @@ on calling its parent's `layout` method, and so on. We can apply
 invalidation to control dependencies just like we do to data
 dependencies---though there are some differences.
 
-So let's add a new dirty flag, which I call `descendants`,[^ancestors]
-to track the control dependencies for a node's descendants:
+So let's add a new dirty flag, which I call `has_dirty_descendants`,
+to track whether any descendants have a dirty
+`ProtectedField`.[^ancestors]
 
 [^ancestors]: In some code bases, you will see these
 called *ancestor* dirty flags instead. It's the same thing, just
@@ -1829,103 +1830,69 @@ following the flow of dirty bits instead of the flow of control.
 class BlockLayout:
     def __init__(self, node, parent, previous, frame):
         # ...
-        self.descendants = ProtectedField(node, "descendants")
+        self.has_dirty_descendants = False
 ```
 
-We can add this to every other kind of layout object, too.
+Add this to every other kind of layout object, too.
 
-This field doesn't store a value, just a dirty flag, but it's
-convenient to use the `ProtectedField` machinery. We want this flag
-dirty if any descendant has a dirty `children` or layout field.
-Something like this is *close* to working:
+This will be easy to do with an additional (and optional) `parent` parameter to
+a `ProtectedField`. (It's optional because only `ProtectedField`s on layout
+objects need this feature.)
 
-``` {.python expected=False}
-class BlockLayout:
-    def __init__(self, node, parent, previous, frame):
-        # ...
-        self.parent.descendants.read(self.zoom)
-        self.parent.descendants.read(self.width)
-        self.parent.descendants.read(self.height)
-        self.parent.descendants.read(self.x)
-        self.parent.descendants.read(self.y)
-```
-
-Note that it is the *parent's* `descendants` field that depends on
-this node's layout fields. That's because this element is one of its
-parent's (not its own) descendants.
-
-However, this code doesn't quite work, for a couple of reasons.
-
-First of all, `read` asserts that the field being read is not dirty,
-and here the fields being read were just created and are therefore
-dirty. We need a variant of `read`, which I'll call `control` because
-it's for control dependencies:
-
-``` {.python replace=depended_on/depended_eager}
+``` {.python}
 class ProtectedField:
-    def control(self, source):
-        source.depended_on.add(self)
-        self.dirty = True
-```
-
-Note that the `control` method doesn't actually read the source field's
-value; that's why it's safe to use even when the source field is dirty.
-The `descendants` field can use it:
-
-``` {.python}
-class BlockLayout:
-    def __init__(self, node, parent, previous, frame):
+    def __init__(self, node, name, parent=None):
         # ...
-        self.parent.descendants.control(self.zoom)
-        self.parent.descendants.control(self.width)
-        self.parent.descendants.control(self.height)
-        self.parent.descendants.control(self.x)
-        self.parent.descendants.control(self.y)
+        self.parent = parent
 ```
 
-We also need `descendants` to control the `children` field:
+Then, whenever `mark` or `notify` is called, we set the bits:
+
 
 ``` {.python}
-class BlockLayout:
-    def __init__(self, node, parent, previous, frame):
+class ProtectedField:
+    def set_ancestor_dirty_bits(self):
+        parent = self.parent
+        while parent:
+            parent.has_dirty_descendants = True
+            parent = parent.parent
+
+    def mark(self):
         # ...
-        self.parent.descendants.control(self.children)
-```
+        self.set_ancestor_dirty_bits()
 
-Finally, we need `descendants` to include not just direct children but
-also distant descendants. We can do that with a bit of recursion:
-
-``` {.python}
-class BlockLayout:
-    def __init__(self, node, parent, previous, frame):
+    def notify(self):
         # ...
-        self.parent.descendants.control(self.descendants)
+        self.set_ancestor_dirty_bits()
 ```
 
-Finally, the `control` calls take care of setting the dirty bit, but
-we also need to reset it when the descendants are laid out. Since
-we're not actually using the value inside the protected field, I'll
-just `set` it to a dummy value:
+For each layout object type, pass the parameter for each `ProtectedField`.
+Here's `BlockLayout`, for example:
+
 
 ``` {.python}
 class BlockLayout:
     def __init__(self, node, parent, previous, frame):
+        # ...    
+        self.children = ProtectedField(node, "children", self.parent)
+        self.zoom = ProtectedField(node, "zoom", self.parent)
+        self.width = ProtectedField(node, "width", self.parent)
+        self.height = ProtectedField(node, "height", self.parent)
+        self.x = ProtectedField(node, "x", self.parent)
+        self.y = ProtectedField(node, "y", self.parent)
+```
+
+And then the bit needs to be cleared after `layout`:
+
+``` {.python}
+class BlockLayout:
+    def layout(self):
         # ...
         for child in self.children.get():
             child.layout()
-        self.descendants.set(None)
-        # ...
+
+        self.has_dirty_descendants = False    
 ```
-
-Replicate this code in every layout object type. In `DocumentLayout`
-you won't need to `control` any fields, since `DocumentLayout` has no
-parent, and in the other layout objects also `control` the `font`,
-`ascent`, and `descent` fields that those layout objects have while
-not `control`ing the `children` field, which is unprotected.
-
-
-Eager and lazy dirty bits
-=========================
 
 Now that we have descendant dirty flags, let's use them to skip
 unneeded recursions. We'd like to use the `descendants` dirty flags to
@@ -1950,110 +1917,15 @@ class BlockLayout:
         if self.x.dirty: return True
         if self.y.dirty: return True
         if self.children.dirty: return True
-        if self.descendants.dirty: return True
+        if self.has_dirty_descendants: return True
         return False
-```
-
-However, this idea doesn't quite work. If you run it, your browser
-will crash when it skips recomputing a field that was dirty.
-
-This is a consequence of us implementing *lazy* marking. Recall how
-the `mark` method works:
-
-``` {.python}
-class ProtectedField:
-    def mark(self):
-        if self.dirty: return
-        self.dirty = True
-```
-
-When a protected field is marked, *its* dirty field is set, but any
-other fields that depend on it aren't set yet.
-
-Lazy marking works for data dependencies but not for control
-dependencies. That's because data dependencies are computed before the
-dirty flags is checked, meaning the dirty flags gets marked before it's
-checked. Lazy marking also allows us to skip no-op updates, so it's
-important for data dependencies to be fast.
-
-But for control dependencies we need eager marking. If the `width` of
-some layout object is marked, we need its parent's `descendants`
-field, which depends on `width`, needs to be marked right away,
-_before_ the `width` is recomputed. After all, that `descendants` field
-is used to determine _whether_ the `width` is recomputed!
-
-For eager marking, I'll give each protected field a second sets of
-fields to mark eagerly:
-
-``` {.python}
-class ProtectedField:
-    def __init__(self, node, name):
-        # ...
-        self.depended_lazy = set()
-        self.depended_eager = set()
-```
-
-The `read` method will be lazy, but `control` will be eager:
-
-``` {.python}
-class ProtectedField:
-    def read(self, field):
-        field.depended_lazy.add(self)
-        return field.get()
-
-    def control(self, source):
-        source.depended_eager.add(self)
-        self.dirty = True
-```
-
-In `notify`, we'll mark both lazy and eager dependencies:
-
-``` {.python}
-class ProtectedField:
-    def notify(self):
-        for field in self.depended_lazy:
-            field.mark()
-        for field in self.depended_eager:
-            field.mark()
-```
-
-However, in `mark`, we'll only recursively notify the eager fields:
-
-``` {.python}
-class ProtectedField:
-    def mark(self):
-        if self.dirty: return
-        self.dirty = True
-        for field in self.depended_eager:
-            field.mark()
-```
-
-There's one more subtlety here: multi-step dependencies. For example,
-imagine changing the `style` of a `<b>` tag from JavaScript. That
-might affect the `style` of a `Text` child of that tag, which might
-affect the `height` of its `TextLayout`. Because of this chain, we
-want the `style` change to mark a bunch of `descendants` flags. But,
-because none of the `descendants` flags directly `control` the `style`
-field, it doesn't have any eager dependants and no dirty flags are
-propagated to the `descendants` field.
-
-To solve this, we need to add one more rule: when one field reads
-another, any fields controlling the first need to also control the
-second:
-
-``` {.python}
-class ProtectedField:
-    def read(self, field):
-        field.depended_lazy.add(self)
-        for dependant in self.depended_eager:
-            dependant.control(field)
-        return field.get()
 ```
 
 With these changes, the descendant dirty bits should now be set
 correctly, and the `layout_needed` approach above should work as long
-as you include all of the protected fields for each layout type. In
-`DocumentLayout`, you do need to be a little careful, since it
+as you include all of the protected fields for each layout type.
+
+In`DocumentLayout`, you do need to be a little careful, since it
 receives the frame width and zoom level as an argument. You need to
 make sure to `mark` those fields if they changed. The `width` changes
 when the `frame_width` changes, here:[^or-protect-them]
