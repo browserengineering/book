@@ -1810,14 +1810,22 @@ class JSContext:
     def querySelectorAll(self, selector_text, window_id):
         frame = self.tab.window_id_to_frame[window_id]
         self.throw_if_cross_origin(frame)
+        # ...
+
+    def setAttribute(self, handle, attr, value, window_id):
+        frame = self.tab.window_id_to_frame[window_id]
+        self.throw_if_cross_origin(frame)
+        # ...
 
     def innerHTML_set(self, handle, s, window_id):
-        frame = self.tab.window_id_to_frame[window_id]        
+        frame = self.tab.window_id_to_frame[window_id]
         self.throw_if_cross_origin(frame)
+        # ...
 
     def style_set(self, handle, s, window_id):
-        frame = self.tab.window_id_to_frame[window_id]        
+        frame = self.tab.window_id_to_frame[window_id]
         self.throw_if_cross_origin(frame)
+        # ...
 ```
 
 So via `parent`, same-origin iframes can communicate. But what about
