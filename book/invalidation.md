@@ -1789,7 +1789,7 @@ Skipping traversals
 ===================
 
 All of the layout fields are now wrapped in invalidation logic,
-which means that if any layout field needs to be recomputed, a
+which means that when if any layout field needs to be recomputed, a
 dirty bit somewhere in the layout tree is set. But we're still
 *visiting* every layout object to actually recompute them. Instead, we
 should use the dirty bits to guide our traversal of the layout tree
@@ -1816,7 +1816,7 @@ invalidation to control dependencies just like we do to data
 dependencies---though there are some differences.
 
 So let's add a new dirty flag, which I call `has_dirty_descendants`,
-to track whether anty descendants have a dirty
+[^ancestors] to track whether anty descendants have a dirty
 `ProtectedField`.
 
 ``` {.python}
@@ -1828,20 +1828,19 @@ class BlockLayout:
 
 Add this to every other kind of layout object, too.
 
-This field doesn't store a value, but just a dirty flag. We want this flag
-dirty if any descendant has a dirty `children` or layout field.
-This can be achieved by walking up the layout tree, setting
+This field doesn't store a value, just a dirty flag. We want this flag
+dirty if any descendant has a dirty `children` or layout field. When any
+of them are dirtied, we need to walk up the layout tree setting
 `has_dirty_descendants` to true on each ancestor.
 
 
-This will be easy to do with an additional (and optional) `parent` parameter to
-a `ProtectedField`. (It's optional because only `ProtectedField`s on layout
+This will be easy to do with an addition (and optional) `parent` parameter to a
+`ProtectedField`. (It's optional because only `ProtectedField`s on layout
 objects need this feature.)
 
 ``` {.python}
 class ProtectedField:
     def __init__(self, node, name, parent=None):
-        # ...
         self.parent = parent
 ```
 
