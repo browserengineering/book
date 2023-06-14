@@ -1075,12 +1075,13 @@ computation we are skipping here---line breaking and rebuilding the
 layout tree---is pretty expensive.
 
 We also need to fix up `add_inline_child`'s and `new_line`'s
-references to `children`. I'll solve this by first setting
-`this.children` to an empty array, then filling it in. This is
-a bit of an expediency, because the `ProtectedValue` for `children`
-stores an array, and so we can read and write the contents of the
-array (in methods like `add_inline_child`) without causing the
-field to become dirty.
+references to `children`. There are a couple of possible fixes, but in
+the interests of expediency,[^perhaps-local] I'm going to use a
+second, unprotected field, `temp_children`:
+
+[^perhaps-local]: Perhaps the nicest design would thread a local
+`children` variable through all of the methods involved in line
+layout, similar to how we handle `paint`.
 
 ``` {.python}
 class BlockLayout:
@@ -1090,9 +1091,11 @@ class BlockLayout:
             # ...
         else:
             if self.children.dirty:
-                self.children.set([])
+                self.temp_children = []
                 self.new_line()
                 self.recurse(self.node)
+                self.children.set(self.temp_children)
+                self.temp_children = None
 ```
 
 Note that I reset `temp_children` once we're done with it, to make
@@ -1105,10 +1108,10 @@ class BlockLayout:
     def new_line(self):
         self.previous_word = None
         self.cursor_x = 0
-        last_line = self.children.get()[-1] \
-            if self.children.get() else None
+        last_line = self.temp_children[-1] \
+            if self.temp_children else None
         new_line = LineLayout(self.node, self, last_line)
-        self.children.get().append(new_line)
+        self.temp_children.append(new_line)
 ```
 
 You'll want to do something similar in `add_inline_child`:
@@ -1118,7 +1121,7 @@ class BlockLayout:
     def add_inline_child(self, node, w, child_class,
         frame, word=None):
         # ...
-        line = self.children.get()[-1]
+        line = self.temp_children[-1]
         # ...
 ```
 
