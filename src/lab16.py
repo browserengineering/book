@@ -855,6 +855,17 @@ class JSContext:
         obj.children.mark()
         frame.set_needs_render()
 
+    def setAttribute(self, handle, attr, value, window_id):
+        frame = self.tab.window_id_to_frame[window_id]        
+        self.throw_if_cross_origin(frame)
+        elt = self.handle_to_node[handle]
+        elt.attributes[attr] = value
+        obj = elt.layout_object
+        while not isinstance(obj, BlockLayout):
+            obj = obj.parent
+        obj.children.mark()
+        self.tab.set_needs_render_all_frames()
+
     def style_set(self, handle, s, window_id):
         frame = self.tab.window_id_to_frame[window_id]
         self.throw_if_cross_origin(frame)
