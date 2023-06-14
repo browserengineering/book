@@ -1832,10 +1832,6 @@ to track whether any descendants have a dirty
 [^ancestors]: In some code bases, you will see these
 called *ancestor* dirty flags instead. It's the same thing, just
 following the flow of dirty bits instead of the flow of control.
-=======
-[^ancestors] to track whether anty descendants have a dirty
-`ProtectedField`.
->>>>>>> 4da6b3a438a009ca9d534b77bdc0211513cbc710
 
 ``` {.python}
 class BlockLayout:
