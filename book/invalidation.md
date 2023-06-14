@@ -1820,7 +1820,11 @@ dependencies---though there are some differences.
 
 So let's add a new dirty flag, which I call `has_dirty_descendants`,
 to track whether anty descendants have a dirty
-`ProtectedField`.
+`ProtectedField`.[^ancestors]
+
+[^ancestors]: In some code bases, you will see these
+called *ancestor* dirty flags instead. It's the same thing, just
+following the flow of dirty bits instead of the flow of control.
 
 ``` {.python}
 class BlockLayout:
