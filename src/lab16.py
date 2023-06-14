@@ -871,7 +871,8 @@ class JSContext:
         self.throw_if_cross_origin(frame)
         elt = self.handle_to_node[handle]
         elt.attributes['style'] = s
-        elt.style.mark()
+        for property, value in elt.style:
+            value.mark()
         frame.set_needs_render()
 
 @wbetools.patch(Frame)

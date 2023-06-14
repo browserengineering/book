@@ -2047,8 +2047,21 @@ CSS_PROPERTIES = {
 }
 ```
 
-Now, in `style`, we will need to recompute a node's style if *any* of
-their style properties are dirty:
+Now, we have to invalidate fields one by one. For example, when
+setting the `style` property from JavaScript, I'll invalidate all of
+the fields:
+
+``` {.python}
+class JSContext:
+    def style_set(self, handle, s, window_id):
+        # ...
+        for property, value in elt.style:
+            value.mark()
+        # ...
+```
+
+Similarly, in `style`, we will need to recompute a node's style if
+*any* of their style properties are dirty:
 
 ``` {.python}
 def style(node, rules, frame):
