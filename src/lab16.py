@@ -335,10 +335,7 @@ class BlockLayout:
 
         for child in self.children.get():
             child.layout()
-<<<<<<< HEAD
 
-=======
->>>>>>> 4da6b3a438a009ca9d534b77bdc0211513cbc710
         self.has_dirty_descendants = False
 
         children = self.height.read(self.children)
