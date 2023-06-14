@@ -126,7 +126,7 @@ class ProtectedField:
 
         self.value = None
         self.dirty = True
-        self.depended_lazy = set()
+        self.invalidations = set()
 
     def set_ancestor_dirty_bits(self):
         parent = self.parent
@@ -140,7 +140,7 @@ class ProtectedField:
         self.set_ancestor_dirty_bits()
 
     def notify(self):
-        for field in self.depended_lazy:
+        for field in self.invalidations:
             field.mark()
         self.set_ancestor_dirty_bits()
 
@@ -157,7 +157,7 @@ class ProtectedField:
         return self.value
 
     def read(self, field):
-        field.depended_lazy.add(self)
+        field.invalidations.add(self)
         return field.get()
 
     def copy(self, field):
