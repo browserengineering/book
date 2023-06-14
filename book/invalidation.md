@@ -1033,7 +1033,7 @@ field:[^protect-style-attr]
     protected field, and have the `style` field depend on it, but I'm
     taking a short-cut in the interest of simplicity.
 
-``` {.python}
+``` {.python expected=False}
 class JSContext:
     def style_set(self, handle, s, window_id):
         # ...

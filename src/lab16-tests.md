@@ -206,7 +206,7 @@ The parent frame should now have resized the iframe:
            LineLayout(x=13.0, y=18.0, width=774.0, height=152.0, node=<body>)
              IframeLayout(src=http://test/2, x=13.0, y=18.0, width=102.0, height=152.0)
 
-But also the child frame should have resided as well:
+But also the child frame should have resized as well:
 
     >>> lab16.print_tree(frame2.document)
      DocumentLayout()

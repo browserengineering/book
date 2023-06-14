@@ -488,7 +488,6 @@ class LineLayout:
 
         for word in self.children:
             word.layout()
-        self.has_dirty_descendants = False
 
         if not self.children:
             self.ascent.set(0)
@@ -512,6 +511,7 @@ class LineLayout:
             new_y += child.y.read(self.ascent)
             new_y += child.y.read(child.ascent)
             child.y.set(new_y)
+        self.descendants.set(None)
 
 
         max_ascent = self.height.read(self.ascent)
@@ -867,7 +867,7 @@ class JSContext:
                 obj.width.mark()
             if attr == "height":
                 obj.height.mark()
-        self.tab.set_needs_render_all_frames()
+        frame.set_needs_render()
 
     def style_set(self, handle, s, window_id):
         frame = self.tab.window_id_to_frame[window_id]
