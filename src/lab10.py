@@ -10,6 +10,7 @@ import tkinter
 import tkinter.font
 import urllib.parse
 import dukpy
+from lab1 import parse_url
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
@@ -20,13 +21,6 @@ from lab6 import DrawText, resolve_url, tree_to_list
 from lab7 import LineLayout, TextLayout, CHROME_PX
 from lab8 import DocumentLayout, BlockLayout, InputLayout, INPUT_WIDTH_PX, layout_mode
 from lab9 import EVENT_DISPATCH_CODE
-
-def parse_url(url):
-    scheme, url = url.split("://", 1)
-    if "/" not in url:
-        url = url + "/"
-    host, path = url.split("/", 1)
-    return (scheme, host, path)
 
 def url_origin(url):
     (scheme, host, path) = parse_url(url)

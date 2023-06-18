@@ -9,6 +9,7 @@ import ssl
 import tkinter
 import tkinter.font
 import urllib.parse
+from lab1 import parse_url
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
@@ -19,16 +20,10 @@ from lab6 import DrawText, resolve_url, tree_to_list
 from lab7 import LineLayout, TextLayout, CHROME_PX
 
 def request(url, payload=None):
-    scheme, url = url.split("://", 1)
+    (scheme, host, path) = parse_url(url)
     assert scheme in ["http", "https"], \
         "Unknown scheme {}".format(scheme)
 
-    if ("/" in url):
-      host, path = url.split("/", 1)
-      path = "/" + path
-    else:
-      host = url
-      path = '/'
     port = 80 if scheme == "http" else 443
 
     if ":" in host:
