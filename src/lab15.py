@@ -173,10 +173,10 @@ class DocumentLayout:
 def font(style, zoom):
     weight = style["font-weight"]
     variant = style["font-style"]
-    if style["font-size"].endswith("px"):
+    try:
         size = float(style["font-size"][:-2])
-    else:
-        size = 12
+    except ValueError:
+        size = 16
     font_size = device_px(size, zoom)
     return get_font(font_size, weight, variant)
 
