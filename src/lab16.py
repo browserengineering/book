@@ -158,6 +158,7 @@ class ProtectedField:
 
     def read(self, field):
         field.invalidations.add(self)
+        print("{} depends on {}".format(field.name, self.name))
         return field.get()
 
     def copy(self, field):
