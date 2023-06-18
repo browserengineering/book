@@ -21,20 +21,23 @@ from lab7 import LineLayout, TextLayout, CHROME_PX
 from lab8 import DocumentLayout, BlockLayout, InputLayout, INPUT_WIDTH_PX, layout_mode
 from lab9 import EVENT_DISPATCH_CODE
 
+def parse_url(url):
+    scheme, url = url.split("://", 1)
+    if "/" not in url:
+        url = url + "/"
+    host, path = url.split("/", 1)
+    return (scheme, host, path)
+
 def url_origin(url):
-    scheme_colon, _, host, _ = url.split("/", 3)
-    return scheme_colon + "//" + host
+    (scheme, host, path) = parse_url(url)
+    return scheme + "://" + host
         
 COOKIE_JAR = {}
 
 def request(url, top_level_url, payload=None):
-    scheme, url = url.split("://", 1)
+    (scheme, host, path) = parse_url(url)
     assert scheme in ["http", "https"], \
         "Unknown scheme {}".format(scheme)
-
-    if "/" not in url:
-        url = url + "/"
-    host, path = url.split("/", 1)
 
     path = "/" + path
     port = 80 if scheme == "http" else 443
