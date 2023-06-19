@@ -35,7 +35,7 @@ from lab14 import parse_color, parse_outline, draw_rect, DrawRRect, \
 from lab15 import request, DrawImage, DocumentLayout, BlockLayout, \
     EmbedLayout, InputLayout, LineLayout, TextLayout, ImageLayout, \
     IframeLayout, JSContext, style, AccessibilityNode, Frame, Tab, \
-    CommitData, draw_line, Browser, BROKEN_IMAGE, font, add_main_args, \
+    CommitData, draw_line, Browser, BROKEN_IMAGE, font, \
     IFRAME_WIDTH_PX, IFRAME_HEIGHT_PX
 import wbetools
 
@@ -158,7 +158,8 @@ class ProtectedField:
 
     def read(self, field):
         field.invalidations.add(self)
-        print("{} depends on {}".format(field.name, self.name))
+        if wbetools.PRINT_INVALIDATION_DEPENDENCIES:
+            print("{} depends on {}".format(field.name, self.name))
         return field.get()
 
     def copy(self, field):
@@ -1085,6 +1086,35 @@ class Tab:
         self.root_frame.scroll_changed_in_frame = False
 
         self.browser.commit(self, commit_data)
+
+def add_main_args():
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Chapter 13 code')
+    parser.add_argument("url", type=str, help="URL to load")
+    parser.add_argument('--single_threaded', action="store_true", default=False,
+        help='Whether to run the browser without a browser thread')
+    parser.add_argument('--disable_compositing', action="store_true",
+        default=False, help='Whether to composite some elements')
+    parser.add_argument('--disable_gpu', action='store_true',
+        default=False, help='Whether to disable use of the GPU')
+    parser.add_argument('--show_composited_layer_borders', action="store_true",
+        default=False, help='Whether to visually indicate composited layer borders')
+    parser.add_argument("--force_cross_origin_iframes", action="store_true",
+        default=False, help="Whether to treat all iframes as cross-origin")
+    parser.add_argument("--print_invalidation_dependencies", action="store_true",
+        default=False, help="Whether to print out all invalidation dependencies")
+    args = parser.parse_args()
+
+    wbetools.USE_BROWSER_THREAD = not args.single_threaded
+    wbetools.USE_GPU = not args.disable_gpu
+    wbetools.USE_COMPOSITING = not args.disable_compositing and not args.disable_gpu
+    wbetools.SHOW_COMPOSITED_LAYER_BORDERS = args.show_composited_layer_borders
+    wbetools.FORCE_CROSS_ORIGIN_IFRAMES = args.force_cross_origin_iframes
+    wbetools.PRINT_INVALIDATION_DEPENDENCIES = \
+        args.print_invalidation_dependencies
+
+    return args
     
 
 if __name__ == "__main__":
