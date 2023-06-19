@@ -329,7 +329,7 @@ class BlockLayout:
             previous_dependencies.append(self.previous.height)
         self.y.set_dependencies(previous_dependencies)
 
-        # Children and height depend on the attributes of the childen
+        # this.children and this.height depend on fields of the childen
         # and the child array itself.
 
     def layout_needed(self):
@@ -506,9 +506,8 @@ class LineLayout:
         self.width.set_dependencies([self.parent.width])
         self.height.set_dependencies([self.ascent, self.descent])
 
-        # ascent and descentdepend on children ascents, and therefore
-        # this.children's array entries.
-
+        # this.ascent and this.descent depend on fields of the childen
+        # and the child array itself.
 
     def layout_needed(self):
         if self.zoom.dirty: return True
