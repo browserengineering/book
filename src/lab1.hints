@@ -1,4 +1,4 @@
-[{"code": "'/' in url", "type": "str"},
+[{"code": "'/' not in url", "type": "str"},
  {"code": "':' in host", "type": "str"},
  {"code": "'transfer-encoding' not in headers", "type": "dict"},
  {"code": "'content-encoding' not in headers", "type": "dict"}

@@ -2,7 +2,6 @@
  {"code": "'action' in elt.attributes", "type": "dict"},
  {"code": "'href' in elt.attributes", "type": "dict"},
  {"code": "'name' in node.attributes", "type": "dict"},
- {"code": "'/' not in url", "type": "str"},
  {"code": "':' in host", "type": "str"},
  {"code": "':' in top_level_host", "type": "str"},
  {"code": "host in COOKIE_JAR", "type": "dict"},
