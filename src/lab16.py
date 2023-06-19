@@ -506,9 +506,6 @@ class LineLayout:
         self.width.set_dependencies([self.parent.width])
         self.height.set_dependencies([self.ascent, self.descent])
 
-        # this.ascent and this.descent depend on fields of the childen
-        # and the child array itself.
-
     def layout_needed(self):
         if self.zoom.dirty: return True
         if self.width.dirty: return True
@@ -522,6 +519,11 @@ class LineLayout:
 
     def layout(self):
         if not self.layout_needed(): return
+
+        self.ascent.set_dependencies(
+            [child.ascent for child in self.children])
+        self.descent.set_dependencies(
+            [child.descent for child in self.children])
 
         self.zoom.copy(self.parent.zoom)
         self.width.copy(self.parent.width)
