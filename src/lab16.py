@@ -166,6 +166,7 @@ class ProtectedField:
         if self.frozen_dependencies:
             assert self in field.invalidations
         else:
+            assert not self.parent or self.name == "children"
             field.invalidations.add(self)
 
         if wbetools.PRINT_INVALIDATION_DEPENDENCIES:
@@ -319,6 +320,10 @@ class BlockLayout:
 
         self.has_dirty_descendants = True
 
+        # self.children has dependencies on the zoom and font style of various
+        # inline children. But we don't know which until self.recurse is
+        # called, and building up the dependencies would amount to a duplicate
+        # implementation of self.recurse.
         self.zoom.set_dependencies([self.parent.zoom])
         self.width.set_dependencies([self.parent.width])
         self.x.set_dependencies([self.parent.x])
@@ -328,9 +333,6 @@ class BlockLayout:
             previous_dependencies.append(self.previous.y)
             previous_dependencies.append(self.previous.height)
         self.y.set_dependencies(previous_dependencies)
-
-        # this.children depend on fields of the childen
-        # and the child array itself.
 
     def layout_needed(self):
         if self.zoom.dirty: return True
@@ -690,6 +692,8 @@ class EmbedLayout:
         if self.previous:
             self.x.set_dependencies([self.previous.x])
             self.x.set_dependencies([self.previous.font])
+        else:
+            self.x.set_dependencies([self.parent.x])
         self.y.set_dependencies(
             [self.ascent,self.parent.y, self.parent.ascent])
         self.font.set_dependencies([self.zoom,
