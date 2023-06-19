@@ -22,9 +22,11 @@ height depends on self.children
 height depends on self.descent
 height depends on self.font
 height depends on self.zoom
+height depends on self.width
 width depends on self.font
 width depends on self.parent.width
 width depends on self.zoom
+width depends on self.height
 x depends on self.parent.x
 x depends on self.previous.font
 x depends on self.previous.width
