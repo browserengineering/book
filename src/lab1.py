@@ -7,17 +7,18 @@ without exercises.
 import socket
 import ssl
 
-def request(url):
+def parse_url(url):
     scheme, url = url.split("://", 1)
+    if "/" not in url:
+        url = url + "/"
+    host, path = url.split("/", 1)
+    return (scheme, host, "/" + path)
+
+def request(url):
+    (scheme, host, path) = parse_url(url)
     assert scheme in ["http", "https"], \
         "Unknown scheme {}".format(scheme)
 
-    if ("/" in url):
-      host, path = url.split("/", 1)
-      path = "/" + path
-    else:
-      host = url
-      path = '/'
     port = 80 if scheme == "http" else 443
 
     if ":" in host:

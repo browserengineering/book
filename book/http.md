@@ -250,11 +250,16 @@ url = url[len("http://"):]
 ```
 
 Now we must separate the host from the path. The host comes before the
-first `/`, while the path is that slash and everything after it:
+first `/`, while the path is that slash and everything after it. Let's
+add function that parses all parts of a URL:
 
-``` {.python}
-host, path = url.split("/", 1)
-path = "/" + path
+``` {python}
+def parse_url(url):
+    scheme, url = url.split("://", 1)
+    if "/" not in url:
+        url = url + "/"
+    host, path = url.split("/", 1)
+    return (scheme, host, "/" + path)
 ```
 
 The `split(s, n)` method splits a string at the first `n` copies of
