@@ -329,7 +329,7 @@ class BlockLayout:
             previous_dependencies.append(self.previous.height)
         self.y.set_dependencies(previous_dependencies)
 
-        # this.children and this.height depend on fields of the childen
+        # this.children depend on fields of the childen
         # and the child array itself.
 
     def layout_needed(self):
@@ -374,6 +374,10 @@ class BlockLayout:
                 self.recurse(self.node)
                 self.children.set(self.temp_children)
                 self.temp_children = None
+
+        height_dependencies = [child.height for child in self.children.get()]
+        height_dependencies.append(self.children)
+        self.height.set_dependencies(height_dependencies)
 
         for child in self.children.get():
             child.layout()
