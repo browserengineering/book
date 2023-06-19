@@ -572,7 +572,7 @@ to avoid.
 We need a better approach. As a first step, let's try to combine a
 dirty flag and the field it protects into a single object:
 
-``` {.python replace=(self)/(self%2c%20node%2c%20name%2c%20parent%3dNone)}
+``` {.python replace=(self)/(self%2c%20obj%2c%20name%2c%20parent%3dNone)}
 class ProtectedField:
     def __init__(self):
         self.value = None
@@ -787,7 +787,7 @@ fields that depend on it.
 To do that, we're going to need to keep around a set of fields that
 depend on this one, called its `invalidations`:
 
-``` {.python replace=(self)/(self%2c%20node%2c%20name%2c%20parent%3dNone)}
+``` {.python replace=(self)/(self%2c%20obj%2c%20name%2c%20parent%3dNone)}
 class ProtectedField:
     def __init__(self):
         # ...
@@ -1679,13 +1679,15 @@ which might be dirty and unreadable.
 
 ``` {.python replace=%2c%20name/%2c%20name%2c%20parent%3dNone}
 class ProtectedField:
-    def __init__(self, node, name):
-        self.node = node
+    def __init__(self, obj, name):
+        self.obj = obj
         self.name = name
         # ...
 
     def __repr__(self):
-        return "ProtectedField({}, {})".format(self.node, self.name)
+        return "ProtectedField({}, {})".format(
+            self.obj.node if hasattr(self.obj, "node") else self.obj,
+            self.name)
 ```
 
 Name all of your `ProtectedField`s, like this:
@@ -1694,11 +1696,11 @@ Name all of your `ProtectedField`s, like this:
 class DocumentLayout:
     def __init__(self, node, frame):
         # ...
-        self.zoom = ProtectedField(node, "zoom")
-        self.width = ProtectedField(node, "width")
-        self.height = ProtectedField(node, "height")
-        self.x = ProtectedField(node, "x")
-        self.y = ProtectedField(node, "y")
+        self.zoom = ProtectedField(self, "zoom")
+        self.width = ProtectedField(self, "width")
+        self.height = ProtectedField(self, "height")
+        self.x = ProtectedField(self, "x")
+        self.y = ProtectedField(self, "y")
 ```
 
 If you look at your output again, you should now see two phases.
@@ -1841,7 +1843,7 @@ objects need this feature.)
 
 ``` {.python}
 class ProtectedField:
-    def __init__(self, node, name, parent=None):
+    def __init__(self, obj, name, parent=None):
         # ...
         self.parent = parent
 ```
@@ -1874,12 +1876,12 @@ Here's `BlockLayout`, for example:
 class BlockLayout:
     def __init__(self, node, parent, previous, frame):
         # ...    
-        self.children = ProtectedField(node, "children", self.parent)
-        self.zoom = ProtectedField(node, "zoom", self.parent)
-        self.width = ProtectedField(node, "width", self.parent)
-        self.height = ProtectedField(node, "height", self.parent)
-        self.x = ProtectedField(node, "x", self.parent)
-        self.y = ProtectedField(node, "y", self.parent)
+        self.children = ProtectedField(self, "children", self.parent)
+        self.zoom = ProtectedField(self, "zoom", self.parent)
+        self.width = ProtectedField(self, "width", self.parent)
+        self.height = ProtectedField(self, "height", self.parent)
+        self.x = ProtectedField(self, "x", self.parent)
+        self.y = ProtectedField(self, "y", self.parent)
 ```
 
 And then the bit needs to be cleared after `layout`:

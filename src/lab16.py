@@ -127,6 +127,12 @@ class ProtectedField:
         self.value = None
         self.dirty = True
         self.invalidations = set()
+        self.frozen_dependencies = False
+
+    def set_dependencies(self, dependencies):
+        for dependency in dependencies:
+            dependency.invalidations.add(self)
+        self.frozen_dependencies = True
 
     def set_ancestor_dirty_bits(self):
         parent = self.parent
@@ -157,7 +163,11 @@ class ProtectedField:
         return self.value
 
     def read(self, field):
-        field.invalidations.add(self)
+        if self.frozen_dependencies:
+            assert self in field.invalidations
+        else:
+            field.invalidations.add(self)
+
         if wbetools.PRINT_INVALIDATION_DEPENDENCIES:
             prefix = ""
             if self.obj == field.obj:
@@ -184,7 +194,9 @@ class ProtectedField:
             return str(self.value)
 
     def __repr__(self):
-        return "ProtectedField({}, {})".format(self.obj, self.name)
+        return "ProtectedField({}, {})".format(
+            self.obj.node if hasattr(self.obj, "node") else self.obj,
+            self.name)
     
 CSS_PROPERTIES = {
     "font-size": "inherit", "font-weight": "inherit",
@@ -306,6 +318,19 @@ class BlockLayout:
         self.y = ProtectedField(self, "y", self.parent)
 
         self.has_dirty_descendants = True
+
+        self.zoom.set_dependencies([self.parent.zoom])
+        self.width.set_dependencies([self.parent.width])
+        self.x.set_dependencies([self.parent.x])
+
+        previous_dependencies = [self.parent.y]
+        if self.previous:
+            previous_dependencies.append(self.previous.y)
+            previous_dependencies.append(self.previous.height)
+        self.y.set_dependencies(previous_dependencies)
+
+        # Children and height depend on the attributes of the childen
+        # and the child array itself.
 
     def layout_needed(self):
         if self.zoom.dirty: return True
@@ -472,6 +497,19 @@ class LineLayout:
 
         self.has_dirty_descendants = True
 
+        self.zoom.set_dependencies([self.parent.zoom])
+        self.x.set_dependencies([self.parent.x])
+        if self.previous:
+            self.y.set_dependencies([self.previous.y, self.previous.height])
+        else:
+            self.y.set_dependencies([self.parent.y])
+        self.width.set_dependencies([self.parent.width])
+        self.height.set_dependencies([self.ascent, self.descent])
+
+        # ascent and descentdepend on children ascents, and therefore
+        # this.children's array entries.
+
+
     def layout_needed(self):
         if self.zoom.dirty: return True
         if self.width.dirty: return True
@@ -544,6 +582,7 @@ class TextLayout:
         self.children = []
         self.parent = parent
         self.previous = previous
+
         self.zoom = ProtectedField(self, "zoom", self.parent)
         self.width = ProtectedField(self, "width", self.parent)
         self.height = ProtectedField(self, "height", self.parent)
@@ -554,6 +593,24 @@ class TextLayout:
         self.descent = ProtectedField(self, "descent", self.parent)
 
         self.has_dirty_descendants = True
+
+        self.zoom.set_dependencies([self.parent.zoom])
+        self.width.set_dependencies([self.font])
+        self.height.set_dependencies([self.font])
+        if self.previous:
+            self.x.set_dependencies(
+                [self.previous.x, self.previous.font, self.previous.width])
+        else:
+            self.x.set_dependencies(
+                [self.parent.x])
+        self.y.set_dependencies(
+            [self.ascent, self.parent.y, self.parent.ascent])
+        self.font.set_dependencies([self.zoom,
+            self.node.style['font-weight'],
+            self.node.style['font-style'],
+            self.node.style['font-size']])
+        self.ascent.set_dependencies([self.font])
+        self.descent.set_dependencies([self.font])
 
     def layout_needed(self):
         if self.zoom.dirty: return True
@@ -621,6 +678,21 @@ class EmbedLayout:
         self.descent = ProtectedField(self, "descent", self.parent)
 
         self.has_dirty_descendants = True
+
+        self.zoom.set_dependencies([self.parent.zoom])
+        self.width.set_dependencies([self.zoom])
+        self.height.set_dependencies([self.zoom, self.font])
+        if self.previous:
+            self.x.set_dependencies([self.previous.x])
+            self.x.set_dependencies([self.previous.font])
+        self.y.set_dependencies(
+            [self.ascent,self.parent.y, self.parent.ascent])
+        self.font.set_dependencies([self.zoom,
+            self.node.style['font-weight'],
+            self.node.style['font-style'],
+            self.node.style['font-size']])
+        self.ascent.set_dependencies([self.height])
+        self.descent.set_dependencies([])
 
     def layout_needed(self):
         if self.zoom.dirty: return True
