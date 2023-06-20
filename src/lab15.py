@@ -18,6 +18,7 @@ import time
 import urllib.parse
 import wbetools
 
+from lab1 import parse_url
 from lab4 import print_tree
 from lab13 import Text, Element
 from lab6 import resolve_url
@@ -44,15 +45,10 @@ from lab14 import parse_color, draw_rect, DrawRRect, \
     CSSParser, DrawOutline, main_func, Browser
 
 def request(url, top_level_url, payload=None):
-    scheme, url = url.split("://", 1)
+    (scheme, host, path) = parse_url(url)
     assert scheme in ["http", "https"], \
         "Unknown scheme {}".format(scheme)
 
-    if "/" not in url:
-        url = url + "/"
-    host, path = url.split("/", 1)
-
-    path = "/" + path
     port = 80 if scheme == "http" else 443
 
     if ":" in host:
@@ -177,7 +173,10 @@ class DocumentLayout:
 def font(style, zoom):
     weight = style["font-weight"]
     variant = style["font-style"]
-    size = float(style["font-size"][:-2])
+    try:
+        size = float(style["font-size"][:-2])
+    except ValueError:
+        size = 16
     font_size = device_px(size, zoom)
     return get_font(font_size, weight, variant)
 

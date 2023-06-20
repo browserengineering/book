@@ -604,8 +604,8 @@ The `url_origin` function can just strip off the path from a URL:
 
 ``` {.python}
 def url_origin(url):
-    scheme_colon, _, host, _ = url.split("/", 3)
-    return scheme_colon + "//" + host
+    (scheme, host, path) = parse_url(url)
+    return scheme + "://" + host
 ```
 
 Now an attacker can't read the guest book web page. But can they write

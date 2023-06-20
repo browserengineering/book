@@ -290,6 +290,10 @@ class DocumentLayout:
         child_height = self.height.read(child.height)
         self.height.set(child_height + 2 * device_px(VSTEP, zoom))
 
+        if wbetools.ASSERT_LAYOUT_CLEAN:
+            for obj in tree_to_list(self, []):
+                assert not obj.layout_needed()
+
     def paint(self, display_list, dark_mode, scroll):
         cmds = []
         self.children[0].paint(cmds)
@@ -546,7 +550,10 @@ class LineLayout:
         self.has_dirty_descendants = False
 
         if not self.children:
+            self.ascent.set(0)
+            self.descent.set(0)
             self.height.set(0)
+            self.has_dirty_descendants = False
             return
 
         self.ascent.set(max([
@@ -565,9 +572,13 @@ class LineLayout:
             new_y += child.y.read(child.ascent)
             child.y.set(new_y)
 
+
         max_ascent = self.height.read(self.ascent)
         max_descent = self.height.read(self.descent)
+
         self.height.set(max_ascent + max_descent)
+
+        self.has_dirty_descendants = False
 
     def paint(self, display_list):
         outline_rect = skia.Rect.MakeEmpty()
@@ -660,6 +671,8 @@ class TextLayout:
         else:
             self.x.copy(self.parent.x)
 
+        self.has_dirty_descendants = False
+
     def paint(self, display_list):
         leading = self.height.get() / 1.25 * .25 / 2
         color = self.node.style['color'].get()
@@ -735,6 +748,8 @@ class EmbedLayout:
         self.ascent.set(-height)
 
         self.descent.set(0)
+
+        self.has_dirty_descendants = False
 
 @wbetools.patch(InputLayout)
 class InputLayout(EmbedLayout):
@@ -1196,6 +1211,8 @@ def add_main_args():
         default=False, help='Whether to visually indicate composited layer borders')
     parser.add_argument("--force_cross_origin_iframes", action="store_true",
         default=False, help="Whether to treat all iframes as cross-origin")
+    parser.add_argument("--assert_layout_clean", action="store_true",
+        default=False, help="Assert layout is clean once complete")
     parser.add_argument("--print_invalidation_dependencies", action="store_true",
         default=False, help="Whether to print out all invalidation dependencies")
     args = parser.parse_args()
@@ -1205,6 +1222,7 @@ def add_main_args():
     wbetools.USE_COMPOSITING = not args.disable_compositing and not args.disable_gpu
     wbetools.SHOW_COMPOSITED_LAYER_BORDERS = args.show_composited_layer_borders
     wbetools.FORCE_CROSS_ORIGIN_IFRAMES = args.force_cross_origin_iframes
+    wbetools.ASSERT_LAYOUT_CLEAN = args.assert_layout_clean
     wbetools.PRINT_INVALIDATION_DEPENDENCIES = \
         args.print_invalidation_dependencies
 
