@@ -703,8 +703,10 @@ class EmbedLayout:
         self.width.set_dependencies([self.zoom])
         self.height.set_dependencies([self.zoom, self.font])
         if self.previous:
-            self.x.set_dependencies([self.previous.x])
-            self.x.set_dependencies([self.previous.font])
+            self.x.set_dependencies(
+                [self.previous.x,
+                self.previous.font,
+                self.previous.width])
         else:
             self.x.set_dependencies([self.parent.x])
         self.y.set_dependencies(
