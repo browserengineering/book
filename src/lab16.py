@@ -488,7 +488,6 @@ class LineLayout:
 
         for word in self.children:
             word.layout()
-        self.has_dirty_descendants = False
 
         if not self.children:
             self.ascent.set(0)
@@ -512,7 +511,6 @@ class LineLayout:
             new_y += child.y.read(self.ascent)
             new_y += child.y.read(child.ascent)
             child.y.set(new_y)
-
 
         max_ascent = self.height.read(self.ascent)
         max_descent = self.height.read(self.descent)
@@ -855,12 +853,27 @@ class JSContext:
         obj.children.mark()
         frame.set_needs_render()
 
+    def setAttribute(self, handle, attr, value, window_id):
+        frame = self.tab.window_id_to_frame[window_id]        
+        self.throw_if_cross_origin(frame)
+        elt = self.handle_to_node[handle]
+        elt.attributes[attr] = value
+        obj = elt.layout_object
+        if isinstance(obj, IframeLayout) or \
+           isinstance(obj, ImageLayout):
+            if attr == "width":
+                obj.width.mark()
+            if attr == "height":
+                obj.height.mark()
+        self.tab.set_needs_render_all_frames()
+
     def style_set(self, handle, s, window_id):
         frame = self.tab.window_id_to_frame[window_id]
         self.throw_if_cross_origin(frame)
         elt = self.handle_to_node[handle]
         elt.attributes['style'] = s
-        elt.style.mark()
+        for property, value in elt.style:
+            value.mark()
         frame.set_needs_render()
 
 @wbetools.patch(Frame)

@@ -771,6 +771,8 @@ class JSContext:
             self.querySelectorAll)
         self.interp.export_function("getAttribute",
             self.getAttribute)
+        self.interp.export_function("setAttribute",
+            self.setAttribute)
         self.interp.export_function("innerHTML_set", self.innerHTML_set)
         self.interp.export_function("style_set", self.style_set)
         self.interp.export_function("XMLHttpRequest_send",
@@ -844,6 +846,13 @@ class JSContext:
     def getAttribute(self, handle, attr):
         elt = self.handle_to_node[handle]
         return elt.attributes.get(attr, None)
+
+    def setAttribute(self, handle, attr, value, window_id):
+        frame = self.tab.window_id_to_frame[window_id]        
+        self.throw_if_cross_origin(frame)
+        elt = self.handle_to_node[handle]
+        elt.attributes[attr] = value
+        self.tab.set_needs_render_all_frames()
 
     def parent(self, window_id):
         parent_frame = \

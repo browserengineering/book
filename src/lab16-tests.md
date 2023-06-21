@@ -145,3 +145,81 @@ Next, we can execute some JavaScript to change the page:
                  LineLayout(x=13.0, y=38.0, width=774.0, height=20.0, node=<div>)
                    TextLayout(x=13.0, y=38.0, width=80.0, height=20.0, node=..., word=Short)
                    TextLayout(x=109.0, y=38.0, width=64.0, height=20.0, node=..., word=body)
+
+Test iframe resizing
+====================
+
+(This duplicates a test from [the Chapter 15 tests](lab15-tests.md),
+but modifies the styling because leading works differently in the two
+chapters.)
+
+Here's web page with an iframe inside of it. We make it narrow so that
+resizing is dramatic:
+
+    >>> url2 = test.socket.serve("""
+    ... <!doctype html>
+    ... <p>A B C D</p>
+    ... """)
+    >>> url1 = test.socket.serve("""
+    ... <!doctype html>
+    ... <iframe width=50 src=""" + url2 + """ />
+    ... """)
+    >>> browser = lab16.Browser()
+    >>> browser.load(url1)
+    >>> browser.render()
+    >>> frame1 = browser.tabs[0].root_frame
+    >>> iframe = [
+    ...    n for n in lab16.tree_to_list(frame1.nodes, [])
+    ...    if isinstance(n, lab16.Element) and n.tag == "iframe"][0]
+    >>> frame2 = iframe.frame
+    >>> lab16.print_tree(frame1.document)
+     DocumentLayout()
+       BlockLayout(x=13.0, y=13.0, width=774.0, height=152.0, node=<html>)
+         BlockLayout(x=13.0, y=13.0, width=774.0, height=152.0, node=<body>)
+           LineLayout(x=13.0, y=18.0, width=774.0, height=152.0, node=<body>)
+             IframeLayout(src=http://test/2, x=13.0, y=18.0, width=52.0, height=152.0)
+    >>> lab16.print_tree(frame2.document)
+     DocumentLayout()
+       BlockLayout(x=13.0, y=13.0, width=24.0, height=80.0, node=<html>)
+         BlockLayout(x=13.0, y=13.0, width=24.0, height=80.0, node=<body>)
+           BlockLayout(x=13.0, y=13.0, width=24.0, height=80.0, node=<p>)
+             LineLayout(x=13.0, y=18.0, width=24.0, height=20.0, node=<p>)
+               TextLayout(x=13.0, y=18.0, width=16.0, height=20.0, node='A B C D', word=A)
+             LineLayout(x=13.0, y=38.0, width=24.0, height=20.0, node=<p>)
+               TextLayout(x=13.0, y=38.0, width=16.0, height=20.0, node='A B C D', word=B)
+             LineLayout(x=13.0, y=58.0, width=24.0, height=20.0, node=<p>)
+               TextLayout(x=13.0, y=58.0, width=16.0, height=20.0, node='A B C D', word=C)
+             LineLayout(x=13.0, y=78.0, width=24.0, height=20.0, node=<p>)
+               TextLayout(x=13.0, y=78.0, width=16.0, height=20.0, node='A B C D', word=D)
+
+Now, let's resize it:
+
+    >>> script = """
+    ... var iframe = window.document.querySelectorAll("iframe")[0]
+    ... iframe.setAttribute("width", "100");
+    ... """
+    >>> frame1.js.run("<test>", script, frame1.window_id)
+    >>> browser.render()
+
+The parent frame should now have resized the iframe:
+
+    >>> lab16.print_tree(frame1.document)
+     DocumentLayout()
+       BlockLayout(x=13.0, y=13.0, width=774.0, height=152.0, node=<html>)
+         BlockLayout(x=13.0, y=13.0, width=774.0, height=152.0, node=<body>)
+           LineLayout(x=13.0, y=18.0, width=774.0, height=152.0, node=<body>)
+             IframeLayout(src=http://test/2, x=13.0, y=18.0, width=102.0, height=152.0)
+
+But also the child frame should have resized as well:
+
+    >>> lab16.print_tree(frame2.document)
+     DocumentLayout()
+       BlockLayout(x=13.0, y=13.0, width=74.0, height=40.0, node=<html>)
+         BlockLayout(x=13.0, y=13.0, width=74.0, height=40.0, node=<body>)
+           BlockLayout(x=13.0, y=13.0, width=74.0, height=40.0, node=<p>)
+             LineLayout(x=13.0, y=18.0, width=74.0, height=20.0, node=<p>)
+               TextLayout(x=13.0, y=18.0, width=16.0, height=20.0, node='A B C D', word=A)
+               TextLayout(x=45.0, y=18.0, width=16.0, height=20.0, node='A B C D', word=B)
+             LineLayout(x=13.0, y=38.0, width=74.0, height=20.0, node=<p>)
+               TextLayout(x=13.0, y=38.0, width=16.0, height=20.0, node='A B C D', word=C)
+               TextLayout(x=45.0, y=38.0, width=16.0, height=20.0, node='A B C D', word=D)
