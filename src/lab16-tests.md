@@ -149,6 +149,10 @@ Next, we can execute some JavaScript to change the page:
 Test iframe resizing
 ====================
 
+(This duplicates a test from [the Chapter 15 tests](lab15-tests.md),
+but modifies the styling because leading works differently in the two
+chapters.)
+
 Here's web page with an iframe inside of it. We make it narrow so that
 resizing is dramatic:
 
