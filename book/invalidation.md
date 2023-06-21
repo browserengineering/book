@@ -167,6 +167,89 @@ API!
 
 [editing-hates-you]: https://lord.io/text-editing-hates-you-too/
 
+
+Why Invalidation?
+=================
+
+Fundamentally, the reason editing this page is slow in our browser is
+that it's pretty big.[^other-reasons] After all, it's not handling the
+keypress that's slow---that just appends a character to a `Text` node,
+which takes almost no time. It's what happens afterwards that takes
+time: the browser has to rerender the whole page. Even seemingly tiny
+changes take a long time on a large page.
+
+[^other-reasons]: I'm sure there are all sorts of performance
+    improvements possible without implementing the invalidation
+    techniques from this chapter, but they are essential toward
+    achieving incrementalism, which is a kind of asymptotic guarantee
+    that simple optimizations won't achieve.
+
+If we want interactions to be fast, even on large, complex pages,
+we're going to need re-rendering the page to take time proportional to
+the *size of the change*, and not proportional to the *size of the
+page*. I call this the principle of incremental performance, and it's
+crucial for handling large and complex web applications. It means that
+developers can predict how long their code will run regardless of the
+content on the page, and it lets users predict how long interactions
+will take. That ultimately makes this principle a core part of the
+value that browser engineers provide to the web as a whole.
+
+But the principle of incremental performance also really constrains
+our browser. For example, during rendering even *traversing* the whole
+layout tree would take time proportional to the whole page, not the
+change being made, so we can't do that. To achieve incrementality,
+we're going to need to think of the initial render and later
+re-renders differently.[^big-change] When the page is first loaded,
+rendering is definitely going to take time proportional to the size of
+the page. But we treat that initial render as a cache. Later renders
+will only invalidate and recompute the parts of that cache, taking
+time proportional to the changed portion of the page.
+
+[^big-change]: While initial and later renders are conceptually
+    different, they'll use the same code path. Basically, the initial
+    render will be one big change from no page to the initial page,
+    while later re-renders will incorporate smaller changes.
+
+The key to that will be tracking the effects of changes. When one
+part of the page, like a `style` attribute, changes, other things
+that depends on it, like that element's size, change as well. So we'll
+need to construct a detailed *dependency graph*, down to the level of
+each layout field, and use that graph to determine what to recompute.
+It will be similar to our `needs_style` and `needs_layout` flags, but
+at a much larger scale.
+
+In a real browser, every step of the rendering pipeline needs to be
+incremental, but this chapter focuses on layout.[^why-layout] Most of
+this chapter is about tracking dependencies in the dependency graph,
+and building abstractions to help us do that. To use those
+abstractions, we'll need to execute a large refactor of our layout
+engine. But ultimately, incrementalizing layout will allow us to skip
+the two most expensive parts of layout: building the layout tree and
+traversing it to compute layout fields. When we're done, re-layout
+will take under a millisecond for small changes on this page.
+
+[^why-layout]: Why layout? Because layout is both important and 
+    complex enough to demonstrate most of the core challenges and
+    techniques.
+
+::: {.further}
+The principle of incremental performance derives from the principles
+of the web. Remember that the web is a *declarative* platform: web
+pages only concern themselves with *describing* how the page looks,
+and it's up to the browser to implement that description. To us
+browser engineers, that creates a whole bunch of complexity. But think
+about the web as a whole---it involves not just browser engineers, but
+web developers and users as well. Implementing complex invalidation
+algorithms in the browser lets web developers focus on making more
+interesting applications and gives users a better, more responsive
+web; it's part of the value that we as browser engineers provide. The
+declarative web makes it possible for the invalidation algorithms to
+be written once and then automatically benefit everyone else who uses
+the web.
+:::
+
+
+
 Idempotence
 ===========
 
