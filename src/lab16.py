@@ -511,8 +511,6 @@ class LineLayout:
             new_y += child.y.read(self.ascent)
             new_y += child.y.read(child.ascent)
             child.y.set(new_y)
-        self.descendants.set(None)
-
 
         max_ascent = self.height.read(self.ascent)
         max_descent = self.height.read(self.descent)
