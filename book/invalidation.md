@@ -172,10 +172,10 @@ Why Invalidation?
 =================
 
 Fundamentally, the reason editing this page is slow in our browser is
-that this page is pretty big.[^other-reasons] After all, it's not
-handling the keypress that's slow---that just appends a character to a
-`Text` node, which takes almost no time. It's what happens afterwards
-that takes time: the browser has to rerender the whole page. Even tiny
+that it's pretty big.[^other-reasons] After all, it's not handling the
+keypress that's slow---that just appends a character to a `Text` node,
+which takes almost no time. It's what happens afterwards that takes
+time: the browser has to rerender the whole page. Even seemlingly tiny
 changes take a long time on a large page.
 
 [^other-reasons]: I'm sure there are all sorts of performance
@@ -185,19 +185,24 @@ changes take a long time on a large page.
     that simple optimizations won't achieve.
 
 If we want interactions to be fast, even on large, complex pages,
-we're going to need re-rendering the page to take time *proportional
-to the size of the change*, not proportional to the size of the page.
-This property is sometimes called *incrementality*, and it really
-constrains our browser. For example, incrementality means that during
-rendering, we can't even *traverse* the whole page, since that would
-take time proportional to the whole page, not the change being made.
+we're going to need re-rendering the page to take time proportional to
+the *size of the change*, and not proportional to the *size of the
+page*. I call this the principle of incremental performance, and it's
+crucial for handling large and complex web applications. It means that
+developers can predict how long their code will run regardless of the
+content on the page, and it lets users predict how long interactions
+will take. That ultimately makes this principle a core part of the
+value that browser engineers provide to the web as a whole.
 
-Now, note that when the page is first loaded, rendering is definitely
-going to take time proportional to the size of the page. So to achieve
-incrementality, we're going to need to think of the initial render and
-later re-renders differently. The initial render will create a cache
-that later renders invalidate and recompute parts of.[^big-change] If
-we're only invalidate a small part each time, this will only take time
+But the principle of incremental performance also really constrains
+our browser. For example, during rendering even *traversing* the whole
+page would take time proportional to the whole page, not the change
+being made, so we can't do that. To achieve incrementality, we're
+going to need to think of the initial render and later re-renders
+differently.[^big-change] When the page is first loaded, rendering is
+definitely going to take time proportional to the size of the page.
+But we treat that initial render as a cache. Later renders will only
+invalidate and recompute the parts of that cache, taking time
 proportional to the changed portion of the page.
 
 [^big-change]: While initial and later renders are conceptually
@@ -205,37 +210,39 @@ proportional to the changed portion of the page.
     render will be one big change from no page to the initial page,
     while later re-renders will incorporate smaller changes.
 
+The key to that will be tracking the effects of changes. When one
+part of the page, like a `style` attribute, changes, other things
+that depends on it, like that element's size, change as well. So we'll
+need to construct a detailed *dependency graph*, down to the level of
+each layout field, and use that graph to determine what to recompute.
+It will be similar to our `needs_style` and `needs_layout` flags, but
+at a much larger scale.
+
 In a real browser, every step of the rendering pipeline needs to be
-incremental, but this chapter focuses on layout. Layout is important
-and makes a good illustration of the idea. Incrementalizing layout
-means skipping the two most expensive parts of layout: building the
-layout tree and traversing it to compute layout fields. Ultimately,
-re-layouts will take under a millisecond when typing on this page.
+incremental, but this chapter focuses on layout.[^why-layout] Most of
+the chapter is about tracking dependencies, and building abstractions
+to help us do that. To use those abstractions, we'll need to execute a
+large refactor of our layout engine. But ultimately, incrementalizing
+layout will allow us to skip the two most expensive parts of layout:
+building the layout tree and traversing it to compute layout fields.
+Re-layout for this page will take under a millisecond.
 
-Getting there is going to be a bit of a rocky road, though. The whole
-idea is to only recompute what needs to be recomputed---but to know if
-something needs to be recomputed, we'll need to know if it depends on
-something that's changed. So the key will be tracking dependencies.
-Our `needs_style` and `needs_layout` flags already involve a bit of
-simple dependency reasoning, but to achieve incrementality we'll need
-to track much finer-grained dependencies, which means we'll need to
-track way, way more of them.
-
-So in fact most of this chapter is devoted to tracking dependencies,
-and the abstractions we can use to help us do it. We'll need to
-execute several large refactors of our layout engine, and only at the
-end will we see substantially faster layout. But the complexity is
-worth it---for the end user, to get a much more responsive browser,
-and for you, to see how real browsers make interactive pages fast.
+[^why-layout]: Layout is important and also complex enough to
+    demonstrate most of the core challenges and techniques.
 
 ::: {.further}
-Implementing incremental layout is complex, but it's a core part of
-the web. Remember that the web is a *declarative* platform: web pages
-only concern themselves with *describing* how the page looks,
-and it's up to the browser to implement that description. To us browser
-engineers, creates a whole bunch of complexity. But remember that the
-browser is a platform: implementing these algorithms in the browser
-means web page authors don't need to implement them instead.
+The principle of incremental performance derives from the principles
+of the web. Remember that the web is a *declarative* platform: web
+pages only concern themselves with *describing* how the page looks,
+and it's up to the browser to implement that description. To us
+browser engineers, that creates a whole bunch of complexity. But think
+about the web as a whole---it involves not just browser engineers, but
+web developers and users as well. Implementing complex invalidation
+algorithms in the browser lets web developers make more interesting
+applications and gives users a better, more responsive web; it's part
+of the value that we as browser engineers provide. The declarative web
+makes it possible for the invalidation algorithms to be written once
+and then automatically benefit everyone else who uses the web.
 :::
 
 
