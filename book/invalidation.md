@@ -175,7 +175,7 @@ Fundamentally, the reason editing this page is slow in our browser is
 that it's pretty big.[^other-reasons] After all, it's not handling the
 keypress that's slow---that just appends a character to a `Text` node,
 which takes almost no time. It's what happens afterwards that takes
-time: the browser has to rerender the whole page. Even seemlingly tiny
+time: the browser has to rerender the whole page. Even seemingly tiny
 changes take a long time on a large page.
 
 [^other-reasons]: I'm sure there are all sorts of performance
@@ -196,14 +196,14 @@ value that browser engineers provide to the web as a whole.
 
 But the principle of incremental performance also really constrains
 our browser. For example, during rendering even *traversing* the whole
-page would take time proportional to the whole page, not the change
-being made, so we can't do that. To achieve incrementality, we're
-going to need to think of the initial render and later re-renders
-differently.[^big-change] When the page is first loaded, rendering is
-definitely going to take time proportional to the size of the page.
-But we treat that initial render as a cache. Later renders will only
-invalidate and recompute the parts of that cache, taking time
-proportional to the changed portion of the page.
+layout tree would take time proportional to the whole page, not the
+change being made, so we can't do that. To achieve incrementality,
+we're going to need to think of the initial render and later
+re-renders differently.[^big-change] When the page is first loaded,
+rendering is definitely going to take time proportional to the size of
+the page. But we treat that initial render as a cache. Later renders
+will only invalidate and recompute the parts of that cache, taking
+time proportional to the changed portion of the page.
 
 [^big-change]: While initial and later renders are conceptually
     different, they'll use the same code path. Basically, the initial
@@ -220,15 +220,17 @@ at a much larger scale.
 
 In a real browser, every step of the rendering pipeline needs to be
 incremental, but this chapter focuses on layout.[^why-layout] Most of
-the chapter is about tracking dependencies, and building abstractions
-to help us do that. To use those abstractions, we'll need to execute a
-large refactor of our layout engine. But ultimately, incrementalizing
-layout will allow us to skip the two most expensive parts of layout:
-building the layout tree and traversing it to compute layout fields.
-Re-layout for this page will take under a millisecond.
+this chapter is about tracking dependencies in the dependency graph,
+and building abstractions to help us do that. To use those
+abstractions, we'll need to execute a large refactor of our layout
+engine. But ultimately, incrementalizing layout will allow us to skip
+the two most expensive parts of layout: building the layout tree and
+traversing it to compute layout fields. When we're done, re-layout
+will take under a millisecond for small changes on this page.
 
-[^why-layout]: Layout is important and also complex enough to
-    demonstrate most of the core challenges and techniques.
+[^why-layout]: Why layout? Because layout is both important and 
+    complex enough to demonstrate most of the core challenges and
+    techniques.
 
 ::: {.further}
 The principle of incremental performance derives from the principles
@@ -238,11 +240,12 @@ and it's up to the browser to implement that description. To us
 browser engineers, that creates a whole bunch of complexity. But think
 about the web as a whole---it involves not just browser engineers, but
 web developers and users as well. Implementing complex invalidation
-algorithms in the browser lets web developers make more interesting
-applications and gives users a better, more responsive web; it's part
-of the value that we as browser engineers provide. The declarative web
-makes it possible for the invalidation algorithms to be written once
-and then automatically benefit everyone else who uses the web.
+algorithms in the browser lets web developers focus on making more
+interesting applications and gives users a better, more responsive
+web; it's part of the value that we as browser engineers provide. The
+declarative web makes it possible for the invalidation algorithms to
+be written once and then automatically benefit everyone else who uses
+the web.
 :::
 
 
