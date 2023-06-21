@@ -372,17 +372,23 @@ class BlockLayout:
                     children.append(next)
                     previous = next
                 self.children.set(children)
+
+                height_dependencies = \
+                    [child.height for child in children]
+                height_dependencies.append(self.children)
+                self.height.set_dependencies(height_dependencies)
         else:
             if self.children.dirty:
                 self.temp_children = []
                 self.new_line()
                 self.recurse(self.node)
                 self.children.set(self.temp_children)
-                self.temp_children = None
 
-        height_dependencies = [child.height for child in self.children.get()]
-        height_dependencies.append(self.children)
-        self.height.set_dependencies(height_dependencies)
+                height_dependencies = \
+                    [child.height for child in self.temp_children]
+                height_dependencies.append(self.children)
+                self.height.set_dependencies(height_dependencies)
+                self.temp_children = None
 
         for child in self.children.get():
             child.layout()
