@@ -131,7 +131,8 @@ class ProtectedField:
 
     def set_dependencies(self, dependencies):
         for dependency in dependencies:
-            dependency.invalidations.add(self)
+            if dependency:
+                dependency.invalidations.add(self)
         self.frozen_dependencies = True
 
     def set_ancestor_dirty_bits(self):
@@ -331,12 +332,10 @@ class BlockLayout:
         self.zoom.set_dependencies([self.parent.zoom])
         self.width.set_dependencies([self.parent.width])
         self.x.set_dependencies([self.parent.x])
-
-        previous_dependencies = [self.parent.y]
-        if self.previous:
-            previous_dependencies.append(self.previous.y)
-            previous_dependencies.append(self.previous.height)
-        self.y.set_dependencies(previous_dependencies)
+        self.y.set_dependencies([
+            self.parent.y,
+            self.previous and self.previous.y,
+            self.previous and self.previous.height])
 
     def layout_needed(self):
         if self.zoom.dirty: return True
@@ -509,10 +508,10 @@ class LineLayout:
 
         self.zoom.set_dependencies([self.parent.zoom])
         self.x.set_dependencies([self.parent.x])
-        if self.previous:
-            self.y.set_dependencies([self.previous.y, self.previous.height])
-        else:
-            self.y.set_dependencies([self.parent.y])
+        self.y.set_dependencies([
+            self.parent.y,
+            self.previous and self.previous.y,
+            self.previous and self.previous.height])
         self.width.set_dependencies([self.parent.width])
         self.height.set_dependencies([self.ascent, self.descent])
 
@@ -615,12 +614,11 @@ class TextLayout:
         self.zoom.set_dependencies([self.parent.zoom])
         self.width.set_dependencies([self.font])
         self.height.set_dependencies([self.font])
-        if self.previous:
-            self.x.set_dependencies(
-                [self.previous.x, self.previous.font, self.previous.width])
-        else:
-            self.x.set_dependencies(
-                [self.parent.x])
+        self.x.set_dependencies([
+            self.parent.x,
+            self.previous and self.previous.x,
+            self.previous and self.previous.font,
+            self.previous and self.previous.width])
         self.y.set_dependencies(
             [self.ascent, self.parent.y, self.parent.ascent])
         self.font.set_dependencies([self.zoom,
