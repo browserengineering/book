@@ -572,7 +572,7 @@ to avoid.
 We need a better approach. As a first step, let's try to combine a
 dirty flag and the field it protects into a single object:
 
-``` {.python replace=(self)/(self%2c%20obj%2c%20name%2c%20parent%3dNone)}
+``` {.python replace=(self)/(self%2c%20obj%2c%20name%2c%20parent%3dNone%2c%20dependencies%3dNone)}
 class ProtectedField:
     def __init__(self):
         self.value = None
@@ -787,7 +787,7 @@ fields that depend on it.
 To do that, we're going to need to keep around a set of fields that
 depend on this one, called its `invalidations`:
 
-``` {.python replace=(self)/(self%2c%20obj%2c%20name%2c%20parent%3dNone)}
+``` {.python replace=(self)/(self%2c%20obj%2c%20name%2c%20parent%3dNone%2c%20dependencies%3dNone)}
 class ProtectedField:
     def __init__(self):
         # ...
@@ -1677,7 +1677,7 @@ for debugging puposes:[^why-print-node]
 because layout objects' printable forms print layout field values,
 which might be dirty and unreadable.
 
-``` {.python replace=%2c%20name/%2c%20name%2c%20parent%3dNone}
+``` {.python replace=%2c%20name/%2c%20name%2c%20parent%3dNone%2c%20dependencies%3dNone}
 class ProtectedField:
     def __init__(self, obj, name):
         self.obj = obj
@@ -1692,7 +1692,7 @@ class ProtectedField:
 
 Name all of your `ProtectedField`s, like this:
 
-``` {.python}
+``` {.python expected=False}
 class DocumentLayout:
     def __init__(self, node, frame):
         # ...
@@ -1841,7 +1841,7 @@ This will be easy to do with an additional (and optional) `parent` parameter to
 a `ProtectedField`. (It's optional because only `ProtectedField`s on layout
 objects need this feature.)
 
-``` {.python}
+``` {.python replace=parent%3dNone/parent%3dNone%2c%20dependencies%3dNone}
 class ProtectedField:
     def __init__(self, obj, name, parent=None):
         # ...
@@ -1872,7 +1872,7 @@ For each layout object type, pass the parameter for each `ProtectedField`.
 Here's `BlockLayout`, for example:
 
 
-``` {.python}
+``` {.python expected=False}
 class BlockLayout:
     def __init__(self, node, parent, previous, frame):
         # ...    

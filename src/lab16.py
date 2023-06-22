@@ -119,7 +119,7 @@ def paint_visual_effects(node, cmds, rect):
     return [transform]
 
 class ProtectedField:
-    def __init__(self, obj, name, parent=None):
+    def __init__(self, obj, name, parent=None, dependencies=None):
         self.obj = obj
         self.name = name
         self.parent = parent
@@ -128,6 +128,8 @@ class ProtectedField:
         self.dirty = True
         self.invalidations = set()
         self.frozen_dependencies = False
+        if dependencies:
+            self.set_dependencies(dependencies)
 
     def set_dependencies(self, dependencies):
         for dependency in dependencies:
@@ -253,11 +255,11 @@ class DocumentLayout:
         self.previous = None
         self.children = []
 
-        self.zoom = ProtectedField(self, "zoom")
-        self.width = ProtectedField(self, "width")
-        self.height = ProtectedField(self, "height")
-        self.x = ProtectedField(self, "x")
-        self.y = ProtectedField(self, "y")
+        self.zoom = ProtectedField(self, "zoom", None, [])
+        self.width = ProtectedField(self, "width", None, [])
+        self.height = ProtectedField(self, "height", None, [])
+        self.x = ProtectedField(self, "x", None, [])
+        self.y = ProtectedField(self, "y", None, [])
 
         self.has_dirty_descendants = True
 
@@ -317,11 +319,16 @@ class BlockLayout:
         self.frame = frame
 
         self.children = ProtectedField(self, "children", self.parent)
-        self.zoom = ProtectedField(self, "zoom", self.parent)
-        self.width = ProtectedField(self, "width", self.parent)
+        self.zoom = ProtectedField(self, "zoom", self.parent,
+            [self.parent.zoom])
+        self.width = ProtectedField(self, "width", self.parent,
+            [self.parent.width])
         self.height = ProtectedField(self, "height", self.parent)
-        self.x = ProtectedField(self, "x", self.parent)
-        self.y = ProtectedField(self, "y", self.parent)
+        self.x = ProtectedField(self, "x", self.parent, [self.parent.x])
+        self.y = ProtectedField(self, "y", self.parent,
+            [self.parent.y,
+             self.previous and self.previous.y,
+             self.previous and self.previous.height])
 
         self.has_dirty_descendants = True
 
@@ -329,13 +336,6 @@ class BlockLayout:
         # inline children. But we don't know which until self.recurse is
         # called, and building up the dependencies would amount to a duplicate
         # implementation of self.recurse.
-        self.zoom.set_dependencies([self.parent.zoom])
-        self.width.set_dependencies([self.parent.width])
-        self.x.set_dependencies([self.parent.x])
-        self.y.set_dependencies([
-            self.parent.y,
-            self.previous and self.previous.y,
-            self.previous and self.previous.height])
 
     def layout_needed(self):
         if self.zoom.dirty: return True
@@ -606,33 +606,30 @@ class TextLayout:
         self.parent = parent
         self.previous = previous
 
-        self.zoom = ProtectedField(self, "zoom", self.parent)
-        self.width = ProtectedField(self, "width", self.parent)
-        self.height = ProtectedField(self, "height", self.parent)
-        self.x = ProtectedField(self, "x", self.parent)
-        self.y = ProtectedField(self, "y", self.parent)
-        self.font = ProtectedField(self, "font", self.parent)
-        self.ascent = ProtectedField(self, "ascent", self.parent)
-        self.descent = ProtectedField(self, "descent", self.parent)
+        self.zoom = ProtectedField(self, "zoom", self.parent,
+            [self.parent.zoom])
+        self.font = ProtectedField(self, "font", self.parent,
+            [self.zoom,
+             self.node.style['font-weight'],
+             self.node.style['font-style'],
+             self.node.style['font-size']])
+        self.width = ProtectedField(self, "width", self.parent,
+            [self.font])
+        self.height = ProtectedField(self, "height", self.parent,
+            [self.font])
+        self.ascent = ProtectedField(self, "ascent", self.parent,
+            [self.font])
+        self.descent = ProtectedField(self, "descent", self.parent,
+            [self.font])
+        self.x = ProtectedField(self, "x", self.parent,
+            [self.parent.x,
+             self.previous and self.previous.x,
+             self.previous and self.previous.font,
+             self.previous and self.previous.width])
+        self.y = ProtectedField(self, "y", self.parent,
+            [self.ascent, self.parent.y, self.parent.ascent])
 
         self.has_dirty_descendants = True
-
-        self.zoom.set_dependencies([self.parent.zoom])
-        self.width.set_dependencies([self.font])
-        self.height.set_dependencies([self.font])
-        self.x.set_dependencies([
-            self.parent.x,
-            self.previous and self.previous.x,
-            self.previous and self.previous.font,
-            self.previous and self.previous.width])
-        self.y.set_dependencies(
-            [self.ascent, self.parent.y, self.parent.ascent])
-        self.font.set_dependencies([self.zoom,
-            self.node.style['font-weight'],
-            self.node.style['font-style'],
-            self.node.style['font-size']])
-        self.ascent.set_dependencies([self.font])
-        self.descent.set_dependencies([self.font])
 
     def layout_needed(self):
         if self.zoom.dirty: return True
@@ -692,35 +689,29 @@ class EmbedLayout:
         self.previous = previous
 
         self.children = []
-        self.zoom = ProtectedField(self, "zoom", self.parent)
-        self.width = ProtectedField(self, "width", self.parent)
-        self.height = ProtectedField(self, "height", self.parent)
-        self.x = ProtectedField(self, "x", self.parent)
-        self.y = ProtectedField(self, "y", self.parent)
-        self.font = ProtectedField(self, "font", self.parent)
-        self.ascent = ProtectedField(self, "ascent", self.parent)
-        self.descent = ProtectedField(self, "descent", self.parent)
-
-        self.has_dirty_descendants = True
-
-        self.zoom.set_dependencies([self.parent.zoom])
-        self.width.set_dependencies([self.zoom])
-        self.height.set_dependencies([self.zoom, self.font])
-        if self.previous:
-            self.x.set_dependencies(
-                [self.previous.x,
-                self.previous.font,
-                self.previous.width])
-        else:
-            self.x.set_dependencies([self.parent.x])
-        self.y.set_dependencies(
-            [self.ascent,self.parent.y, self.parent.ascent])
-        self.font.set_dependencies([self.zoom,
+        self.zoom = ProtectedField(self, "zoom", self.parent,
+            [self.parent.zoom])
+        self.font = ProtectedField(self, "font", self.parent,
+           [self.zoom,
             self.node.style['font-weight'],
             self.node.style['font-style'],
             self.node.style['font-size']])
-        self.ascent.set_dependencies([self.height])
-        self.descent.set_dependencies([])
+        self.width = ProtectedField(self, "width", self.parent,
+            [self.zoom])
+        self.height = ProtectedField(self, "height", self.parent,
+            [self.zoom, self.font])
+        self.ascent = ProtectedField(self, "ascent", self.parent,
+            [self.height])
+        self.descent = ProtectedField(self, "descent", self.parent, [])
+        self.x = ProtectedField(self, "x", self.parent,
+            [self.parent.x,
+             self.previous and self.previous.x,
+             self.previous and self.previous.font,
+             self.previous and self.previous.width])
+        self.y = ProtectedField(self, "y", self.parent,
+            [self.ascent,self.parent.y, self.parent.ascent])
+
+        self.has_dirty_descendants = True
 
     def layout_needed(self):
         if self.zoom.dirty: return True
