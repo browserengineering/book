@@ -129,9 +129,14 @@ class ProtectedField:
         self.invalidations = set()
         self.frozen_dependencies = False
         if dependencies:
-            self.set_dependencies(dependencies)
+            self.set_dependencies_internal(dependencies)
 
     def set_dependencies(self, dependencies):
+        assert not self.frozen_dependencies
+        assert self.name in ["height", "ascent", "descent"]
+        self.set_dependencies_internal(dependencies)
+
+    def set_dependencies_internal(self, dependencies):
         for dependency in dependencies:
             if dependency:
                 dependency.invalidations.add(self)
@@ -502,24 +507,22 @@ class LineLayout:
         self.parent = parent
         self.previous = previous
         self.children = []
-        self.zoom = ProtectedField(self, "zoom", self.parent)
-        self.x = ProtectedField(self, "x", self.parent)
-        self.y = ProtectedField(self, "y", self.parent)
-        self.width = ProtectedField(self, "width", self.parent)
-        self.height = ProtectedField(self, "height", self.parent)
+        self.zoom = ProtectedField(self, "zoom", self.parent,
+            [self.parent.zoom])
+        self.x = ProtectedField(self, "x", self.parent,
+            [self.parent.x])
+        self.y = ProtectedField(self, "y", self.parent,
+            [self.parent.y,
+             self.previous and self.previous.y,
+             self.previous and self.previous.height])
         self.ascent = ProtectedField(self, "ascent", self.parent)
         self.descent = ProtectedField(self, "descent", self.parent)
+        self.width = ProtectedField(self, "width", self.parent,
+            [self.parent.width])
+        self.height = ProtectedField(self, "height", self.parent,
+            [self.ascent, self.descent])
 
         self.has_dirty_descendants = True
-
-        self.zoom.set_dependencies([self.parent.zoom])
-        self.x.set_dependencies([self.parent.x])
-        self.y.set_dependencies([
-            self.parent.y,
-            self.previous and self.previous.y,
-            self.previous and self.previous.height])
-        self.width.set_dependencies([self.parent.width])
-        self.height.set_dependencies([self.ascent, self.descent])
 
     def layout_needed(self):
         if self.zoom.dirty: return True
