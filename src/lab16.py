@@ -132,7 +132,6 @@ class ProtectedField:
             self.set_dependencies_internal(dependencies)
 
     def set_dependencies(self, dependencies):
-        assert not self.frozen_dependencies
         assert self.name in ["height", "ascent", "descent"]
         self.set_dependencies_internal(dependencies)
 
