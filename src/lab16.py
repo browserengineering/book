@@ -127,18 +127,25 @@ class ProtectedField:
         self.value = None
         self.dirty = True
         self.invalidations = set()
-        self.frozen_dependencies = False
-        if dependencies:
-            self.set_dependencies_internal(dependencies)
+        self.frozen_dependencies = dependencies != None
+        if dependencies != None:
+            for dependency in dependencies:
+                dependency.invalidations.add(self)
+        else:
+            assert isinstance(self.obj, Element) or \
+                isinstance(self.obj, Text) or \
+                self.name in [
+                    "height", "ascent", "descent", "children"
+                ]
 
     def set_dependencies(self, dependencies):
         assert self.name in ["height", "ascent", "descent"]
+        assert not self.frozen_dependencies
         self.set_dependencies_internal(dependencies)
 
     def set_dependencies_internal(self, dependencies):
         for dependency in dependencies:
-            if dependency:
-                dependency.invalidations.add(self)
+            dependency.invalidations.add(self)
         self.frozen_dependencies = True
 
     def set_ancestor_dirty_bits(self):
@@ -173,7 +180,6 @@ class ProtectedField:
         if self.frozen_dependencies:
             assert self in field.invalidations
         else:
-            assert not self.parent or self.name == "children"
             field.invalidations.add(self)
 
         if wbetools.PRINT_INVALIDATION_DEPENDENCIES:
@@ -261,7 +267,7 @@ class DocumentLayout:
 
         self.zoom = ProtectedField(self, "zoom", None, [])
         self.width = ProtectedField(self, "width", None, [])
-        self.height = ProtectedField(self, "height", None, [])
+        self.height = ProtectedField(self, "height")
         self.x = ProtectedField(self, "x", None, [])
         self.y = ProtectedField(self, "y", None, [])
 
@@ -329,10 +335,12 @@ class BlockLayout:
             [self.parent.width])
         self.height = ProtectedField(self, "height", self.parent)
         self.x = ProtectedField(self, "x", self.parent, [self.parent.x])
-        self.y = ProtectedField(self, "y", self.parent,
-            [self.parent.y,
-             self.previous and self.previous.y,
-             self.previous and self.previous.height])
+
+        if self.previous:
+            y_dependencies = [self.previous.y, self.previous.height]
+        else:
+            y_dependencies = [self.parent.y]
+        self.y = ProtectedField(self, "y", self.parent, y_dependencies)
 
         self.has_dirty_descendants = True
 
@@ -377,10 +385,10 @@ class BlockLayout:
                     previous = next
                 self.children.set(children)
 
-                height_dependencies = \
-                    [child.height for child in children]
-                height_dependencies.append(self.children)
-                self.height.set_dependencies(height_dependencies)
+                #height_dependencies = \
+                #    [child.height for child in children]
+                #height_dependencies.append(self.children)
+                #self.height.set_dependencies(height_dependencies)
         else:
             if self.children.dirty:
                 self.temp_children = []
@@ -388,10 +396,10 @@ class BlockLayout:
                 self.recurse(self.node)
                 self.children.set(self.temp_children)
 
-                height_dependencies = \
-                    [child.height for child in self.temp_children]
-                height_dependencies.append(self.children)
-                self.height.set_dependencies(height_dependencies)
+                #height_dependencies = \
+                #    [child.height for child in self.temp_children]
+                #height_dependencies.append(self.children)
+                #self.height.set_dependencies(height_dependencies)
                 self.temp_children = None
 
         for child in self.children.get():
@@ -510,10 +518,11 @@ class LineLayout:
             [self.parent.zoom])
         self.x = ProtectedField(self, "x", self.parent,
             [self.parent.x])
-        self.y = ProtectedField(self, "y", self.parent,
-            [self.parent.y,
-             self.previous and self.previous.y,
-             self.previous and self.previous.height])
+        if self.previous:
+            y_dependencies = [self.previous.y, self.previous.height]
+        else:
+            y_dependencies = [self.parent.y]
+        self.y = ProtectedField(self, "y", self.parent, y_dependencies)
         self.ascent = ProtectedField(self, "ascent", self.parent)
         self.descent = ProtectedField(self, "descent", self.parent)
         self.width = ProtectedField(self, "width", self.parent,
@@ -537,10 +546,10 @@ class LineLayout:
     def layout(self):
         if not self.layout_needed(): return
 
-        self.ascent.set_dependencies(
-            [child.ascent for child in self.children])
-        self.descent.set_dependencies(
-            [child.descent for child in self.children])
+        #self.ascent.set_dependencies(
+        #    [child.ascent for child in self.children])
+        #self.descent.set_dependencies(
+        #    [child.descent for child in self.children])
 
         self.zoom.copy(self.parent.zoom)
         self.width.copy(self.parent.width)
@@ -621,11 +630,11 @@ class TextLayout:
             [self.font])
         self.descent = ProtectedField(self, "descent", self.parent,
             [self.font])
-        self.x = ProtectedField(self, "x", self.parent,
-            [self.parent.x,
-             self.previous and self.previous.x,
-             self.previous and self.previous.font,
-             self.previous and self.previous.width])
+        if self.previous:
+            x_dependencies = [self.previous.x, self.previous.font, self.previous.width]
+        else:
+            x_dependencies = [self.parent.x]
+        self.x = ProtectedField(self, "x", self.parent, x_dependencies)
         self.y = ProtectedField(self, "y", self.parent,
             [self.ascent, self.parent.y, self.parent.ascent])
 
@@ -703,11 +712,11 @@ class EmbedLayout:
         self.ascent = ProtectedField(self, "ascent", self.parent,
             [self.height])
         self.descent = ProtectedField(self, "descent", self.parent, [])
-        self.x = ProtectedField(self, "x", self.parent,
-            [self.parent.x,
-             self.previous and self.previous.x,
-             self.previous and self.previous.font,
-             self.previous and self.previous.width])
+        if self.previous:
+            x_dependencies = [self.previous.x, self.previous.font, self.previous.width]
+        else:
+            x_dependencies = [self.parent.x]
+        self.x = ProtectedField(self, "x", self.parent, x_dependencies)
         self.y = ProtectedField(self, "y", self.parent,
             [self.ascent,self.parent.y, self.parent.ascent])
 
