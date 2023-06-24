@@ -86,7 +86,6 @@ def font(who, css_style, zoom):
     font_size = device_px(size, zoom)
     return get_font(font_size, weight, style)
 
-
 @wbetools.patch(has_outline)
 def has_outline(node):
     return parse_outline(node.style['outline'].get(), 1)
@@ -119,7 +118,8 @@ def paint_visual_effects(node, cmds, rect):
     return [transform]
 
 class ProtectedField:
-    def __init__(self, obj, name, parent=None, dependencies=None):
+    def __init__(self, obj, name, parent=None, dependencies=None,
+        invalidations=None):
         self.obj = obj
         self.name = name
         self.parent = parent
@@ -132,18 +132,21 @@ class ProtectedField:
             for dependency in dependencies:
                 dependency.invalidations.add(self)
         else:
-            assert isinstance(self.obj, Element) or \
-                isinstance(self.obj, Text) or \
+            assert \
                 self.name in [
                     "height", "ascent", "descent", "children"
-                ]
+                ] or self.name in CSS_PROPERTIES
+
+        self.frozen_invalidations = invalidations != None
+        if invalidations != None:
+            assert self.name == "children"
+            for invalidation in invalidations:
+                self.invalidations.add(invalidation)
 
     def set_dependencies(self, dependencies):
-        assert self.name in ["height", "ascent", "descent"]
+        assert self.name in ["height", "ascent", "descent"] or \
+            self.name in CSS_PROPERTIES
         assert not self.frozen_dependencies
-        self.set_dependencies_internal(dependencies)
-
-    def set_dependencies_internal(self, dependencies):
         for dependency in dependencies:
             dependency.invalidations.add(self)
         self.frozen_dependencies = True
@@ -177,7 +180,7 @@ class ProtectedField:
         return self.value
 
     def read(self, field):
-        if self.frozen_dependencies:
+        if self.frozen_dependencies or field.frozen_invalidations:
             assert self in field.invalidations
         else:
             field.invalidations.add(self)
@@ -222,6 +225,15 @@ CSS_PROPERTIES = {
     "image-rendering": "auto",
 }
 
+def init_style(node):
+    node.style = dict([
+            (property, ProtectedField(node, property))
+            for property in CSS_PROPERTIES
+        ])
+    for (name, field) in node.style.items():
+        if name in INHERITED_PROPERTIES and node.parent:
+            field.set_dependencies([node.parent.style[name]])
+
 @wbetools.patch(Element)
 class Element:
     def __init__(self, tag, attributes, parent):
@@ -230,10 +242,7 @@ class Element:
         self.children = []
         self.parent = parent
 
-        self.style = dict([
-            (property, ProtectedField(self, property))
-            for property in CSS_PROPERTIES
-        ])
+        self.style = None
         self.animations = {}
 
         self.is_focused = False
@@ -246,10 +255,7 @@ class Text:
         self.children = []
         self.parent = parent
 
-        self.style = dict([
-            (property, ProtectedField(self, property))
-            for property in CSS_PROPERTIES
-        ])
+        self.style = None
         self.animations = {}
 
         self.is_focused = False
@@ -328,7 +334,6 @@ class BlockLayout:
         self.previous = previous
         self.frame = frame
 
-        self.children = ProtectedField(self, "children", self.parent)
         self.zoom = ProtectedField(self, "zoom", self.parent,
             [self.parent.zoom])
         self.width = ProtectedField(self, "width", self.parent,
@@ -342,12 +347,10 @@ class BlockLayout:
             y_dependencies = [self.parent.y]
         self.y = ProtectedField(self, "y", self.parent, y_dependencies)
 
-        self.has_dirty_descendants = True
+        self.children = ProtectedField(self, "children", self.parent, None,
+            [self.height])
 
-        # self.children has dependencies on the zoom and font style of various
-        # inline children. But we don't know which until self.recurse is
-        # called, and building up the dependencies would amount to a duplicate
-        # implementation of self.recurse.
+        self.has_dirty_descendants = True
 
     def layout_needed(self):
         if self.zoom.dirty: return True
@@ -385,10 +388,10 @@ class BlockLayout:
                     previous = next
                 self.children.set(children)
 
-                #height_dependencies = \
-                #    [child.height for child in children]
-                #height_dependencies.append(self.children)
-                #self.height.set_dependencies(height_dependencies)
+                height_dependencies = \
+                   [child.height for child in children]
+                height_dependencies.append(self.children)
+                self.height.set_dependencies(height_dependencies)
         else:
             if self.children.dirty:
                 self.temp_children = []
@@ -396,10 +399,10 @@ class BlockLayout:
                 self.recurse(self.node)
                 self.children.set(self.temp_children)
 
-                #height_dependencies = \
-                #    [child.height for child in self.temp_children]
-                #height_dependencies.append(self.children)
-                #self.height.set_dependencies(height_dependencies)
+                height_dependencies = \
+                   [child.height for child in self.temp_children]
+                height_dependencies.append(self.children)
+                self.height.set_dependencies(height_dependencies)
                 self.temp_children = None
 
         for child in self.children.get():
@@ -546,10 +549,10 @@ class LineLayout:
     def layout(self):
         if not self.layout_needed(): return
 
-        #self.ascent.set_dependencies(
-        #    [child.ascent for child in self.children])
-        #self.descent.set_dependencies(
-        #    [child.descent for child in self.children])
+        self.ascent.set_dependencies(
+           [child.ascent for child in self.children])
+        self.descent.set_dependencies(
+           [child.descent for child in self.children])
 
         self.zoom.copy(self.parent.zoom)
         self.width.copy(self.parent.width)
@@ -889,6 +892,8 @@ class IframeLayout(EmbedLayout):
         display_list.extend(cmds)
 
 def style(node, rules, frame):
+    if not node.style:
+        init_style(node)
     needs_style = any([field.dirty for field in node.style.values()])
     if needs_style:
         old_style = dict([
