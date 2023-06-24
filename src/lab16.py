@@ -77,10 +77,10 @@ def paint_outline(node, cmds, rect, zoom):
 
 @wbetools.patch(font)
 def font(who, css_style, zoom):
-    weight = who.read(css_style['font-weight'])
-    style = who.read(css_style['font-style'])
+    weight = css_style['font-weight'].read(notify=who)
+    style = css_style['font-style'].read(notify=who)
     try:
-        size = float(who.read(css_style['font-size'])[:-2])
+        size = float(css_style['font-size'].read(notify=who)[:-2])
     except ValueError:
         size = 16
     font_size = device_px(size, zoom)
@@ -179,30 +179,30 @@ class ProtectedField:
         assert not self.dirty
         return self.value
 
-    def read(self, field):
-        if self.frozen_dependencies or field.frozen_invalidations:
-            assert self in field.invalidations
+    def read(self, notify):
+        if notify.frozen_dependencies or self.frozen_invalidations:
+            assert notify in self.invalidations
         else:
-            field.invalidations.add(self)
+            self.invalidations.add(notify)
 
         if wbetools.PRINT_INVALIDATION_DEPENDENCIES:
             prefix = ""
-            if self.obj == field.obj:
+            if notify.obj == self.obj:
                 prefix = "self."
-            elif field.obj == self.parent:
+            elif self.obj == notify.parent:
                 prefix = "self.parent."
-            elif self.obj == field.obj.parent:
+            elif notify.obj == self.obj.parent:
                 prefix = "self.child."
-            elif hasattr(self.obj, "previous") and \
-                self.obj.previous == field.obj:
+            elif hasattr(notify.obj, "previous") and \
+                notify.obj.previous == self.obj:
                     prefix = "self.previous."
             print("{} depends on {}{}".format(
-                self.name, prefix, field.name))
+                notify.name, prefix, self.name))
 
-        return field.get()
+        return self.get()
 
     def copy(self, field):
-        self.set(self.read(field))
+        self.set(field.read(notify=self))
 
     def __str__(self):
         if self.dirty:
@@ -306,7 +306,7 @@ class DocumentLayout:
         child.layout()
         self.has_dirty_descendants = False
 
-        child_height = self.height.read(child.height)
+        child_height = child.height.read(notify=self.height)
         self.height.set(child_height + 2 * device_px(VSTEP, zoom))
 
         if wbetools.ASSERT_LAYOUT_CLEAN:
@@ -370,8 +370,8 @@ class BlockLayout:
         self.x.copy(self.parent.x)
 
         if self.previous:
-            prev_y = self.y.read(self.previous.y)
-            prev_height = self.y.read(self.previous.height)
+            prev_y = self.previous.y.read(notify=self.y)
+            prev_height = self.previous.height.read(notify=self.y)
             self.y.set(prev_y + prev_height)
         else:
             self.y.copy(self.parent.y)
@@ -410,20 +410,20 @@ class BlockLayout:
 
         self.has_dirty_descendants = False
 
-        children = self.height.read(self.children)
+        children = self.children.read(notify=self.height)
         new_height = sum([
-            self.height.read(child.height)
+            child.height.read(notify=self.height)
             for child in children
         ])
         self.height.set(new_height)
 
     def input(self, node):
-        zoom = self.children.read(self.zoom)
+        zoom = self.zoom.read(notify=self.children)
         w = device_px(INPUT_WIDTH_PX, zoom)
         self.add_inline_child(node, w, InputLayout, self.frame)
 
     def image(self, node):
-        zoom = self.children.read(self.zoom)
+        zoom = self.zoom.read(notify=self.children)
         if 'width' in node.attributes:
             w = device_px(int(node.attributes['width']), zoom)
         else:
@@ -431,7 +431,7 @@ class BlockLayout:
         self.add_inline_child(node, w, ImageLayout, self.frame)
 
     def iframe(self, node):
-        zoom = self.children.read(self.zoom)
+        zoom = self.zoom.read(notify=self.children)
         if 'width' in self.node.attributes:
             w = device_px(int(self.node.attributes['width']), zoom)
         else:
@@ -439,7 +439,7 @@ class BlockLayout:
         self.add_inline_child(node, w, IframeLayout, self.frame)
 
     def text(self, node):
-        zoom = self.children.read(self.zoom)
+        zoom = self.zoom.read(notify=self.children)
         node_font = font(self.children, node.style, zoom)
         for word in node.text.split():
             w = node_font.measureText(word)
@@ -456,7 +456,7 @@ class BlockLayout:
 
     def add_inline_child(self, node, w, child_class,
         frame, word=None):
-        width = self.children.read(self.width)
+        width = self.width.read(notify=self.children)
         if self.cursor_x + w > width:
             self.new_line()
         line = self.temp_children[-1]
@@ -466,7 +466,7 @@ class BlockLayout:
             child = child_class(node, line, self.previous_word, frame)
         line.children.append(child)
         self.previous_word = child
-        zoom = self.children.read(self.zoom)
+        zoom = self.zoom.read(notify=self.children)
         self.cursor_x += w + font(self.children, node.style, zoom).measureText(' ')
 
     def paint(self, display_list):
@@ -532,7 +532,7 @@ class LineLayout:
             [self.parent.width])
         self.height = ProtectedField(self, "height", self.parent,
             [self.ascent, self.descent])
-        self.fields_initialized = False
+        self.initialized_fields = False
 
         self.has_dirty_descendants = True
 
@@ -550,19 +550,19 @@ class LineLayout:
     def layout(self):
         if not self.layout_needed(): return
 
-        if not self.fields_initialized:
+        if not self.initialized_fields:
             self.ascent.set_dependencies(
                [child.ascent for child in self.children])
             self.descent.set_dependencies(
                [child.descent for child in self.children])
-            self.fields_initialized = True
+            self.initialized_fields = True
 
         self.zoom.copy(self.parent.zoom)
         self.width.copy(self.parent.width)
         self.x.copy(self.parent.x)
         if self.previous:
-            prev_y = self.y.read(self.previous.y)
-            prev_height = self.y.read(self.previous.height)
+            prev_y = self.previous.y.read(notify=self.y)
+            prev_height = self.previous.height.read(notify=self.y)
             self.y.set(prev_y + prev_height)
         else:
             self.y.copy(self.parent.y)
@@ -578,23 +578,23 @@ class LineLayout:
             return
 
         self.ascent.set(max([
-            -self.ascent.read(child.ascent)
+            -child.ascent.read(notify=self.ascent)
             for child in self.children
         ]))
 
         self.descent.set(max([
-            self.descent.read(child.descent)
+            child.descent.read(notify=self.descent)
             for child in self.children
         ]))
 
         for child in self.children:
-            new_y = child.y.read(self.y)
-            new_y += child.y.read(self.ascent)
-            new_y += child.y.read(child.ascent)
+            new_y = self.y.read(notify=child.y)
+            new_y += self.ascent.read(notify=child.y)
+            new_y += child.ascent.read(notify=child.y)
             child.y.set(new_y)
 
-        max_ascent = self.height.read(self.ascent)
-        max_descent = self.height.read(self.descent)
+        max_ascent = self.ascent.read(notify=self.height)
+        max_descent = self.descent.read(notify=self.height)
 
         self.height.set(max_ascent + max_descent)
 
@@ -663,25 +663,25 @@ class TextLayout:
 
         self.zoom.copy(self.parent.zoom)
 
-        zoom = self.font.read(self.zoom)
+        zoom = self.zoom.read(notify=self.font)
         self.font.set(font(self.font, self.node.style, zoom))
 
-        f = self.width.read(self.font)
+        f = self.font.read(notify=self.width)
         self.width.set(f.measureText(self.word))
 
-        f = self.ascent.read(self.font)
+        f = self.font.read(notify=self.ascent)
         self.ascent.set(f.getMetrics().fAscent * 1.25)
 
-        f = self.descent.read(self.font)
+        f = self.font.read(notify=self.descent)
         self.descent.set(f.getMetrics().fDescent * 1.25)
 
-        f = self.height.read(self.font)
+        f = self.font.read(notify=self.height)
         self.height.set(linespace(f) * 1.25)
 
         if self.previous:
-            prev_x = self.x.read(self.previous.x)
-            prev_font = self.x.read(self.previous.font)
-            prev_width = self.x.read(self.previous.width)
+            prev_x = self.previous.x.read(notify=self.x)
+            prev_font = self.previous.font.read(notify=self.x)
+            prev_width = self.previous.width.read(notify=self.x)
             self.x.set(
                 prev_x + prev_font.measureText(' ') + prev_width)
         else:
@@ -743,20 +743,20 @@ class EmbedLayout:
     def layout_before(self):
         self.zoom.copy(self.parent.zoom)
 
-        zoom = self.font.read(self.zoom)
+        zoom = self.zoom.read(notify=self.font)
         self.font.set(font(self.font, self.node.style, zoom))
 
         if self.previous:
             assert hasattr(self, "previous")
-            prev_x = self.x.read(self.previous.x)
-            prev_font = self.x.read(self.previous.font)
-            prev_width = self.x.read(self.previous.width)
+            prev_x = self.previous.x.read(notify=self.x)
+            prev_font = self.previous.font.read(notify=self.x)
+            prev_width = self.previous.width.read(notify=self.x)
             self.x.set(prev_x + prev_font.measureText(' ') + prev_width)
         else:
             self.x.copy(self.parent.x)
 
     def layout_after(self):
-        height = self.ascent.read(self.height)
+        height = self.height.read(notify=self.ascent)
         self.ascent.set(-height)
 
         self.descent.set(0)
@@ -768,9 +768,9 @@ class InputLayout(EmbedLayout):
     def layout(self):
         if not self.layout_needed(): return
         self.layout_before()
-        zoom = self.width.read(self.zoom)
+        zoom = self.zoom.read(notify=self.width)
         self.width.set(device_px(INPUT_WIDTH_PX, zoom))
-        font = self.height.read(self.font)
+        font = self.font.read(notify=self.height)
         self.height.set(linespace(font))
         self.layout_after()
 
@@ -820,14 +820,14 @@ class ImageLayout(EmbedLayout):
         image_height = self.node.image.height()
         aspect_ratio = image_width / image_height
 
-        w_zoom = self.width.read(self.zoom)
-        h_zoom = self.height.read(self.zoom)
+        w_zoom = self.zoom.read(notify=self.width)
+        h_zoom = self.zoom.read(notify=self.height)
         if width_attr and height_attr:
             self.width.set(device_px(int(width_attr), w_zoom))
             self.img_height = device_px(int(height_attr), h_zoom)
         elif width_attr:
             self.width.set(device_px(int(width_attr), w_zoom))
-            w = self.height.read(self.width)
+            w = self.width.read(notify=self.height)
             self.img_height = w / aspect_ratio
         elif height_attr:
             self.img_height = device_px(int(height_attr), h_zoom)
@@ -835,7 +835,7 @@ class ImageLayout(EmbedLayout):
         else:
             self.width.set(device_px(image_width, w_zoom))
             self.img_height = device_px(image_height, h_zoom)
-        font = self.height.read(self.font)
+        font = self.font.read(notify=self.height)
         self.height.set(max(self.img_height, linespace(font)))
         self.layout_after()
 
@@ -857,13 +857,13 @@ class IframeLayout(EmbedLayout):
         self.layout_before()
         width_attr = self.node.attributes.get('width')
         height_attr = self.node.attributes.get('height')
-        w_zoom = self.width.read(self.zoom)
+        w_zoom = self.zoom.read(notify=self.width)
         if width_attr:
             self.width.set(device_px(int(width_attr) + 2, w_zoom))
         else:
             self.width.set(device_px(IFRAME_WIDTH_PX + 2, w_zoom))
         
-        zoom = self.height.read(self.zoom)
+        zoom = self.zoom.read(notify=self.height)
         if height_attr:
             self.height.set(device_px(int(height_attr) + 2, zoom))
         else:
@@ -908,7 +908,7 @@ def style(node, rules, frame):
             if node.parent:
                 parent_field = node.parent.style[property]
                 parent_value = \
-                    node.style[property].read(parent_field)
+                    parent_field.read(notify=node.style[property])
                 new_style[property] = parent_value
             else:
                 new_style[property] = default_value
@@ -926,7 +926,7 @@ def style(node, rules, frame):
             if node.parent:
                 parent_field = node.parent.style["font-size"]
                 parent_font_size = \
-                    node.style["font-size"].read(parent_field)
+                    parent_field.read(notify=node.style["font-size"])
             else:
                 parent_font_size = INHERITED_PROPERTIES["font-size"]
             node_pct = float(new_style["font-size"][:-1]) / 100
