@@ -146,7 +146,7 @@ class ProtectedField:
     def set_dependencies(self, dependencies):
         assert self.name in ["height", "ascent", "descent"] or \
             self.name in CSS_PROPERTIES
-        assert not self.frozen_dependencies
+        assert self.name == "height" or not self.frozen_dependencies
         for dependency in dependencies:
             dependency.invalidations.add(self)
         self.frozen_dependencies = True
