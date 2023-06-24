@@ -532,6 +532,7 @@ class LineLayout:
             [self.parent.width])
         self.height = ProtectedField(self, "height", self.parent,
             [self.ascent, self.descent])
+        self.fields_initialized = False
 
         self.has_dirty_descendants = True
 
@@ -549,10 +550,12 @@ class LineLayout:
     def layout(self):
         if not self.layout_needed(): return
 
-        self.ascent.set_dependencies(
-           [child.ascent for child in self.children])
-        self.descent.set_dependencies(
-           [child.descent for child in self.children])
+        if not self.fields_initialized:
+            self.ascent.set_dependencies(
+               [child.ascent for child in self.children])
+            self.descent.set_dependencies(
+               [child.descent for child in self.children])
+            self.fields_initialized = True
 
         self.zoom.copy(self.parent.zoom)
         self.width.copy(self.parent.width)
