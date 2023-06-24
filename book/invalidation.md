@@ -655,7 +655,7 @@ to avoid.
 We need a better approach. As a first step, let's try to combine a
 dirty flag and the field it protects into a single object:
 
-``` {.python replace=(self)/(self%2c%20obj%2c%20name%2c%20parent%3dNone%2c%20dependencies%3dNone)}
+``` {.python replace=(self):/(self%2c%20obj%2c%20name%2c%20parent%3dNone%2c%20dependencies%3dNone%2c}
 class ProtectedField:
     def __init__(self):
         self.value = None
@@ -870,7 +870,7 @@ fields that depend on it.
 To do that, we're going to need to keep around a set of fields that
 depend on this one, called its `invalidations`:
 
-``` {.python replace=(self)/(self%2c%20obj%2c%20name%2c%20parent%3dNone%2c%20dependencies%3dNone)}
+``` {.python replace=(self):/(self%2c%20obj%2c%20name%2c%20parent%3dNone%2c%20dependencies%3dNone%2c}
 class ProtectedField:
     def __init__(self):
         # ...
@@ -911,13 +911,14 @@ That's definitely less error-prone, but it'd be even better if we
 didn't have to think about dependencies at all. Think: why _does_ the
 child's `zoom` need to depend on its parent's? It's because we read
 from the parent's zoom, with `get`, when computing the child's. We can
-make a variant of `get` that captures this pattern:
+make a variant of `get` that captures this pattern. The `notify` parameter
+indicates a field to invalidate when this field changes. 
 
 ``` {.python}
 class ProtectedField:
-    def read(self, field):
-        field.invalidations.add(self)
-        return field.get()
+    def read(self, notify):
+        self.invalidations.add(notify)
+        return self.get()
 ```
 
 Now the `zoom` computation just needs to use `read`, and all of the
@@ -926,7 +927,7 @@ marking and dependency logic will be handled automatically:
 ``` {.python dropline=self.parent.zoom replace=set(parent_zoom)/copy(self.parent.zoom)}
 class BlockLayout:
     def layout(self):
-        parent_zoom = self.zoom.read(self.parent.zoom)
+        parent_zoom = self.parent.zoom.read(notify=self.zoom)
         self.zoom.set(parent_zoom)
 ```
 
@@ -936,7 +937,7 @@ common, so let's add a shortcut for it:
 ``` {.python}
 class ProtectedField:
     def copy(self, field):
-        self.set(self.read(field))
+        self.set(field.read(notify=self))
 ```
 
 This makes the code a little shorter:
@@ -1031,7 +1032,7 @@ on the `width`:
 class BlockLayout:
     def add_inline_child(self, node, w, child_class,
         frame, word=None):
-        width = self.children.read(self.width)
+        width = self.width.read(notify=self.children)
         if self.cursor_x + w > width:
             self.new_line()
         # ...
@@ -1045,7 +1046,7 @@ of the time, this argument depends on `zoom`:
 ``` {.python}
 class BlockLayout:
     def input(self, node):
-        zoom = self.children.read(self.zoom)
+        zoom = self.zoom.read(notify=self.children)
         w = device_px(INPUT_WIDTH_PX, zoom)
         self.add_inline_child(node, w, InputLayout, self.frame)
 ```
@@ -1058,7 +1059,7 @@ computes the `w` parameter using a font returned by `font`:
 ``` {.python replace=node.style/self.children%2c%20node.style}
 class BlockLayout:
     def text(self, node):
-        zoom = self.children.read(self.zoom)
+        zoom = self.zoom.read(notify=self.children)
         node_font = font(node.style, zoom)
         for word in node.text.split():
             w = node_font.measureText(word)
@@ -1304,7 +1305,7 @@ Now all that's left are the various types of replaced content. In
 class InputLayout(EmbedLayout):
     def layout(self):
         # ...
-        zoom = self.width.read(self.zoom)
+        zoom = self.zoom.read(notify=self.width)
         self.width.set(device_px(INPUT_WIDTH_PX, zoom))
         # ...
 ```
@@ -1396,7 +1397,7 @@ class DocumentLayout:
 
     def layout(self, width, zoom):
         # ...
-        child_height = self.height.read(child.height)
+        child_height = child.height.read(notify=self.height)
         self.height.set(child_height + 2 * device_px(VSTEP, zoom))
 ```
 
@@ -1411,9 +1412,9 @@ class BlockLayout:
 
     def layout(self):
         # ...
-        children = self.height.read(self.children)
+        children = self.children.read(notify=self.height)
         new_height = sum([
-            self.height.read(child.height)
+            child.height.read(notify=self.height)
             for child in children
         ])
         self.height.set(new_height)
@@ -1451,8 +1452,8 @@ class BlockLayout:
     def layout(self):
         # ...
         if self.previous:
-            prev_y = self.y.read(self.previous.y)
-            prev_height = self.y.read(self.previous.height)
+            prev_y = self.previous.y.read(notify=self.y)
+            prev_height = self.previous.height.read(notify=self.y)
             self.y.set(prev_y + prev_height)
         else:
             self.y.copy(self.parent.y)
@@ -1505,25 +1506,24 @@ class TextLayout:
 We'll need to compute these fields in `layout`. All of the
 font-related ones are fairly straightforward:
 
-``` {.python dropline=self.font.read(self.node.style) replace=font(style/font(self.font%2c%20self.node.style}
+``` {.python dropline=self.node.style.read(notify%3dself.font) replace=font(style/font(self.font%2c%20self.node.style}
 class TextLayout:
     def layout(self):
         # ...
 
-        zoom = self.font.read(self.zoom)
-        style = self.font.read(self.node.style)
-        self.font.set(font(style, zoom))
-        
-        f = self.width.read(self.font)
+        zoom = self.zoom.read(notify=self.font)
+        style = self.node.style.read(notify=self.font)
+
+        f = self.font.read(notify=self.width)
         self.width.set(f.measureText(self.word))
 
-        f = self.ascent.read(self.font)
+        f = self.font.read(notify=self.ascent)
         self.ascent.set(f.getMetrics().fAscent * 1.25)
 
-        f = self.descent.read(self.font)
+        f = self.font.read(notify=self.descent)
         self.descent.set(f.getMetrics().fDescent * 1.25)
 
-        f = self.height.read(self.font)
+        f = self.font.read(notify=self.height)
         self.height.set(linespace(f) * 1.25)
 ```
 
@@ -1541,9 +1541,9 @@ class TextLayout:
     def layout(self):
         # ...
         if self.previous:
-            prev_x = self.x.read(self.previous.x)
-            prev_font = self.x.read(self.previous.font)
-            prev_width = self.x.read(self.previous.width)
+            prev_x = self.previous.x.read(notify=self.x)
+            prev_font = self.previous.font.read(notify=self.x)
+            prev_width = self.previous.width.read(notify=self.x)
             self.x.set(
                 prev_x + prev_font.measureText(' ') + prev_width)
         else:
@@ -1567,7 +1567,7 @@ class EmbedLayout:
         # ...
     
     def layout_after(self):
-        height = self.ascent.read(self.height)
+        height = self.height.read(notify=self.ascent)
         self.ascent.set(-height)
         
         self.descent.set(0)
@@ -1591,7 +1591,7 @@ As for computing height in subclasses, here's `InputLayout`:
 class InputLayout(EmbedLayout):
     def layout(self):
         # ...
-        font = self.height.read(self.font)
+        font = self.font.read(notify=self.height)
         self.height.set(linespace(font))
         # ...
 ```
@@ -1604,7 +1604,7 @@ going to protect and instead treat as an intermediate step in computing
 class ImageLayout(EmbedLayout):
     def layout(self):
         # ...
-        font = self.height.read(self.font)
+        font = self.font.read(notify=self.height)
         self.height.set(max(self.img_height, linespace(font)))
 ```
 
@@ -1614,7 +1614,7 @@ Finally, here's `IframeLayout`, which is straightforward:
 class IframeLayout(EmbedLayout):
     def layout(self):
         # ...
-        zoom = self.height.read(self.zoom)
+        zoom = self.zoom.read(notify=self.height)
         if height_attr:
             self.height.set(device_px(int(height_attr) + 2, zoom))
         else:
@@ -1657,8 +1657,8 @@ class LineLayout:
         self.x.copy(self.parent.x)
 
         if self.previous:
-            prev_y = self.y.read(self.previous.y)
-            prev_height = self.y.read(self.previous.height)
+            prev_y = self.previous.y.read(notify=self.y)
+            prev_height = self.previous.height.read(notify=self.y)
             self.y.set(prev_y + prev_height)
         else:
             self.y.copy(self.parent.y)
@@ -1706,12 +1706,12 @@ class LineLayout:
     def layout(self):
         # ...
         self.ascent.set(max([
-            -self.ascent.read(child.ascent)
+            -child.ascent.read(notify=self.ascent)
             for child in self.children
         ]))
 
         self.descent.set(max([
-            self.descent.read(child.descent)
+            child.descent.read(notify=self.descent)
             for child in self.children
         ]))
 ```
@@ -1723,9 +1723,9 @@ class LineLayout:
     def layout(self):
         # ...
         for child in self.children:
-            new_y = child.y.read(self.y)
-            new_y += child.y.read(self.ascent)
-            new_y += child.y.read(child.ascent)
+            new_y = self.y.read(notify=child.y)
+            new_y += self.ascent.read(notify=child.y)
+            new_y += child.ascent.read(notify=child.y)
             child.y.set(new_y)
 ```
 
@@ -1735,8 +1735,8 @@ Finally, we recompute the line's height:
 class LineLayout:
     def layout(self):
         # ...
-        max_ascent = self.height.read(self.ascent)
-        max_descent = self.height.read(self.descent)
+        max_ascent = self.ascent.read(notify=self.height)
+        max_descent = self.descent.read(notify=self.height)
         self.height.set(max_ascent + max_descent)
 ```
 
@@ -1783,7 +1783,7 @@ for debugging puposes:[^why-print-node]
 because layout objects' printable forms print layout field values,
 which might be dirty and unreadable.
 
-``` {.python replace=%2c%20name/%2c%20name%2c%20parent%3dNone%2c%20dependencies%3dNone}
+``` {.python replace=%2c%20name):/%2c%20name%2c%20parent%3dNone%2c%20dependencies%3dNone%2c}
 class ProtectedField:
     def __init__(self, obj, name):
         self.obj = obj
@@ -1947,7 +1947,7 @@ This will be easy to do with an additional (and optional) `parent` parameter to
 a `ProtectedField`. (It's optional because only `ProtectedField`s on layout
 objects need this feature.)
 
-``` {.python replace=parent%3dNone/parent%3dNone%2c%20dependencies%3dNone}
+``` {.python replace=parent%3dNone):/parent%3dNone%2c%20dependencies%3dNone%2c}
 class ProtectedField:
     def __init__(self, obj, name, parent=None):
         # ...
@@ -2129,7 +2129,7 @@ better to depend on each style property individually. To do that, we
 need `style` to be a dictionary of `ProtectedField`s, not a
 `ProtectedField` of a dictionary:
 
-``` {.python}
+``` {.python expected=False}
 class Element:
     def __init__(self, tag, attributes, parent):
         # ...
@@ -2204,7 +2204,7 @@ def style(node, rules, frame):
             if node.parent:
                 parent_field = node.parent.style[property]
                 parent_value = \
-                    node.style[property].read(parent_field)
+                    parent_field.read(notify=node.style[property])
                 new_style[property] = parent_value
 ```
 
@@ -2217,7 +2217,7 @@ def style(node, rules, frame):
             if node.parent:
                 parent_field = node.parent.style["font-size"]
                 parent_font_size = \
-                    node.style["font-size"].read(parent_field)
+                    parent_field.read(notify=node.style["font-size"])
 ```
 
 Then, once the `new_style` is all computed, we individually set every
@@ -2267,10 +2267,10 @@ by the font, as an argument:
 
 ``` {.python}
 def font(who, css_style, zoom):
-    weight = who.read(css_style['font-weight'])
-    style = who.read(css_style['font-style'])
+    weight = css_style['font-weight'].read(notify=who)
+    style = css_style['font-style'].read(notify=who)
     try:
-        size = float(who.read(css_style['font-size'])[:-2])
+        size = float(css_style['font-size'].read(notify=who)[:-2])
     except ValueError:
         size = 16
     font_size = device_px(size, zoom)
@@ -2283,7 +2283,7 @@ requesting a font during line breaking:
 ``` {.python}
 class BlockLayout:
     def text(self, node):
-        zoom = self.children.read(self.zoom)
+        zoom = self.zoom.read(notify=self.children)
         node_font = font(self.children, node.style, zoom)
         # ...
 ```
@@ -2294,7 +2294,7 @@ Meanwhile, when computing a `font` field, we pass it in:
 class TextLayout:
     def layout(self):
         if self.font.dirty:
-            zoom = self.font.read(self.zoom)
+            zoom = self.zoom.read(notify=self.font)
             self.font.set(font(self.font, self.node.style, zoom))
 ```
 
@@ -2351,7 +2351,7 @@ One easy first step is to explicitly list the dependencies of each
 `ProtectedField`. We can make this an optional parameter to each
 `ProtectedField`:
 
-``` {.python}
+``` {.python replace=dependencies%3dNone):/dependencies%3dNone%2c}
 class ProtectedField:
     def __init__(self, obj, name, parent=None, dependencies=None):
         # ...
@@ -2364,18 +2364,18 @@ Moreover, if the dependencies are passed in the constructor, we can
 "freeze" the `ProtectedField`, so that `read` no longer adds new
 dependencies, just checks that they were declared:
 
-``` {.python}
+``` {.python replace=dependencies%3dNone):/dependencies%3dNone%2c,frozen_dependencies:/frozen_dependencies%20or%20self.frozen_invalidations:}
 class ProtectedField:
     def __init__(self, obj, name, parent=None, dependencies=None):
         self.frozen_dependencies = dependencies != None
 
-    def read(self, field):
-        if self.frozen_dependencies:
-            assert self in field.invalidations
+    def read(self, notify):
+        if notify.frozen_dependencies:
+            assert notify in self.invalidations
         else:
-            field.invalidations.add(self)
+            self.invalidations.add(notify)
 
-        return field.get()
+        return self.get()
 ```
 
 For example, in `DocumentLayout`, we can now be explicit about the
