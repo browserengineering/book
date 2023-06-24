@@ -2323,6 +2323,124 @@ invalidate any layout fields (because none of those fields depend on
 these properties) and so animations will once again skip layout
 entirely.
 
+::: {.further}
+TODO
+:::
+
+
+Making dependencies visible
+===========================
+
+We now have dirty bits to skip unnecessarily rebuilding the layout
+tree and descendant bits to skip unnecessarily traversing it, which
+gives us a pretty fast layout engine. Moreover, our `ProtectedField`
+abstraction guarantees that dirty bits are always set when necessary.
+However, because `Protectedfield` establishes dependencies implicitly,
+when `read` is called, it's not always easy to tell _which_ fields
+will ultimately get invalidated from any given operation. That makes
+it hard to understand which operations are fast and which are slow,
+especially as we add new style and layout features.
+
+This *auditability* concern happens in real browsers, too. After all,
+real browsers are millions, not thousands, of lines long, and support
+thousands, not just a couple, of CSS properties. Their dependency
+graphs are therefore dramatically more complex than in our browser. So
+let's make it a little easier to see the dependency graph.
+
+One easy first step is to explicitly list the dependencies of each
+`ProtectedField`. We can make this an optional parameter to each
+`ProtectedField`:
+
+``` {.python}
+class ProtectedField:
+    def __init__(self, obj, name, parent=None, dependencies=None):
+        # ...
+        if dependencies != None:
+            for dependency in dependencies:
+                dependency.invalidations.add(self)
+```
+
+Moreover, if the dependencies are passed in the constructor, we can
+"freeze" the `ProtectedField`, so that `read` no longer adds new
+dependencies, just checks that they were declared:
+
+``` {.python}
+class ProtectedField:
+    def __init__(self, obj, name, parent=None, dependencies=None):
+        self.frozen_dependencies = dependencies != None
+
+    def read(self, field):
+        if self.frozen_dependencies:
+            assert self in field.invalidations
+        else:
+            field.invalidations.add(self)
+
+        return field.get()
+```
+
+For example, in `DocumentLayout`, we can now be explicit about the
+fact that its fields have no external dependencies (and thus have to
+be `mark`ed):
+
+``` {.python}
+class DocumentLayout:
+    def __init__(self, node, frame):
+        # ...
+        self.zoom = ProtectedField(self, "zoom", None, [])
+        self.width = ProtectedField(self, "width", None, [])
+        self.x = ProtectedField(self, "x", None, [])
+        self.y = ProtectedField(self, "y", None, [])
+```
+
+However, note that `height` is missing! That's because a
+`DocumentLayout`'s height depends on its child's height, and that
+child doesn't exist until `layout` is called. Because of "upward"
+dependencies like this, we can't freeze every `ProtectedField`---but
+every protected field that we freeze is one more part of the
+dependency graph that is easy to audit.
+
+In `BlockLayout`, we likewise can't freeze the `height` field. In the
+`y` field, we need to be a bit careful, because the depenendencies
+differ based on whether or not the layout object has a previous
+sibling:
+
+``` {.python}
+class BlockLayout:
+    def __init__(self, node, parent, previous, frame):
+    # ...
+    if self.previous:
+        y_dependencies = [self.previous.y, self.previous.height]
+    else:
+        y_dependencies = [self.parent.y]
+    self.y = ProtectedField(self, "y", self.parent, y_dependencies)
+    # ...
+```
+
+Let's also not freeze the `children` field, because that reads all
+sorts of style properties and other fields.
+
+In `LineLayout`, we can't freeze the `ascent` and `descent` fields,
+since those depend on child fields, and in `TextLayout` and
+`EmbedLayout`'s `x` field we'll need to do something similar to the
+`y` field on `BlockLayout`.
+
+In total, we end up freezing every field of layout
+objects[^skip-style] except:
+
+[^skip-style]: We could also freeze style properties, but I'm going to
+skip this for now. Every style property depends only on the same
+property of its parent, but our implementation of setting `innerHTML`
+makes it a little difficult to correctly freeze these dependencies.
+
+ - Every layout object's height depends on its children's `height`s
+ - The `LineLayout` `ascent` and `descent` depends on its children's
+   `ascent`s and `descent`s
+ - The `BlockLayout`'s `children` depends on a mess of style
+   properties
+ 
+This means that, any time we want to know what depends on what, we can
+typically just see a list in the constructor.
+
 
 Summary
 =======
