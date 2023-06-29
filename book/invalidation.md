@@ -17,38 +17,37 @@ Editing Content
 ===============
 
 In [Chapter 13](animations.md), we used compositing to smoothly
-animate CSS properties like `transform` or `opacity`. However, other
-CSS properties are _layout-inducing_ and can't be animated this way,
-because they change not only the _display list_ but also the _layout
-tree_. And while layout-inducing animations are best avoided, lots of
-other interactions require changing the layout tree yet need to be as
-smooth as possible.
+animate CSS properties like `transform` or `opacity`. But we couldn't
+animate _layout-inducing_ properties this way because they change not
+only the _display list_ but also the _layout tree_. And while it's
+best to avoid animating layout-inducing properties, many user
+interactions need to be smooth but require changing the layout tree.
 
-One good example is editing text. People type pretty quickly, so even a few
-frames' delay is distracting. But editing changes the HTML tree and therefore
-requires changing the layout tree to reflect new text. Currently, that forces
-our browser to rebuild the layout tree from scratch, which can drop multiple
-frames on complex pages like this one. Try, for example, loading this chapter
-in our toy browser and typing into this input box:
+One good example is editing text. People type pretty quickly, so even
+a few frames' delay is distracting. But editing changes the HTML tree
+and therefore the layout tree. Rebuild the layout tree from scratch,
+which our browser currently does, can drop multiple frames on complex
+pages. Try, for example, loading this chapter in our toy browser and
+typing into this input box:
 
 <input style="width:100%"/>
 
-You'll find that it is *much* slower than in a real browser.
+You'll find that it is *much* too slow.
 
-Typing into an `input` element could be special-case optimized,[^no-resize] but
+Typing into `input` elements could be special-cased,[^no-resize] but
 there are other text editing APIs that can't be. For example, the
 `contenteditable` attribute makes any element editable:[^amazing-ce]
 
 [^no-resize]: The `input` element doesn't change size as you type, and
     the text in the `input` element doesn't get its own layout object,
-    so the layout tree is actually the same after each edit.
+    so typing into an `input` element doesn't really have to induce
+    layout, just paint.
 
-[^amazing-ce]: The contenteditable attribute is pretty amazing, since
-you can set it on any element on any web site, and thereby turn it into
-a living document. In fact, this is how we implemented the "typo"
-feature for this book: type `Ctrl-E` (or `Cmd-E` on a Mac) to turn it on if
-you haven't tried it yet). The source code is [here](/feedback.js); see
-the `typo_mode` function.
+[^amazing-ce]: The `contenteditable` attribute can turn any element on
+    any page into a living document. It' how we implemented the "typo"
+    feature for this book: type `Ctrl-E` (or `Cmd-E` on a Mac) to turn
+    it on. The source code is [here](/feedback.js); see the
+    `typo_mode` function for the `contenteditable` attribute.
 
 ::: {.demo contenteditable=true}
 Click on this <i>formatted</i> <b>text</b> to edit it, including rich text!
@@ -62,7 +61,7 @@ focusable:[^other-values]
 [^other-values]: Actually, in real browsers, `contenteditable` can be
     set to `true` or `false`, and `false` is useful in case you want
     to have a non-editable element inside an editable one. But I'm
-    going to skip supporting that.
+    not going to implement that in our toy browser.
 
 ``` {.python}
 def is_focusable(node):
@@ -75,7 +74,7 @@ def is_focusable(node):
 Once we're focused on an editable node, typing should edit it. A real
 browser would handle cursor movement and all kinds of complications,
 but I'll keep it simple and just add each character to the last text
-node in the editable element. First we need to find that element:
+node in the editable element. First we need to find that text node:
 
 ``` {.python}
 class Frame:
@@ -108,8 +107,8 @@ class Frame:
 ```
 
 This is enough to make editing work, but it's convenient to also draw
-a cursor confirm that the element is focused and show where edits will
-go. Let's do that in `BlockLayout`:
+a cursor to confirm that the element is focused and show where edits
+will go. Let's do that in `BlockLayout`:
 
 ``` {.python replace=.width/.width.get()}
 class BlockLayout:
@@ -147,9 +146,8 @@ class InputLayout(EmbedLayout):
 ```
 
 You can now edit the examples on this page in your toy browser---but
-each key stroke will take hundreds of milliseconds to type, making for
-a slow and frustrating editing experience. Let's now work toward
-making that faster.
+each key stroke will take hundreds of milliseconds, making for a
+frustrating editing experience. So let's work on speeding that up.
 
 ::: {.further}
 Actually, text editing is [exceptionally hard][editing-hates-you],
@@ -157,8 +155,7 @@ including tricky concepts like caret affinity (which line the cursor
 is on, if a long line is wrapped in the middle of a word), unicode
 handling, [bidirectional text](http://unicode.org/faq/bidi.html), and
 mixing text formatting with editing. So it's a good thing browsers
-implement all this complexity and hide it behind the `contenteditable`
-API!
+implement all this complexity and hide it behind `contenteditable`!
 :::
 
 [editing-hates-you]: https://lord.io/text-editing-hates-you-too/
@@ -169,79 +166,76 @@ Why Invalidation?
 
 Fundamentally, the reason editing this page is slow in our browser is
 that it's pretty big.[^other-reasons] After all, it's not handling the
-keypress that's slow---that just appends a character to a `Text` node,
-which takes almost no time. It's what happens afterwards that takes
-time: the browser has to rerender the whole page. Even seemingly tiny
-changes take a long time on a large page.
+keypress that's slow: appending a character to a `Text` node takes
+almost no time. What takes time is rerendering the whole page
+afterwards. On a big page, even tiny changes can take a long time.
 
 [^other-reasons]: I'm sure there are all sorts of performance
     improvements possible without implementing the invalidation
-    techniques from this chapter, but they are essential toward
-    achieving incrementalism, which is a kind of asymptotic guarantee
-    that simple optimizations won't achieve.
+    techniques from this chapter, but invalidation is still essential
+    for incremental performance, which is a kind of asymptotic
+    guarantee that simple optimizations won't achieve.
 
-If we want interactions to be fast, even on large, complex pages,
-we're going to need re-rendering the page to take time proportional to
-the *size of the change*, and not proportional to the *size of the
-page*. I call this the principle of incremental performance, and it's
-crucial for handling large and complex web applications. It means that
-developers can predict how long their code will run regardless of the
-content on the page, and it lets users predict how long interactions
-will take. That ultimately makes this principle a core part of the
-value that browser engineers provide to the web as a whole.
+We want interactions to be fast, even on large, complex pages, so we
+want re-rendering the page to take time proportional to the *size of
+the change*, and not proportional to the *size of the page*. I call
+this the principle of incremental performance, and it's crucial for
+handling large and complex web applications. Not only does it mean
+fast text editing, it also means that developers can also think about
+performance one change at a time, without consider the contents of the
+whole page. The incremental performance is therefore necessary for
+complex applications. But the principle of incremental performance
+also really constrains our browser. For example, during rendering even
+*traversing* the whole layout tree would take time proportional to the
+whole page, not the change being made, so we can't do that.
 
-But the principle of incremental performance also really constrains
-our browser. For example, during rendering even *traversing* the whole
-layout tree would take time proportional to the whole page, not the
-change being made, so we can't do that. To achieve incrementality,
-we're going to need to think of the initial render and later
-re-renders differently.[^big-change] When the page is first loaded,
-rendering is definitely going to take time proportional to the size of
-the page. But we treat that initial render as a cache. Later renders
-will only invalidate and recompute the parts of that cache, taking
-time proportional to the changed portion of the page.
+To achieve incremental performance, we're going to need to think of
+the initial render and later re-renders differently.[^big-change] When
+the page is first loaded, rendering will take time proportional to the
+size of the page. But we'll treat that initial render as a cache.
+Later renders will only invalidate and recompute parts of that cache,
+taking time proportional to the size of the change.
 
 [^big-change]: While initial and later renders are conceptually
     different, they'll use the same code path. Basically, the initial
     render will be one big change from no page to the initial page,
-    while later re-renders will incorporate smaller changes.
+    while later re-renders will handle smaller changes.
 
-The key to that will be tracking the effects of changes. When one
-part of the page, like a `style` attribute, changes, other things
-that depends on it, like that element's size, change as well. So we'll
-need to construct a detailed *dependency graph*, down to the level of
-each layout field, and use that graph to determine what to recompute.
-It will be similar to our `needs_style` and `needs_layout` flags, but
-at a much larger scale.
+The key to this cache invalidation approach will be tracking the
+effects of changes. When one part of the page, like a `style`
+attribute, changes, other things that depends on it, like that
+element's size, change as well. So we'll need to construct a detailed
+*dependency graph*, down to the level of each layout field, and use
+that graph to determine what to recompute. It will be similar to our
+`needs_style` and `needs_layout` flags, but with many more fields.
 
 In a real browser, every step of the rendering pipeline needs to be
 incremental, but this chapter focuses on layout.[^why-layout] Most of
 this chapter is about tracking dependencies in the dependency graph,
 and building abstractions to help us do that. To use those
-abstractions, we'll need to execute a large refactor of our layout
-engine. But ultimately, incrementalizing layout will allow us to skip
-the two most expensive parts of layout: building the layout tree and
+abstractions, we'll need to refactor our layout engine significantly.
+But ultimately, incrementalizing layout will allow us to skip the two
+most expensive parts of layout: building the layout tree and
 traversing it to compute layout fields. When we're done, re-layout
-will take under a millisecond for small changes on this page.
+will take under a millisecond for small changes like text editing.
 
 [^why-layout]: Why layout? Because layout is both important and 
     complex enough to demonstrate most of the core challenges and
     techniques.
 
 ::: {.further}
-The principle of incremental performance derives from the principles
-of the web. Remember that the web is a *declarative* platform: web
-pages only concern themselves with *describing* how the page looks,
-and it's up to the browser to implement that description. To us
+The principle of incremental performance is part of what makes
+browsers a good platform. Remember that the web is *declarative*:
+web pages only concern themselves with *describing* how the page
+looks, and it's up to the browser to implement that description. To us
 browser engineers, that creates a whole bunch of complexity. But think
 about the web as a whole---it involves not just browser engineers, but
 web developers and users as well. Implementing complex invalidation
 algorithms in the browser lets web developers focus on making more
 interesting applications and gives users a better, more responsive
-web; it's part of the value that we as browser engineers provide. The
-declarative web makes it possible for the invalidation algorithms to
-be written once and then automatically benefit everyone else who uses
-the web.
+web. The declarative web makes it possible for the invalidation
+algorithms to be written once and then automatically benefit everyone
+else who uses the web.
 :::
 
 
@@ -249,16 +243,9 @@ the web.
 Idempotence
 ===========
 
-At a high level, the reason editing is slow is that each edit
-recomputes the page's layout tree---and on a large page like this
-one, that takes a long time. But is recomputing layout necessary?
-Adding a single letter to a single word on a single line of the page
-doesn't exactly change the page dramatically: almost everything stays
-in the exact same place. If we could reuse the old layout, instead of
-throwing it away, editing could conceivably be pretty snappy.
-
-The layout recomputation happens in `render` every time the layout
-changes:
+If we want to implement this caching-and-invalidation idea, the first
+road block is that our browser rebuilds the layout tree from scratch
+every time the layout phase runs:
 
 ``` {.python file=lab15}
 class Frame:
@@ -269,10 +256,12 @@ class Frame:
             # ...
 ```
 
-When we create a new `DocumentLayout`, we throw away all of the old
-layout information and start from scratch. We are
-essentially *invalidating* all of the tree on every layout. The first
-optimization to pursue is not rebuiding the tree if nothing changed.
+By creating a new `DocumentLayout`, we ignore all of the old layout
+information and start from scratch; we are essentially *invalidating*
+the whole tree. So our first optimization has to avoid doing that,
+reusing as many layout objects as possible. That both saves time
+allocating memory and makes the caching-and-invalidation approach
+possible by keeping around the old layout information.
 
 But before jumping right to coding, let's review how layout objects
 are created. Search your browser code for `Layout`, which all layout
@@ -285,11 +274,6 @@ in just a few places:
   - a `BlockLayout`, in `layout`
 - `LineLayout` objects are created by `BlockLayout` in `new_line`
 - All others are created by `BlockLayout` in `add_inline_child`
-
-We want to avoid *creating* layout objects, instead *reusing* them
-whenever possible. That both saves time immediately (allocating new
-objects takes time) and sets us up for more speedups by keeping around
-the old layout information.
 
 Let's start with `DocumentLayout`. It's created in `render`, and its
 two parameters, `nodes` and `self`, are the same every time. This
@@ -323,8 +307,8 @@ class DocumentLayout:
         # ...
 ```
 
-Again, the constructor parameters cannot change, so again we can skip
-re-constructing this layout object, with code like this:
+Once again, the constructor parameters cannot change, so again we can
+skip re-constructing this layout object, like so:
 
 ``` {.python replace=.append(child)/%20%3d%20[child]}
 class DocumentLayout:
@@ -338,8 +322,8 @@ class DocumentLayout:
 
 But don't run your browser with these changes just yet! By reusing
 layout objects, we end up running `layout` multiple times on the same
-object. That's not what the `layout` method expects, so it causes all
-sorts of weird behavior.
+object. That's not how we intended the `layout` method to work, so it
+causes all sorts of weird behavior.
 
 For example, after the `DocumentLayout` creates its child
 `BlockLayout`, it *appends* it to the `children` array:
@@ -352,13 +336,14 @@ class DocumentLayout:
         # ...
 ```
 
-But we don't want to `append` the same child more than once! The issue
-here is called *idempotence*: repeated calls to `layout` need to not
-repeatedly change state. More formally, a function is idempotent if
-calling it twice in a row with the same inputs and dependencies yields
-the same result. Idempotent functions are like assignments: assigning
-a field the same value for a second time doesn't change its state.
-Methods like `append`, however, aren't idempotent.
+But we don't want to `append` the same child more than once!
+
+The issue here is called *idempotence*: repeated calls to `layout`
+need to not repeatedly change state. More formally, a function is
+idempotent if calling it twice in a row with the same inputs and
+dependencies yields the same result. Assigning a field is idempotent:
+assigning the same value for a second time is a no-op. But methods
+like `append` aren't idempotent.
 
 We'll need to fix any non-idempotent method calls. In
 `DocumentLayout`, we can switch from `append` to assignment:
