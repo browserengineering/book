@@ -10,7 +10,7 @@ optimizing our browser's graphics subsystem. But that doesn't help
 interactions that affect layout, like text editing or JavaScript DOM
 modifications. Luckily, we can avoid redundant layout work by only
 recomputing some of it, and treating the layout tree like a form of
-cache. This *invalidaiton* technique focuses on figuring out which
+cache. This *invalidation* technique focuses on figuring out which
 parts of the tree need updates, and recomputing only them. While
 invalidation is traditionally complex and bug-prone, a principled
 approach and simple abstractions can make it managable, and the
@@ -2328,8 +2328,8 @@ TODO
 :::
 
 
-Making dependencies visible
-===========================
+Analyzing dependencies
+======================
 
 We now have dirty bits to skip unnecessarily rebuilding the layout
 tree and descendant bits to skip unnecessarily traversing it, which
@@ -2345,11 +2345,17 @@ This *auditability* concern happens in real browsers, too. After all,
 real browsers are millions, not thousands, of lines long, and support
 thousands, not just a couple, of CSS properties. Their dependency
 graphs are therefore dramatically more complex than in our browser. So
-let's make it a little easier to see the dependency graph.
+let's make it a little easier to see the dependency graph. And along
+the way we can extract *invariants* from the code and assert the shape
+of that graph in a central place. That will give us a second benefit
+of [hardening] our browser against accidental bugs in the future, and
+a third one of making the browser a bit faster because it won't need to
+update the graph over and over every time layout is run.
+
+[hardening]: https://en.wikipedia.org/wiki/Hardening_(computing)
 
 One easy first step is to explicitly list the dependencies of each
-`ProtectedField`. We can make this an optional parameter to each
-`ProtectedField`:
+`ProtectedField`. We can make this an optional parameter to each:
 
 ``` {.python replace=dependencies%3dNone):/dependencies%3dNone%2c}
 class ProtectedField:
@@ -2367,7 +2373,11 @@ dependencies, just checks that they were declared:
 ``` {.python replace=dependencies%3dNone):/dependencies%3dNone%2c,frozen_dependencies:/frozen_dependencies%20or%20self.frozen_invalidations:}
 class ProtectedField:
     def __init__(self, obj, name, parent=None, dependencies=None):
+        # ...
         self.frozen_dependencies = dependencies != None
+        if dependencies != None:
+            for dependency in dependencies:
+                dependency.invalidations.add(self)
 
     def read(self, notify):
         if notify.frozen_dependencies:
@@ -2380,7 +2390,8 @@ class ProtectedField:
 
 For example, in `DocumentLayout`, we can now be explicit about the
 fact that its fields have no external dependencies (and thus have to
-be `mark`ed):
+be `mark`ed):^[Before I wrote this, I didn't even notice myself that
+they have no dependencies!]
 
 ``` {.python}
 class DocumentLayout:
@@ -2390,14 +2401,16 @@ class DocumentLayout:
         self.width = ProtectedField(self, "width", None, [])
         self.x = ProtectedField(self, "x", None, [])
         self.y = ProtectedField(self, "y", None, [])
+        self.height = ProtectedField(self, "height")
 ```
 
-However, note that `height` is missing! That's because a
-`DocumentLayout`'s height depends on its child's height, and that
-child doesn't exist until `layout` is called. Because of "upward"
-dependencies like this, we can't freeze every `ProtectedField`---but
-every protected field that we freeze is one more part of the
-dependency graph that is easy to audit.
+However, note that `height` is missing the third parameter!
+That's because a `DocumentLayout`'s height depends on its child's
+height, and that child doesn't exist until `layout` is called.
+Because of "downward" dependencies like this, we can't freeze
+every `ProtectedField`---but every protected field that we
+freeze is one more part of the dependency graph that is easy to
+audit.
 
 In `BlockLayout`, we likewise can't freeze the `height` field. In the
 `y` field, we need to be a bit careful, because the depenendencies
@@ -2416,39 +2429,225 @@ class BlockLayout:
     # ...
 ```
 
-Let's also not freeze the `children` field, because that reads all
+We also can't easily freeze the `children` field, because that reads all
 sorts of style properties and other fields.
 
-In `LineLayout`, we can't freeze the `ascent` and `descent` fields,
-since those depend on child fields, and in `TextLayout` and
-`EmbedLayout`'s `x` field we'll need to do something similar to the
-`y` field on `BlockLayout`.
+But while we don't know in the constructor, we do actually know the
+dependencies of `height` for both `DocumentLayout` and `BlockLayout`
+as soon as the children array is created. Let's add a way to
+*dynamically* set them in a central place.^[It's dynamic just like the
+calls to `read` we added earlier, but at least not spread all over the place---one more [defense-in-depth] against invalidation bugs.] To do
+that, add a `set_dependencies` method:
 
-In total, we end up freezing every field of layout
-objects[^skip-style] except:
+[defense-in-depth]: https://en.wikipedia.org/wiki/Defense_in_depth_(computing)
 
-[^skip-style]: We could also freeze style properties, but I'm going to
-skip this for now. Every style property depends only on the same
-property of its parent, but our implementation of setting `innerHTML`
-makes it a little difficult to correctly freeze these dependencies.
+``` {.python}
+class ProtectedField:
+    def set_dependencies(self, dependencies):
+        for dependency in dependencies:
+            dependency.invalidations.add(self)
+        self.frozen_dependencies = True
+```
 
- - Every layout object's height depends on its children's `height`s
- - The `LineLayout` `ascent` and `descent` depends on its children's
-   `ascent`s and `descent`s
- - The `BlockLayout`'s `children` depends on a mess of style
-   properties
- 
-This means that, any time we want to know what depends on what, we can
-typically just see a list in the constructor.
+And then freeze `height` as soon as possible in `DocumentLayout`:
 
+``` {.python}
+class DocumentLayout:
+    def layout(self, width, zoom):
+        # ...
+        if not self.children:
+            child = BlockLayout(self.node, self, None, self.frame)
+            self.height.set_dependencies([child.height])
+```
+
+and `BlockLayout`:
+
+``` {.python}
+class BlockLayout:
+    def layout(self):
+        # ...
+        if mode == "block":
+            if self.children.dirty:
+                # ...
+                self.children.set(children)
+
+                height_dependencies = \
+                   [child.height for child in children]
+                height_dependencies.append(self.children)
+                self.height.set_dependencies(height_dependencies)
+        else:
+            if self.children.dirty:
+                # ...
+                self.children.set(self.temp_children)
+
+                height_dependencies = \
+                   [child.height for child in self.temp_children]
+                height_dependencies.append(self.children)
+                self.height.set_dependencies(height_dependencies)
+```
+
+As for `LineLayout`, everything can be frozen because a line is always
+created all at once in our browser, including the children. However,
+due to the somewhat complicated way a line is created and then laid out,
+we need to delay freezing `ascent` and `descent` until the first time
+`layout` is called:
+
+``` {.python}
+class LineLayout:
+    def __init__(self, node, parent, previous):
+        # ...
+        self.zoom = ProtectedField(self, "zoom", self.parent,
+            [self.parent.zoom])
+        self.x = ProtectedField(self, "x", self.parent,
+            [self.parent.x])
+        if self.previous:
+            y_dependencies = [self.previous.y, self.previous.height]
+        else:
+            y_dependencies = [self.parent.y]
+        self.y = ProtectedField(self, "y", self.parent,
+            y_dependencies)
+        self.ascent = ProtectedField(self, "ascent", self.parent)
+        self.descent = ProtectedField(self, "descent", self.parent)
+        self.width = ProtectedField(self, "width", self.parent,
+            [self.parent.width])
+        self.height = ProtectedField(self, "height", self.parent,
+            [self.ascent, self.descent])
+        self.initialized_fields = False
+
+    def layout(self):
+        if not self.initialized_fields:
+            self.ascent.set_dependencies(
+               [child.ascent for child in self.children])
+            self.descent.set_dependencies(
+               [child.descent for child in self.children])
+            self.initialized_fields = True
+```
+
+And `TextLayout` is actually quite straightforward:
+
+``` {.python}
+class TextLayout:
+    def __init__(self, node, parent, previous, word):
+        self.zoom = ProtectedField(self, "zoom", self.parent,
+            [self.parent.zoom])
+        self.font = ProtectedField(self, "font", self.parent,
+            [self.zoom,
+             self.node.style['font-weight'],
+             self.node.style['font-style'],
+             self.node.style['font-size']])
+        self.width = ProtectedField(self, "width", self.parent,
+            [self.font])
+        self.height = ProtectedField(self, "height", self.parent,
+            [self.font])
+        self.ascent = ProtectedField(self, "ascent", self.parent,
+            [self.font])
+        self.descent = ProtectedField(self, "descent", self.parent,
+            [self.font])
+        if self.previous:
+            x_dependencies = [self.previous.x, self.previous.font,
+            self.previous.width]
+        else:
+            x_dependencies = [self.parent.x]
+        self.x = ProtectedField(self, "x", self.parent,
+            x_dependencies)
+        self.y = ProtectedField(self, "y", self.parent,
+            [self.ascent, self.parent.y, self.parent.ascent])
+```
+
+We can even freeze all of the style protected fields! The only ones that
+have any dependencies are inherited. And there is a slight complication
+that setting `innerHTML` can cause dependencies to change around, so
+let's create the style dict dynamically rather than in the constructor.
+First set it to `None`:
+
+``` {.python}
+class Element:
+    def __init__(self, tag, attributes, parent):
+        # ...
+        self.style = None
+```
+
+``` {.python}
+class Text:
+    def __init__(self, text, parent):
+        # ...
+        self.style = None
+```
+
+Then set it the first time `style` is called:
+
+``` {.python}
+def init_style(node):
+    node.style = dict([
+            (property, ProtectedField(node, property))
+            for property in CSS_PROPERTIES
+        ])
+    for (name, field) in node.style.items():
+        if name in INHERITED_PROPERTIES and node.parent:
+            field.set_dependencies([node.parent.style[name]])
+```
+
+``` {.python}
+def style(node, rules, frame):
+    if not node.style:
+        init_style(node)
+```
+
+We ended up freezing every field of layout and style except
+`children`. This means that, any time we want to know what depends on
+what, we can typically just see a list in the constructor. That's
+pretty nice!
+
+::: {.further}
+
+Correct and performant cache invalidation in a web browser is extremely
+difficult to get right. That's why it's justified to spend a whole
+chapter of this book on the topic, and go out of our way to make
+it pretty robust. (More robust than many parts of real browsers, in fact.)
+
+In real browsers, untold hours are spent finding and fixing
+invalidation bugs in the rendering engine. For
+example, just before writing this section, I^[This is Chris speaking.]
+spent *weeks* finding and weeding out a whole class of
+under-invalidation bugs in the accessibility code of Chromium. This
+particular batch of bugs were especially insidious and difficult to find,
+because at first they only reproduced on certain automated test machines
+that happened to be more overloaded than other ones. This led to the
+HTML parser for the certain test cases yielding[^parser-yield] more often,
+triggering different and incorrect rendering paths.
+
+Real browsers also make very agressive use of assertions like those
+I added in this chapter. To avoid slowing down the browser for users,
+non-essential assertions are "compiled out" in what's usually called
+the *release build*, but left in for the *debug build*. The debug build
+is often used by engineers when debugging or developing new features,
+and also used to run automated tests.
+
+:::
+
+[^parser-yield]: In a real browser, HTML parsing doesn't happen in one go,
+but often is broken up into multiple event loop tasks. This leads to better
+web page loading performance, and is the reason you'll often see web pages
+render only part of the HTML at first when loading large web pages (including
+this book!).
 
 Summary
 =======
 
-::: {.todo}
-Not written yet
-:::
+This chapter intoduces the concept of partial style and layout through the
+technique of optimized cache invalidation. The main takeways are:
 
+* Partial rendering dramatically speeds up key browser
+interactions, and are therefore an essential feature of real browsers.
+
+* Making rendering idempotent allows us to systematically remove work
+ without worrying about side-effects.
+
+* A good browser aims to preserve the principle of incremental
+performance---the cost of an update should be proportional to the change made.
+
+* Cache invalidation is difficult and error-prone, and justifies careful
+work and good abstractions like `ProtectedField`.
 
 Outline
 =======
