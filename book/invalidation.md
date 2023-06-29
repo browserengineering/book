@@ -5,17 +5,13 @@ prev: embeds
 next: skipped
 ...
 
-We [previously](animations.md) improved animation performance by
-optimizing our browser's graphics subsystem. But that doesn't help
-interactions that affect layout, like text editing or JavaScript DOM
-modifications. Luckily, we can avoid redundant layout work by only
-recomputing some of it, and treating the layout tree like a form of
-cache. This *invalidaiton* technique focuses on figuring out which
-parts of the tree need updates, and recomputing only them. While
-invalidation is traditionally complex and bug-prone, a principled
-approach and simple abstractions can make it managable, and the
-complexity is necessary to make key user interactions like text input
-much faster.
+When we [used compositing](animations.md) to make animations smoother,
+we had to skip interactions that affect layout, like text editing or
+DOM modifications. Luckily, we can avoid redundant layout work
+treating the layout tree as a kind of cache, and only recomputing the
+parts that change. This *invalidation* technique is traditionally
+complex and bug-prone, but we'll use a principled approach and simple
+abstractions to make it managable.
 
 Editing Content
 ===============
