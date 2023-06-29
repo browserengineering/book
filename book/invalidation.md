@@ -277,9 +277,9 @@ in just a few places:
 
 Let's start with `DocumentLayout`. It's created in `render`, and its
 two parameters, `nodes` and `self`, are the same every time. This
-means every execution of this line of code creates effectively
-identical objects.[^side-effects] That seems wasteful, so let's create
-the `DocumentLayout` just once, in `load`:
+means that identical `DocumentLayout`s are created each
+time.[^side-effects] That's wasteful; let's create the
+`DocumentLayout` just once, in `load`:
 
 [^side-effects]: This wouldn't be true if the `DocumentLayout`
     constructor had side-effects or read global state, but it doesn't
@@ -298,7 +298,8 @@ class Frame:
             # ...
 ```
 
-The `DocumentLayout` then constructs a `BlockLayout`:
+Moving on, let's look at where `DocumentLayout` constructs a
+`BlockLayout`:
 
 ``` {.python file=lab15}
 class DocumentLayout:
@@ -322,11 +323,10 @@ class DocumentLayout:
 
 But don't run your browser with these changes just yet! By reusing
 layout objects, we end up running `layout` multiple times on the same
-object. That's not how we intended the `layout` method to work, so it
-causes all sorts of weird behavior.
-
-For example, after the `DocumentLayout` creates its child
-`BlockLayout`, it *appends* it to the `children` array:
+object. That's not how `layout` is intended to work, and it causes all
+sorts of weird behavior. For example, after the `DocumentLayout`
+creates its child `BlockLayout`, it *appends* it to the `children`
+array:
 
 ``` {.python file=lab15}
 class DocumentLayout:
@@ -356,27 +356,32 @@ class DocumentLayout:
         # ...
 ```
 
-However, `BlockLayout` also calls `append` on its `children` array.
-That's going to be harder to fix, so for now, reset the `children`
-array at the top of `layout`:
+`BlockLayout` also calls `append` on its `children` array. We can fix
+that by resetting the `children` array in `layout`. I'll put separate
+reset code in the block and inline cases:
 
 ``` {.python}
 class BlockLayout:
     def layout(self):
-        self.children = []
-        # ...
+        if mode == "block":
+            self.children = []
+            # ...
+        else:
+            self.children = []
+            # ...
 ```
 
 This makes the `BlockLayout`'s `layout` function idempotent because
 each call will assign a new `children` array.
 
-Let's check all other `layout` methods for idempotency by reading them
-and noting any subroutine calls. I found:[^exercises]
+Before we try running our browser, let's read through all of the other
+`layout` methods, noting any subroutine calls that might not be
+idempotent. I found:[^exercises]
 
 [^exercises]: If you've being doing exercises throughout this book,
-    there might be more, in which case it might be harder to follow
-    along, depending on how you've implemented them. But the core idea
-    is replacing non-idempotent calls with idempotent ones.
+    there might be more, in which case there might be more calls. In
+    any case, the core idea is replacing non-idempotent calls with
+    idempotent ones.
 
 - In `new_line`, `BlockLayout` will append to its `children` array.
 - In `text` and `input`, `BlockLayout` will append to the `children`
@@ -385,18 +390,19 @@ and noting any subroutine calls. I found:[^exercises]
   the `TextLayout` and `InputLayout` methods.
 - Basically every layout method calls `device_px`.
 
-Luckily, the `new_line` and `add_inline_child` methods are only called
-through `layout`, which resets the `children` array. Meanwhile,
-`get_font` acts as a cache, so multiple calls return the same font
-object, and `display_px` just does math, so always returns the same
-result given the same inputs. So all of our `layout` methods are now
-idempotent, and the browser should work correctly again.
+The `new_line` and `add_inline_child` methods are only called through
+`layout`, which resets the `children` array, so they don't break
+idempotency. The `get_font` function acts as a cache, so multiple
+calls return the same font object. And `display_px` just does math, so
+always returns the same result given the same inputs. In other words
+all of our `layout` methods are now idempotent.
 
-A great thing about idempotency is it doesn't matter _how many_ times a
-function is called, and that gives us the freedom to skip redundant
-work, if we happen to know it was done in the past. That makes it the
-foundation for the rest of this chapter, which is all about knowing
-what work is truly redundant.
+Because all of the `layout` methods are now idempotent, it's safe to
+call `layout` multiple times on the same object---which is exactly
+what we're now doing. More generally, since it doesn't matter _how
+many_ times an idempotent function is called, we can skip redundant
+calls. That makes idempotency the foundation for the rest of this
+chapter, which is all about skipping redundant work.
 
 ::: {.further}
 HTTP also features a [notion of idempotence][idempotence-mdn], but
@@ -418,9 +424,9 @@ separate log entry.
 Dependencies
 ============
 
-So far, we've only looked at one place where layout objects are
-created. Let's look at another: `BlockLayout`s created when laying out
-another `BlockLayout`. Here's the relevant code:
+So far, we're only reusing two layout objects: the `DocumentLayout`,
+and the root `BlockLayout`. Let's look at the other `BlockLayout`s,
+created when laying out a `BlockLayout`:
 
 ``` {.python file=lab15 dropline=self.children%20%3d}
 class BlockLayout:
@@ -436,29 +442,27 @@ class BlockLayout:
         # ...
 ```
 
-Here, the arguments to `BlockLayout` are a little more complicated
-than the ones passed in `DocumentLayout`. The second argument, `self`,
-is never assigned to, but `child` and `previous` both contain elements
-read from `node.children`, and that `children` array can change---as a
-result of `contenteditable` edits or calls to `innerHTML`.[^or-others]
-Moreover, in order to even run this code, the node's `layout_mode` has
-to be `"block"`, and `layout_mode` itself also reads the node's
-`children`.[^and-tags]
+This code is a little more complicated than the code that creates the
+root `BlockLayout`: the `child` and `previous` arguments come from
+`node.children`, and that `children` array can change---as a result of
+`contenteditable` edits or calls to `innerHTML`.[^or-others] Moreover,
+in order to even run this code, the node's `layout_mode` has to be
+`block`, and `layout_mode` itself also reads the node's
+`children`.[^and-tags] This makes it harder to know when we need to
+recreate the `BlockLayout`s.
 
 [^or-others]: Or any other exercises and extensions that you've implemented.
 
 [^and-tags]: It also looks at the node's `tag` and the node's
-    childrens' `tag`s, but a node's `tag` can't change, so I don't
-    think of those as dependencies. In invalidation we care only about
-    dependencies that can change.
+    childrens' `tag`s, but `tag`s can't change, so we don't need to
+    think about them as dependencies. In invalidation we care only
+    about dependencies that can change.
 
-To avoid redundant `BlockLayout` creation, recall that idempotency
-means that calling a function again _with the same inputs and
-dependencies_ yields the same result. Here, the inputs can change, so
-we can only avoid redundant re-execution _if the node's `children`
-field hasn't changed_.
-
-To know whether that's the case, we're going to use a dirty flag:
+Recall that idempotency means that calling a function again _with the
+same inputs and dependencies_ yields the same result. Here, the inputs
+can change, so we can only avoid redundant re-execution _if the node's
+`children` field hasn't changed_. So we need a way of knowing whether
+that `children` field has changed. We're going to use a dirty flag:
 
 ``` {.python expected=False}
 class BlockLayout:
@@ -476,9 +480,8 @@ Every dirty flag *protects* a certain field; this one protects a
 cycle: it can be set, checked, and reset. The dirty flag starts out
 `True`, and is set to `True` when an input or dependency of the field
 changes, marking the *protected field* as unusable. Then, before using
-the protected field, the dirty flag must be checked. Finally, once the
-field is recomputed, the flag is reset to `False` to indicate that the
-value is up-to-date.
+the protected field, the dirty flag must be checked. The flag is reset
+to `False` only when the protected field is recomputed.
 
 So let's analyze the `children_dirty` flag in this way. Dirty flags
 have to be set if any _dependencies_ of the fields they protect
@@ -515,15 +518,18 @@ class Frame:
 ```
 
 It's important that _all_ dependencies of the protected field set the
-dirty bit. Otherwise, we'll fail to recompute the protected fields,
-causing unpredictable layout glitches. And this can be challenging,
-since it requires being vigilent about which fields depend on which
-others.
+dirty bit. This can be challenging, since it requires being vigilent
+about which fields depend on which others. But if we do forget to set
+the direty bit, we'll sometimes fail to recompute the protected
+fields, which means we'll display the page incorrectly. Typically
+these bugs look like unpredictable layout glitches, and they can be
+very hard to debug---so let's be careful.
 
-Anyway, the next step is, check the dirty flag before using the
-protected field. `BlockLayout` uses its `children` field in three
-places: to recursively call `layout` on all its children, to compute
-its `height`, and to `paint` itself. Let's add a check in each place:
+Anyway, now that we're setting the dirty flag, the next step is
+checking the dirty flag before using the protected field.
+`BlockLayout` uses its `children` field in three places: to
+recursively call `layout` on all its children, to compute its
+`height`, and to `paint` itself. Let's add a check in each place:
 
 ``` {.python replace=self.height/new_height expected=False}
 class BlockLayout:
@@ -542,53 +548,35 @@ class BlockLayout:
         # ...
 ```
 
-It's tempting to skip these assertions, since the children will always
-be up to date when this code is called, but adding these checks helps
-avoid bugs down the line as you add more invalidation. It's very easy
-to compute some field but skip computing its dependencies, or compute
-fields in the wrong order, and that will cause hard-to-diagnose bugs.
+It's tempting to skip these assertions, since they should never be
+triggered, but coding defensively like this catches bugs earlier and
+makes them easier to debug. It's very easy to invalidate fields in the
+wrong order, or skip a computation when it's actually important, and
+you'd rather that trigger a crash rather than a subtly incorrect
+rendering.
 
 Finally, when the field is recomputed we need to reset the dirty flag.
-Here, we reset the flag when we've recomputed the `children` array,
-meaning right after that `if mode` statement:
+Here, we reset the flag when we've recomputed the `children` array:
 
 ``` {.python expected=False}
 class BlockLayout:
     def layout(self):
         if mode == "block":
             # ...
+            self.children_dirty = False
         else:
             # ...
-        self.children_dirty = False
+            self.children_dirty = False
 ```
 
-Run your browser again and test it on this page. When editing, the
-browser should run like normal without triggering any assertions. It's
-important to work incrementally and test often---because if you make a
-mistake, it can be pretty difficult to figure out what it was.
+Now that we have all three parts of the dirty flag done, you should be
+able to run your browser and test it on this page. Even when you edit
+text or call `innerHTML`, you shouldn't see any assertion failures.
+Work incrementally and test often---it makes debugging easier.
 
-With the `children_dirty` flag properly set and reset, we can finally
-use it to avoid redundant work. Right now `layout` recreates the
-`BlockLayout`s every time it's called, but it doesn't need to if
-`children` isn't dirty. Let's skip the `BlockLayout` creation in that
-case.
-
-First, find the line at the top of `layout` that resets the `children`
-array, and move it into the two branches of the `if` statement:
-
-``` {.python}
-class BlockLayout:
-    def layout(self):
-        if mode == "block":
-            self.children = []
-            # ...
-        else:
-            self.children = []
-            # ...
-```
-
-Now, in the block case, we can skip recreating the `children` array if
-it's not dirty:
+Now that the `children_dirty` flag works correctly, we can rely on it
+to avoid redundant work. If `children` isn't dirty, we don't need to
+recreate the `BlockLayout` children:
 
 ``` {.python expected=False}
 class BlockLayout:
@@ -602,20 +590,21 @@ class BlockLayout:
                         self.frame)
                     self.children.append(next)
                     previous = next
+                self.children_dirty = False
 ```
 
-Try this out again. If you add a `print` statement inside that
-inner-most `if`, you'll see every time we recreate the `BlockLayout`
-children; when editing text, it shouldn't happen at all, and that will
-make editing somewhat smoother.
+If you add a `print` statement inside that inner-most `if`, you'll see
+console output every time `BlockLayout` children are created. Try that
+out while editing text: it shouldn't happen at all, and editing will
+be slightly smoother.
 
 ::: {.further}
 If you've heard [Phil Karlton's saying][quote-originates] that "the
 two hardest problems in computer science are cache invalidation and
-naming things", you know that managing more and more dirty flags explodes
-complexity. Phil worked at Netscape at one point (officially as "[Principal
-Curmudgeon][curmudgeon]") so I like to imagine him saying that quote
-while talking about layout invalidation.
+naming things", you know that managing more and more dirty flags
+creates increasing complexity. Phil worked at Netscape at one point
+(officially as "[Principal Curmudgeon][curmudgeon]") so I like to
+imagine him saying that quote while talking about layout invalidation.
 :::
 
 [quote-originates]: https://www.karlton.org/2017/12/naming-things-hard/
