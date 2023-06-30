@@ -5,13 +5,13 @@ prev: embeds
 next: skipped
 ...
 
-When we [used compositing](animations.md) to make animations smoother,
-we had to skip interactions that affect layout, like text editing or
-DOM modifications. Luckily, we can avoid redundant layout work
-treating the layout tree as a kind of cache, and only recomputing the
-parts that change. This *invalidation* technique is traditionally
-complex and bug-prone, but we'll use a principled approach and simple
-abstractions to make it managable.
+We [used compositing](animations.md) to make animations smoother, but
+that doesn't help with interactions that affect layout, like text
+editing or DOM modifications. Luckily, we can avoid redundant layout
+work by treating the layout tree as a kind of cache, and only
+recomputing the parts that change. This *invalidation* technique is
+traditionally complex and bug-prone, but we'll use a principled
+approach and simple abstractions to make it managable.
 
 Editing Content
 ===============
@@ -21,14 +21,15 @@ animate CSS properties like `transform` or `opacity`. But we couldn't
 animate _layout-inducing_ properties this way because they change not
 only the _display list_ but also the _layout tree_. And while it's
 best to avoid animating layout-inducing properties, many user
-interactions need to be smooth but require changing the layout tree.
+interactions that need to be responsive but change the layout tree.
 
 One good example is editing text. People type pretty quickly, so even
 a few frames' delay is distracting. But editing changes the HTML tree
-and therefore the layout tree. Rebuild the layout tree from scratch,
-which our browser currently does, can drop multiple frames on complex
-pages. Try, for example, loading this chapter in our toy browser and
-typing into this input box:
+and therefore the layout tree. Rebuilding the layout tree from
+scratch, which our browser currently does, can drop multiple frames on
+complex pages. Try, for example, loading [this
+chapter](invalidation.md) in our toy browser and typing into this
+input box:
 
 <input style="width:100%"/>
 
@@ -44,7 +45,7 @@ there are other text editing APIs that can't be. For example, the
     layout, just paint.
 
 [^amazing-ce]: The `contenteditable` attribute can turn any element on
-    any page into a living document. It' how we implemented the "typo"
+    any page into a living document. It's how we implemented the "typo"
     feature for this book: type `Ctrl-E` (or `Cmd-E` on a Mac) to turn
     it on. The source code is [here](/feedback.js); see the
     `typo_mode` function for the `contenteditable` attribute.
@@ -179,29 +180,34 @@ afterwards. On a big page, even tiny changes can take a long time.
 We want interactions to be fast, even on large, complex pages, so we
 want re-rendering the page to take time proportional to the *size of
 the change*, and not proportional to the *size of the page*. I call
-this the principle of incremental performance, and it's crucial for
+this the *principle of incremental performance*, and it's crucial for
 handling large and complex web applications. Not only does it mean
-fast text editing, it also means that developers can also think about
-performance one change at a time, without consider the contents of the
-whole page. The incremental performance is therefore necessary for
+fast text editing, it also means that developers can think about
+performance one change at a time, without considering the contents of
+the whole page. Incremental performance is therefore necessary for
 complex applications. But the principle of incremental performance
-also really constrains our browser. For example, during rendering even
-*traversing* the whole layout tree would take time proportional to the
-whole page, not the change being made, so we can't do that.
+also really constrains our browser. For example, even *traversing* the
+whole layout tree would take time proportional to the whole page, not
+the change being made, so we can't even affort to do that.
 
 To achieve incremental performance, we're going to need to think of
 the initial render and later re-renders differently.[^big-change] When
 the page is first loaded, rendering will take time proportional to the
 size of the page. But we'll treat that initial render as a cache.
-Later renders will only invalidate and recompute parts of that cache,
-taking time proportional to the size of the change.
+Later renders will *invalidate* and recompute parts of that cache,
+taking time proportional to the size of the change, but won't touch
+most of the page.
 
 [^big-change]: While initial and later renders are conceptually
     different, they'll use the same code path. Basically, the initial
     render will be one big change from no page to the initial page,
-    while later re-renders will handle smaller changes.
+    while later re-renders will handle smaller changes. And anyway,
+    a page could use `innerHTML` to replace the whole page; that would
+    be a big change, and rendering it would take time proportional to
+    the whole page, because the change is the size of the whole page!
+    The point is: all of these will ultimately use the same code path.
 
-The key to this cache invalidation approach will be tracking the
+The key to this cache-and-invalidate approach will be tracking the
 effects of changes. When one part of the page, like a `style`
 attribute, changes, other things that depends on it, like that
 element's size, change as well. So we'll need to construct a detailed
@@ -339,7 +345,7 @@ class DocumentLayout:
 But we don't want to `append` the same child more than once!
 
 The issue here is called *idempotence*: repeated calls to `layout`
-need to not repeatedly change state. More formally, a function is
+shouldn't repeatedly change state. More formally, a function is
 idempotent if calling it twice in a row with the same inputs and
 dependencies yields the same result. Assigning a field is idempotent:
 assigning the same value for a second time is a no-op. But methods
@@ -394,14 +400,14 @@ The `new_line` and `add_inline_child` methods are only called through
 `layout`, which resets the `children` array, so they don't break
 idempotency. The `get_font` function acts as a cache, so multiple
 calls return the same font object. And `display_px` just does math, so
-always returns the same result given the same inputs. In other words
-all of our `layout` methods are now idempotent.
+it always returns the same result given the same inputs. In other
+words all of our `layout` methods are now idempotent.
 
 Because all of the `layout` methods are now idempotent, it's safe to
 call `layout` multiple times on the same object---which is exactly
 what we're now doing. More generally, since it doesn't matter _how
-many_ times an idempotent function is called, we can skip redundant
-calls. That makes idempotency the foundation for the rest of this
+many_ times an idempotent function is called, we can *skip redundant
+calls*! That makes idempotency the foundation for the rest of this
 chapter, which is all about skipping redundant work.
 
 ::: {.further}
@@ -518,9 +524,9 @@ class Frame:
 ```
 
 It's important that _all_ dependencies of the protected field set the
-dirty bit. This can be challenging, since it requires being vigilent
+dirty bit. This can be challenging, since it requires being vigilant
 about which fields depend on which others. But if we do forget to set
-the direty bit, we'll sometimes fail to recompute the protected
+the dirty bit, we'll sometimes fail to recompute the protected
 fields, which means we'll display the page incorrectly. Typically
 these bugs look like unpredictable layout glitches, and they can be
 very hard to debug---so let's be careful.
@@ -553,7 +559,9 @@ triggered, but coding defensively like this catches bugs earlier and
 makes them easier to debug. It's very easy to invalidate fields in the
 wrong order, or skip a computation when it's actually important, and
 you'd rather that trigger a crash rather than a subtly incorrect
-rendering.
+rendering---at least when debugging a toy browser![^no-crash]
+
+[^no-crash]: Real browsers prefer not to crash.
 
 Finally, when the field is recomputed we need to reset the dirty flag.
 Here, we reset the flag when we've recomputed the `children` array:
