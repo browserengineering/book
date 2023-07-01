@@ -5,54 +5,50 @@ prev: embeds
 next: skipped
 ...
 
-We [previously](animations.md) improved animation performance by
-optimizing our browser's graphics subsystem. But that doesn't help
-interactions that affect layout, like text editing or JavaScript DOM
-modifications. Luckily, we can avoid redundant layout work by only
-recomputing some of it, and treating the layout tree like a form of
-cache. This *invalidation* technique focuses on figuring out which
-parts of the tree need updates, and recomputing only them. While
-invalidation is traditionally complex and bug-prone, a principled
-approach and simple abstractions can make it managable, and the
-complexity is necessary to make key user interactions like text input
-much faster.
+We [used compositing](animations.md) to make animations smoother, but
+that doesn't help with interactions that affect layout, like text
+editing or DOM modifications. Luckily, we can avoid redundant layout
+work by treating the layout tree as a kind of cache, and only
+recomputing the parts that change. This *invalidation* technique is
+traditionally complex and bug-prone, but we'll use a principled
+approach and simple abstractions to make it managable.
 
 Editing Content
 ===============
 
 In [Chapter 13](animations.md), we used compositing to smoothly
-animate CSS properties like `transform` or `opacity`. However, other
-CSS properties are _layout-inducing_ and can't be animated this way,
-because they change not only the _display list_ but also the _layout
-tree_. And while layout-inducing animations are best avoided, lots of
-other interactions require changing the layout tree yet need to be as
-smooth as possible.
+animate CSS properties like `transform` or `opacity`. But we couldn't
+animate _layout-inducing_ properties this way because they change not
+only the _display list_ but also the _layout tree_. And while it's
+best to avoid animating layout-inducing properties, many user
+interactions need to be responsive but change the layout tree.
 
-One good example is editing text. People type pretty quickly, so even a few
-frames' delay is distracting. But editing changes the HTML tree and therefore
-requires changing the layout tree to reflect new text. Currently, that forces
-our browser to rebuild the layout tree from scratch, which can drop multiple
-frames on complex pages like this one. Try, for example, loading this chapter
-in our toy browser and typing into this input box:
+One good example is editing text. People type pretty quickly, so even
+a few frames' delay is distracting. But editing changes the HTML tree
+and therefore the layout tree. Rebuilding the layout tree from
+scratch, which our browser currently does, can drop multiple frames on
+complex pages. Try, for example, loading [this
+chapter](invalidation.md) in our toy browser and typing into this
+input box:
 
 <input style="width:100%"/>
 
-You'll find that it is *much* slower than in a real browser.
+You'll find that it is *much* too slow.
 
-Typing into an `input` element could be special-case optimized,[^no-resize] but
+Typing into `input` elements could be special-cased,[^no-resize] but
 there are other text editing APIs that can't be. For example, the
 `contenteditable` attribute makes any element editable:[^amazing-ce]
 
 [^no-resize]: The `input` element doesn't change size as you type, and
     the text in the `input` element doesn't get its own layout object,
-    so the layout tree is actually the same after each edit.
+    so typing into an `input` element doesn't really have to induce
+    layout, just paint.
 
-[^amazing-ce]: The contenteditable attribute is pretty amazing, since
-you can set it on any element on any web site, and thereby turn it into
-a living document. In fact, this is how we implemented the "typo"
-feature for this book: type `Ctrl-E` (or `Cmd-E` on a Mac) to turn it on if
-you haven't tried it yet). The source code is [here](/feedback.js); see
-the `typo_mode` function.
+[^amazing-ce]: The `contenteditable` attribute can turn any element on
+    any page into a living document. It's how we implemented the "typo"
+    feature for this book: type `Ctrl-E` (or `Cmd-E` on a Mac) to turn
+    it on. The source code is [here](/feedback.js); see the
+    `typo_mode` function for the `contenteditable` attribute.
 
 ::: {.demo contenteditable=true}
 Click on this <i>formatted</i> <b>text</b> to edit it, including rich text!
@@ -66,7 +62,7 @@ focusable:[^other-values]
 [^other-values]: Actually, in real browsers, `contenteditable` can be
     set to `true` or `false`, and `false` is useful in case you want
     to have a non-editable element inside an editable one. But I'm
-    going to skip supporting that.
+    not going to implement that in our toy browser.
 
 ``` {.python}
 def is_focusable(node):
@@ -79,7 +75,7 @@ def is_focusable(node):
 Once we're focused on an editable node, typing should edit it. A real
 browser would handle cursor movement and all kinds of complications,
 but I'll keep it simple and just add each character to the last text
-node in the editable element. First we need to find that element:
+node in the editable element. First we need to find that text node:
 
 ``` {.python}
 class Frame:
@@ -112,8 +108,8 @@ class Frame:
 ```
 
 This is enough to make editing work, but it's convenient to also draw
-a cursor confirm that the element is focused and show where edits will
-go. Let's do that in `BlockLayout`:
+a cursor to confirm that the element is focused and show where edits
+will go. Let's do that in `BlockLayout`:
 
 ``` {.python replace=.width/.width.get()}
 class BlockLayout:
@@ -151,9 +147,8 @@ class InputLayout(EmbedLayout):
 ```
 
 You can now edit the examples on this page in your toy browser---but
-each key stroke will take hundreds of milliseconds to type, making for
-a slow and frustrating editing experience. Let's now work toward
-making that faster.
+each key stroke will take hundreds of milliseconds, making for a
+frustrating editing experience. So let's work on speeding that up.
 
 ::: {.further}
 Actually, text editing is [exceptionally hard][editing-hates-you],
@@ -161,8 +156,7 @@ including tricky concepts like caret affinity (which line the cursor
 is on, if a long line is wrapped in the middle of a word), unicode
 handling, [bidirectional text](http://unicode.org/faq/bidi.html), and
 mixing text formatting with editing. So it's a good thing browsers
-implement all this complexity and hide it behind the `contenteditable`
-API!
+implement all this complexity and hide it behind `contenteditable`!
 :::
 
 [editing-hates-you]: https://lord.io/text-editing-hates-you-too/
@@ -173,79 +167,81 @@ Why Invalidation?
 
 Fundamentally, the reason editing this page is slow in our browser is
 that it's pretty big.[^other-reasons] After all, it's not handling the
-keypress that's slow---that just appends a character to a `Text` node,
-which takes almost no time. It's what happens afterwards that takes
-time: the browser has to rerender the whole page. Even seemingly tiny
-changes take a long time on a large page.
+keypress that's slow: appending a character to a `Text` node takes
+almost no time. What takes time is rerendering the whole page
+afterwards. On a big page, even tiny changes can take a long time.
 
 [^other-reasons]: I'm sure there are all sorts of performance
     improvements possible without implementing the invalidation
-    techniques from this chapter, but they are essential toward
-    achieving incrementalism, which is a kind of asymptotic guarantee
-    that simple optimizations won't achieve.
+    techniques from this chapter, but invalidation is still essential
+    for incremental performance, which is a kind of asymptotic
+    guarantee that simple optimizations won't achieve.
 
-If we want interactions to be fast, even on large, complex pages,
-we're going to need re-rendering the page to take time proportional to
-the *size of the change*, and not proportional to the *size of the
-page*. I call this the principle of incremental performance, and it's
-crucial for handling large and complex web applications. It means that
-developers can predict how long their code will run regardless of the
-content on the page, and it lets users predict how long interactions
-will take. That ultimately makes this principle a core part of the
-value that browser engineers provide to the web as a whole.
+We want interactions to be fast, even on large, complex pages, so we
+want re-rendering the page to take time proportional to the *size of
+the change*, and not proportional to the *size of the page*. I call
+this the *principle of incremental performance*, and it's crucial for
+handling large and complex web applications. Not only does it mean
+fast text editing, it also means that developers can think about
+performance one change at a time, without considering the contents of
+the whole page. Incremental performance is therefore necessary for
+complex applications. But the principle of incremental performance
+also really constrains our browser. For example, even *traversing* the
+whole layout tree would take time proportional to the whole page, not
+the change being made, so we can't even affort to do that.
 
-But the principle of incremental performance also really constrains
-our browser. For example, during rendering even *traversing* the whole
-layout tree would take time proportional to the whole page, not the
-change being made, so we can't do that. To achieve incrementality,
-we're going to need to think of the initial render and later
-re-renders differently.[^big-change] When the page is first loaded,
-rendering is definitely going to take time proportional to the size of
-the page. But we treat that initial render as a cache. Later renders
-will only invalidate and recompute the parts of that cache, taking
-time proportional to the changed portion of the page.
+To achieve incremental performance, we're going to need to think of
+the initial render and later re-renders differently.[^big-change] When
+the page is first loaded, rendering will take time proportional to the
+size of the page. But we'll treat that initial render as a cache.
+Later renders will *invalidate* and recompute parts of that cache,
+taking time proportional to the size of the change, but won't touch
+most of the page.
 
 [^big-change]: While initial and later renders are conceptually
     different, they'll use the same code path. Basically, the initial
     render will be one big change from no page to the initial page,
-    while later re-renders will incorporate smaller changes.
+    while later re-renders will handle smaller changes. And anyway,
+    a page could use `innerHTML` to replace the whole page; that would
+    be a big change, and rendering it would take time proportional to
+    the whole page, because the change is the size of the whole page!
+    The point is: all of these will ultimately use the same code path.
 
-The key to that will be tracking the effects of changes. When one
-part of the page, like a `style` attribute, changes, other things
-that depends on it, like that element's size, change as well. So we'll
-need to construct a detailed *dependency graph*, down to the level of
-each layout field, and use that graph to determine what to recompute.
-It will be similar to our `needs_style` and `needs_layout` flags, but
-at a much larger scale.
+The key to this cache-and-invalidate approach will be tracking the
+effects of changes. When one part of the page, like a `style`
+attribute, changes, other things that depends on it, like that
+element's size, change as well. So we'll need to construct a detailed
+*dependency graph*, down to the level of each layout field, and use
+that graph to determine what to recompute. It will be similar to our
+`needs_style` and `needs_layout` flags, but with many more fields.
 
 In a real browser, every step of the rendering pipeline needs to be
 incremental, but this chapter focuses on layout.[^why-layout] Most of
 this chapter is about tracking dependencies in the dependency graph,
 and building abstractions to help us do that. To use those
-abstractions, we'll need to execute a large refactor of our layout
-engine. But ultimately, incrementalizing layout will allow us to skip
-the two most expensive parts of layout: building the layout tree and
+abstractions, we'll need to refactor our layout engine significantly.
+But ultimately, incrementalizing layout will allow us to skip the two
+most expensive parts of layout: building the layout tree and
 traversing it to compute layout fields. When we're done, re-layout
-will take under a millisecond for small changes on this page.
+will take under a millisecond for small changes like text editing.
 
 [^why-layout]: Why layout? Because layout is both important and 
     complex enough to demonstrate most of the core challenges and
     techniques.
 
 ::: {.further}
-The principle of incremental performance derives from the principles
-of the web. Remember that the web is a *declarative* platform: web
-pages only concern themselves with *describing* how the page looks,
-and it's up to the browser to implement that description. To us
+The principle of incremental performance is part of what makes
+browsers a good platform. Remember that the web is *declarative*:
+web pages only concern themselves with *describing* how the page
+looks, and it's up to the browser to implement that description. To us
 browser engineers, that creates a whole bunch of complexity. But think
 about the web as a whole---it involves not just browser engineers, but
 web developers and users as well. Implementing complex invalidation
 algorithms in the browser lets web developers focus on making more
 interesting applications and gives users a better, more responsive
-web; it's part of the value that we as browser engineers provide. The
-declarative web makes it possible for the invalidation algorithms to
-be written once and then automatically benefit everyone else who uses
-the web.
+web. The declarative web makes it possible for the invalidation
+algorithms to be written once and then automatically benefit everyone
+else who uses the web.
 :::
 
 
@@ -253,16 +249,9 @@ the web.
 Idempotence
 ===========
 
-At a high level, the reason editing is slow is that each edit
-recomputes the page's layout tree---and on a large page like this
-one, that takes a long time. But is recomputing layout necessary?
-Adding a single letter to a single word on a single line of the page
-doesn't exactly change the page dramatically: almost everything stays
-in the exact same place. If we could reuse the old layout, instead of
-throwing it away, editing could conceivably be pretty snappy.
-
-The layout recomputation happens in `render` every time the layout
-changes:
+If we want to implement this caching-and-invalidation idea, the first
+road block is that our browser rebuilds the layout tree from scratch
+every time the layout phase runs:
 
 ``` {.python file=lab15}
 class Frame:
@@ -273,10 +262,12 @@ class Frame:
             # ...
 ```
 
-When we create a new `DocumentLayout`, we throw away all of the old
-layout information and start from scratch. We are
-essentially *invalidating* all of the tree on every layout. The first
-optimization to pursue is not rebuiding the tree if nothing changed.
+By creating a new `DocumentLayout`, we ignore all of the old layout
+information and start from scratch; we are essentially *invalidating*
+the whole tree. So our first optimization has to avoid doing that,
+reusing as many layout objects as possible. That both saves time
+allocating memory and makes the caching-and-invalidation approach
+possible by keeping around the old layout information.
 
 But before jumping right to coding, let's review how layout objects
 are created. Search your browser code for `Layout`, which all layout
@@ -290,16 +281,11 @@ in just a few places:
 - `LineLayout` objects are created by `BlockLayout` in `new_line`
 - All others are created by `BlockLayout` in `add_inline_child`
 
-We want to avoid *creating* layout objects, instead *reusing* them
-whenever possible. That both saves time immediately (allocating new
-objects takes time) and sets us up for more speedups by keeping around
-the old layout information.
-
 Let's start with `DocumentLayout`. It's created in `render`, and its
 two parameters, `nodes` and `self`, are the same every time. This
-means every execution of this line of code creates effectively
-identical objects.[^side-effects] That seems wasteful, so let's create
-the `DocumentLayout` just once, in `load`:
+means that identical `DocumentLayout`s are created each
+time.[^side-effects] That's wasteful; let's create the
+`DocumentLayout` just once, in `load`:
 
 [^side-effects]: This wouldn't be true if the `DocumentLayout`
     constructor had side-effects or read global state, but it doesn't
@@ -318,7 +304,8 @@ class Frame:
             # ...
 ```
 
-The `DocumentLayout` then constructs a `BlockLayout`:
+Moving on, let's look at where `DocumentLayout` constructs a
+`BlockLayout`:
 
 ``` {.python file=lab15}
 class DocumentLayout:
@@ -327,8 +314,8 @@ class DocumentLayout:
         # ...
 ```
 
-Again, the constructor parameters cannot change, so again we can skip
-re-constructing this layout object, with code like this:
+Once again, the constructor parameters cannot change, so again we can
+skip re-constructing this layout object, like so:
 
 ``` {.python replace=.append(child)/%20%3d%20[child]}
 class DocumentLayout:
@@ -342,11 +329,10 @@ class DocumentLayout:
 
 But don't run your browser with these changes just yet! By reusing
 layout objects, we end up running `layout` multiple times on the same
-object. That's not what the `layout` method expects, so it causes all
-sorts of weird behavior.
-
-For example, after the `DocumentLayout` creates its child
-`BlockLayout`, it *appends* it to the `children` array:
+object. That's not how `layout` is intended to work, and it causes all
+sorts of weird behavior. For example, after the `DocumentLayout`
+creates its child `BlockLayout`, it *appends* it to the `children`
+array:
 
 ``` {.python file=lab15}
 class DocumentLayout:
@@ -356,13 +342,14 @@ class DocumentLayout:
         # ...
 ```
 
-But we don't want to `append` the same child more than once! The issue
-here is called *idempotence*: repeated calls to `layout` need to not
-repeatedly change state. More formally, a function is idempotent if
-calling it twice in a row with the same inputs and dependencies yields
-the same result. Idempotent functions are like assignments: assigning
-a field the same value for a second time doesn't change its state.
-Methods like `append`, however, aren't idempotent.
+But we don't want to `append` the same child more than once!
+
+The issue here is called *idempotence*: repeated calls to `layout`
+shouldn't repeatedly change state. More formally, a function is
+idempotent if calling it twice in a row with the same inputs and
+dependencies yields the same result. Assigning a field is idempotent:
+assigning the same value for a second time is a no-op. But methods
+like `append` aren't idempotent.
 
 We'll need to fix any non-idempotent method calls. In
 `DocumentLayout`, we can switch from `append` to assignment:
@@ -375,27 +362,32 @@ class DocumentLayout:
         # ...
 ```
 
-However, `BlockLayout` also calls `append` on its `children` array.
-That's going to be harder to fix, so for now, reset the `children`
-array at the top of `layout`:
+`BlockLayout` also calls `append` on its `children` array. We can fix
+that by resetting the `children` array in `layout`. I'll put separate
+reset code in the block and inline cases:
 
 ``` {.python}
 class BlockLayout:
     def layout(self):
-        self.children = []
-        # ...
+        if mode == "block":
+            self.children = []
+            # ...
+        else:
+            self.children = []
+            # ...
 ```
 
 This makes the `BlockLayout`'s `layout` function idempotent because
 each call will assign a new `children` array.
 
-Let's check all other `layout` methods for idempotency by reading them
-and noting any subroutine calls. I found:[^exercises]
+Before we try running our browser, let's read through all of the other
+`layout` methods, noting any subroutine calls that might not be
+idempotent. I found:[^exercises]
 
 [^exercises]: If you've being doing exercises throughout this book,
-    there might be more, in which case it might be harder to follow
-    along, depending on how you've implemented them. But the core idea
-    is replacing non-idempotent calls with idempotent ones.
+    there might be more, in which case there might be more calls. In
+    any case, the core idea is replacing non-idempotent calls with
+    idempotent ones.
 
 - In `new_line`, `BlockLayout` will append to its `children` array.
 - In `text` and `input`, `BlockLayout` will append to the `children`
@@ -404,18 +396,19 @@ and noting any subroutine calls. I found:[^exercises]
   the `TextLayout` and `InputLayout` methods.
 - Basically every layout method calls `device_px`.
 
-Luckily, the `new_line` and `add_inline_child` methods are only called
-through `layout`, which resets the `children` array. Meanwhile,
-`get_font` acts as a cache, so multiple calls return the same font
-object, and `display_px` just does math, so always returns the same
-result given the same inputs. So all of our `layout` methods are now
-idempotent, and the browser should work correctly again.
+The `new_line` and `add_inline_child` methods are only called through
+`layout`, which resets the `children` array, so they don't break
+idempotency. The `get_font` function acts as a cache, so multiple
+calls return the same font object. And `display_px` just does math, so
+it always returns the same result given the same inputs. In other
+words all of our `layout` methods are now idempotent.
 
-A great thing about idempotency is it doesn't matter _how many_ times a
-function is called, and that gives us the freedom to skip redundant
-work, if we happen to know it was done in the past. That makes it the
-foundation for the rest of this chapter, which is all about knowing
-what work is truly redundant.
+Because all of the `layout` methods are now idempotent, it's safe to
+call `layout` multiple times on the same object---which is exactly
+what we're now doing. More generally, since it doesn't matter _how
+many_ times an idempotent function is called, we can *skip redundant
+calls*! That makes idempotency the foundation for the rest of this
+chapter, which is all about skipping redundant work.
 
 ::: {.further}
 HTTP also features a [notion of idempotence][idempotence-mdn], but
@@ -437,9 +430,9 @@ separate log entry.
 Dependencies
 ============
 
-So far, we've only looked at one place where layout objects are
-created. Let's look at another: `BlockLayout`s created when laying out
-another `BlockLayout`. Here's the relevant code:
+So far, we're only reusing two layout objects: the `DocumentLayout`,
+and the root `BlockLayout`. Let's look at the other `BlockLayout`s,
+created when laying out a `BlockLayout`:
 
 ``` {.python file=lab15 dropline=self.children%20%3d}
 class BlockLayout:
@@ -455,29 +448,27 @@ class BlockLayout:
         # ...
 ```
 
-Here, the arguments to `BlockLayout` are a little more complicated
-than the ones passed in `DocumentLayout`. The second argument, `self`,
-is never assigned to, but `child` and `previous` both contain elements
-read from `node.children`, and that `children` array can change---as a
-result of `contenteditable` edits or calls to `innerHTML`.[^or-others]
-Moreover, in order to even run this code, the node's `layout_mode` has
-to be `"block"`, and `layout_mode` itself also reads the node's
-`children`.[^and-tags]
+This code is a little more complicated than the code that creates the
+root `BlockLayout`: the `child` and `previous` arguments come from
+`node.children`, and that `children` array can change---as a result of
+`contenteditable` edits or calls to `innerHTML`.[^or-others] Moreover,
+in order to even run this code, the node's `layout_mode` has to be
+`block`, and `layout_mode` itself also reads the node's
+`children`.[^and-tags] This makes it harder to know when we need to
+recreate the `BlockLayout`s.
 
 [^or-others]: Or any other exercises and extensions that you've implemented.
 
 [^and-tags]: It also looks at the node's `tag` and the node's
-    childrens' `tag`s, but a node's `tag` can't change, so I don't
-    think of those as dependencies. In invalidation we care only about
-    dependencies that can change.
+    childrens' `tag`s, but `tag`s can't change, so we don't need to
+    think about them as dependencies. In invalidation we care only
+    about dependencies that can change.
 
-To avoid redundant `BlockLayout` creation, recall that idempotency
-means that calling a function again _with the same inputs and
-dependencies_ yields the same result. Here, the inputs can change, so
-we can only avoid redundant re-execution _if the node's `children`
-field hasn't changed_.
-
-To know whether that's the case, we're going to use a dirty flag:
+Recall that idempotency means that calling a function again _with the
+same inputs and dependencies_ yields the same result. Here, the inputs
+can change, so we can only avoid redundant re-execution _if the node's
+`children` field hasn't changed_. So we need a way of knowing whether
+that `children` field has changed. We're going to use a dirty flag:
 
 ``` {.python expected=False}
 class BlockLayout:
@@ -495,9 +486,8 @@ Every dirty flag *protects* a certain field; this one protects a
 cycle: it can be set, checked, and reset. The dirty flag starts out
 `True`, and is set to `True` when an input or dependency of the field
 changes, marking the *protected field* as unusable. Then, before using
-the protected field, the dirty flag must be checked. Finally, once the
-field is recomputed, the flag is reset to `False` to indicate that the
-value is up-to-date.
+the protected field, the dirty flag must be checked. The flag is reset
+to `False` only when the protected field is recomputed.
 
 So let's analyze the `children_dirty` flag in this way. Dirty flags
 have to be set if any _dependencies_ of the fields they protect
@@ -534,15 +524,18 @@ class Frame:
 ```
 
 It's important that _all_ dependencies of the protected field set the
-dirty bit. Otherwise, we'll fail to recompute the protected fields,
-causing unpredictable layout glitches. And this can be challenging,
-since it requires being vigilent about which fields depend on which
-others.
+dirty bit. This can be challenging, since it requires being vigilant
+about which fields depend on which others. But if we do forget to set
+the dirty bit, we'll sometimes fail to recompute the protected
+fields, which means we'll display the page incorrectly. Typically
+these bugs look like unpredictable layout glitches, and they can be
+very hard to debug---so let's be careful.
 
-Anyway, the next step is, check the dirty flag before using the
-protected field. `BlockLayout` uses its `children` field in three
-places: to recursively call `layout` on all its children, to compute
-its `height`, and to `paint` itself. Let's add a check in each place:
+Anyway, now that we're setting the dirty flag, the next step is
+checking the dirty flag before using the protected field.
+`BlockLayout` uses its `children` field in three places: to
+recursively call `layout` on all its children, to compute its
+`height`, and to `paint` itself. Let's add a check in each place:
 
 ``` {.python replace=self.height/new_height expected=False}
 class BlockLayout:
@@ -561,53 +554,37 @@ class BlockLayout:
         # ...
 ```
 
-It's tempting to skip these assertions, since the children will always
-be up to date when this code is called, but adding these checks helps
-avoid bugs down the line as you add more invalidation. It's very easy
-to compute some field but skip computing its dependencies, or compute
-fields in the wrong order, and that will cause hard-to-diagnose bugs.
+It's tempting to skip these assertions, since they should never be
+triggered, but coding defensively like this catches bugs earlier and
+makes them easier to debug. It's very easy to invalidate fields in the
+wrong order, or skip a computation when it's actually important, and
+you'd rather that trigger a crash rather than a subtly incorrect
+rendering---at least when debugging a toy browser![^no-crash]
+
+[^no-crash]: Real browsers prefer not to crash.
 
 Finally, when the field is recomputed we need to reset the dirty flag.
-Here, we reset the flag when we've recomputed the `children` array,
-meaning right after that `if mode` statement:
+Here, we reset the flag when we've recomputed the `children` array:
 
 ``` {.python expected=False}
 class BlockLayout:
     def layout(self):
         if mode == "block":
             # ...
+            self.children_dirty = False
         else:
             # ...
-        self.children_dirty = False
+            self.children_dirty = False
 ```
 
-Run your browser again and test it on this page. When editing, the
-browser should run like normal without triggering any assertions. It's
-important to work incrementally and test often---because if you make a
-mistake, it can be pretty difficult to figure out what it was.
+Now that we have all three parts of the dirty flag done, you should be
+able to run your browser and test it on this page. Even when you edit
+text or call `innerHTML`, you shouldn't see any assertion failures.
+Work incrementally and test often---it makes debugging easier.
 
-With the `children_dirty` flag properly set and reset, we can finally
-use it to avoid redundant work. Right now `layout` recreates the
-`BlockLayout`s every time it's called, but it doesn't need to if
-`children` isn't dirty. Let's skip the `BlockLayout` creation in that
-case.
-
-First, find the line at the top of `layout` that resets the `children`
-array, and move it into the two branches of the `if` statement:
-
-``` {.python}
-class BlockLayout:
-    def layout(self):
-        if mode == "block":
-            self.children = []
-            # ...
-        else:
-            self.children = []
-            # ...
-```
-
-Now, in the block case, we can skip recreating the `children` array if
-it's not dirty:
+Now that the `children_dirty` flag works correctly, we can rely on it
+to avoid redundant work. If `children` isn't dirty, we don't need to
+recreate the `BlockLayout` children:
 
 ``` {.python expected=False}
 class BlockLayout:
@@ -621,20 +598,21 @@ class BlockLayout:
                         self.frame)
                     self.children.append(next)
                     previous = next
+                self.children_dirty = False
 ```
 
-Try this out again. If you add a `print` statement inside that
-inner-most `if`, you'll see every time we recreate the `BlockLayout`
-children; when editing text, it shouldn't happen at all, and that will
-make editing somewhat smoother.
+If you add a `print` statement inside that inner-most `if`, you'll see
+console output every time `BlockLayout` children are created. Try that
+out while editing text: it shouldn't happen at all, and editing will
+be slightly smoother.
 
 ::: {.further}
 If you've heard [Phil Karlton's saying][quote-originates] that "the
 two hardest problems in computer science are cache invalidation and
-naming things", you know that managing more and more dirty flags explodes
-complexity. Phil worked at Netscape at one point (officially as "[Principal
-Curmudgeon][curmudgeon]") so I like to imagine him saying that quote
-while talking about layout invalidation.
+naming things", you know that managing more and more dirty flags
+creates increasing complexity. Phil worked at Netscape at one point
+(officially as "[Principal Curmudgeon][curmudgeon]") so I like to
+imagine him saying that quote while talking about layout invalidation.
 :::
 
 [quote-originates]: https://www.karlton.org/2017/12/naming-things-hard/
