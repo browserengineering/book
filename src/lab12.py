@@ -41,6 +41,10 @@ class MeasureTime:
     def start_timing(self):
         self.start_time = time.time()
 
+    def text_current(self, name):
+        print("Time after {}: {}ms".format(
+            name, (time.time() - self.start_time) * 1000))
+
     def stop_timing(self):
         self.total_s += time.time() - self.start_time
         self.count += 1
