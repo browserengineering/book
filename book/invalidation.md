@@ -21,7 +21,7 @@ animate CSS properties like `transform` or `opacity`. But we couldn't
 animate _layout-inducing_ properties this way because they change not
 only the _display list_ but also the _layout tree_. And while it's
 best to avoid animating layout-inducing properties, many user
-interactions that need to be responsive but change the layout tree.
+interactions need to be responsive but change the layout tree.
 
 One good example is editing text. People type pretty quickly, so even
 a few frames' delay is distracting. But editing changes the HTML tree
