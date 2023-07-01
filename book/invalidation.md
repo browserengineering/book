@@ -2557,12 +2557,13 @@ Then set it the first time `style` is called:
 ``` {.python}
 def init_style(node):
     node.style = dict([
-            (property, ProtectedField(node, property))
+            (property, ProtectedField(node, property, None,
+                [node.parent.style[property]] \
+                    if node.parent and \
+                        property in INHERITED_PROPERTIES \
+                    else None))
             for property in CSS_PROPERTIES
         ])
-    for (name, field) in node.style.items():
-        if name in INHERITED_PROPERTIES and node.parent:
-            field.set_dependencies([node.parent.style[name]])
 ```
 
 ``` {.python}
