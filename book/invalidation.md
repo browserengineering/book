@@ -2326,9 +2326,9 @@ graphs are therefore dramatically more complex than in our browser. So
 let's make it a little easier to see the dependency graph. And along
 the way we can extract *invariants* from the code and assert the shape
 of that graph in a central place. That will give us a second benefit
-of [hardening] our browser against accidental bugs in the future, and
-a third one of making the browser a bit faster because it won't need to
-update the graph over and over every time layout is run.
+of [hardening] our browser against accidental bugs in the future.
+But as we'll see, there is a third benefit that is just as
+important---performance.
 
 [hardening]: https://en.wikipedia.org/wiki/Hardening_(computing)
 
@@ -2577,6 +2577,31 @@ We ended up freezing every field of layout and style except
 what, we can typically just see a list in the constructor. That's
 pretty nice!
 
+However, now we have to face the fact that adding all these fancy
+`ProtectedFields` is not without cost. If you measure performance
+of your toy browser, you'll find that it is quite a bit slower than
+the one from Chapter 15 on initial load of the same page---for me,
+it took about twice as long to render. That is of course an unacceptable
+performance hit. I profiled and found that the asserts slow down the
+browser somewhat (and are easy to "compile out", e.g. with the
+`-O` parameter to the Python interpreter), but other than that
+the largest cost is simply creating a ton of `ProtectedField` objects.
+
+But all is not lost! Since we've factored out almost all of the
+dependencies into static lists, we can turn these objects into
+code behind the scenes, through techniques like compile-time code
+transformations and macros. For example, setting a particular
+`ProtectedField` can be replaced by code that explicitly sets its
+(known!) dependency dirty bits, the dirty bits can be inlined into
+the layout objects, and the `read` function can become a pass-through no-op.^[Real browsers pull tricks like that all the time, in order to
+be super fast but still maintainable and readable.
+For example, Chromium has a fancy way of
+[generating optimized code][chromium-genstyle] for all of the style
+properties.] Such techniques are beyond the scope of this book, but
+I've left exploring it to an advanced exercise.
+
+[chromium-genstyle]: https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/core/style/ComputedStyle.md
+
 ::: {.further}
 
 Correct and performant cache invalidation in a web browser is extremely
@@ -2708,3 +2733,11 @@ block-mode `BlockLayout`s and then apply this optimization to avoid
 rebuilding as much of the layout tree as possible.
 
 [insertbefore-mdn]: https://developer.mozilla.org/en-US/docs/Web/API/Node/insertBefore
+
+*Optimizing away `ProtectedField`*: as mentioned in the last section
+of the chapter, creating all these objects is way too expensive for
+a real browser. See if you can find a way to avoid creating the
+objects entirely. Depending on the languge you're using to implement
+your browser, you might have compile-time macros available to help;
+in Python, this might require refactoring to change the API shape
+of `ProtectedField` to be functional rather than object-oriented.
