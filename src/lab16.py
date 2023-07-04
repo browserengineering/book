@@ -225,15 +225,6 @@ CSS_PROPERTIES = {
     "image-rendering": "auto",
 }
 
-def init_style(node):
-    node.style = dict([
-            (property, ProtectedField(node, property))
-            for property in CSS_PROPERTIES
-        ])
-    for (name, field) in node.style.items():
-        if name in INHERITED_PROPERTIES and node.parent:
-            field.set_dependencies([node.parent.style[name]])
-
 @wbetools.patch(Element)
 class Element:
     def __init__(self, tag, attributes, parent):
@@ -273,9 +264,9 @@ class DocumentLayout:
 
         self.zoom = ProtectedField(self, "zoom", None, [])
         self.width = ProtectedField(self, "width", None, [])
-        self.height = ProtectedField(self, "height")
         self.x = ProtectedField(self, "x", None, [])
         self.y = ProtectedField(self, "y", None, [])
+        self.height = ProtectedField(self, "height")
 
         self.has_dirty_descendants = True
 
@@ -296,6 +287,7 @@ class DocumentLayout:
 
         if not self.children:
             child = BlockLayout(self.node, self, None, self.frame)
+            self.height.set_dependencies([child.height])
         else:
             child = self.children[0]
         self.children = [child]
@@ -525,7 +517,8 @@ class LineLayout:
             y_dependencies = [self.previous.y, self.previous.height]
         else:
             y_dependencies = [self.parent.y]
-        self.y = ProtectedField(self, "y", self.parent, y_dependencies)
+        self.y = ProtectedField(self, "y", self.parent,
+            y_dependencies)
         self.ascent = ProtectedField(self, "ascent", self.parent)
         self.descent = ProtectedField(self, "descent", self.parent)
         self.width = ProtectedField(self, "width", self.parent,
@@ -548,14 +541,14 @@ class LineLayout:
         return False
 
     def layout(self):
-        if not self.layout_needed(): return
-
         if not self.initialized_fields:
             self.ascent.set_dependencies(
                [child.ascent for child in self.children])
             self.descent.set_dependencies(
                [child.descent for child in self.children])
             self.initialized_fields = True
+
+        if not self.layout_needed(): return
 
         self.zoom.copy(self.parent.zoom)
         self.width.copy(self.parent.width)
@@ -637,10 +630,12 @@ class TextLayout:
         self.descent = ProtectedField(self, "descent", self.parent,
             [self.font])
         if self.previous:
-            x_dependencies = [self.previous.x, self.previous.font, self.previous.width]
+            x_dependencies = [self.previous.x, self.previous.font,
+            self.previous.width]
         else:
             x_dependencies = [self.parent.x]
-        self.x = ProtectedField(self, "x", self.parent, x_dependencies)
+        self.x = ProtectedField(self, "x", self.parent,
+            x_dependencies)
         self.y = ProtectedField(self, "y", self.parent,
             [self.ascent, self.parent.y, self.parent.ascent])
 
@@ -893,6 +888,16 @@ class IframeLayout(EmbedLayout):
         cmds = paint_visual_effects(self.node, cmds, inner_rect)
         paint_outline(self.node, cmds, rect, self.zoom.get())
         display_list.extend(cmds)
+
+def init_style(node):
+    node.style = dict([
+            (property, ProtectedField(node, property, None,
+                [node.parent.style[property]] \
+                    if node.parent and \
+                        property in INHERITED_PROPERTIES \
+                    else None))
+            for property in CSS_PROPERTIES
+        ])
 
 def style(node, rules, frame):
     if not node.style:
