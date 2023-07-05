@@ -1221,9 +1221,9 @@ overall algorithm ends up pretty similar to what this book describes.
 Widths for inline elements
 ==========================
 
-For uniformity, let's make all of the other layout object types also
-protect their `width`; that means `LineLayout`, `TextLayout`, and then
-`EmbedLayout` and its subclasses. `LineLayout` is pretty easy:
+It's a little confusing that `BlockLayout`'s `width` field is
+protected but not other layout object types'. Let's fix that.
+`LineLayout` is pretty easy:
 
 ``` {.python ignore=ProtectedField}
 class LineLayout:
@@ -1238,8 +1238,8 @@ class LineLayout:
         # ...
 ```
 
-In `TextLayout`, we again need to handle `font` (and hence have `width`
-depend on `style`):
+In `TextLayout`, we again need to handle `font` (and hence have
+`width` depend on `style`):
 
 ``` {.python expected=False}
 class TextLayout:
@@ -1270,7 +1270,7 @@ class EmbedLayout:
 There's also a reference to `width` in the `layout` method for
 computing `x` positions. For now you can just use `get` here.
 
-Now all that's left are the various types of replaced content. In
+Finally, there are the various types of replaced content. In
 `InputLayout`, the width only depends on the zoom level:
 
 ``` {.python}
@@ -1294,19 +1294,15 @@ class JSContext:
         obj = elt.layout_object
         if isinstance(obj, IframeLayout) or \
            isinstance(obj, ImageLayout):
-            if attr == "width":
+            if attr == "width" or attr == "height":
                 obj.width.mark()
 ```
 
 Otherwise, `IframeLayout` and `ImageLayout` are handled just like
-`InputLayout`.
-
-Once again, make sure you go through the associated `paint` methods
-and make sure you're always calling `get` when you use `width`. Check
-that your browser works, including with interactions like
-`contenteditabel`. If anything's wrong, you just need to make sure
-that you're always refering to `width` via methods like `get` and
-`read` that check dirty flags.
+`InputLayout`. Search your code to make sure you you're always
+interacting with `width` via methods like `get` and `read`, and check
+that your browser works, including testing user interactions like
+`contenteditabel`.
 
 ::: {.further}
 TODO
