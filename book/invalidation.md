@@ -924,20 +924,32 @@ class BlockLayout:
         # ...
 ```
 
-Make sure to go through every other layout object type (there are now
-quite a few!) and protect their `zoom` fields also. You'll need to
-replace the write to `zoom` with a `copy` operation, and replace any
-read of `zoom` with a `get` call. Running your browser and make sure
-that nothing crashes, even when you increase or decrease the zoom
-level, to make sure you got it right.
+`BlockLayout` also reads from the `zoom` field inside the `input`,
+`image`, `iframe`, `text`, and `add_inline_child` methods, which are
+all part of computing the `children` field. We can use `read` to read
+the zoom value and also invalidate the `children` field if the zoom
+value ever changes:
+
+``` {.python}
+class BlockLayout:
+    def input(self, node):
+        zoom = self.zoom.read(notify=self.children)
+        # ...
+```
+
+Do the same in each of the other methods mentioned above. Also, go and
+protect the `zoom` field on every other layout object type (there are
+now quite a few!) using `copy` in place of writes and `get` in place
+of `read`s. Run your browser and make sure that nothing crashes, even
+when you increase or decrease the zoom level, to make sure you got it
+right.
 
 Now---protecting the `zoom` field did not speed our browser up. We're
-doing the same work as before (copying the zoom level) as well as
-extra work checking dirty flags and updating invalidations. But
-protecting the `zoom` field means we can invalidate other fields when
-the zoom level changes, which we'll use to avoid rebuilding
-`LineLayout` and `TextLayout` elements, just like we avoided
-re-creating `BlockLayout`s.
+still copying the zoom level around as before as well as some extra
+work checking dirty flags and updating invalidations. But protecting
+the `zoom` field means we can invalidate `children`, and one day other
+fields, when the zoom level changes, which will help tell us when we
+have to rebuild `LineLayout` and `TextLayout` elements.
 
 ::: {.further}
 The `ProtectedField` class defined here is a type of [monad][monad],
@@ -956,10 +968,8 @@ need to think about monads in general, just `ProtectedField`.
 Protecting widths
 =================
 
-Protecting `zoom` points the way toward protecting complex layout
-fields. Let's work towards a goal of invalidating line breaking, starting
-with protecting the `width` field.
-
+Another field that Line wrapping depends on is `width`. Let's convert
+that to a `ProtectedField`, using the new `read` method along the way.
 Like `zoom`, `width` is initially set in `DocumentLayout`:
 
 ``` {.python ignore=ProtectedField}
@@ -990,15 +1000,9 @@ class BlockLayout:
         # ...
 ```
 
-Note that I am again not testing the `dirty` flag because the actual
-computation occurring here is trivial.
-
-However, `width` is more complex than `zoom` because `width` is also
-used in a bunch of other places during line wrapping.
-
-For example, `add_inline_child` reads from the `width` to determine
-whether to add a new line. We thus need the `children` field to depend
-on the `width`:
+The `width` field is read during line wrapping. For example,
+`add_inline_child` reads from the `width` to determine whether to add
+a new line. We'll use `read` to set up that dependency:
 
 ``` {.python}
 class BlockLayout:
@@ -1013,20 +1017,8 @@ class BlockLayout:
 While we're here, note that the decision for whether or not to add a
 new line also depends on `w`, which is an input to `add_inline_child`.
 If you look through `add_inline_child`'s callers, you'll see that most
-of the time, this argument depends on `zoom`:
-
-``` {.python}
-class BlockLayout:
-    def input(self, node):
-        zoom = self.zoom.read(notify=self.children)
-        w = device_px(INPUT_WIDTH_PX, zoom)
-        self.add_inline_child(node, w, InputLayout, self.frame)
-```
-
-The same kind of dependency needs to be added to `image` and `iframe`.
-
-In `text`, however, we need to be a little more careful. This method
-computes the `w` parameter using a font returned by `font`:
+of the time, this argument just depends on `zoom`, but in `text` it
+depends on a font object:
 
 ``` {.python replace=node.style/self.children%2c%20node.style}
 class BlockLayout:
@@ -1057,9 +1049,9 @@ class Text:
         # ...
 ```
 
-This style field is computed in the `style` method, which builds the
-map of style properties through multiple phases. Let's build that new
-dictionary in a local variable, and `set` it once complete:
+The `style` field is computed in the `style` method, which computes a
+new `style` dictionary over multiple phases. Let's build that new
+dictionary in a local variable, and `set` it at the end:
 
 ``` {.python expected=False}
 def style(node, rules, frame):
@@ -1067,6 +1059,9 @@ def style(node, rules, frame):
     new_style = {}
     # ...
     node.style.set(new_style)
+
+    for child in node.children:
+        style(child, rules, frame)
 ```
 
 Inside `style`, a couple of lines read from the parent node's style.
@@ -1076,14 +1071,13 @@ We need to mark dependencies in these cases:
 def style(node, rules, frame):
     for property, default_value in INHERITED_PROPERTIES.items():
         if node.parent:
-            parent_style = node.style.read(node.parent.style)
+            parent_style = node.parent.style.read(notify=node.style)
             new_style[property] = parent_style[property]
         else:
             new_style[property] = default_value
 ```
 
-If `style_set` changes a style, we can mark the `style`
-field:[^protect-style-attr]
+Then `style_set` can mark the `style` field:[^protect-style-attr]
 
 [^protect-style-attr]: We would ideally make the `style` attribute a
     protected field, and have the `style` field depend on it, but I'm
@@ -1096,8 +1090,8 @@ class JSContext:
         elt.style.mark()
 ```
 
-Finally, in `text` (and also in `add_inline_child`) we can depend on
-the `style` field:
+Finally, in `text` (and also in similar code in `add_inline_child`) we
+can depend on the `style` field:
 
 ``` {.python dropline=read(node.style) replace=style/self.children%2c%20node.style}
 class BlockLayout:
@@ -1109,10 +1103,11 @@ class BlockLayout:
 ```
 
 Make sure all other uses of the `style` field use either `read` or
-`get`; it should be pretty clear which is which. We've now protected
-the `width` and `style` properties, so we can finally skip line layout
-when it's unchanged. To begin with, we only want to do line layout if
-the `children` field is dirty:
+`get`; it should be pretty clear which is which.
+
+We've now protected all of the fields read during line wrapping. That
+means the `children` field's dirty flag now correctly tracks whether
+line-wrapping can be skipped. Let's make use of that:
 
 ``` {.python}
 class BlockLayout:
@@ -1126,14 +1121,13 @@ class BlockLayout:
                 # ...
 ```
 
-Here, it *is* important to check the dirty flag, because the
-computation we are skipping here---line breaking and rebuilding the
-layout tree---is pretty expensive.
-
-We also need to fix up `add_inline_child`'s and `new_line`'s
-references to `children`. There are a couple of possible fixes, but in
-the interests of expediency,[^perhaps-local] I'm going to use a
-second, unprotected field, `temp_children`:
+We also need to make sure we now only modify `children` via `set`.
+That's a problem for `add_inline_child` and `new_line`, which
+currently `append` to the `children` field. There are a couple of
+possible fixes, but in the interests of expediency,[^perhaps-local]
+I'm going to use a second, unprotected field, `temp_children`, to
+build the list of children, and then `set` it as the new value of the
+`children` field at the end:
 
 [^perhaps-local]: Perhaps the nicest design would thread a local
 `children` variable through all of the methods involved in line
@@ -1181,9 +1175,9 @@ class BlockLayout:
         # ...
 ```
 
-In total, we ended up protecting the `style` field on DOM nodes and
-the `children`, `width`, and `zoom` fields on `DocumentLayout` and
-`BlockLayout` elements. If you've been going through and adding the
+Thanks to these fixes, our browser now avoids rebuilding any part of
+the layout tree, unless it changes, and that should make relayout
+somewhat faster. If you've been going through and adding the
 appropriate `read` and `get` calls, your browser should be close to
 working. There's one tricky case: `tree_to_list`, which might deal
 with both protected and unprotected `children` fields. I fixed this
@@ -1202,6 +1196,12 @@ def tree_to_list(tree, list):
 
 With all of these changes made, your browser should work again, and it
 should now skipping line layout for most elements.
+
+Note that we have quite a few protected fields now, but we only skip
+recomputing `children` based on dirty flags. That's because
+recomputing `children` is slow, but most other fields are really fast
+to compute. Checking dirty flags takes time and adds code clutter, so
+we only want to do when it's worth it.
 
 ::: {.further}
 In real browsers, the layout phase is sometimes split in two, first
