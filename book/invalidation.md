@@ -952,17 +952,14 @@ fields, when the zoom level changes, which will help tell us when we
 have to rebuild `LineLayout` and `TextLayout` elements.
 
 ::: {.further}
-The `ProtectedField` class defined here is a type of [monad][monad],
-a programming pattern used in programming languages like
-[Haskell][haskell]. In brief, monads describe ways of connecting
-steps in a computation, though the specifics are [famously
-confusing][monad-tutorials]. Luckily, in this chapter we don't really
-need to think about monads in general, just `ProtectedField`.
+Real browsers don't use automatic dependency-tracking like
+`ProtectedField`. One reason is performance: `ProtectedField` adds
+lots of objects and method calls, and it's easy to accidentally make
+performance worse by over-using it. It's also possible to create
+cascading work by invalidating too many protected fields. Finally,
+most browser engine code bases have a lot of historical code, and it
+takes a lot of time to refactor them to use new approaches.
 :::
-
-[monad]: https://en.wikipedia.org/wiki/Monad_(functional_programming)
-[haskell]: https://www.haskell.org/
-[monad-tutorials]: https://wiki.haskell.org/Monad_tutorials_timeline
 
 
 Protecting widths
@@ -1305,35 +1302,45 @@ that your browser works, including testing user interactions like
 `contenteditabel`.
 
 ::: {.further}
-TODO
+The `ProtectedField` class defined here is a type of [monad][monad],
+a programming pattern used in programming languages like
+[Haskell][haskell]. In brief, monads describe ways of connecting
+steps in a computation, though the specifics are [famously
+confusing][monad-tutorials]. Luckily, in this chapter we don't really
+need to think about monads in general, just `ProtectedField`.
 :::
+
+[monad]: https://en.wikipedia.org/wiki/Monad_(functional_programming)
+[haskell]: https://www.haskell.org/
+[monad-tutorials]: https://wiki.haskell.org/Monad_tutorials_timeline
+
 
 
 Invalidating layout fields
 ==========================
 
-By protecting the `width` field, we were able to avoid re-building the
-layout tree when it changes. This saves some layout work and
-potentially also some memory, but it doesn't take layout time down to
-zero, because we still have to *traverse* the whole layout tree. We
-can use invalidation to skip this work too, but to do that, we first
-have to expand invalidation to every other layout field, such as `x`,
-`y`, and `height`. As with `width`, let's start with `DocumentLayout`
-and `BlockLayout`, which tend to be simpler.
+Not re-building the layout tree saves some layout work and potentially
+also some memory, but we still don't satisfy the principle of
+incremental performance because we still have to *traverse* the whole
+layout tree every time we do layout. We'd like to use invalidation to
+skip that traversal, too, but that means we have to protect any layout
+field read during `paint`, including `x`, `y`, and `height`.
 
-Let's start with `x` positions. On `DocumentLayout`, we can just `set`
-the `x` position:
+As with `width`, let's start with `DocumentLayout` and `BlockLayout`.
+First, `x` and `y` positions. In `DocumentLayout`, just use `set`:
 
 ``` {.python ignore=ProtectedField}
 class DocumentLayout:
     def __init__(self, node, frame):
         # ...
         self.x = ProtectedField()
+        self.y = ProtectedField()
         # ...
 
     def layout(self, width, zoom):
         # ...
         self.x.set(device_px(HSTEP, zoom))
+        self.y.set(device_px(VSTEP, zoom))
         # ...
 ```
 
@@ -1353,7 +1360,26 @@ class BlockLayout:
         # ...
 ```
 
-Easy. Next let's do `height`s. For `DocumentLayout`, we just read the
+However, the `y` position sometimes refers to the `previous` sibling:
+
+``` {.python ignore=ProtectedField}
+class BlockLayout:
+    def __init__(self, node, parent, previous, frame):
+        # ...
+        self.y = ProtectedField()
+
+    def layout(self):
+        # ...
+        if self.previous:
+            prev_y = self.previous.y.read(notify=self.y)
+            prev_height = self.previous.height.read(notify=self.y)
+            self.y.set(prev_y + prev_height)
+        else:
+            self.y.copy(self.parent.y)
+        # ...
+```
+
+Let's also do `height`s. For `DocumentLayout`, we just read the
 child's height:
 
 ``` {.python ignore=ProtectedField}
@@ -1393,41 +1419,6 @@ That's because `height`, unlike the previous layout fields, depends on
 the childrens' fields, not the parent's. Luckily, just using the
 `ProtectedField` methods handles this correctly.
 
-Finally, with `height` done, let's do the last layout field, `y`
-position. Just like `x`, `y` is just `set` in `DocumentLayout`:
-
-``` {.python ignore=ProtectedField}
-class DocumentLayout:
-    def __init__(self, node, frame):
-        # ...
-        self.y = ProtectedField()
-
-    def layout(self, width, zoom):
-        # ...
-        self.y.set(device_px(VSTEP, zoom))
-        # ...
-```
-
-In `BlockLayout`, we need to sometimes refer to fields of the
-`previous` sibling:
-
-``` {.python ignore=ProtectedField}
-class BlockLayout:
-    def __init__(self, node, parent, previous, frame):
-        # ...
-        self.y = ProtectedField()
-
-    def layout(self):
-        # ...
-        if self.previous:
-            prev_y = self.previous.y.read(notify=self.y)
-            prev_height = self.previous.height.read(notify=self.y)
-            self.y.set(prev_y + prev_height)
-        else:
-            self.y.copy(self.parent.y)
-        # ...
-```
-
 So that's all the layout fields on `BlockLayout` and `DocumentLayout`.
 Do go through and fix up these layout types' `paint` methods (and also
 the `DrawCursor` helper)---but note that the browser won't quite run
@@ -1441,20 +1432,20 @@ TODO
 Protecting inline layout
 ========================
 
-Layout for `LineLayout`, `TextLayout`, and `EmbedLayout` and its
-subclasses works a little differently. Yes, each of these layout objects
-has `x`, `y`, and `height` fields. But they also compute `font` fields
-and have `get_ascent` and `get_descent` methods that are called by
-other layout objects. We'll protect all of these.[^dps] Since
-we now have quite a bit of `ProtectedField` experience, we'll do all
-the fields in one go.
+We need to protect `LineLayout`s', `TextLayout`s', and `EmbedLayout`s'
+fields too, and their `layout` methods work a little differently. Yes,
+each of these layout objects has `x`, `y`, and `height` fields. But
+they also compute `font` fields and have `get_ascent` and
+`get_descent` methods that are called by other layout objects. We'll
+have to protect all of these.[^dps] Since we now have quite a bit of
+`ProtectedField` experience, we'll do all the fields in one go.
 
-[^dps]: Including rewriting `ascent` and `descent` to be protected
-    fields. It's possible to protect methods as well, using something
-    called "destination passing style", where the destination of a
-    method's return value is passed to it as an argument, somewhat
-    like out parameters in C. But converting to fields is usually
-    cleaner.
+[^dps]: This means we'll rewrite `get_ascent` and `get_descent` from
+    methods into fields. It's possible to protect methods as well,
+    using something called "destination passing style", where the
+    destination of a method's return value is passed to it as an
+    argument, somewhat like out parameters in C. But converting to
+    fields is usually cleaner.
 
 Let's start with `TextLayout`. Note the new `ascent` and `descent` fields:
 
@@ -1496,7 +1487,7 @@ class TextLayout:
 ```
 
 Note that I've changed `width` to read the `font` field instead of
-directly reading `zoom` and `style`. It *does* looks a bit odd to
+directly reading `zoom` and `style`. It *does* look a bit odd to
 compute `f` repeatedly, but remember that each of those `read` calls
 establishes a dependency for one layout field upon another. I like to
 think of each `f` as being scoped to its field's computation.
@@ -1518,16 +1509,16 @@ class TextLayout:
             self.x.copy(self.parent.x)
 ```
 
-So that's `TextLayout`. `EmbedLayout` is basically identical, except
-that its `ascent` and `descent` are simpler. However, there's a bit of
-a catch with how `EmbedLayout`'s subclasses work: `EmbedLayout`
-handles computing the `zoom`, `x`, `y`, and `font` fields, each
-subclass handles computing the `width` and `height` fields, and then
-the `ascent` and `descent` should be handled by `EmbedLayout` but
-depend on `height`. To avoid this, I'll split the `EmbedLayout`'s
-`layout` method into a `layout_before` method, containing `zoom`, `x`,
-`y`, and `font`, and a new `layout_after` method that computes
-`ascent` and `descent`:
+`EmbedLayout` is basically identical, except that its `ascent` and
+`descent` are simpler. However, there's a bit of a catch with how
+`EmbedLayout`'s subclasses work: `EmbedLayout` handles computing the
+`zoom`, `x`, `y`, and `font` fields, then each subclass handles
+computing the `width` and `height` fields, and then the `ascent` and
+`descent` are also handled by `EmbedLayout` but depend on `height`.
+
+To handle this, I'll split the `EmbedLayout`'s `layout` method into a
+`layout_before` method, containing `zoom`, `x`, `y`, and `font`, and a
+new `layout_after` method that computes `ascent` and `descent`:
 
 ``` {.python}
 class EmbedLayout:
@@ -1564,9 +1555,9 @@ class InputLayout(EmbedLayout):
         # ...
 ```
 
-And here's `ImageLayout`; it has an `img_height` field, which I'm not
-going to protect and instead treat as an intermediate step in computing
-`height`:
+And here's `ImageLayout`; it has an `img_height` field, which I'm
+going to treat as an intermediate step in computing `height` and not
+protect:
 
 ``` {.python}
 class ImageLayout(EmbedLayout):
@@ -1590,7 +1581,7 @@ class IframeLayout(EmbedLayout):
         # ...
 ```
 
-You'll need to remember to invalidate the `height` if the `height`
+We also need to invalidate the `height` field if the `height`
 attribute changes:
 
 ``` {.python}
@@ -1598,8 +1589,8 @@ class JSContext:
     def setAttribute(self, handle, attr, value, window_id):
         if isinstance(obj, IframeLayout) or \
            isinstance(obj, ImageLayout):
-            # ...
-            if attr == "height":
+            if attr == "width" or attr == "height":
+                # ...
                 obj.height.mark()
 ```
 
@@ -1613,24 +1604,16 @@ class LineLayout:
         self.x = ProtectedField()
         self.y = ProtectedField()
         # ...
-```
 
-The computations for these are straightforward:
-
-``` {.python}
-class LineLayout:
     def layout(self):
         # ...
-
         self.x.copy(self.parent.x)
-
         if self.previous:
             prev_y = self.previous.y.read(notify=self.y)
             prev_height = self.previous.height.read(notify=self.y)
             self.y.set(prev_y + prev_height)
         else:
             self.y.copy(self.parent.y)
-
         # ...
 ```
 
@@ -1651,7 +1634,7 @@ class LineLayout:
         self.descent = ProtectedField()
 ```
 
-Now, in `layout`, we'll first handle the case of no children:
+Then, in `layout`, we'll first handle the case of no children:
 
 ``` {.python}
 class LineLayout:
@@ -1663,11 +1646,10 @@ class LineLayout:
 ```
 
 Note that we don't need to `read` the `children` field because in
-`LineLayout` it isn't protected---because it's filled in by
-`BlockLayout` when the `LineLayout` is created, and then never
-modified.
+`LineLayout` it isn't protected it's filled in by `BlockLayout` when
+the `LineLayout` is created, and then never modified.
 
-Next, let's recompute the ascent and descent:
+Next, let's compute the maximum ascent and descent:
 
 ``` {.python}
 class LineLayout:
@@ -1708,11 +1690,10 @@ class LineLayout:
         self.height.set(max_ascent + max_descent)
 ```
 
-As a result of these changes, all of our layout objects' fields should
-now be `ProtectedField`s. Take a moment to make sure all uses of these
-fields use `read` and `get`, and make sure your browser still runs.
-Test `contenteditable`, and make sure the browser smoothly updates
-with every change. You will likely need to now fix a few uses of
+As a result of these changes, every layout object field is now
+protected. Just like before, make sure all uses of these fields use
+`read` and `get` and that your browser still runs, including during
+`contenteditable`. You will likely need to now fix a few uses of
 `height` and `y` inside `Frame` and `Tab`, like for clamping scroll
 positions.
 
@@ -1720,14 +1701,14 @@ positions.
 TODO
 :::
 
+
 Skipping no-op updates
 ======================
 
-If you try your browser again, you'll probably notice that despite all
-of this invalidation work with `ProtectedField`, it's not obvious that
-editing is any faster. Let's try to figure out why. Add a `print`
-statement inside the `set` method on `ProtectedField`s to see which
-fields are getting recomputed:
+We've got quite a number of layout fields now, so let's see how much
+invalidation is actually going on. Add a `print` statement inside the
+`set` method on `ProtectedField`s to see which fields are getting
+recomputed:
 
 ``` {.python expected=False}
 class ProtectedField:
@@ -1739,9 +1720,12 @@ class ProtectedField:
         self.dirty = False
 ```
 
-The `if` statement skips printing during initial page layout, so it
-will only show how well our invalidation optimizations are working. Try
-editing some text with `contenteditable` on a large web page (like
+The `if` check avoids printing during initial page layout, so it will
+only show how well our invalidation optimizations are working. The
+fewer prints you see, the fewer fields change and the more work we
+should be able to skip.
+
+Try editing some text with `contenteditable` on a large web page (like
 this one)---you'll see a *screenful* of output, thousands of lines of
 printed nonsense. It's a little hard to understand why, so let's add a
 nice printable form for `ProtectedField`s, plus a new `name` parameter
@@ -1803,8 +1787,8 @@ Then, we recompute four layout fields repeatedly:
     ...
 
 Let's fix these. First, let's tackle `style`. The reason `style` is
-being recomputed repeatedly is just that we don't skip `style`
-recomputation if it isn't dirty. Let's do that:
+being recomputed repeatedly is just that we recompute `style`, even if
+it isn't dirty. Let's skip if it's not:
 
 ``` {.python replace=node.style.dirty/needs_style}
 def style(node, rules, frame):
@@ -1845,62 +1829,51 @@ class ProtectedField:
 ```
 
 This change is safe, because if the new value is the same as the old
-value, any downstream computations don't actually need to change. As a
-bonus, editing should now also feel snappier.
-
-This small tweak should reduce the number of field changes down to the
+value, any downstream computations don't actually need to change. This
+small tweak should reduce the number of field changes down to the
 minimum:
 
     Change ProtectedField(<html lang="en-US" xml:lang="en-US">, zoom)
     Change ProtectedField(<div class="demo" ...>, children)
     Change ProtectedField(<div class="demo" ...>, height)
 
-The only things happening here are recreating the `contenteditable`
+All that's happening here is recreating the `contenteditable`
 element's `children` (which we have to do, to incorporate the new
 text) and checking that its `height` didn't change (necessary in case
-we wrapped onto more lines).
+we wrapped onto more lines). Editing should also now feel snappier.
 
 ::: {.further}
 TODO
 :::
 
+
 Skipping traversals
 ===================
 
-All of the layout fields are now wrapped in invalidation logic,
-which means that if any layout field needs to be recomputed, a
-dirty bit somewhere in the layout tree is set. But we're still
-*visiting* every layout object to actually recompute them. Instead, we
-should use the dirty bits to guide our traversal of the layout tree
-and minimize the number of layout objects we need to visit.
+Now that all of the layout fields are protected, we can check if any
+of them need to be recomputed by checking their dirty bits. But to
+check all of those dirty bits, we'd need to *visit* layout object,
+which can take a long time. Instead, we should use dirty bits to
+minimize the number of layout objects we need to visit.
 
 The basic idea revolves around the question: do we even need to call
 `layout` on a given node? The `layout` method does three things:
 create child layout objects, compute layout properties, and recurse into
 more calls to `layout`. Those steps can be skipped if:
 
-- The layout object's `children` field isn't dirty, meaning we don't
-  need to create new child layout objects;
-- The layout object's layout fields aren't dirty, meaning we don't
-  need to compute layout properties; and
-- The layout object's children's `layout` methods also don't need to
-  be called.
+- We don't need to create child layout objects, meaning the `children`
+  field isn't dirty;
+- We don't need to recompute layout fields, because they aren't dirty;
+  and
+- We don't need to recursively call `layout`.
 
-Note that we're now thinking about *control* decisions (does a
-particular piece of code even need to be run) instead of *data*
-dependencies (what that code returns). For example, computing a node's
-`height` depends on calling that node's `layout` method, which depends
-on calling its parent's `layout` method, and so on. We can apply
-invalidation to control dependencies just like we do to data
-dependencies---though there are some differences.
+There's no dirty flag yet for the last condition, so let's add one.
+I'll call it `has_dirty_descendants` because it tracks whether any
+descendant has a dirty `ProtectedField`:[^ancestors]
 
-So let's add a new dirty flag, which I call `has_dirty_descendants`,
-to track whether any descendants have a dirty
-`ProtectedField`.[^ancestors]
-
-[^ancestors]: In some code bases, you will see these
-called *ancestor* dirty flags instead. It's the same thing, just
-following the flow of dirty bits instead of the flow of control.
+[^ancestors]: In some code bases, you will see these called *ancestor*
+    dirty flags instead. It's the same thing, just following the flow
+    of dirty bits instead of the flow of control.
 
 ``` {.python}
 class BlockLayout:
@@ -1911,9 +1884,12 @@ class BlockLayout:
 
 Add this to every other kind of layout object, too.
 
-This will be easy to do with an additional (and optional) `parent` parameter to
-a `ProtectedField`. (It's optional because only `ProtectedField`s on layout
-objects need this feature.)
+Now we need to set the `has_dirty_descendants` flag if any dirty flag
+is set. We can do that with an additional (and
+optional[^why-optional]) `parent` parameter to a `ProtectedField`.
+
+[^why-optional]: It's optional because only `ProtectedField`s on
+layout objects need this feature.
 
 ``` {.python replace=parent%3dNone):/parent%3dNone%2c%20dependencies%3dNone%2c}
 class ProtectedField:
@@ -1922,29 +1898,8 @@ class ProtectedField:
         self.parent = parent
 ```
 
-Then, whenever `mark` or `notify` is called, we set the bits:
-
-
-``` {.python}
-class ProtectedField:
-    def set_ancestor_dirty_bits(self):
-        parent = self.parent
-        while parent:
-            parent.has_dirty_descendants = True
-            parent = parent.parent
-
-    def mark(self):
-        # ...
-        self.set_ancestor_dirty_bits()
-
-    def notify(self):
-        # ...
-        self.set_ancestor_dirty_bits()
-```
-
 For each layout object type, pass the parameter for each `ProtectedField`.
 Here's `BlockLayout`, for example:
-
 
 ``` {.python expected=False}
 class BlockLayout:
@@ -1958,7 +1913,27 @@ class BlockLayout:
         self.y = ProtectedField(self, "y", self.parent)
 ```
 
-And then the bit needs to be cleared after `layout`:
+Then, whenever `mark` or `notify` is called, we set the descendant
+bits by walking the `parent` chain:
+
+``` {.python}
+class ProtectedField:
+    def set_ancestor_dirty_bits(self):
+        parent = self.parent
+        while parent and not parent.has_dirty_descendants:
+            parent.has_dirty_descendants = True
+            parent = parent.parent
+
+    def mark(self):
+        # ...
+        self.set_ancestor_dirty_bits()
+```
+
+Note that the `while` loop exits early if the descendants bit is
+already set. That's because whoever set _that_ bit already set all the
+ancestors' descendant dirty bits, so we don't need to do that too.
+
+We'll need to clear the descendant bits after `layout`:
 
 ``` {.python}
 class BlockLayout:
@@ -1971,8 +1946,7 @@ class BlockLayout:
 ```
 
 Now that we have descendant dirty flags, let's use them to skip
-unneeded recursions. We'd like to use the `descendants` dirty flags to
-skip recursing in the `layout` method:
+`layout`, including recursive calls:
 
 ``` {.python}
 class BlockLayout:
@@ -1981,8 +1955,7 @@ class BlockLayout:
         # ...
 ```
 
-Here, the `layout_needed` method can just check all of the dirty bits
-in turn:
+Here, the `layout_needed` method just checks all of the dirty bits:
 
 ``` {.python}
 class BlockLayout:
@@ -1997,14 +1970,11 @@ class BlockLayout:
         return False
 ```
 
-With these changes, the descendant dirty bits should now be set
-correctly, and the `layout_needed` approach above should work as long
-as you include all of the protected fields for each layout type.
-
-In`DocumentLayout`, you do need to be a little careful, since it
-receives the frame width and zoom level as an argument. You need to
-make sure to `mark` those fields if they changed. The `width` changes
-when the `frame_width` changes, here:[^or-protect-them]
+Do the same for every other type of layout object. In`DocumentLayout`,
+you do need to be a little careful, since it receives the frame width
+and zoom level as an argument; you have to `mark` those fields of
+`DocumentLayout` if the corresponding `Frame` variables
+change:[^or-protect-them]
 
 [^or-protect-them]: We need to mark the root layout object's `width`
     because the `frame_width` is passed into `DocumentLayout`'s
@@ -2036,37 +2006,27 @@ class Tab:
             frame.document.zoom.mark()
 ```
 
-Once you've done this, layout should now take less than a millisecond
-even on large pages, and editing text should be fairly smooth.
+Skipping unneeded `layout` methods should provide a bit speed bump,
+with small edits now taking less than a millisecond to update layout
+and editing now much smoother.[^not-perfect-yet]
+
+[^not-perfect-yet]: Unfortunately, other parts of the browser might
+    still be quite slow, especially rasterization, so your browser
+    might not be hitting 60 frames per second, depending on what
+    exercises you've done.
 
 ::: {.further}
-
-The `ProtectedField` class can also be viewed as an instance of an
-[observer pattern][observer-pattern], where different pieces of code can
-observe state elsewhere by triggering callbacks when the state changes. This
-kind of pattern is common in UI frameworks that have a lot of state with
-complex dependencies; one early example is the
-[key-value observation pattern][kvo] for macOS.
-
-In the case of our browser, the "observation callbacks" (`mark`/`notify`) simply
-set a dirty bit to be cleaned up later, but they could also have been
-implemented to *eagerly* re-compute layout directly. For this reason, a
-rendering pipeline with dirty bits--as implemented in our browser--can be
-viewed as a [*lazy* evaluation][lazy-eval] approach to an observer pattern that
-batches updates to improve performance.
-
-[lazy-eval]: https://en.wikipedia.org/wiki/Lazy_evaluation
-
-Real browsers use dirty bits and lazy evaluation, but in most cases
-don't actually implement an automatic dependency-tracking class like
-`ProtectedField`. One reason for that is performance: with something
-like `ProtectedField`, it's easy to accidentally make performance worse
-by over-using it in too many performance-sensitive places, or cause a lot of cascading work invalidating dependent protected fields. Another reason may
-simply be practical: most browser engine code bases have a lot of historical
-code, and it takes a lot of time to refactor them to use new approaches.
-
+`ProtectedField` is similar to the [observer
+pattern][observer-pattern], where one piece of code runs a callback
+when a piece of state changes. This pattern is [common in UI
+frameworks][kvo]. Usually these observers *eagerly* recompute
+dependent results, but our callbacks--`mark` and `notify`---simply set a
+dirty bit to be cleaned up later. That means our invalidation
+algorithm is a kind of [*lazy* observer][lazy-eval]. Laziness helps
+performance by batching updates.
 :::
 
+[lazy-eval]: https://en.wikipedia.org/wiki/Lazy_evaluation
 [observer-pattern]: https://en.wikipedia.org/wiki/Observer_pattern
 [kvo]: https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/KeyValueObserving/KeyValueObserving.html
 
