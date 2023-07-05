@@ -623,15 +623,15 @@ Protected fields
 ================
 
 Dirty flags like `children_dirty` are the traditional approach to
-layout invalidation, but they have some downsides. As you've seen,
-using them correctly means paying careful attention to the
-dependencies between various fields and tracking when fields are used.
-In our simple browser, you could do it by hand, but a real browser's
-layout system is much more complex, and mistakes become almost impossible
-to avoid.
+layout invalidation, but they have downsides. Using them correctly
+means paying attention to the dependencies between fields and when
+each is read from and written to. And it's easy to forget to check, or
+set a dirty flag, which leads to hard-to-find bugs. In our simple
+browser, it could probably be done, but a real browser's layout system
+is much more complex, and mistakes become almost impossible to avoid.
 
-We need a better approach. As a first step, let's try to combine a
-dirty flag and the field it protects into a single object:
+A better approach exists. First of all, let's try to combine the dirty
+flag and the field it protects into a single object:
 
 ``` {.python replace=(self):/(self%2c%20obj%2c%20name%2c%20parent%3dNone%2c%20dependencies%3dNone%2c}
 class ProtectedField:
@@ -640,8 +640,8 @@ class ProtectedField:
         self.dirty = True
 ```
 
-That clarifies which dirty flag protects which field. We can replace
-our existing dirty flag with this simple abstraction:
+That clarifies which dirty flag protects which field. Let's replace
+our existing dirty flag with a `ProtectedField`:
 
 ``` {.python ignore=ProtectedField}
 class BlockLayout:
@@ -661,9 +661,10 @@ class ProtectedField:
         self.dirty = True
 ```
 
-Note that I added an "early exit": marking an already-dirty field
-doesn't do anything. That'll become relevant later. Call `mark` in
-`innerHTML_set` and `keypress`:
+Note the early return: marking an already-dirty field doesn't do
+anything. That'll become relevant later.
+
+Call `mark` in `innerHTML_set` and `keypress`:
 
 ``` {.python}
 class JSContext:
@@ -717,8 +718,9 @@ class ProtectedField:
         self.dirty = False
 ```
 
-To use `set` in `BlockLayout`, I'll build the children array in a
-local variable and then `set` the `children` field:
+Unfortunately, using `set` will require a bit of refactoring. For
+example, in `BlockLayout`, we'll need to build the children array in a
+local variable and then `set` the `children` field at the end:
 
 ``` {.python}
 class BlockLayout:
@@ -735,11 +737,10 @@ class BlockLayout:
                 self.children.set(children)
 ```
 
-As with `get`, the `set` method automates the dirty flag operations,
-making them hard to mess up. `ProtectedField` frees us from
-remembering that two fields (`children` and `children_dirty`) go
-together and makes sure we always check and reset dirty flags when
-we're supposed to.
+But the benefit is that `set`, much like `get`, automates the dirty
+flag operations, making them hard to mess up. That makes it possible
+to think about more complex and ambitious invalidation algorithms to
+make layout faster.
 
 ::: {.further}
 [Under-invalidation][under-invalidation] is the technical name for the
