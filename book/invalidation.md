@@ -744,12 +744,12 @@ make layout faster.
 
 ::: {.further}
 [Under-invalidation][under-invalidation] is the technical name for the
-bug where you forget to set the dirty flag on a field when you change
-a dependency. These bugs are [hard to find][hard-to-find], because
-they typically only show up if you make a very specific sequence of
-changes. The characteristic symptom of this bug is that a particular
-change needs to happen multiple times to "take". In other words, this
-kind of bug creates accidental non-idempotency!
+forgetting to set the dirty flag on a field when you change a
+dependency. It often causes a bug where a particular change needs to
+be happen multiple times to finally "take". In other words, this kind
+of bug creates accidental non-idempotency! These bugs are [hard to
+find][hard-to-find], because they typically only show up if you make a
+very specific sequence of changes.
 :::
 
 [under-invalidation]: https://developer.chrome.com/articles/layoutng/#under-invalidation
@@ -759,9 +759,9 @@ kind of bug creates accidental non-idempotency!
 Recursive invaliation
 =====================
 
-Armed with the `ProtectedField` class, let's take a look at how a
-`BlockLayout` element creates `LineLayout`s and their children. It all
-happens inside this `if` statement:
+Let's leverage the `ProtectedField` class to avoid re-creating all of
+the`LineLayout`s and their children every time layout happens. It all
+starts with this `if` statement:
 
 ``` {.python file=lab15 ignore=self.children}
 class BlockLayout:
@@ -774,13 +774,14 @@ class BlockLayout:
             self.recurse(self.node)
 ```
 
-Basically, these lines handle line wrapping: they check widths, create
-new lines, and so on. We'd like to skip this work if the `children`
-field isn't dirty, but to do that, we first need to make sure that
-everything `new_line` and `recurse` read can mark the `children`
-field. Let's start with `zoom`, which almost every method reads.
+These lines handle line wrapping: they check widths, create new lines,
+and so on. That can be pretty slow, so we'd like to skip it if the
+`children` field isn't dirty. That means the `children` field will
+depend on any field read during line wrapping, and so we'll want all
+of those fields to be `ProtectedField`s.
 
-Zoom is initially set on the `DocumentLayout`, so let's start there:
+Let's start with `zoom`, which almost every method reads. Zoom is
+initially set in `DocumentLayout`:
 
 ``` {.python ignore=ProtectedField}
 class DocumentLayout:
@@ -795,9 +796,7 @@ class DocumentLayout:
         # ...
 ```
 
-That's easy enough, but when we get to `BlockLayout` it gets more
-complex. Naturally, each `BlockLayout` has its own `zoom` field, which
-we can protect:
+Each `BlockLayout` also has its own `zoom` field, which we can protect:
 
 ``` {.python ignore=ProtectedField}
 class BlockLayout:
@@ -807,7 +806,7 @@ class BlockLayout:
         # ...
 ```
 
-However, in the `BlockLayout`, the `zoom` field comes from its
+However, in the `BlockLayout`, the `zoom` value comes from its
 parent's `zoom` field. We might be tempted to write something like
 this:
 
@@ -821,17 +820,18 @@ class BlockLayout:
 
 However, recall that with dirty flags we must always think about
 setting them, checking them, and resetting them. The `get` method
-automatically checks the dirty flags, and the `set` method
-automatically resets them, but who *marks* the `zoom` dirty flags?
-(Without marking them when they change, we will incorrectly skip too much
-layout work.)
+automatically checks the dirty flag, and the `set` method
+automatically resets it, but who *marks* the `zoom` dirty flag?[^why-mark]
 
-Generally, we need to mark a dirty flag when something it depends on
-changes. That's why we call `mark` in the `innerHTML_set` and
-`keypress` handlers: those change the DOM tree, which the layout
-tree's `children` field depends on. So since a child's `zoom` field
-depends on its parents' `zoom` field, we need to mark all the children
-when the `zoom` field changes:
+[^why-mark]: Without marking them when they change, we will
+    incorrectly skip too much layout work.
+
+We mark a field's dirty flag when its dependency changes. For example,
+`innerHTML_set` and `keypress` change the DOM tree, which the layout
+tree's `children` field depends on, so those handlers call `mark` on
+the `children` field. Since a child's `zoom` field depends on its
+parents' `zoom` field, we need to mark all the children when the
+`zoom` field changes:
 
 ``` {.python .example}
 class BlockLayout:
@@ -841,13 +841,12 @@ class BlockLayout:
             child.zoom.mark()
 ```
 
-That said, doing this every time we modify any protected field is a
-pain, and it's easy to forget a dependency. What we need is something
-seamless: `set`-ting to a field should automatically mark all the
-fields that depend on it.
+But now we're back to manually calling methods and trying to make sure
+we don't forget a call. What we need is something seamless: `set`-ting
+to a field should automatically mark all the fields that depend on it.
 
-To do that, we're going to need to keep around a set of fields that
-depend on this one, called its `invalidations`:
+To do that, each `ProtectedField` will need to track all fields that
+depend on it, called its `invalidations`:
 
 ``` {.python replace=(self):/(self%2c%20obj%2c%20name%2c%20parent%3dNone%2c%20dependencies%3dNone%2c}
 class ProtectedField:
@@ -856,7 +855,18 @@ class ProtectedField:
         self.invalidations = set()
 ```
 
-We can mark all of the dependencies with `notify`:
+For example, we can add the child's `zoom` field to its parent's
+`zoom` field's `invalidations`:
+
+``` {.python .example}
+class BlockLayout:
+    def __init__(self, node, parent, previous, frame):
+        # ...
+        self.parent.zoom.invalidations.add(self.zoom)
+```
+
+Then, to automate the `mark` call, let's add a `notify` method to mark
+each invalidation:
 
 ``` {.python}
 class ProtectedField:
@@ -865,8 +875,7 @@ class ProtectedField:
             field.mark()
 ```
 
-However, you typically need to `notify` dependants when you compute a
-new value for some other field, and we can make that automatic:
+Then `set` can automatically call `notify`:
 
 ``` {.python}
 class ProtectedField:
@@ -876,22 +885,13 @@ class ProtectedField:
         self.dirty = False
 ```
 
-Now we can establish dependencies once and automatically have
-dependant fields get marked:
-
-``` {.python .example}
-class BlockLayout:
-    def __init__(self, node, parent, previous, frame):
-        # ...
-        self.parent.zoom.invalidations.add(self.zoom)
-```
-
-That's definitely less error-prone, but it'd be even better if we
-didn't have to think about dependencies at all. Think: why _does_ the
-child's `zoom` need to depend on its parent's? It's because we read
-from the parent's zoom, with `get`, when computing the child's. We can
-make a variant of `get` that captures this pattern. The `notify` parameter
-indicates a field to invalidate when this field changes. 
+That's progress, but it's still possible to forget to add the
+invalidation in the first place. We can automate it a little further.
+Think: why _does_ the child's `zoom` need to depend on its parent's?
+It's because we `get` the parent's `zoom` when computing the child's.
+So adding the invalidation can happen as part of `get`! Let's make a
+variant of `get` called `read` with a `notify` parameter for the field
+to invalidate if the field being read changes:
 
 ``` {.python}
 class ProtectedField:
@@ -917,11 +917,7 @@ common, so let's add a shortcut for it:
 class ProtectedField:
     def copy(self, field):
         self.set(field.read(notify=self))
-```
 
-This makes the code a little shorter:
-
-``` {.python}
 class BlockLayout:
     def layout(self):
         self.zoom.copy(self.parent.zoom)
@@ -929,28 +925,25 @@ class BlockLayout:
 ```
 
 Make sure to go through every other layout object type (there are now
-quite a few!) and protect their `zoom` fields also. Anywhere else that
-you see the `zoom` field refered to, you can use `get` to extract the
-actual zoom value. You can check that you succeeded by running your
-browser and making sure that nothing crashes, even when you increase
-or decrease the zoom level.
+quite a few!) and protect their `zoom` fields also. You'll need to
+replace the write to `zoom` with a `copy` operation, and replace any
+read of `zoom` with a `get` call. Running your browser and make sure
+that nothing crashes, even when you increase or decrease the zoom
+level, to make sure you got it right.
 
-By the way, note that I didn't bother testing the `dirty` flag before
-executing this code. That's because computing `zoom` takes barely any
-time at all: it's just a copy. Testing dirty bits takes time and
-clutters the code, so it's not worth doing for trivial fields like
-this one.
-
-But that doesn't mean protecting `zoom` isn't worth it!
-Our goal is not to avoid recomputing it, but to avoid *rebuilding the
-layout tree at all*---just like we avoided re-creating the `children` array,
-but with more dependent fields.
+Now---protecting the `zoom` field did not speed our browser up. We're
+doing the same work as before (copying the zoom level) as well as
+extra work checking dirty flags and updating invalidations. But
+protecting the `zoom` field means we can invalidate other fields when
+the zoom level changes, which we'll use to avoid rebuilding
+`LineLayout` and `TextLayout` elements, just like we avoided
+re-creating `BlockLayout`s.
 
 ::: {.further}
 The `ProtectedField` class defined here is a type of [monad][monad],
 a programming pattern used in programming languages like
-[Haskell][haskell]. In brief, a monad describes a way to connect
-computations, but the specifics are [famously
+[Haskell][haskell]. In brief, monads describe ways of connecting
+steps in a computation, though the specifics are [famously
 confusing][monad-tutorials]. Luckily, in this chapter we don't really
 need to think about monads in general, just `ProtectedField`.
 :::
