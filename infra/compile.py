@@ -636,7 +636,7 @@ def compile_expr(tree, ctx):
             return "this"
         elif tree.id in RT_IMPORTS or tree.id in OUR_CLASSES:
             return tree.id
-        elif tree.id == "AssertionError":
+        elif tree.id == "Exception":
             return "Error"
         elif tree.id in OUR_CONSTANTS:
             return "constants.{}".format(tree.id)
