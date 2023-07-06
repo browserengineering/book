@@ -49,7 +49,8 @@ class CSSParser:
             self.i += 1
 
     def literal(self, literal):
-        assert self.i < len(self.s) and self.s[self.i] == literal
+        if not (self.i < len(self.s) and self.s[self.i] == literal):
+            raise Exception("Parsing error")
         self.i += 1
 
     def word(self):
@@ -59,7 +60,8 @@ class CSSParser:
                 self.i += 1
             else:
                 break
-        assert self.i > start
+        if not (self.i > start):
+            raise Exception("Parsing error")
         return self.s[start:self.i]
 
     def pair(self):
@@ -86,7 +88,7 @@ class CSSParser:
                 self.whitespace()
                 self.literal(";")
                 self.whitespace()
-            except AssertionError:
+            except Exception:
                 why = self.ignore_until([";", "}"])
                 if why == ";":
                     self.literal(";")
@@ -116,7 +118,7 @@ class CSSParser:
                 body = self.body()
                 self.literal("}")
                 rules.append((selector, body))
-            except AssertionError:
+            except Exception:
                 why = self.ignore_until(["}"])
                 if why == "}":
                     self.literal("}")

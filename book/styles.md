@@ -62,8 +62,10 @@ def word(self):
             self.i += 1
         else:
             break
-    assert self.i > start
-    return self.s[start:self.i]
+        if not (self.i > start):
+            raise Exception("Parsing error")
+        
+        return self.s[start:self.i]
 ```
 
 This function increments `i` through any word characters,[^word-chars]
@@ -84,7 +86,8 @@ other punctuation character) you'd do this:
 
 ``` {.python}
 def literal(self, literal):
-    assert self.i < len(self.s) and self.s[self.i] == literal
+    if not (self.i < len(self.s) and self.s[self.i] == literal):
+        raise Exception("Parsing error")
     self.i += 1
 ```
 
@@ -151,7 +154,7 @@ def body(self):
     while self.i < len(self.s):
         try:
             # ...
-        except AssertionError:
+        except Exception:
             why = self.ignore_until([";"])
             if why == ";":
                 self.literal(";")
@@ -407,7 +410,7 @@ def body(self):
     while self.i < len(self.s) and self.s[self.i] != "}":
         try:
             # ...
-        except AssertionError:
+        except Exception:
             why = self.ignore_until([";", "}"])
             if why == ";":
                 self.literal(";")
@@ -426,7 +429,7 @@ def parse(self):
     while self.i < len(self.s):
         try:
             # ...
-        except AssertionError:
+        except Exception:
             why = self.ignore_until(["}"])
             if why == "}":
                 self.literal("}")
