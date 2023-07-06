@@ -78,8 +78,8 @@ it started and extracts the substring it moved through.
     and colors (which use the hash sign). Real CSS values have a more
     complex syntax but this is enough for our toy browser.
 
-Parsing functions can fail. The `word` function we just wrote has an
-assertion to check that `i` advanced though at least one
+Parsing functions can fail. The `word` function we just wrote raises
+an exception if `i` hasn't advanced though at least one
 character---otherwise it didn't point at a word to begin
 with.[^add-a-comma] Likewise, to check for a literal colon (or some
 other punctuation character) you'd do this:
@@ -91,8 +91,8 @@ def literal(self, literal):
     self.i += 1
 ```
 
-[^add-a-comma]: You can add error text to the assertion, too; I
-    recommend doing that to help you debug problems.
+[^add-a-comma]: You can add error text to the exception-raising
+code, too; I recommend doing that to help you debug problems.
 
 The great thing about parsing functions is that they can build on one
 another. For example, property-value pairs are a property, a colon,
