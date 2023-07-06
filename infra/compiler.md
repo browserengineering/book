@@ -405,7 +405,7 @@ JavaScript. This test asks doctest to ignore whitespace changes,
 because there's something going wrong with the way doctest parses
 indentation.
 
-    >>> Test.stmt("try:\n assert False\nexcept AssertionError:\n foo()") # doctest: +NORMALIZE_WHITESPACE
+    >>> Test.stmt("try:\n assert False\nexcept Exception:\n foo()") # doctest: +NORMALIZE_WHITESPACE
     try {
       if (!truthy(false)) throw Error();
     } catch ($err) {
