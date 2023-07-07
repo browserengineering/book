@@ -625,7 +625,7 @@ Protected fields
 Dirty flags like `children_dirty` are the traditional approach to
 layout invalidation, but they have downsides. Using them correctly
 means paying attention to the dependencies between fields and when
-each is read from and written to. And it's easy to forget to check, or
+each is read from and written to. And it's easy to forget to check or
 set a dirty flag, which leads to hard-to-find bugs. In our simple
 browser, it could probably be done, but a real browser's layout system
 is much more complex, and mistakes become almost impossible to avoid.
@@ -743,7 +743,7 @@ to think about more complex and ambitious invalidation algorithms to
 make layout faster.
 
 ::: {.further}
-[Under-invalidation][under-invalidation] is the technical name for the
+[Under-invalidation][under-invalidation] is the technical name for
 forgetting to set the dirty flag on a field when you change a
 dependency. It often causes a bug where a particular change needs to
 be happen multiple times to finally "take". In other words, this kind
@@ -806,7 +806,7 @@ class BlockLayout:
         # ...
 ```
 
-However, in the `BlockLayout`, the `zoom` value comes from its
+However, in `BlockLayout`, the `zoom` value comes from its
 parent's `zoom` field. We might be tempted to write something like
 this:
 
@@ -947,18 +947,19 @@ right.
 Now---protecting the `zoom` field did not speed our browser up. We're
 still copying the zoom level around as before as well as some extra
 work checking dirty flags and updating invalidations. But protecting
-the `zoom` field means we can invalidate `children`, and one day other
-fields, when the zoom level changes, which will help tell us when we
-have to rebuild `LineLayout` and `TextLayout` elements.
+the `zoom` field means we can invalidate `children`, and other fields
+that depend on it, when the zoom level changes, which will help tell
+us when we have to rebuild `LineLayout` and `TextLayout` elements.
 
 ::: {.further}
 Real browsers don't use automatic dependency-tracking like
-`ProtectedField`. One reason is performance: `ProtectedField` adds
-lots of objects and method calls, and it's easy to accidentally make
-performance worse by over-using it. It's also possible to create
-cascading work by invalidating too many protected fields. Finally,
-most browser engine code bases have a lot of historical code, and it
-takes a lot of time to refactor them to use new approaches.
+`ProtectedField` (for now at least). One reason is performance:
+`ProtectedField` adds lots of objects and method calls, and it's easy
+to accidentally make performance worse by over-using it. It's also
+possible to create cascading work by invalidating too many protected
+fields. Finally, most browser engine code bases have a lot of
+historical code, and it takes a lot of time to refactor them to use
+new approaches.
 :::
 
 
@@ -1299,7 +1300,7 @@ Otherwise, `IframeLayout` and `ImageLayout` are handled just like
 `InputLayout`. Search your code to make sure you you're always
 interacting with `width` via methods like `get` and `read`, and check
 that your browser works, including testing user interactions like
-`contenteditabel`.
+`contenteditable`.
 
 ::: {.further}
 The `ProtectedField` class defined here is a type of [monad][monad],
@@ -2006,9 +2007,9 @@ class Tab:
             frame.document.zoom.mark()
 ```
 
-Skipping unneeded `layout` methods should provide a bit speed bump,
-with small edits now taking less than a millisecond to update layout
-and editing now much smoother.[^other-phases]
+Skipping unneeded `layout` methods should provide a bit of a speed
+bump, with small edits now taking less than a millisecond to update
+layout and editing now much smoother.[^other-phases]
 
 [^other-phases]: It might still be pretty laggy on large pages due to
     the composite-raster-draw cycle being fairly slow, depending on
@@ -2033,7 +2034,7 @@ Granular style invalidation
 ===========================
 
 Unfortunately, in the process of adding invalidation, we have
-inadvertantly broken smooth animations. Here's the basic issue:
+inadvertently broken smooth animations. Here's the basic issue:
 suppose an element's `opacity` or `transform` property changes, for
 example through JavaScript. That property isn't layout-inducing, so it
 _should_ be animated entirely through compositing. However, changing
@@ -2298,7 +2299,7 @@ class ProtectedField:
 For example, in `DocumentLayout`, we can now be explicit about the
 fact that its fields have no external dependencies, and thus have to
 be `mark`ed explicitly:^[I didn't even notice that myself until I
-wrote this sectoin!]
+wrote this section!]
 
 ``` {.python}
 class DocumentLayout:
@@ -2316,7 +2317,7 @@ But note that `height` is missing the dependencies parameter. A
 child doesn't exist until `layout` is called. "Downward" dependencies
 like this mean we can't freeze every `ProtectedField` when it's
 constructed. But the more protected fields we freeze, the easier the
-dependency graph to audit.
+dependency graph is to audit.
 
 We can also freeze the `zoom`, `width`, `x`, and `y` fields in
 `BlockLayout`. For `y`, the dependencies differ based on whether or
