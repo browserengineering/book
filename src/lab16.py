@@ -153,7 +153,7 @@ class ProtectedField:
 
     def set_ancestor_dirty_bits(self):
         parent = self.parent
-        while parent:
+        while parent and not parent.has_dirty_descendants:
             parent.has_dirty_descendants = True
             parent = parent.parent
 
@@ -519,13 +519,13 @@ class LineLayout:
             y_dependencies = [self.parent.y]
         self.y = ProtectedField(self, "y", self.parent,
             y_dependencies)
+        self.initialized_fields = False
         self.ascent = ProtectedField(self, "ascent", self.parent)
         self.descent = ProtectedField(self, "descent", self.parent)
         self.width = ProtectedField(self, "width", self.parent,
             [self.parent.width])
         self.height = ProtectedField(self, "height", self.parent,
             [self.ascent, self.descent])
-        self.initialized_fields = False
 
         self.has_dirty_descendants = True
 
@@ -895,7 +895,7 @@ def init_style(node):
                 [node.parent.style[property]] \
                     if node.parent and \
                         property in INHERITED_PROPERTIES \
-                    else None))
+                    else []))
             for property in CSS_PROPERTIES
         ])
 
@@ -978,9 +978,8 @@ class JSContext:
         obj = elt.layout_object
         if isinstance(obj, IframeLayout) or \
            isinstance(obj, ImageLayout):
-            if attr == "width":
+            if attr == "width" or attr == "height":
                 obj.width.mark()
-            if attr == "height":
                 obj.height.mark()
         self.tab.set_needs_render_all_frames()
 
