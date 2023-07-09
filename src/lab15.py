@@ -35,7 +35,7 @@ from lab13 import diff_styles, \
     clamp_scroll, add_parent_pointers, \
     DisplayItem, DrawText, \
     DrawLine, paint_visual_effects, WIDTH, HEIGHT, INPUT_WIDTH_PX, \
-    REFRESH_RATE_SEC, HSTEP, VSTEP, SETTIMEOUT_CODE, XHR_ONLOAD_CODE, \
+    REFRESH_RATE_SEC, HSTEP, VSTEP, \
     Transform, ANIMATED_PROPERTIES, SaveLayer
 
 from lab14 import parse_color, draw_rect, DrawRRect, \
@@ -760,6 +760,9 @@ EVENT_DISPATCH_CODE = \
 POST_MESSAGE_DISPATCH_CODE = \
     "window.dispatchEvent(new window.MessageEvent(dukpy.data))"
 
+SETTIMEOUT_CODE = "window.__runSetTimeout(dukpy.handle)"
+XHR_ONLOAD_CODE = "window.__runXHROnload(dukpy.out, dukpy.handle)"
+
 class JSContext:
     def __init__(self, tab, url_origin):
         self.tab = tab
@@ -906,17 +909,17 @@ class JSContext:
 
     def XMLHttpRequest_send(
         self, method, url, body, isasync, handle, window_id):
-        full_url = resolve_url(url, self.tab.url)
         frame = self.tab.window_id_to_frame[window_id]        
+        full_url = resolve_url(url, frame.url)
         if not frame.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
-        if url_origin(full_url) != url_origin(self.tab.url):
+        if url_origin(full_url) != url_origin(frame.url):
             raise Exception(
                 "Cross-origin XHR request not allowed")
 
         def run_load():
             headers, response = request(
-                full_url, self.tab.url, body)
+                full_url, frame.url, body)
             response = response.decode("utf8")
             task = Task(
                 self.dispatch_xhr_onload, response, handle, window_id)

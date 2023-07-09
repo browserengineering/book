@@ -689,6 +689,12 @@ class TextLayout:
         color = self.node.style['color'].get()
         display_list.append(DrawText(self.x.get(), self.y.get() + leading, self.word, self.font.get(), color))
 
+    def rect(self):
+        return skia.Rect.MakeLTRB(
+            self.x.get(), self.y.get(), self.x.get() + self.width.get(),
+            self.y.get() + self.height.get())
+
+
 @wbetools.patch(EmbedLayout)
 class EmbedLayout:
     def __init__(self, node, parent, previous, frame):
@@ -941,7 +947,7 @@ def style(node, rules, frame):
             transitions = diff_styles(old_style, new_style)
             for property, (old_value, new_value, num_frames) in transitions.items():
                 if property in ANIMATED_PROPERTIES:
-                    tab.set_needs_render()
+                    frame.set_needs_render()
                     AnimationClass = ANIMATED_PROPERTIES[property]
                     animation = AnimationClass(old_value, new_value, num_frames)
                     node.animations[property] = animation
@@ -951,6 +957,10 @@ def style(node, rules, frame):
 
     for child in node.children:
         style(child, rules, frame)
+
+def dirty_style(node):
+    for property, value in node.style.items():
+        value.mark()
 
 @wbetools.patch(JSContext)
 class JSContext:
@@ -965,9 +975,10 @@ class JSContext:
         for child in elt.children:
             child.parent = elt
         obj = elt.layout_object
-        while not isinstance(obj, BlockLayout):
-            obj = obj.parent
-        obj.children.mark()
+        if obj:
+            while not isinstance(obj, BlockLayout):
+                obj = obj.parent
+            obj.children.mark()
         frame.set_needs_render()
 
     def setAttribute(self, handle, attr, value, window_id):
@@ -988,8 +999,7 @@ class JSContext:
         self.throw_if_cross_origin(frame)
         elt = self.handle_to_node[handle]
         elt.attributes['style'] = s
-        for property, value in elt.style:
-            value.mark()
+        dirty_style(elt)
         frame.set_needs_render()
 
 @wbetools.patch(Frame)
@@ -1157,7 +1167,22 @@ class Frame:
         height = math.ceil(self.document.height.get())
         maxscroll = height - self.frame_height
         return max(0, min(scroll, maxscroll))
-    
+
+    def focus_element(self, node):
+        if node and node != self.tab.focus:
+            self.needs_focus_scroll = True
+        if self.tab.focus:
+            self.tab.focus.is_focused = False
+            dirty_style(self.tab.focus)
+        if self.tab.focused_frame and self.tab.focused_frame != self:
+            self.tab.focused_frame.set_needs_render()
+        self.tab.focus = node
+        self.tab.focused_frame = self
+        if node:
+            node.is_focused = True
+            dirty_style(node)
+        self.set_needs_render()
+
 @wbetools.patch(Tab)
 class Tab:
     def zoom_by(self, increment):
