@@ -757,7 +757,7 @@ very specific sequence of changes.
 
 
 Recursive invalidation
-=====================
+======================
 
 Let's leverage the `ProtectedField` class to avoid re-creating all of
 the`LineLayout`s and their children every time layout happens. It all
