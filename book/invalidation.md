@@ -2075,15 +2075,33 @@ CSS_PROPERTIES = {
 ```
 
 When setting the `style` property from JavaScript, I'll invalidate all
-of the fields:
+of the fields, by calling a new `dirty_style` function:
 
 ``` {.python}
+def dirty_style(node):
+    for property, value in node.style.items():
+        value.mark()
+
 class JSContext:
     def style_set(self, handle, s, window_id):
         # ...
-        for property, value in elt.style:
-            value.mark()
+        dirty_style(elt)
         # ...
+```
+
+But that's not all. There is also other code that invalidates style,
+in particular code that can affect a pseudo class such as `:focus`.
+
+``` {.python}
+class Frame:
+    def focus_element(self, node):
+        # ...
+        if self.tab.focus:
+            # ...
+            dirty_style(self.tab.focus)
+        if node:
+             #...
+            dirty_style(node)
 ```
 
 Similarly, in `style`, we will need to recompute a node's style if
