@@ -11,7 +11,7 @@ editing or DOM modifications. Luckily, we can avoid redundant layout
 work by treating the layout tree as a kind of cache, and only
 recomputing the parts that change. This *invalidation* technique is
 traditionally complex and bug-prone, but we'll use a principled
-approach and simple abstractions to make it managable.
+approach and simple abstractions to make it manageable.
 
 Editing Content
 ===============
@@ -153,7 +153,7 @@ frustrating editing experience. So let's work on speeding that up.
 ::: {.further}
 Actually, text editing is [exceptionally hard][editing-hates-you],
 including tricky concepts like caret affinity (which line the cursor
-is on, if a long line is wrapped in the middle of a word), unicode
+is on, if a long line is wrapped in the middle of a word), Unicode
 handling, [bidirectional text](http://unicode.org/faq/bidi.html), and
 mixing text formatting with editing. So it's a good thing browsers
 implement all this complexity and hide it behind `contenteditable`!
@@ -168,7 +168,7 @@ Why Invalidation?
 Fundamentally, the reason editing this page is slow in our browser is
 that it's pretty big.[^other-reasons] After all, it's not handling the
 keypress that's slow: appending a character to a `Text` node takes
-almost no time. What takes time is rerendering the whole page
+almost no time. What takes time is re-rendering the whole page
 afterwards. On a big page, even tiny changes can take a long time.
 
 [^other-reasons]: I'm sure there are all sorts of performance
@@ -188,7 +188,7 @@ the whole page. Incremental performance is therefore necessary for
 complex applications. But the principle of incremental performance
 also really constrains our browser. For example, even *traversing* the
 whole layout tree would take time proportional to the whole page, not
-the change being made, so we can't even affort to do that.
+the change being made, so we can't even afford to do that.
 
 To achieve incremental performance, we're going to need to think of
 the initial render and later re-renders differently.[^big-change] When
@@ -460,7 +460,7 @@ recreate the `BlockLayout`s.
 [^or-others]: Or any other exercises and extensions that you've implemented.
 
 [^and-tags]: It also looks at the node's `tag` and the node's
-    childrens' `tag`s, but `tag`s can't change, so we don't need to
+    children's `tag`s, but `tag`s can't change, so we don't need to
     think about them as dependencies. In invalidation we care only
     about dependencies that can change.
 
@@ -756,7 +756,7 @@ very specific sequence of changes.
 [hard-to-find]: https://developer.chrome.com/articles/layoutng/#correctness
 
 
-Recursive invaliation
+Recursive invalidation
 =====================
 
 Let's leverage the `ProtectedField` class to avoid re-creating all of
@@ -1174,7 +1174,7 @@ class BlockLayout:
 ```
 
 Thanks to these fixes, our browser now avoids rebuilding any part of
-the layout tree, unless it changes, and that should make relayout
+the layout tree, unless it changes, and that should make re-layout
 somewhat faster. If you've been going through and adding the
 appropriate `read` and `get` calls, your browser should be close to
 working. There's one tricky case: `tree_to_list`, which might deal
@@ -1417,7 +1417,7 @@ class BlockLayout:
 
 Note that we have to `read` the `children` field before using it.
 That's because `height`, unlike the previous layout fields, depends on
-the childrens' fields, not the parent's. Luckily, just using the
+the children's fields, not the parent's. Luckily, just using the
 `ProtectedField` methods handles this correctly.
 
 So that's all the layout fields on `BlockLayout` and `DocumentLayout`.
@@ -1730,7 +1730,7 @@ Try editing some text with `contenteditable` on a large web page (like
 this one)---you'll see a *screenful* of output, thousands of lines of
 printed nonsense. It's a little hard to understand why, so let's add a
 nice printable form for `ProtectedField`s, plus a new `name` parameter
-for debugging puposes:[^why-print-node]
+for debugging purposes:[^why-print-node]
 
 [^why-print-node]: Note that I print the node, not the layout object,
 because layout objects' printable forms print layout field values,
@@ -1763,7 +1763,7 @@ class DocumentLayout:
 ```
 
 If you look at your output again, you should now see two phases.
-First, there's a lot of `style` recomputation:
+First, there's a lot of `style` re-computation:
     
     Change ProtectedField(<body>, style)
     Change ProtectedField(<header>, style)
@@ -1800,8 +1800,8 @@ def style(node, rules, frame):
         style(child, rules, frame)
 ```
 
-There should now be barely any style recomputation at all. But what
-about those layout field recomputations? Why are those happening?
+There should now be barely any style re-computation at all. But what
+about those layout field re-computations? Why are those happening?
 Well, the very first field being recomputed here is `zoom`, which
 itself traces back to `DocumentLayout`:
 
@@ -2013,7 +2013,7 @@ layout and editing now much smoother.[^other-phases]
 
 [^other-phases]: It might still be pretty laggy on large pages due to
     the composite-raster-draw cycle being fairly slow, depending on
-    which exericses you implemented in [Chapter 13](animations.md).
+    which exercises you implemented in [Chapter 13](animations.md).
 
 ::: {.further}
 `ProtectedField` is similar to the [observer
@@ -2555,7 +2555,7 @@ that happened to be more overloaded than other ones. This led to the
 HTML parser for the certain test cases yielding[^parser-yield] more often,
 triggering different and incorrect rendering paths.
 
-Real browsers also make very agressive use of assertions like those
+Real browsers also make very aggressive use of assertions like those
 I added in this chapter. To avoid slowing down the browser for users,
 non-essential assertions are "compiled out" in what's usually called
 the *release build*, but left in for the *debug build*. The debug build
@@ -2573,8 +2573,8 @@ this book!).
 Summary
 =======
 
-This chapter intoduces the concept of partial style and layout through the
-technique of optimized cache invalidation. The main takeways are:
+This chapter introduces the concept of partial style and layout through the
+technique of optimized cache invalidation. The main takeaways are:
 
 * Partial rendering dramatically speeds up key browser
 interactions, and are therefore an essential feature of real browsers.
@@ -2613,7 +2613,7 @@ handle invalidation properly.
 `opacity` or `transform` shouldn't trigger layout, while animations of
 other properties should.
 
-*Transfering children*: Implement the [`replaceChildren` DOM
+*Transferring children*: Implement the [`replaceChildren` DOM
 method][replacechildren-mdn] when called with multiple arguments. Here
 the arguments are elements from elsewhere in the
 document,[^unless-createelement] which are then removed from their
@@ -2672,7 +2672,7 @@ rebuilding as much of the layout tree as possible.
 *Optimizing away `ProtectedField`*: as mentioned in the last section
 of the chapter, creating all these objects is way too expensive for
 a real browser. See if you can find a way to avoid creating the
-objects entirely. Depending on the languge you're using to implement
+objects entirely. Depending on the language you're using to implement
 your browser, you might have compile-time macros available to help;
 in Python, this might require refactoring to change the API shape
 of `ProtectedField` to be functional rather than object-oriented.
