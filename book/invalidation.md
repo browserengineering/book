@@ -2576,17 +2576,21 @@ Summary
 This chapter introduces the concept of partial style and layout through the
 technique of optimized cache invalidation. The main takeaways are:
 
-* Partial rendering dramatically speeds up key browser
-interactions, and are therefore an essential feature of real browsers.
+- Caching and invalidation is a powerful way to speeds up key browser
+  interactions, and is therefore an essential technique in real browsers.
 
-* Making rendering idempotent allows us to systematically remove work
- without worrying about side-effects.
+- Making rendering idempotent allows us skip redundant work
+  while guaranteeing that the page will look the same.
 
-* A good browser aims to preserve the principle of incremental
-performance---the cost of an update should be proportional to the change made.
+- A good browser aims for the principle of incremental performance:
+  the cost of an change should be proportional to size of the change,
+  not the size of the page as a whole.
 
-* Cache invalidation is difficult and error-prone, and justifies careful
-work and good abstractions like `ProtectedField`.
+- Cache invalidation is difficult and error-prone,
+  and justifies careful abstractions like `ProtectedField`.
+
+- Both data dependencies and control dependencies can be invalidated
+  to speed up overall layout time.
 
 Outline
 =======
@@ -2608,10 +2612,10 @@ method should delete all the children of a given element. Make sure to
 handle invalidation properly.
 
 *Protecting layout phases*: Replace the `needs_style` and
-`needs_layout` dirty flags by protecting the `document` field on
-`Tab`s. Make sure animations still work correctly: animations of
-`opacity` or `transform` shouldn't trigger layout, while animations of
-other properties should.
+`needs_layout` dirty flags by making the `document` field on `Tab`s a
+`ProtectedField`. Make sure animations still work correctly:
+animations of `opacity` or `transform` shouldn't trigger layout, while
+animations of other properties should.
 
 *Transferring children*: Implement the [`replaceChildren` DOM
 method][replacechildren-mdn] when called with multiple arguments. Here
@@ -2629,15 +2633,6 @@ invalidation properly.
 *Descendant bits for style*: Add descendant dirty flags for `style`
 information, so that the `style` phase doesn't need to traverse nodes
 whose styles are unchanged.
-
-*Modifying widths*: Add the `width` and `height` setters on `iframe`
-and `image` elements, which allow JavaScript code to change the
-element's `width` or `height` attribute.^[The `setAttribute` method
-you already added in [Chapter 14](/accessibility.md) is another way
-to change width and height.] Make sure invalidation works
-correctly when changing these values. For `iframe` elements, make sure
-adjusting these attributes causes both the parent and the child frame
-to be re-laid-out to match the new size.
 
 *Resizing the browser*: Perhaps, back in [Chapter
 2](graphics.md#exercises), you implemented support for resizing the
@@ -2660,12 +2655,11 @@ optimization, at least in the case of block-mode `BlockLayout`s.
 
 *Invalidating `previous`*: Add support for [the `insertBefore`
 method][insertbefore-mdn] if you [haven't
-already](scripts.md#exercises). Like `appendChild`, this method only
-modifies the `children` field in minor ways, and we want to skip
-rebuilding layout objects if we can. However, this method also changes
-the `previous` field of a layout object; protect that field on all
-block-mode `BlockLayout`s and then apply this optimization to avoid
-rebuilding as much of the layout tree as possible.
+already](scripts.md#exercises). Like with `appendChild`, we want to
+skip rebuilding layout objects if we can. However, this method can
+also change the `previous` field of layout objects; protect that field
+on all block-mode `BlockLayout`s and then avoid rebuilding as much of
+the layout tree as possible.
 
 [insertbefore-mdn]: https://developer.mozilla.org/en-US/docs/Web/API/Node/insertBefore
 
