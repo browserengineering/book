@@ -76,11 +76,11 @@ def paint_outline(node, cmds, rect, zoom):
         cmds.append(DrawOutline(rect, color, thickness))
 
 @wbetools.patch(font)
-def font(who, css_style, zoom):
-    weight = css_style['font-weight'].read(notify=who)
-    style = css_style['font-style'].read(notify=who)
+def font(notify, css_style, zoom):
+    weight = css_style['font-weight'].read(notify)
+    style = css_style['font-style'].read(notify)
     try:
-        size = float(css_style['font-size'].read(notify=who)[:-2])
+        size = float(css_style['font-size'].read(notify)[:-2])
     except ValueError:
         size = 16
     font_size = device_px(size, zoom)
