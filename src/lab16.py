@@ -181,8 +181,7 @@ class ProtectedField:
 
     def read(self, notify):
         if notify.frozen_dependencies or self.frozen_invalidations:
-            assert notify in self.invalidations, \
-                "Expected invalidation of {}".format(notify.name)
+            assert notify in self.invalidations
         else:
             self.invalidations.add(notify)
 
@@ -871,7 +870,7 @@ class IframeLayout(EmbedLayout):
             self.height.set(device_px(int(height_attr) + 2, zoom))
         else:
             self.height.set(device_px(IFRAME_HEIGHT_PX + 2, zoom)) 
-       
+
         if self.node.frame:
             self.node.frame.frame_height = \
                 self.height.get() - device_px(2, self.zoom.get())
@@ -1201,7 +1200,7 @@ class Frame:
                 pass
             elif elt.tag == "iframe":
                 new_x = x - elt.layout_object.x.get()
-                new_y = y - elt.layout_object.y.get()[]
+                new_y = y - elt.layout_object.y.get()
                 elt.frame.click(new_x, new_y)
                 return
             elif is_focusable(elt):
