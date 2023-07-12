@@ -1431,7 +1431,7 @@ fields are protected, but if those fields are `LineLayout`s they aren't.
 Dirty flags aren't the only way to achieve incremental performance;
 another option is to keep track of *delta*s. For example, in the
 [Adapton][adapton] project, each computation that converts inputs to
-outputs can also convert input changes to output changes. [Operational
+outputs can also convert input deltas to output deltas. [Operational
 Transform][ot], the collaboration technology behind Google Docs, also
 works using this principle. However, dirty flags can be implemented
 with much less memory overhead, which makes them a better fit in
@@ -2299,7 +2299,7 @@ once again skip layout entirely.
 
 ::: {.further}
 
-CSS style depend on which elements a selector matches, and as the page
+CSS styles depend on which elements a selector matches, and as the page
 changes, that may also need to be invalidated.[^our-browser] Browsers
 have clever algorithms to avoid redoing selector matching for every
 selector on the page. For example, Chromium constructs [*invalidation
@@ -2312,9 +2312,9 @@ complexity is necessary for fast re-styles.
 
 [invalidation-set]: https://chromium.googlesource.com/chromium/src/+/HEAD/third_party/blink/renderer/core/css/style-invalidation.md?pli=1#
 [has-invalidation]: https://blogs.igalia.com/blee/posts/2023/05/31/how-blink-invalidates-styles-when-has-in-use.html
-[^our-browser]: The reason this isn't necessary in our browser is just
-    that our browser supports too few CSS selectors and too few DOM
-    APIs for any selector matches to actually change!
+[^our-browser]: Our browser supports so few CSS selectors and so few
+    DOM APIs that it wouldn't make sense to implement such an advanced
+    invalidation technique, but for real browsers it is quite important.
 
 
 Analyzing dependencies
@@ -2630,8 +2630,8 @@ technique of optimized cache invalidation. The main takeaways are:
 - Cache invalidation is difficult and error-prone,
   and justifies careful abstractions like `ProtectedField`.
 
-- Both data dependencies and control dependencies can be invalidated
-  to speed up overall layout time.
+- Invalidation can be used to skip allocation, computation, or
+  even traversals.
 
 Outline
 =======
