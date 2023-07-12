@@ -181,7 +181,8 @@ class ProtectedField:
 
     def read(self, notify):
         if notify.frozen_dependencies or self.frozen_invalidations:
-            assert notify in self.invalidations
+            assert notify in self.invalidations, \
+                "Expected invalidation of {}".format(notify.name)
         else:
             self.invalidations.add(notify)
 
@@ -715,7 +716,7 @@ class EmbedLayout:
         self.width = ProtectedField(self, "width", self.parent,
             [self.zoom])
         self.height = ProtectedField(self, "height", self.parent,
-            [self.zoom, self.font])
+            [self.zoom, self.font, self.width])
         self.ascent = ProtectedField(self, "ascent", self.parent,
             [self.height])
         self.descent = ProtectedField(self, "descent", self.parent, [])
@@ -858,18 +859,19 @@ class IframeLayout(EmbedLayout):
         self.layout_before()
         width_attr = self.node.attributes.get('width')
         height_attr = self.node.attributes.get('height')
+        
         w_zoom = self.zoom.read(notify=self.width)
         if width_attr:
             self.width.set(device_px(int(width_attr) + 2, w_zoom))
         else:
             self.width.set(device_px(IFRAME_WIDTH_PX + 2, w_zoom))
-        
+
         zoom = self.zoom.read(notify=self.height)
         if height_attr:
             self.height.set(device_px(int(height_attr) + 2, zoom))
         else:
             self.height.set(device_px(IFRAME_HEIGHT_PX + 2, zoom))
-
+        
         if self.node.frame:
             self.node.frame.frame_height = \
                 self.height.get() - device_px(2, self.zoom.get())
@@ -1182,6 +1184,33 @@ class Frame:
             node.is_focused = True
             dirty_style(node)
         self.set_needs_render()
+
+    def click(self, x, y):
+        self.focus_element(None)
+        y += self.scroll
+        loc_rect = skia.Rect.MakeXYWH(x, y, 1, 1)
+        objs = [obj for obj in tree_to_list(self.document, [])
+                if absolute_bounds_for_obj(obj).intersects(
+                    loc_rect)]
+        if not objs: return
+        elt = objs[-1].node
+        if elt and self.js.dispatch_event(
+            "click", elt, self.window_id): return
+        while elt:
+            if isinstance(elt, Text):
+                pass
+            elif elt.tag == "iframe":
+                new_x = x - elt.layout_object.x.get()
+                new_y = y - elt.layout_object.y.get()
+                elt.frame.click(new_x, new_y)
+                return
+            elif is_focusable(elt):
+                self.focus_element(elt)
+                self.activate_element(elt)
+                self.set_needs_render()
+                return
+            elt = elt.parent
+
 
 @wbetools.patch(Tab)
 class Tab:
