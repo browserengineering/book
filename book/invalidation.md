@@ -1427,8 +1427,20 @@ right now, because the `BlockLayout` assumes its children's `height`
 fields are protected, but if those fields are `LineLayout`s they aren't.
 
 ::: {.further}
-TODO
+
+Dirty flags aren't the only way to achieve incremental performance;
+another option is to keep track of *delta*s. For example, in the
+[Adapton][adapton] project, each computation that converts inputs to
+outputs can also convert input deltas to output deltas. [Operational
+Transform][ot], the collaboration technology behind Google Docs, also
+works using this principle. However, dirty flags can be implemented
+with much less memory overhead, which makes them a better fit in
+browsers.
+
 :::
+
+[adapton]: http://adapton.org/
+[ot]: https://en.wikipedia.org/wiki/Operational_transformation
 
 Protecting inline layout
 ========================
@@ -1699,8 +1711,24 @@ protected. Just like before, make sure all uses of these fields use
 positions.
 
 ::: {.further}
-TODO
+
+Just before writing this section, I^[This is Chris speaking.] spent
+*weeks* weeding out a under-invalidation bugs in Chrome's
+accessibility code. At first, the bugs would only occur on certain
+overloaded automated test machines! It turns out that on those
+machines, the HTML parser would yield[^parser-yield] more often,
+triggering different and incorrect rendering paths. Deep bugs like
+this take untold hours to track down, which is why it's so important
+to use robust abstractions to avoid them in the first place.
+
 :::
+
+[^parser-yield]: In a real browser, HTML parsing doesn't happen in one
+go, but often is broken up into multiple event loop tasks. This leads
+to better web page loading performance, and is the reason you'll often
+see web pages render only part of the HTML at first when loading large
+web pages (including this book!).
+
 
 
 Skipping no-op updates
@@ -1844,8 +1872,22 @@ text) and checking that its `height` didn't change (necessary in case
 we wrapped onto more lines). Editing should also now feel snappier.
 
 ::: {.further}
-TODO
+
+The caching and invalidation we're doing in browser layout has analogs
+throughout computer science. For example, some databases use
+[incremental view maintenance][ivm] to cache and update the results of
+common queries as database entries are added or modified. Build
+systems like [Make][make] also attempt to recompile only changed
+objects, and [spreadsheets][spreadsheet] attempt to recompute only
+formulas that might have changed. The specific trade-offs browsers
+require may be unusual, but the problems and core algorithms are
+universal.
+
 :::
+
+[ivm]: https://wiki.postgresql.org/wiki/Incremental_View_Maintenance
+[make]: https://en.wikipedia.org/wiki/Make_(software)
+[spreadsheet]: https://lord.io/spreadsheets/
 
 
 Skipping traversals
@@ -2254,9 +2296,25 @@ exercise.] is changed, it won't invalidate any layout fields (because
 these properties don't affect any layout fields) and so animations will
 once again skip layout entirely.
 
+
 ::: {.further}
-TODO
+
+CSS styles depend on which elements a selector matches, and as the page
+changes, that may also need to be invalidated.[^our-browser] Browsers
+have clever algorithms to avoid redoing selector matching for every
+selector on the page. For example, Chromium constructs [*invalidation
+sets*][invalidation-set] for each selector, which tell it which
+elements to recheck each selector on. New selectors such as `:has()`
+make invalidation [more complicated][has-invalidation], but this
+complexity is necessary for fast re-styles.
+
 :::
+
+[invalidation-set]: https://chromium.googlesource.com/chromium/src/+/HEAD/third_party/blink/renderer/core/css/style-invalidation.md?pli=1#
+[has-invalidation]: https://blogs.igalia.com/blee/posts/2023/05/31/how-blink-invalidates-styles-when-has-in-use.html
+[^our-browser]: Our browser supports so few CSS selectors and so few
+    DOM APIs that it wouldn't make sense to implement such an advanced
+    invalidation technique, but for real browsers it is quite important.
 
 
 Analyzing dependencies
@@ -2539,36 +2597,19 @@ I've left exploring it to an advanced exercise.
 
 ::: {.further}
 
-Correct and performant cache invalidation in a web browser is extremely
-difficult to get right. That's why it's justified to spend a whole
-chapter of this book on the topic, and go out of our way to make
-it pretty robust. (More robust than many parts of real browsers, in fact.)
-
-In real browsers, untold hours are spent finding and fixing
-invalidation bugs in the rendering engine. For
-example, just before writing this section, I^[This is Chris speaking.]
-spent *weeks* finding and weeding out a whole class of
-under-invalidation bugs in the accessibility code of Chromium. This
-particular batch of bugs were especially insidious and difficult to find,
-because at first they only reproduced on certain automated test machines
-that happened to be more overloaded than other ones. This led to the
-HTML parser for the certain test cases yielding[^parser-yield] more often,
-triggering different and incorrect rendering paths.
-
-Real browsers also make very aggressive use of assertions like those
-I added in this chapter. To avoid slowing down the browser for users,
-non-essential assertions are "compiled out" in what's usually called
-the *release build*, but left in for the *debug build*. The debug build
-is often used by engineers when debugging or developing new features,
-and also used to run automated tests.
+Real browsers also use assertions to catch bugs, much like the
+`ProtectedField` abstraction in this chapter. But to avoid slowing
+down the browser for users, non-essential assertions are "compiled
+out" in the *release build*, which is what end-users run. The *debug
+build*, which browser engineers use when debugging or developing new
+features. Automated tests also keep these assertions on. Debug builds
+also compile in debugging features like [sanitizers][ffx-sanitizers],
+while release builds instead use optimizations [like PGO][chrome-pgo].
 
 :::
 
-[^parser-yield]: In a real browser, HTML parsing doesn't happen in one go,
-but often is broken up into multiple event loop tasks. This leads to better
-web page loading performance, and is the reason you'll often see web pages
-render only part of the HTML at first when loading large web pages (including
-this book!).
+[ffx-sanitizers]: https://firefox-source-docs.mozilla.org/tools/sanitizer/index.html
+[chrome-pgo]: https://blog.chromium.org/2020/08/chrome-just-got-faster-with-profile.html
 
 Summary
 =======
@@ -2576,17 +2617,21 @@ Summary
 This chapter introduces the concept of partial style and layout through the
 technique of optimized cache invalidation. The main takeaways are:
 
-* Partial rendering dramatically speeds up key browser
-interactions, and are therefore an essential feature of real browsers.
+- Caching and invalidation is a powerful way to speeds up key browser
+  interactions, and is therefore an essential technique in real browsers.
 
-* Making rendering idempotent allows us to systematically remove work
- without worrying about side-effects.
+- Making rendering idempotent allows us skip redundant work
+  while guaranteeing that the page will look the same.
 
-* A good browser aims to preserve the principle of incremental
-performance---the cost of an update should be proportional to the change made.
+- A good browser aims for the principle of incremental performance:
+  the cost of an change should be proportional to size of the change,
+  not the size of the page as a whole.
 
-* Cache invalidation is difficult and error-prone, and justifies careful
-work and good abstractions like `ProtectedField`.
+- Cache invalidation is difficult and error-prone,
+  and justifies careful abstractions like `ProtectedField`.
+
+- Invalidation can be used to skip allocation, computation, or
+  even traversals.
 
 Outline
 =======
@@ -2608,10 +2653,10 @@ method should delete all the children of a given element. Make sure to
 handle invalidation properly.
 
 *Protecting layout phases*: Replace the `needs_style` and
-`needs_layout` dirty flags by protecting the `document` field on
-`Tab`s. Make sure animations still work correctly: animations of
-`opacity` or `transform` shouldn't trigger layout, while animations of
-other properties should.
+`needs_layout` dirty flags by making the `document` field on `Tab`s a
+`ProtectedField`. Make sure animations still work correctly:
+animations of `opacity` or `transform` shouldn't trigger layout, while
+animations of other properties should.
 
 *Transferring children*: Implement the [`replaceChildren` DOM
 method][replacechildren-mdn] when called with multiple arguments. Here
@@ -2629,15 +2674,6 @@ invalidation properly.
 *Descendant bits for style*: Add descendant dirty flags for `style`
 information, so that the `style` phase doesn't need to traverse nodes
 whose styles are unchanged.
-
-*Modifying widths*: Add the `width` and `height` setters on `iframe`
-and `image` elements, which allow JavaScript code to change the
-element's `width` or `height` attribute.^[The `setAttribute` method
-you already added in [Chapter 14](/accessibility.md) is another way
-to change width and height.] Make sure invalidation works
-correctly when changing these values. For `iframe` elements, make sure
-adjusting these attributes causes both the parent and the child frame
-to be re-laid-out to match the new size.
 
 *Resizing the browser*: Perhaps, back in [Chapter
 2](graphics.md#exercises), you implemented support for resizing the
@@ -2660,12 +2696,11 @@ optimization, at least in the case of block-mode `BlockLayout`s.
 
 *Invalidating `previous`*: Add support for [the `insertBefore`
 method][insertbefore-mdn] if you [haven't
-already](scripts.md#exercises). Like `appendChild`, this method only
-modifies the `children` field in minor ways, and we want to skip
-rebuilding layout objects if we can. However, this method also changes
-the `previous` field of a layout object; protect that field on all
-block-mode `BlockLayout`s and then apply this optimization to avoid
-rebuilding as much of the layout tree as possible.
+already](scripts.md#exercises). Like with `appendChild`, we want to
+skip rebuilding layout objects if we can. However, this method can
+also change the `previous` field of layout objects; protect that field
+on all block-mode `BlockLayout`s and then avoid rebuilding as much of
+the layout tree as possible.
 
 [insertbefore-mdn]: https://developer.mozilla.org/en-US/docs/Web/API/Node/insertBefore
 
