@@ -2525,7 +2525,7 @@ class LineLayout:
 
 The last layout class is `EmbedLayout`. The dependencies there are
 straightforward except for two things: first, just like for `TextLayout`,
-`x` depends on the previous `x`if present, and second, `height` depends
+`x` depends on the previous `x` if present, and second, `height` depends
 on `width` because of aspect ratio:
 
 ``` {.python}
