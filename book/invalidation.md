@@ -54,10 +54,10 @@ there are other text editing APIs that can't be. For example, the
 Click on this <i>formatted</i> <b>text</b> to edit it, including rich text!
 :::
 
-Let's implement `contenteditable` in our browser---it's a useful
-feature and also a good test of invalidation. To begin with, we need
-to make elements with a `contenteditable` property
-focusable:[^other-values]
+Let's implement the most basic possible version of `contenteditable`
+in our browser---it's a useful feature and also a good test of
+invalidation. To begin with, we need to make elements with a
+`contenteditable` property focusable:[^other-values]
 
 [^other-values]: Actually, in real browsers, `contenteditable` can be
     set to `true` or `false`, and `false` is useful in case you want
@@ -151,38 +151,31 @@ each key stroke will take hundreds of milliseconds, making for a
 frustrating editing experience. So let's work on speeding that up.
 
 ::: {.further}
-Actually, text editing is [exceptionally hard][editing-hates-you],
-including tricky concepts like caret affinity (which line the cursor
+Text editing is [exceptionally hard][editing-hates-you] if you
+include tricky concepts like caret affinity (which line the cursor
 is on, if a long line is wrapped in the middle of a word), Unicode
 handling, [bidirectional text](http://unicode.org/faq/bidi.html), and
 mixing text formatting with editing. So it's a good thing browsers
-implement all this complexity and hide it behind `contenteditable`!
+implement all this complexity and hide it behind `contenteditable`.
 :::
 
 [editing-hates-you]: https://lord.io/text-editing-hates-you-too/
-
 
 Why Invalidation?
 =================
 
 Fundamentally, the reason editing this page is slow in our browser is
-that it's pretty big.[^other-reasons] After all, it's not handling the
+that it's pretty big. After all, it's not handling the
 keypress that's slow: appending a character to a `Text` node takes
 almost no time. What takes time is re-rendering the whole page
 afterwards. On a big page, even tiny changes can take a long time.
-
-[^other-reasons]: I'm sure there are all sorts of performance
-    improvements possible without implementing the invalidation
-    techniques from this chapter, but invalidation is still essential
-    for incremental performance, which is a kind of asymptotic
-    guarantee that simple optimizations won't achieve.
 
 We want interactions to be fast, even on large, complex pages, so we
 want re-rendering the page to take time proportional to the *size of
 the change*, and not proportional to the *size of the page*. I call
 this the *principle of incremental performance*, and it's crucial for
-handling large and complex web applications. Not only does it mean
-fast text editing, it also means that developers can think about
+handling large and complex web applications. Not only does it make
+text editing fast, it also means that developers can think about
 performance one change at a time, without considering the contents of
 the whole page. Incremental performance is therefore necessary for
 complex applications. But the principle of incremental performance
@@ -196,16 +189,23 @@ the page is first loaded, rendering will take time proportional to the
 size of the page. But we'll treat that initial render as a cache.
 Later renders will *invalidate* and recompute parts of that cache,
 taking time proportional to the size of the change, but won't touch
-most of the page.
+most of the page.[^other-reasons]
 
-[^big-change]: While initial and later renders are conceptually
-    different, they'll use the same code path. Basically, the initial
-    render will be one big change from no page to the initial page,
-    while later re-renders will handle smaller changes. And anyway,
-    a page could use `innerHTML` to replace the whole page; that would
-    be a big change, and rendering it would take time proportional to
-    the whole page, because the change is the size of the whole page!
-    The point is: all of these will ultimately use the same code path.
+[^big-change]: While initial and later renders are in some ways
+    conceptually different, they'll use the same code path.
+    Basically, the initial render will be one big change from no page
+    to the initial page, while later re-renders will handle smaller
+    changes. And anyway, a page could use `innerHTML` to replace the
+    whole page; that would be a big change, and rendering it would take
+    time proportional to the whole page, because the change is the size
+    of the whole page! The point is: all of these will ultimately use
+    the same code path.
+
+[^other-reasons]: I'm sure there are all sorts of performance
+    improvements possible without implementing the invalidation
+    techniques from this chapter, but invalidation is still essential
+    for incremental performance, which is a kind of asymptotic
+    guarantee that simple optimizations won't achieve.
 
 The key to this cache-and-invalidate approach will be tracking the
 effects of changes. When one part of the page, like a `style`
@@ -220,7 +220,7 @@ incremental, but this chapter focuses on layout.[^why-layout] Most of
 this chapter is about tracking dependencies in the dependency graph,
 and building abstractions to help us do that. To use those
 abstractions, we'll need to refactor our layout engine significantly.
-But ultimately, incrementalizing layout will allow us to skip the two
+But incrementalizing layout will allow us to skip the two
 most expensive parts of layout: building the layout tree and
 traversing it to compute layout fields. When we're done, re-layout
 will take under a millisecond for small changes like text editing.
@@ -249,7 +249,7 @@ Idempotence
 ===========
 
 If we want to implement this caching-and-invalidation idea, the first
-road block is that our browser rebuilds the layout tree from scratch
+roadblock is that our browser re-builds the layout tree from scratch
 every time the layout phase runs:
 
 ``` {.python file=lab15}
@@ -263,7 +263,7 @@ class Frame:
 
 By creating a new `DocumentLayout`, we ignore all of the old layout
 information and start from scratch; we are essentially *invalidating*
-the whole tree. So our first optimization has to avoid doing that,
+the whole tree. So our first optimization has to be avoiding that,
 reusing as many layout objects as possible. That both saves time
 allocating memory and makes the caching-and-invalidation approach
 possible by keeping around the old layout information.
@@ -273,12 +273,12 @@ are created. Search your browser code for `Layout`, which all layout
 class names end with. You should see that layout objects are created
 in just a few places:
 
-- `DocumentLayout` objects are created by the `Tab` in `render`
+- `DocumentLayout` objects are created by the `Tab` in `render`.
 - `BlockLayout` objects are created by either:
   - a `DocumentLayout`, in `layout`, or
-  - a `BlockLayout`, in `layout`
-- `LineLayout` objects are created by `BlockLayout` in `new_line`
-- All others are created by `BlockLayout` in `add_inline_child`
+  - a `BlockLayout`, in `layout`.
+- `LineLayout` objects are created by `BlockLayout` in `new_line`.
+- All others are created by `BlockLayout` in `add_inline_child`.
 
 Let's start with `DocumentLayout`. It's created in `render`, and its
 two parameters, `nodes` and `self`, are the same every time. This
@@ -1193,7 +1193,7 @@ def tree_to_list(tree, list):
 ```
 
 With all of these changes made, your browser should work again, and it
-should now skipping line layout for most elements.
+should now skip line layout for most elements.
 
 Note that we have quite a few protected fields now, but we only skip
 recomputing `children` based on dirty flags. That's because
@@ -1219,9 +1219,9 @@ overall algorithm ends up pretty similar to what this book describes.
 Widths for inline elements
 ==========================
 
-It's a little confusing that `BlockLayout`'s `width` field is
-protected but not other layout object types. Let's fix that.
-`LineLayout` is pretty easy:
+At this point, `BlockLayout`'s `width` field is
+protected but not for other layout object types. Let's fix that, because
+we'll need it later. `LineLayout` is pretty easy:
 
 ``` {.python ignore=ProtectedField}
 class LineLayout:
@@ -1816,7 +1816,7 @@ Then, we recompute four layout fields repeatedly:
     ...
 
 Let's fix these. First, let's tackle `style`. The reason `style` is
-being recomputed repeatedly is just that we recompute `style`, even if
+being recomputed repeatedly is just that we recompute it even if
 it isn't dirty. Let's skip if it's not:
 
 ``` {.python replace=node.style.dirty/needs_style}
@@ -1974,7 +1974,10 @@ class ProtectedField:
 
 Note that the `while` loop exits early if the descendants bit is
 already set. That's because whoever set _that_ bit already set all the
-ancestors' descendant dirty bits, so we don't need to do that too.
+ancestors' descendant dirty bits, so we don't need to do that too.^[This
+optimization is important in real browsers, because otherwise repeated
+invalidation before the next render would use time more than the size of
+the layout tree, violating the principle of incremental performance.]
 
 We'll need to clear the descendant bits after `layout`:
 
@@ -2600,8 +2603,8 @@ layout object type constructors. That's nice, and helps us avoid
 cycles and long dependency chains as we add more style and layout
 features. That's pretty nice.
 
-But in a low-level language like C++, the kind you would usually use
-to write a browser, there's an additional benefit. All these fancy
+But to obtain maximum performance, the kind you would need for a real
+ browser, there's an additional benefit. All these fancy
 `ProtectedFields` add a lot of overhead, mostly because they take up
 more memory and require more function calls. In fact, this chapter
 likely made your toy browser quite a bit slower on an *initial* page
