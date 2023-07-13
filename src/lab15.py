@@ -2118,7 +2118,7 @@ class Browser:
 
     def reset_zoom(self):
         active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab, active_tab.reset_zoom)
+        task = Task(active_tab.reset_zoom)
         active_tab.task_runner.schedule_task(task)
 
     def load(self, url):

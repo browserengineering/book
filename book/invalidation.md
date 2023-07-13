@@ -2319,7 +2319,6 @@ complexity is necessary for fast re-styles.
     DOM APIs that it wouldn't make sense to implement such an advanced
     invalidation technique, but for real browsers it is quite important.
 
-
 Analyzing dependencies
 ======================
 
@@ -2525,6 +2524,38 @@ class LineLayout:
                [child.descent for child in self.children])
             self.initialized_fields = True
         # ...
+```
+
+The last layout class is `EmbedLayout`. The dependencies there are
+straightforward except for two things: first, just like for `TextLayout`,
+`x` depends on the previous `x` if present, and second, `height` depends
+on `width` because of aspect ratio:
+
+``` {.python}
+class EmbedLayout:
+    def __init__(self, node, parent, previous, frame):
+        # ...
+        self.zoom = ProtectedField(self, "zoom", self.parent,
+            [self.parent.zoom])
+        self.font = ProtectedField(self, "font", self.parent,
+           [self.zoom,
+            self.node.style['font-weight'],
+            self.node.style['font-style'],
+            self.node.style['font-size']])
+        self.width = ProtectedField(self, "width", self.parent,
+            [self.zoom])
+        self.height = ProtectedField(self, "height", self.parent,
+            [self.zoom, self.font, self.width])
+        self.ascent = ProtectedField(self, "ascent", self.parent,
+            [self.height])
+        self.descent = ProtectedField(self, "descent", self.parent, [])
+        if self.previous:
+            x_dependencies = [self.previous.x, self.previous.font, self.previous.width]
+        else:
+            x_dependencies = [self.parent.x]
+        self.x = ProtectedField(self, "x", self.parent, x_dependencies)
+        self.y = ProtectedField(self, "y", self.parent,
+            [self.ascent,self.parent.y, self.parent.ascent])
 ```
 
 We can even freeze all of the style fields! The only complication is
