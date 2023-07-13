@@ -54,7 +54,7 @@ there are other text editing APIs that can't be. For example, the
 Click on this <i>formatted</i> <b>text</b> to edit it, including rich text!
 :::
 
-Let's implement the most basic possible version of  `contenteditable`
+Let's implement the most basic possible version of `contenteditable`
 in our browser---it's a useful feature and also a good test of
 invalidation. To begin with, we need to make elements with a
 `contenteditable` property focusable:[^other-values]
@@ -194,10 +194,12 @@ most of the page.[^other-reasons]
 [^big-change]: While initial and later renders are in some ways
     conceptually different, they'll use the same code path.
     Basically, the initial render will be one big change from no page
-    to the initial page, while later re-renders will handle smaller changes.
-    And anyway, a page could use `innerHTML` to replace the whole page; that would be a big change, and rendering it would take time proportional to
-    the whole page, because the change is the size of the whole page!
-    The point is: all of these will ultimately use the same code path.
+    to the initial page, while later re-renders will handle smaller
+    changes. And anyway, a page could use `innerHTML` to replace the
+    whole page; that would be a big change, and rendering it would take
+    time proportional to the whole page, because the change is the size
+    of the whole page! The point is: all of these will ultimately use
+    the same code path.
 
 [^other-reasons]: I'm sure there are all sorts of performance
     improvements possible without implementing the invalidation
