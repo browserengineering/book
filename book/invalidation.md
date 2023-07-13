@@ -1816,7 +1816,7 @@ Then, we recompute four layout fields repeatedly:
     ...
 
 Let's fix these. First, let's tackle `style`. The reason `style` is
-being recomputed repeatedly is just that we recompute it even
+being recomputed repeatedly is just that we recompute it even if
 it isn't dirty. Let's skip if it's not:
 
 ``` {.python replace=node.style.dirty/needs_style}
