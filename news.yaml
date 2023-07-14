@@ -4,6 +4,14 @@ link: https://browser.engineering/
 description: News, new chapters and blog posts
 webMaster: author@browser.engineering (Pavel Panchekha & Chris Harrelson)
 item:
+  - title: Reusing Previous Computations
+    link: https://browser.engineering/invalidation.html
+    pubDate: Fri, 14 Jul 2023, 13:15:00 -0600
+    description:
+      Invalidation is a key technique all major browsers use to make
+      for fast rendering and smooth interactions, but it’s also
+      famously difficult. Chapter 16 explains how to make it work
+      right.
   - title: Supporting Embedded Content
     link: https://browser.engineering/embeds.html
     pubDate: Mon, 20 Mar 2023, 9:50:00 -0600
