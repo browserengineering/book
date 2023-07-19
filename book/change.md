@@ -12,7 +12,7 @@ and the ever-expanding reach of the web then made browsers what they
 are today. Those forces are stronger than ever today.
 
 Sooner or later this book will be obsolete---the sooner the better!
-Whether it is Web Assembly or WebGPU, hardware access or new CSS
+Whether it is WebAssembly or WebGPU, hardware access or new CSS
 features, integrated payments or AI assistants, I do expect the
 browser of the future to play a totally different role in our
 computing and our lives.
