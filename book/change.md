@@ -14,7 +14,7 @@ are today. Those forces are stronger than ever today.
 Sooner or later this book will be obsolete---the sooner the better!
 Whether it is WebAssembly or WebGPU, hardware access or new CSS
 features, integrated payments or AI assistants, I do expect the
-browser of the future to play a totally different role in our
+browser of the future to play many new and different roles in 
 computing and our lives.
 
 That said, many dedicated, talented engineers have devoted themselves
