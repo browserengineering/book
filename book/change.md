@@ -9,7 +9,7 @@ The web is a dynamic, ever-changing place. The first web browser, in
 1989, did not support colors, images, styling, or scripting. Three
 decades of evolution driven by market forces, implementation quirks,
 and the ever-expanding reach of the web then made browsers what they
-are today. Those forces are stronger than ever today.
+are today. Those forces are as strong as ever.  Browsers will continue to evolve!
 
 Sooner or later this book will be obsolete---the sooner the better!
 Whether it is WebAssembly or WebGPU, hardware access or new CSS
