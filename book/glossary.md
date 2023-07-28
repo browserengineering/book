@@ -13,6 +13,10 @@ Key web terms
 __Accessibility__: The ability of any person to access and use a web page,
 regardless of ability; technology to achieve the same.
 
+__HTML__: HyperText Markup Language, the XML-like format of web pages.
+
+__Hyperlink__: A reference from one web page to another.
+
 __HTTP__: HyperText Transport Protocol, the network protocol for loading web
 pages.
 
@@ -22,26 +26,32 @@ network security.
 __URL__: Uniform Resource Locator. The name used to refer uniquely to a web
 page.
 
+__Rendering engine__: The part of a Web Browser concerned with drawing a web
+page to the screen and interacting with it. There are three rendering engines
+actively maintained today: Chromium, WebKit and Gecko.
+
+__Web__: Simplified name for __WWW__.
+
+__Web browser__: A software program that allows people to load and navigate
+web pages.
+
 __Web page__: The basic unit of the web; defined by unique __URL__.
-
-__HTML__: HyperText Markup Language, the XML-like format of web pages.
-
-__Hyperlink__: A reference from one web page to another.
 
 __WWW__: World Wide Web. A name for the network of web pages built
 on __HTTP__, __hyperlinks__, __HTML__, __CSS__ and __JavaScript__, as
 well as the open and decentralized rules that (informally) govern them.
 
-__Web__: Simplified name for __WWW__.
-
-__Web Browser__: A software program that allows people to load and navigate
-web pages.
-
-__Rendering Engine__: The part of a Web Browser concerned with drawing a web
-page to the screen and interacting with it.
-
 Standards
 =========
+
+__IETF__: Internet Engineering Task Force. The standardization organization
+for __HTTP__ as well as some other APIs.
+
+__TC39__: Technical Committe 39. The standardization organization for
+JavaScript.
+
+__Khronos__: The Khronos Group. The standardization organization for WebGL
+and WebGPU.
 
 __W3C__: World Wide Web Consortioum. The central standardization organization of
 the __WWW__. Among many other APIs, this is where __CSS__ is standardized.
@@ -50,11 +60,7 @@ __WHATWG__: Web Hypertext Application Technology Working Group. The
 standardization organization for __HTML__, __DOM__, and a few other key web
 APIs.
 
-__TC39__: Technical Committe 39. The standardization organization for
-JavaScript.
 
-__IETF__: Internet Engineering Task Force. The standardization organization
-for __HTTP__ as well as some other APIs.
 
 
 Document model
