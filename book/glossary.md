@@ -183,7 +183,7 @@ size and position of __elements__ in the __DOM__.
 __Paint__: The phase of a browser rendering pipeline that creates a display
 list from the __DOM__.
 
-__Rendering [ipeline__: The sequence of phases by which a browser draws
+__Rendering pipeline__: The sequence of phases by which a browser draws
 a web page onto a computer screen.
 
 __Raster__: THe process of excuting a __display list__ and outputting pixels
