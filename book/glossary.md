@@ -10,6 +10,9 @@ clear names*.
 Key web terms
 =============
 
+__Accessibility__: The ability of any person to access and use a web page,
+regardless of ability; technology to achieve the same.
+
 __HTTP__: HyperText Transport Protocol, the network protocol for loading web
 pages.
 
@@ -55,31 +58,38 @@ for __HTTP__ as well as some other APIs.
 
 
 Document model
-==================
+==============
+
+__Animation__: A sequence of visual changes on a computer screen
+interpreted by humans to look like movement.
+
+__CSS__: Cascading Style Sheet. A format for storing rules that specify the
+(mostly visual) styling of __element__s in the __DOM__.
 
 __Document__: The conceptual object created when loading a web page. Web pages
 use the metaphor of physical documents to explain how they work.
-
-__Page__: The conceptual container for a __document__. Unlike its physical
-analogue, a page can have multiple documents (through use of __iframes__).
-
-__IFrame__: a way of embedding a child __document__ within a parent, through
-a rectangular window on the screen reserved for it that participates in the
-layout of the parent.
-
 
 __DOM__: Document Object Model. The object-oriented API interface to JavaScript
 for mutating the __document__. It contains in particular a tree of __Nodes__;
 on first page load this tree corresponds to the nested structure of the
 __HTML__.
 
-__Node__: A point in the __DOM__ tree, with parent and child pointers.
-
 __Element__: Most __Nodes__ in the __DOM__ tree are Elements (except for
 text and the document object). (Inherits from __Node__.)
 
-__CSS__: Cascading Style Sheet. A format for storing rules that specify the
-(mostly visual) styling of __element__s in the __DOM__.
+__Focus__: the property of an __element__ being the highlight, or "focus",
+of user interaction, and therefore receiving keyboard events and being
+visually highlighted on the screen.
+
+__IFrame__: a way of embedding a child __document__ within a parent, through
+a rectangular window on the screen reserved for it that participates in the
+layout of the parent.
+
+__Node__: A point in the __DOM__ tree, with parent and child pointers.
+
+__Page__: The conceptual container for a __document__. Unlike its physical
+analogue, a page can have multiple documents (through use of __iframes__).
+
 
 Box model
 =========
@@ -150,3 +160,49 @@ a web page is scrolled, this top-left may be off the top of the screen.
 
 __Element__: The origin is at the top-left of the __border rectangle__ of the
 element.
+
+Rendering
+=========
+
+__Compositing__: The phase oof a browser rendering pipeline that divides the
+display list into pieces suitable for rendering into independent
+__surfaces__ on a __GPU__, in order to speed up animations.
+
+__Display list__: A sequence of graphics commands explaining how to draw a
+web page to a computer screen.
+
+__Draw__: The phase of a browser rendering pipeline that puts a set of surfaces
+onto the screen with various positions and __visual effects__.
+
+__Event Loop__: An infinite loop in browsers that alternates between receiving
+user input and drawing to the screen.
+
+__Layout__: The phase of a browser rendering pipeline that determines the
+size and position of __elements__ in the __DOM__. 
+
+__Paint__: The phase of a browser rendering pipeline that creates a display
+list from the __DOM__.
+
+__Rendering [ipeline__: The sequence of phases by which a browser draws
+a web page onto a computer screen.
+
+__Raster__: THe process of excuting a __display list__ and outputting pixels
+into a __surface__.
+
+__Scroll__: adjusting the horizontal or vertical offset of a web page
+in response to user input, in order to see parts of it not currently visible.
+
+__Style__: The phase of a browser rendering pipeline that applies CSS rules to
+determine the visual appearance and behavior of __elements__ in the __DOM__.
+Or, the set of CSS properties applied to an element after this phase.
+
+__Surface__: A buffer or texture within a GPU that represents a 2D array of
+pixels.
+
+__Visual effect__: A CSS property that does not affect __layout__.
+
+Computer technologies
+=====================
+
+__GPU__: Graphics Processing Unit, a specialized computing chip optimized for
+tasks common to generating pixel output on computer screens.
