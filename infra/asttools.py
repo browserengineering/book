@@ -76,11 +76,16 @@ def iter_methods(cls):
 inline_cache = {}
 def load(filename):
     if filename not in inline_cache:
+        inline_cache[filename] = "in-progress"
         with open(filename) as f:
             ast = parse(f.read(), filename)
         ast = inline(ast)
         inline_cache[filename] = ast
-    return inline_cache[filename]
+        return ast
+    elif inline_cache[filename] == "in-progress":
+        raise ImportError(f"Detected a cycle when loading {filename}")
+    else:
+        return inline_cache[filename]
 
 class ResolveImports(ast.NodeTransformer):
     def visit_ImportFrom(self, cmd):
