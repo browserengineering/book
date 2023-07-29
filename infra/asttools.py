@@ -152,6 +152,23 @@ class ResolvePatches(ast.NodeTransformer):
         self.visit(tree)
         return (self.visit(tree), self.patches)
 
+def has_js_hide(decorator_list):
+    return any([
+        isinstance(dec, ast.Attribute) and dec.attr == "js_hide"
+        and isinstance(dec.value, ast.Name) and dec.value.id == "wbetools"
+        for dec in decorator_list
+    ])
+
+class ResolveJSHide(ast.NodeTransformer):
+    def visit_FunctionDef(self, cmd):
+        if any([
+                isinstance(dec, ast.Attribute) and dec.attr == "js_hide"
+                and isinstance(dec.value, ast.Name) and dec.value.id == "wbetools"
+                for dec in cmd.decorator_list
+        ]):
+            return None
+        else:
+            return cmd
 
 class AST39(ast.NodeTransformer):
     def visit_Num(self, node):
@@ -190,7 +207,8 @@ def parse(source, filename='<unknown>'):
 def inline(tree):
     tree2 = ResolveImports().visit(copy.deepcopy(tree))
     tree3 = ResolvePatches().double_visit(tree2)
-    return ast.fix_missing_locations(tree3)
+    tree4 = ResolveJSHide().visit(tree3)
+    return ast.fix_missing_locations(tree4)
 
 def resolve_patches_and_return_them(tree):
     (tree2, patches) = ResolvePatches().double_visit_and_patches(tree)
