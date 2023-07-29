@@ -39,9 +39,9 @@ actively maintained today: Chromium, WebKit and Gecko.
 __Script__: A piece of code that extends a web page with more functionality,
 usually written in __JavaScript__.
 
-__Web Security__: The property of it being safe to load a web page in a browser
-without harm (such as malicious software reading private data or corrupting
-computer state) will result.
+__Web Security__: The property of the web being safe to load a web page in a
+browser without harm (such as malicious software reading private data or 
+corrupting computer state) will result.
 
 __Web__: Simplified name for __WWW__.
 
