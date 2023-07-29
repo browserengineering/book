@@ -134,6 +134,9 @@ Networking
 
 __GET__: The mode of HTTP that retrieves a server resource without changing it.
 
+__Cookie__: A piece of persistent, per-site state stored by web browsers
+to enable use cases like user logged-in status for access-controlled content.
+
 __Domain__: The name of a website, used to locate it on the internet.
 
 __Path__: The part of a URL after the domain and port.
