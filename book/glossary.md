@@ -23,12 +23,25 @@ pages.
 __HTTPS__: A variant of HTTP that uses public-key cryptography for
 network security.
 
+__Hypertext__: A non-linear form of information comprised of multiple documents
+connected with contextual links.
+
+__JavaScript__: The scripting language for the web. (WebAssembly also now
+exists but is much less common.)
+
 __URL__: Uniform Resource Locator. The name used to refer uniquely to a web
 page.
 
 __Rendering engine__: The part of a Web Browser concerned with drawing a web
 page to the screen and interacting with it. There are three rendering engines
 actively maintained today: Chromium, WebKit and Gecko.
+
+__Script__: A piece of code that extends a web page with more functionality,
+usually written in __JavaScript__.
+
+__Web Security__: The property of it being safe to load a web page in a browser
+without harm (such as malicious software reading private data or corrupting
+computer state) will result.
 
 __Web__: Simplified name for __WWW__.
 
@@ -60,20 +73,25 @@ __WHATWG__: Web Hypertext Application Technology Working Group. The
 standardization organization for __HTML__, __DOM__, and a few other key web
 APIs.
 
-
-
-
-Document model
-==============
+Web Documents
+=============
 
 __Animation__: A sequence of visual changes on a computer screen
 interpreted by humans to look like movement.
 
-__CSS__: Cascading Style Sheet. A format for storing rules that specify the
+__Attribute__; A parameter on an __element__ indicating some information,
+such as the source of an image or URL of a style sheet.
+
+__Parsing__: Turning a serialized representation (such as HTML or CSS) into a data structure such as the __document tree__ or a __style sheet__.
+
+__CSS__: Cascading Style Sheet. A format for representing rules that specify the
 (mostly visual) styling of __element__s in the __DOM__.
 
 __Document__: The conceptual object created when loading a web page. Web pages
 use the metaphor of physical documents to explain how they work.
+
+__Document tree__: The tree created from parsing HTML. Also sometimes called
+the DOM.
 
 __DOM__: Document Object Model. The object-oriented API interface to JavaScript
 for mutating the __document__. It contains in particular a tree of __Nodes__;
@@ -83,59 +101,83 @@ __HTML__.
 __Element__: Most __Nodes__ in the __DOM__ tree are Elements (except for
 text and the document object). (Inherits from __Node__.)
 
-__Focus__: the property of an __element__ being the highlight, or "focus",
+__Event__: A way for JavaScript to observe that something has happened on the
+document, and customize its results.
+
+__Focus__: Ahe property of an __element__ being the highlight, or "focus",
 of user interaction, and therefore receiving keyboard events and being
 visually highlighted on the screen.
 
-__IFrame__: a way of embedding a child __document__ within a parent, through
+__Font__: A particular stylistic way of drawing a particular human language to
+computer screens. Arial is one common example for Latin-based langauges.
+
+__IFrame__: A way of embedding a child __document__ within a parent, through
 a rectangular window on the screen reserved for it that participates in the
 layout of the parent.
+
+__Image__: A representation of a picture to draw on a computer screen. An
+HTML element of the same name, for the same purpose.
 
 __Node__: A point in the __DOM__ tree, with parent and child pointers.
 
 __Page__: The conceptual container for a __document__. Unlike its physical
 analogue, a page can have multiple documents (through use of __iframes__).
 
+__Style sheet__: A document resource that contains __CSS__ rules.
 
-Box model
-=========
+__Tag__: The name of a particular type of HTML element, indicating its
+semantic function in the document. Usually comes with special style rules
+and functionality specific to it.
 
-![](https://www.w3.org/TR/CSS2/images/boxdim.png)
+Networking
+==========
 
-__Margin rectangle__: The rectangle that encloses the margin (dark dashed line
-in the figure). Margin in the spacing between elements.
+__GET__: The mode of HTTP that retrieves a server resource without changing it.
 
-__Border rectangle__: The rectangle that encloses the border (dark solid line
-in the figure). Borders can have a styled visual representation.
+__Domain__: The name of a website, used to locate it on the internet.
 
-__Padding rectangle__: The rectangle that encloses the padding (light dashed
-line in the figure). The spacing between the border and the content.
+__Path__: The part of a URL after the domain and port.
 
-__Content rectangle__: The rectangle that enloses the content (light solid line
-in the figure). Child elements and text are normally enclosed by this
-rectangle.
+__Port__: A number after the domain and before the part in a URL, indicating
+a numbered place on that domain with which to communicate.
+
+__POST__: THe mode of HTTP that submits a change to server state and expects
+a newly updated web page in response.
+
+__Scheme__: The first part of a URL, indicating which protocol to use for
+communication, such as __HTTP__ or __HTTPS__.
+
+__SSL__: Secure Sockets Layer. An encryption-based protocol that enables
+secure __HTTP__ (i.e., __HTTPS__) connections.
 
 CSS
 ===
-__Style__: All the pieces of information necessary to determine the visual
-display of an __Element__.
+
+__Cascade order__: The order of applicaiton of multiple __CSS rules__ to a
+single elemnet.
+
+__Computed Style__: The values for the __CSS Properties__ that apply to
+elements after applying all __rules__ according to the __cascade__ order.
 
 __CSS property__: A single concept (such as "color" or "width") used to style
 a specific part of an __element__.
 
-__Property value__: a key-value pair of a __CSS property__ and its value
+__CSS Property value__: a key-value pair of a __CSS property__ and its value
 (e.g. "color" and "blue" or "width" and "30px").
 
-__Selector__: A way of specifying to which __Elements__ a given list of
+__CSS Rule__: The combination of a __selector__ and __property values__.
+
+__CSS Selector__: A way of specifying to which __Elements__ a given list of
 __property values__ apply.
 
-__Rule__: The combination of a __selector__ and __property values__.
+__Inheritance__: The property of certain CSS styles (such as font sizing) applying to descendant elements in the __document tree__ by default.
+
+__Style__: All the pieces of information necessary to determine the visual
+display of an __Element__.
 
 __Cascade__: The order in which to apply multiple rules to the same
 __Element__.
 
-__Computed Style__: The values for the __CSS Properties__ that apply to
-elements after applying all __rules__ according to the __cascade__ order.
 
 Coordinate spaces
 =================
@@ -170,9 +212,19 @@ element.
 Rendering
 =========
 
+__Accessibility tree__: A tree representing the semantic meaning of a web page
+meant for consumption by __assistive technologies__.
+
+__Canvas__: A conceptual place in which to execute a display list, typically
+backed by a __surface__. Also a web API of the same name that serves the same
+function.
+
 __Compositing__: The phase oof a browser rendering pipeline that divides the
 display list into pieces suitable for rendering into independent
 __surfaces__ on a __GPU__, in order to speed up animations.
+
+__Decode__: converting from a compressed format for a resource (such as an 
+an image) into a simpler format in memory (such as a bitmap).
 
 __Display list__: A sequence of graphics commands explaining how to draw a
 web page to a computer screen.
@@ -180,11 +232,20 @@ web page to a computer screen.
 __Draw__: The phase of a browser rendering pipeline that puts a set of surfaces
 onto the screen with various positions and __visual effects__.
 
-__Event Loop__: An infinite loop in browsers that alternates between receiving
+__Event loop__: An infinite loop in browsers that alternates between receiving
 user input and drawing to the screen.
+
+__Hit testing__: Determining which __element__ or __accessibilty tree__ node
+is  at a given pixel location on the screen.
+
+__Invalidation__: Marking some rendering state as no longer valid, because its
+input dependendencies have changed.
 
 __Layout__: The phase of a browser rendering pipeline that determines the
 size and position of __elements__ in the __DOM__. 
+
+__Layout tree__: A second tree that mirrors the DOM, except that it represents
+the output of the layout pipeline phase.
 
 __Paint__: The phase of a browser rendering pipeline that creates a display
 list from the __DOM__.
@@ -192,7 +253,7 @@ list from the __DOM__.
 __Rendering pipeline__: The sequence of phases by which a browser draws
 a web page onto a computer screen.
 
-__Raster__: THe process of excuting a __display list__ and outputting pixels
+__Raster__: The process of excuting a __display list__ and outputting pixels
 into a __surface__.
 
 __Scroll__: adjusting the horizontal or vertical offset of a web page
@@ -207,8 +268,39 @@ pixels.
 
 __Visual effect__: A CSS property that does not affect __layout__.
 
+__Zoom__: Changing the ratio of CSS sizes to pixels in order to  make
+content on a web page larger or smaller.
+
 Computer technologies
 =====================
 
+__Assistive technology__: Computer software used to assist people in using
+the computer or web browser. The most common are screen readers.
+
+__CPU__: Centra Processing Unit, a generic piece of hardware that is able
+to excute computer programs.
+
+__DukPy__: A JavaScript interpreter used in this book.
+
 __GPU__: Graphics Processing Unit, a specialized computing chip optimized for
 tasks common to generating pixel output on computer screens.
+
+__Process__: An conceptual execution environment with its own code and
+memory, isolated from other processes by hardware and software computer
+mechanisms.
+
+__Python__: A common scripting computer programming language, used in this
+book to implement a toy browser.
+
+__Thread__: A single execution command sequence on a CPU. Most CPUs have
+these days can excute multiple threads at once within a single __process__.
+
+__SDL__: A windowing library for computer programs used in later chapters of
+this book.
+
+__Skia__: A raster drawing library for computer programs used in later chapters
+of this book.
+
+__Tk__: A UI drawing library for computer programs used in early chapters of
+this book.
+
