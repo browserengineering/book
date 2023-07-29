@@ -113,8 +113,9 @@ class ResolvePatches(ast.NodeTransformer):
         if not cmd.decorator_list:
             patches = self.patches.get(cmd.name, [])
             if patches:
+                args2 = patches[-1].args
                 body2 = patches[-1].body
-                return ast.FunctionDef(cmd.name, cmd.args, body2, [])
+                return ast.FunctionDef(cmd.name, args2, body2, [])
             else:
                 return cmd
         else:
