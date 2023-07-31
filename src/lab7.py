@@ -414,7 +414,8 @@ class Browser:
 
         cmds.append(DrawOutline(40, 50, WIDTH - 10, 90, "black", 1))
         if self.focus == "address bar":
-            cmds.append(DrawText(55, 55, self.address_bar, buttonfont, "black"))
+            cmds.append(DrawText(
+                55, 55, self.address_bar, buttonfont, "black"))
             w = buttonfont.measure(self.address_bar)
             cmds.append(DrawLine(55 + w, 55, 55 + w, 85, "black", 1))
         else:

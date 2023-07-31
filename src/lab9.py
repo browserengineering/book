@@ -17,7 +17,7 @@ from lab5 import BLOCK_ELEMENTS, DrawRect
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import DrawText, resolve_url, tree_to_list
-from lab7 import LineLayout, TextLayout, CHROME_PX
+from lab7 import DrawLine, DrawOutline, LineLayout, TextLayout, CHROME_PX
 from lab8 import request, layout_mode
 from lab8 import DocumentLayout, BlockLayout, InputLayout, INPUT_WIDTH_PX
 
