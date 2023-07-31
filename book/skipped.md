@@ -171,3 +171,21 @@ extensive [frameworks][testing-features] to make testing easy.
 [integration]: https://en.wikipedia.org/wiki/Integration_testing
 [interoperability]: https://wpt.fyi/interop-2023
 [testing-features]: https://web-platform-tests.org/
+
+Privacy
+=======
+
+[Privacy on the web](https://developer.mozilla.org/en-US/docs/Web/Privacy)
+is an important topic, and one we have not covered at all. In some ways
+security and privacy are related (and certainly complement one other),
+but they are not the same, and I haven't covered the latter at all. Privacy
+is also a tricky subject, because it involves additional concepts such as what
+does or does not constitute privacy, or what changes the web should take to
+increase privacy, that are actively debated today. For example, there are
+debates about what to do if [third-party cookies][tpc] are removed, reduce
+the risk of [fingerprinting], and whether there should be APIs to help with
+advertising use cases.
+
+[tpc]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#third-party_cookies
+
+[fingerprinting]: https://developer.mozilla.org/en-US/docs/Glossary/Fingerprinting
