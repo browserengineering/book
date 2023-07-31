@@ -464,13 +464,13 @@ arbitrarily deep.
 
 So now we have user input working with `input` elements. Before we
 move on, there is one last tweak that we need to make: drawing the
-text cursor in the `Tab`'s `draw` method. We'll first need to figure
+text cursor in the `Tab`'s `render` method. We'll first need to figure
 out where the text entry is located, onscreen, by finding its layout
 object:
 
 ``` {.python}
 class Tab:
-    def draw(self, canvas):
+    def render(self):
         # ...
         if self.focus:
             obj = [obj for obj in tree_to_list(self.document, [])
@@ -494,7 +494,8 @@ And finally draw the cursor itself:
 ``` {.python indent=8}
 if self.focus:
     # ...
-    canvas.create_line(x, y, x, y + obj.height)
+    self.display_list.append(
+        DrawLine(x, y, x, y + obj.height, "black", 1))
 ```
 
 Now you can click on a text entry, type into it, and modify its value.
