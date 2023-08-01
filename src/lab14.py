@@ -113,7 +113,10 @@ def has_outline(node):
 def paint_outline(node, cmds, rect, zoom):
     if has_outline(node):
         thickness, color = parse_outline(node.style.get("outline"), zoom)
-        cmds.append(DrawOutline(rect, color, thickness))
+        cmds.append(DrawOutline(
+            rect.left(), rect.top(),
+            rect.right(), rect.bottom(),
+            color, thickness))
 
 class BlockLayout:
     def __init__(self, node, parent, previous):
@@ -478,7 +481,8 @@ class InputLayout:
 
         if self.node.is_focused and self.node.tag == "input":
             cx = rect.left() + self.font.measureText(text)
-            cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom()))
+            cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom(),
+                                 "black", 1))
 
         cmds = paint_visual_effects(self.node, cmds, rect)
         paint_outline(self.node, cmds, rect, self.zoom)
@@ -1768,12 +1772,10 @@ class Browser:
                 cmds.append(DrawLine(x2, 40, WIDTH, 40, color, 1))
 
         buttonfont = get_font(30, "normal", "roman")
-        new_tab_rect = skia.Rect.MakeLTRB(10, 10, 30, 30)
-        cmds.append(DrawOutline(new_tab_rect, color, 1))
+        cmds.append(DrawOutline(10, 10, 30, 30, color, 1))
         cmds.append(DrawText(11, 5, "+", buttonfont, color))
 
-        address_rect = skia.Rect.MakeLTRB(40, 50, WIDTH - 10, 90)
-        cmds.append(DrawOutline(address_rect, color, 1))
+        cmds.append(DrawOutline(40, 50, WIDTH - 10, 90, color, 1))
         if self.focus == "address bar":
             cmds.append(DrawText(55, 55, self.address_bar, buttonfont, color))
             w = buttonfont.measure(self.address_bar)
@@ -1782,8 +1784,7 @@ class Browser:
             url = self.tabs[self.active_tab].url
             cmds.append(DrawText(55, 55, url, buttonfont, color))
 
-        back_rect = skia.Rect.MakeLTRB(10, 50, 35, 90)
-        cmds.append(DrawOutline(back_rect, color, 1))
+        cmds.append(DrawOutline(10, 50, 35, 90, color, 1))
         cmds.append(DrawText(15, 55, "<", buttonfont, color))
         return cmds
 

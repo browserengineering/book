@@ -441,7 +441,6 @@ indicating whether dark mode is active:
 
 ``` {.python}
 class Browser:
-    # ...
     def __init__(self):
         # ...
         self.dark_mode = False
@@ -456,56 +455,35 @@ variables we can reuse:
 
 ``` {.python}
 class Browser:
-    # ...
     def raster_chrome(self):
         if self.dark_mode:
-            color = "white"
-            background_color = "black"
+            background_color = skia.ColorBLACK
         else:
-            color = "black"
-            background_color = "white"
-        canvas.clear(parse_color(background_color))
+            background_color = skia.ColorWHITE
+        canvas.clear(background_color)
+        # ...
 ```
 
-Then we just need to use `color` or `background_color` in place of all of the
-colors. For example, plumb `color` to the `draw_line` function:
-
-``` {python}
-def draw_line(canvas, x1, y1, x2, y2, color):
-    sk_color = parse_color(color)
-    # ...
-    paint = skia.Paint(Color=sk_color)
-```
-
-And use it there and in `draw_text`:
+Similarly, in `paint_chrome`, we need to use the right foreground
+color:
 
 ``` {.python}
 class Browser:
-    # ...
-    def raster_chrome(self):
-        # ...
-
-        # Draw the tabs UI:
-        tabfont = skia.Font(skia.Typeface('Arial'), 20)
-        for i, tab in enumerate(self.tabs):
-            name = "Tab {}".format(i)
-            x1, x2 = 40 + 80 * i, 120 + 80 * i
-            draw_line(canvas, x1, 0, x1, 40, color)
-            draw_line(canvas, x2, 0, x2, 40, color)
-            draw_text(canvas, x1 + 10, 10, name, tabfont, color)
-            if i == self.active_tab:
-                draw_line(canvas, 0, 40, x1, 40, color)
-                draw_line(canvas, x2, 40, WIDTH, 40, color)
+    def paint_chrome(self):
+        if self.dark_mode:
+            color = "white"
+        else:
+            color = "black"
 ```
 
-Likewise all of the other `draw_line`, `draw_text` and `draw_rect`
-calls in `raster_chrome` (they're not all shown here) should use
-`color` or `background_color`.[^more-colors]
+Then we just need to use `color` instead of `black` everywhere. Make
+that change in `paint_chrome`.[^more-colors]
 
 [^more-colors]: Of course, a full-featured browser's chrome has many
-    more buttons and colors to adjust than our browser's. Most browsers
-    support a theming system that stores all the relevant colors and images,
-    and dark mode switches the browser from one theme to another.
+    more buttons and colors to adjust than our browser's. Most
+    browsers support a theming system that stores all the relevant
+    colors and images, and dark mode switches the browser from one
+    theme to another.
     
 Now, we want the web page content to change from light mode to dark
 mode as well. To start, let's inform the `Tab` when the user requests
@@ -1084,33 +1062,15 @@ class Tab:
             node.is_focused = True
 ```
 
-To draw an outline, we'll need something like `DrawRect`, but which
-draws the rectangle's border, not its inside. I'll call that command
-`DrawOutline`:
-
-``` {.python}
-class DrawOutline(DisplayItem):
-    def __init__(self, rect, color, thickness):
-        super().__init__(rect)
-        self.color = color
-        self.thickness = thickness
-
-    def is_paint_command(self):
-        return True
-
-    def execute(self, canvas):
-        draw_rect(canvas,
-            self.rect.left(), self.rect.top(),
-            self.rect.right(), self.rect.bottom(),
-            border_color=self.color, width=self.thickness)
-```
-
-Now we can paint a 1 pixel black outline around an element like this:
+To draw an outline, we'll use `DrawOutline`:
 
 ``` {.python replace=node.is_focused/has_outline(node),%22black%22/color,1/thickness}
 def paint_outline(node, cmds, rect, zoom):
     if node.is_focused:
-        cmds.append(DrawOutline(rect, "black", 1))
+        cmds.append(DrawOutline(
+            rect.left(), rect.top(),
+            rect.right(), rect.bottom(),
+            "black", 1))
 ```
 
 Call it in `InputLayout` to make sure text entries and buttons get outlines.
@@ -1121,7 +1081,8 @@ class InputLayout:
 		# ...
         if self.node.is_focused and self.node.tag == "input":
             cx = rect.left() + self.font.measureText(text)
-            cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom()))
+            cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom(),
+                                 "black", 1))
 
         cmds = paint_visual_effects(self.node, cmds, rect)
         paint_outline(self.node, cmds, rect, self.zoom)
@@ -1374,7 +1335,10 @@ def has_outline(node):
 def paint_outline(node, cmds, rect, zoom):
     if has_outline(node):
         thickness, color = parse_outline(node.style.get("outline"), zoom)
-        cmds.append(DrawOutline(rect, color, thickness))
+        cmds.append(DrawOutline(
+            rect.left(), rect.top(),
+            rect.right(), rect.bottom(),
+            color, thickness))
 ```
 
 The default two-pixel black outline can now be moved into the browser
