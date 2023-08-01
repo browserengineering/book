@@ -23,6 +23,7 @@ from lab7 import CHROME_PX
 from lab8 import INPUT_WIDTH_PX, layout_mode
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, request, url_origin, JSContext
+import wbetools
 
 FONTS = {}
 
