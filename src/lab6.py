@@ -19,18 +19,16 @@ import wbetools
 @wbetools.patch(URL)
 class URL:
     def resolve(self, url):
-        if "://" in url:
-            return URL(url)
-        elif url.startswith("/"):
-            return URL(self.scheme + "://" + self.host + ":" + str(self.port) + url)
-        else:
+        if "://" in url: return URL(url)
+        if not url.startswith("/"):
             dir, _ = self.path.rsplit("/", 1)
             while url.startswith("../"):
-                url = url[3:]
-                if dir.count("/"):
+                _, url = url.split("/", 1)
+                if "/" in dir:
                     dir, _ = dir.rsplit("/", 1)
-            path = dir + "/" + url
-            return URL(self.scheme + "://" + self.host + ":" + str(self.port) + path)
+            url = dir + "/" + url
+        return URL(self.scheme + "://" + self.host + \
+                   ":" + str(self.port) + url)
 
 def tree_to_list(tree, list):
     list.append(tree)

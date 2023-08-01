@@ -440,7 +440,7 @@ load it:
 ``` {.python indent=12}
 # ...
 elif elt.tag == "a" and "href" in elt.attributes:
-    url = resolve_url(elt.attributes["href"], self.url)
+    url = self.url.resolve(elt.attributes["href"])
     return self.load(url)
 ```
 
@@ -783,7 +783,7 @@ test tab switching, anyway:
 if e.y < CHROME_PX:
     # ...
     elif 10 <= e.x < 30 and 10 <= e.y < 30:
-        self.load("https://browser.engineering/")
+        self.load(URL("https://browser.engineering/"))
 ```
 
 That's an appropriate "new tab" page, don't you think? Anyway, you
@@ -813,10 +813,26 @@ class Browser:
         # ...
         self.canvas.create_rectangle(40, 50, WIDTH - 10, 90,
             outline="black", width=1)
-        url = self.tabs[self.active_tab].url
+        url = str(self.tabs[self.active_tab].url)
         self.canvas.create_text(55, 55, anchor='nw', text=url,
             font=buttonfont, fill="black")
 ```
+
+Here `str` is a built-in Python function that we can override to
+correctly convert `URL` objects to strings:
+
+``` {.python}
+class URL:
+    def __str__(self):
+        port_part = ":" + str(self.port)
+        if self.scheme == "https" and self.port == 443:
+            port_part = ""
+        if self.scheme == "http" and self.port == 80:
+            port_part = ""
+        return self.scheme + "://" + self.host + port_part + self.path
+```
+
+I think the extra logic to hide port numbers makes the URLs more tidy.
 
 To keep up appearances, the address bar needs a "back" button nearby.
 I'll start by drawing the back button itself:
@@ -970,7 +986,7 @@ class Browser:
                 55, 55, anchor='nw', text=self.address_bar,
                 font=buttonfont, fill="black")
         else:
-            url = self.tabs[self.active_tab].url
+            url = str(self.tabs[self.active_tab].url)
             self.canvas.create_text(55, 55, anchor='nw', text=url,
                 font=buttonfont, fill="black")
 ```
@@ -1024,7 +1040,7 @@ class Browser:
 
     def handle_enter(self, e):
         if self.focus == "address bar":
-            self.tabs[self.active_tab].load(self.address_bar)
+            self.tabs[self.active_tab].load(URL(self.address_bar))
             self.focus = None
             self.draw()
 ```

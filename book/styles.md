@@ -606,25 +606,22 @@ To download the style sheets, we'll need to convert each relative URL
 into a full URL:
 
 ``` {.python}
-def resolve_url(url, current):
-    if "://" in url:
-        return url
-    elif url.startswith("/"):
-        scheme, hostpath = current.split("://", 1)
-        host, oldpath = hostpath.split("/", 1)
-        return scheme + "://" + host + url
-    else:
-        dir, _ = current.rsplit("/", 1)
-        while url.startswith("../"):
-            url = url[3:]
-            if dir.count("/") == 2: continue
-            dir, _ = dir.rsplit("/", 1)
-        return dir + "/" + url
+class URL:
+    def resolve(self, url):
+        if "://" in url: return URL(url)
+        if not url.startswith("/"):
+            dir, _ = self.path.rsplit("/", 1)
+            while url.startswith("../"):
+                _, url = url.split("/", 1)
+                if "/" in dir:
+                    dir, _ = dir.rsplit("/", 1)
+            url = dir + "/" + url
+        return URL(self.scheme + "://" + self.host + \
+                   ":" + str(self.port) + url)
 ```
 
-When resolving path-relative URLs, we count the number of slashes in
-the "directory" to make sure we never strip off the scheme and host
-name.
+Note the logic for handling `..` in the relative URL; for whatever
+reason, this is handled by the browser, not the server.
 
 Now the browser can request each linked style sheet and add its rules
 to the `rules` list:
@@ -634,7 +631,7 @@ def load(self, url):
     # ...
     for link in links:
         try:
-            header, body = request(resolve_url(link, url))
+            header, body = url.resolve(link).request()
         except:
             continue
         rules.extend(CSSParser(body).parse())

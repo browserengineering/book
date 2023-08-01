@@ -43,7 +43,8 @@ class URL:
             cookie, params = COOKIE_JAR[self.host]
             allow_cookie = True
             if top_level_url and params.get("samesite", "none") == "lax":
-                allow_cookie = (self.host == top_level_url.host or method == "GET")
+                if method != "GET":
+                    allow_cookie = self.host == top_level_url.host
             if allow_cookie:
                 body += "Cookie: {}\r\n".format(cookie)
         if payload:
