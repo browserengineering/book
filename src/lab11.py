@@ -17,11 +17,11 @@ from lab4 import Text, Element, print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
-from lab6 import resolve_url, tree_to_list
+from lab6 import tree_to_list
 from lab7 import CHROME_PX
 from lab8 import INPUT_WIDTH_PX, layout_mode
 from lab9 import EVENT_DISPATCH_CODE
-from lab10 import COOKIE_JAR, request, url_origin, JSContext
+from lab10 import COOKIE_JAR, URL, JSContext
 
 FONTS = {}
 
@@ -520,10 +520,10 @@ class Tab:
 
     def allowed_request(self, url):
         return self.allowed_origins == None or \
-            url_origin(url) in self.allowed_origins
+            url.origin() in self.allowed_origins
 
     def load(self, url, body=None):
-        headers, body = request(url, self.url, body)
+        headers, body = url.request(self.url, body)
         self.scroll = 0
         self.url = url
         self.history.append(url)
@@ -543,11 +543,11 @@ class Tab:
                    and node.tag == "script"
                    and "src" in node.attributes]
         for script in scripts:
-            script_url = resolve_url(script, url)
+            script_url = url.resolve(script)
             if not self.allowed_request(script_url):
                 print("Blocked script", script, "due to CSP")
                 continue
-            header, body = request(script_url, url)
+            header, body = script_url.request(url)
             try:
                 self.js.run(body)
             except dukpy.JSRuntimeError as e:
@@ -561,12 +561,12 @@ class Tab:
                  and "href" in node.attributes
                  and node.attributes.get("rel") == "stylesheet"]
         for link in links:
-            style_url = resolve_url(link, url)
+            style_url = url.resolve(link)
             if not self.allowed_request(style_url):
                 print("Blocked style", link, "due to CSP")
                 continue
             try:
-                header, body = request(style_url, url)
+                header, body = style_url.request(url)
             except:
                 continue
             self.rules.extend(CSSParser(body).parse())
@@ -611,7 +611,7 @@ class Tab:
             if isinstance(elt, Text):
                 pass
             elif elt.tag == "a" and "href" in elt.attributes:
-                url = resolve_url(elt.attributes["href"], self.url)
+                url = self.url.resolve(elt.attributes["href"])
                 return self.load(url)
             elif elt.tag == "input":
                 elt.attributes["value"] = ""
@@ -640,7 +640,7 @@ class Tab:
             body += "&" + name + "=" + value
         body = body [1:]
 
-        url = resolve_url(elt.attributes["action"], self.url)
+        url = self.url.resolve(elt.attributes["action"])
         self.load(url, body)
 
     def keypress(self, char):
