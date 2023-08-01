@@ -10,96 +10,84 @@ import tkinter
 import tkinter.font
 import urllib.parse
 import dukpy
-from lab1 import parse_url
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS, DrawRect
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
-from lab6 import DrawText, resolve_url, tree_to_list
+from lab6 import DrawText, tree_to_list
 from lab7 import LineLayout, TextLayout, CHROME_PX
-from lab8 import DocumentLayout, BlockLayout, InputLayout, INPUT_WIDTH_PX, layout_mode
+from lab8 import URL, DocumentLayout, BlockLayout, InputLayout, INPUT_WIDTH_PX, layout_mode
 from lab9 import EVENT_DISPATCH_CODE
+import wbetools
 
-def url_origin(url):
-    (scheme, host, path) = parse_url(url)
-    return scheme + "://" + host
+@wbetools.patch(URL)
+class URL:
+    def request(self, top_level_url, payload=None):
+        s = socket.socket(
+            family=socket.AF_INET,
+            type=socket.SOCK_STREAM,
+            proto=socket.IPPROTO_TCP,
+        )
+        s.connect((self.host, self.port))
+    
+        if self.scheme == "https":
+            ctx = ssl.create_default_context()
+            s = ctx.wrap_socket(s, server_hostname=self.host)
+    
+        method = "POST" if payload else "GET"
+        body = "{} {} HTTP/1.0\r\n".format(method, self.path)
+        body += "Host: {}\r\n".format(self.host)
+        if self.host in COOKIE_JAR:
+            cookie, params = COOKIE_JAR[self.host]
+            allow_cookie = True
+            if top_level_url and params.get("samesite", "none") == "lax":
+                allow_cookie = (self.host == top_level_url.host or method == "GET")
+            if allow_cookie:
+                body += "Cookie: {}\r\n".format(cookie)
+        if payload:
+            content_length = len(payload.encode("utf8"))
+            body += "Content-Length: {}\r\n".format(content_length)
+        body += "\r\n" + (payload if payload else "")
+        s.send(body.encode("utf8"))
+        response = s.makefile("r", encoding="utf8", newline="\r\n")
+    
+        statusline = response.readline()
+        version, status, explanation = statusline.split(" ", 2)
+        assert status == "200", "{}: {}".format(status, explanation)
+    
+        headers = {}
+        while True:
+            line = response.readline()
+            if line == "\r\n": break
+            header, value = line.split(":", 1)
+            headers[header.lower()] = value.strip()
+    
+        if "set-cookie" in headers:
+            params = {}
+            if ";" in headers["set-cookie"]:
+                cookie, rest = headers["set-cookie"].split(";", 1)
+                for param_pair in rest.split(";"):
+                    if '=' in param_pair:
+                        name, value = param_pair.strip().split("=", 1)
+                        params[name.lower()] = value.lower()
+            else:
+                cookie = headers["set-cookie"]
+            COOKIE_JAR[self.host] = (cookie, params)
+    
+        assert "transfer-encoding" not in headers
+        assert "content-encoding" not in headers
+    
+        body = response.read()
+        s.close()
+    
+        return headers, body
+
+    def origin(self):
+        return self.scheme + "://" + self.host
         
 COOKIE_JAR = {}
-
-def request(url, top_level_url, payload=None):
-    (scheme, host, path) = parse_url(url)
-    assert scheme in ["http", "https"], \
-        "Unknown scheme {}".format(scheme)
-
-    port = 80 if scheme == "http" else 443
-
-    if ":" in host:
-        host, port = host.split(":", 1)
-        port = int(port)
-
-    s = socket.socket(
-        family=socket.AF_INET,
-        type=socket.SOCK_STREAM,
-        proto=socket.IPPROTO_TCP,
-    )
-    s.connect((host, port))
-
-    if scheme == "https":
-        ctx = ssl.create_default_context()
-        s = ctx.wrap_socket(s, server_hostname=host)
-
-    method = "POST" if payload else "GET"
-    body = "{} {} HTTP/1.0\r\n".format(method, path)
-    body += "Host: {}\r\n".format(host)
-    if host in COOKIE_JAR:
-        cookie, params = COOKIE_JAR[host]
-        allow_cookie = True
-        if top_level_url and params.get("samesite", "none") == "lax":
-            _, _, top_level_host, _ = top_level_url.split("/", 3)
-            if ":" in top_level_host:
-                top_level_host, _ = top_level_host.split(":", 1)
-            allow_cookie = (host == top_level_host or method == "GET")
-        if allow_cookie:
-            body += "Cookie: {}\r\n".format(cookie)
-    if payload:
-        content_length = len(payload.encode("utf8"))
-        body += "Content-Length: {}\r\n".format(content_length)
-    body += "\r\n" + (payload if payload else "")
-    s.send(body.encode("utf8"))
-    response = s.makefile("r", encoding="utf8", newline="\r\n")
-
-    statusline = response.readline()
-    version, status, explanation = statusline.split(" ", 2)
-    assert status == "200", "{}: {}".format(status, explanation)
-
-    headers = {}
-    while True:
-        line = response.readline()
-        if line == "\r\n": break
-        header, value = line.split(":", 1)
-        headers[header.lower()] = value.strip()
-
-    if "set-cookie" in headers:
-        params = {}
-        if ";" in headers["set-cookie"]:
-            cookie, rest = headers["set-cookie"].split(";", 1)
-            for param_pair in rest.split(";"):
-                if '=' in param_pair:
-                    name, value = param_pair.strip().split("=", 1)
-                    params[name.lower()] = value.lower()
-        else:
-            cookie = headers["set-cookie"]
-        COOKIE_JAR[host] = (cookie, params)
-
-    assert "transfer-encoding" not in headers
-    assert "content-encoding" not in headers
-
-    body = response.read()
-    s.close()
-
-    return headers, body
 
 class JSContext:
     def __init__(self, tab):
@@ -159,11 +147,11 @@ class JSContext:
         self.tab.render()
 
     def XMLHttpRequest_send(self, method, url, body):
-        full_url = resolve_url(url, self.tab.url)
+        full_url = self.tab.url.resolve(url)
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
-        headers, out = request(full_url, self.tab.url, body)
-        if url_origin(full_url) != url_origin(self.tab.url):
+        headers, out = full_url.request(self.tab.url, body)
+        if full_url.origin() != self.tab.url.origin():
             raise Exception("Cross-origin XHR request not allowed")
         return out
 
@@ -178,10 +166,10 @@ class Tab:
 
     def allowed_request(self, url):
         return self.allowed_origins == None or \
-            url_origin(url) in self.allowed_origins
+            url.origin() in self.allowed_origins
 
     def load(self, url, body=None):
-        headers, body = request(url, self.url, body)
+        headers, body = url.request(self.url, body)
         self.scroll = 0
         self.url = url
         self.history.append(url)
@@ -201,11 +189,11 @@ class Tab:
                    and node.tag == "script"
                    and "src" in node.attributes]
         for script in scripts:
-            script_url = resolve_url(script, url)
+            script_url = url.resolve(script)
             if not self.allowed_request(script_url):
                 print("Blocked script", script, "due to CSP")
                 continue
-            header, body = request(script_url, url)
+            header, body = script_url.request(url)
             try:
                 self.js.run(body)
             except dukpy.JSRuntimeError as e:
@@ -219,12 +207,12 @@ class Tab:
                  and "href" in node.attributes
                  and node.attributes.get("rel") == "stylesheet"]
         for link in links:
-            style_url = resolve_url(link, url)
+            style_url = url.resolve(link)
             if not self.allowed_request(style_url):
                 print("Blocked style", link, "due to CSP")
                 continue
             try:
-                header, body = request(style_url, url)
+                header, body = style_url.request(url)
             except:
                 continue
             self.rules.extend(CSSParser(body).parse())
@@ -269,7 +257,7 @@ class Tab:
             if isinstance(elt, Text):
                 pass
             elif elt.tag == "a" and "href" in elt.attributes:
-                url = resolve_url(elt.attributes["href"], self.url)
+                url = self.url.resolve(elt.attributes["href"])
                 return self.load(url)
             elif elt.tag == "input":
                 elt.attributes["value"] = ""
@@ -298,7 +286,7 @@ class Tab:
             body += "&" + name + "=" + value
         body = body [1:]
 
-        url = resolve_url(elt.attributes["action"], self.url)
+        url = self.url.resolve(elt.attributes["action"])
         self.load(url, body)
 
     def keypress(self, char):
@@ -411,7 +399,7 @@ class Browser:
             w = buttonfont.measure(self.address_bar)
             self.canvas.create_line(55 + w, 55, 55 + w, 85, fill="black")
         else:
-            url = self.tabs[self.active_tab].url
+            url = str(self.tabs[self.active_tab].url)
             self.canvas.create_text(55, 55, anchor='nw', text=url,
                 font=buttonfont, fill="black")
 
@@ -422,5 +410,5 @@ class Browser:
 
 if __name__ == "__main__":
     import sys
-    Browser().load(sys.argv[1])
+    Browser().load(URL(sys.argv[1]))
     tkinter.mainloop()

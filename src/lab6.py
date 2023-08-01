@@ -9,29 +9,28 @@ import socket
 import ssl
 import tkinter
 import tkinter.font
-from lab1 import request
+from lab1 import URL
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS, layout_mode, DrawRect
+import wbetools
 
-def resolve_url(url, current):
-    if "://" in url:
-        return url
-    elif url.startswith("/"):
-        scheme, hostpath = current.split("://", 1)
-        host, oldpath = hostpath.split("/", 1)
-        return scheme + "://" + host + url
-    else:
-        scheme, hostpath = current.split("://", 1)
-        if "/" not in hostpath:
-            current = current + "/"
-        dir, _ = current.rsplit("/", 1)
-        while url.startswith("../"):
-            url = url[3:]
-            if dir.count("/") == 2: continue
-            dir, _ = dir.rsplit("/", 1)
-        return dir + "/" + url
+@wbetools.patch(URL)
+class URL:
+    def resolve(self, url):
+        if "://" in url:
+            return URL(url)
+        elif url.startswith("/"):
+            return URL(self.scheme + "://" + self.host + ":" + str(self.port) + url)
+        else:
+            dir, _ = self.path.rsplit("/", 1)
+            while url.startswith("../"):
+                url = url[3:]
+                if dir.count("/"):
+                    dir, _ = dir.rsplit("/", 1)
+            path = dir + "/" + url
+            return URL(self.scheme + "://" + self.host + ":" + str(self.port) + path)
 
 def tree_to_list(tree, list):
     list.append(tree)
@@ -357,7 +356,7 @@ class Browser:
             self.default_style_sheet = CSSParser(f.read()).parse()
 
     def load(self, url):
-        headers, body = request(url)
+        headers, body = url.request()
         self.nodes = HTMLParser(body).parse()
 
         rules = self.default_style_sheet.copy()
@@ -369,7 +368,7 @@ class Browser:
                  and node.attributes.get("rel") == "stylesheet"]
         for link in links:
             try:
-                header, body = request(resolve_url(link, url))
+                header, body = url.resolve(link).request()
             except:
                 continue
             rules.extend(CSSParser(body).parse())
@@ -395,5 +394,5 @@ class Browser:
 
 if __name__ == "__main__":
     import sys
-    Browser().load(sys.argv[1])
+    Browser().load(URL(sys.argv[1]))
     tkinter.mainloop()
