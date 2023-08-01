@@ -35,7 +35,7 @@ exists but is much less common.)
 __URL__: Uniform Resource Locator. The name used to refer uniquely to a web
 page.
 
-__Rendering engine__: The part of a Web Browser concerned with drawing a web
+__Rendering engine__: The part of a web browser concerned with drawing a web
 page to the screen and interacting with it. There are three rendering engines
 actively maintained today: Chromium, WebKit and Gecko.
 
@@ -67,13 +67,13 @@ Standards
 __IETF__: Internet Engineering Task Force. The standardization organization
 for __HTTP__ as well as some other APIs.
 
-__TC39__: Technical Committe 39. The standardization organization for
+__TC39__: Technical Committee 39. The standardization organization for
 JavaScript.
 
 __Khronos__: The Khronos Group. The standardization organization for WebGL
 and WebGPU.
 
-__W3C__: World Wide Web Consortioum. The central standardization organization of
+__W3C__: World Wide Web Consortium. The central standardization organization of
 the __WWW__. Among many other APIs, this is where __CSS__ is standardized.
 
 __WHATWG__: Web Hypertext Application Technology Working Group. The
@@ -167,7 +167,7 @@ CSS
 ===
 
 __Cascade order__: The order of application of multiple __CSS rules__ to a
-single elemnet.
+single element.
 
 __Computed Style__: The values for the __CSS Properties__ that apply to
 elements after applying all __rules__ according to the __cascade__ order.
@@ -195,7 +195,7 @@ __Element__.
 Coordinate spaces
 =================
 
-There are several 2D coordinate spaces that are very conveinient to answer
+There are several 2D coordinate spaces that are very convenient to answer
 questions like: where is this element relative to another one? Where is it
 relative to the web page? where is it on the screen?
 
@@ -232,7 +232,7 @@ __Canvas__: A conceptual object which can execute drawing commands, typically
 backed by a __surface__. Also a web API of the same name that serves the same
 purpose.
 
-__Compositing__: The phase oof a browser rendering pipeline that divides the
+__Compositing__: The phase of a browser rendering pipeline that divides the
 display list into pieces suitable for rendering into independent
 __surfaces__ on a __GPU__, in order to speed up animations.
 
@@ -248,11 +248,11 @@ onto the screen with various positions and __visual effects__.
 __Event loop__: An infinite loop in browsers that alternates between receiving
 user input and drawing to the screen.
 
-__Hit testing__: Determining which __element__ or __accessibilty tree__ node
+__Hit testing__: Determining which __element__ or __accessibility tree__ node
 is  at a given pixel location on the screen.
 
 __Invalidation__: Marking some rendering state as no longer valid, because its
-input dependendencies have changed.
+input dependencies have changed.
 
 __Layout__: The phase of a browser rendering pipeline that determines the
 size and position of __elements__ in the __DOM__. 
@@ -266,7 +266,7 @@ list from the __DOM__.
 __Rendering pipeline__: The sequence of phases by which a browser draws
 a web page onto a computer screen.
 
-__Raster__: The process of excuting a __display list__ and outputting pixels
+__Raster__: The process of executing a __display list__ and outputting pixels
 into a __surface__.
 
 __Scroll__: adjusting the horizontal or vertical offset of a web page
