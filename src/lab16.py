@@ -87,7 +87,10 @@ def tree_to_list(tree, l):
 def paint_outline(node, cmds, rect, zoom):
     if has_outline(node):
         thickness, color = parse_outline(node.style['outline'].get(), zoom)
-        cmds.append(DrawOutline(rect, color, thickness))
+        cmds.append(DrawOutline(
+            rect.left(), rect.top(),
+            rect.right(), rect.bottom(),
+            color, thickness))
 
 @wbetools.patch(font)
 def font(notify, css_style, zoom):
