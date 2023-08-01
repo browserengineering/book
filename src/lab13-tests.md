@@ -33,7 +33,7 @@ Testing CSS transtions
     ... b"<div style=\"opacity:0.5\">Text</div>)")
 
     >>> browser = lab13.Browser()
-    >>> browser.load(transitions_url)
+    >>> browser.load(lab13.URL(transitions_url))
     >>> browser.render()
     >>> browser.composite_raster_and_draw()
 
@@ -109,7 +109,7 @@ Animations work:
     ... b"<div style=\"transform:translate(80px,90px)\">Text</div>)")
 
     >>> browser = lab13.Browser()
-    >>> browser.load(transitions_url3)
+    >>> browser.load(lab13.URL(transitions_url3))
     >>> browser.render()
     >>> browser.composite_raster_and_draw()
     >>> tab = browser.tabs[browser.active_tab]
@@ -137,7 +137,7 @@ Here's a page with a button translated via CSS:
     >>> test.socket.respond(success_url, b"HTTP/1.0 200 OK\r\n" +
     ... b"content-type: text/html\r\n\r\n")
     >>> browser = lab13.Browser()
-    >>> browser.load(transitions_url4)
+    >>> browser.load(lab13.URL(transitions_url4))
     >>> browser.render()
     
 Let's click it at (100, 120). Those numbers are an offset of (80, 90)
@@ -147,7 +147,7 @@ we're inside the button:
     >>> tab = browser.tabs[browser.active_tab]
     >>> tab.click(100, 120)
     >>> tab.url
-    'http://test.test/success'
+    URL(scheme=http, host=test.test, port=80, path='/success')
 
 Note that I use `tab.click` instead of `browser.handle_click` to avoid
 locking problems with the `SingleThreadedRunner`.
