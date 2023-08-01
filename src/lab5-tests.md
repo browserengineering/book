@@ -78,11 +78,7 @@ The span has block layout mode, even though spans are inline normally:
 Testing the layout tree
 =======================
 
-    >>> url = 'http://test.test/example1'
-    >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n" +
-    ... b"Header1: Value1\r\n\r\n" +
-    ... sample_html.encode("utf-8"))
-
+    >>> url = lab5.URL(test.socket.serve(sample_html))
     >>> browser = lab5.Browser()
     >>> browser.load(url)
     >>> lab5.print_tree(browser.nodes)
@@ -118,11 +114,7 @@ Testing background painting
 
 `<pre>` elements have a gray background.
 
-    >>> url = 'http://test.test/example2'
-    >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n" +
-    ... b"Header1: Value1\r\n\r\n" +
-    ... b"<pre>pre text</pre>")
-
+    >>> url = lab5.URL(test.socket.serve("<pre>pre text</pre>"))
     >>> browser = lab5.Browser()
     >>> browser.load(url)
     >>> lab5.print_tree(browser.nodes)

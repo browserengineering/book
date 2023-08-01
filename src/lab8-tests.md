@@ -17,26 +17,24 @@ Testing request
 This chapter adds the ability to submit a POST request in addition to a GET
 one.
 
-    >>> url = 'http://test.test/submit'
+    >>> url = 'http://test/submit'
     >>> request_body = "name=1&comment=2%3D3"
     >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n" +
     ... b"Header1: Value1\r\n\r\n" +
     ... b"<div>Form submitted</div>", method="POST", body=request_body)
-    >>> headers, body = lab8.request(url, request_body)
+    >>> headers, body = lab8.URL(url).request(request_body)
     >>> test.socket.last_request(url)
-    b'POST /submit HTTP/1.0\r\nContent-Length: 20\r\nHost: test.test\r\n\r\nname=1&comment=2%3D3'
+    b'POST /submit HTTP/1.0\r\nContent-Length: 20\r\nHost: test\r\n\r\nname=1&comment=2%3D3'
 
 Testing InputLayout
 ===================
 
-    >>> url2 = 'http://test.test/example'
-    >>> test.socket.respond(url2, b"HTTP/1.0 200 OK\r\n" +
-    ... b"Header1: Value1\r\n\r\n" +
+    >>> url2 = lab8.URL(test.socket.serve(
     ... b"<form action=\"/submit\">" +
     ... b"  <p>Name: <input name=name value=1></p>" +
     ... b"  <p>Comment: <input name=comment value=\"2=3\"></p>" +
     ... b"  <p><button>Submit!</button></p>" +
-    ... b"</form>")
+    ... b"</form>"))
     >>> browser = lab8.Browser()
     >>> browser.load(url2)
     >>> lab8.print_tree(browser.tabs[0].document.node)
@@ -126,11 +124,9 @@ POST requsts to other URLs return 404 pages:
 Testing layout_mode
 ===================
 
-    >>> block_inline_url = 'http://test.test/example'
-    >>> test.socket.respond(block_inline_url, b"HTTP/1.0 200 OK\r\n" +
-    ... b"Header1: Value1\r\n\r\n" +
+    >>> block_inline_url = lab8.URL(test.socket.serve(
     ... b"<input>" +
-    ... b"<div></div>")
+    ... b"<div></div>"))
     >>> browser = lab8.Browser()
     >>> browser.load(block_inline_url)
     >>> lab8.print_tree(browser.tabs[0].document.node)
@@ -159,12 +155,10 @@ The painted output also is only drawing the input as 200px wide:
     
 If a `<button>` contains rich markup inside of it, it should print nothing:
 
-    >>> url3 = 'http://test.test/example-empty'
-    >>> test.socket.respond(url3, b"HTTP/1.0 200 OK\r\n" +
-    ... b"Header1: Value1\r\n\r\n" +
+    >>> url3 = lab8.URL(test.socket.serve(
     ... b"<form action=\"/submit\">" +
     ... b"<button><b>Rich markup</b></button>" +
-    ... b"</form>")
+    ... b"</form>"))
     >>> browser = lab8.Browser()
     >>> browser.load(url3)
     Ignoring HTML contents inside button

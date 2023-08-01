@@ -9,18 +9,16 @@ through link clicks, and browser chrome for the URL bar and tabs.
     >>> _ = test.ssl.patch().start()
     >>> import lab7
 
-    >>> url = 'http://test.test/example'
-    >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n" +
-    ... b"Header1: Value1\r\n\r\n" +
-    ... b"<div>This is a test<br>Also a test<br>And this too</div>")
-
 Testing LineLayout and TextLayout
 =================================
+
+    >>> url = lab7.URL(test.socket.serve(
+    ...   "<div>This is a test<br>Also a test<br>And this too</div>"))
 
     >>> browser = lab7.Browser()
     >>> browser.load(url)
     >>> browser.tabs
-    [Tab(history=['http://test.test/example'])]
+    [Tab(history=[URL(scheme=http, host=test, port=80, path='/0')])]
     >>> lab7.print_tree(browser.tabs[0].document.node)
      <html>
        <body>
@@ -67,21 +65,20 @@ has the same total height:
 Testing Tab
 ===========
 
-    >>> url2 = 'http://test.test/example2'
-    >>> test.socket.respond(url2, b"HTTP/1.0 200 OK\r\n" +
-    ... b"Header1: Value1\r\n\r\n" +
-    ... b"<a href=\"http://test.test/example\">Click me</a>")
+    >>> url2 = lab7.URL(test.socket.serve(
+    ...   "<a href=\"http://test/0\">Click me</a>"))
 
 The browser can have multiple tabs:
 
     >>> browser.load(url2)
-    >>> browser.tabs
-    [Tab(history=['http://test.test/example']), Tab(history=['http://test.test/example2'])]
+    >>> browser.tabs #doctest: +NORMALIZE_WHITESPACE
+    [Tab(history=[URL(scheme=http, host=test, port=80, path='/0')]),
+     Tab(history=[URL(scheme=http, host=test, port=80, path='/1')])]
 
     >>> lab7.print_tree(browser.tabs[1].document.node)
      <html>
        <body>
-         <a href="http://test.test/example">
+         <a href="http://test/0">
            'Click me'
 
     >>> lab7.print_tree(browser.tabs[1].document)
@@ -96,7 +93,7 @@ Tabs supports navigation---clicking on a link to navigate a tab to a new site:
 
     >>> browser.tabs[1].click(14, 21)
     >>> browser.tabs[1].url
-    'http://test.test/example'
+    URL(scheme=http, host=test, port=80, path='/0')
     >>> lab7.print_tree(browser.tabs[1].document.node)
      <html>
        <body>
@@ -109,25 +106,26 @@ Tabs supports navigation---clicking on a link to navigate a tab to a new site:
 
 The old page is now in the history of the tab:
 
-    >>> browser.tabs[1]
-    Tab(history=['http://test.test/example2', 'http://test.test/example'])
+    >>> browser.tabs[1] #doctest: +NORMALIZE_WHITESPACE
+    Tab(history=[URL(scheme=http, host=test, port=80, path='/1'),
+                 URL(scheme=http, host=test, port=80, path='/0')])
 
 Navigating back restores the old page:
 
     >>> browser.tabs[1].go_back()
     >>> browser.tabs[1].url
-    'http://test.test/example2'
+    URL(scheme=http, host=test, port=80, path='/1')
     >>> lab7.print_tree(browser.tabs[1].document.node)
      <html>
        <body>
-         <a href="http://test.test/example">
+         <a href="http://test/0">
            'Click me'
 
 Clicking on a non-clickable area of the page does nothing:
 
     >>> browser.tabs[1].click(1, 1)
     >>> browser.tabs[1].url
-    'http://test.test/example2'
+    URL(scheme=http, host=test, port=80, path='/1')
 
 Testing Browser
 ===============
@@ -152,23 +150,25 @@ Clicking on the address bar focuses it:
 The back button works:
 
     >>> browser.tabs[1].history
-    ['http://test.test/example2']
+    [URL(scheme=http, host=test, port=80, path='/1')]
     >>> browser.handle_click(test.Event(14, 21 + 100))
-    >>> browser.tabs[1].history
-    ['http://test.test/example2', 'http://test.test/example']
+    >>> browser.tabs[1].history #doctest: +NORMALIZE_WHITESPACE
+    [URL(scheme=http, host=test, port=80, path='/1'),
+     URL(scheme=http, host=test, port=80, path='/0')]
     >>> browser.handle_click(test.Event(10, 50))
     >>> browser.tabs[1].history
-    ['http://test.test/example2']
+    [URL(scheme=http, host=test, port=80, path='/1')]
 
 Pressing enter with text in the address bar works:
 
     >>> browser.handle_click(test.Event(50, 51))
     >>> browser.focus
     'address bar'
-    >>> browser.address_bar = "http://test.test/example"
+    >>> browser.address_bar = "http://test/0"
     >>> browser.handle_enter(test.Event(0, 0))
-    >>> browser.tabs[1].history
-    ['http://test.test/example2', 'http://test.test/example']
+    >>> browser.tabs[1].history #doctest: +NORMALIZE_WHITESPACE
+    [URL(scheme=http, host=test, port=80, path='/1'),
+     URL(scheme=http, host=test, port=80, path='/0')]
 
 The home button works:
 
@@ -177,5 +177,8 @@ The home button works:
     ... b"Header1: Value1\r\n\r\n" +
     ... b"Web Browser Engineering homepage")
     >>> browser.handle_click(test.Event(10, 10))
-    >>> browser.tabs
-    [Tab(history=['http://test.test/example']), Tab(history=['http://test.test/example2', 'http://test.test/example']), Tab(history=['https://browser.engineering/'])]
+    >>> browser.tabs #doctest: +NORMALIZE_WHITESPACE
+    [Tab(history=[URL(scheme=http, host=test, port=80, path='/0')]),
+     Tab(history=[URL(scheme=http, host=test, port=80, path='/1'),
+                  URL(scheme=http, host=test, port=80, path='/0')]),
+     Tab(history=[URL(scheme=https, host=browser.engineering, port=443, path='/')])]

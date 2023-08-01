@@ -36,6 +36,24 @@ Note that the tags do not have to match:
     >>> lab1.show('he<body>l<div>l</body>o</div>')
     hello
 
+Testing `URL`
+-------------
+
+Constructing a `URL` object parses a URL:
+
+    >>> lab1.URL('http://test.test/example1')
+    URL(scheme=http, host=test.test, port=80, path='/example1')
+
+This works even if there is no path:
+
+    >>> lab1.URL('http://test.test')
+    URL(scheme=http, host=test.test, port=80, path='/')
+
+An explicit port will be used:
+
+    >>> lab1.URL('http://test.test:90')
+    URL(scheme=http, host=test.test, port=90, path='/')
+
 Testing `request`
 -----------------
 
@@ -50,7 +68,7 @@ To test it, we use the `test.socket` object, which mocks the HTTP server:
 
 Then we request the URL and test both request and response:
 
-    >>> headers, body = lab1.request(url)
+    >>> headers, body = lab1.URL(url).request()
     >>> test.socket.last_request(url)
     b'GET /example1 HTTP/1.0\r\nHost: test.test\r\n\r\n'
     >>> body
@@ -65,7 +83,7 @@ With an unusual `Transfer-Encoding` the request should fail:
     >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n" +
     ... b"Transfer-Encoding: chunked\r\n\r\n" +
     ... b"0\r\n\r\n")
-    >>> lab1.request(url)
+    >>> lab1.URL(url).request()
     Traceback (most recent call last):
       ...
     AssertionError
@@ -76,7 +94,7 @@ Likewise with `Content-Encoding`:
     >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n" +
     ... b"Content-Encoding: gzip\r\n\r\n" +
     ... b"\x00\r\n\r\n")
-    >>> lab1.request(url)
+    >>> lab1.URL(url).request()
     Traceback (most recent call last):
       ...
     AssertionError
@@ -88,7 +106,7 @@ Here we're making sure that SSL support is enabled.
 
     >>> url = 'https://test.test/example2'
     >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n\r\n")
-    >>> header, body = lab1.request(url)
+    >>> header, body = lab1.URL(url).request()
     >>> body
     ''
 
@@ -96,13 +114,13 @@ SSL support also means some support for ports:
 
     >>> url = 'https://test.test:400/example3'
     >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n\r\nHi")
-    >>> header, body = lab1.request(url)
+    >>> header, body = lab1.URL(url).request()
     >>> body
     'Hi'
 
 Requesting the wrong port is an error:
 
-    >>> lab1.request("http://test.test:401/example3")
+    >>> lab1.URL("http://test.test:401/example3").request()
     Traceback (most recent call last):
       ...
     KeyError: 'http://test.test:401/example3'

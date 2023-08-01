@@ -17,25 +17,22 @@ Testing basic <script> support
 
 The browser should download JavaScript code mentioned in a `<script>` tag:
 
-    >>> url = 'http://test.test/html'
-    >>> url2 = 'http://test.test/js'
-    >>> html_page = "<script src=" + url2 + "></script>"
-    >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n\r\n" + html_page.encode("utf8"))
-    >>> test.socket.respond(url2, b"HTTP/1.0 200 OK\r\n\r\n")
+    >>> url2 = lab9.URL(test.socket.serve(""))
+    >>> url = lab9.URL(test.socket.serve("<script src=" + str(url2) + "></script>"))
     >>> lab9.Browser().load(url)
-    >>> test.socket.last_request(url2)
-    b'GET /js HTTP/1.0\r\nHost: test.test\r\n\r\n'
+    >>> test.socket.last_request(str(url2))
+    b'GET /0 HTTP/1.0\r\nHost: test\r\n\r\n'
 
 If the script succeeds, the browser prints nothing:
 
-    >>> test.socket.respond(url2, b"HTTP/1.0 200 OK\r\n\r\nvar x = 2; x + x")
+    >>> test.socket.respond(str(url2), b"HTTP/1.0 200 OK\r\n\r\nvar x = 2; x + x")
     >>> lab9.Browser().load(url)
 
 If instead the script crashes, the browser prints an error message:
 
-    >>> test.socket.respond(url2, b"HTTP/1.0 200 OK\r\n\r\nthrow Error('Oops');")
+    >>> test.socket.respond(str(url2), b"HTTP/1.0 200 OK\r\n\r\nthrow Error('Oops');")
     >>> lab9.Browser().load(url) #doctest: +ELLIPSIS
-    Script http://test.test/js crashed Error: Oops
+    Script http://test/0 crashed Error: Oops
     ...
 
 Note that in the last test I set the `ELLIPSIS` flag to elide the duktape stack
@@ -47,21 +44,21 @@ Testing JSContext
 For the rest of these tests we're going to use `console.log` for most testing:
 
     >>> script = "console.log('Hello, world!')"
-    >>> test.socket.respond(url2, b"HTTP/1.0 200 OK\r\n\r\n" + script.encode("utf8"))
+    >>> test.socket.respond(str(url2), b"HTTP/1.0 200 OK\r\n\r\n" + script.encode("utf8"))
     >>> lab9.Browser().load(url)
     Hello, world!
 
 Note that you can print other data structures as well:
 
     >>> script = "console.log([2, 3, 4])"
-    >>> test.socket.respond(url2, b"HTTP/1.0 200 OK\r\n\r\n" + script.encode("utf8"))
+    >>> test.socket.respond(str(url2), b"HTTP/1.0 200 OK\r\n\r\n" + script.encode("utf8"))
     >>> lab9.Browser().load(url)
     [2, 3, 4]
 
 Let's test that variables work:
 
     >>> script = "var x = 'Hello!'; console.log(x)"
-    >>> test.socket.respond(url2, b"HTTP/1.0 200 OK\r\n\r\n" + script.encode("utf8"))
+    >>> test.socket.respond(str(url2), b"HTTP/1.0 200 OK\r\n\r\n" + script.encode("utf8"))
     >>> lab9.Browser().load(url)
     Hello!
     
@@ -70,9 +67,9 @@ Next let's try to do two scripts:
     >>> url2 = 'http://test.test/js1'
     >>> url3 = 'http://test.test/js2'
     >>> html_page = "<script src=" + url2 + "></script>" + "<script src=" + url3 + "></script>"
-    >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n\r\n" + html_page.encode("utf8"))
-    >>> test.socket.respond(url2, b"HTTP/1.0 200 OK\r\n\r\nvar x = 'Testing, testing';")
-    >>> test.socket.respond(url3, b"HTTP/1.0 200 OK\r\n\r\nconsole.log(x);")
+    >>> test.socket.respond(str(url), b"HTTP/1.0 200 OK\r\n\r\n" + html_page.encode("utf8"))
+    >>> test.socket.respond(str(url2), b"HTTP/1.0 200 OK\r\n\r\nvar x = 'Testing, testing';")
+    >>> test.socket.respond(str(url3), b"HTTP/1.0 200 OK\r\n\r\nconsole.log(x);")
     >>> lab9.Browser().load(url)
     Testing, testing
 
@@ -87,7 +84,7 @@ matching nodes:
     ...   <p id=lorem>Lorem</p>
     ...   <p class=ipsum>Ipsum</p>
     ... </div>"""
-    >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n\r\n" + page.encode("utf8"))
+    >>> test.socket.respond(str(url), b"HTTP/1.0 200 OK\r\n\r\n" + page.encode("utf8"))
     >>> b = lab9.Browser()
     >>> b.load(url)
     >>> js = b.tabs[0].js
@@ -216,7 +213,7 @@ link, a button, and an input area:
     ...   <input name=input value=hi>
     ...   <button>Submit</button>
     ... </form>"""
-    >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n\r\n" + page.encode("utf8"))
+    >>> test.socket.respond(str(url), b"HTTP/1.0 200 OK\r\n\r\n" + page.encode("utf8"))
     >>> b.load(url)
     >>> js = b.tabs[1].js
 
@@ -284,8 +281,8 @@ events. The display list gives us coordinates for clicking.
 However, we should not have navigated away from the original URL, because we
 prevented submission:
 
-    >>> b.tabs[1].history[-1]
-    'http://test.test/html'
+    >>> b.tabs[1].history
+    [URL(scheme=http, host=test, port=80, path='/1')]
     
 Similarly, when we clicked on the `input` element its `value` should be cleared,
 but when we then typed `t` into it that was canceled so the value should still
