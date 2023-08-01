@@ -7,57 +7,65 @@ without exercises.
 import socket
 import ssl
 
-def parse_url(url):
-    scheme, url = url.split("://", 1)
-    if "/" not in url:
-        url = url + "/"
-    host, path = url.split("/", 1)
-    return (scheme, host, "/" + path)
+class URL:
+    def __init__(self, url):
+        self.scheme, url = url.split("://", 1)
+        assert self.scheme in ["http", "https"], \
+            "Unknown scheme {}".format(self.scheme)
 
-def request(url):
-    (scheme, host, path) = parse_url(url)
-    assert scheme in ["http", "https"], \
-        "Unknown scheme {}".format(scheme)
+        if "/" not in url:
+            url = url + "/"
+        host, path = url.split("/", 1)
+        self.path = "/" + path
 
-    port = 80 if scheme == "http" else 443
+        if ":" in host:
+            self.host, port = host.split(":", 1)
+            self.port = int(port)
+        elif self.scheme == "http":
+            self.host = host
+            self.port = 80
+        elif self.scheme == "https":
+            self.host = host
+            self.port = 443
 
-    if ":" in host:
-        host, port = host.split(":", 1)
-        port = int(port)
+    def request(self):
+        s = socket.socket(
+            family=socket.AF_INET,
+            type=socket.SOCK_STREAM,
+            proto=socket.IPPROTO_TCP,
+        )
+        s.connect((self.host, self.port))
+    
+        if self.scheme == "https":
+            ctx = ssl.create_default_context()
+            s = ctx.wrap_socket(s, server_hostname=self.host)
+    
+        s.send(("GET {} HTTP/1.0\r\n".format(self.path) +
+                "Host: {}\r\n\r\n".format(self.host)).encode("utf8"))
+        response = s.makefile("r", encoding="utf8", newline="\r\n")
+    
+        statusline = response.readline()
+        version, status, explanation = statusline.split(" ", 2)
+        assert status == "200", "{}: {}".format(status, explanation)
+    
+        headers = {}
+        while True:
+            line = response.readline()
+            if line == "\r\n": break
+            header, value = line.split(":", 1)
+            headers[header.lower()] = value.strip()
+    
+        assert "transfer-encoding" not in headers
+        assert "content-encoding" not in headers
+    
+        body = response.read()
+        s.close()
+    
+        return headers, body
 
-    s = socket.socket(
-        family=socket.AF_INET,
-        type=socket.SOCK_STREAM,
-        proto=socket.IPPROTO_TCP,
-    )
-    s.connect((host, port))
-
-    if scheme == "https":
-        ctx = ssl.create_default_context()
-        s = ctx.wrap_socket(s, server_hostname=host)
-
-    s.send(("GET {} HTTP/1.0\r\n".format(path) +
-            "Host: {}\r\n\r\n".format(host)).encode("utf8"))
-    response = s.makefile("r", encoding="utf8", newline="\r\n")
-
-    statusline = response.readline()
-    version, status, explanation = statusline.split(" ", 2)
-    assert status == "200", "{}: {}".format(status, explanation)
-
-    headers = {}
-    while True:
-        line = response.readline()
-        if line == "\r\n": break
-        header, value = line.split(":", 1)
-        headers[header.lower()] = value.strip()
-
-    assert "transfer-encoding" not in headers
-    assert "content-encoding" not in headers
-
-    body = response.read()
-    s.close()
-
-    return headers, body
+    def __repr__(self):
+        return "URL(scheme={}, host={}, port={}, path={!r})".format(
+            self.scheme, self.host, self.port, self.path)
 
 def show(body):
     in_angle = False
@@ -70,9 +78,9 @@ def show(body):
             print(c, end="")
 
 def load(url):
-    headers, body = request(url)
+    headers, body = url.request()
     show(body)
 
 if __name__ == "__main__":
     import sys
-    load(sys.argv[1])
+    load(URL(sys.argv[1]))
