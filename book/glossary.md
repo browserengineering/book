@@ -13,6 +13,9 @@ Key web terms
 __Accessibility__: The ability of any person to access and use a web page,
 regardless of ability; technology to achieve the same.
 
+__Browser chrome__: The UI of a browser, such as tabs or a URL bar,
+outside of any web pages it's currently displaying.
+
 __HTML__: HyperText Markup Language, the XML-like format of web pages.
 
 __Hyperlink__: A reference from one web page to another.
@@ -39,9 +42,13 @@ actively maintained today: Chromium, WebKit and Gecko.
 __Script__: A piece of code that extends a web page with more functionality,
 usually written in __JavaScript__.
 
-__Web Security__: The property of the web being safe to load a web page in a
-browser without harm (such as malicious software reading private data or 
-corrupting computer state) will result.
+__Web Security__: The ability of the web (or individual browsers or
+applications that are part of it) to be used without causing unintentional
+harm. There are lots of different aspects of security: browser security (the
+computer system a browser is running on can't be harmed by it), web application
+security (a web application can't be harmed by its users), privacy (a third
+party can't harm a web user by observing their use of the web), and many
+others.
 
 __Web__: Simplified name for __WWW__.
 
@@ -79,8 +86,8 @@ Web Documents
 __Animation__: A sequence of visual changes on a computer screen
 interpreted by humans to look like movement.
 
-__Attribute__; A parameter on an __element__ indicating some information,
-such as the source of an image or URL of a style sheet.
+__HTML Attribute__: A parameter on an __element__ indicating some
+information, such as the source of an image or URL of a style sheet.
 
 __Parsing__: Turning a serialized representation (such as HTML or CSS) into a data structure such as the __document tree__ or a __style sheet__.
 
@@ -104,12 +111,14 @@ text and the document object). (Inherits from __Node__.)
 __Event__: A way for JavaScript to observe that something has happened on the
 document, and customize its results.
 
-__Focus__: Ahe property of an __element__ being the highlight, or "focus",
+__Focus__: The property of an element (sometimes in the web page, sometimes
+in the browser __chrome__) being the highlight, or "focus",
 of user interaction, and therefore receiving keyboard events and being
 visually highlighted on the screen.
 
 __Font__: A particular stylistic way of drawing a particular human language to
-computer screens. Arial is one common example for Latin-based langauges.
+computer screens. Times New Roman is one common example for Latin-based
+languages.
 
 __IFrame__: A way of embedding a child __document__ within a parent, through
 a rectangular window on the screen reserved for it that participates in the
@@ -125,7 +134,7 @@ analogue, a page can have multiple documents (through use of __iframes__).
 
 __Style sheet__: A document resource that contains __CSS__ rules.
 
-__Tag__: The name of a particular type of HTML element, indicating its
+__Tag name__: The name of a particular type of HTML element, indicating its
 semantic function in the document. Usually comes with special style rules
 and functionality specific to it.
 
@@ -141,22 +150,23 @@ __Domain__: The name of a website, used to locate it on the internet.
 
 __Path__: The part of a URL after the domain and port.
 
-__Port__: A number after the domain and before the part in a URL, indicating
+__Port__: A number after the domain and before the path in a URL, indicating
 a numbered place on that domain with which to communicate.
 
-__POST__: THe mode of HTTP that submits a change to server state and expects
+__POST__: The mode of HTTP that submits a change to server state and expects
 a newly updated web page in response.
 
 __Scheme__: The first part of a URL, indicating which protocol to use for
 communication, such as __HTTP__ or __HTTPS__.
 
-__SSL__: Secure Sockets Layer. An encryption-based protocol that enables
-secure __HTTP__ (i.e., __HTTPS__) connections.
+__TLS/SSL__: Secure Sockets Layer. An encryption-based protocol that enables
+secure __HTTP__ (i.e., __HTTPS__) connections. TLS is a newer protocol
+replacing SSL, but SSL is often used to describe both.
 
 CSS
 ===
 
-__Cascade order__: The order of applicaiton of multiple __CSS rules__ to a
+__Cascade order__: The order of application of multiple __CSS rules__ to a
 single elemnet.
 
 __Computed Style__: The values for the __CSS Properties__ that apply to
@@ -176,7 +186,7 @@ __property values__ apply.
 __Inheritance__: The property of certain CSS styles (such as font sizing) applying to descendant elements in the __document tree__ by default.
 
 __Style__: All the pieces of information necessary to determine the visual
-display of an __Element__.
+display of an __element__.
 
 __Cascade__: The order in which to apply multiple rules to the same
 __Element__.
@@ -218,9 +228,9 @@ Rendering
 __Accessibility tree__: A tree representing the semantic meaning of a web page
 meant for consumption by __assistive technologies__.
 
-__Canvas__: A conceptual place in which to execute a display list, typically
+__Canvas__: A conceptual object which can execute drawing commands, typically
 backed by a __surface__. Also a web API of the same name that serves the same
-function.
+purpose.
 
 __Compositing__: The phase oof a browser rendering pipeline that divides the
 display list into pieces suitable for rendering into independent
@@ -280,23 +290,23 @@ Computer technologies
 __Assistive technology__: Computer software used to assist people in using
 the computer or web browser. The most common are screen readers.
 
-__CPU__: Centra Processing Unit, a generic piece of hardware that is able
-to excute computer programs.
+__CPU__: Central Processing Unit, the hardware component in a computer that
+executes generic compute programs.
 
 __DukPy__: A JavaScript interpreter used in this book.
 
 __GPU__: Graphics Processing Unit, a specialized computing chip optimized for
 tasks common to generating pixel output on computer screens.
 
-__Process__: An conceptual execution environment with its own code and
+__Process__: A conceptual execution environment with its own code and
 memory, isolated from other processes by hardware and software computer
 mechanisms.
 
-__Python__: A common scripting computer programming language, used in this
+__Python__: A common computer programming language, used in this
 book to implement a toy browser.
 
 __Thread__: A single execution command sequence on a CPU. Most CPUs have
-these days can excute multiple threads at once within a single __process__.
+these days can execute multiple threads at once within a single __process__.
 
 __SDL__: A windowing library for computer programs used in later chapters of
 this book.
