@@ -6,6 +6,7 @@ without exercises.
 
 import socket
 import ssl
+import wbetools
 
 class URL:
     def __init__(self, url):
@@ -63,6 +64,7 @@ class URL:
     
         return headers, body
 
+    @wbetools.js_hide
     def __repr__(self):
         return "URL(scheme={}, host={}, port={}, path={!r})".format(
             self.scheme, self.host, self.port, self.path)
