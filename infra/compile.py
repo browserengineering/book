@@ -42,7 +42,7 @@ def catch_issues(f):
             except AssertionError as e2:
                 if str(e2):
                     e1.message = str(e2)
-                if WRAP_DISABLED: raise e1
+                if WRAP_DISABLED: raise e2
                 ISSUES.append(e1)
                 return "/* " + asttools.unparse(tree) + " */"
     return wrapped
