@@ -219,6 +219,7 @@ class DrawOutline(DisplayItem):
         paint.setColor(parse_color(self.color))
         canvas.drawRect(self.rect, paint)
 
+    @wbetools.js_hide
     def __repr__(self):
         return ("DrawOutline(top={} left={} " +
             "bottom={} right={} border_color={} " +
