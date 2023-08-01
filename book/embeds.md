@@ -119,7 +119,7 @@ class Tab:
             image_url = url.resolve(src)
             assert self.allowed_request(image_url), \
                 "Blocked load of " + image_url + " due to CSP"
-            header, body = image_url.request(self.url)
+            header, body = image_url.request(url)
 ```
 
 Once we've downloaded the image, we need to turn it into a Skia

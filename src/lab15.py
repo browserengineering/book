@@ -1225,7 +1225,7 @@ class Frame:
                 image_url = url.resolve(src)
                 assert self.allowed_request(image_url), \
                     "Blocked load of " + image_url + " due to CSP"
-                header, body = image_url.request(self.url)
+                header, body = image_url.request(url)
                 img.encoded_data = body
                 data = skia.Data.MakeWithoutCopy(body)
                 img.image = skia.Image.MakeFromEncoded(data)
