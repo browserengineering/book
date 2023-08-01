@@ -898,7 +898,7 @@ class Tab:
         if elt.tag == "input":
             elt.attributes["value"] = ""
         elif elt.tag == "a" and "href" in elt.attributes:
-            url = resolve_url(elt.attributes["href"], self.url)
+            url = self.url.resolve(elt.attributes["href"])
             self.load(url)
         elif elt.tag == "button":
             while elt:
