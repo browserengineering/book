@@ -21,11 +21,11 @@ from lab4 import Text, Element, print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
-from lab6 import resolve_url, tree_to_list
+from lab6 import tree_to_list
 from lab7 import CHROME_PX
 from lab8 import INPUT_WIDTH_PX, layout_mode
 from lab9 import EVENT_DISPATCH_CODE
-from lab10 import request, url_origin
+from lab10 import URL
 from lab11 import DrawLine
 from lab11 import draw_line, draw_text, draw_rect
 from lab11 import BlockLayout, DocumentLayout, LineLayout, TextLayout, InputLayout
@@ -142,16 +142,15 @@ class JSContext:
             XHR_ONLOAD_CODE, out=out, handle=handle)
 
     def XMLHttpRequest_send(self, method, url, body, isasync, handle):
-        full_url = resolve_url(url, self.tab.url)
+        full_url = self.tab.url.resolve(url)
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
-        if url_origin(full_url) != url_origin(self.tab.url):
+        if full_url.origin() != self.tab.url.origin():
             raise Exception(
                 "Cross-origin XHR request not allowed")
 
         def run_load():
-            headers, response = request(
-                full_url, self.tab.url, body)
+            headers, response = full_url.request(self.tab.url, body)
             task = Task(self.dispatch_xhr_onload, response, handle)
             self.tab.task_runner.schedule_task(task)
             if not isasync:
@@ -198,7 +197,7 @@ class Tab:
 
     def allowed_request(self, url):
         return self.allowed_origins == None or \
-            url_origin(url) in self.allowed_origins
+            url.origin() in self.allowed_origins
 
     def script_run_wrapper(self, script, script_text):
         return Task(self.js.run, script, script_text)
@@ -207,7 +206,7 @@ class Tab:
         self.scroll = 0
         self.scroll_changed_in_tab = True
         self.task_runner.clear_pending_tasks()
-        headers, body = request(url, self.url, body)
+        headers, body = url.request(self.url, body)
         self.url = url
         self.history.append(url)
 
@@ -226,12 +225,12 @@ class Tab:
                    and node.tag == "script"
                    and "src" in node.attributes]
         for script in scripts:
-            script_url = resolve_url(script, url)
+            script_url = url.resolve(script)
             if not self.allowed_request(script_url):
                 print("Blocked script", script, "due to CSP")
                 continue
 
-            header, body = request(script_url, url)
+            header, body = script_url.request(url)
             task = Task(self.js.run, script_url, body)
             self.task_runner.schedule_task(task)
 
@@ -243,12 +242,12 @@ class Tab:
                  and "href" in node.attributes
                  and node.attributes.get("rel") == "stylesheet"]
         for link in links:
-            style_url = resolve_url(link, url)
+            style_url = url.resolve(link)
             if not self.allowed_request(style_url):
                 print("Blocked style", link, "due to CSP")
                 continue
             try:
-                header, body = request(style_url, url)
+                header, body = style_url.request(url)
             except:
                 continue
             self.rules.extend(CSSParser(body).parse())
@@ -322,7 +321,7 @@ class Tab:
             if isinstance(elt, Text):
                 pass
             elif elt.tag == "a" and "href" in elt.attributes:
-                url = resolve_url(elt.attributes["href"], self.url)
+                url = self.url.resolve(elt.attributes["href"])
                 self.load(url)
                 return
             elif elt.tag == "input":
@@ -354,7 +353,7 @@ class Tab:
             body += "&" + name + "=" + value
         body = body [1:]
 
-        url = resolve_url(elt.attributes["action"], self.url)
+        url = self.url.resolve(elt.attributes["action"])
         self.load(url, body)
 
     def keypress(self, char):

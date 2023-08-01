@@ -34,7 +34,7 @@ Before load, there is no tab height or display list.
 
 Once the Tab has loaded, the browser should need raster and draw.
 
-    >>> browser.load(test_url)
+    >>> browser.load(lab12.URL(test_url))
     >>> browser.render()
     >>> browser.needs_raster_and_draw
     True
@@ -89,7 +89,7 @@ Testing TabWrapper
 
 	>>> lab12.TaskRunner = test.MockNoOpTaskRunner
     >>> browser = lab12.Browser()
-    >>> browser.load(test_url)
+    >>> browser.load(lab12.URL(test_url))
 
  The URL is not set until the load has committed.
 
