@@ -983,8 +983,9 @@ if __name__ == "__main__":
     assert name.endswith(".py")
     if args.hints: read_hints(args.hints)
     INDENT = args.indent
-    (tree, patches) = asttools.resolve_patches_and_return_them(asttools.parse(args.python.read(), args.python.name))
+    tree = asttools.parse(args.python.read(), args.python.name)
     load_outline(asttools.inline(tree))
+    tree, patches = asttools.resolve_patches_and_return_them(tree)
     js = compile_module(tree, patches)
 
     for fn in FILES:
