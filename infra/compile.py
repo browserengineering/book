@@ -573,6 +573,8 @@ def compile_expr(tree, ctx):
                 elif isinstance(comp, ast.List):
                     assert isinstance(tree.left, ast.Name) or \
                         (isinstance(tree.left, ast.Subscript) and
+                         isinstance(tree.left.value, ast.Name)) or \
+                        (isinstance(tree.left, ast.Attribute) and
                          isinstance(tree.left.value, ast.Name))
                     op = " !== " if negate else " === "
                     parts = [lhs + op + compile_expr(v, ctx) for v in comp.elts]
