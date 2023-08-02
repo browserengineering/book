@@ -602,7 +602,7 @@ class JSContext:
         # ...
 ```
 
-The `url_origin` function can just strip off the path from a URL:
+The `origin` function can just strip off the path from a URL:
 
 ``` {.python}
 class URL:

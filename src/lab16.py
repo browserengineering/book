@@ -15,7 +15,6 @@ import ssl
 import dukpy
 import time
 
-from lab1 import parse_url
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab4 import print_tree
 from lab5 import BLOCK_ELEMENTS
