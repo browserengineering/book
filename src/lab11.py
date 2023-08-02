@@ -780,7 +780,7 @@ class Browser:
             w = buttonfont.measure(self.address_bar)
             cmds.append(DrawLine(55 + w, 55, 55 + w, 85, "black", 1))
         else:
-            url = self.tabs[self.active_tab].url
+            url = str(self.tabs[self.active_tab].url)
             cmds.append(DrawText(55, 55, url, buttonfont, "black"))
 
         cmds.append(DrawOutline(10, 50, 35, 90, "black", 1))
