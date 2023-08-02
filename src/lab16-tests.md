@@ -5,7 +5,7 @@ This file contains tests for Chapter 16 (Invalidation).
 
     >>> from test import Event
     >>> import threading
-    >>> import test11 as test
+    >>> import test
     >>> _ = test.socket.patch().start()
     >>> _ = test.ssl.patch().start()
     >>> _ = test.gtts.patch()
