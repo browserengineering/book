@@ -23,6 +23,7 @@ IGNORE_FILES = [
     "test*.py",
     "Broken_Image.png",
     ".*",
+    "lab*.full.py",
     "wbetools.py",
 
     # These are from the old reflow chapter---to be deleted once ch16 is mostly done
