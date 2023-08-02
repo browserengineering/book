@@ -685,8 +685,6 @@ class Tab:
 To better separate the chrome from the page, let's also add a border:
 
 ``` {.python}
-CHROME_PX = 100
-
 class Browser:
     def paint_chrome(self):
         # ...
