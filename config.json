@@ -96,7 +96,6 @@
 
         "skipped.md": { "disabled": true },
         "change.md": { "disabled": true },
-        "reflow.md": { "disabled": true, "lab": "reflow-chapter.py" },
 
         "glossary.md": { "disabled": true },
         "bibliography.md": { },
