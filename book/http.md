@@ -12,21 +12,39 @@ from a server somewhere on the Internet.
 Connecting to a server
 ======================
 
-To display a web page, the browser first needs to get a copy of it.
-So, it asks the OS to put it in touch with a *server* somewhere on the
-internet; the first part of the web page's URL (before the first `/`)
-tells it the server's *host name*. The OS then talks to a *DNS* server
-which converts[^5] a host name like `example.org` into a *destination
-IP address* like `93.184.216.34`.[^6] Then the OS decides which
-hardware is best for communicating with that destination IP address
-(say, wireless or wired) using what is called a *routing table*, and
-then uses device drivers to send signals over a wire or over the
-air.[^7] Those signals are picked up and transmitted by a series of
-*routers*[^8] which each choose the best direction to send your
-message so that it eventually gets to the destination.[^9] When the
-message reaches the server, a connection is created. Anyway, the point
-of this is that the browser tells the OS, “Hey, put me in touch with
-`example.org`”, and it does.
+Browsing the internet starts with a URL,[^url] a short string that
+identifies a particular web page that the browser should visit. A URL
+looks like this:
+
+[^url]: "URL" stands for "Uniform Resource Locator", meaning that it
+    is a portable (uniform) way to identify web pages (resources) and
+    also that it describes how to access those files (locator).
+
+::: {.cmd html=True}
+    python3 infra/annotate_code.py <<EOF
+    [http][tl|Scheme]://[example.org][bl|Hostname][/index.html][tl|Path]
+    EOF
+:::
+
+This URL has three parts: the scheme explains *how* to get the
+information; the host explains *where* to get it; and the path
+explains *what* information to get. There are also optional parts to
+the URL, like ports, queries, and fragments, which we'll see later.
+
+From a URL, the browser can start the process of downloading the web
+page. The browser first asks the OS to put it in touch with the
+*server* described by the *host name*. The OS then talks to a *DNS*
+server which converts[^5] a host name like `example.org` into a
+*destination IP address* like `93.184.216.34`.[^6] Then the OS decides
+which hardware is best for communicating with that destination IP
+address (say, wireless or wired) using what is called a *routing
+table*, and then uses device drivers to send signals over a wire or
+over the air.[^7] Those signals are picked up and transmitted by a
+series of *routers*[^8] which each choose the best direction to send
+your message so that it eventually gets to the destination.[^9] When
+the message reaches the server, a connection is created. Anyway, the
+point of this is that the browser tells the OS, “Hey, put me in touch
+with `example.org`”, and it does.
 
 On many systems, you can set up this kind of connection using the
 `telnet` program, like this:^[The "80" is the port, discussed below.]
@@ -214,39 +232,35 @@ So far we've communicated with another computer using `telnet`. But it
 turns out that `telnet` is quite a simple program, and we can do the
 same programmatically. It'll require extracting host name and path
 from the URL, creating a *socket*, sending a request, and receiving a
-response.
+response.[^why-not-parse]
 
-A URL looks like this:
+[^why-not-parse]: In Python, there's a library called `urllib.parse`
+    for parsing URLs, but I think implementing our own will be good
+    for learning. Plus, it makes this book less Python-specific.
 
-::: {.cmd html=True}
-    python3 infra/annotate_code.py <<EOF
-    [http][tl|Scheme]://[example.org][bl|Hostname][/index.html][tl|Path]
-    EOF
-:::
+Let's start with parsing the URL. I'm going to make parsing a URL
+return a `URL` object, and I'll put the parsing code into the
+constructor:
 
-This URL has three parts: the scheme explains *how* to get the
-information; the host explains *where* to get it; and the path
-explains *what* information to get.
+``` {.python}
+class URL:
+    def __init__(self, url):
+        # ...
+```
 
-There are also optional parts to the URL. Sometimes, like in
-`http://localhost:8080/`, there is a *port* that comes after the host,
-and there can be something tacked onto the end, a *fragment* like
-`#section` or a *query* like `?s=term`. We'll come back to ports later
-in this chapter, and some other URL components appear in exercises.
+The `__init__` method is Python's peculiar syntax for class
+constructors, and the `self` parameter, which you must always make the
+first parameter of any method, is Python's analog of `this`.
 
-In Python, there's a library called `urllib.parse` that splits a URL
-into these pieces, but let's write our own.[^3] We'll start with the
-scheme---our browser only supports `http`, so we just need to check
-that the URL starts with `http://` and then strip that off:
+Let's start with the scheme, which is separated from the rest of the
+URL by `://`. Our browser only supports `http`, so I check that, too:
 
-[^3]: There's nothing wrong with using libraries, but implementing our
-    own is good for learning. Plus, it makes this book easier to
-    follow in a language besides Python.
-
-``` {.python expected=False}
-# url = http://example.org/index.html
-assert url.startswith("http://")
-url = url[len("http://"):]
+``` {.python replace=%3d%3d/in,%22http%22/[%22http%22%2c%20%22https%22]}
+class URL:
+    def __init__(self, url):
+        self.scheme, url = url.split("://", 1)
+        assert self.scheme == "http", \
+            "Unknown scheme {}".format(self.scheme)
 ```
 
 Now we must separate the host from the path. The host comes before the
@@ -254,21 +268,39 @@ first `/`, while the path is that slash and everything after it. Let's
 add function that parses all parts of a URL:
 
 ``` {python}
-def parse_url(url):
-    scheme, url = url.split("://", 1)
-    if "/" not in url:
-        url = url + "/"
-    host, path = url.split("/", 1)
-    return (scheme, host, "/" + path)
+class URL:
+    def __init__(self, url):
+        # ...
+        if "/" not in url:
+            url = url + "/"
+        self.host, url = url.split("/", 1)
+        self.path = "/" + url
 ```
 
-The `split(s, n)` method splits a string at the first `n` copies of
-`s`. The path is supposed to include the separating slash, so I make
-sure to add it back after splitting on it.
+When you see a code block with a `# ...`, like this one, that you're
+adding code to an existing method or block. The `split(s, n)` method
+splits a string at the first `n` copies of `s`. Note that there's some
+tricky logic here for handling the slash between the host name and the
+path. That (optional) slash is part of the path.
 
-With the host and path identified, the next step is to connect to the
-host. The operating system provides a feature called "sockets" for
-this. When you want to talk to other computers (either to tell them
+Our browser will create a `URL` objects based on user input, and then
+it will want to download the web page at that URL. We'll do that in a
+new method, `request`:
+
+``` {.python}
+class URL:
+    def request(self):
+        # ...
+```
+
+Note that you always need to write the `self` parameter for methods in
+Python. In the future, I won't always make such a big deal out of
+defining a method---if you see a code block with code in a method or
+function that doesn't exist yet, that means we're defining it.
+
+The first step to downloading a web page is connecting to the host.
+The operating system provides a feature called "sockets" for this.
+When you want to talk to other computers (either to tell them
 something, or to wait for them to tell you something), you create a
 socket, and then that socket can be used to send information back and
 forth. Sockets come in a few different kinds, because there are
@@ -290,19 +322,25 @@ By picking all of these options, we can create a socket like so:[^17]
 
 ``` {.python}
 import socket
-s = socket.socket(
-    family=socket.AF_INET,
-    type=socket.SOCK_STREAM,
-    proto=socket.IPPROTO_TCP,
-)
+
+class URL:
+    def request(self):
+        s = socket.socket(
+            family=socket.AF_INET,
+            type=socket.SOCK_STREAM,
+            proto=socket.IPPROTO_TCP,
+        )
 ```
 
 Once you have a socket, you need to tell it to connect to the other
 computer. For that, you need the host and a *port*. The port depends
 on the type of server you're connecting to; for now it should be 80.
 
-``` {.python replace=80/port}
-s.connect((host, 80))
+``` {.python replace=80/self.port}
+class URL:
+    def request(self):
+        # ...
+        s.connect((self.host, 80))
 ```
 
 This talks to `example.org` to set up the connection and ready both
@@ -332,27 +370,31 @@ Request and response
 Now that we have a connection, we make a request to the other server.
 To do so, we send it some data using the `send` method:
 
-``` {.python expected=False}
-s.send("GET {} HTTP/1.0\r\n".format(path).encode("utf8") + 
-       "Host: {}\r\n\r\n".format(host).encode("utf8"))
+``` {.python}
+class URL:
+    def request(self):
+        # ...
+        s.send(("GET {} HTTP/1.0\r\n".format(self.path) + \
+                "Host: {}\r\n\r\n".format(self.host)) \
+               .encode("utf8"))
 ```
 
-There are a few things to be careful of here. First, it's very
-important to use `\r\n` instead of `\n` for newlines. It's also
-essential that you put *two* newlines `\r\n` at the end, so that you
-send that blank line at the end of the request. If you forget that,
-the other computer will keep waiting on you to send that newline, and
-you'll keep waiting on its response.[^literal]
+There are a few things to here that have to be exactly right. First,
+it's very important to use `\r\n` instead of `\n` for newlines. It's
+also essential that you put *two* newlines `\r\n` at the end, so that
+you send that blank line at the end of the request. If you forget
+that, the other computer will keep waiting on you to send that
+newline, and you'll keep waiting on its response.[^literal]
 
 [^literal]: Computers are endlessly literal-minded.
 
-And finally, note the `encode` call. When you send data, it's
-important to remember that you are sending raw bits and bytes; they
-could form text or an image or video. But a Python string is
-specifically for representing text. The `encode` method converts text
-into bytes, and there's a corresponding `decode` method that goes the
-other way.[^charset] Python reminds you to be careful by giving
-different types to text and to bytes:
+Also note the `encode` call. When you send data, it's important to
+remember that you are sending raw bits and bytes; they could form text
+or an image or video. But a Python string is specifically for
+representing text. The `encode` method converts text into bytes, and
+there's a corresponding `decode` method that goes the other
+way.[^charset] Python reminds you to be careful by giving different
+types to text and to bytes:
 
 [^charset]: When you call `encode` and `decode` you need to tell the
     computer what *character encoding* you want it to use. This is a
@@ -370,11 +412,11 @@ different types to text and to bytes:
 If you see an error about `str` versus `bytes`, it's because you
 forgot to call `encode` or `decode` somewhere.
 
-If you run this, you'll notice that the `send` call returns a number,
-in this case `47`. That tells you how many bytes of data you sent to
-the other computer; if, say, your network connection failed midway
-through sending the data, you might want to know how much you sent
-before the connection failed.
+If you run this in the REPL, you'll notice that the `send` call
+returns a number, in this case `47`. That tells you how many bytes of
+data you sent to the other computer; if, say, your network connection
+failed midway through sending the data, you might want to know how
+much you sent before the connection failed.
 
 To read the response, you'd generally use the `read` function on
 sockets, which gives whatever bits of the response have already
@@ -383,7 +425,10 @@ they arrive. However, in Python you can use the `makefile` helper
 function, which hides the loop:[^19]
 
 ``` {.python}
-response = s.makefile("r", encoding="utf8", newline="\r\n")
+class URL:
+    def request(self):
+        # ...
+        response = s.makefile("r", encoding="utf8", newline="\r\n")
 ```
 
 Here `makefile` returns a file-like object containing every byte we
@@ -396,9 +441,12 @@ Let's now split the response into pieces. The first line is the
 status line:
 
 ``` {.python}
-statusline = response.readline()
-version, status, explanation = statusline.split(" ", 2)
-assert status == "200", "{}: {}".format(status, explanation)
+class URL:
+    def request(self):
+        # ...
+        statusline = response.readline()
+        version, status, explanation = statusline.split(" ", 2)
+        assert status == "200", "{}: {}".format(status, explanation)
 ```
 
 Note that I do *not* check that the server's version of HTTP is the
@@ -410,12 +458,15 @@ enough to not cause confusion.]
 After the status line come the headers:
 
 ``` {.python}
-headers = {}
-while True:
-    line = response.readline()
-    if line == "\r\n": break
-    header, value = line.split(":", 1)
-    headers[header.lower()] = value.strip()
+class URL:
+    def request(self):
+        # ...
+        headers = {}
+        while True:
+            line = response.readline()
+            if line == "\r\n": break
+            header, value = line.split(":", 1)
+            headers[header.lower()] = value.strip()
 ```
 
 For the headers, I split each line at the first colon and fill in a
@@ -434,28 +485,34 @@ of those are present:[^if-te]
     present.
 
 ``` {.python}
-assert "transfer-encoding" not in headers
-assert "content-encoding" not in headers
+class URL:
+    def request(self):
+        # ...
+        assert "transfer-encoding" not in headers
+        assert "content-encoding" not in headers
 ```
 
 The usual way to send the data, then, is everything after the headers:
 
 ``` {.python}
-body = response.read()
-s.close()
+class URL:
+    def request(self):
+        # ...
+        body = response.read()
+        s.close()
 ```
 
-It's that body that we're going to display. Before we do that, let's
-gather up all of the connection, request, and response code into a
-`request` function:
+It's that body that we're going to display, so let's return that.
+Let's also return the headers, in case they are useful to someone:
 
 ``` {.python}
-def request(url):
-    # ...
-    return headers, body
+class URL:
+    def request(self):
+        # ...
+        return headers, body
 ```
 
-Now let's display the text in the body.
+Now let's actually display the text in the response body.
 
 ::: {.further}
 The [`Content-Encoding`][ce-header] header lets the server compress
@@ -537,7 +594,7 @@ We can now load a web page just by stringing together `request` and
 
 ``` {.python}
 def load(url):
-    headers, body = request(url)
+    headers, body = url.request()
     show(body)
 ```
 
@@ -546,7 +603,7 @@ Add the following code to run `load` from the command line:
 ``` {.python}
 if __name__ == "__main__":
     import sys
-    load(sys.argv[1])
+    load(URL(sys.argv[1]))
 ```
 
 This is Python's version of a `main` function---it reads the first
@@ -587,7 +644,7 @@ you've already created a socket, `s`, and connected it to
 `ssl.create_default_context` to create a *context* `ctx` and use that
 context to *wrap* the socket `s`. That produces a new socket, `s`:
 
-``` {.python}
+``` {.python .example}
 import ssl
 ctx = ssl.create_default_context()
 s = ctx.wrap_socket(s, server_hostname=host)
@@ -610,23 +667,50 @@ Let's try to take this code and add it to `request`. First, we need to
 detect which scheme is being used:
 
 ``` {.python}
-scheme, url = url.split("://", 1)
-assert scheme in ["http", "https"], \
-    "Unknown scheme {}".format(scheme)
+class URL:
+    def __init__(self, url):
+        self.scheme, url = url.split("://", 1)
+        assert self.scheme in ["http", "https"], \
+            "Unknown scheme {}".format(self.scheme)
+        # ...
 ```
+
+Note that here you're supposed to replace the existing scheme parsing
+code with this new code. It's usually clear from context and the code
+itself what you need to replace.
 
 Encrypted HTTP connections usually use port 443 instead of port 80:
 
 ``` {.python}
-port = 80 if scheme == "http" else 443
+class URL:
+    def __init__(self, url):
+        # ...
+        if self.scheme == "http":
+            self.port = 80
+        elif self.scheme == "https":
+            self.port = 443
+```
+
+We can use that port when creating the socket:
+
+``` {.python}
+class URL:
+    def request(self):
+        # ...
+        s.connect((self.host, self.port))
+        # ...
 ```
 
 Next, we'll wrap the socket with the `ssl` library:
 
 ``` {.python}
-if scheme == "https":
-    ctx = ssl.create_default_context()
-    s = ctx.wrap_socket(s, server_hostname=host)
+class URL:
+    def request(self):
+        # ...
+        if self.scheme == "https":
+            ctx = ssl.create_default_context()
+            s = ctx.wrap_socket(s, server_hostname=self.host)
+        # ...
 ```
 
 Your browser should now be able to connect to HTTPS sites.
@@ -643,9 +727,12 @@ specified in a URL by putting a colon after the host name:
 If the URL has a port we can parse it out and use it:
 
 ``` {.python}
-if ":" in host:
-    host, port = host.split(":", 1)
-    port = int(port)
+class URL:
+    def __init__(self, url):
+        # ...
+        if ":" in self.host:
+            self.host, port = self.host.split(":", 1)
+            self.port = int(port)
 ```
 
 Custom ports are handy for debugging. Python has a built-in web server
@@ -802,9 +889,9 @@ to cache the response.
 [^15]: The `DGRAM` stands for "datagram" and think of it like a
     postcard.
 
-[^16]: Nowadays some browsers support protocols that don't use TCP,
-    like Google Chrome's [QUIC
-    protocol](https://en.wikipedia.org/wiki/QUIC).
+[^16]: Newer versions of HTTP use something called
+    [QUIC](https://en.wikipedia.org/wiki/QUIC) instead of TCP, but our
+    browser will stick to HTTP 1.0.
 
 [^17]: While this code uses the Python `socket` library, your favorite
     language likely contains a very similar library. This API is

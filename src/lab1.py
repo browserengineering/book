@@ -16,18 +16,17 @@ class URL:
 
         if "/" not in url:
             url = url + "/"
-        host, path = url.split("/", 1)
-        self.path = "/" + path
+        self.host, url = url.split("/", 1)
+        self.path = "/" + url
 
-        if ":" in host:
-            self.host, port = host.split(":", 1)
-            self.port = int(port)
-        elif self.scheme == "http":
-            self.host = host
+        if self.scheme == "http":
             self.port = 80
         elif self.scheme == "https":
-            self.host = host
             self.port = 443
+
+        if ":" in self.host:
+            self.host, port = self.host.split(":", 1)
+            self.port = int(port)
 
     def request(self):
         s = socket.socket(
@@ -41,8 +40,9 @@ class URL:
             ctx = ssl.create_default_context()
             s = ctx.wrap_socket(s, server_hostname=self.host)
     
-        s.send(("GET {} HTTP/1.0\r\n".format(self.path) +
-                "Host: {}\r\n\r\n".format(self.host)).encode("utf8"))
+        s.send(("GET {} HTTP/1.0\r\n".format(self.path) + \
+                "Host: {}\r\n\r\n".format(self.host)) \
+               .encode("utf8"))
         response = s.makefile("r", encoding="utf8", newline="\r\n")
     
         statusline = response.readline()
