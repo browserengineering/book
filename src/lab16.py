@@ -28,7 +28,7 @@ from lab8 import INPUT_WIDTH_PX
 from lab8 import layout_mode
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, url_origin
-from lab11 import FONTS, draw_text, get_font, linespace, \
+from lab11 import FONTS, get_font, linespace, \
     parse_blend_mode
 from lab12 import MeasureTime, REFRESH_RATE_SEC
 from lab12 import Task, TaskRunner, SingleThreadedTaskRunner
@@ -38,10 +38,9 @@ from lab13 import NumericAnimation, TranslateAnimation
 from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
 from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import DisplayItem, DrawText, DrawCompositedLayer, SaveLayer
-from lab13 import ClipRRect, Transform, DrawLine, DrawRRect, draw_rect, \
+from lab13 import ClipRRect, Transform, DrawLine, DrawRRect, \
     add_main_args
-
-from lab14 import parse_color, parse_outline, draw_rect, DrawRRect, \
+from lab14 import parse_color, parse_outline, DrawRRect, \
     is_focused, paint_outline, has_outline, \
     device_px, cascade_priority, \
     is_focusable, get_tabindex, announce_text, speak_text, \
@@ -49,7 +48,7 @@ from lab14 import parse_color, parse_outline, draw_rect, DrawRRect, \
 from lab15 import request, HTMLParser, AttributeParser, DrawImage, DocumentLayout, BlockLayout, \
     EmbedLayout, InputLayout, LineLayout, TextLayout, ImageLayout, \
     IframeLayout, JSContext, style, AccessibilityNode, Frame, Tab, \
-    CommitData, draw_line, Browser, BROKEN_IMAGE, font, \
+    CommitData, Browser, BROKEN_IMAGE, font, \
     IFRAME_WIDTH_PX, IFRAME_HEIGHT_PX
 import wbetools
 
@@ -87,7 +86,10 @@ def tree_to_list(tree, l):
 def paint_outline(node, cmds, rect, zoom):
     if has_outline(node):
         thickness, color = parse_outline(node.style['outline'].get(), zoom)
-        cmds.append(DrawOutline(rect, color, thickness))
+        cmds.append(DrawOutline(
+            rect.left(), rect.top(),
+            rect.right(), rect.bottom(),
+            color, thickness))
 
 @wbetools.patch(font)
 def font(notify, css_style, zoom):
