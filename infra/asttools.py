@@ -76,11 +76,16 @@ def iter_methods(cls):
 inline_cache = {}
 def load(filename):
     if filename not in inline_cache:
+        inline_cache[filename] = "in-progress"
         with open(filename) as f:
             ast = parse(f.read(), filename)
         ast = inline(ast)
         inline_cache[filename] = ast
-    return inline_cache[filename]
+        return ast
+    elif inline_cache[filename] == "in-progress":
+        raise ImportError(f"Detected a cycle when loading {filename}")
+    else:
+        return inline_cache[filename]
 
 class ResolveImports(ast.NodeTransformer):
     def visit_ImportFrom(self, cmd):
@@ -113,8 +118,9 @@ class ResolvePatches(ast.NodeTransformer):
         if not cmd.decorator_list:
             patches = self.patches.get(cmd.name, [])
             if patches:
+                args2 = patches[-1].args
                 body2 = patches[-1].body
-                return ast.FunctionDef(cmd.name, cmd.args, body2, [])
+                return ast.FunctionDef(cmd.name, args2, body2, [])
             else:
                 return cmd
         else:
@@ -152,6 +158,16 @@ class ResolvePatches(ast.NodeTransformer):
         self.visit(tree)
         return (self.visit(tree), self.patches)
 
+class ResolveJSHide(ast.NodeTransformer):
+    def visit_FunctionDef(self, cmd):
+        if any([
+                isinstance(dec, ast.Attribute) and dec.attr == "js_hide"
+                and isinstance(dec.value, ast.Name) and dec.value.id == "wbetools"
+                for dec in cmd.decorator_list
+        ]):
+            return None
+        else:
+            return cmd
 
 class AST39(ast.NodeTransformer):
     def visit_Num(self, node):
@@ -190,7 +206,8 @@ def parse(source, filename='<unknown>'):
 def inline(tree):
     tree2 = ResolveImports().visit(copy.deepcopy(tree))
     tree3 = ResolvePatches().double_visit(tree2)
-    return ast.fix_missing_locations(tree3)
+    tree4 = ResolveJSHide().visit(tree3)
+    return ast.fix_missing_locations(tree4)
 
 def resolve_patches_and_return_them(tree):
     (tree2, patches) = ResolvePatches().double_visit_and_patches(tree)

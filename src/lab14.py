@@ -24,6 +24,7 @@ import urllib.parse
 import wbetools
 import OpenGL.GL
 
+from lab1 import parse_url
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab4 import Text, Element, print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS
@@ -40,6 +41,7 @@ from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
 from lab12 import Task, REFRESH_RATE_SEC
 from lab13 import JSContext, diff_styles, clamp_scroll, add_parent_pointers
 from lab13 import absolute_bounds, absolute_bounds_for_obj
+from lab13 import NumericAnimation, TranslateAnimation
 from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
 from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import DisplayItem, DrawText, DrawCompositedLayer, SaveLayer

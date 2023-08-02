@@ -12,6 +12,7 @@ import skia
 import socket
 import ssl
 import urllib.parse
+from lab1 import parse_url
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab4 import Text, Element, print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS
