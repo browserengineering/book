@@ -622,82 +622,28 @@ happen in the `Browser` class.
 [^chrome]: Yep, that predates and inspired the name of Google's Chrome
     browser.
 
-Since we're interested in multiple tabs, let's add some code to draw a
-tab bar at the top of the browser window---and let's keep it simple,
-because this is going to require some tedious and mildly tricky
-geometry.
-
-We'll draw the tabs in the `draw` method, after the page contents are
-drawn:
+Much like tabs, the browser chrome is going to generate a display list
+and then draw it to the canvas. However, unlike tabs, this display
+list will always be drawn at the top of the window and won't be
+scrolled:
 
 ``` {.python}
 class Browser:
     def draw(self):
         # ...
-        tabfont = get_font(20, "normal", "roman")
-        for i, tab in enumerate(self.tabs):
-            # ...
+        for cmd in self.paint_chrome():
+            cmd.execute(0, self.canvas)
 ```
 
-Python's `enumerate` function lets you iterate over both the indices
-and the contents of an array at the same time. Let's make each tab 80
-pixels wide and 40 pixels tall. We'll label each tab something like
-"Tab 4" so we don't have to deal with long tab titles overlapping. And
-let's leave 40 pixels on the left for a button that adds a new tab.
-Then, the `i`th tab starts at *x* position `40 + 80*i` and ends at
-`120 + 80*i`:
+The `paint_chrome` method constructs the display list for the browser
+chrome; I'm just constructing and using it directly, instead of
+storing it somewhere, because our browser will have pretty simple
+chrome, meaning `paint_chrome` will be fast. In a real browser, it
+might be saved and only updated when the chrome changes.
 
-``` {.python}
-for i, tab in enumerate(self.tabs):
-    name = "Tab {}".format(i)
-    x1, x2 = 40 + 80 * i, 120 + 80 * i
-```
-
-For each tab, we need to create a border on the left and right and
-then draw the tab name:
-
-``` {.python}
-for i, tab in enumerate(self.tabs):
-    # ...
-    self.canvas.create_line(x1, 0, x1, 40, fill="black")
-    self.canvas.create_line(x2, 0, x2, 40, fill="black")
-    self.canvas.create_text(x1 + 10, 10, anchor="nw", text=name,
-        font=tabfont, fill="black")
-```
-
-Finally, to identify which tab is the active tab, we've got to make
-that file folder shape with the current tab sticking up:
-
-``` {.python}
-for i, tab in enumerate(self.tabs):
-    # ...
-    if i == self.active_tab:
-        self.canvas.create_line(0, 40, x1, 40, fill="black")
-        self.canvas.create_line(x2, 40, WIDTH, 40, fill="black")
-```
-
-The whole point of tab support is to have more than one tab around,
-and for that we we need a button that creates a new tab. Let's put
-that on the left of the tab bar, with a big plus in the middle:
-
-``` {.python}
-class Browser:
-    def draw(self):
-        # ...
-        buttonfont = get_font(30, "normal", "roman")
-        self.canvas.create_rectangle(10, 10, 30, 30,
-            outline="black", width=1)
-        self.canvas.create_text(11, 0, anchor="nw", text="+",
-            font=buttonfont, fill="black")
-```
-
-If you run this code, you'll see a small problem: the page contents
-and the tab bar are drawn on top of each other. It's impossible to
-read! We need to avoid drawing page contents to the part of the
-browser window where the tab bar goes.
-
-Let's reserve some space for the browser chrome---100 pixels, say,
-leaving room for some more buttons later this chapter:
+First things first: we need to avoid drawing page contents to the part
+of the browser window where the tab bar goes. Let's reserve some space
+for the browser chrome---100 pixels, say:
 
 ``` {.python}
 CHROME_PX = 100
@@ -720,14 +666,11 @@ them:
 
 ``` {.python}
 class Browser:
-    def draw(self):
-        self.tabs[self.active_tab].draw(self.canvas)
-        self.canvas.create_rectangle(0, 0, WIDTH, CHROME_PX,
-            fill="white", outline="black")
-        # ...
+    def paint_chrome(self):
+        cmds = []
+        cmds.append(DrawRect(0, 0, WIDTH, CHROME_PX, "white"))
+        return cmds
 ```
-
-Now you can see the tab bar fine.
 
 You'll also need to adjust `scrolldown` to account for the height of
 the page content now being `HEIGHT - CHROME_PX`:
@@ -737,6 +680,123 @@ class Tab:
     def scrolldown(self):
         max_y = self.document.height - (HEIGHT - CHROME_PX)
         self.scroll = min(self.scroll + SCROLL_STEP, max_y)
+```
+
+To better separate the chrome from the page, let's also add a border:
+
+``` {.python}
+class Browser:
+    def paint_chrome(self):
+        # ...
+        cmds.append(DrawRect(0, 0, WIDTH, CHROME_PX, "white"))
+        cmds.append(DrawLine(0, CHROME_PX - 1, WIDTH, CHROME_PX - 1, "black", 1))
+        # ...
+```
+
+The `DrawLine` command draws a line of a given color and thickness.
+It's defined like so:
+
+``` {.python}
+class DrawLine:
+    def __init__(self, x1, y1, x2, y2, color, thickness):
+        self.top = y1
+        self.left = x1
+        self.bottom = y2
+        self.right = x2
+        self.color = color
+        self.thickness = thickness
+
+    def execute(self, scroll, canvas):
+        canvas.create_line(
+            self.left, self.top - scroll,
+            self.right, self.bottom - scroll,
+            fill=self.color, width=self.thickness,
+        )
+```
+
+Let's start drawing the chrome. First: the tab bar at the top of the
+browser window. I'll keep it simple, but this is still going to
+require some tedious and mildly tricky geometry.
+
+``` {.python}
+class Browser:
+    def paint_chrome(self):
+        # ...
+        tabfont = get_font(20, "normal", "roman")
+        for i, tab in enumerate(self.tabs):
+            # ...
+        # ...
+```
+
+Python's `enumerate` function lets you iterate over both the indices
+and the contents of an array at the same time. Let's make each tab 80
+pixels wide and 40 pixels tall. We'll label each tab something like
+"Tab 4" so we don't have to deal with long tab titles overlapping. And
+let's leave 40 pixels on the left for a button that adds a new tab.
+Thus, the `i`th tab starts at *x* position `40 + 80*i` and ends at
+`120 + 80*i`:
+
+``` {.python}
+for i, tab in enumerate(self.tabs):
+    name = "Tab {}".format(i)
+    x1, x2 = 40 + 80 * i, 120 + 80 * i
+```
+
+For each tab, we need to create a border on the left and right and
+then draw the tab name:
+
+``` {.python}
+for i, tab in enumerate(self.tabs):
+    # ...
+    cmds.append(DrawLine(x1, 0, x1, 40, "black", 1))
+    cmds.append(DrawLine(x2, 0, x2, 40, "black", 1))
+    cmds.append(DrawText(x1 + 10, 10, name, tabfont, "black"))
+```
+
+Finally, to identify which tab is the active tab, we've got to make
+that file folder shape with the current tab sticking up:
+
+``` {.python}
+for i, tab in enumerate(self.tabs):
+    # ...
+    if i == self.active_tab:
+        cmds.append(DrawLine(0, 40, x1, 40, "black", 1))
+        cmds.append(DrawLine(x2, 40, WIDTH, 40, "black", 1))
+```
+
+The whole point of tab support is to have more than one tab around,
+and for that we we need a button that creates a new tab. Let's put
+that on the left of the tab bar, with a big plus in the middle:
+
+``` {.python}
+class Browser:
+    def paint_chrome(self):
+        # ...
+        buttonfont = get_font(30, "normal", "roman")
+        cmds.append(DrawOutline(10, 10, 30, 30, "black", 1))
+        cmds.append(DrawText(11, 0, "+", buttonfont, "black"))
+```
+
+Here the `DrawOutline` command draws a rectangle's border instead of
+its inside. It's defined like this:
+
+``` {.python}
+class DrawOutline:
+    def __init__(self, x1, y1, x2, y2, color, thickness):
+        self.top = y1
+        self.left = x1
+        self.bottom = y2
+        self.right = x2
+        self.color = color
+        self.thickness = thickness
+
+    def execute(self, scroll, canvas):
+        canvas.create_rectangle(
+            self.left, self.top - scroll,
+            self.right, self.bottom - scroll,
+            width=self.thickness,
+            outline=self.color,
+        )
 ```
 
 The next step is clicking on tabs to switch between them. That has to
@@ -755,9 +815,9 @@ class Browser:
 ```
 
 When the user clicks on the browser chrome (the `if` branch), the
-browser handles it directly, but clicks on the page content (the
-`else` branch) are still forwarded to the active tab, subtracting
-`CHROME_PX` to fix up the coordinates.
+browser handles it directly, but if the click is on the page content
+(the `else` branch) it is still forwarded to the active tab,
+subtracting `CHROME_PX` to fix up the coordinates.
 
 Within the browser chrome, the tab bar takes up the top 40 pixels,
 starting 40 pixels from the left. Remember that the `i`th tab has `x1
@@ -809,13 +869,11 @@ address bar that shows the current URL would help a lot.
 
 ``` {.python}
 class Browser:
-    def draw(self):
+    def paint_chrome(self):
         # ...
-        self.canvas.create_rectangle(40, 50, WIDTH - 10, 90,
-            outline="black", width=1)
+        cmds.append(DrawOutline(40, 50, WIDTH - 10, 90, "black", 1))
         url = str(self.tabs[self.active_tab].url)
-        self.canvas.create_text(55, 55, anchor='nw', text=url,
-            font=buttonfont, fill="black")
+        cmds.append(DrawText(55, 55, url, buttonfont, "black"))
 ```
 
 Here `str` is a built-in Python function that we can override to
@@ -839,19 +897,13 @@ I'll start by drawing the back button itself:
 
 ``` {.python}
 class Browser:
-    def draw(self):
+    def paint_chrome(self):
         # ...
-        self.canvas.create_rectangle(10, 50, 35, 90,
-            outline="black", width=1)
-        self.canvas.create_polygon(
-            15, 70, 30, 55, 30, 85, fill='black')
+        cmds.append(DrawOutline(10, 50, 35, 90, "black", 1))
+        cmds.append(DrawText(15, 50, "<", buttonfont, "black"))
 ```
 
-In Tk, `create_polygon` takes a list of coordinates and connects them
-into a shape. Here I've got three points that form a simple triangle
-evocative of a back button.
-
-So what happens when that button is clicked on? Well, *that tab* goes
+So what happens when that button is clicked? Well, *that tab* goes
 back. Other tabs are not affected. So the `Browser` has to invoke some
 method on the current tab to go back:
 
@@ -884,7 +936,7 @@ class Tab:
         # ...
 ```
 
-Go back uses that history. You might think to write this:
+Going back uses that history. You might think to write this:
 
 ``` {.python expected=False}
 class Tab:
@@ -979,16 +1031,14 @@ the current URL or the currently-typed text:
 
 ``` {.python}
 class Browser:
-    def draw(self):
+    def paint_chrome(self):
         # ...
         if self.focus == "address bar":
-            self.canvas.create_text(
-                55, 55, anchor='nw', text=self.address_bar,
-                font=buttonfont, fill="black")
+            cmds.append(DrawText(
+                55, 55, self.address_bar, buttonfont, "black"))
         else:
             url = str(self.tabs[self.active_tab].url)
-            self.canvas.create_text(55, 55, anchor='nw', text=url,
-                font=buttonfont, fill="black")
+            cmds.append(DrawText(55, 55, url, buttonfont, "black"))
 ```
 
 When the user is typing in the address bar, let's also draw a cursor.
@@ -999,7 +1049,7 @@ cursor) makes the software easier to use:
 if self.focus == "address bar":
     # ...
     w = buttonfont.measure(self.address_bar)
-    self.canvas.create_line(55 + w, 55, 55 + w, 85, fill="black")
+    cmds.append(DrawLine(55 + w, 55, 55 + w, 85, "black", 1))
 ```
 
 Next, when the address bar is focused, we need to support typing in a

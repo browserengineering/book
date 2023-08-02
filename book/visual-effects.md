@@ -289,65 +289,78 @@ use; modern browsers support [quite a lot][css-colors].
 
 To draw a line, you use Skia's `Path` object:
 
-``` {.python}
-def draw_line(canvas, x1, y1, x2, y2):
-    path = skia.Path().moveTo(x1, y1).lineTo(x2, y2)
-    paint = skia.Paint(Color=skia.ColorBLACK)
-    paint.setStyle(skia.Paint.kStroke_Style)
-    paint.setStrokeWidth(1)
-    canvas.drawPath(path, paint)
+``` {.python replace=%2c%20scroll/,%20-%20scroll/}
+class DrawLine:
+    def execute(self, canvas, scroll):
+        path = skia.Path().moveTo(self.x1 - scroll, self.y1) \
+                          .lineTo(self.x2 - scroll, self.y2)
+        paint = skia.Paint(Color=parse_color(self.color))
+        paint.setStyle(skia.Paint.kStroke_Style)
+        paint.setStrokeWidth(self.thickness)
+        canvas.drawPath(path, paint)
 ```
 
 To draw text, you use `drawString`:
 
-``` {.python}
-def draw_text(canvas, x, y, text, font, color=None):
-    sk_color = parse_color(color)
-    paint = skia.Paint(AntiAlias=True, Color=sk_color)
-    canvas.drawString(
-        text, float(x), y - font.getMetrics().fAscent,
-        font, paint)
+``` {.python replace=%2c%20scroll/,%20-%20scroll/}
+class DrawText:
+    def execute(self, canvas, scroll):
+        paint = skia.Paint(AntiAlias=True, Color=parse_color(self.color))
+        baseline = self.top - scroll - self.font.getMetrics().fAscent
+        canvas.drawString(self.text, float(self.left), baseline,
+            self.font, paint)
 ```
 
-Finally, for drawing rectangles you use `drawRect`:
+Finally, for drawing rectangles you use `drawRect`. Filling in the
+rectangle is the default:
+
+``` {.python replace=%2c%20scroll/,rect.makeOffset(0%2c%20-scroll)/rect}
+class DrawRect:
+    def execute(self, canvas, scroll):
+        paint = skia.Paint()
+        paint.setColor(parse_color(self.color))
+        canvas.drawRect(self.rect.makeOffset(0, -scroll), paint)
+```
+
+Here the `rect` field is a Skia `Rect` object, which you can construct
+using `MakeLTRB` (for "make left-top-right-bottom") or `MakeXYWH` (for
+"make *x*-*y*-width-height"):
 
 ``` {.python}
-def draw_rect(canvas, l, t, r, b, fill=None, width=1):
-    paint = skia.Paint()
-    if fill:
-        paint.setStrokeWidth(width)
-        paint.setColor(parse_color(fill))
-    else:
+class DrawRect:
+    def __init__(self, x1, y1, x2, y2, color):
+        self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
+        # ...
+```
+
+To draw just the outline, set the `Style` parameter of the `Paint` to
+`Stroke_Style`. Here "stroke" is a standard term referring to drawing
+along the border of some shape; the opposite is "fill", meaning
+filling in the interior of the shape:
+
+``` {.python replace=%2c%20scroll/,rect.makeOffset(0%2c%20-scroll)/rect}
+class DrawOutline:
+    def execute(self, canvas):
+        paint = skia.Paint()
         paint.setStyle(skia.Paint.kStroke_Style)
-        paint.setStrokeWidth(1)
-        paint.setColor(skia.ColorBLACK)
-    rect = skia.Rect.MakeLTRB(l, t, r, b)
-    canvas.drawRect(rect, paint)
+        paint.setStrokeWidth(self.thickness)
+        paint.setColor(parse_color(self.color))
+        canvas.drawRect(self.rect.makeOffset(0, -scroll), paint)
 ```
 
 If you look at the details of these helper methods, you'll see that
 they all use a Skia `Paint` object to describe a shape's borders and
 colors. We'll be seeing a lot more features of `Paint` in this chapter.
 
-With these helper methods we can now upgrade our browser's drawing
-commands to use Skia:
+While we're here, let's also add a `rect` field to the other drawing
+commands, replacing its `top`, `left`, `bottom`, and `right`
+fields:[^move-plus]
 
-``` {.python replace=%2c%20scroll/,%20-%20scroll/}
-class DrawText:
-    def execute(self, scroll, canvas):
-        draw_text(canvas, self.left, self.top - scroll,
-            self.text, self.font, self.color)
-
-class DrawRect:
-    def execute(self, scroll, canvas):
-        draw_rect(canvas,
-            self.left, self.top - scroll,
-            self.right, self.bottom - scroll,
-            fill=self.color, width=0)
-```
-
-Let's also add a `rect` field to each drawing command, replacing its
-`top`, `left`, `bottom`, and `right` fields with a Skia `Rect` object:
+[^move-plus]: You'll probably need some font changes in the browser
+    UI, because Skia draws fonts a bit differently from Tkinter. I had
+    to adjust the *y* position of the plus sign and less than signs to
+    keep them centered in their boxes. Feel free to adjust to make
+    everything look good on your system.
 
 ``` {.python}
 class DrawText:
@@ -356,150 +369,11 @@ class DrawText:
         self.rect = \
             skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom)
 
-class DrawRect:
-    def __init__(self, x1, y1, x2, y2, color):
-        # ...
-        self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
-```
-
-Finally, the `Browser` class also uses Tkinter commands in its `draw`
-method to draw the browser UI. We'll need to change them all to use
-Skia. It's a long method, so we'll need to go step by step.
-
-First, clear the canvas and and draw the current `Tab` into it:
-
-``` {.python expected=False}
-class Browser:
-    def draw(self):
-        canvas = self.root_surface.getCanvas()
-        canvas.clear(skia.ColorWHITE)
-
-        self.tabs[self.active_tab].draw(canvas)
-```
-
-Then draw the browser UI elements. First, the tabs:
-
-``` {.python replace=draw%28/raster_chrome%28}
-class Browser:
-    def draw(self):
-        # ...
-        tabfont = skia.Font(skia.Typeface('Arial'), 20)
-        for i, tab in enumerate(self.tabs):
-            name = "Tab {}".format(i)
-            x1, x2 = 40 + 80 * i, 120 + 80 * i
-            draw_line(canvas, x1, 0, x1, 40)
-            draw_line(canvas, x2, 0, x2, 40)
-            draw_text(canvas, x1 + 10, 10, name, tabfont)
-            if i == self.active_tab:
-                draw_line(canvas, 0, 40, x1, 40)
-                draw_line(canvas, x2, 40, WIDTH, 40)
-```
-
-Next, the plus button for adding a new tab:[^move-plus]
-
-[^move-plus]: I also changed the *y* position of the plus sign.
-    Skia draws fonts a bit differently from Tkinter, and the new *y*
-    position keeps the plus centered in the box. Feel free to adjust
-    the positions of the UI elements to make everything look good on
-    your system.
-
-``` {.python replace=draw%28/raster_chrome%28}
-class Browser:
-    def draw(self):
-        # ...
-        buttonfont = skia.Font(skia.Typeface('Arial'), 30)
-        draw_rect(canvas, 10, 10, 30, 30)
-        draw_text(canvas, 11, 4, "+", buttonfont)
-```
-
-Then the address bar, including text and cursor:
-
-``` {.python replace=draw%28/raster_chrome%28}
-class Browser:
-    def draw(self):
-        # ...
-        draw_rect(canvas, 40, 50, WIDTH - 10, 90)
-        if self.focus == "address bar":
-            draw_text(canvas, 55, 55, self.address_bar, buttonfont)
-            w = buttonfont.measureText(self.address_bar)
-            draw_line(canvas, 55 + w, 55, 55 + w, 85)
-        else:
-            url = self.tabs[self.active_tab].url
-            draw_text(canvas, 55, 55, url, buttonfont)
-```
-
-And finally the "back" button:
-
-``` {.python replace=draw%28/raster_chrome%28}
-class Browser:
-    def draw(self):
-        # ...
-        draw_rect(canvas, 10, 50, 35, 90)
-        path = \
-            skia.Path().moveTo(15, 70).lineTo(30, 55).lineTo(30, 85)
-        paint = skia.Paint(
-            Color=skia.ColorBLACK, Style=skia.Paint.kFill_Style)
-        canvas.drawPath(path, paint)
-```
-
-`Tab` also has a `draw` method, which draws a cursor; it needs to use
-`draw_line` for that. Also wrap it in a display list
-command called `DrawLine`.
-
-``` {.python replace=draw%28/raster%28,%20-%20self.scroll%20+%20CHROME_PX/}
 class DrawLine:
-    def __init__(self, x1, y1, x2, y2):
-        self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
-        self.x1 = x1
-        self.y1 = y1
-        self.x2 = x2
-        self.y2 = y2
-
-    def execute(self, canvas):
-        draw_line(canvas, self.x1, self.y1, self.x2, self.y2)
-
-class Tab:
-    def render(self):
+    def __init__(self, x1, y1, x2, y2, color, thickness):
         # ...
-        if self.focus:
-            obj = [obj for obj in tree_to_list(self.document, [])
-               if obj.node == self.focus and \
-                    isinstance(obj, InputLayout)][0]
-            text = self.focus.attributes.get("value", "")
-            x = obj.x + obj.font.measureText(text)
-            y = obj.y
-            self.display_list.append(
-                DrawLine(x, y, x, y + obj.height))
+        self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
 ```
-
-That's most of it. The last few changes we need to upgrade from
-Tkinter to SDL and Skia relate to fonts and text.
-
-::: {.further}
-Implementing high-quality raster libraries is very interesting in its own
-right---check out [Real-Time Rendering][rtr-book] for more.[^cgpp]
-These days, it's especially important to leverage GPUs when they're
-available, and browsers often push the envelope. Browser teams
-typically include or work closely with raster library experts: Skia
-for Chromium and [Core Graphics][core-graphics] for WebKit, for
-example. Both of these libraries are used outside of the browser, too:
-Core Graphics in iOS and macOS, and Skia in Android.
-:::
-
-[^cgpp]: There is also [Computer Graphics: Principles and
-Practice][classic], which incidentally I remember buying---this is
-Chris speaking---back in the days of my youth (1992 or so). At the time I
-didn't get much further than rastering lines and polygons (in assembly
-language!). These days you can do the same and more with Skia and a
-few lines of Python.
-
-[core-graphics]: https://developer.apple.com/documentation/coregraphics
-[rtr-book]: https://www.realtimerendering.com/
-[classic]: https://en.wikipedia.org/wiki/Computer_Graphics:_Principles_and_Practice
-
-
-Skia is also the font library
-=============================
 
 Since we're replacing Tkinter with Skia, we are also replacing
 `tkinter.font`. In Skia, a font object has two pieces: a `Typeface`,
@@ -530,12 +404,12 @@ def get_font(size, weight, style):
 
 Our browser also needs font metrics and measurements. In Skia, these
 are provided by the `measureText` and `getMetrics` methods. Let's
-start with `measureText`---it needs to replace all calls to `measure`.
-For example, in the `draw` method for a `Tab`, we must do:
+start with `measureText` replacing all calls to `measure`. For
+example, in the `render` method for a `Tab`, we must do:
 
-``` {.python expected=False}
+``` {.python}
 class Tab:
-    def draw(self, canvas):
+    def render(self):
         if self.focus:
             # ...
             x = obj.x + obj.font.measureText(text)
@@ -564,14 +438,38 @@ Note the negative sign when accessing the ascent. In Skia, ascent and
 descent are positive if they go downward and negative if they go
 upward, so ascents will normally be negative, the opposite of Tkinter.
 There's no analog for the `linespace` field that Tkinter provides,
-but you can use descent minus ascent instead.
+but you can use descent minus ascent instead:
+
+``` {.python}
+def linespace(font):
+    metrics = font.getMetrics()
+    return metrics.fDescent - metrics.fAscent
+
+```
 
 You should now be able to run the browser again. It should look and
 behave just as it did in previous chapters, and it'll probably feel
 faster, because Skia and SDL are faster than Tkinter. This is one
 advantage of Skia: since it is also used by the Chromium browser, we
 know it has fast, built-in support for all of the shapes we might
-need.
+need. And if the transition felt easy---well, that's one of the benefits to
+abstracting over the drawing backend using a display list!
+
+::: {.further}
+[Font rasterization](https://en.wikipedia.org/wiki/Font_rasterization)
+is surprisingly deep, with techniques such as
+[subpixel rendering](https://en.wikipedia.org/wiki/Subpixel_rendering)
+and [hinting][font-hinting] used to make fonts look better on
+lower-resolution screens. These techniques are much less necessary on
+[high-pixel-density](https://en.wikipedia.org/wiki/Pixel_density)
+screens, though. It's likely that eventually, all screens will be
+high-density enough to retire these techniques.
+:::
+
+[font-hinting]: https://en.wikipedia.org/wiki/Font_hinting
+
+What Skia gives us
+==================
 
 Let's reward ourselves for the big refactor with a simple feature that
 Skia enables: rounded corners of a rectangle via the `border-radius`
@@ -625,17 +523,27 @@ class BlockLayout:
 Similar changes should be made to `InputLayout`.
 
 ::: {.further}
-[Font rasterization](https://en.wikipedia.org/wiki/Font_rasterization)
-is surprisingly deep, with techniques such as
-[subpixel rendering](https://en.wikipedia.org/wiki/Subpixel_rendering)
-and [hinting][font-hinting] used to make fonts look better on
-lower-resolution screens. These techniques are much less necessary on
-[high-pixel-density](https://en.wikipedia.org/wiki/Pixel_density)
-screens, though. It's likely that eventually, all screens will be
-high-density enough to retire these techniques.
+Implementing high-quality raster libraries is very interesting in its own
+right---check out [Real-Time Rendering][rtr-book] for more.[^cgpp]
+These days, it's especially important to leverage GPUs when they're
+available, and browsers often push the envelope. Browser teams
+typically include or work closely with raster library experts: Skia
+for Chromium and [Core Graphics][core-graphics] for WebKit, for
+example. Both of these libraries are used outside of the browser, too:
+Core Graphics in iOS and macOS, and Skia in Android.
 :::
 
-[font-hinting]: https://en.wikipedia.org/wiki/Font_hinting
+[^cgpp]: There is also [Computer Graphics: Principles and
+Practice][classic], which incidentally I remember buying---this is
+Chris speaking---back in the days of my youth (1992 or so). At the time I
+didn't get much further than rastering lines and polygons (in assembly
+language!). These days you can do the same and more with Skia and a
+few lines of Python.
+
+[core-graphics]: https://developer.apple.com/documentation/coregraphics
+[rtr-book]: https://www.realtimerendering.com/
+[classic]: https://en.wikipedia.org/wiki/Computer_Graphics:_Principles_and_Practice
+
 
 Pixels, color, and raster
 =========================
@@ -1721,10 +1629,9 @@ command's `execute` method:
 ``` {.python}
 class DrawRect:
     def execute(self, canvas):
-        draw_rect(canvas,
-            self.left, self.top,
-            self.right, self.bottom,
-            fill=self.color, width=0)
+        paint = skia.Paint()
+        paint.setColor(parse_color(self.color))
+        canvas.drawRect(self.rect, paint)
 ```
 
 Our browser now uses composited scrolling, making scrolling faster and

@@ -22,6 +22,7 @@ from lab7 import CHROME_PX
 from lab8 import INPUT_WIDTH_PX, layout_mode
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, URL, JSContext
+import wbetools
 
 FONTS = {}
 
@@ -95,16 +96,23 @@ class SaveLayer:
         if self.should_save:
             canvas.restore()
 
-class DrawRRect:
-    def __init__(self, rect, radius, color):
-        self.rect = rect
-        self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
+class DrawRect:
+    def __init__(self, x1, y1, x2, y2, color):
+        self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
+        self.top = y1
+        self.left = x1
+        self.bottom = y2
+        self.right = x2
         self.color = color
 
     def execute(self, canvas):
-        sk_color = parse_color(self.color)
-        canvas.drawRRect(self.rrect,
-            paint=skia.Paint(Color=sk_color))
+        paint = skia.Paint()
+        paint.setColor(parse_color(self.color))
+        canvas.drawRect(self.rect, paint)
+
+    def __repr__(self):
+        return "DrawRect(top={} left={} bottom={} right={} color={})".format(
+            self.left, self.top, self.right, self.bottom, self.color)
 
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
@@ -119,41 +127,65 @@ class DrawText:
         self.color = color
 
     def execute(self, canvas):
-        draw_text(canvas, self.left, self.top,
-            self.text, self.font, self.color)
+        paint = skia.Paint(AntiAlias=True, Color=parse_color(self.color))
+        baseline = self.top - self.font.getMetrics().fAscent
+        canvas.drawString(self.text, float(self.left), baseline,
+            self.font, paint)
 
     def __repr__(self):
         return "DrawText(text={})".format(self.text)
 
-class DrawRect:
-    def __init__(self, x1, y1, x2, y2, color):
+class DrawOutline:
+    def __init__(self, x1, y1, x2, y2, color, thickness):
         self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
         self.top = y1
         self.left = x1
         self.bottom = y2
         self.right = x2
         self.color = color
+        self.thickness = thickness
 
     def execute(self, canvas):
-        draw_rect(canvas,
-            self.left, self.top,
-            self.right, self.bottom,
-            fill=self.color, width=0)
+        paint = skia.Paint()
+        paint.setStyle(skia.Paint.kStroke_Style)
+        paint.setStrokeWidth(self.thickness)
+        paint.setColor(parse_color(self.color))
+        canvas.drawRect(self.rect, paint)
 
+    @wbetools.js_hide
     def __repr__(self):
-        return "DrawRect(top={} left={} bottom={} right={} color={})".format(
-            self.left, self.top, self.right, self.bottom, self.color)
+        return "DrawOutline({}, {}, {}, {}, color={}, thickness={})".format(
+            self.rect.left(), self.rect.top(), self.rect.right(), self.rect.bottom(),
+            self.color, self.thickness)
 
 class DrawLine:
-    def __init__(self, x1, y1, x2, y2):
+    def __init__(self, x1, y1, x2, y2, color, thickness):
         self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
         self.x1 = x1
         self.y1 = y1
         self.x2 = x2
         self.y2 = y2
+        self.color = color
+        self.thickness = thickness
 
     def execute(self, canvas):
-        draw_line(canvas, self.x1, self.y1, self.x2, self.y2)
+        path = skia.Path().moveTo(self.x1, self.y1) \
+                          .lineTo(self.x2, self.y2)
+        paint = skia.Paint(Color=parse_color(self.color))
+        paint.setStyle(skia.Paint.kStroke_Style)
+        paint.setStrokeWidth(self.thickness)
+        canvas.drawPath(path, paint)
+
+class DrawRRect:
+    def __init__(self, rect, radius, color):
+        self.rect = rect
+        self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
+        self.color = color
+
+    def execute(self, canvas):
+        sk_color = parse_color(self.color)
+        canvas.drawRRect(self.rrect,
+            paint=skia.Paint(Color=sk_color))
 
 class ClipRRect:
     def __init__(self, rect, radius, children, should_clip=True):
@@ -172,32 +204,6 @@ class ClipRRect:
 
         if self.should_clip:
             canvas.restore()
-
-def draw_line(canvas, x1, y1, x2, y2):
-    path = skia.Path().moveTo(x1, y1).lineTo(x2, y2)
-    paint = skia.Paint(Color=skia.ColorBLACK)
-    paint.setStyle(skia.Paint.kStroke_Style)
-    paint.setStrokeWidth(1)
-    canvas.drawPath(path, paint)
-
-def draw_text(canvas, x, y, text, font, color=None):
-    sk_color = parse_color(color)
-    paint = skia.Paint(AntiAlias=True, Color=sk_color)
-    canvas.drawString(
-        text, float(x), y - font.getMetrics().fAscent,
-        font, paint)
-
-def draw_rect(canvas, l, t, r, b, fill=None, width=1):
-    paint = skia.Paint()
-    if fill:
-        paint.setStrokeWidth(width)
-        paint.setColor(parse_color(fill))
-    else:
-        paint.setStyle(skia.Paint.kStroke_Style)
-        paint.setStrokeWidth(1)
-        paint.setColor(skia.ColorBLACK)
-    rect = skia.Rect.MakeLTRB(l, t, r, b)
-    canvas.drawRect(rect, paint)
 
 class BlockLayout:
     def __init__(self, node, parent, previous):
@@ -588,7 +594,7 @@ class Tab:
             x = obj.x + obj.font.measureText(text)
             y = obj.y
             self.display_list.append(
-                DrawLine(x, y, x, y + obj.height))
+                DrawLine(x, y, x, y + obj.height, "black", 1))
 
     def raster(self, canvas):
         for cmd in self.display_list:
@@ -748,44 +754,45 @@ class Browser:
         canvas.clear(skia.ColorWHITE)
         active_tab.raster(canvas)
 
-    def raster_chrome(self):
-        canvas = self.chrome_surface.getCanvas()
-        canvas.clear(skia.ColorWHITE)
-    
-        # Draw the tabs UI:
-        tabfont = skia.Font(skia.Typeface('Arial'), 20)
+    def paint_chrome(self):
+        cmds = []
+        cmds.append(DrawRect(0, 0, WIDTH, CHROME_PX, "white"))
+        cmds.append(DrawLine(0, CHROME_PX - 1, WIDTH, CHROME_PX - 1, "black", 1))
+
+        tabfont = get_font(20, "normal", "roman")
         for i, tab in enumerate(self.tabs):
             name = "Tab {}".format(i)
             x1, x2 = 40 + 80 * i, 120 + 80 * i
-            draw_line(canvas, x1, 0, x1, 40)
-            draw_line(canvas, x2, 0, x2, 40)
-            draw_text(canvas, x1 + 10, 10, name, tabfont)
+            cmds.append(DrawLine(x1, 0, x1, 40, "black", 1))
+            cmds.append(DrawLine(x2, 0, x2, 40, "black", 1))
+            cmds.append(DrawText(x1 + 10, 10, name, tabfont, "black"))
             if i == self.active_tab:
-                draw_line(canvas, 0, 40, x1, 40)
-                draw_line(canvas, x2, 40, WIDTH, 40)
+                cmds.append(DrawLine(0, 40, x1, 40, "black", 1))
+                cmds.append(DrawLine(x2, 40, WIDTH, 40, "black", 1))
 
-        # Draw the plus button to add a tab:
-        buttonfont = skia.Font(skia.Typeface('Arial'), 30)
-        draw_rect(canvas, 10, 10, 30, 30)
-        draw_text(canvas, 11, 4, "+", buttonfont)
+        buttonfont = get_font(30, "normal", "roman")
+        cmds.append(DrawOutline(10, 10, 30, 30, "black", 1))
+        cmds.append(DrawText(11, 5, "+", buttonfont, "black"))
 
-        # Draw the URL address bar:
-        draw_rect(canvas, 40, 50, WIDTH - 10, 90)
+        cmds.append(DrawOutline(40, 50, WIDTH - 10, 90, "black", 1))
         if self.focus == "address bar":
-            draw_text(canvas, 55, 55, self.address_bar, buttonfont)
-            w = buttonfont.measureText(self.address_bar)
-            draw_line(canvas, 55 + w, 55, 55 + w, 85)
+            cmds.append(DrawText(55, 55, self.address_bar, buttonfont, "black"))
+            w = buttonfont.measure(self.address_bar)
+            cmds.append(DrawLine(55 + w, 55, 55 + w, 85, "black", 1))
         else:
             url = self.tabs[self.active_tab].url
-            draw_text(canvas, 55, 55, url, buttonfont)
+            cmds.append(DrawText(55, 55, url, buttonfont, "black"))
 
-        # Draw the back button:
-        draw_rect(canvas, 10, 50, 35, 90)
-        path = \
-            skia.Path().moveTo(15, 70).lineTo(30, 55).lineTo(30, 85)
-        paint = skia.Paint(
-            Color=skia.ColorBLACK, Style=skia.Paint.kFill_Style)
-        canvas.drawPath(path, paint)
+        cmds.append(DrawOutline(10, 50, 35, 90, "black", 1))
+        cmds.append(DrawText(15, 55, "<", buttonfont, "black"))
+        return cmds
+
+    def raster_chrome(self):
+        canvas = self.chrome_surface.getCanvas()
+        canvas.clear(skia.ColorWHITE)
+
+        for cmd in self.paint_chrome():
+            cmd.execute(canvas)
 
     def draw(self):
         canvas = self.root_surface.getCanvas()

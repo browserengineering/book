@@ -26,9 +26,7 @@ from lab7 import CHROME_PX
 from lab8 import INPUT_WIDTH_PX, layout_mode
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, URL
-from lab11 import DrawLine
-from lab11 import get_font, FONTS, DrawLine, linespace, DrawText, SaveLayer, ClipRRect
-from lab11 import draw_line, draw_text, draw_rect
+from lab11 import get_font, FONTS, DrawLine, DrawRect, DrawOutline, linespace, DrawText, SaveLayer, ClipRRect
 from lab11 import BlockLayout, DocumentLayout, LineLayout, TextLayout, InputLayout
 from lab11 import paint_visual_effects, parse_blend_mode, parse_color
 
@@ -304,7 +302,7 @@ class Tab:
             x = obj.x + obj.font.measureText(text)
             y = obj.y
             self.display_list.append(
-                DrawLine(x, y, x, y + obj.height))
+                DrawLine(x, y, x, y + obj.height, "black", 1))
         self.measure_render.stop_timing()
         self.needs_render = False
 
@@ -663,44 +661,45 @@ class Browser:
         canvas.clear(skia.ColorWHITE)
         raster(self.active_tab_display_list, canvas)
 
-    def raster_chrome(self):
-        canvas = self.chrome_surface.getCanvas()
-        canvas.clear(skia.ColorWHITE)
-    
-        # Draw the tabs UI:
-        tabfont = skia.Font(skia.Typeface('Arial'), 20)
+    def paint_chrome(self):
+        cmds = []
+        cmds.append(DrawRect(0, 0, WIDTH, CHROME_PX, "white"))
+        cmds.append(DrawLine(0, CHROME_PX - 1, WIDTH, CHROME_PX - 1, "black", 1))
+
+        tabfont = get_font(20, "normal", "roman")
         for i, tab in enumerate(self.tabs):
             name = "Tab {}".format(i)
             x1, x2 = 40 + 80 * i, 120 + 80 * i
-            draw_line(canvas, x1, 0, x1, 40)
-            draw_line(canvas, x2, 0, x2, 40)
-            draw_text(canvas, x1 + 10, 10, name, tabfont)
+            cmds.append(DrawLine(x1, 0, x1, 40, "black", 1))
+            cmds.append(DrawLine(x2, 0, x2, 40, "black", 1))
+            cmds.append(DrawText(x1 + 10, 10, name, tabfont, "black"))
             if i == self.active_tab:
-                draw_line(canvas, 0, 40, x1, 40)
-                draw_line(canvas, x2, 40, WIDTH, 40)
+                cmds.append(DrawLine(0, 40, x1, 40, "black", 1))
+                cmds.append(DrawLine(x2, 40, WIDTH, 40, "black", 1))
 
-        # Draw the plus button to add a tab:
-        buttonfont = skia.Font(skia.Typeface('Arial'), 30)
-        draw_rect(canvas, 10, 10, 30, 30)
-        draw_text(canvas, 11, 4, "+", buttonfont)
+        buttonfont = get_font(30, "normal", "roman")
+        cmds.append(DrawOutline(10, 10, 30, 30, "black", 1))
+        cmds.append(DrawText(11, 5, "+", buttonfont, "black"))
 
-        # Draw the URL address bar:
-        draw_rect(canvas, 40, 50, WIDTH - 10, 90)
+        cmds.append(DrawOutline(40, 50, WIDTH - 10, 90, "black", 1))
         if self.focus == "address bar":
-            draw_text(canvas, 55, 55, self.address_bar, buttonfont)
-            w = buttonfont.measureText(self.address_bar)
-            draw_line(canvas, 55 + w, 55, 55 + w, 85)
+            cmds.append(DrawText(55, 55, self.address_bar, buttonfont, "black"))
+            w = buttonfont.measure(self.address_bar)
+            cmds.append(DrawLine(55 + w, 55, 55 + w, 85, "black", 1))
         else:
-            if self.url:
-                draw_text(canvas, 55, 55, self.url, buttonfont)
+            url = self.tabs[self.active_tab].url
+            cmds.append(DrawText(55, 55, url, buttonfont, "black"))
 
-        # Draw the back button:
-        draw_rect(canvas, 10, 50, 35, 90)
-        path = \
-            skia.Path().moveTo(15, 70).lineTo(30, 55).lineTo(30, 85)
-        paint = skia.Paint(
-            Color=skia.ColorBLACK, Style=skia.Paint.kFill_Style)
-        canvas.drawPath(path, paint)
+        cmds.append(DrawOutline(10, 50, 35, 90, "black", 1))
+        cmds.append(DrawText(15, 55, "<", buttonfont, "black"))
+        return cmds
+
+    def raster_chrome(self):
+        canvas = self.chrome_surface.getCanvas()
+        canvas.clear(skia.ColorWHITE)
+
+        for cmd in self.paint_chrome():
+            cmd.execute(canvas)
 
     def draw(self):
         canvas = self.root_surface.getCanvas()

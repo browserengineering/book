@@ -15,8 +15,8 @@ from lab4 import Text, Element, print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS, DrawRect
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
-from lab6 import DrawText, tree_to_list
-from lab7 import LineLayout, TextLayout, CHROME_PX, URL
+from lab6 import DrawText, tree_to_list, URL
+from lab7 import DrawLine, DrawOutline, LineLayout, TextLayout, CHROME_PX
 import wbetools
 
 @wbetools.patch(URL)
@@ -60,7 +60,6 @@ class URL:
     
         body = response.read()
         s.close()
-    
         return headers, body
 
 def layout_mode(node):
@@ -303,20 +302,21 @@ class Tab:
         self.display_list = []
         self.document.paint(self.display_list)
 
-    def draw(self, canvas):
-        for cmd in self.display_list:
-            if cmd.top > self.scroll + HEIGHT - CHROME_PX: continue
-            if cmd.bottom < self.scroll: continue
-            cmd.execute(self.scroll - CHROME_PX, canvas)
-
         if self.focus:
             obj = [obj for obj in tree_to_list(self.document, [])
                    if obj.node == self.focus and \
                         isinstance(obj, InputLayout)][0]
             text = self.focus.attributes.get("value", "")
             x = obj.x + obj.font.measure(text)
-            y = obj.y - self.scroll + CHROME_PX
-            canvas.create_line(x, y, x, y + obj.height)
+            y = obj.y - self.scroll
+            self.display_list.append(
+                DrawLine(x, y, x, y + obj.height, "black", 1))
+
+    def draw(self, canvas):
+        for cmd in self.display_list:
+            if cmd.top > self.scroll + HEIGHT - CHROME_PX: continue
+            if cmd.bottom < self.scroll: continue
+            cmd.execute(self.scroll - CHROME_PX, canvas)
 
     def scrolldown(self):
         max_y = self.document.height - (HEIGHT - CHROME_PX)
@@ -441,47 +441,44 @@ class Browser:
         self.tabs.append(new_tab)
         self.draw()
 
-    def draw(self):
-        self.canvas.delete("all")
-        self.tabs[self.active_tab].draw(self.canvas)
-        self.canvas.create_rectangle(0, 0, WIDTH, CHROME_PX,
-            fill="white", outline="black")
+    def paint_chrome(self):
+        cmds = []
+        cmds.append(DrawRect(0, 0, WIDTH, CHROME_PX, "white"))
+        cmds.append(DrawLine(0, CHROME_PX - 1, WIDTH, CHROME_PX - 1, "black", 1))
 
         tabfont = get_font(20, "normal", "roman")
         for i, tab in enumerate(self.tabs):
             name = "Tab {}".format(i)
             x1, x2 = 40 + 80 * i, 120 + 80 * i
-            self.canvas.create_line(x1, 0, x1, 40, fill="black")
-            self.canvas.create_line(x2, 0, x2, 40, fill="black")
-            self.canvas.create_text(x1 + 10, 10, anchor="nw", text=name,
-                font=tabfont, fill="black")
+            cmds.append(DrawLine(x1, 0, x1, 40, "black", 1))
+            cmds.append(DrawLine(x2, 0, x2, 40, "black", 1))
+            cmds.append(DrawText(x1 + 10, 10, name, tabfont, "black"))
             if i == self.active_tab:
-                self.canvas.create_line(0, 40, x1, 40, fill="black")
-                self.canvas.create_line(x2, 40, WIDTH, 40, fill="black")
+                cmds.append(DrawLine(0, 40, x1, 40, "black", 1))
+                cmds.append(DrawLine(x2, 40, WIDTH, 40, "black", 1))
 
         buttonfont = get_font(30, "normal", "roman")
-        self.canvas.create_rectangle(10, 10, 30, 30,
-            outline="black", width=1)
-        self.canvas.create_text(11, 0, anchor="nw", text="+",
-            font=buttonfont, fill="black")
+        cmds.append(DrawOutline(10, 10, 30, 30, "black", 1))
+        cmds.append(DrawText(11, 0, "+", buttonfont, "black"))
 
-        self.canvas.create_rectangle(40, 50, WIDTH - 10, 90,
-            outline="black", width=1)
+        cmds.append(DrawOutline(40, 50, WIDTH - 10, 90, "black", 1))
         if self.focus == "address bar":
-            self.canvas.create_text(
-                55, 55, anchor='nw', text=self.address_bar,
-                font=buttonfont, fill="black")
+            cmds.append(DrawText(55, 55, self.address_bar, buttonfont, "black"))
             w = buttonfont.measure(self.address_bar)
-            self.canvas.create_line(55 + w, 55, 55 + w, 85, fill="black")
+            cmds.append(DrawLine(55 + w, 55, 55 + w, 85, "black", 1))
         else:
             url = str(self.tabs[self.active_tab].url)
-            self.canvas.create_text(55, 55, anchor='nw', text=url,
-                font=buttonfont, fill="black")
+            cmds.append(DrawText(55, 55, url, buttonfont, "black"))
 
-        self.canvas.create_rectangle(10, 50, 35, 90,
-            outline="black", width=1)
-        self.canvas.create_polygon(
-            15, 70, 30, 55, 30, 85, fill='black')
+        cmds.append(DrawOutline(10, 50, 35, 90, "black", 1))
+        cmds.append(DrawText(15, 50, "<", buttonfont, "black"))
+        return cmds
+
+    def draw(self):
+        self.canvas.delete("all")
+        self.tabs[self.active_tab].draw(self.canvas)
+        for cmd in self.paint_chrome():
+            cmd.execute(0, self.canvas)
 
 if __name__ == "__main__":
     import sys

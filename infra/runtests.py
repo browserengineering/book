@@ -25,10 +25,6 @@ IGNORE_FILES = [
     ".*",
     "lab*.full.py",
     "wbetools.py",
-
-    # These are from the old reflow chapter---to be deleted once ch16 is mostly done
-    "test10.js",
-    "test10.html",
 ]
 
 def test_compare(chapter, value, language, fname):

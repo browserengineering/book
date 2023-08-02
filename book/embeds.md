@@ -2159,7 +2159,7 @@ element.
 
 [obj-fit]: https://developer.mozilla.org/en-US/docs/Web/CSS/object-fit
 
-*Iframe aspect ratio*. Implement the [`aspect-ratio`][aspect-ratio] CSS
+*Iframe aspect ratio*: Implement the [`aspect-ratio`][aspect-ratio] CSS
 property and use it to provide an implicit sizing to iframes and images
 when only one of `width` or `height` is specified (or when the image is not
 yet loaded, if you did the lazy loading exercise).
@@ -2192,7 +2192,7 @@ to the meaning of the website, and so it should tell the user that they
 are missing out on some of the content if it fails to load. But otherwise,
 the broken image icon is probably just ugly clutter.]
 
-*Media queries*. Implement the [width][width-mq] media query. Make
+*Media queries*: Implement the [width][width-mq] media query. Make
 sure it works inside iframes. Also make sure it works even when the
 width of an iframe is changed by its parent frame.
 

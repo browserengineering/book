@@ -35,7 +35,6 @@ from lab8 import INPUT_WIDTH_PX, layout_mode
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, parse_blend_mode, linespace
-from lab11 import draw_text
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
 from lab12 import Task, REFRESH_RATE_SEC
 from lab13 import JSContext, diff_styles, clamp_scroll, add_parent_pointers
@@ -43,9 +42,8 @@ from lab13 import absolute_bounds, absolute_bounds_for_obj
 from lab13 import NumericAnimation, TranslateAnimation
 from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
 from lab13 import CompositedLayer, paint_visual_effects
-from lab13 import DisplayItem, DrawText, DrawCompositedLayer, SaveLayer
-from lab13 import ClipRRect, Transform, DrawLine, DrawRRect, draw_rect, \
-    add_main_args
+from lab13 import DisplayItem, DrawText, DrawCompositedLayer, SaveLayer, DrawOutline
+from lab13 import ClipRRect, Transform, DrawLine, DrawRRect, add_main_args
 
 @wbetools.patch(Element)
 class Element:
@@ -103,30 +101,6 @@ def parse_outline(outline_str, zoom):
     if values[1] != "solid": return None
     return (device_px(int(values[0][:-2]), zoom), values[2])
 
-class DrawOutline(DisplayItem):
-    def __init__(self, rect, color, thickness):
-        super().__init__(rect)
-        self.color = color
-        self.thickness = thickness
-
-    def is_paint_command(self):
-        return True
-
-    def execute(self, canvas):
-        draw_rect(canvas,
-            self.rect.left(), self.rect.top(),
-            self.rect.right(), self.rect.bottom(),
-            border_color=self.color, width=self.thickness)
-
-    def __repr__(self):
-        return ("DrawOutline(top={} left={} " +
-            "bottom={} right={} border_color={} " +
-            "thickness={})").format(
-            self.rect.top(), self.rect.left(), self.rect.bottom(),
-            self.rect.right(), self.color,
-            self.thickness)
-
-
 def is_focused(node):
     if isinstance(node, Text):
         node = node.parent
@@ -138,7 +112,10 @@ def has_outline(node):
 def paint_outline(node, cmds, rect, zoom):
     if has_outline(node):
         thickness, color = parse_outline(node.style.get("outline"), zoom)
-        cmds.append(DrawOutline(rect, color, thickness))
+        cmds.append(DrawOutline(
+            rect.left(), rect.top(),
+            rect.right(), rect.bottom(),
+            color, thickness))
 
 class BlockLayout:
     def __init__(self, node, parent, previous):
@@ -503,7 +480,8 @@ class InputLayout:
 
         if self.node.is_focused and self.node.tag == "input":
             cx = rect.left() + self.font.measureText(text)
-            cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom()))
+            cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom(),
+                                 "black", 1))
 
         cmds = paint_visual_effects(self.node, cmds, rect)
         paint_outline(self.node, cmds, rect, self.zoom)
@@ -1771,57 +1749,53 @@ class Browser:
         for composited_layer in self.composited_layers:
             composited_layer.raster()
 
-    def raster_chrome(self):
-        canvas = self.chrome_surface.getCanvas()
+    def paint_chrome(self):
         if self.dark_mode:
             color = "white"
-            background_color = "black"
         else:
             color = "black"
-            background_color = "white"
-        canvas.clear(parse_color(background_color))
-    
-        # Draw the tabs UI:
-        tabfont = skia.Font(skia.Typeface('Arial'), 20)
+
+        cmds = []
+        cmds.append(DrawLine(0, CHROME_PX - 1, WIDTH, CHROME_PX - 1, color, 1))
+
+        tabfont = get_font(20, "normal", "roman")
         for i, tab in enumerate(self.tabs):
             name = "Tab {}".format(i)
             x1, x2 = 40 + 80 * i, 120 + 80 * i
-            draw_line(canvas, x1, 0, x1, 40, color)
-            draw_line(canvas, x2, 0, x2, 40, color)
-            draw_text(canvas, x1 + 10, 10, name, tabfont, color)
+            cmds.append(DrawLine(x1, 0, x1, 40, color, 1))
+            cmds.append(DrawLine(x2, 0, x2, 40, color, 1))
+            cmds.append(DrawText(x1 + 10, 10, name, tabfont, color))
             if i == self.active_tab:
-                draw_line(canvas, 0, 40, x1, 40, color)
-                draw_line(canvas, x2, 40, WIDTH, 40, color)
+                cmds.append(DrawLine(0, 40, x1, 40, color, 1))
+                cmds.append(DrawLine(x2, 40, WIDTH, 40, color, 1))
 
-        # Draw the plus button to add a tab:
-        buttonfont = skia.Font(skia.Typeface('Arial'), 30)
-        draw_rect(canvas, 10, 10, 30, 30,
-            fill_color=background_color, border_color=color)
-        draw_text(canvas, 11, 4, "+", buttonfont, color=color)
+        buttonfont = get_font(30, "normal", "roman")
+        cmds.append(DrawOutline(10, 10, 30, 30, color, 1))
+        cmds.append(DrawText(11, 5, "+", buttonfont, color))
 
-        # Draw the URL address bar:
-        draw_rect(canvas, 40.0, 50.0, WIDTH - 10.0, 90.0,
-            fill_color=background_color, border_color=color)
-
+        cmds.append(DrawOutline(40, 50, WIDTH - 10, 90, color, 1))
         if self.focus == "address bar":
-            draw_text(canvas, 55, 55, self.address_bar, buttonfont,
-                color=color)
-            w = buttonfont.measureText(self.address_bar)
-            draw_line(canvas, 55 + w, 55, 55 + w, 85, color)
+            cmds.append(DrawText(55, 55, self.address_bar, buttonfont, color))
+            w = buttonfont.measure(self.address_bar)
+            cmds.append(DrawLine(55 + w, 55, 55 + w, 85, color, 1))
         else:
-            if self.url:
-                draw_text(canvas, 55, 55, self.url, buttonfont,
-                    color=color)
+            url = self.tabs[self.active_tab].url
+            cmds.append(DrawText(55, 55, url, buttonfont, color))
 
-        # Draw the back button:
-        draw_rect(canvas, 10, 50, 35, 90,
-            fill_color=background_color, border_color=color)
+        cmds.append(DrawOutline(10, 50, 35, 90, color, 1))
+        cmds.append(DrawText(15, 55, "<", buttonfont, color))
+        return cmds
 
-        path = \
-            skia.Path().moveTo(15, 70).lineTo(30, 55).lineTo(30, 85)
-        paint = skia.Paint(
-            Color=parse_color(color), Style=skia.Paint.kFill_Style)
-        canvas.drawPath(path, paint)
+    def raster_chrome(self):
+        canvas = self.chrome_surface.getCanvas()
+        if self.dark_mode:
+            background_color = skia.ColorBLACK
+        else:
+            background_color = skia.ColorWHITE
+        canvas.clear(background_color)
+    
+        for cmd in self.paint_chrome():
+            cmd.execute(canvas)
 
     def draw(self):
         canvas = self.root_surface.getCanvas()
