@@ -158,13 +158,6 @@ class ResolvePatches(ast.NodeTransformer):
         self.visit(tree)
         return (self.visit(tree), self.patches)
 
-def has_js_hide(decorator_list):
-    return any([
-        isinstance(dec, ast.Attribute) and dec.attr == "js_hide"
-        and isinstance(dec.value, ast.Name) and dec.value.id == "wbetools"
-        for dec in decorator_list
-    ])
-
 class ResolveJSHide(ast.NodeTransformer):
     def visit_FunctionDef(self, cmd):
         if any([

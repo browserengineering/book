@@ -1913,7 +1913,7 @@ output device is quite different, the accessibility tree would still
 contain all the information about what content is on the page, whether
 it can be interacted with, its state, and so on. Moreover, by using
 the same accessibility tree for all output devices, users who use more
-than one assistive technology (like a braille display and a screen
+than one *assistive technology* (like a braille display and a screen
 reader) are sure to receive consistent information.
 
 :::
