@@ -334,7 +334,7 @@ class DrawRect:
 ```
 
 To draw just the outline, set the `Style` parameter of the `Paint` to
-`Stroke_Style`. Here "stroke" is a standard term refering to drawing
+`Stroke_Style`. Here "stroke" is a standard term referring to drawing
 along the border of some shape; the opposite is "fill", meaning
 filling in the interior of the shape:
 
