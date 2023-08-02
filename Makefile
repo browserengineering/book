@@ -29,7 +29,7 @@ widgets: \
 	www/widgets/lab12-browser.html www/widgets/lab12.js \
 	www/widgets/lab13-browser.html www/widgets/lab13.js
 
-src/lab%.full.py: src/lab%.py
+src/lab%.full.py: src/lab%.py infra/inline.py infra/asttools.py
 	python3 infra/inline.py $< > $@
 
 CHAPTER=all

@@ -16,6 +16,7 @@ import time
 import urllib.parse
 import wbetools
 
+from lab1 import parse_url
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab4 import Text, Element, print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS
@@ -25,11 +26,12 @@ from lab6 import tree_to_list
 from lab7 import CHROME_PX
 from lab8 import INPUT_WIDTH_PX, layout_mode
 from lab9 import EVENT_DISPATCH_CODE
-from lab10 import URL
+from lab10 import COOKIE_JAR, URL
 from lab11 import DrawLine
+from lab11 import get_font, FONTS, DrawLine, linespace, DrawText, SaveLayer, ClipRRect
 from lab11 import draw_line, draw_text, draw_rect
 from lab11 import BlockLayout, DocumentLayout, LineLayout, TextLayout, InputLayout
-from lab11 import paint_visual_effects
+from lab11 import paint_visual_effects, parse_blend_mode, parse_color
 
 class MeasureTime:
     def __init__(self, name):
