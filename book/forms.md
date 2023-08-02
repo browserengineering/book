@@ -486,7 +486,7 @@ if self.focus:
     # ...
     text = self.focus.attributes.get("value", "")
     x = obj.x + obj.font.measure(text)
-    y = obj.y - self.scroll + CHROME_PX
+    y = obj.y - self.scroll
 ```
 
 And finally draw the cursor itself:

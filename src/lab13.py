@@ -1238,7 +1238,7 @@ class Tab:
                 x = obj.x + obj.font.measureText(text)
                 y = obj.y
                 self.display_list.append(
-                    DrawLine(x, y, x, y + obj.height))
+                    DrawLine(x, y, x, y + obj.height, "black", 1))
             self.needs_paint = False
 
         self.measure_render.stop_timing()

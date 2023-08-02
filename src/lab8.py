@@ -317,7 +317,7 @@ class Tab:
                         isinstance(obj, InputLayout)][0]
             text = self.focus.attributes.get("value", "")
             x = obj.x + obj.font.measure(text)
-            y = obj.y - self.scroll + CHROME_PX
+            y = obj.y - self.scroll
             self.display_list.append(
                 DrawLine(x, y, x, y + obj.height, "black", 1))
 
