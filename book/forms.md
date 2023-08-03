@@ -188,7 +188,7 @@ We now need to create some `InputLayout`s, which we can do in
 class BlockLayout:
     def recurse(self, node):
         if isinstance(node, Text):
-            self.text(node)
+            # ...
         else:
             if node.tag == "br":
                 self.new_line()

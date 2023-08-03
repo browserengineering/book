@@ -447,15 +447,14 @@ class BlockLayout:
         self.cursor_x += w + font(node.style, self.zoom).measureText(" ")
 ```
 
-We can redefine  `text` and `input` in a satisfying way now:
+We can redefine  `word` and `input` in a satisfying way now:
 
 ``` {.python replace=TextLayout/TextLayout%2c%20self.frame,InputLayout/InputLayout%2c%20self.frame}
 class BlockLayout:
-    def text(self, node):
+    def word(self, node, word):
         node_font = font(node.style, self.zoom)
-        for word in node.text.split():
-            w = node_font.measureText(word)
-            self.add_inline_child(node, w, TextLayout, word)
+        w = node_font.measureText(word)
+        self.add_inline_child(node, w, TextLayout, word)
 
     def input(self, node):
         w = device_px(INPUT_WIDTH_PX, self.zoom)
