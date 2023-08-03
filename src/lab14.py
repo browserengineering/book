@@ -158,7 +158,8 @@ class BlockLayout:
 
     def recurse(self, node):
         if isinstance(node, Text):
-            self.text(node)
+            for word in node.text.split():
+                self.word(node, word)
         else:
             if node.tag == "br":
                 self.new_line()
@@ -175,20 +176,19 @@ class BlockLayout:
         new_line = LineLayout(self.node, self, last_line)
         self.children.append(new_line)
 
-    def text(self, node):
+    def word(self, node, word):
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         size = device_px(float(node.style["font-size"][:-2]), self.zoom)
         font = get_font(size, weight, size)
-        for word in node.text.split():
-            w = font.measureText(word)
-            if self.cursor_x + w > self.width:
-                self.new_line()
-            line = self.children[-1]
-            text = TextLayout(node, word, line, self.previous_word)
-            line.children.append(text)
-            self.previous_word = text
-            self.cursor_x += w + font.measureText(" ")
+        w = font.measureText(word)
+        if self.cursor_x + w > self.width:
+            self.new_line()
+        line = self.children[-1]
+        text = TextLayout(node, word, line, self.previous_word)
+        line.children.append(text)
+        self.previous_word = text
+        self.cursor_x += w + font.measureText(" ")
 
     def input(self, node):
         w = device_px(INPUT_WIDTH_PX, self.zoom)

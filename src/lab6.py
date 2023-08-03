@@ -235,7 +235,8 @@ class BlockLayout:
 
     def recurse(self, node):
         if isinstance(node, Text):
-            self.text(node)
+            for word in node.text.split():
+                self.word(node, word)
         else:
             if node.tag == "br":
                 self.flush()
@@ -249,15 +250,14 @@ class BlockLayout:
         size = int(float(node.style["font-size"][:-2]) * .75)
         return get_font(size, weight, style)
 
-    def text(self, node):
+    def word(self, node, word):
         color = node.style["color"]
         font = self.get_font(node)
-        for word in node.text.split():
-            w = font.measure(word)
-            if self.cursor_x + w > self.width:
-                self.flush()
-            self.line.append((self.cursor_x, word, font, color))
-            self.cursor_x += w + font.measure(" ")
+        w = font.measure(word)
+        if self.cursor_x + w > self.width:
+            self.flush()
+        self.line.append((self.cursor_x, word, font, color))
+        self.cursor_x += w + font.measure(" ")
 
     def flush(self):
         if not self.line: return
