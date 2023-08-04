@@ -226,7 +226,8 @@ class BlockLayout:
 
     def recurse(self, node):
         if isinstance(node, Text):
-            self.text(node)
+            for word in node.text.split():
+                self.word(node, word)
         else:
             if node.tag == "br":
                 self.new_line()
@@ -260,11 +261,10 @@ class BlockLayout:
         self.previous_word = child
         self.cursor_x += w + font(node.style, self.zoom).measureText(" ")
 
-    def text(self, node):
+    def word(self, node, word):
         node_font = font(node.style, self.zoom)
-        for word in node.text.split():
-            w = node_font.measureText(word)
-            self.add_inline_child(node, w, TextLayout, self.frame, word)
+        w = node_font.measureText(word)
+        self.add_inline_child(node, w, TextLayout, self.frame, word)
 
     def input(self, node):
         w = device_px(INPUT_WIDTH_PX, self.zoom)

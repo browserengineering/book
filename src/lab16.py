@@ -446,13 +446,12 @@ class BlockLayout:
             w = IFRAME_WIDTH_PX + device_px(2, zoom)
         self.add_inline_child(node, w, IframeLayout, self.frame)
 
-    def text(self, node):
+    def word(self, node, word):
         zoom = self.zoom.read(notify=self.children)
         node_font = font(self.children, node.style, zoom)
-        for word in node.text.split():
-            w = node_font.measureText(word)
-            self.add_inline_child(
-                node, w, TextLayout, self.frame, word)
+        w = node_font.measureText(word)
+        self.add_inline_child(
+            node, w, TextLayout, self.frame, word)
 
     def new_line(self):
         self.previous_word = None

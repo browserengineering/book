@@ -91,7 +91,8 @@ class BlockLayout:
 
     def recurse(self, node):
         if isinstance(node, Text):
-            self.text(node)
+            for word in node.text.split():
+                self.word(word)
         else:
             self.open_tag(node.tag)
             for child in node.children:
@@ -123,14 +124,13 @@ class BlockLayout:
             self.flush()
             self.cursor_y += VSTEP
         
-    def text(self, node):
+    def word(self, word):
         font = get_font(self.size, self.weight, self.style)
-        for word in node.text.split():
-            w = font.measure(word)
-            if self.cursor_x + w > self.width:
-                self.flush()
-            self.line.append((self.cursor_x, word, font))
-            self.cursor_x += w + font.measure(" ")
+        w = font.measure(word)
+        if self.cursor_x + w > self.width:
+            self.flush()
+        self.line.append((self.cursor_x, word, font))
+        self.cursor_x += w + font.measure(" ")
 
     def flush(self):
         if not self.line: return

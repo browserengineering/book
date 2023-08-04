@@ -254,13 +254,12 @@ a time:[^10]
     including for identifying word boundaries.
 
 ``` {.python expected=False}
-for word in text.split():
-    w = font.measure(word)
-    if cursor_x + w > WIDTH - HSTEP:
-        cursor_y += font.metrics("linespace") * 1.25
-        cursor_x = HSTEP
-    self.display_list.append((cursor_x, cursor_y, word))
-    cursor_x += w + font.measure(" ")
+w = font.measure(word)
+if cursor_x + w > WIDTH - HSTEP:
+    cursor_y += font.metrics("linespace") * 1.25
+    cursor_x = HSTEP
+self.display_list.append((cursor_x, cursor_y, word))
+cursor_x += w + font.measure(" ")
 ```
 
 There's a lot of moving parts to this code. First, we measure the
@@ -427,12 +426,12 @@ add the font used to each entry in the display list.
 
 ``` {.python expected=False}
 if isinstance(tok, Text):
-    font = tkinter.font.Font(
-        size=16,
-        weight=weight,
-        slant=style,
-    )
     for word in tok.text.split():
+        font = tkinter.font.Font(
+            size=16,
+            weight=weight,
+            slant=style,
+        )
         # ...
         display_list.append((cursor_x, cursor_y, word, font))
 ```
@@ -485,7 +484,8 @@ def __init__(self, tokens):
 
 def token(self, tok):
     if isinstance(tok, Text):
-        # ...
+        for word in tok.text.split():
+            # ...
     elif tok.tag == "i":
         self.style = "italic"
     # ...
@@ -495,14 +495,14 @@ In fact, the body of the `isinstance(tok, Text)` branch can be moved
 to its own method:
 
 ``` {.python expected=False}
-def text(self, tok):
+def word(self, word):
     font = tkinter.font.Font(
         size=16,
         weight=self.weight,
         slant=self.style,
     )
-    for word in tok.text.split():
-        # ...
+    w = font.measure(word)
+    # ...
 ```
 
 Now that everything has moved out of `Browser`'s old `layout`
@@ -603,27 +603,27 @@ of the display list. Entries in `line` will have *x* but not *y*
 positions, since *y* positions aren't computed in the first phase:
 
 
-``` {.python indent=4}
+``` {.python}
 class Layout:
     def __init__(self, tokens):
         # ...
         self.line = []
         # ...
     
-    def text(self, tok):
+    def word(self, word):
         # ...
-        for word in tok.text.split():
-            # ...
-            self.line.append((self.cursor_x, word, font))
+        self.line.append((self.cursor_x, word, font))
 ```
 
 The new `line` field is essentially a buffer, where words are held
 temporarily before they can be placed. The second phase is that buffer
 being flushed when we're finished with a line:
 
-``` {.python indent=12}
-if self.cursor_x + w > WIDTH - HSTEP:
-    self.flush()
+``` {.python}
+class Layout:
+    def word(self, word):
+        if self.cursor_x + w > WIDTH - HSTEP:
+            self.flush()
 ```
 
 As usual with buffers, we also need to make sure the buffer is flushed
@@ -809,7 +809,7 @@ creating a `Font` object directly:
 
 ``` {.python}
 class Layout:
-    def text(self, tok):
+    def word(self, word):
         font = get_font(self.size, self.weight, self.style)
         # ...
 ```

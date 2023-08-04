@@ -389,9 +389,9 @@ idempotent. I found:[^exercises]
     idempotent ones.
 
 - In `new_line`, `BlockLayout` will append to its `children` array.
-- In `text` and `input`, `BlockLayout` will append to the `children`
+- In `word` and `input`, `BlockLayout` will append to the `children`
   array of some `LineLayout` child.
-- In `text` and `input`, `BlockLayout` will call `get_font`, as will
+- In `word` and `input`, `BlockLayout` will call `get_font`, as will
   the `TextLayout` and `InputLayout` methods.
 - Basically every layout method calls `device_px`.
 
@@ -925,7 +925,7 @@ class BlockLayout:
 ```
 
 `BlockLayout` also reads from the `zoom` field inside the `input`,
-`image`, `iframe`, `text`, and `add_inline_child` methods, which are
+`image`, `iframe`, `word`, and `add_inline_child` methods, which are
 all part of computing the `children` field. We can use `read` to read
 the zoom value and also invalidate the `children` field if the zoom
 value ever changes:
@@ -1015,18 +1015,17 @@ class BlockLayout:
 While we're here, note that the decision for whether or not to add a
 new line also depends on `w`, which is an input to `add_inline_child`.
 If you look through `add_inline_child`'s callers, you'll see that most
-of the time, this argument just depends on `zoom`, but in `text` it
+of the time, this argument just depends on `zoom`, but in `word` it
 depends on a font object:
 
 ``` {.python replace=node.style/self.children%2c%20node.style}
 class BlockLayout:
-    def text(self, node):
+    def word(self, node, word):
         zoom = self.zoom.read(notify=self.children)
         node_font = font(node.style, zoom)
-        for word in node.text.split():
-            w = node_font.measureText(word)
-            self.add_inline_child(
-                node, w, TextLayout, self.frame, word)
+        w = node_font.measureText(word)
+        self.add_inline_child(
+            node, w, TextLayout, self.frame, word)
 ```
 
 Note that the font depends on the node's `style`, which can change,
@@ -1088,12 +1087,12 @@ class JSContext:
         elt.style.mark()
 ```
 
-Finally, in `text` (and also in similar code in `add_inline_child`) we
+Finally, in `word` (and also in similar code in `add_inline_child`) we
 can depend on the `style` field:
 
 ``` {.python dropline=read(node.style) replace=style/self.children%2c%20node.style}
 class BlockLayout:
-    def text(self, node):
+    def word(self, node, word):
         # ...
         style = self.children.read(node.style)
         node_font = font(style, zoom)
@@ -2230,7 +2229,7 @@ we've read the node's `style` and passed that to `font`:
 
 ``` {.python expected=False}
 class BlockLayout:
-    def text(self, node):
+    def word(self, node, word):
         zoom = self.children.read(self.zoom)
         style = self.children.read(node.style)
         node_font = font(style, zoom)
@@ -2258,7 +2257,7 @@ requesting a font during line breaking:
 
 ``` {.python}
 class BlockLayout:
-    def text(self, node):
+    def word(self, node, word):
         zoom = self.zoom.read(notify=self.children)
         node_font = font(self.children, node.style, zoom)
         # ...

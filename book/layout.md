@@ -368,12 +368,11 @@ measure; instead, we'll wrap lines when `cursor_x` reaches the block's
 
 ``` {.python}
 class BlockLayout:
-    def text(self, node):
-        for word in node.text.split():
+    def word(self, word):
+        # ...
+        if self.cursor_x + w > self.width:
             # ...
-            if self.cursor_x + w > self.width:
-                # ...
-            # ...
+        # ...
 ```
 
 So now that leaves us with the problem of computing these `x`, `y`,

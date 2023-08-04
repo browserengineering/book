@@ -295,7 +295,7 @@ We'll do this conversion to adjust the font sizes in the `text` and
 ``` {.python}
 class BlockLayout:
 	# ....
-    def text(self, node):
+    def word(self, node, word):
     	# ...
         size = device_px(float(node.style["font-size"][:-2]), self.zoom)
 

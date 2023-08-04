@@ -128,7 +128,7 @@ and clearing the `line` field. We don't want to do all that---we just
 want to create a new `LineLayout` object. So let's use a different
 method for that:
 
-``` {.python indent=12}
+``` {.python indent=8}
 if self.cursor_x + w > self.width:
     self.new_line()
 ```

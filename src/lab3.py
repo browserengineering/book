@@ -72,7 +72,8 @@ class Layout:
 
     def token(self, tok):
         if isinstance(tok, Text):
-            self.text(tok)
+            for word in tok.text.split():
+                self.word(word)
         elif tok.tag == "i":
             self.style = "italic"
         elif tok.tag == "/i":
@@ -95,14 +96,13 @@ class Layout:
             self.flush()
             self.cursor_y += VSTEP
         
-    def text(self, tok):
+    def word(self, word):
         font = get_font(self.size, self.weight, self.style)
-        for word in tok.text.split():
-            w = font.measure(word)
-            if self.cursor_x + w > WIDTH - HSTEP:
-                self.flush()
-            self.line.append((self.cursor_x, word, font))
-            self.cursor_x += w + font.measure(" ")
+        w = font.measure(word)
+        if self.cursor_x + w > WIDTH - HSTEP:
+            self.flush()
+        self.line.append((self.cursor_x, word, font))
+        self.cursor_x += w + font.measure(" ")
 
     def flush(self):
         if not self.line: return
