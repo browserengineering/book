@@ -283,7 +283,7 @@ splits a string at the first `n` copies of `s`. Note that there's some
 tricky logic here for handling the slash between the host name and the
 path. That (optional) slash is part of the path.
 
-Our browser will create a `URL` objects based on user input, and then
+Our browser will create a `URL` object based on user input, and then
 it will want to download the web page at that URL. We'll do that in a
 new method, `request`:
 
