@@ -447,7 +447,7 @@ class BlockLayout:
         self.cursor_x += w + font(node.style, self.zoom).measureText(" ")
 ```
 
-We can redefine  `word` and `input` in a satisfying way now:
+We can redefine `word` and `input` in a satisfying way now:
 
 ``` {.python replace=TextLayout/TextLayout%2c%20self.frame,InputLayout/InputLayout%2c%20self.frame}
 class BlockLayout:
