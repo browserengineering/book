@@ -278,7 +278,7 @@ class URL:
 ```
 
 (When you see a code block with a `# ...`, like this one, that you're
-adding code to an existing method or block. The `split(s, n)` method
+adding code to an existing method or block.) The `split(s, n)` method
 splits a string at the first `n` copies of `s`. Note that there's some
 tricky logic here for handling the slash between the host name and the
 path. That (optional) slash is part of the path.
