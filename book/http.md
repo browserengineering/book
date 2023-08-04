@@ -379,7 +379,7 @@ class URL:
                .encode("utf8"))
 ```
 
-There are a few things to here that have to be exactly right. First,
+There are a few things to note here that have to be exactly right. First,
 it's very important to use `\r\n` instead of `\n` for newlines. It's
 also essential that you put *two* newlines `\r\n` at the end, so that
 you send that blank line at the end of the request. If you forget
