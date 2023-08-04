@@ -277,7 +277,7 @@ class URL:
         self.path = "/" + url
 ```
 
-When you see a code block with a `# ...`, like this one, that you're
+(When you see a code block with a `# ...`, like this one, that you're
 adding code to an existing method or block. The `split(s, n)` method
 splits a string at the first `n` copies of `s`. Note that there's some
 tricky logic here for handling the slash between the host name and the
