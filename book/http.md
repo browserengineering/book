@@ -675,7 +675,7 @@ class URL:
         # ...
 ```
 
-Note that here you're supposed to replace the existing scheme parsing
+(Note that here you're supposed to replace the existing scheme parsing
 code with this new code. It's usually clear from context and the code
 itself what you need to replace.
 
