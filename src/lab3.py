@@ -9,7 +9,7 @@ import socket
 import ssl
 import tkinter
 import tkinter.font
-from lab1 import request
+from lab1 import URL
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 
 class Text:
@@ -138,7 +138,7 @@ class Browser:
         self.display_list = []
 
     def load(self, url):
-        headers, body = request(url)
+        headers, body = url.request()
         tokens = lex(body)
         self.display_list = Layout(tokens).display_list
         self.draw()
@@ -156,5 +156,5 @@ class Browser:
 
 if __name__ == "__main__":
     import sys
-    Browser().load(sys.argv[1])
+    Browser().load(URL(sys.argv[1]))
     tkinter.mainloop()

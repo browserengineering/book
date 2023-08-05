@@ -23,6 +23,7 @@ IGNORE_FILES = [
     "test*.py",
     "Broken_Image.png",
     ".*",
+    "lab*.full.py",
     "wbetools.py",
 ]
 

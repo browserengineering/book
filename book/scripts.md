@@ -115,7 +115,7 @@ Next we run all of the scripts:
 def load(self, url, body=None):
     # ...
     for script in scripts:
-        header, body = request(resolve_url(script, url))
+        header, body = url.resolve(script).request()
         print("Script returned: ", dukpy.evaljs(body))
     # ...
 ```

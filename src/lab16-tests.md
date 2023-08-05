@@ -23,10 +23,10 @@ Editing a web page
 
 Here's a simple editable web page:
 
-    >>> url = test.socket.serve("""
+    >>> url = lab16.URL(test.socket.serve("""
     ... <!doctype html>
     ... <p contenteditable>Here is some content.</p>
-    ... """)
+    ... """))
     >>> browser = lab16.Browser()
     >>> browser.load(url)
     >>> browser.render()
@@ -61,7 +61,7 @@ Test web page
 
 Here's a simple test web page:
 
-    >>> url = test.socket.serve("""
+    >>> url = lab16.URL(test.socket.serve("""
     ... <!doctype html>
     ... <main>
     ...   <section>
@@ -74,7 +74,7 @@ Here's a simple test web page:
     ...     </div>
     ...   </section>
     ... </main>
-    ... """)
+    ... """))
 
 First of all, we can load and render it:
 
@@ -156,14 +156,14 @@ chapters.)
 Here's web page with an iframe inside of it. We make it narrow so that
 resizing is dramatic:
 
-    >>> url2 = test.socket.serve("""
+    >>> url2 = lab16.URL(test.socket.serve("""
     ... <!doctype html>
     ... <p>A B C D</p>
-    ... """)
-    >>> url1 = test.socket.serve("""
+    ... """))
+    >>> url1 = lab16.URL(test.socket.serve("""
     ... <!doctype html>
-    ... <iframe width=50 src=""" + url2 + """ />
-    ... """)
+    ... <iframe width=50 src=""" + str(url2) + """ />
+    ... """))
     >>> browser = lab16.Browser()
     >>> browser.load(url1)
     >>> browser.render()

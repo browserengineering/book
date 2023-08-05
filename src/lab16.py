@@ -15,21 +15,18 @@ import ssl
 import dukpy
 import time
 
-from lab1 import parse_url
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab4 import print_tree
 from lab5 import BLOCK_ELEMENTS
 from lab14 import Text, Element
 from lab6 import TagSelector, DescendantSelector
-from lab6 import resolve_url
 from lab6 import tree_to_list, INHERITED_PROPERTIES
 from lab7 import CHROME_PX
 from lab8 import INPUT_WIDTH_PX
 from lab8 import layout_mode
 from lab9 import EVENT_DISPATCH_CODE
-from lab10 import COOKIE_JAR, url_origin
-from lab11 import FONTS, get_font, linespace, \
-    parse_blend_mode
+from lab10 import COOKIE_JAR
+from lab11 import FONTS, get_font, linespace, parse_blend_mode
 from lab12 import MeasureTime, REFRESH_RATE_SEC
 from lab12 import Task, TaskRunner, SingleThreadedTaskRunner
 from lab13 import diff_styles, parse_transition, clamp_scroll, add_parent_pointers
@@ -45,7 +42,7 @@ from lab14 import parse_color, parse_outline, DrawRRect, \
     device_px, cascade_priority, \
     is_focusable, get_tabindex, announce_text, speak_text, \
     CSSParser, main_func, DrawOutline
-from lab15 import request, HTMLParser, AttributeParser, DrawImage, DocumentLayout, BlockLayout, \
+from lab15 import URL, HTMLParser, AttributeParser, DrawImage, DocumentLayout, BlockLayout, \
     EmbedLayout, InputLayout, LineLayout, TextLayout, ImageLayout, \
     IframeLayout, JSContext, style, AccessibilityNode, Frame, Tab, \
     CommitData, Browser, BROKEN_IMAGE, font, \
@@ -1024,7 +1021,7 @@ class Frame:
         self.zoom = 1
         self.scroll = 0
         self.scroll_changed_in_frame = True
-        headers, body = request(url, self.url, body)
+        headers, body = url.request(self.url, body)
         body = body.decode("utf8")
         self.url = url
 
@@ -1036,7 +1033,7 @@ class Frame:
 
         self.nodes = HTMLParser(body).parse()
 
-        self.js = self.tab.get_js(url_origin(url))
+        self.js = self.tab.get_js(url.origin())
         self.js.add_window(self)
 
         scripts = [node.attributes["src"] for node
@@ -1045,12 +1042,12 @@ class Frame:
                    and node.tag == "script"
                    and "src" in node.attributes]
         for script in scripts:
-            script_url = resolve_url(script, url)
+            script_url = url.resolve(script)
             if not self.allowed_request(script_url):
                 print("Blocked script", script, "due to CSP")
                 continue
 
-            header, body = request(script_url, url)
+            header, body = script_url.request(url)
             body = body.decode("utf8")
             task = Task(self.js.run, script_url, body,
                 self.window_id)
@@ -1064,12 +1061,12 @@ class Frame:
                  and "href" in node.attributes
                  and node.attributes.get("rel") == "stylesheet"]
         for link in links:  
-            style_url = resolve_url(link, url)
+            style_url = url.resolve(link)
             if not self.allowed_request(style_url):
                 print("Blocked style", link, "due to CSP")
                 continue
             try:
-                header, body = request(style_url, url)
+                header, body = style_url.request(url)
             except:
                 continue
             self.rules.extend(CSSParser(body.decode("utf8")).parse())
@@ -1081,10 +1078,10 @@ class Frame:
         for img in images:
             try:
                 src = img.attributes.get("src", "")
-                image_url = resolve_url(src, self.url)
+                image_url = url.resolve(src)
                 assert self.allowed_request(image_url), \
                     "Blocked load of " + image_url + " due to CSP"
-                header, body = request(image_url, self.url)
+                header, body = image_url.request(url)
                 img.encoded_data = body
                 data = skia.Data.MakeWithoutCopy(body)
                 img.image = skia.Image.MakeFromEncoded(data)
@@ -1100,8 +1097,7 @@ class Frame:
                    and node.tag == "iframe"
                    and "src" in node.attributes]
         for iframe in iframes:
-            document_url = resolve_url(iframe.attributes["src"],
-                self.tab.root_frame.url)
+            document_url = url.resolve(iframe.attributes["src"])
             if not self.allowed_request(document_url):
                 print("Blocked iframe", document_url, "due to CSP")
                 iframe.frame = None

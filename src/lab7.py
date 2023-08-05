@@ -9,14 +9,24 @@ import socket
 import ssl
 import tkinter
 import tkinter.font
-from lab1 import request
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS, layout_mode, DrawRect
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
-from lab6 import DrawText, resolve_url, tree_to_list
+from lab6 import DrawText, URL, tree_to_list
+import wbetools
+
+@wbetools.patch(URL)
+class URL:
+    def __str__(self):
+        port_part = ":" + str(self.port)
+        if self.scheme == "https" and self.port == 443:
+            port_part = ""
+        if self.scheme == "http" and self.port == 80:
+            port_part = ""
+        return self.scheme + "://" + self.host + port_part + self.path
 
 class LineLayout:
     def __init__(self, node, parent, previous):
@@ -271,7 +281,7 @@ class Tab:
             self.default_style_sheet = CSSParser(f.read()).parse()
 
     def load(self, url):
-        headers, body = request(url)
+        headers, body = url.request()
         self.scroll = 0
         self.url = url
         self.history.append(url)
@@ -286,7 +296,7 @@ class Tab:
                  and node.attributes.get("rel") == "stylesheet"]
         for link in links:
             try:
-                header, body = request(resolve_url(link, url))
+                header, body = url.resolve(link).request()
             except:
                 continue
             rules.extend(CSSParser(body).parse())
@@ -318,7 +328,7 @@ class Tab:
             if isinstance(elt, Text):
                 pass
             elif elt.tag == "a" and "href" in elt.attributes:
-                url = resolve_url(elt.attributes["href"], self.url)
+                url = self.url.resolve(elt.attributes["href"])
                 return self.load(url)
             elt = elt.parent
 
@@ -362,7 +372,7 @@ class Browser:
             if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
                 self.active_tab = int((e.x - 40) / 80)
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
-                self.load("https://browser.engineering/")
+                self.load(URL("https://browser.engineering/"))
             elif 10 <= e.x < 35 and 50 <= e.y < 90:
                 self.tabs[self.active_tab].go_back()
             elif 50 <= e.x < WIDTH - 10 and 50 <= e.y < 90:
@@ -381,7 +391,7 @@ class Browser:
 
     def handle_enter(self, e):
         if self.focus == "address bar":
-            self.tabs[self.active_tab].load(self.address_bar)
+            self.tabs[self.active_tab].load(URL(self.address_bar))
             self.focus = None
             self.draw()
 
@@ -419,7 +429,7 @@ class Browser:
             w = buttonfont.measure(self.address_bar)
             cmds.append(DrawLine(55 + w, 55, 55 + w, 85, "black", 1))
         else:
-            url = self.tabs[self.active_tab].url
+            url = str(self.tabs[self.active_tab].url)
             cmds.append(DrawText(55, 55, url, buttonfont, "black"))
 
         cmds.append(DrawOutline(10, 50, 35, 90, "black", 1))
@@ -434,5 +444,5 @@ class Browser:
 
 if __name__ == "__main__":
     import sys
-    Browser().load(sys.argv[1])
+    Browser().load(URL(sys.argv[1]))
     tkinter.mainloop()

@@ -42,7 +42,7 @@ def catch_issues(f):
             except AssertionError as e2:
                 if str(e2):
                     e1.message = str(e2)
-                if WRAP_DISABLED: raise e1
+                if WRAP_DISABLED: raise e2
                 ISSUES.append(e1)
                 return "/* " + asttools.unparse(tree) + " */"
     return wrapped
@@ -573,6 +573,8 @@ def compile_expr(tree, ctx):
                 elif isinstance(comp, ast.List):
                     assert isinstance(tree.left, ast.Name) or \
                         (isinstance(tree.left, ast.Subscript) and
+                         isinstance(tree.left.value, ast.Name)) or \
+                        (isinstance(tree.left, ast.Attribute) and
                          isinstance(tree.left.value, ast.Name))
                     op = " !== " if negate else " === "
                     parts = [lhs + op + compile_expr(v, ctx) for v in comp.elts]
@@ -981,8 +983,9 @@ if __name__ == "__main__":
     assert name.endswith(".py")
     if args.hints: read_hints(args.hints)
     INDENT = args.indent
-    (tree, patches) = asttools.resolve_patches_and_return_them(asttools.parse(args.python.read(), args.python.name))
+    tree = asttools.parse(args.python.read(), args.python.name)
     load_outline(asttools.inline(tree))
+    tree, patches = asttools.resolve_patches_and_return_them(tree)
     js = compile_module(tree, patches)
 
     for fn in FILES:

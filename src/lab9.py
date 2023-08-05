@@ -16,9 +16,9 @@ from lab4 import Text, Element, print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS, DrawRect
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
-from lab6 import DrawText, resolve_url, tree_to_list
+from lab6 import DrawText, tree_to_list
 from lab7 import DrawLine, DrawOutline, LineLayout, TextLayout, CHROME_PX
-from lab8 import request, layout_mode
+from lab8 import URL, layout_mode
 from lab8 import DocumentLayout, BlockLayout, InputLayout, INPUT_WIDTH_PX
 
 EVENT_DISPATCH_CODE = \
@@ -92,7 +92,7 @@ class Tab:
         self.scroll = 0
         self.url = url
         self.history.append(url)
-        headers, body = request(url, body)
+        headers, body = url.request(body)
         self.nodes = HTMLParser(body).parse()
 
         self.js = JSContext(self)
@@ -102,7 +102,7 @@ class Tab:
                    and node.tag == "script"
                    and "src" in node.attributes]
         for script in scripts:
-            header, body = request(resolve_url(script, url))
+            header, body = url.resolve(script).request()
             try:
                 self.js.run(body)
             except dukpy.JSRuntimeError as e:
@@ -117,7 +117,7 @@ class Tab:
                  and node.attributes.get("rel") == "stylesheet"]
         for link in links:
             try:
-                header, body = request(resolve_url(link, url))
+                header, body = url.resolve(link).request()
             except:
                 continue
             self.rules.extend(CSSParser(body).parse())
@@ -163,7 +163,7 @@ class Tab:
                 pass
             elif elt.tag == "a" and "href" in elt.attributes:
                 if self.js.dispatch_event("click", elt): return
-                url = resolve_url(elt.attributes["href"], self.url)
+                url = self.url.resolve(elt.attributes["href"])
                 return self.load(url)
             elif elt.tag == "input":
                 if self.js.dispatch_event("click", elt): return
@@ -194,7 +194,7 @@ class Tab:
             body += "&" + name + "=" + value
         body = body [1:]
 
-        url = resolve_url(elt.attributes["action"], self.url)
+        url = self.url.resolve(elt.attributes["action"])
         self.load(url, body)
 
     def keypress(self, char):
@@ -299,7 +299,7 @@ class Browser:
             w = buttonfont.measure(self.address_bar)
             cmds.append(DrawLine(55 + w, 55, 55 + w, 85, "black", 1))
         else:
-            url = self.tabs[self.active_tab].url
+            url = str(self.tabs[self.active_tab].url)
             cmds.append(DrawText(55, 55, url, buttonfont, "black"))
 
         cmds.append(DrawOutline(10, 50, 35, 90, "black", 1))

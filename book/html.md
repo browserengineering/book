@@ -283,7 +283,7 @@ Try this out on this web page, parsing the HTML source code and then
 calling `print_tree` to visualize it:
 
 ``` {.python expected=False}
-headers, body = request(sys.argv[1])
+headers, body = URL(sys.argv[1]).request()
 nodes = HTMLParser(body).parse()
 print_tree(nodes)
 ```
@@ -588,7 +588,7 @@ the node tree, like this:
 ``` {.python}
 class Browser:
     def load(self, url):
-        headers, body = request(url)
+        headers, body = url.request()
         self.nodes = HTMLParser(body).parse()
         self.display_list = Layout(self.nodes).display_list
         self.draw()

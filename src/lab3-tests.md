@@ -106,10 +106,7 @@ Testing `Browser`
 
 Now let's test integration of layout into the Browser class.
 
-    >>> url = 'http://test.test/example2'
-    >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n" +
-    ... b"Header1: Value1\r\n\r\n" +
-    ... b"<small>abc<i>def</i></small>")
+    >>> url = lab3.URL(test.socket.serve("<small>abc<i>def</i></small>"))
     >>> browser = lab3.Browser()
     >>> browser.load(url)
 
