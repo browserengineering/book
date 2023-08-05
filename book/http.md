@@ -412,17 +412,18 @@ types to text and to bytes:
 If you see an error about `str` versus `bytes`, it's because you
 forgot to call `encode` or `decode` somewhere.
 
-If you run this in the REPL, you'll notice that the `send` call
-returns a number, in this case `47`. That tells you how many bytes of
-data you sent to the other computer; if, say, your network connection
-failed midway through sending the data, you might want to know how
-much you sent before the connection failed.
-
-To read the response, you'd generally use the `read` function on
+Finally, `send` just sends the request to the server.[^send-return]
+To read its response, you'd generally use the `read` function on
 sockets, which gives whatever bits of the response have already
 arrived. Then you write a loop that collects bits of the response as
 they arrive. However, in Python you can use the `makefile` helper
 function, which hides the loop:[^19]
+
+[^send-return]: `send` actually returns a number, in this case `47`.
+    That tells you how many bytes of data you sent to the other
+    computer; if, say, your network connection failed midway through
+    sending the data, you might want to know how much you sent before
+    the connection failed.
 
 ``` {.python}
 class URL:
