@@ -18,6 +18,26 @@ from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import DrawText, resolve_url, tree_to_list
 from lab7 import DrawLine, DrawOutline, LineLayout, TextLayout, CHROME_PX
+import wbetools
+
+@wbetools.patch(Element)
+class Element:
+    def __init__(self, tag, attributes, parent):
+        self.tag = tag
+        self.attributes = attributes
+        self.children = []
+        self.parent = parent
+        self.style = {}
+        self.is_focused = False
+
+@wbetools.patch(Text)
+class Text:
+    def __init__(self, text, parent):
+        self.text = text
+        self.children = []
+        self.parent = parent
+        self.style = {}
+        self.is_focused = False
 
 def request(url, payload=None):
     (scheme, host, path) = parse_url(url)
@@ -136,6 +156,11 @@ class InputLayout:
         color = self.node.style["color"]
         display_list.append(
             DrawText(self.x, self.y, text, self.font, color))
+
+        if self.node.is_focused:
+            cx = self.x + self.font.measure(text)
+            display_list.append(DrawLine(
+                cx, self.y, cx, self.y + self.height, "black", 1))
 
     def __repr__(self):
         if self.node.tag == "input":
@@ -311,16 +336,6 @@ class Tab:
         self.display_list = []
         self.document.paint(self.display_list)
 
-        if self.focus:
-            obj = [obj for obj in tree_to_list(self.document, [])
-                   if obj.node == self.focus and \
-                        isinstance(obj, InputLayout)][0]
-            text = self.focus.attributes.get("value", "")
-            x = obj.x + obj.font.measure(text)
-            y = obj.y - self.scroll
-            self.display_list.append(
-                DrawLine(x, y, x, y + obj.height, "black", 1))
-
     def draw(self, canvas):
         for cmd in self.display_list:
             if cmd.top > self.scroll + HEIGHT - CHROME_PX: continue
@@ -347,7 +362,10 @@ class Tab:
                 return self.load(url)
             elif elt.tag == "input":
                 elt.attributes["value"] = ""
+                if self.focus:
+                    self.focus.is_focused = False
                 self.focus = elt
+                elt.is_focused = True
                 return self.render()
             elif elt.tag == "button":
                 while elt:

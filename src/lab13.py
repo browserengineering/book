@@ -19,13 +19,13 @@ import OpenGL.GL
 
 from lab1 import parse_url
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
-from lab4 import Text, Element, print_tree, HTMLParser
+from lab4 import print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS
 from lab6 import TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, cascade_priority
 from lab6 import resolve_url, tree_to_list
 from lab7 import CHROME_PX
-from lab8 import INPUT_WIDTH_PX, layout_mode
+from lab8 import Text, Element, INPUT_WIDTH_PX, layout_mode
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, request, url_origin
 from lab11 import FONTS, get_font, parse_color, parse_blend_mode, linespace
@@ -38,8 +38,8 @@ class Text:
         self.text = text
         self.children = []
         self.parent = parent
-
         self.style = {}
+        self.is_focused = False
         self.animations = {}
 
 @wbetools.patch(Element)
@@ -49,8 +49,8 @@ class Element:
         self.attributes = attributes
         self.children = []
         self.parent = parent
-
         self.style = {}
+        self.is_focused = False
         self.animations = {}
 
 class DisplayItem:
@@ -684,6 +684,11 @@ class InputLayout:
         cmds.append(DrawText(self.x, self.y,
                              text, self.font, color))
 
+        if self.node.is_focused:
+            cx = self.x + self.font.measureText(text)
+            cmds.append(DrawLine(
+                cx, self.y, cx, self.y + self.height, "black", 1))
+
         cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
 
@@ -1228,17 +1233,7 @@ class Tab:
         
         if self.needs_paint:
             self.display_list = []
-
             self.document.paint(self.display_list)
-            if self.focus:
-                obj = [obj for obj in tree_to_list(self.document, [])
-                   if obj.node == self.focus and \
-                        isinstance(obj, InputLayout)][0]
-                text = self.focus.attributes.get("value", "")
-                x = obj.x + obj.font.measureText(text)
-                y = obj.y
-                self.display_list.append(
-                    DrawLine(x, y, x, y + obj.height, "black", 1))
             self.needs_paint = False
 
         self.measure_render.stop_timing()
@@ -1263,9 +1258,11 @@ class Tab:
                 return
             elif elt.tag == "input":
                 elt.attributes["value"] = ""
-                if elt != self.focus:
-                    self.set_needs_render()
+                if self.focus:
+                    self.focus.is_focused = False
                 self.focus = elt
+                elt.is_focused = True
+                self.set_needs_render()
                 return
             elif elt.tag == "button":
                 while elt:

@@ -464,38 +464,51 @@ arbitrarily deep.
 
 So now we have user input working with `input` elements. Before we
 move on, there is one last tweak that we need to make: drawing the
-text cursor in the `Tab`'s `render` method. We'll first need to figure
-out where the text entry is located, onscreen, by finding its layout
-object:
+text cursor in the `Tab`'s `render` method. This turns out to be
+harder than expected: the cursor should be drawn by the `InputLayout`
+of the focused node, and that means that each node has to know whether
+or not it's focused:
+
+``` {.python}
+class Element:
+    def __init__(self, tag, attributes, parent):
+        # ...
+        self.is_focused = False
+```
+
+Add the same field to `Text` nodes; they'll never be focused and never
+draw cursors, but it's more convenient if `Text` and `Element` have
+the same fields. We'll set this when we move focus to an input
+element:
 
 ``` {.python}
 class Tab:
-    def render(self):
+    def click(self, x, y):
+        while elt:
+            elif elt.tag == "input":
+                elt.attributes["value"] = ""
+                if self.focus:
+                    self.focus.is_focused = False
+                self.focus = elt
+                elt.is_focused = True
+                return self.render()
+```
+
+Note that we have to un-focus[^blur] the currently-focused element,
+lest it keep drawing its cursor. Anyway, now we can draw a cursor if
+an `input` element is focused:
+
+[^blur]: Un-focusing is called "blurring", which can get a bit
+    confusing.
+
+``` {.python}
+class InputLayout:
+    def paint(self, display_list):
         # ...
-        if self.focus:
-            obj = [obj for obj in tree_to_list(self.document, [])
-                   if obj.node == self.focus and \
-                        isinstance(obj, InputLayout)][0]
-```
-
-Then using that layout object we can find the coordinates where the
-cursor starts:
-
-``` {.python indent=8}
-if self.focus:
-    # ...
-    text = self.focus.attributes.get("value", "")
-    x = obj.x + obj.font.measure(text)
-    y = obj.y - self.scroll
-```
-
-And finally draw the cursor itself:
-
-``` {.python indent=8}
-if self.focus:
-    # ...
-    self.display_list.append(
-        DrawLine(x, y, x, y + obj.height, "black", 1))
+        if self.node.is_focused:
+            cx = self.x + self.font.measure(text)
+            display_list.append(DrawLine(
+                cx, self.y, cx, self.y + self.height, "black", 1))
 ```
 
 Now you can click on a text entry, type into it, and modify its value.

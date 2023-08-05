@@ -1030,23 +1030,18 @@ element they want or if they need to keep hitting `Tab`. In most
 browsers, this visual indication is a *focus ring* that outlines the
 focused element.
 
-To implement focus rings, we're going to have to generalize how we
-implement text cursors. Recall that, right now, text cursors are added
-by drawing a vertical line in the `Tab`'s `render` method. We could
-extend that code to draw a cursor or an outline, but before we make
-that method more complicated let's move it into the `InputLayout` so
-we have easier access to size and position information.[^effects] To
-do that, we'll need each `InputLayout` to know whether or not it is
-currently focused:
+To implement focus rings, we'll use the same mechanism we use to draw
+text cursors. Recall that, right now, text cursors are added by
+drawing a vertical line in the `InputLayout`'s `paint` method. We'll
+add a call to `paint_outline` in that method:
 
-[^effects]: As a side effect, this change will also mean text cursors
-    are now affected by visual effects, including blends, opacity, and
-    translations. Translations in particular are important.
-
-``` {.python}
-class Element:
-    def __init__(self, tag, attributes, parent):
-        self.is_focused = False
+``` {.python replace=node.is_focused/has_outline(node),%22black%22/color,1/thickness}
+def paint_outline(node, cmds, rect, zoom):
+    if node.is_focused:
+        cmds.append(DrawOutline(
+            rect.left(), rect.top(),
+            rect.right(), rect.bottom(),
+            "black", 1))
 ```
 
 We'll set this flag in a new `focus_element` method that we'll now use
@@ -1064,24 +1059,13 @@ class Tab:
 
 To draw an outline, we'll use `DrawOutline`:
 
-``` {.python replace=node.is_focused/has_outline(node),%22black%22/color,1/thickness}
-def paint_outline(node, cmds, rect, zoom):
-    if node.is_focused:
-        cmds.append(DrawOutline(
-            rect.left(), rect.top(),
-            rect.right(), rect.bottom(),
-            "black", 1))
-```
-
-Call it in `InputLayout` to make sure text entries and buttons get outlines.
-
 ``` {.python}
 class InputLayout:
 	def paint(self, display_list):
 		# ...
         if self.node.is_focused and self.node.tag == "input":
-            cx = rect.left() + self.font.measureText(text)
-            cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom(),
+            cx = self.x + self.font.measureText(text)
+            cmds.append(DrawLine(cx, self.y, cx, self.y + self.height,
                                  "black", 1))
 
         cmds = paint_visual_effects(self.node, cmds, rect)
@@ -1089,8 +1073,9 @@ class InputLayout:
         display_list.extend(cmds)
 ```
 
-Note that this comes after painting the rest of the text entry's
-content but before the visual effects.
+I also changed the cursor drawing to only happen if the node is
+focused *and* it is an `input` element. Tabbing over to a `button`
+element should not draw a cursor!
 
 Unfortunately, handling links is a little more complicated. That's
 because one `<a>` element corresponds to multiple `TextLayout`

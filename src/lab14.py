@@ -480,8 +480,8 @@ class InputLayout:
                              text, self.font, color))
 
         if self.node.is_focused and self.node.tag == "input":
-            cx = rect.left() + self.font.measureText(text)
-            cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom(),
+            cx = self.x + self.font.measureText(text)
+            cmds.append(DrawLine(cx, self.y, cx, self.y + self.height,
                                  "black", 1))
 
         cmds = paint_visual_effects(self.node, cmds, rect)
@@ -1097,7 +1097,6 @@ class Tab:
 
         if self.needs_paint:
             self.display_list = []
-
             self.document.paint(self.display_list)
             self.needs_paint = False
 
