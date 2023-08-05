@@ -299,7 +299,7 @@ form .checkoff, form button[type=submit] { margin-top: 1em; }
     #signup, nav.links { display: none;}
     .note-container:before { content: " ["; }
     .note-container, .note-container:before, .note-container:after { color: navy; }
-    pre { font-size: 0.8333rem; }
+    pre { font-size: 10px; }
     #toc a { text-decoration: none; color: black; }
 }
 
