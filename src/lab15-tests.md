@@ -35,10 +35,10 @@ Let's verify that we can request the image:
     ... b'content-type: text/html\r\n\r\n' +
     ... b'<img src="http://test.test/img.png">')
     >>> browser = lab15.Browser()
-    >>> browser.load(url)
+    >>> browser.load(lab15.URL(url))
     >>> browser.render()
     >>> frame = browser.tabs[0].root_frame
-    >>> headers, body = lab15.request(image_url, frame)
+    >>> headers, body = lab15.URL(image_url).request(frame.url)
     >>> type(body)
     <class 'bytes'>
 
@@ -70,7 +70,7 @@ Now let's test setting a different width and height:
     ... b'<img width=10 height=20 src="http://test.test/img.png">')
 
     >>> browser = lab15.Browser()
-    >>> browser.load(size_url)
+    >>> browser.load(lab15.URL(size_url))
     >>> browser.render()
     >>> browser.tabs[0].advance_tab()
     >>> browser.render()
@@ -88,7 +88,7 @@ Let's load the original image in an iframe.
     ... b'<iframe src="http://test.test/">')
 
     >>> browser = lab15.Browser()
-    >>> browser.load(iframe_url)
+    >>> browser.load(lab15.URL(iframe_url))
     >>> browser.render()
     >>> browser.tabs[0].advance_tab()
     >>> browser.render()
@@ -107,7 +107,7 @@ And the sized one:
     ... b'<iframe src="http://test.test/size">')
 
     >>> browser = lab15.Browser()
-    >>> browser.load(iframe_size_url)
+    >>> browser.load(lab15.URL(iframe_size_url))
     >>> browser.render()
     >>> browser.tabs[0].advance_tab()
     >>> browser.render()
@@ -128,7 +128,7 @@ Iframes can be sized too:
     ... b'<iframe width=50 height=30 src="http://test.test/">')
 
     >>> browser = lab15.Browser()
-    >>> browser.load(sized_iframe_url)
+    >>> browser.load(lab15.URL(sized_iframe_url))
     >>> browser.render()
     >>> browser.tabs[0].advance_tab()
     >>> browser.render()
@@ -174,7 +174,7 @@ Now let's test scrolling of the root frame:
 Clicking the sub-frame focuses it:
 
     >>> browser = lab15.Browser()
-    >>> browser.load(sized_iframe_url)
+    >>> browser.load(lab15.URL(sized_iframe_url))
     >>> browser.render()
     >>> browser.tabs[0].advance_tab()
     >>> browser.render()
@@ -210,7 +210,7 @@ Let's verify that it still works.
     ... b'<input><a href="/dest">Link</a>')
 
     >>> browser = lab15.Browser()
-    >>> browser.load(focus_url)
+    >>> browser.load(lab15.URL(focus_url))
     >>> browser.render()
     >>> browser.toggle_accessibility()
 
@@ -227,7 +227,7 @@ Rendering will read out the accessibility instructions:
 It also works for iframes:
 
     >>> browser = lab15.Browser()
-    >>> browser.load(iframe_url)
+    >>> browser.load(lab15.URL(iframe_url))
     >>> browser.render()
     >>> browser.toggle_accessibility()
 
@@ -278,7 +278,7 @@ resizing is dramatic:
     ... <iframe width=50 src=""" + url2 + """ />
     ... """)
     >>> browser = lab15.Browser()
-    >>> browser.load(url1)
+    >>> browser.load(lab15.URL(url1))
     >>> browser.render()
     >>> frame1 = browser.tabs[0].root_frame
     >>> iframe = [

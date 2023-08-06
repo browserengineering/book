@@ -121,7 +121,7 @@ class Tab:
     def load(self):
         for script in scripts:
             # ...
-            header, body = request(script_url, url)
+            header, body = script_url.request(url)
             task = Task(self.run_script, script_url, body)
             self.task_runner.schedule_task(task)
 ```
@@ -414,10 +414,10 @@ parts. The first part will resolve the URL and do security checks:
 ``` {.python}
 class JSContext:
     def XMLHttpRequest_send(self, method, url, body, isasync, handle):
-        full_url = resolve_url(url, self.tab.url)
+        full_url = self.tab.url.resolve(url)
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
-        if url_origin(full_url) != url_origin(self.tab.url):
+        if full_url.origin() != self.tab.url.origin():
             raise Exception(
                 "Cross-origin XHR request not allowed")
 ```
@@ -430,8 +430,7 @@ class JSContext:
     def XMLHttpRequest_send(self, method, url, body, isasync, handle):
         # ...
         def run_load():
-            headers, response = request(
-                full_url, self.tab.url, body)
+            headers, response = full_url.request(self.tab.url, body)
             task = Task(self.dispatch_xhr_onload, response, handle)
             self.tab.task_runner.schedule_task(task)
             if not isasync:

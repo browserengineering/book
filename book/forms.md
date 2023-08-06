@@ -188,7 +188,7 @@ We now need to create some `InputLayout`s, which we can do in
 class BlockLayout:
     def recurse(self, node):
         if isinstance(node, Text):
-            self.text(node)
+            # ...
         else:
             if node.tag == "br":
                 self.new_line()
@@ -617,7 +617,7 @@ function, which handles making requests:
 ``` {.python}
 def submit_form(self, elt):
     # ...
-    url = resolve_url(elt.attributes["action"], self.url)
+    url = self.url.resolve(elt.attributes["action"])
     self.load(url, body)
 ```
 
@@ -626,7 +626,7 @@ The new `body` argument to `load` is then passed through to `request`:
 ``` {.python indent=4}
 def load(self, url, body=None):
     # ...
-    headers, body = request(url, body)
+    headers, body = url.request(body)
     # ...
 ```
 
@@ -634,23 +634,25 @@ In `request`, this new argument is used to decide between a `GET` and
 a `POST` request:
 
 ``` {.python}
-def request(url, payload=None):
-    # ...
-    method = "POST" if payload else "GET"
-    # ...
-    body = "{} {} HTTP/1.0\r\n".format(method, path)
-    # ...
+class URL:
+    def request(self, payload=None):
+        # ...
+        method = "POST" if payload else "GET"
+        # ...
+        body = "{} {} HTTP/1.0\r\n".format(method, self.path)
+        # ...
 ```
 
 If there it's a `POST` request, the `Content-Length` header is mandatory:
 
 ``` {.python}
-def request(url, payload=None):
-    # ...
-    if payload:
-        length = len(payload.encode("utf8"))
-        body += "Content-Length: {}\r\n".format(length)
-    # ...
+class URL:
+    def request(self, payload=None):
+        # ...
+        if payload:
+            length = len(payload.encode("utf8"))
+            body += "Content-Length: {}\r\n".format(length)
+        # ...
 ```
 
 Note that the `Content-Length` is the length of the payload in bytes,
@@ -658,11 +660,12 @@ which might not be equal to its length in letters.[^unicode] Finally,
 after the headers, we send the payload itself:
 
 ``` {.python}
-def request(url, payload=None):
-    # ...
-    body += "\r\n" + (payload if payload else "")
-    s.send(body.encode("utf8"))
-    # ...
+class URL:
+    def request(self, payload=None):
+        # ...
+        body += "\r\n" + (payload if payload else "")
+        s.send(body.encode("utf8"))
+        # ...
 ```
 
 [^unicode]: Because characters from many languages are encoded as

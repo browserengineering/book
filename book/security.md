@@ -359,13 +359,14 @@ you open a second tab, you're logged in on that tab as well.
 When the browser visits a page, it needs to send the cookie for that
 site:
 
-``` {.python replace=(url/(url%2c%20top_level_url,cookie%20%3d/cookie%2c%20params%20%3d}
-def request(url, payload=None):
-    # ...
-    if host in COOKIE_JAR:
-        cookie = COOKIE_JAR[host]
-        body += "Cookie: {}\r\n".format(cookie)
-    # ...
+``` {.python replace=(self/(self%2c%20top_level_url,cookie%20%3d/cookie%2c%20params%20%3d}
+class URL:
+    def request(self, payload=None):
+        # ...
+        if self.host in COOKIE_JAR:
+            cookie = COOKIE_JAR[self.host]
+            body += "Cookie: {}\r\n".format(cookie)
+        # ...
 ```
 
 Symmetrically, the browser has to update the cookie jar when it sees a
@@ -374,13 +375,14 @@ Symmetrically, the browser has to update the cookie jar when it sees a
 [^multiple-set-cookies]: A server can actually send multiple
     `Set-Cookie` headers to set multiple cookies in one request.
 
-``` {.python replace=(url/(url%2c%20top_level_url,%3d%20kv/%3d%20(kv%2c%20params),kv/cookie}
-def request(url, payload=None):
-    # ...
-    if "set-cookie" in headers:
-        kv = headers["set-cookie"]
-        COOKIE_JAR[host] = kv
-    # ...
+``` {.python replace=(self/(self%2c%20top_level_url,%3d%20kv/%3d%20(kv%2c%20params),kv/cookie}
+class URL:
+    def request(self, payload=None):
+        # ...
+        if "set-cookie" in headers:
+            kv = headers["set-cookie"]
+            COOKIE_JAR[self.host] = kv
+        # ...
 ```
 
 You should now be able to use your toy browser to log in to the guest
@@ -505,11 +507,11 @@ The `XMLHttpRequest_send` function just calls `request`:[^note-method]
     (which allows `POST` requests with no payload), and I'm only doing
     it here for convenience.
 
-``` {.python replace=full_url%2c/full_url%2c%20self.tab.url%2c}
+``` {.python replace=request(/request(self.tab.url%2c%20}
 class JSContext:
     def XMLHttpRequest_send(self, method, url, body):
-        full_url = resolve_url(url, self.tab.url)
-        headers, out = request(full_url, body)
+        full_url = self.tab.url.resolve(url)
+        headers, out = full_url.request(body)
         return out
 ```
 
@@ -595,17 +597,17 @@ compare the URL of the request to the URL of the page we are on:
 class JSContext:
     def XMLHttpRequest_send(self, method, url, body):
         # ...
-        if url_origin(full_url) != url_origin(self.tab.url):
+        if full_url.origin() != self.tab.url.origin():
             raise Exception("Cross-origin XHR request not allowed")
         # ...
 ```
 
-The `url_origin` function can just strip off the path from a URL:
+The `origin` function can just strip off the path from a URL:
 
 ``` {.python}
-def url_origin(url):
-    (scheme, host, path) = parse_url(url)
-    return scheme + "://" + host
+class URL:
+    def origin(self):
+        return self.scheme + "://" + self.host
 ```
 
 Now an attacker can't read the guest book web page. But can they write
@@ -783,8 +785,8 @@ requests.[^iow-links]
 First, let's modify `COOKIE_JAR` to store cookie/parameter pairs, and
 then parse those parameters out of `Set-Cookie` headers:
 
-``` {.python replace=(url/(url%2c%20top_level_url}
-def request(url, payload=None):
+``` {.python indent=4 replace=(self/(self%2c%20top_level_url}
+def request(self, payload=None):
     if "set-cookie" in headers:
         params = {}
         if ";" in headers["set-cookie"]:
@@ -794,16 +796,16 @@ def request(url, payload=None):
                 params[name.lower()] = value.lower()
         else:
             cookie = headers["set-cookie"]
-        COOKIE_JAR[host] = (cookie, params)
+        COOKIE_JAR[self.host] = (cookie, params)
 ```
 
 When sending a cookie in an HTTP request, the browser only sends the
 cookie value, not the parameters:
 
-``` {.python replace=(url/(url%2c%20top_level_url}
-def request(url, payload=None):
-    if host in COOKIE_JAR:
-        cookie, params = COOKIE_JAR[host]
+``` {.python indent=4 replace=(self/(self%2c%20top_level_url}
+def request(self, payload=None):
+    if self.host in COOKIE_JAR:
+        cookie, params = COOKIE_JAR[self.host]
         body += "Cookie: {}\r\n".format(cookie)
 ```
 
@@ -812,8 +814,9 @@ it, we need to know which site an HTTP request is being made from.
 Let's add a new `top_level_url` parameter to `request` to track that:
 
 ``` {.python}
-def request(url, top_level_url, payload=None):
-    # ...
+class URL:
+    def request(self, top_level_url, payload=None):
+        # ...
 ```
 
 Our browser calls `request` in three places, and we need to send the
@@ -823,7 +826,7 @@ request to a page. Modify it like so:
 ``` {.python}
 class Tab:
     def load(self, url, body=None):
-        headers, body = request(url, self.url, body)
+        headers, body = url.request(self.url, body)
         # ...
 ```
 
@@ -839,12 +842,12 @@ class Tab:
         # ...
         for script in scripts:
             # ...
-            header, body = request(script_url, url)
+            header, body = script_url.request(url)
             # ...
         # ...
         for link in links:
             # ...
-            header, body = request(style_url, url)
+            header, body = style_url.request(url)
             # ...
         # ...
 ```
@@ -861,7 +864,7 @@ their top-level URL:
 class JSContext:
     def XMLHttpRequest_send(self, method, url, body):
         # ...
-        headers, out = request(full_url, self.tab.url, body)
+        headers, out = full_url.request(self.tab.url, body)
         # ...
 ```
 
@@ -878,17 +881,15 @@ URL have the same host name:[^schemeful]
     alas historical contingencies and backwards compatibility force
     rules that are more complex but easier to deploy.
 
-``` {.python}
-def request(url, top_level_url, payload=None):
-    if host in COOKIE_JAR:
+``` {.python indent=4}
+def request(self, top_level_url, payload=None):
+    if self.host in COOKIE_JAR:
         # ...
-        cookie, params = COOKIE_JAR[host]
+        cookie, params = COOKIE_JAR[self.host]
         allow_cookie = True
         if top_level_url and params.get("samesite", "none") == "lax":
-            _, _, top_level_host, _ = top_level_url.split("/", 3)
-            if ":" in top_level_host:
-                top_level_host, _ = top_level_host.split(":", 1)
-            allow_cookie = (host == top_level_host or method == "GET")
+            if method != "GET":
+                allow_cookie = self.host == top_level_url.host
         if allow_cookie:
             body += "Cookie: {}\r\n".format(cookie)
         # ...
@@ -1059,7 +1060,7 @@ class Tab:
     def load(self, url, body=None):
         # ...
         for script in scripts:
-            script_url = resolve_url(script, url)
+            script_url = url.resolve(script)
             if not self.allowed_request(script_url):
                 print("Blocked script", script, "due to CSP")
                 continue
@@ -1080,7 +1081,7 @@ allowed. Add a similar test to the CSS-loading code.
 ``` {.python}
 class JSContext:
     def XMLHttpRequest_send(self, method, url, body):
-        full_url = resolve_url(url, self.tab.url)
+        full_url = self.tab.url.resolve(url)
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
         # ...
@@ -1093,7 +1094,7 @@ The `allowed_request` check needs to handle both the case of no
 class Tab:
     def allowed_request(self, url):
         return self.allowed_origins == None or \
-            url_origin(url) in self.allowed_origins
+            url.origin() in self.allowed_origins
 ```
 
 The guest book can now send a `Content-Security-Policy` header:

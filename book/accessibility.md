@@ -295,7 +295,7 @@ We'll do this conversion to adjust the font sizes in the `text` and
 ``` {.python}
 class BlockLayout:
 	# ....
-    def text(self, node):
+    def word(self, node, word):
     	# ...
         size = device_px(float(node.style["font-size"][:-2]), self.zoom)
 
@@ -876,7 +876,7 @@ class Tab:
         if elt.tag == "input":
             elt.attributes["value"] = ""
         elif elt.tag == "a" and "href" in elt.attributes:
-            url = resolve_url(elt.attributes["href"], self.url)
+            url = self.url.resolve(elt.attributes["href"])
             self.load(url)
         elif elt.tag == "button":
             while elt:

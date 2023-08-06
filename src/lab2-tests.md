@@ -103,7 +103,7 @@ Let's first mock a URL to load:
 Loading that URL results in a display list:
 
     >>> browser = lab2.Browser()
-    >>> browser.load(url)
+    >>> browser.load(lab2.URL(url))
     >>> browser.display_list
     [(1, 1, 'B'), (2, 1, 'o'), (3, 1, 'd'), (4, 1, 'y'), (5, 1, ' '), (6, 1, 't'), (7, 1, 'e'), (8, 1, 'x'), (9, 1, 't')]
 
@@ -111,7 +111,7 @@ And with breakpoints:
 
     >>> test.patch_breakpoint()
 
-    >>> browser.load(url)
+    >>> browser.load(lab2.URL(url))
     breakpoint(name='lex', 'B')
     breakpoint(name='lex', 'Bo')
     breakpoint(name='lex', 'Bod')
@@ -150,7 +150,7 @@ the text drawn:
 
     >>> test.patch_canvas()
     >>> browser = lab2.Browser()
-    >>> browser.load(url)
+    >>> browser.load(lab2.URL(url))
     create_text: x=1 y=1 text=B
     create_text: x=2 y=1 text=o
     create_text: x=3 y=1 text=d
@@ -179,7 +179,7 @@ Now let's load a different URL that provides three lines of text:
     ... b"Body text that is longer")
 
     >>> browser = lab2.Browser()
-    >>> browser.load(url)
+    >>> browser.load(lab2.URL(url))
     create_text: x=1 y=1 text=B
     create_text: x=2 y=1 text=o
     create_text: x=3 y=1 text=d

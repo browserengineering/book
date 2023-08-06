@@ -170,7 +170,7 @@ the Tk `mainloop`:
 ``` {.python}
 if __name__ == "__main__":
     import sys
-    Browser().load(sys.argv[1])
+    Browser().load(URL(sys.argv[1]))
     tkinter.mainloop()
 ```
 
@@ -369,7 +369,7 @@ Since `draw` does need access to the canvas, we keep it a method on
 ``` {.python}
 class Browser:
     def load(self, url):
-        headers, body = request(url)
+        headers, body = url.request()
         text = lex(body)
         self.display_list = layout(text)
         self.draw()

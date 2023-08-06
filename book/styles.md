@@ -606,25 +606,22 @@ To download the style sheets, we'll need to convert each relative URL
 into a full URL:
 
 ``` {.python}
-def resolve_url(url, current):
-    if "://" in url:
-        return url
-    elif url.startswith("/"):
-        scheme, hostpath = current.split("://", 1)
-        host, oldpath = hostpath.split("/", 1)
-        return scheme + "://" + host + url
-    else:
-        dir, _ = current.rsplit("/", 1)
-        while url.startswith("../"):
-            url = url[3:]
-            if dir.count("/") == 2: continue
-            dir, _ = dir.rsplit("/", 1)
-        return dir + "/" + url
+class URL:
+    def resolve(self, url):
+        if "://" in url: return URL(url)
+        if not url.startswith("/"):
+            dir, _ = self.path.rsplit("/", 1)
+            while url.startswith("../"):
+                _, url = url.split("/", 1)
+                if "/" in dir:
+                    dir, _ = dir.rsplit("/", 1)
+            url = dir + "/" + url
+        return URL(self.scheme + "://" + self.host + \
+                   ":" + str(self.port) + url)
 ```
 
-When resolving path-relative URLs, we count the number of slashes in
-the "directory" to make sure we never strip off the scheme and host
-name.
+Note the logic for handling `..` in the relative URL; for whatever
+reason, this is handled by the browser, not the server.
 
 Now the browser can request each linked style sheet and add its rules
 to the `rules` list:
@@ -634,7 +631,7 @@ def load(self, url):
     # ...
     for link in links:
         try:
-            header, body = request(resolve_url(link, url))
+            header, body = url.resolve(link).request()
         except:
             continue
         rules.extend(CSSParser(body).parse())
@@ -858,23 +855,34 @@ small { font-size: 90%; }
 big { font-size: 110%; }
 ```
 
-The browser looks up font information in `BlockLayout`'s `text`
-method; we'll need to change it to use the node's `style` field:
+The browser looks up font information in `BlockLayout`'s `word`
+method; we'll need to change it to use the node's `style` field, and
+for that, we'll need to pass in the node itself:
 
-``` {.python indent=4}
+``` {.python}
 class BlockLayout:
+    def recurse(self, node):
+        if isinstance(node, Text):
+            for word in node.text.split():
+                self.word(node, word)
+        else:
+            # ...
 
+    def word(self, node, word):
+        font = self.get_font(node)
+        # ...
+```
+
+Here, the `get_font` method is a simple wrapper around our font cache:
+
+``` {.python}
+class BlockLayout:
     def get_font(self, node):
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         if style == "normal": style = "roman"
         size = int(float(node.style["font-size"][:-2]) * .75)
         return get_font(size, weight, style)
-
-    def text(self, node):
-        # ...
-        font = self.get_font(node)
-        # ...
 ```
 
 Note that for `font-style` we need to translate CSS "normal" to Tk
@@ -885,13 +893,11 @@ Text color requires a bit more plumbing. First, we have to read the
 color and store it in the current `line`:
 
 ``` {.python indent=4}
-def text(self, node):
+def word(self, node, word):
     color = node.style["color"]
     # ...
-    for word in node.text.split():
-        # ...
-        self.line.append((self.cursor_x, word, font, color))
-        # ...
+    self.line.append((self.cursor_x, word, font, color))
+    # ...
 ```
 
 The `flush` method then copies it from `line` to `display_list`:
@@ -970,7 +976,8 @@ rid of them:
 ``` {.python indent=4}
 def recurse(self, node):
     if isinstance(node, Text):
-        self.text(node)
+        for word in node.text.split():
+            self.word(node, word)
     else:
         if node.tag == "br":
             self.flush()

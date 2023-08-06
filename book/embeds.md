@@ -61,10 +61,11 @@ The change is pretty minimal: instead of passing the `"r"` flag to
 `makefile`, pass a `"b"` flag indicating binary mode:
 
 ``` {.python}
-def request(url, top_level_url, payload=None):
-    # ...
-    response = s.makefile("b")
-    # ...
+class URL:
+    def request(self, top_level_url, payload=None):
+        # ...
+        response = s.makefile("b")
+        # ...
 ```
 
 Now every time we read from `response`, we will get `bytes` of binary
@@ -72,14 +73,15 @@ data, not a `str` with textual data, so we'll need to change some HTTP
 parser code to explicitly `decode` the data:
 
 ``` {.python}
-def request(url, top_level_url, payload=None):
-    # ...
-    statusline = response.readline().decode("utf8")
-    # ...
-    while True:
-        line = response.readline().decode("utf8")
+class URL:
+    def request(self, top_level_url, payload=None):
         # ...
-    # ...
+        statusline = response.readline().decode("utf8")
+        # ...
+        while True:
+            line = response.readline().decode("utf8")
+            # ...
+        # ...
 ```
 
 Note that I _didn't_ add a `decode` call when we read the body; that's
@@ -92,7 +94,7 @@ For example, in `load`, you'll want to do something like this:
 class Tab:
     def load(self, url, body=None):
         # ...
-        headers, body = request(url, self.url, body)
+        headers, body = url.request(self.url, body)
         body = body.decode("utf8")
         # ...
 ```
@@ -114,10 +116,10 @@ class Tab:
             and node.tag == "img"]
         for img in images:
             src = img.attributes.get("src", "")
-            image_url = resolve_url(src, self.url)
+            image_url = url.resolve(src)
             assert self.allowed_request(image_url), \
                 "Blocked load of " + image_url + " due to CSP"
-            header, body = request(image_url, self.url)
+            header, body = image_url.request(url)
 ```
 
 Once we've downloaded the image, we need to turn it into a Skia
@@ -447,15 +449,14 @@ class BlockLayout:
         self.cursor_x += w + font(node.style, self.zoom).measureText(" ")
 ```
 
-We can redefine  `text` and `input` in a satisfying way now:
+We can redefine `word` and `input` in a satisfying way now:
 
 ``` {.python replace=TextLayout/TextLayout%2c%20self.frame,InputLayout/InputLayout%2c%20self.frame}
 class BlockLayout:
-    def text(self, node):
+    def word(self, node, word):
         node_font = font(node.style, self.zoom)
-        for word in node.text.split():
-            w = node_font.measureText(word)
-            self.add_inline_child(node, w, TextLayout, word)
+        w = node_font.measureText(word)
+        self.add_inline_child(node, w, TextLayout, word)
 
     def input(self, node):
         w = device_px(INPUT_WIDTH_PX, self.zoom)
@@ -753,8 +754,7 @@ class Frame:
                    and node.tag == "iframe"
                    and "src" in node.attributes]
         for iframe in iframes:
-            document_url = resolve_url(iframe.attributes["src"],
-                self.tab.root_frame.url)
+            document_url = url.resolve(iframe.attributes["src"])
             if not self.allowed_request(document_url):
                 print("Blocked iframe", document_url, "due to CSP")
                 iframe.frame = None
@@ -1490,7 +1490,7 @@ Each `Frame` will then ask the `Tab` for its JavaScript context:
 class Frame:
     def load(self, url, body=None):
         # ...
-        self.js = self.tab.get_js(url_origin(url))
+        self.js = self.tab.get_js(url.origin())
         # ...
 ```
 
@@ -1795,7 +1795,7 @@ and raises an exception:
 ``` {.python}
 class JSContext:
     def throw_if_cross_origin(self, frame):
-        if url_origin(frame.url) != self.url_origin:
+        if frame.url.origin() != self.url_origin:
             raise Exception(
                 "Cross-origin access disallowed from script")
 ```

@@ -10,33 +10,41 @@ descendant selectors.
     >>> _ = test.ssl.patch().start()
     >>> import lab6
 
-    >>> url = 'http://test.test/example'
-    >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n" +
-    ... b"Header1: Value1\r\n\r\n" +
-    ... b"<div>Test</div>")
-
 Testing resolve_url
 ===================
 
-    >>> lab6.resolve_url("http://foo.com", "http://bar.com/")
-    'http://foo.com'
+    >>> lab6.URL("http://bar.com/").resolve("http://foo.com/")
+    URL(scheme=http, host=foo.com, port=80, path='/')
 
-    >>> lab6.resolve_url("/url", "http://bar.com/")
-    'http://bar.com/url'
+    >>> lab6.URL("http://bar.com/").resolve("/url")
+    URL(scheme=http, host=bar.com, port=80, path='/url')
 
-    >>> lab6.resolve_url("url2", "http://bar.com/url1")
-    'http://bar.com/url2'
+    >>> lab6.URL("http://bar.com/url1").resolve("url2")
+    URL(scheme=http, host=bar.com, port=80, path='/url2')
 
-    >>> lab6.resolve_url("url2", "http://bar.com/url1/")
-    'http://bar.com/url1/url2'
+    >>> lab6.URL("http://bar.com/url1/").resolve("url2")
+    URL(scheme=http, host=bar.com, port=80, path='/url1/url2')
 
 A trailing slash is automatically added if omitted:
-    >>> lab6.resolve_url("url2", "http://bar.com")
-    'http://bar.com/url2'
+
+    >>> lab6.URL("http://bar.com").resolve("url2")
+    URL(scheme=http, host=bar.com, port=80, path='/url2')
+
+You can use `..` to go up:
+
+    >>> lab6.URL("http://bar.com/a/b/c").resolve("d")
+    URL(scheme=http, host=bar.com, port=80, path='/a/b/d')
+    >>> lab6.URL("http://bar.com/a/b/c").resolve("../d")
+    URL(scheme=http, host=bar.com, port=80, path='/a/d')
+    >>> lab6.URL("http://bar.com/a/b/c").resolve("../../d")
+    URL(scheme=http, host=bar.com, port=80, path='/d')
+    >>> lab6.URL("http://bar.com/a/b/c").resolve("../../../d")
+    URL(scheme=http, host=bar.com, port=80, path='/d')
 
 Testing tree_to_list
 ====================
 
+    >>> url = lab6.URL(test.socket.serve("<div>Test</div>"))
     >>> browser = lab6.Browser()
     >>> browser.load(url)
     >>> lab6.print_tree(browser.document)
@@ -234,7 +242,7 @@ Descendant selectors work:
     >>> div.style
     {'font-size': '16px', 'font-style': 'normal', 'font-weight': 'normal', 'color': 'black', 'background-color': 'green'}
 
-Priorities work (descendant selectors high higher priority than tag selectors):
+Priorities work (descendant selectors higher priority than tag selectors):
 
     >>> rules = lab6.CSSParser(
     ... "html div { background-color: green} div { background-color: blue").parse()
@@ -248,14 +256,9 @@ Priorities work (descendant selectors high higher priority than tag selectors):
     >>> div.style
     {'font-size': '16px', 'font-style': 'normal', 'font-weight': 'normal', 'color': 'black', 'background-color': 'green'}
 
-    >>> url2 = 'http://test.test/example2'
-    >>> test.socket.respond(url2, b"HTTP/1.0 200 OK\r\n" +
-    ... b"Header1: Value1\r\n\r\n" +
-    ... b"<div style=\"color:blue\">Test</div>")
-
-
 Style attributes have the highest priority:
 
+    >>> url2 = lab6.URL(test.socket.serve("<div style=\"color:blue\">Test</div>"))
     >>> browser = lab6.Browser()
     >>> browser.load(url2)
     >>> browser.document.children[0].children[0].children[0].node.style['color']

@@ -19,19 +19,17 @@ import urllib.parse
 import wbetools
 import OpenGL.GL
 
-from lab1 import parse_url
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab4 import print_tree
 from lab5 import BLOCK_ELEMENTS
 from lab14 import Text, Element
 from lab6 import TagSelector, DescendantSelector
-from lab6 import resolve_url
 from lab6 import tree_to_list, INHERITED_PROPERTIES
 from lab7 import CHROME_PX
 from lab8 import INPUT_WIDTH_PX
 from lab8 import layout_mode
 from lab9 import EVENT_DISPATCH_CODE
-from lab10 import COOKIE_JAR, url_origin
+from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, linespace, parse_blend_mode
 from lab12 import MeasureTime, REFRESH_RATE_SEC
 from lab12 import Task, TaskRunner, SingleThreadedTaskRunner
@@ -48,78 +46,68 @@ from lab14 import parse_color, DrawRRect, \
     is_focusable, get_tabindex, announce_text, speak_text, \
     CSSParser, DrawOutline, main_func, Browser
 
-def request(url, top_level_url, payload=None):
-    (scheme, host, path) = parse_url(url)
-    assert scheme in ["http", "https"], \
-        "Unknown scheme {}".format(scheme)
-
-    port = 80 if scheme == "http" else 443
-
-    if ":" in host:
-        host, port = host.split(":", 1)
-        port = int(port)
-
-    s = socket.socket(
-        family=socket.AF_INET,
-        type=socket.SOCK_STREAM,
-        proto=socket.IPPROTO_TCP,
-    )
-    s.connect((host, port))
-
-    if scheme == "https":
-        ctx = ssl.create_default_context()
-        s = ctx.wrap_socket(s, server_hostname=host)
-
-    method = "POST" if payload else "GET"
-    body = "{} {} HTTP/1.0\r\n".format(method, path)
-    body += "Host: {}\r\n".format(host)
-    if host in COOKIE_JAR:
-        cookie, params = COOKIE_JAR[host]
-        allow_cookie = True
-        if top_level_url and params.get("samesite", "none") == "lax":
-            _, _, top_level_host, _ = top_level_url.split("/", 3)
-            if ":" in top_level_host:
-                top_level_host, _ = top_level_host.split(":", 1)
-            allow_cookie = (host == top_level_host or method == "GET")
-        if allow_cookie:
-            body += "Cookie: {}\r\n".format(cookie)
-    if payload:
-        content_length = len(payload.encode("utf8"))
-        body += "Content-Length: {}\r\n".format(content_length)
-    body += "\r\n" + (payload or "")
-    s.send(body.encode("utf8"))
-
-    response = s.makefile("b")
-
-    statusline = response.readline().decode("utf8")
-    version, status, explanation = statusline.split(" ", 2)
-    assert status == "200", "{}: {}".format(status, explanation)
-
-    headers = {}
-    while True:
-        line = response.readline().decode("utf8")
-        if line == "\r\n": break
-        header, value = line.split(":", 1)
-        headers[header.lower()] = value.strip()
-
-    if "set-cookie" in headers:
-        params = {}
-        if ";" in headers["set-cookie"]:
-            cookie, rest = headers["set-cookie"].split(";", 1)
-            for param_pair in rest.split(";"):
-                if '=' in param_pair:
-                    name, value = param_pair.strip().split("=", 1)
-                    params[name.lower()] = value.lower()
-        else:
-            cookie = headers["set-cookie"]
-        COOKIE_JAR[host] = (cookie, params)
-
-    assert "transfer-encoding" not in headers
-    assert "content-encoding" not in headers
-
-    body = response.read()
-    s.close()
-    return headers, body
+@wbetools.patch(URL)
+class URL:
+    def request(self, top_level_url, payload=None):
+        s = socket.socket(
+            family=socket.AF_INET,
+            type=socket.SOCK_STREAM,
+            proto=socket.IPPROTO_TCP,
+        )
+        s.connect((self.host, self.port))
+    
+        if self.scheme == "https":
+            ctx = ssl.create_default_context()
+            s = ctx.wrap_socket(s, server_hostname=self.host)
+    
+        method = "POST" if payload else "GET"
+        body = "{} {} HTTP/1.0\r\n".format(method, self.path)
+        body += "Host: {}\r\n".format(self.host)
+        if self.host in COOKIE_JAR:
+            cookie, params = COOKIE_JAR[self.host]
+            allow_cookie = True
+            if top_level_url and params.get("samesite", "none") == "lax":
+                if method != "GET":
+                    allow_cookie = self.host == top_level_url.host
+            if allow_cookie:
+                body += "Cookie: {}\r\n".format(cookie)
+        if payload:
+            content_length = len(payload.encode("utf8"))
+            body += "Content-Length: {}\r\n".format(content_length)
+        body += "\r\n" + (payload or "")
+        s.send(body.encode("utf8"))
+    
+        response = s.makefile("b")
+    
+        statusline = response.readline().decode("utf8")
+        version, status, explanation = statusline.split(" ", 2)
+        assert status == "200", "{}: {}".format(status, explanation)
+    
+        headers = {}
+        while True:
+            line = response.readline().decode("utf8")
+            if line == "\r\n": break
+            header, value = line.split(":", 1)
+            headers[header.lower()] = value.strip()
+    
+        if "set-cookie" in headers:
+            params = {}
+            if ";" in headers["set-cookie"]:
+                cookie, rest = headers["set-cookie"].split(";", 1)
+                for param_pair in rest.split(";"):
+                    if '=' in param_pair:
+                        name, value = param_pair.strip().split("=", 1)
+                        params[name.lower()] = value.lower()
+            else:
+                cookie = headers["set-cookie"]
+            COOKIE_JAR[self.host] = (cookie, params)
+    
+        assert "transfer-encoding" not in headers
+        assert "content-encoding" not in headers
+    
+        body = response.read()
+        s.close()
+        return headers, body
 
 class DrawImage(DisplayItem):
     def __init__(self, image, rect, quality):
@@ -226,7 +214,8 @@ class BlockLayout:
 
     def recurse(self, node):
         if isinstance(node, Text):
-            self.text(node)
+            for word in node.text.split():
+                self.word(node, word)
         else:
             if node.tag == "br":
                 self.new_line()
@@ -260,11 +249,10 @@ class BlockLayout:
         self.previous_word = child
         self.cursor_x += w + font(node.style, self.zoom).measureText(" ")
 
-    def text(self, node):
+    def word(self, node, word):
         node_font = font(node.style, self.zoom)
-        for word in node.text.split():
-            w = node_font.measureText(word)
-            self.add_inline_child(node, w, TextLayout, self.frame, word)
+        w = node_font.measureText(word)
+        self.add_inline_child(node, w, TextLayout, self.frame, word)
 
     def input(self, node):
         w = device_px(INPUT_WIDTH_PX, self.zoom)
@@ -800,7 +788,7 @@ class JSContext:
         self.interp.evaljs("WINDOWS = {}")
 
     def throw_if_cross_origin(self, frame):
-        if url_origin(frame.url) != self.url_origin:
+        if frame.url.origin() != self.url_origin:
             raise Exception(
                 "Cross-origin access disallowed from script")
 
@@ -914,16 +902,15 @@ class JSContext:
     def XMLHttpRequest_send(
         self, method, url, body, isasync, handle, window_id):
         frame = self.tab.window_id_to_frame[window_id]        
-        full_url = resolve_url(url, frame.url)
+        full_url = frame.url.resolve(url)
         if not frame.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
-        if url_origin(full_url) != url_origin(frame.url):
+        if full_url.origin() != frame.url.origin():
             raise Exception(
                 "Cross-origin XHR request not allowed")
 
         def run_load():
-            headers, response = request(
-                full_url, frame.url, body)
+            headers, response = full_url.request(frame.url, body)
             response = response.decode("utf8")
             task = Task(
                 self.dispatch_xhr_onload, response, handle, window_id)
@@ -1176,13 +1163,13 @@ class Frame:
 
     def allowed_request(self, url):
         return self.allowed_origins == None or \
-            url_origin(url) in self.allowed_origins
+            url.origin() in self.allowed_origins
 
     def load(self, url, body=None):
         self.zoom = 1
         self.scroll = 0
         self.scroll_changed_in_frame = True
-        headers, body = request(url, self.url, body)
+        headers, body = url.request(self.url, body)
         body = body.decode("utf8")
         self.url = url
 
@@ -1194,7 +1181,7 @@ class Frame:
 
         self.nodes = HTMLParser(body).parse()
 
-        self.js = self.tab.get_js(url_origin(url))
+        self.js = self.tab.get_js(url.origin())
         self.js.add_window(self)
 
         scripts = [node.attributes["src"] for node
@@ -1203,12 +1190,12 @@ class Frame:
                    and node.tag == "script"
                    and "src" in node.attributes]
         for script in scripts:
-            script_url = resolve_url(script, url)
+            script_url = url.resolve(script)
             if not self.allowed_request(script_url):
                 print("Blocked script", script, "due to CSP")
                 continue
 
-            header, body = request(script_url, url)
+            header, body = script_url.request(url)
             body = body.decode("utf8")
             task = Task(self.js.run, script_url, body,
                 self.window_id)
@@ -1222,12 +1209,12 @@ class Frame:
                  and "href" in node.attributes
                  and node.attributes.get("rel") == "stylesheet"]
         for link in links:  
-            style_url = resolve_url(link, url)
+            style_url = url.resolve(link)
             if not self.allowed_request(style_url):
                 print("Blocked style", link, "due to CSP")
                 continue
             try:
-                header, body = request(style_url, url)
+                header, body = style_url.request(url)
             except:
                 continue
             self.rules.extend(CSSParser(body.decode("utf8")).parse())
@@ -1239,10 +1226,10 @@ class Frame:
         for img in images:
             try:
                 src = img.attributes.get("src", "")
-                image_url = resolve_url(src, self.url)
+                image_url = url.resolve(src)
                 assert self.allowed_request(image_url), \
                     "Blocked load of " + image_url + " due to CSP"
-                header, body = request(image_url, self.url)
+                header, body = image_url.request(url)
                 img.encoded_data = body
                 data = skia.Data.MakeWithoutCopy(body)
                 img.image = skia.Image.MakeFromEncoded(data)
@@ -1258,8 +1245,7 @@ class Frame:
                    and node.tag == "iframe"
                    and "src" in node.attributes]
         for iframe in iframes:
-            document_url = resolve_url(iframe.attributes["src"],
-                self.tab.root_frame.url)
+            document_url = url.resolve(iframe.attributes["src"])
             if not self.allowed_request(document_url):
                 print("Blocked iframe", document_url, "due to CSP")
                 iframe.frame = None
@@ -1336,7 +1322,7 @@ class Frame:
             elt.attributes["value"] = ""
             self.set_needs_render()
         elif elt.tag == "a" and "href" in elt.attributes:
-            url = resolve_url(elt.attributes["href"], self.url)
+            url = self.url.resolve(elt.attributes["href"])
             self.load(url)
         elif elt.tag == "button":
             while elt:
@@ -1362,7 +1348,7 @@ class Frame:
             body += "&" + name + "=" + value
         body = body [1:]
 
-        url = resolve_url(elt.attributes["action"], self.url)
+        url = self.url.resolve(elt.attributes["action"])
         self.load(url, body)
 
     def keypress(self, char):

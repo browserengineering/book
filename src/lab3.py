@@ -9,7 +9,7 @@ import socket
 import ssl
 import tkinter
 import tkinter.font
-from lab1 import request
+from lab1 import URL
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 
 class Text:
@@ -72,7 +72,8 @@ class Layout:
 
     def token(self, tok):
         if isinstance(tok, Text):
-            self.text(tok)
+            for word in tok.text.split():
+                self.word(word)
         elif tok.tag == "i":
             self.style = "italic"
         elif tok.tag == "/i":
@@ -95,14 +96,13 @@ class Layout:
             self.flush()
             self.cursor_y += VSTEP
         
-    def text(self, tok):
+    def word(self, word):
         font = get_font(self.size, self.weight, self.style)
-        for word in tok.text.split():
-            w = font.measure(word)
-            if self.cursor_x + w > WIDTH - HSTEP:
-                self.flush()
-            self.line.append((self.cursor_x, word, font))
-            self.cursor_x += w + font.measure(" ")
+        w = font.measure(word)
+        if self.cursor_x + w > WIDTH - HSTEP:
+            self.flush()
+        self.line.append((self.cursor_x, word, font))
+        self.cursor_x += w + font.measure(" ")
 
     def flush(self):
         if not self.line: return
@@ -138,7 +138,7 @@ class Browser:
         self.display_list = []
 
     def load(self, url):
-        headers, body = request(url)
+        headers, body = url.request()
         tokens = lex(body)
         self.display_list = Layout(tokens).display_list
         self.draw()
@@ -156,5 +156,5 @@ class Browser:
 
 if __name__ == "__main__":
     import sys
-    Browser().load(sys.argv[1])
+    Browser().load(URL(sys.argv[1]))
     tkinter.mainloop()

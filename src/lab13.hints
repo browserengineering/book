@@ -1,4 +1,4 @@
-[{"code": "url_origin(url) in self.allowed_origins", "type": "dict"},
+[{"code": "url.origin() in self.allowed_origins", "type": "dict"},
  {"code": "'src' in node.attributes", "type": "dict"},
  {"code": "'href' in node.attributes", "type": "dict"},
  {"code": "'action' in elt.attributes", "type": "dict"},

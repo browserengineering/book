@@ -82,7 +82,7 @@ Part 4: Modern Browsers
 15. [Supporting Embedded Content](embeds.md)\
     Images, iframes, and scripting
 16. [Reusing Previous Computation](invalidation.md)\
-    Editing, invalidation, reflow
+    Invalidation, editing, and correctness
 
 ::: {.outro}
 Conclusion

@@ -9,7 +9,7 @@ import socket
 import ssl
 import tkinter
 import tkinter.font
-from lab1 import request
+from lab1 import URL
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
@@ -91,7 +91,8 @@ class BlockLayout:
 
     def recurse(self, node):
         if isinstance(node, Text):
-            self.text(node)
+            for word in node.text.split():
+                self.word(word)
         else:
             self.open_tag(node.tag)
             for child in node.children:
@@ -123,14 +124,13 @@ class BlockLayout:
             self.flush()
             self.cursor_y += VSTEP
         
-    def text(self, node):
+    def word(self, word):
         font = get_font(self.size, self.weight, self.style)
-        for word in node.text.split():
-            w = font.measure(word)
-            if self.cursor_x + w > self.width:
-                self.flush()
-            self.line.append((self.cursor_x, word, font))
-            self.cursor_x += w + font.measure(" ")
+        w = font.measure(word)
+        if self.cursor_x + w > self.width:
+            self.flush()
+        self.line.append((self.cursor_x, word, font))
+        self.cursor_x += w + font.measure(" ")
 
     def flush(self):
         if not self.line: return
@@ -246,7 +246,7 @@ class Browser:
         self.display_list = []
 
     def load(self, url):
-        headers, body = request(url)
+        headers, body = url.request()
         self.nodes = HTMLParser(body).parse()
         self.document = DocumentLayout(self.nodes)
         self.document.layout()
@@ -268,5 +268,5 @@ class Browser:
 
 if __name__ == "__main__":
     import sys
-    Browser().load(sys.argv[1])
+    Browser().load(URL(sys.argv[1]))
     tkinter.mainloop()

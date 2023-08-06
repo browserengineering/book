@@ -9,14 +9,13 @@ import ssl
 import tkinter
 import tkinter.font
 import urllib.parse
-from lab1 import parse_url
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS, DrawRect
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
-from lab6 import DrawText, resolve_url, tree_to_list
+from lab6 import DrawText, tree_to_list, URL
 from lab7 import DrawLine, DrawOutline, LineLayout, TextLayout, CHROME_PX
 import wbetools
 
@@ -39,57 +38,48 @@ class Text:
         self.style = {}
         self.is_focused = False
 
-def request(url, payload=None):
-    (scheme, host, path) = parse_url(url)
-    assert scheme in ["http", "https"], \
-        "Unknown scheme {}".format(scheme)
-
-    port = 80 if scheme == "http" else 443
-
-    if ":" in host:
-        host, port = host.split(":", 1)
-        port = int(port)
-
-    s = socket.socket(
-        family=socket.AF_INET,
-        type=socket.SOCK_STREAM,
-        proto=socket.IPPROTO_TCP,
-    )
-    s.connect((host, port))
-
-    if scheme == "https":
-        ctx = ssl.create_default_context()
-        s = ctx.wrap_socket(s, server_hostname=host)
-
-    method = "POST" if payload else "GET"
+@wbetools.patch(URL)
+class URL:
+    def request(self, payload=None):
+        s = socket.socket(
+            family=socket.AF_INET,
+            type=socket.SOCK_STREAM,
+            proto=socket.IPPROTO_TCP,
+        )
+        s.connect((self.host, self.port))
     
-    body = "{} {} HTTP/1.0\r\n".format(method, path)
-    if payload:
-        length = len(payload.encode("utf8"))
-        body += "Content-Length: {}\r\n".format(length)
-    body += "Host: {}\r\n".format(host)
-    body += "\r\n" + (payload if payload else "")
-    s.send(body.encode("utf8"))
-    response = s.makefile("r", encoding="utf8", newline="\r\n")
-
-    statusline = response.readline()
-    version, status, explanation = statusline.split(" ", 2)
-    assert status == "200", "{}: {}".format(status, explanation)
-
-    headers = {}
-    while True:
-        line = response.readline()
-        if line == "\r\n": break
-        header, value = line.split(":", 1)
-        headers[header.lower()] = value.strip()
-
-    assert "transfer-encoding" not in headers
-    assert "content-encoding" not in headers
-
-    body = response.read()
-    s.close()
-
-    return headers, body
+        if self.scheme == "https":
+            ctx = ssl.create_default_context()
+            s = ctx.wrap_socket(s, server_hostname=self.host)
+    
+        method = "POST" if payload else "GET"
+        
+        body = "{} {} HTTP/1.0\r\n".format(method, self.path)
+        if payload:
+            length = len(payload.encode("utf8"))
+            body += "Content-Length: {}\r\n".format(length)
+        body += "Host: {}\r\n".format(self.host)
+        body += "\r\n" + (payload if payload else "")
+        s.send(body.encode("utf8"))
+        response = s.makefile("r", encoding="utf8", newline="\r\n")
+    
+        statusline = response.readline()
+        version, status, explanation = statusline.split(" ", 2)
+        assert status == "200", "{}: {}".format(status, explanation)
+    
+        headers = {}
+        while True:
+            line = response.readline()
+            if line == "\r\n": break
+            header, value = line.split(":", 1)
+            headers[header.lower()] = value.strip()
+    
+        assert "transfer-encoding" not in headers
+        assert "content-encoding" not in headers
+    
+        body = response.read()
+        s.close()
+        return headers, body
 
 def layout_mode(node):
     if isinstance(node, Text):
@@ -208,7 +198,8 @@ class BlockLayout:
 
     def recurse(self, node):
         if isinstance(node, Text):
-            self.text(node)
+            for word in node.text.split():
+                self.word(node, word)
         else:
             if node.tag == "br":
                 self.new_line()
@@ -232,17 +223,16 @@ class BlockLayout:
         size = int(float(node.style["font-size"][:-2]) * .75)
         return get_font(size, weight, style)
 
-    def text(self, node):
+    def word(self, node, word):
         font = self.get_font(node)
-        for word in node.text.split():
-            w = font.measure(word)
-            if self.cursor_x + w > self.width:
-                self.new_line()
-            line = self.children[-1]
-            text = TextLayout(node, word, line, self.previous_word)
-            line.children.append(text)
-            self.previous_word = text
-            self.cursor_x += w + font.measure(" ")
+        w = font.measure(word)
+        if self.cursor_x + w > self.width:
+            self.new_line()
+        line = self.children[-1]
+        text = TextLayout(node, word, line, self.previous_word)
+        line.children.append(text)
+        self.previous_word = text
+        self.cursor_x += w + font.measure(" ")
 
     def input(self, node):
         w = INPUT_WIDTH_PX
@@ -311,7 +301,7 @@ class Tab:
         self.scroll = 0
         self.url = url
         self.history.append(url)
-        headers, body = request(url, body)
+        headers, body = url.request(body)
         self.nodes = HTMLParser(body).parse()
 
         self.rules = self.default_style_sheet.copy()
@@ -323,7 +313,7 @@ class Tab:
                  and node.attributes.get("rel") == "stylesheet"]
         for link in links:
             try:
-                header, body = request(resolve_url(link, self.url))
+                header, body = url.resolve(link).request()
             except:
                 continue
             self.rules.extend(CSSParser(body).parse())
@@ -358,7 +348,7 @@ class Tab:
             if isinstance(elt, Text):
                 pass
             elif elt.tag == "a" and "href" in elt.attributes:
-                url = resolve_url(elt.attributes["href"], self.url)
+                url = self.url.resolve(elt.attributes["href"])
                 return self.load(url)
             elif elt.tag == "input":
                 elt.attributes["value"] = ""
@@ -389,7 +379,7 @@ class Tab:
             body += "&" + name + "=" + value
         body = body [1:]
 
-        url = resolve_url(elt.attributes["action"], self.url)
+        url = self.url.resolve(elt.attributes["action"])
         self.load(url, body)
 
     def keypress(self, char):
@@ -494,7 +484,7 @@ class Browser:
             w = buttonfont.measure(self.address_bar)
             cmds.append(DrawLine(55 + w, 55, 55 + w, 85, "black", 1))
         else:
-            url = self.tabs[self.active_tab].url
+            url = str(self.tabs[self.active_tab].url)
             cmds.append(DrawText(55, 55, url, buttonfont, "black"))
 
         cmds.append(DrawOutline(10, 50, 35, 90, "black", 1))
@@ -509,5 +499,5 @@ class Browser:
 
 if __name__ == "__main__":
     import sys
-    Browser().load(sys.argv[1])
+    Browser().load(URL(sys.argv[1]))
     tkinter.mainloop()

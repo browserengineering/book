@@ -8,7 +8,7 @@ import wbetools
 import socket
 import ssl
 import tkinter
-from lab1 import request
+from lab1 import URL
 
 def lex(body):
     text = ""
@@ -55,7 +55,7 @@ class Browser:
         self.window.bind("<Down>", self.scrolldown)
 
     def load(self, url):
-        headers, body = request(url)
+        headers, body = url.request()
         text = lex(body)
         self.display_list = layout(text)
         self.draw()
@@ -75,5 +75,5 @@ class Browser:
 if __name__ == "__main__":
     import sys
 
-    Browser().load(sys.argv[1])
+    Browser().load(URL(sys.argv[1]))
     tkinter.mainloop()
