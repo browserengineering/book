@@ -386,8 +386,8 @@ class InputLayout(EmbedLayout):
                              text, self.font, color))
 
         if self.node.is_focused and self.node.tag == "input":
-            cx = rect.left() + self.font.measureText(text)
-            cmds.append(DrawLine(cx, rect.top(), cx, rect.bottom(), color, 1))
+            cx = self.x + self.font.measureText(text)
+            cmds.append(DrawLine(cx, self.y, cx, self.y + self.height, color, 1))
 
         cmds = paint_visual_effects(self.node, cmds, rect)
         paint_outline(self.node, cmds, rect, self.zoom)
