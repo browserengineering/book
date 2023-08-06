@@ -1032,7 +1032,7 @@ focused element.
 
 To implement focus rings, we'll use the same mechanism we use to draw
 text cursors. Recall that, right now, text cursors are added by
-drawing a vertical line in the `InputLayout`'s `paint` method. We'll
+drawing a vertical line in `InputLayout`'s `paint` method. We'll
 add a call to `paint_outline` in that method:
 
 ``` {.python replace=node.is_focused/has_outline(node),%22black%22/color,1/thickness}
