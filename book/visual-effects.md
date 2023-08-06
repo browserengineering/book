@@ -408,11 +408,10 @@ start with `measureText` replacing all calls to `measure`. For
 example, in the `render` method for a `Tab`, we must do:
 
 ``` {.python}
-class Tab:
-    def render(self):
-        if self.focus:
-            # ...
-            x = obj.x + obj.font.measureText(text)
+class InputLayout:
+    def paint(self, display_list):
+        if self.node.is_focused:
+            cx = self.x + self.font.measureText(text)
             # ...
 ```
 

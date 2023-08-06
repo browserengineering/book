@@ -12,13 +12,13 @@ import urllib.parse
 import dukpy
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
-from lab4 import Text, Element, print_tree, HTMLParser
+from lab4 import print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS, DrawRect
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import DrawText, tree_to_list
 from lab7 import DrawLine, DrawOutline, LineLayout, TextLayout, CHROME_PX
-from lab8 import URL, layout_mode
+from lab8 import URL, layout_mode, Element, Text
 from lab8 import DocumentLayout, BlockLayout, InputLayout, INPUT_WIDTH_PX
 
 EVENT_DISPATCH_CODE = \
@@ -130,16 +130,6 @@ class Tab:
         self.display_list = []
         self.document.paint(self.display_list)
 
-        if self.focus:
-            obj = [obj for obj in tree_to_list(self.document, [])
-                   if obj.node == self.focus and \
-                        isinstance(obj, InputLayout)][0]
-            text = self.focus.attributes.get("value", "")
-            x = obj.x + obj.font.measure(text)
-            y = obj.y - self.scroll
-            self.display_list.append(
-                DrawLine(x, y, x, y + obj.height, "black", 1))
-
     def draw(self, canvas):
         for cmd in self.display_list:
             if cmd.top > self.scroll + HEIGHT - CHROME_PX: continue
@@ -168,8 +158,11 @@ class Tab:
             elif elt.tag == "input":
                 if self.js.dispatch_event("click", elt): return
                 elt.attributes["value"] = ""
+                if self.focus:
+                    self.focus.is_focused = False
                 self.focus = elt
-                return
+                elt.is_focused = True
+                return self.render()
             elif elt.tag == "button":
                 if self.js.dispatch_event("click", elt): return
                 while elt:
