@@ -47,7 +47,6 @@ class BlockLayout:
         self.y = None
         self.width = None
         self.height = None
-
         self.display_list = []
 
     def layout(self):
