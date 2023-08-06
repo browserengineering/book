@@ -1,11 +1,3 @@
 [{"code": "key not in FONTS", "type": "dict"},
- {"code": "url.origin() in self.allowed_origins", "type": "dict"},
- {"code": "'src' in node.attributes", "type": "dict"},
- {"code": "'href' in node.attributes", "type": "dict"},
- {"code": "'action' in elt.attributes", "type": "dict"},
- {"code": "'href' in elt.attributes", "type": "dict"},
- {"code": "'name' in node.attributes", "type": "dict"},
- {"code": "'content-security-policy' in headers", "type": "dict"},
- {"code": "('TextLayout(x={}, y={}, width={}, height={}, ' + 'node={}, word={})').format(self.x, self.y, self.width, self.height, self.node, self.word)", "js": "('')"},
  {"code": "b'Browser'", "js": "'Browser'"}
  ]
