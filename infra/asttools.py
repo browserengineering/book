@@ -146,9 +146,8 @@ class ResolvePatches(ast.NodeTransformer):
         else:
             assert len(cmd.decorator_list) == 1
             assert is_patch_decorator(cmd.decorator_list[0])
-            # Actually violated in Chapter 5 where we rename Layout to BlockLayout
-            #assert cmd.decorator_list[0].args[0].id == cmd.name
-            self.patches.setdefault(cmd.name, []).append(cmd)
+            # Not just cmd.name because in Chapter 5 we rename Layout to BlockLayout
+            self.patches.setdefault(cmd.decorator_list[0].args[0].id, []).append(cmd)
             return None
 
     def double_visit(self, tree):
