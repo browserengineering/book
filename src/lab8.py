@@ -13,7 +13,7 @@ import urllib.parse
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
-from lab5 import BLOCK_ELEMENTS, DrawRect, layout_mode
+from lab5 import BLOCK_ELEMENTS, DrawRect
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import DrawText, URL, tree_to_list
@@ -63,7 +63,6 @@ class URL:
         s.close()
         return headers, body
 
-@wbetools.patch(layout_mode)
 def layout_mode(node):
     if isinstance(node, Text):
         return "inline"
@@ -140,6 +139,38 @@ class InputLayout:
 
 @wbetools.patch(BlockLayout)
 class BlockLayout:
+    # While this is identical to that in Chapter 7, it calls `layout_mode`,
+    # which we don't want to patch because the JS compiler doesn't support
+    # patching functions.
+    def layout(self):
+        wbetools.record("layout_pre", self)
+
+        self.width = self.parent.width
+        self.x = self.parent.x
+
+        if self.previous:
+            self.y = self.previous.y + self.previous.height
+        else:
+            self.y = self.parent.y
+
+        mode = layout_mode(self.node)
+        if mode == "block":
+            previous = None
+            for child in self.node.children:
+                next = BlockLayout(child, self, previous)
+                self.children.append(next)
+                previous = next
+        else:
+            self.new_line()
+            self.recurse(self.node)
+
+        for child in self.children:
+            child.layout()
+
+        self.height = sum([child.height for child in self.children])
+
+        wbetools.record("layout_post", self)
+
     def recurse(self, node):
         if isinstance(node, Text):
             for word in node.text.split():
