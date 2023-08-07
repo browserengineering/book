@@ -12,7 +12,7 @@ import tkinter.font
 from lab1 import URL
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
-from lab4 import Text, Element, print_tree, HTMLParser
+from lab4 import Text, Element, print_tree, HTMLParser, Layout, Browser
 
 BLOCK_ELEMENTS = [
     "html", "body", "article", "section", "nav", "aside",
@@ -36,6 +36,7 @@ def layout_mode(node):
     else:
         return "block"
 
+@wbetools.patch(Layout)
 class BlockLayout:
     def __init__(self, node, parent, previous):
         self.node = node
@@ -46,6 +47,7 @@ class BlockLayout:
         self.y = None
         self.width = None
         self.height = None
+        self.display_list = []
 
     def layout(self):
         wbetools.record("layout_pre", self)
@@ -66,8 +68,6 @@ class BlockLayout:
                 self.children.append(next)
                 previous = next
         else:
-            self.display_list = []
-
             self.cursor_x = 0
             self.cursor_y = 0
             self.weight = "normal"
@@ -89,41 +89,6 @@ class BlockLayout:
 
         wbetools.record("layout_post", self)
 
-    def recurse(self, node):
-        if isinstance(node, Text):
-            for word in node.text.split():
-                self.word(word)
-        else:
-            self.open_tag(node.tag)
-            for child in node.children:
-                self.recurse(child)
-            self.close_tag(node.tag)
-
-    def open_tag(self, tag):
-        if tag == "i":
-            self.style = "italic"
-        elif tag == "b":
-            self.weight = "bold"
-        elif tag == "small":
-            self.size -= 2
-        elif tag == "big":
-            self.size += 4
-        elif tag == "br":
-            self.flush()
-
-    def close_tag(self, tag):
-        if tag == "i":
-            self.style = "roman"
-        elif tag == "b":
-            self.weight = "normal"
-        elif tag == "small":
-            self.size += 2
-        elif tag == "big":
-            self.size -= 4
-        elif tag == "p":
-            self.flush()
-            self.cursor_y += VSTEP
-        
     def word(self, word):
         font = get_font(self.size, self.weight, self.style)
         w = font.measure(word)
@@ -210,7 +175,6 @@ class DrawText:
         return "DrawText(top={} left={} bottom={} text={} font={})".format(
             self.top, self.left, self.bottom, self.text, self.font)
 
-
 class DrawRect:
     def __init__(self, x1, y1, x2, y2, color):
         self.top = y1
@@ -231,20 +195,8 @@ class DrawRect:
         return "DrawRect(top={} left={} bottom={} right={} color={})".format(
             self.top, self.left, self.bottom, self.right, self.color)
 
+@wbetools.patch(Browser)
 class Browser:
-    def __init__(self):
-        self.window = tkinter.Tk()
-        self.canvas = tkinter.Canvas(
-            self.window,
-            width=WIDTH,
-            height=HEIGHT
-        )
-        self.canvas.pack()
-
-        self.scroll = 0
-        self.window.bind("<Down>", self.scrolldown)
-        self.display_list = []
-
     def load(self, url):
         headers, body = url.request()
         self.nodes = HTMLParser(body).parse()

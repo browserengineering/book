@@ -14,14 +14,14 @@ import ssl
 import urllib.parse
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab4 import print_tree, HTMLParser
-from lab5 import BLOCK_ELEMENTS
+from lab5 import BLOCK_ELEMENTS, DrawRect, DocumentLayout
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
-from lab6 import tree_to_list
-from lab7 import CHROME_PX
-from lab8 import Text, Element, INPUT_WIDTH_PX, layout_mode
+from lab6 import DrawText, tree_to_list
+from lab7 import DrawLine, DrawOutline, LineLayout, TextLayout, CHROME_PX
+from lab8 import Text, Element, BlockLayout, InputLayout, INPUT_WIDTH_PX, layout_mode, Browser
 from lab9 import EVENT_DISPATCH_CODE
-from lab10 import COOKIE_JAR, URL, JSContext
+from lab10 import COOKIE_JAR, URL, JSContext, Tab
 import wbetools
 
 FONTS = {}
@@ -96,6 +96,7 @@ class SaveLayer:
         if self.should_save:
             canvas.restore()
 
+@wbetools.patch(DrawRect)
 class DrawRect:
     def __init__(self, x1, y1, x2, y2, color):
         self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
@@ -110,10 +111,7 @@ class DrawRect:
         paint.setColor(parse_color(self.color))
         canvas.drawRect(self.rect, paint)
 
-    def __repr__(self):
-        return "DrawRect(top={} left={} bottom={} right={} color={})".format(
-            self.left, self.top, self.right, self.bottom, self.color)
-
+@wbetools.patch(DrawText)
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
         self.left = x1
@@ -132,9 +130,7 @@ class DrawText:
         canvas.drawString(self.text, float(self.left), baseline,
             self.font, paint)
 
-    def __repr__(self):
-        return "DrawText(text={})".format(self.text)
-
+@wbetools.patch(DrawOutline)
 class DrawOutline:
     def __init__(self, x1, y1, x2, y2, color, thickness):
         self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
@@ -152,12 +148,7 @@ class DrawOutline:
         paint.setColor(parse_color(self.color))
         canvas.drawRect(self.rect, paint)
 
-    @wbetools.js_hide
-    def __repr__(self):
-        return "DrawOutline({}, {}, {}, {}, color={}, thickness={})".format(
-            self.rect.left(), self.rect.top(), self.rect.right(), self.rect.bottom(),
-            self.color, self.thickness)
-
+@wbetools.patch(DrawLine)
 class DrawLine:
     def __init__(self, x1, y1, x2, y2, color, thickness):
         self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
@@ -205,62 +196,8 @@ class ClipRRect:
         if self.should_clip:
             canvas.restore()
 
+@wbetools.patch(BlockLayout)
 class BlockLayout:
-    def __init__(self, node, parent, previous):
-        self.node = node
-        self.parent = parent
-        self.previous = previous
-        self.children = []
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-
-    def layout(self):
-        self.width = self.parent.width
-        self.x = self.parent.x
-
-        if self.previous:
-            self.y = self.previous.y + self.previous.height
-        else:
-            self.y = self.parent.y
-
-        mode = layout_mode(self.node)
-        if mode == "block":
-            previous = None
-            for child in self.node.children:
-                next = BlockLayout(child, self, previous)
-                self.children.append(next)
-                previous = next
-        else:
-            self.new_line()
-            self.recurse(self.node)
-
-        for child in self.children:
-            child.layout()
-
-        self.height = sum([child.height for child in self.children])
-
-    def recurse(self, node):
-        if isinstance(node, Text):
-            for word in node.text.split():
-                self.word(node, word)
-        else:
-            if node.tag == "br":
-                self.new_line()
-            elif node.tag == "input" or node.tag == "button":
-                self.input(node)
-            else:
-                for child in node.children:
-                    self.recurse(child)
-
-    def new_line(self):
-        self.previous_word = None
-        self.cursor_x = 0
-        last_line = self.children[-1] if self.children else None
-        new_line = LineLayout(self.node, self, last_line)
-        self.children.append(new_line)
-
     def word(self, node, word):
         weight = node.style["font-weight"]
         style = node.style["font-style"]
@@ -315,44 +252,8 @@ class BlockLayout:
             cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
 
-    def __repr__(self):
-        return "BlockLayout[{}](x={}, y={}, width={}, height={}, node={})".format(
-            layout_mode(self.node), self.x, self.y, self.width, self.height, self.node)
-
-class DocumentLayout:
-    def __init__(self, node):
-        self.node = node
-        self.parent = None
-        self.previous = None
-        self.children = []
-
-    def layout(self):
-        child = BlockLayout(self.node, self, None)
-        self.children.append(child)
-
-        self.width = WIDTH - 2*HSTEP
-        self.x = HSTEP
-        self.y = VSTEP
-        child.layout()
-        self.height = child.height + 2*VSTEP
-
-    def paint(self, display_list):
-        self.children[0].paint(display_list)
-
-    def __repr__(self):
-        return "DocumentLayout()"
-
+@wbetools.patch(LineLayout)
 class LineLayout:
-    def __init__(self, node, parent, previous):
-        self.node = node
-        self.parent = parent
-        self.previous = previous
-        self.children = []
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-
     def layout(self):
         self.width = self.parent.width
         self.x = self.parent.x
@@ -378,27 +279,8 @@ class LineLayout:
                            for word in self.children])
         self.height = 1.25 * (max_ascent + max_descent)
 
-    def paint(self, display_list):
-        for child in self.children:
-            child.paint(display_list)
-
-    def __repr__(self):
-        return "LineLayout(x={}, y={}, width={}, height={}, node={})".format(
-            self.x, self.y, self.width, self.height, self.node)
-
+@wbetools.patch(TextLayout)
 class TextLayout:
-    def __init__(self, node, word, parent, previous):
-        self.node = node
-        self.word = word
-        self.children = []
-        self.parent = parent
-        self.previous = previous
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-        self.font = None
-
     def layout(self):
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
@@ -416,28 +298,8 @@ class TextLayout:
 
         self.height = linespace(self.font)
 
-    def paint(self, display_list):
-        color = self.node.style["color"]
-        display_list.append(
-            DrawText(self.x, self.y, self.word, self.font, color))
-    
-    def __repr__(self):
-        return ("TextLayout(x={}, y={}, width={}, height={}, " +
-            "node={}, word={})").format(
-            self.x, self.y, self.width, self.height, self.node, self.word)
-
+@wbetools.patch(InputLayout)
 class InputLayout:
-    def __init__(self, node, parent, previous):
-        self.node = node
-        self.children = []
-        self.parent = parent
-        self.previous = previous
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-        self.font = None
-
     def layout(self):
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
@@ -488,14 +350,6 @@ class InputLayout:
         cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
 
-    def __repr__(self):
-        if self.node.tag == "input":
-            extra = "type=input"
-        else:
-            extra = "type=button text={}".format(self.node.children[0].text)
-        return "InputLayout(x={}, y={}, width={}, height={} {})".format(
-            self.x, self.y, self.width, self.height, extra)
-
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
 
@@ -519,71 +373,8 @@ def paint_visual_effects(node, cmds, rect):
         ], should_save=needs_blend_isolation),
     ]
 
+@wbetools.patch(Tab)
 class Tab:
-    def __init__(self):
-        self.history = []
-        self.focus = None
-        self.url = None
-        self.scroll = 0
-
-        with open("browser8.css") as f:
-            self.default_style_sheet = CSSParser(f.read()).parse()
-
-    def allowed_request(self, url):
-        return self.allowed_origins == None or \
-            url.origin() in self.allowed_origins
-
-    def load(self, url, body=None):
-        headers, body = url.request(self.url, body)
-        self.scroll = 0
-        self.url = url
-        self.history.append(url)
-
-        self.allowed_origins = None
-        if "content-security-policy" in headers:
-           csp = headers["content-security-policy"].split()
-           if len(csp) > 0 and csp[0] == "default-src":
-               self.allowed_origins = csp[1:]
-
-        self.nodes = HTMLParser(body).parse()
-
-        self.js = JSContext(self)
-        scripts = [node.attributes["src"] for node
-                   in tree_to_list(self.nodes, [])
-                   if isinstance(node, Element)
-                   and node.tag == "script"
-                   and "src" in node.attributes]
-        for script in scripts:
-            script_url = url.resolve(script)
-            if not self.allowed_request(script_url):
-                print("Blocked script", script, "due to CSP")
-                continue
-            header, body = script_url.request(url)
-            try:
-                self.js.run(body)
-            except dukpy.JSRuntimeError as e:
-                print("Script", script, "crashed", e)
-
-        self.rules = self.default_style_sheet.copy()
-        links = [node.attributes["href"]
-                 for node in tree_to_list(self.nodes, [])
-                 if isinstance(node, Element)
-                 and node.tag == "link"
-                 and "href" in node.attributes
-                 and node.attributes.get("rel") == "stylesheet"]
-        for link in links:
-            style_url = url.resolve(link)
-            if not self.allowed_request(style_url):
-                print("Blocked style", link, "due to CSP")
-                continue
-            try:
-                header, body = style_url.request(url)
-            except:
-                continue
-            self.rules.extend(CSSParser(body).parse())
-
-        self.render()
-
     def render(self):
         style(self.nodes, sorted(self.rules, key=cascade_priority))
         self.document = DocumentLayout(self.nodes)
@@ -595,70 +386,7 @@ class Tab:
         for cmd in self.display_list:
             cmd.execute(canvas)
 
-    def scrolldown(self):
-        max_y = self.document.height - (HEIGHT - CHROME_PX)
-        self.scroll = min(self.scroll + SCROLL_STEP, max_y)
-
-    def click(self, x, y):
-        self.focus = None
-        y += self.scroll
-        objs = [obj for obj in tree_to_list(self.document, [])
-                if obj.x <= x < obj.x + obj.width
-                and obj.y <= y < obj.y + obj.height]
-        if not objs: return
-        elt = objs[-1].node
-        if elt and self.js.dispatch_event("click", elt): return
-        while elt:
-            if isinstance(elt, Text):
-                pass
-            elif elt.tag == "a" and "href" in elt.attributes:
-                url = self.url.resolve(elt.attributes["href"])
-                return self.load(url)
-            elif elt.tag == "input":
-                elt.attributes["value"] = ""
-                if self.focus:
-                    self.focus.is_focused = False
-                self.focus = elt
-                elt.is_focused = True
-                return self.render()
-            elif elt.tag == "button":
-                while elt:
-                    if elt.tag == "form" and "action" in elt.attributes:
-                        return self.submit_form(elt)
-                    elt = elt.parent
-            elt = elt.parent
-
-    def submit_form(self, elt):
-        if self.js.dispatch_event("submit", elt): return
-        inputs = [node for node in tree_to_list(elt, [])
-                  if isinstance(node, Element)
-                  and node.tag == "input"
-                  and "name" in node.attributes]
-
-        body = ""
-        for input in inputs:
-            name = input.attributes["name"]
-            value = input.attributes.get("value", "")
-            name = urllib.parse.quote(name)
-            value = urllib.parse.quote(value)
-            body += "&" + name + "=" + value
-        body = body [1:]
-
-        url = self.url.resolve(elt.attributes["action"])
-        self.load(url, body)
-
-    def keypress(self, char):
-        if self.focus:
-            if self.js.dispatch_event("keydown", self.focus): return
-            self.focus.attributes["value"] += char
-        self.document.paint(self.display_list) # TODO: is this necessary?
-
-    def go_back(self):
-        if len(self.history) > 1:
-            self.history.pop()
-            back = self.history.pop()
-            self.load(back)
-
+@wbetools.patch(Browser)
 class Browser:
     def __init__(self):
         self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
@@ -687,10 +415,6 @@ class Browser:
             self.GREEN_MASK = 0x0000ff00
             self.BLUE_MASK = 0x00ff0000
             self.ALPHA_MASK = 0xff000000
-
-    def handle_down(self):
-        self.tabs[self.active_tab].scrolldown()
-        self.draw()
 
     def handle_click(self, e):
         if e.y < CHROME_PX:
@@ -752,6 +476,7 @@ class Browser:
         canvas.clear(skia.ColorWHITE)
         active_tab.raster(canvas)
 
+    # We need to keep this because it calls get_font
     def paint_chrome(self):
         cmds = []
         cmds.append(DrawRect(0, 0, WIDTH, CHROME_PX, "white"))

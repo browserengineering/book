@@ -140,14 +140,14 @@ class ResolvePatches(ast.NodeTransformer):
                 for patch in patches:
                     for repl_name, repl_stmt in iter_methods(patch):
                         body2[repl_name] = repl_stmt
-                return ast.ClassDef(cmd.name, cmd.bases, cmd.keywords, list(body2.values()), [])
+                return ast.ClassDef(patch.name, cmd.bases, cmd.keywords, list(body2.values()), [])
             else:
                 return cmd
         else:
             assert len(cmd.decorator_list) == 1
             assert is_patch_decorator(cmd.decorator_list[0])
-            assert cmd.decorator_list[0].args[0].id == cmd.name
-            self.patches.setdefault(cmd.name, []).append(cmd)
+            # Not just cmd.name because in Chapter 5 we rename Layout to BlockLayout
+            self.patches.setdefault(cmd.decorator_list[0].args[0].id, []).append(cmd)
             return None
 
     def double_visit(self, tree):

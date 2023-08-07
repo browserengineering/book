@@ -258,8 +258,6 @@ class BlockLayout:
                 self.children.append(next)
                 previous = next
         else:
-            self.display_list = []
-
             self.cursor_x = 0
             self.cursor_y = 0
             self.weight = "normal"
