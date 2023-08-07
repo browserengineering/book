@@ -8,6 +8,7 @@ EXAMPLE_HTML=$(patsubst src/example%.html,%,$(wildcard src/example*.html))
 EXAMPLE_JS=$(patsubst src/example%.js,%,$(wildcard src/example*.js))
 EXAMPLE_CSS=$(patsubst src/example%.css,%,$(wildcard src/example*.css))
 
+latex: $(patsubst %,latex/%.tex,$(CHAPTERS))
 book: $(patsubst %,www/%.html,$(CHAPTERS)) www/rss.xml widgets examples
 draft: $(patsubst %,www/draft/%.html,$(CHAPTERS)) www/onepage.html widgets
 examples: $(patsubst %,www/examples/example%.html,$(EXAMPLE_HTML)) \
@@ -35,6 +36,12 @@ src/lab%.full.py: src/lab%.py infra/inline.py infra/asttools.py
 CHAPTER=all
 
 PANDOC=pandoc --from markdown --to html --lua-filter=infra/filter.lua --fail-if-warnings --metadata-file=config.json $(FLAGS)
+
+PANDOC_LATEX=pandoc --standalone --from markdown --to latex --lua-filter=infra/filter.lua --fail-if-warnings --metadata-file=config.json $(FLAGS)
+
+latex/%.tex:  book/%.md infra/template.tex infra/filter.lua config.json
+	$(PANDOC_LATEX) --toc --metadata=mode:book --template infra/template.tex  $< -o $@
+	(cd latex && pdflatex $@)
 
 www/%.html: book/%.md infra/template.html infra/signup.html infra/filter.lua config.json
 	$(PANDOC) --toc --metadata=mode:book --template infra/template.html -c book.css $< -o $@
