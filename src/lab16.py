@@ -512,7 +512,7 @@ class BlockLayout:
 
 def DrawCursor(elt, offset):
     x = elt.x.get() + offset
-    return DrawLine(x, elt.y.get(), x, elt.y.get() + elt.height.get())
+    return DrawLine(x, elt.y.get(), x, elt.y.get() + elt.height.get(), "black", 1)
 
 @wbetools.patch(LineLayout)
 class LineLayout:

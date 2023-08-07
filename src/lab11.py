@@ -13,13 +13,13 @@ import socket
 import ssl
 import urllib.parse
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
-from lab4 import Text, Element, print_tree, HTMLParser
+from lab4 import print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS, DrawRect, DocumentLayout
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import DrawText, tree_to_list
 from lab7 import DrawLine, DrawOutline, LineLayout, TextLayout, CHROME_PX
-from lab8 import BlockLayout, InputLayout, INPUT_WIDTH_PX, layout_mode, Browser
+from lab8 import Text, Element, BlockLayout, InputLayout, INPUT_WIDTH_PX, layout_mode, Browser
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, URL, JSContext, Tab
 import wbetools
@@ -342,6 +342,11 @@ class InputLayout:
         cmds.append(DrawText(self.x, self.y,
                              text, self.font, color))
 
+        if self.node.is_focused:
+            cx = self.x + self.font.measureText(text)
+            cmds.append(DrawLine(
+                cx, self.y, cx, self.y + self.height, "black", 1))
+
         cmds = paint_visual_effects(self.node, cmds, rect)
         display_list.extend(cmds)
 
@@ -376,16 +381,6 @@ class Tab:
         self.document.layout()
         self.display_list = []
         self.document.paint(self.display_list)
-
-        if self.focus:
-            obj = [obj for obj in tree_to_list(self.document, [])
-               if obj.node == self.focus and \
-                    isinstance(obj, InputLayout)][0]
-            text = self.focus.attributes.get("value", "")
-            x = obj.x + obj.font.measureText(text)
-            y = obj.y
-            self.display_list.append(
-                DrawLine(x, y, x, y + obj.height, "black", 1))
 
     def raster(self, canvas):
         for cmd in self.display_list:

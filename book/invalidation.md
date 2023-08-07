@@ -134,7 +134,7 @@ Here, `DrawCursor` is just a wrapper around `DrawLine`:
 ``` {.python replace=.x/.x.get(),.y/.y.get(),.height/.height.get()}
 def DrawCursor(elt, offset):
     x = elt.x + offset
-    return DrawLine(x, elt.y, x, elt.y + elt.height)
+    return DrawLine(x, elt.y, x, elt.y + elt.height, "black", 1)
 ```
 
 We might as well also use this wrapper in `InputLayout`:
