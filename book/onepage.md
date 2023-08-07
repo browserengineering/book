@@ -46,4 +46,5 @@ main: true
     cat www/onepage/animations.html
     cat www/onepage/accessibility.html
     cat www/onepage/embeds.html
+    cat www/onepage/invalidation.html
 :::

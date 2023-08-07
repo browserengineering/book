@@ -37,11 +37,11 @@ CHAPTER=all
 
 PANDOC=pandoc --from markdown --to html --lua-filter=infra/filter.lua --fail-if-warnings --metadata-file=config.json $(FLAGS)
 
-PANDOC_LATEX=pandoc --standalone --from markdown --to latex --lua-filter=infra/filter.lua --fail-if-warnings --metadata-file=config.json $(FLAGS)
+PANDOC_LATEX=pandoc --standalone --from markdown --to latex --fail-if-warnings --metadata-file=config.json $(FLAGS)
 
 latex/%.tex:  book/%.md infra/template.tex infra/filter.lua config.json
-	$(PANDOC_LATEX) --toc --metadata=mode:book --template infra/template.tex  $< -o $@
-	(cd latex && pdflatex $@)
+	$(PANDOC_LATEX)  --metadata=mode:book --template infra/template.tex  $< -o $@
+	(cd latex && pdflatex ../$@)
 
 www/%.html: book/%.md infra/template.html infra/signup.html infra/filter.lua config.json
 	$(PANDOC) --toc --metadata=mode:book --template infra/template.html -c book.css $< -o $@
@@ -60,9 +60,7 @@ www/widgets/server%.js: src/server%.py src/server%.hints infra/compile.py infra/
 
 www/onepage/%.html: book/%.md infra/chapter.html infra/filter.lua config.json
 	$(PANDOC) --toc --metadata=mode:onepage --variable=cur:$* --template infra/chapter.html $< -o $@
-
 www/onepage/onepage.html: ;
-
 www/onepage.html: $(patsubst %,www/onepage/%.html,$(CHAPTERS))
 www/onepage.html: book/onepage.md infra/template.html infra/filter.lua config.json
 	$(PANDOC) --metadata=mode:onepage --template infra/template.html -c book.css $< -o $@
