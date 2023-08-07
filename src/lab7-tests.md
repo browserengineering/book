@@ -50,17 +50,7 @@ Here is how the lines are represented in chapter 7:
                TextLayout(x=61, y=50.25, width=48, height=12, node='And this too', word=this)
                TextLayout(x=121, y=50.25, width=36, height=12, node='And this too', word=too)
 
-Whereas in chapter 6 there is no direct layout tree representation of text, but the inline
-has the same total height:
-
-    >>> import lab6
-    >>> browser2 = lab6.Browser()
-    >>> browser2.load(url)
-    >>> lab6.print_tree(browser2.document)
-     DocumentLayout()
-       BlockLayout[block](x=13, y=18, width=774, height=45.0)
-         BlockLayout[block](x=13, y=18, width=774, height=45.0)
-           BlockLayout[inline](x=13, y=18, width=774, height=45.0)
+Whereas in chapter 6 there is no direct layout tree representation of text.
 
 Testing Tab
 ===========

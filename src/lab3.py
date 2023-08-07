@@ -10,7 +10,7 @@ import ssl
 import tkinter
 import tkinter.font
 from lab1 import URL
-from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
+from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP, Browser
 
 class Text:
     def __init__(self, text):
@@ -123,6 +123,7 @@ class Layout:
         self.cursor_y = baseline + 1.25 * max_descent
         wbetools.record("final_y", self.cursor_y);
 
+@wbetools.patch(Browser)
 class Browser:
     def __init__(self):
         self.window = tkinter.Tk()
@@ -149,10 +150,6 @@ class Browser:
             if y > self.scroll + HEIGHT: continue
             if y + font.metrics("linespace") < self.scroll: continue
             self.canvas.create_text(x, y - self.scroll, text=word, font=font, anchor="nw")
-
-    def scrolldown(self, e):
-        self.scroll += SCROLL_STEP
-        self.draw()
 
 if __name__ == "__main__":
     import sys

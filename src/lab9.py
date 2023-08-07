@@ -4,6 +4,7 @@ up to and including Chapter 9 (Running Interactive Scripts),
 without exercises.
 """
 
+import wbetools
 import socket
 import ssl
 import tkinter
@@ -18,7 +19,7 @@ from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import DrawText, tree_to_list
 from lab7 import DrawLine, DrawOutline, LineLayout, TextLayout, CHROME_PX
-from lab8 import URL, layout_mode, Element, Text
+from lab8 import URL, layout_mode, Element, Text, Browser, Tab
 from lab8 import DocumentLayout, BlockLayout, InputLayout, INPUT_WIDTH_PX
 
 EVENT_DISPATCH_CODE = \
@@ -79,15 +80,8 @@ class JSContext:
             child.parent = elt
         self.tab.render()
 
+@wbetools.patch(Tab)
 class Tab:
-    def __init__(self):
-        self.history = []
-        self.focus = None
-        self.url = None
-
-        with open("browser8.css") as f:
-            self.default_style_sheet = CSSParser(f.read()).parse()
-
     def load(self, url, body=None):
         self.scroll = 0
         self.url = url
@@ -122,23 +116,6 @@ class Tab:
                 continue
             self.rules.extend(CSSParser(body).parse())
         self.render()
-
-    def render(self):
-        style(self.nodes, sorted(self.rules, key=cascade_priority))
-        self.document = DocumentLayout(self.nodes)
-        self.document.layout()
-        self.display_list = []
-        self.document.paint(self.display_list)
-
-    def draw(self, canvas):
-        for cmd in self.display_list:
-            if cmd.top > self.scroll + HEIGHT - CHROME_PX: continue
-            if cmd.bottom < self.scroll: continue
-            cmd.execute(self.scroll - CHROME_PX, canvas)
-
-    def scrolldown(self):
-        max_y = self.document.height - (HEIGHT - CHROME_PX)
-        self.scroll = min(self.scroll + SCROLL_STEP, max_y)
 
     def click(self, x, y):
         self.focus = None
@@ -195,115 +172,6 @@ class Tab:
             if self.js.dispatch_event("keydown", self.focus): return
             self.focus.attributes["value"] += char
             self.render()
-
-    def go_back(self):
-        if len(self.history) > 1:
-            self.history.pop()
-            back = self.history.pop()
-            self.load(back)
-
-class Browser:
-    def __init__(self):
-        self.window = tkinter.Tk()
-        self.canvas = tkinter.Canvas(
-            self.window,
-            width=WIDTH,
-            height=HEIGHT,
-            bg="white",
-        )
-        self.canvas.pack()
-
-        self.window.bind("<Down>", self.handle_down)
-        self.window.bind("<Button-1>", self.handle_click)
-        self.window.bind("<Key>", self.handle_key)
-        self.window.bind("<Return>", self.handle_enter)
-
-        self.tabs = []
-        self.active_tab = None
-        self.focus = None
-        self.address_bar = ""
-
-    def handle_down(self, e):
-        self.tabs[self.active_tab].scrolldown()
-        self.draw()
-
-    def handle_click(self, e):
-        if e.y < CHROME_PX:
-            self.focus = None
-            if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
-                self.active_tab = int((e.x - 40) / 80)
-            elif 10 <= e.x < 30 and 10 <= e.y < 30:
-                self.load("https://browser.engineering/")
-            elif 10 <= e.x < 35 and 50 <= e.y < 90:
-                self.tabs[self.active_tab].go_back()
-            elif 50 <= e.x < WIDTH - 10 and 50 <= e.y < 90:
-                self.focus = "address bar"
-                self.address_bar = ""
-        else:
-            self.focus = "content"
-            self.tabs[self.active_tab].click(e.x, e.y - CHROME_PX)
-        self.draw()
-
-    def handle_key(self, e):
-        if len(e.char) == 0: return
-        if not (0x20 <= ord(e.char) < 0x7f): return
-        if self.focus == "address bar":
-            self.address_bar += e.char
-        elif self.focus == "content":
-            self.tabs[self.active_tab].keypress(e.char)
-        self.draw()
-
-    def handle_enter(self, e):
-        if self.focus == "address bar":
-            self.tabs[self.active_tab].load(self.address_bar)
-            self.focus = None
-            self.draw()
-
-    def load(self, url):
-        new_tab = Tab()
-        new_tab.load(url)
-        self.active_tab = len(self.tabs)
-        self.tabs.append(new_tab)
-        self.draw()
-
-    def paint_chrome(self):
-        cmds = []
-        cmds.append(DrawRect(0, 0, WIDTH, CHROME_PX, "white"))
-        cmds.append(DrawLine(0, CHROME_PX - 1, WIDTH, CHROME_PX - 1, "black", 1))
-
-        tabfont = get_font(20, "normal", "roman")
-        for i, tab in enumerate(self.tabs):
-            name = "Tab {}".format(i)
-            x1, x2 = 40 + 80 * i, 120 + 80 * i
-            cmds.append(DrawLine(x1, 0, x1, 40, "black", 1))
-            cmds.append(DrawLine(x2, 0, x2, 40, "black", 1))
-            cmds.append(DrawText(x1 + 10, 10, name, tabfont, "black"))
-            if i == self.active_tab:
-                cmds.append(DrawLine(0, 40, x1, 40, "black", 1))
-                cmds.append(DrawLine(x2, 40, WIDTH, 40, "black", 1))
-
-        buttonfont = get_font(30, "normal", "roman")
-        cmds.append(DrawOutline(10, 10, 30, 30, "black", 1))
-        cmds.append(DrawText(11, 0, "+", buttonfont, "black"))
-
-        cmds.append(DrawOutline(40, 50, WIDTH - 10, 90, "black", 1))
-        if self.focus == "address bar":
-            cmds.append(DrawText(55, 55, self.address_bar, buttonfont, "black"))
-            w = buttonfont.measure(self.address_bar)
-            cmds.append(DrawLine(55 + w, 55, 55 + w, 85, "black", 1))
-        else:
-            url = str(self.tabs[self.active_tab].url)
-            cmds.append(DrawText(55, 55, url, buttonfont, "black"))
-
-        cmds.append(DrawOutline(10, 50, 35, 90, "black", 1))
-        cmds.append(DrawText(15, 50, "<", buttonfont, "black"))
-        return cmds
-
-    def draw(self):
-        self.canvas.delete("all")
-        self.tabs[self.active_tab].draw(self.canvas)
-        for cmd in self.paint_chrome():
-            cmd.execute(0, self.canvas)
 
 if __name__ == "__main__":
     import sys
