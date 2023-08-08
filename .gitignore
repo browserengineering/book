@@ -22,3 +22,4 @@ exercises/
 videos/
 .idea/
 src/*.full.py
+latex/*
