@@ -167,8 +167,8 @@ second; for smooth animations we want sixty! So we need to speed up
 raster and draw.
 
 The best way to do that is to move raster and draw to the [GPU][gpu].
-A GPU is essentially a chip in your computer that runs programs, much
-like your CPU but specialized toward running very simple programs with
+A GPU is essentially a chip in your computer that runs programs much
+like your CPU, but specialized toward running very simple programs with
 massive parallelism---it was developed to apply simple operations, in
 parallel, for every pixel on the screen. This makes GPUs faster for
 drawing simple shapes and *much* faster for applying visual effects.
@@ -196,12 +196,13 @@ parallel with each other.
 
 * *Draw* the textures onto the screen.
 
-Luckily, SDL and Skia support all of these steps; it's mostly a matter
-of passing them the right parameters. So let's do that. Note that a
-real browser typically implements both CPU and GPU raster and draw,
-because in some cases CPU raster and draw can be faster than using the
-GPU, or it may be necessary to work around bugs.[^example-cpu-fast] In
-our browser, for simplicity, we'll always use the GPU.
+Luckily, SDL and Skia support GPUs and all of these steps; it's mostly a
+matter of passing them the right parameters to cause them to happen on the
+GPU. So let's do that. Note that a real browser typically implements both
+CPU and GPU raster and draw, because in some cases CPU raster and draw can
+be faster than using the GPU, or it may be necessary to work around
+bugs.[^example-cpu-fast] In our browser, for simplicity, we'll always use
+the GPU.
 
 [^example-cpu-fast]: Any of the four steps can make GPU raster and
 draw slow. Large display lists take a while to upload. Complex display
@@ -548,7 +549,7 @@ different display lists. That totally changes the coordinates for the
 `DrawText` calls, and we wouldn't necessarily be able to reuse any
 composited layers. Such animations are called *layout-inducing*, and
 speeding them up requires [different
-techniques](reflow.md).[^not-advisable]
+techniques](invalidation.md).[^not-advisable]
 
 [^not-advisable]: Because layout-inducing animations can't easily make use of
 compositing, they're usually not a good idea on the web. Not only are they
