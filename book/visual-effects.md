@@ -18,10 +18,10 @@ Installing Skia and SDL
 Before we get any further, we'll need to upgrade our graphics system.
 While Tkinter is great for basic shapes and handling input, it lacks
 built-in support for many visual effects.[^tkinter-before-gpu]
-Implementing fast visual effects routines is fun, but it's outside the
-scope of this book, so we need a new graphics library. Let's use
-[Skia][skia], the library that Chromium uses. Unlike Tkinter, Skia
-doesn't handle inputs or create graphical windows, so we'll pair it
+Implementing all details of the web's many visual effects is fun, but
+it's outside the scope of this book, so we need a new graphics library.
+Let's use [Skia][skia], the library that Chromium uses. Unlike Tkinter,
+Skia doesn't handle inputs or create graphical windows, so we'll pair it
 with the [SDL][sdl] GUI library.
 
 [skia]: https://skia.org
@@ -305,7 +305,8 @@ To draw text, you use `drawString`:
 ``` {.python replace=%2c%20scroll/,%20-%20scroll/}
 class DrawText:
     def execute(self, canvas, scroll):
-        paint = skia.Paint(AntiAlias=True, Color=parse_color(self.color))
+        paint = skia.Paint(
+            AntiAlias=True, Color=parse_color(self.color))
         baseline = self.top - scroll - self.font.getMetrics().fAscent
         canvas.drawString(self.text, float(self.left), baseline,
             self.font, paint)
@@ -1465,7 +1466,8 @@ Browser compositing
 
 Optimizing away surfaces is great when they're not needed, but
 sometimes having more surfaces allows faster scrolling and
-animations.
+animations. (In this section we'll optimize scrolling; animations
+will have to wait for [Chapter 13](animations.md).)
 
 So far, any time anything changed in the browser chrome or the web
 page itself, we had to clear the canvas and re-raster everything on it

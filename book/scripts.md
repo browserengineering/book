@@ -833,7 +833,7 @@ Whenever the page changes, we need to update its rendering by calling
 `render`:[^reflow]
 
 [^reflow]: Redoing layout for the whole page is often wasteful;
-    [Chapter 11](reflow.md) explores more complicated algorithms to
+    [Chapter 16](invalidation.md) explores more complicated algorithms to
     speed this up.
 
 ``` {.python}
