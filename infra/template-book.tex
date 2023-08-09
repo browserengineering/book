@@ -13,7 +13,9 @@
 % ---- NOTE(chrishtr): The default pandoc latex template is below. Everything
 % above this line is our custom add-on. The template below *may* change with
 % future pandoc releases; to regenerate it, paste the output of
-% `pandoc -D latex` below.
+% `pandoc -D latex` below, then replace $$body$$ with "Book contents go here".
+% This text will be replaced via Makefile commands with the actual
+% book chapter contents.
 
 % Options for packages loaded elsewhere
 \PassOptionsToPackage{unicode$for(hyperrefoptions)$,$hyperrefoptions$$endfor$}{hyperref}
@@ -44,7 +46,7 @@ $endif$
 $for(classoption)$
   $classoption$$sep$,
 $endfor$
-]{$documentclass$}
+]{book}
 $if(beamer)$
 $if(background-image)$
 \usebackgroundtemplate{%
@@ -466,7 +468,7 @@ $endif$
   pdfcreator={LaTeX via pandoc}}
 
 $if(title)$
-\title{$title$$if(thanks)$\thanks{$thanks$}$endif$}
+\title{Web Browser Engineering$if(thanks)$\thanks{$thanks$}$endif$}
 $endif$
 $if(subtitle)$
 $if(beamer)$
@@ -548,7 +550,8 @@ $endif$
 $if(has-frontmatter)$
 \mainmatter
 $endif$
-$body$
+
+---Contents---
 
 $if(has-frontmatter)$
 \backmatter
