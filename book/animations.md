@@ -1741,7 +1741,6 @@ disables use of the GPU (i.e. go back to the old way of making Skia surfaces).
 Everything should still work (albeit more slowly) in all of the modes, and you
 can use these additional modes to debug your browser more fully and benchmark
 its performance.
-
 :::
 
 
