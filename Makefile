@@ -41,23 +41,23 @@ PANDOC=pandoc --from markdown --to html --lua-filter=infra/filter.lua --fail-if-
 
 PANDOC_LATEX=pandoc --standalone --from markdown --to latex --fail-if-warnings --metadata-file=config.json $(FLAGS)
 
+# Generates a simple chapter latex rendering meant to be inserted into the larger book skeleton.
 latex-chapters: $(patsubst %,latex/%-chapter.tex,$(CHAPTERS))
 latex/%-chapter.tex:  book/%.md infra/template-chapter.tex infra/filter.lua config.json
 	$(PANDOC_LATEX)  --metadata=mode:book --template infra/template-chapter.tex  $< -o $@
 
+# Generates a skeleton latex output that has all of the setup necessary to render chapters.
 latex/book-skeleton.tex: $(patsubst %,book/%.md,$(CHAPTERS)) infra/template-book.tex infra/filter.lua config.json
-	$(PANDOC_LATEX) --file-scope --metadata=mode:book --template infra/template-book.tex $(patsubst %,book/%.md,$(CHAPTERS)) -o latex/book-skeleton.tex
+	$(PANDOC_LATEX) --file-scope --template infra/template-book.tex $(patsubst %,book/%.md,$(CHAPTERS)) -o latex/book-skeleton.tex
 
-latex/book-content.tex: latex-chapters
-	cat $(patsubst %,latex/%-chapter.tex,$(CHAPTERS)) > latex/book-contents.tex
-
+# Inserts the chapters into the book skeleton.
 latex/book.tex: latex/book-skeleton.tex latex-chapters
 	cat $(patsubst %,latex/%-chapter.tex,$(CHAPTERS)) > latex/book-contents.tex
 	sed '/---Contents---/r latex/book-contents.tex' latex/book-skeleton.tex > latex/book.tex
 	rm latex/book-contents.tex
 	sed -i '/---Contents---/d' latex/book.tex
 
-book.pdf: latex/book.tex
+latex/book.pdf: latex/book.tex
 	(cd latex && pdflatex book.tex)
 
 www/%.html: book/%.md infra/template.html infra/signup.html infra/filter.lua config.json
