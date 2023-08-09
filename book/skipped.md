@@ -79,12 +79,6 @@ level, connection security is established via the TLS protocol (which
 cameos in [Chapter 1](http.md)) and maintained by an ecosystem of
 cryptographers, certificate authorities, and open-source projects.
 
-[privacy]: https://developer.mozilla.org/en-US/docs/Web/Privacy
-
-[tpc]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#third-party_cookies
-
-[fingerprinting]: https://developer.mozilla.org/en-US/docs/Glossary/Fingerprinting
-
 I chose to skip an in-depth discussion of TLS because this book's
 irreverent attitude toward completeness and validation is incompatible
 with real security engineering. A minimal and incomplete version of
@@ -101,6 +95,12 @@ advertising. I chose to skip this topic because many basic concepts
 remain unsettled: what the standards of privacy are and what role
 governments, browser developers, website authors, and users should
 play in them.
+
+[privacy]: https://developer.mozilla.org/en-US/docs/Web/Privacy
+
+[tpc]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#third-party_cookies
+
+[fingerprinting]: https://developer.mozilla.org/en-US/docs/Glossary/Fingerprinting
 
 Network Caching and Media
 =========================
