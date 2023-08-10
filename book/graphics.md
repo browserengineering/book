@@ -567,7 +567,6 @@ direction to scroll. Unfortunately, Mac and Windows give the
 `event.delta` objects opposite sign and different scales, and on
 Linux, scrolling instead uses the `<Button-4>` and `<Button-5>`
 events.[^more-mousewheel]
-
 [^why-only-top]: It's harder to stop scrolling past the bottom of the
     page; we will implement this in [Chapter 5](layout.md)
 
@@ -580,7 +579,8 @@ events.[^more-mousewheel]
 
 [tk-mousewheel]: https://wiki.tcl-lang.org/page/mousewheel
 
-*Emoji*: Add support for emoji 😀 to our browser. Emoji are
+
+*Emoji*: Add support for emoji to our browser. Emoji are
 characters, and you can call `create_text` to draw them, but the
 results aren't very good. Instead, head to [the OpenMoji
 project](https://openmoji.org), download the emoji for ["grinning
