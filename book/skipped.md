@@ -122,6 +122,31 @@ compression. Video codecs are fascinating, but again not very
 browser-specific, so this book skips it entirely, and I suggest
 dedicated books on these subjects.
 
+Fancier Layout Modes
+====================
+
+The layout algorithm used in real browsers is much more sophisticated
+than that covered in the book, with features like floating layout,
+positioned elements, flexible boxes, grids, tables, and more.
+Implementing these layout modes is complex and requires care and
+sophistication---especially if you want speed and incremental
+performance. Important techniques here include multi-phase
+layout[^text] and measure-layout phases, with tricky caching
+strategies necessary to produce good performance.
+
+I chose to skip fancier layout in this book because even the simple
+layout algorithm described here is quite complex, and real-world
+layout algorithms involve a lot of accidental complexity caused by old
+standards and backwards compatibility, which I didn't want to talk
+much about.
+
+[^text]: We do a little bit of multi-phase layout in the book, with
+    words in a line having their `x`, `width`, and `height` computed
+    in the first phase and then their `y` computed in a separate phase
+    based on the baseline. But we don't talk much about it as an
+    example of multi-phase layout, and real browsers have much more
+    complex sets of layout phases.
+
 Browser UIs and Developer tools
 ===============================
 
