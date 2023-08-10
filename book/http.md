@@ -267,7 +267,7 @@ Now we must separate the host from the path. The host comes before the
 first `/`, while the path is that slash and everything after it. Let's
 add function that parses all parts of a URL:
 
-``` {python}
+``` {.python}
 class URL:
     def __init__(self, url):
         # ...
@@ -783,6 +783,10 @@ should look something like this:
 Exercises
 =========
 
+*Alternate encodings:* add support for a non-`utf8` value for
+`Content-Type`. Test it on a realsite (`google.com` is one that doesn't
+use `utf8`).
+
 *HTTP/1.1:* Along with `Host`, send the `Connection` header in the
 `request` function with the value `close`. Your browser can now
 declare that it is using `HTTP/1.1`. Also add a `User-Agent` header.
@@ -854,7 +858,7 @@ with a `/` (meaning the same host and scheme as the original request).
 The new URL might itself be a redirect, so make sure to handle that
 case. You don't, however, want to get stuck in a redirect loop, so
 make sure limit how many redirects your browser can follow in a row.
-You can test this with with the URL
+You can test this with the URL
 <http://browser.engineering/redirect>, which redirects back to this
 page.
 

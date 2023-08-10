@@ -765,7 +765,7 @@ for i, tab in enumerate(self.tabs):
 ```
 
 The whole point of tab support is to have more than one tab around,
-and for that we we need a button that creates a new tab. Let's put
+and for that we need a button that creates a new tab. Let's put
 that on the left of the tab bar, with a big plus in the middle:
 
 ``` {.python}

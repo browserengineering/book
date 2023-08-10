@@ -503,7 +503,7 @@ desktop. [^meta-viewport]
 * Screen pixel density is much higher, and the total screen resolution is lower.
 * Power efficiency is much more important, because the device runs on a battery,
 while at the same time the CPU and memory are significantly slower and less
-capable. As a a result, it becomes more important to take advantage of GPU
+capable. As a result, it becomes more important to take advantage of GPU
 hardware on these devices, as well as an even greater focus on performance than
 usual.
 

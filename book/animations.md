@@ -224,7 +224,7 @@ and import it:
 import OpenGL.GL
 ```
 
-Now we'll need to configure SDL to use OpenGL and and start/stop a [GL
+Now we'll need to configure SDL to use OpenGL and start/stop a [GL
 context][glcontext] at the beginning/end of the program. For our
 purposes, just consider this API boilerplate:[^glcontext]
 
