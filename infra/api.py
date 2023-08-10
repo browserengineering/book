@@ -166,19 +166,24 @@ def thanks():
 
     # These should be in order of sponsorship, oldest first.
     # Do not add authors to this.
-    patreon_names = [ 
-        "Rishi Chopra",
-        "Adam Gutglick",
-        "Shuhei Kagawa",
-        "Min Lee",
+    patreon_names = [
         "Randy Naar",
-        "Alexandru Nedel",
-        "Swav Rybak",
-        "Zach Tatlock",
+        "Min Lee",
+        "Zachary Tatlock",
         "Jonas Treub",
+        "Alexandru Nedel",
+        "Adam Gutglick",
+        "Swav Rybak",
+        "Rishi Chopra",
         "Yuanhang Xie",
+        "Shuhei Kagawa",
         "Vitor Roriz",
-        "Maia X."
+        "Maia X.",
+        "Parker Henderson",
+        "Tiago Pereira",
+        "Liza Daly",
+        "Sangyeob Han",
+        "YongWoo Jeon"
     ]
     
     contributor_names = sorted((feedback_names | gh_names) - author_names, key=name_key) + \
