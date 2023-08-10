@@ -125,7 +125,8 @@ class DrawText:
         self.color = color
 
     def execute(self, canvas):
-        paint = skia.Paint(AntiAlias=True, Color=parse_color(self.color))
+        paint = skia.Paint(
+            AntiAlias=True, Color=parse_color(self.color))
         baseline = self.top - self.font.getMetrics().fAscent
         canvas.drawString(self.text, float(self.left), baseline,
             self.font, paint)

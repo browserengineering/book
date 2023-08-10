@@ -256,10 +256,9 @@ and `height`, but also `font`, and not `y`. Remember that for later.
 `TextLayout`'s `layout` method---but then that layout method would
 have to come *after* the baseline computation, not *before*. Yet
 `font` must be computed *before* the baseline computation. A real
-browser might resolve this paradox with multi-phase layout, which
-we'll [meet later](reflow.md). There are many considerations and
-optimizations of this kind that are needed to make text layout super
-fast.
+browser might resolve this paradox with multi-phase layout.
+There are many considerations and optimizations of this kind that are
+needed to make text layout super fast.
 
 Finally, since each line is now a standalone layout object, it needs
 to have a height. We compute it from the maximum ascent and descent:
