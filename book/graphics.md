@@ -567,6 +567,7 @@ direction to scroll. Unfortunately, Mac and Windows give the
 `event.delta` objects opposite sign and different scales, and on
 Linux, scrolling instead uses the `<Button-4>` and `<Button-5>`
 events.[^more-mousewheel]
+
 [^why-only-top]: It's harder to stop scrolling past the bottom of the
     page; we will implement this in [Chapter 5](layout.md)
 
