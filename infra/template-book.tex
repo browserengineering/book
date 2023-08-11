@@ -1,19 +1,11 @@
-% TODO(chrishtr): find a way to render these characters.
-% Some are Chinese, some unusual characters, and one a special
-% space character.
-\DeclareUnicodeCharacter{FFFD}{ }
-\DeclareUnicodeCharacter{897F}{ }
-\DeclareUnicodeCharacter{6E38}{ }
-\DeclareUnicodeCharacter{8BB0}{ }
-\DeclareUnicodeCharacter{5F00}{ }
-\DeclareUnicodeCharacter{5173}{ }
-\DeclareUnicodeCharacter{1F600}{ }
-
-
 % ---- NOTE(chrishtr): The default pandoc latex template is below. Everything
 % above this line is our custom add-on. The template below *may* change with
-% future pandoc releases; to regenerate it, paste the output of
-% `pandoc -D latex` below.
+% future pandoc releases. To regenerate it, paste the output of
+% `pandoc -D latex` below, then:
+% * Replace the body template with "Contents" and three dashes around each side;
+%   this text will be replaced via Makefile commands with the actual
+%   book chapter contents.
+% * Add the CJKutf8 package.
 
 % Options for packages loaded elsewhere
 \PassOptionsToPackage{unicode$for(hyperrefoptions)$,$hyperrefoptions$$endfor$}{hyperref}
@@ -44,7 +36,11 @@ $endif$
 $for(classoption)$
   $classoption$$sep$,
 $endfor$
-]{$documentclass$}
+]{book}
+
+\usepackage{CJKutf8}
+
+
 $if(beamer)$
 $if(background-image)$
 \usebackgroundtemplate{%
@@ -466,7 +462,7 @@ $endif$
   pdfcreator={LaTeX via pandoc}}
 
 $if(title)$
-\title{$title$$if(thanks)$\thanks{$thanks$}$endif$}
+\title{Web Browser Engineering$if(thanks)$\thanks{$thanks$}$endif$}
 $endif$
 $if(subtitle)$
 $if(beamer)$
@@ -495,6 +491,7 @@ $endif$
 $endif$
 
 \begin{document}
+\begin{CJK}{UTF8}{gbsn}
 $if(has-frontmatter)$
 \frontmatter
 $endif$
@@ -548,7 +545,8 @@ $endif$
 $if(has-frontmatter)$
 \mainmatter
 $endif$
-$body$
+
+---Contents---
 
 $if(has-frontmatter)$
 \backmatter
@@ -588,4 +586,5 @@ $for(include-after)$
 $include-after$
 
 $endfor$
+\end{CJK}
 \end{document}

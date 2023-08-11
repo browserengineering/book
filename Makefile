@@ -2,13 +2,15 @@
 
 FLAGS=
 
-CHAPTERS=$(patsubst book/%.md,%,$(wildcard book/*.md))
+CHAPTERS=about preface intro history http graphics text html \
+layout styles chrome forms scripts security visual-effects \
+scheduling animations accessibility embeds invalidation skipped \
+change glossary bibliography
 
 EXAMPLE_HTML=$(patsubst src/example%.html,%,$(wildcard src/example*.html))
 EXAMPLE_JS=$(patsubst src/example%.js,%,$(wildcard src/example*.js))
 EXAMPLE_CSS=$(patsubst src/example%.css,%,$(wildcard src/example*.css))
 
-latex: $(patsubst %,latex/%.tex,$(CHAPTERS))
 book: $(patsubst %,www/%.html,$(CHAPTERS)) www/rss.xml widgets examples
 draft: $(patsubst %,www/draft/%.html,$(CHAPTERS)) www/onepage.html widgets
 examples: $(patsubst %,www/examples/example%.html,$(EXAMPLE_HTML)) \
@@ -39,9 +41,24 @@ PANDOC=pandoc --from markdown --to html --lua-filter=infra/filter.lua --fail-if-
 
 PANDOC_LATEX=pandoc --standalone --from markdown --to latex --fail-if-warnings --metadata-file=config.json $(FLAGS)
 
-latex/%.tex:  book/%.md infra/template.tex infra/filter.lua config.json
-	$(PANDOC_LATEX)  --metadata=mode:book --template infra/template.tex  $< -o $@
-	(cd latex && pdflatex ../$@)
+# Generates a simple chapter latex rendering meant to be inserted into the larger book skeleton.
+latex-chapters: $(patsubst %,latex/%-chapter.tex,$(CHAPTERS))
+latex/%-chapter.tex:  book/%.md infra/template-chapter.tex infra/filter.lua config.json
+	$(PANDOC_LATEX)  --metadata=mode:book --template infra/template-chapter.tex  $< -o $@
+
+# Generates a skeleton latex output that has all of the setup necessary to render chapters.
+latex/book-skeleton.tex: $(patsubst %,book/%.md,$(CHAPTERS)) infra/template-book.tex infra/filter.lua config.json
+	$(PANDOC_LATEX) --file-scope --template infra/template-book.tex $(patsubst %,book/%.md,$(CHAPTERS)) -o latex/book-skeleton.tex
+
+# Inserts the chapters into the book skeleton.
+latex/book.tex: latex/book-skeleton.tex latex-chapters
+	cat $(patsubst %,latex/%-chapter.tex,$(CHAPTERS)) > latex/book-contents.tex
+	sed '/---Contents---/r latex/book-contents.tex' latex/book-skeleton.tex > latex/book.tex
+	rm latex/book-contents.tex
+	sed -i '/---Contents---/d' latex/book.tex
+
+latex/book.pdf: latex/book.tex
+	(cd latex && pdflatex book.tex)
 
 www/%.html: book/%.md infra/template.html infra/signup.html infra/filter.lua config.json
 	$(PANDOC) --toc --metadata=mode:book --template infra/template.html -c book.css $< -o $@

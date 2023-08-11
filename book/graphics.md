@@ -580,7 +580,8 @@ events.[^more-mousewheel]
 
 [tk-mousewheel]: https://wiki.tcl-lang.org/page/mousewheel
 
-*Emoji*: Add support for emoji 😀 to our browser. Emoji are
+
+*Emoji*: Add support for emoji to our browser. Emoji are
 characters, and you can call `create_text` to draw them, but the
 results aren't very good. Instead, head to [the OpenMoji
 project](https://openmoji.org), download the emoji for ["grinning
