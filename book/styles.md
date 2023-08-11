@@ -350,7 +350,7 @@ class DescendantSelector:
         self.descendant = descendant
 ```
 
-Then the `match` method is recursive (recursion bottoms out at a
+Then the `match` method is recursive (and bottoms out at, say, a
 `TagSelector`):
 
 ``` {.python}
