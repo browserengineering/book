@@ -1296,7 +1296,7 @@ class JSContext:
 ```
 
 Otherwise, `IframeLayout` and `ImageLayout` are handled just like
-`InputLayout`. Search your code to make sure you you're always
+`InputLayout`. Search your code to make sure you're always
 interacting with `width` via methods like `get` and `read`, and check
 that your browser works, including testing user interactions like
 `contenteditable`.

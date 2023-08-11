@@ -407,7 +407,7 @@ class ImageLayout(EmbedLayout):
 ```
 
 Now we need to create `ImageLayout`s in `BlockLayout`. Input elements
-are created in an `input` method, so we could could duplicate it
+are created in an `input` method, so we could duplicate it
 calling it `image`...but `input` is itself a duplicate of `text`, so
 this would be a lot of almost-identical methods. The only part of
 these methods that differs is the part that computes the width of the
@@ -1191,7 +1191,7 @@ class Frame:
         # ...
 ```
 
-We need to re-render the previously-focused frame frame so that it
+We need to re-render the previously-focused frame so that it
 stops drawing the focus outline.
 
 Another interaction is pressing `Tab` to cycle through focusable

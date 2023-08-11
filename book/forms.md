@@ -256,7 +256,7 @@ def layout_mode(node):
 ```
 
 The second problem is that, again due to having block siblings, sometimes an
-`InputLayout` will end up wrapped in a `BlockLayout` that refers to to the
+`InputLayout` will end up wrapped in a `BlockLayout` that refers to the
 `<input>` or `<button>` node. But both `BlockLayout` and `InputLayout` have a
 `paint` method, which means we're painting the node twice. We can fix that
 with some simple logic to skip painting them via `BlockLayout`
