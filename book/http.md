@@ -784,8 +784,8 @@ Exercises
 =========
 
 *Alternate encodings:* add support for a non-`utf8` value for
-`Content-Type`. Test it on a real site such as `google.com`,
-which doesn't use `utf8`).
+`Content-Type`. Test it on a real site such as `google.com`
+(which doesn't use `utf8`).
 
 *HTTP/1.1:* Along with `Host`, send the `Connection` header in the
 `request` function with the value `close`. Your browser can now
