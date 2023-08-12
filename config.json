@@ -93,10 +93,10 @@
             "tests": "lab16-tests.md"
         },
 
-        "skipped.md": { "disabled": true },
-        "change.md": { "disabled": true },
+        "skipped.md": { },
+        "change.md": { },
 
-        "glossary.md": { "disabled": true },
+        "glossary.md": { },
         "bibliography.md": { },
         "about.md": { },
         "classes.md": { }
