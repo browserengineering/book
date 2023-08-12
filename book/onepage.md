@@ -24,6 +24,7 @@ main: true
 - [Animating and Compositing](#animations)
 - [Making Content Accessible](#accessibility)
 - [Supporting Embedded Content](#embeds)
+- [Reusing Previous Computation](#invalidation)
 
 ::: {.cmd html=True}
     cat www/onepage/preface.html
