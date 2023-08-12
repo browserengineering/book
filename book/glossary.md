@@ -53,7 +53,7 @@ others.
 *Web*: Simplified name for the WWW.
 
 *Web browser*: A software program that allows people to load and
-navigate web pages.
+navigate web pages. Also often just called a "browser".
 
 *Web page*: The basic unit of the web; defined by unique URL.
 
@@ -61,7 +61,7 @@ navigate web pages.
 resources, but so are many of their component parts, such as scripts,
 images, and style sheets.
 
-*Web site*: A collection of web pages that together provide some user
+*Website*: A collection of web pages that together provide some user
 service.
 
 *WWW*: World Wide Web. A name for the network of web pages built on

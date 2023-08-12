@@ -567,7 +567,7 @@ user = x.responseText.split(" ")[2].split("<")[0];
 ```
 
 The issue here is that one server's web page content is being sent to
-a script running on a web site delivered by another server. Since the
+a script running on a website delivered by another server. Since the
 content is derived from cookies, this leaks private data.
 
 To prevent issues like this, browsers have a [*same-origin

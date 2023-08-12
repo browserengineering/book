@@ -12,7 +12,7 @@ from a server somewhere on the Internet.
 Connecting to a server
 ======================
 
-Browsing the internet starts with a URL,[^url] a short string that
+Browsing the internet starts with a URL\index{URL},[^url] a short string that
 identifies a particular web page that the browser should visit. A URL
 looks like this:
 
@@ -109,16 +109,18 @@ should type it into `telnet`:
 
 Make sure to type a blank line after the `Host` line.
 
-Here, the word `GET` means that the browser would like to receive
+Here, the word `GET`\index{GET} means that the browser would like to receive
 information,[^11] then comes the path, and finally there is the word
 `HTTP/1.0` which tells the host that the browser speaks version 1.0 of
-HTTP.[^12] There are several versions of HTTP ([0.9, 1.0, 1.1, and
+[HTTP]\index{HTTP}.[^12] There are several versions of HTTP ([0.9, 1.0, 1.1, and
 2.0](https://medium.com/platform-engineer/evolution-of-http-69cfe6531ba0)).
 The HTTP 1.1 standard adds a variety of useful features, like
 keep-alive, but in the interest of simplicity our browser won't use
 them. We're also not implementing HTTP 2.0; HTTP 2.0 is much more
 complex than the 1.X series, and is intended for large and complex web
 applications, which our browser can't run anyway.
+
+[HTTP]: https://developer.mozilla.org/en-US/docs/Web/HTTP
 
 After the first line, each line contains a *header*, which has a name
 (like `Host`) and a value (like `example.org`). Different headers mean
@@ -211,11 +213,13 @@ server (`Server`, `X-Cache`), about how long the browser should cache
 this information (`Cache-Control`, `Expires`, `Etag`), about all sorts
 of other stuff. Let's move on for now.
 
-After the headers there is a blank line followed by a bunch of HTML
-code. This is called the *body* of the server's response, and your
-browser knows that it is HTML because of the `Content-Type` header,
-which says that it is `text/html`. It's this HTML code that contains
-the content of the web page itself.
+After the headers there is a blank line followed by a bunch of
+[HTML]\index{HTML} code. This is called the *body* of the server's
+response, and your browser knows that it is HTML because of the
+`Content-Type` header, which says that it is `text/html`. It's this HTML
+code that contains the content of the web page itself.
+
+[html]:  https://developer.mozilla.org/en-US/docs/Web/HTML
 
 Let's now switch gears from manual connections to Python.
 
@@ -621,15 +625,15 @@ Encrypted connections
 
 So far, our browser supports the `http` scheme. That's pretty good:
 it's the most common scheme on the web today. But more and more,
-websites are migrating to the `https` scheme. I'd like this toy
-browser to support `https` because many websites today require it.
+websites are migrating to the `https`\index{HTTPS} scheme. I'd like this
+toy browser to support `https` because many websites today require it.
 
 The difference between `http` and `https` is that `https` is more
 secure---but let's be a little more specific. The `https` scheme, or
-more formally HTTP over TLS, is identical to the normal `http` scheme,
-except that all communication between the browser and the host is
-encrypted. There are quite a few details to how this works: which
-encryption algorithms are used, how a common encryption key is agreed
+more formally HTTP over TLS\index{TLS}\index{SSL}, is identical to the
+normal `http` scheme, except that all communication between the browser
+and the host is encrypted. There are quite a few details to how this works:
+which encryption algorithms are used, how a common encryption key is agreed
 to, and of course how to make sure that the browser is connecting to
 the correct host.
 

@@ -7,7 +7,7 @@ next: chrome
 
 In the [last chapter](layout.md), we gave each `pre` element a gray
 background. It looks OK, and it *is* good to have defaults... but of
-course sites want a say in how they look. Web sites do that with
+course sites want a say in how they look. Websites do that with
 _Cascading Style Sheets_, which allow web authors (and, as we'll see,
 browser developers) to define how a web page ought to look.
 
