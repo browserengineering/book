@@ -6,9 +6,9 @@ prev: intro
 ...
 
 If you've read this far, hopefully you're convinced that browsers are
-interesting and important to study. Now we'll dig a bit into the web itself,
-where it came from, and how the web and browsers have evolved to date. This
-history is by no means exhaustive.[^sgml] Instead, it'll focus on some key
+interesting and important to study. Now we'll dig a bit into the web\index{web}
+itself, where it came from, and how the web and browsers have evolved to date.
+This history is by no means exhaustive.[^sgml] Instead, it'll focus on some key
 events and ideas that led to the web. These ideas and events will explain how
 exactly a thing such as the web came to be, as well as the motivations and goals
 of those who created it and its predecessors.
@@ -82,7 +82,7 @@ what the web can do today.
 The web emerges
 ===============
 
-The concept of [hypertext][hypertext] documents linked by
+The concept of [hypertext][hypertext]\index{hypertext} documents linked by
 [hyperlinks][hyperlink] was invented in 1964-65 by [Project Xanadu][xanadu], led
 by Ted Nelson.[^literary-criticism] Hypertext is text that is marked up with
 hyperlinks to other text. A successor called the [Hypertext Editing System] was
@@ -98,10 +98,10 @@ criticism in academic and literary communities. The Project Xanadu research
 papers were heavily motivated by this use case.
 
 Hypertext is text that is marked up with hyperlinks to other text. Sounds
-familiar? A web page is hypertext, and links between web pages are hyperlinks.
-The format for writing web pages is HTML, which is short for HyperText Markup
-Language. The protocol for loading web pages is HTTP, which is short for
-HyperText Transport Protocol.
+familiar? A web page\index{web page} is hypertext, and links between web pages
+are hyperlinks. The format for writing web pages is HTML, which is short for
+HyperText Markup Language. The protocol for loading web pages is HTTP, which is
+short for HyperText Transport Protocol.
 
 <figure>
 	<img src="im/hes.jpg" alt="A computer operator using a hypertext editing system in 1969">
@@ -160,14 +160,14 @@ just text, unlike most predecessors.
 [^world-wide-web-terminology]: Nowadays the World Wide Web is called just “the
 web”, or “the web ecosystem”---ecosystem being another way to capture the same
 concept as “World Wide”. The original wording lives on in the "www" in many
-website domain names.
+website\index{website} domain names.
 
 [^realize-web-decades]: Just as the web itself is a realization of previous
 ambitions and dreams, today we strive to realize the vision laid out by the web.
 (No, it's not done yet!)
 
-In 1989-1990, the first web browser (named “WorldWideWeb”) and web server (named
-“`httpd`”, for “HTTP Daemon” according to UNIX naming conventions) were born,
+In 1989-1990, the first web browser\index{web browser} (named “WorldWideWeb”)
+and web server (named “`httpd`”, for “HTTP Daemon” according to UNIX naming conventions) were born,
 written by Tim Berners-Lee. Interestingly, while that browser’s capabilities
 were in some ways inferior to the browser you will implement in this
 book,[^no-css] in other ways they go beyond the capabilities available even in
@@ -309,20 +309,20 @@ Web standards
 
 In parallel with these developments was another, equally important, one---the
 standardization of web APIs. In October 1994, the [World Wide Web
-Consortium](https://www.w3.org/Consortium/facts) (W3C) was founded to provide
-oversight and standards for web features. Prior to this point, browsers would
-often introduce new HTML elements or APIs, and competing browsers would have to
-copy them. With a standards organization, those elements and APIs could
-subsequently be agreed upon and documented in specifications. (These days, an
-initial discussion, design and specification precedes any new feature.) Later
+Consortium](https://www.w3.org/Consortium/facts) (W3C)\index{W3C} was founded
+to provide oversight and standards for web features. Prior to this point,
+browsers would often introduce new HTML elements or APIs, and competing browsers would have to copy them. With a standards organization, those elements and APIs
+could subsequently be agreed upon and documented in specifications. (These days,
+an initial discussion, design and specification precedes any new feature.) Later
 on, the HTML specification ended up moving to a different standards body called
-the [WHATWG](https://whatwg.org/), but [CSS](https://drafts.csswg.org/) and
-other features are still standardized at the W3C. JavaScript is standardized at
-[TC39](https://tc39.es/) (“Technical Committee 39” at
+the [WHATWG](https://whatwg.org/)\index{WHATWG}, but
+[CSS](https://drafts.csswg.org/) and other features are still standardized at
+the W3C. JavaScript is standardized at [TC39](https://tc39.es/)\index{TC39}
+(“Technical Committee 39” at
 [ECMA](https://www.ecma-international.org/about-ecma/history/), yet another
 standards body). [HTTP](https://tools.ietf.org/html/rfc2616) is standardized by
-the [IETF](https://www.ietf.org/about/). The point is that the standards process
-set up in the mid-nineties is still with us.
+the [IETF](https://www.ietf.org/about/)\index{IETF}. The point is that the
+standards process set up in the mid-nineties is still with us.
 
 In the first years of the web, it was not so clear that browsers would remain
 standard and that one browser might not end up “winning” and becoming another

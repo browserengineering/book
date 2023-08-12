@@ -38,8 +38,9 @@ $for(classoption)$
 $endfor$
 ]{book}
 
+\usepackage{imakeidx}
+\makeindex
 \usepackage{CJKutf8}
-
 
 $if(beamer)$
 $if(background-image)$
@@ -587,4 +588,5 @@ $include-after$
 
 $endfor$
 \end{CJK}
+\printindex
 \end{document}
