@@ -119,7 +119,7 @@
             "show_signup": true
         },
         "onepage": {
-            "show_toc": true,
+            "show_toc": true
         }
     }
 }
