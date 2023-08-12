@@ -91,6 +91,8 @@ Conclusion
 1. [What Wasn't Covered](skipped.md)
 2. [A Changing Landscape](change.md)
 
+[One-page version](onepage.md) of the entire book.
+
 Appendix
 ========
 
