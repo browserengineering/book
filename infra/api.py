@@ -183,7 +183,8 @@ def thanks():
         "Tiago Pereira",
         "Liza Daly",
         "Sangyeob Han",
-        "YongWoo Jeon"
+        "YongWoo Jeon",
+        "Jess"
     ]
     
     contributor_names = sorted((feedback_names | gh_names) - author_names, key=name_key) + \
