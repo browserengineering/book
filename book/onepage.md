@@ -25,6 +25,8 @@ main: true
 - [Making Content Accessible](#accessibility)
 - [Supporting Embedded Content](#embeds)
 - [Reusing Previous Computation](#invalidation)
+- [What Wasn't Covered](#skipped)
+- [A Changing Landscape](#change)
 
 ::: {.cmd html=True}
     cat www/onepage/preface.html
@@ -48,4 +50,6 @@ main: true
     cat www/onepage/accessibility.html
     cat www/onepage/embeds.html
     cat www/onepage/invalidation.html
+    cat www/onepage/skipped.html
+    cat www/onepage/change.html
 :::
