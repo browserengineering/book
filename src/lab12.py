@@ -228,7 +228,7 @@ class Tab:
         scroll = None
         if self.scroll_changed_in_tab:
             scroll = self.scroll
-        commit_data = CommitForRaster(
+        commit_data = CommitData(
             self.url, scroll, document_height, self.display_list)
         self.display_list = None
         self.browser.commit(self, commit_data)
@@ -316,7 +316,7 @@ class SingleThreadedTaskRunner:
     def run(self):
         pass
 
-class CommitForRaster:
+class CommitData:
     def __init__(self, url, scroll, height, display_list):
         self.url = url
         self.scroll = scroll

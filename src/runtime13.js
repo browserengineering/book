@@ -11,7 +11,6 @@ Node.prototype.getAttribute = function(attr) {
     return call_python("getAttribute", this.handle, attr);
 }
 
-
 LISTENERS = {}
 
 function Event(type) {
@@ -82,7 +81,7 @@ XMLHttpRequest.prototype.open = function(method, url, is_async) {
 
 XMLHttpRequest.prototype.send = function(body) {
     this.responseText = call_python("XMLHttpRequest_send",
-        this.method, this.url, this.body, this.is_async, this.handle);
+        this.method, this.url, body, this.is_async, this.handle);
 }
 
 function __runXHROnload(body, handle) {
@@ -91,11 +90,6 @@ function __runXHROnload(body, handle) {
     obj.responseText = body;
     if (obj.onload)
         obj.onload(evt);
-}
-
-function Date() {}
-Date.now = function() {
-    return call_python("now");
 }
 
 RAF_LISTENERS = [];

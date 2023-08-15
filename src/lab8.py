@@ -108,6 +108,7 @@ class InputLayout:
         self.y = None
         self.width = None
         self.height = None
+        self.font = None
 
     def layout(self):
         weight = self.node.style["font-weight"]
