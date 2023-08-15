@@ -29,5 +29,6 @@
  {"code": "'style' in node.attributes", "type": "dict"},
  {"code": "property in ANIMATED_PROPERTIES", "type": "list"},
  {"code": "node in self.composited_updates", "type": "list"},
- {"code": "old_transitions", "type": "dict"}
+ {"code": "old_transitions", "type": "dict"},
+ {"code": "child.tag in BLOCK_ELEMENTS", "type": "list"}
 ]
