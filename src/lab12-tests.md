@@ -98,7 +98,7 @@ Testing TabWrapper
     >>> browser.scroll == 0
     True
 
-    >>> commit_data = lab12.CommitForRaster("test-url", 1, 24, [3])
+    >>> commit_data = lab12.CommitData("test-url", 1, 24, [3])
     >>> browser.commit(browser.tabs[0], commit_data)
     >>> browser.url
     'test-url'
