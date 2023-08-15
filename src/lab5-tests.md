@@ -13,7 +13,7 @@ adds support for drawing the background colors of document tree elements.
 Testing layout_mode
 ===================
 
-The `layout_mode` function returns "inline" if the object is a `Text` node
+The `layout_mode` method returns "inline" if the object is a `Text` node
 or has all inline children, and otherwise returns "block".
 
     >>> parser = lab5.HTMLParser("text")
@@ -22,9 +22,10 @@ or has all inline children, and otherwise returns "block".
      <html>
        <body>
          'text'
-    >>> lab5.layout_mode(document_tree)
+    >>> lmode = lambda n: lab5.BlockLayout(n, None, None).layout_mode()
+    >>> lmode(document_tree)
     'block'
-    >>> lab5.layout_mode(document_tree.children[0])
+    >>> lmode(document_tree.children[0])
     'inline'
     
 Here's some tests on a bigger, more complex document
@@ -47,32 +48,32 @@ Here's some tests on a bigger, more complex document
 
 The body element has block layout mode, because it has two block-element children.
 
-    >>> lab5.layout_mode(document_tree.children[0])
+    >>> lmode(document_tree.children[0])
     'block'
 
 The first div has block layout mode, because it has no children.
 
-    >>> lab5.layout_mode(document_tree.children[0].children[0])
+    >>> lmode(document_tree.children[0].children[0])
     'block'
 
 The second div has inline layout mode, because it has one text child.
 
-    >>> lab5.layout_mode(document_tree.children[0].children[1])
+    >>> lmode(document_tree.children[0].children[1])
     'inline'
 
 The third div has block layout mode, because it has one block and one inline child.
 
-    >>> lab5.layout_mode(document_tree.children[0].children[2])
+    >>> lmode(document_tree.children[0].children[2])
     'block'
 
 The first span has block layout mode, even though spans are inline normally:
 
-    >>> lab5.layout_mode(document_tree.children[0].children[3])
+    >>> lmode(document_tree.children[0].children[3])
     'block'
 
 The span has block layout mode, even though spans are inline normally:
 
-    >>> lab5.layout_mode(document_tree.children[0].children[4])
+    >>> lmode(document_tree.children[0].children[4])
     'inline'
 
 Testing the layout tree

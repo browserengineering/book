@@ -82,20 +82,6 @@ class URL:
         s.close()
         return headers, body
 
-def layout_mode(node):
-    if isinstance(node, Text):
-        return "inline"
-    elif node.children:
-        for child in node.children:
-            if isinstance(child, Text): continue
-            if child.tag in BLOCK_ELEMENTS:
-                return "block"
-        return "inline"
-    elif node.tag == "input":
-        return "inline"
-    else:
-        return "block"
-
 INPUT_WIDTH_PX = 200
 
 class InputLayout:
@@ -163,37 +149,19 @@ class InputLayout:
 
 @wbetools.patch(BlockLayout)
 class BlockLayout:
-    # While this is identical to that in Chapter 7, it calls `layout_mode`,
-    # which we don't want to patch because the JS compiler doesn't support
-    # patching functions.
-    def layout(self):
-        wbetools.record("layout_pre", self)
-
-        self.width = self.parent.width
-        self.x = self.parent.x
-
-        if self.previous:
-            self.y = self.previous.y + self.previous.height
-        else:
-            self.y = self.parent.y
-
-        mode = layout_mode(self.node)
-        if mode == "block":
-            previous = None
+    def layout_mode(self):
+        if isinstance(self.node, Text):
+            return "inline"
+        elif self.node.children:
             for child in self.node.children:
-                next = BlockLayout(child, self, previous)
-                self.children.append(next)
-                previous = next
+                if isinstance(child, Text): continue
+                if child.tag in BLOCK_ELEMENTS:
+                    return "block"
+            return "inline"
+        elif self.node.tag == "input":
+            return "inline"
         else:
-            self.new_line()
-            self.recurse(self.node)
-
-        for child in self.children:
-            child.layout()
-
-        self.height = sum([child.height for child in self.children])
-
-        wbetools.record("layout_post", self)
+            return "block"
 
     def recurse(self, node):
         if isinstance(node, Text):
@@ -237,7 +205,7 @@ class BlockLayout:
 
     def __repr__(self):
         return "BlockLayout[{}](x={}, y={}, width={}, height={}, node={})".format(
-            layout_mode(self.node), self.x, self.y, self.width, self.height, self.node)
+            self.layout_mode(), self.x, self.y, self.width, self.height, self.node)
 
 @wbetools.patch(Tab)
 class Tab:

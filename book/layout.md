@@ -197,18 +197,19 @@ of content its HTML node contains: text and text-related tags like
 like this:
 
 ``` {.python}
-def layout_mode(node):
-    if isinstance(node, Text):
-        return "inline"
-    elif node.children:
-        if any([isinstance(child, Element) and \
-                child.tag in BLOCK_ELEMENTS
-                for child in node.children]):
-            return "block"
-        else:
+class BlockLayout:
+    def layout_mode(self):
+        if isinstance(self.node, Text):
             return "inline"
-    else:
-        return "block"
+        elif self.node.children:
+            if any([isinstance(child, Element) and \
+                    child.tag in BLOCK_ELEMENTS
+                    for child in self.node.children]):
+                return "block"
+            else:
+                return "inline"
+        else:
+            return "block"
 ```
 
 Here the list of `BLOCK_ELEMENTS` is basically what you expect, a list
@@ -230,7 +231,7 @@ BLOCK_ELEMENTS = [
 ]
 ```
 
-Our `layout_mode` function has to handle one tricky case, where a node
+Our `layout_mode` method has to handle one tricky case, where a node
 contains both block children like a `<p>` element but also text
 children like a text node or a `<b>` element. I've chosen to use block
 mode in this case, but it's probably best to think of this as a kind
@@ -250,7 +251,7 @@ the `layout_mode` of its HTML node:
 ``` {.python}
 class BlockLayout:
     def layout(self):
-        mode = layout_mode(self.node)
+        mode = self.layout_mode()
         if mode == "block":
             previous = None
             for child in self.node.children:

@@ -240,19 +240,20 @@ behavior within an inline context. These are also two examples of
 We can fix that with this change to `layout_mode`:
 
 ``` {.python}
-def layout_mode(node):
-    if isinstance(node, Text):
-        return "inline"
-    elif node.children:
-        for child in node.children:
-            if isinstance(child, Text): continue
-            if child.tag in BLOCK_ELEMENTS:
-                return "block"
-        return "inline"
-    elif node.tag == "input":
-        return "inline"
-    else:
-        return "block"
+class BlockLayout:
+    def layout_mode(self):
+        if isinstance(self.node, Text):
+            return "inline"
+        elif self.node.children:
+            for child in self.node.children:
+                if isinstance(child, Text): continue
+                if child.tag in BLOCK_ELEMENTS:
+                    return "block"
+            return "inline"
+        elif self.node.tag == "input":
+            return "inline"
+        else:
+            return "block"
 ```
 
 The second problem is that, again due to having block siblings, sometimes an

@@ -23,19 +23,6 @@ BLOCK_ELEMENTS = [
     "legend", "details", "summary"
 ]
 
-def layout_mode(node):
-    if isinstance(node, Text):
-        return "inline"
-    elif node.children:
-        if any([isinstance(child, Element) and \
-                child.tag in BLOCK_ELEMENTS
-                for child in node.children]):
-            return "block"
-        else:
-            return "inline"
-    else:
-        return "block"
-
 @wbetools.patch(Layout)
 class BlockLayout:
     def __init__(self, node, parent, previous):
@@ -60,7 +47,7 @@ class BlockLayout:
         else:
             self.y = self.parent.y
 
-        mode = layout_mode(self.node)
+        mode = self.layout_mode()
         if mode == "block":
             previous = None
             for child in self.node.children:
@@ -88,6 +75,19 @@ class BlockLayout:
             self.height = self.cursor_y
 
         wbetools.record("layout_post", self)
+
+    def layout_mode(self):
+        if isinstance(self.node, Text):
+            return "inline"
+        elif self.node.children:
+            if any([isinstance(child, Element) and \
+                    child.tag in BLOCK_ELEMENTS
+                    for child in self.node.children]):
+                return "block"
+            else:
+                return "inline"
+        else:
+            return "block"
 
     def word(self, word):
         font = get_font(self.size, self.weight, self.style)
@@ -117,7 +117,7 @@ class BlockLayout:
             rect = DrawRect(self.x, self.y, x2, y2, "gray")
             display_list.append(rect)
 
-        if layout_mode(self.node) == "inline":
+        if self.layout_mode() == "inline":
             for x, y, word, font in self.display_list:
                 display_list.append(DrawText(x, y, word, font))
 
@@ -127,7 +127,7 @@ class BlockLayout:
     @wbetools.js_hide
     def __repr__(self):
         return "BlockLayout[{}](x={}, y={}, width={}, height={}, node={})".format(
-            layout_mode(self.node), self.x, self.y, self.width, self.height, self.node)
+            self.layout_mode(), self.x, self.y, self.width, self.height, self.node)
 
 class DocumentLayout:
     def __init__(self, node):

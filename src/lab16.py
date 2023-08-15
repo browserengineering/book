@@ -23,7 +23,6 @@ from lab6 import TagSelector, DescendantSelector
 from lab6 import tree_to_list, INHERITED_PROPERTIES
 from lab7 import CHROME_PX
 from lab8 import INPUT_WIDTH_PX
-from lab8 import layout_mode
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR
 from lab11 import FONTS, get_font, linespace, parse_blend_mode
@@ -381,7 +380,7 @@ class BlockLayout:
         else:
             self.y.copy(self.parent.y)
 
-        mode = layout_mode(self.node)
+        mode = self.layout_mode()
         if mode == "block":
             if self.children.dirty:
                 children = []
