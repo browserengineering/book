@@ -85,11 +85,6 @@ function __runXHROnload(body, handle) {
         obj.onload(evt);
 }
 
-function Date() {}
-Date.now = function() {
-    return call_python("now");
-}
-
 RAF_LISTENERS = [];
 
 function requestAnimationFrame(fn) {
