@@ -1341,9 +1341,8 @@ def paint_visual_effects(node, cmds, rect):
     node.save_layer = save_layer
 ```
 
-Next rename `CommitForRaster` to `CommitData` and add a list of
-composited updates (each of which will contain the `Element` and
-`SaveLayer` pointers).
+Next add a list of composited updates to `CommitData` (each of which
+will contain the `Element` and `SaveLayer` pointers).
 
 ``` {.python}
 class CommitData:

@@ -25,10 +25,10 @@ from lab6 import tree_to_list
 from lab7 import CHROME_PX
 from lab8 import Text, Element, INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_CODE
-from lab10 import COOKIE_JAR, URL
+from lab10 import COOKIE_JAR, JSContext, URL
 from lab11 import get_font, FONTS, DrawLine, DrawRect, DrawOutline, linespace, DrawText, SaveLayer, ClipRRect
 from lab11 import BlockLayout, DocumentLayout, LineLayout, TextLayout, InputLayout
-from lab11 import paint_visual_effects, parse_blend_mode, parse_color
+from lab11 import paint_visual_effects, parse_blend_mode, parse_color, Tab, Browser
 
 class MeasureTime:
     def __init__(self, name):
@@ -60,6 +60,7 @@ class MeasureTime:
 SETTIMEOUT_CODE = "__runSetTimeout(dukpy.handle)"
 XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
 
+@wbetools.patch(JSContext)
 class JSContext:
     def __init__(self, tab):
         self.tab = tab
@@ -75,8 +76,6 @@ class JSContext:
             self.XMLHttpRequest_send)
         self.interp.export_function("setTimeout",
             self.setTimeout)
-        self.interp.export_function("now",
-            self.now)
         self.interp.export_function("requestAnimationFrame",
             self.requestAnimationFrame)
         with open("runtime12.js") as f:
@@ -84,38 +83,6 @@ class JSContext:
 
         self.node_to_handle = {}
         self.handle_to_node = {}
-
-    def run(self, script, code):
-        try:
-            self.interp.evaljs(code)
-        except dukpy.JSRuntimeError as e:
-            print("Script", script, "crashed", e)
-
-    def dispatch_event(self, type, elt):
-        handle = self.node_to_handle.get(elt, -1)
-        do_default = self.interp.evaljs(
-            EVENT_DISPATCH_CODE, type=type, handle=handle)
-        return not do_default
-
-    def get_handle(self, elt):
-        if elt not in self.node_to_handle:
-            handle = len(self.node_to_handle)
-            self.node_to_handle[elt] = handle
-            self.handle_to_node[handle] = elt
-        else:
-            handle = self.node_to_handle[elt]
-        return handle
-
-    def querySelectorAll(self, selector_text):
-        selector = CSSParser(selector_text).selector()
-        nodes = [node for node
-                 in tree_to_list(self.tab.nodes, [])
-                 if selector.matches(node)]
-        return [self.get_handle(node) for node in nodes]
-
-    def getAttribute(self, handle, attr):
-        elt = self.handle_to_node[handle]
-        return elt.attributes.get(attr, None)
 
     def innerHTML_set(self, handle, s):
         doc = HTMLParser(
@@ -160,19 +127,13 @@ class JSContext:
         else:
             threading.Thread(target=run_load).start()
 
-    def now(self):
-        return int(time.time() * 1000)
-
     def requestAnimationFrame(self):
         self.tab.browser.set_needs_animation_frame(self.tab)
-
-def raster(display_list, canvas):
-    for cmd in display_list:
-        cmd.execute(canvas)
 
 def clamp_scroll(scroll, tab_height):
     return max(0, min(scroll, tab_height - (HEIGHT - CHROME_PX)))
 
+@wbetools.patch(Tab)
 class Tab:
     def __init__(self, browser):
         self.history = []
@@ -193,13 +154,6 @@ class Tab:
 
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
-
-    def allowed_request(self, url):
-        return self.allowed_origins == None or \
-            url.origin() in self.allowed_origins
-
-    def script_run_wrapper(self, script, script_text):
-        return Task(self.js.run, script, script_text)
 
     def load(self, url, body=None):
         self.scroll = 0
@@ -256,10 +210,6 @@ class Tab:
         self.needs_render = True
         self.browser.set_needs_animation_frame(self)
 
-    def request_animation_frame_callback(self):
-        self.needs_raf_callbacks = True
-        self.browser.set_needs_animation_frame(self)
-
     def run_animation_frame(self, scroll):
         if not self.scroll_changed_in_tab:
             self.scroll = scroll
@@ -278,7 +228,7 @@ class Tab:
         scroll = None
         if self.scroll_changed_in_tab:
             scroll = self.scroll
-        commit_data = CommitForRaster(
+        commit_data = CommitData(
             self.url, scroll, document_height, self.display_list)
         self.display_list = None
         self.browser.commit(self, commit_data)
@@ -328,37 +278,6 @@ class Tab:
                     elt = elt.parent
             elt = elt.parent
 
-    def submit_form(self, elt):
-        if self.js.dispatch_event("submit", elt): return
-        inputs = [node for node in tree_to_list(elt, [])
-                  if isinstance(node, Element)
-                  and node.tag == "input"
-                  and "name" in node.attributes]
-
-        body = ""
-        for input in inputs:
-            name = input.attributes["name"]
-            value = input.attributes.get("value", "")
-            name = urllib.parse.quote(name)
-            value = urllib.parse.quote(value)
-            body += "&" + name + "=" + value
-        body = body [1:]
-
-        url = self.url.resolve(elt.attributes["action"])
-        self.load(url, body)
-
-    def keypress(self, char):
-        if self.focus:
-            if self.js.dispatch_event("keydown", self.focus): return
-            self.focus.attributes["value"] += char
-            self.set_needs_render()
-
-    def go_back(self):
-        if len(self.history) > 1:
-            self.history.pop()
-            back = self.history.pop()
-            self.load(back)
-
 class Task:
     def __init__(self, task_code, *args):
         self.task_code = task_code
@@ -397,7 +316,7 @@ class SingleThreadedTaskRunner:
     def run(self):
         pass
 
-class CommitForRaster:
+class CommitData:
     def __init__(self, url, scroll, height, display_list):
         self.url = url
         self.scroll = scroll
@@ -459,6 +378,7 @@ class TaskRunner:
 
 REFRESH_RATE_SEC = 0.016 # 16ms
 
+@wbetools.patch(Browser)
 class Browser:
     def __init__(self):
         self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
@@ -651,84 +571,8 @@ class Browser:
 
         canvas = self.tab_surface.getCanvas()
         canvas.clear(skia.ColorWHITE)
-        raster(self.active_tab_display_list, canvas)
-
-    def paint_chrome(self):
-        cmds = []
-        cmds.append(DrawRect(0, 0, WIDTH, CHROME_PX, "white"))
-        cmds.append(DrawLine(0, CHROME_PX - 1, WIDTH, CHROME_PX - 1, "black", 1))
-
-        tabfont = get_font(20, "normal", "roman")
-        for i, tab in enumerate(self.tabs):
-            name = "Tab {}".format(i)
-            x1, x2 = 40 + 80 * i, 120 + 80 * i
-            cmds.append(DrawLine(x1, 0, x1, 40, "black", 1))
-            cmds.append(DrawLine(x2, 0, x2, 40, "black", 1))
-            cmds.append(DrawText(x1 + 10, 10, name, tabfont, "black"))
-            if i == self.active_tab:
-                cmds.append(DrawLine(0, 40, x1, 40, "black", 1))
-                cmds.append(DrawLine(x2, 40, WIDTH, 40, "black", 1))
-
-        buttonfont = get_font(30, "normal", "roman")
-        cmds.append(DrawOutline(10, 10, 30, 30, "black", 1))
-        cmds.append(DrawText(11, 5, "+", buttonfont, "black"))
-
-        cmds.append(DrawOutline(40, 50, WIDTH - 10, 90, "black", 1))
-        if self.focus == "address bar":
-            cmds.append(DrawText(55, 55, self.address_bar, buttonfont, "black"))
-            w = buttonfont.measure(self.address_bar)
-            cmds.append(DrawLine(55 + w, 55, 55 + w, 85, "black", 1))
-        else:
-            url = str(self.tabs[self.active_tab].url)
-            cmds.append(DrawText(55, 55, url, buttonfont, "black"))
-
-        cmds.append(DrawOutline(10, 50, 35, 90, "black", 1))
-        cmds.append(DrawText(15, 55, "<", buttonfont, "black"))
-        return cmds
-
-    def raster_chrome(self):
-        canvas = self.chrome_surface.getCanvas()
-        canvas.clear(skia.ColorWHITE)
-
-        for cmd in self.paint_chrome():
+        for cmd in self.active_tab_display_list:
             cmd.execute(canvas)
-
-    def draw(self):
-        canvas = self.root_surface.getCanvas()
-        canvas.clear(skia.ColorWHITE)
-        
-        if self.tab_surface:
-            tab_rect = skia.Rect.MakeLTRB(0, CHROME_PX, WIDTH, HEIGHT)
-            tab_offset = CHROME_PX - self.scroll
-            canvas.save()
-            canvas.clipRect(tab_rect)
-            canvas.translate(0, tab_offset)
-            self.tab_surface.draw(canvas, 0, 0)
-            canvas.restore()
-
-        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, CHROME_PX)
-        canvas.save()
-        canvas.clipRect(chrome_rect)
-        self.chrome_surface.draw(canvas, 0, 0)
-        canvas.restore()
-
-        # This makes an image interface to the Skia surface, but
-        # doesn't actually copy anything yet.
-        skia_image = self.root_surface.makeImageSnapshot()
-        skia_bytes = skia_image.tobytes()
-
-        depth = 32 # Bits per pixel
-        pitch = 4 * WIDTH # Bytes per row
-        sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
-            skia_bytes, WIDTH, HEIGHT, depth, pitch,
-            self.RED_MASK, self.GREEN_MASK,
-            self.BLUE_MASK, self.ALPHA_MASK)
-
-        rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
-        window_surface = sdl2.SDL_GetWindowSurface(self.sdl_window)
-        # SDL_BlitSurface is what actually does the copy.
-        sdl2.SDL_BlitSurface(sdl_surface, rect, window_surface, rect)
-        sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 
     def handle_quit(self):
         print(self.measure_raster_and_draw.text())

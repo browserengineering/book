@@ -1277,7 +1277,7 @@ part of the surface).
 Let's make a simple class for storing this data:
 
 ``` {.python}
-class CommitForRaster:
+class CommitData:
     def __init__(self, url, scroll, height, display_list):
         self.url = url
         self.scroll = scroll
@@ -1299,13 +1299,13 @@ class Tab:
     def run_animation_frame(self):
         self.js.interp.evaljs("__runRAFHandlers()")
         self.render()
-        commit_data = CommitForRaster(
+        commit_data = CommitData(
             self.url, self.scroll, document_height, self.display_list)
         self.display_list = None
         self.browser.commit(self, commit_data)
 ```
 
-Think of the `CommitForRaster` object as being sent from the main
+Think of the `CommitData` object as being sent from the main
 thread to browser thread. That means the main thread shouldn't access
 it any more, and for this reason I'm resetting the `display_list`
 field. The `Browser` should now schedule `run_animation_frame`:
@@ -1598,7 +1598,7 @@ class Tab:
         scroll = None
         if self.scroll_changed_in_tab:
             scroll = self.scroll
-        commit_data = CommitForRaster(
+        commit_data = CommitData(
             self.url, scroll, document_height, self.display_list)
         # ...
 ```
