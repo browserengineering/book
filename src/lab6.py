@@ -13,7 +13,7 @@ from lab1 import URL
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
-from lab5 import BLOCK_ELEMENTS, layout_mode, DrawRect, DrawText
+from lab5 import BLOCK_ELEMENTS, DrawRect, DrawText
 from lab5 import BlockLayout, DocumentLayout, Browser
 import wbetools
 
@@ -249,7 +249,7 @@ class BlockLayout:
 
     def __repr__(self):
         return "BlockLayout[{}](x={}, y={}, width={}, height={})".format(
-            layout_mode(self.node), self.x, self.y, self.width, self.height)
+            self.layout_mode(), self.x, self.y, self.width, self.height)
 
 @wbetools.patch(DrawText)
 class DrawText:

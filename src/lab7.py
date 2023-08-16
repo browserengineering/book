@@ -12,7 +12,7 @@ import tkinter.font
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
-from lab5 import BLOCK_ELEMENTS, layout_mode, DrawRect
+from lab5 import BLOCK_ELEMENTS, DrawRect
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import DrawText, URL, tree_to_list, BlockLayout, DocumentLayout
@@ -127,7 +127,7 @@ class BlockLayout:
         else:
             self.y = self.parent.y
 
-        mode = layout_mode(self.node)
+        mode = self.layout_mode()
         if mode == "block":
             previous = None
             for child in self.node.children:
@@ -186,7 +186,7 @@ class BlockLayout:
 
     def __repr__(self):
         return "BlockLayout[{}](x={}, y={}, width={}, height={})".format(
-            layout_mode(self.node), self.x, self.y, self.width, self.height)
+            self.layout_mode(), self.x, self.y, self.width, self.height)
 
 class DrawLine:
     def __init__(self, x1, y1, x2, y2, color, thickness):

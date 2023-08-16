@@ -31,7 +31,7 @@ from lab6 import TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES
 from lab6 import tree_to_list
 from lab7 import CHROME_PX
-from lab8 import INPUT_WIDTH_PX, layout_mode
+from lab8 import INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, parse_blend_mode, linespace
@@ -139,7 +139,7 @@ class BlockLayout:
         else:
             self.y = self.parent.y
 
-        mode = layout_mode(self.node)
+        mode = self.layout_mode()
         if mode == "block":
             previous = None
             for child in self.node.children:
@@ -154,6 +154,20 @@ class BlockLayout:
             child.layout()
 
         self.height = sum([child.height for child in self.children])
+
+    def layout_mode(self):
+        if isinstance(self.node, Text):
+            return "inline"
+        elif self.node.children:
+            for child in self.node.children:
+                if isinstance(child, Text): continue
+                if child.tag in BLOCK_ELEMENTS:
+                    return "block"
+            return "inline"
+        elif self.node.tag == "input":
+            return "inline"
+        else:
+            return "block"
 
     def recurse(self, node):
         if isinstance(node, Text):
@@ -234,7 +248,7 @@ class BlockLayout:
 
     def __repr__(self):
         return "BlockLayout[{}](x={}, y={}, width={}, height={}, node={})".format(
-            layout_mode(self.node), self.x, self.y, self.width, self.height, self.node)
+            self.layout_mode(), self.x, self.y, self.width, self.height, self.node)
 
 class LineLayout:
     def __init__(self, node, parent, previous):
