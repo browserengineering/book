@@ -241,8 +241,6 @@ class BlockLayout:
 
         if not is_atomic:
             cmds = paint_visual_effects(self.node, cmds, rect)
-            paint_outline(
-                self.node, cmds, rect, self.zoom)
 
         display_list.extend(cmds)
 
