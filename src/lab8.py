@@ -328,7 +328,7 @@ class Browser:
 
     def handle_click(self, e):
         if e.y < CHROME_PX:
-            self.focus = Nonep
+            self.focus = None
             if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
                 self.active_tab = int((e.x - 40) / 80)
             elif 10 <= e.x < 30 and 10 <= e.y < 30:

@@ -167,7 +167,7 @@ class Tab:
                 # ...
             except Exception as e:
                 print("Exception loading image: url="
-                    + image_url + " exception=" + str(e))
+                    + str(image_url) + " exception=" + str(e))
                 img.image = BROKEN_IMAGE
 ```
 

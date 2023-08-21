@@ -46,7 +46,7 @@ An outline causes a `DrawOutline` with the given width and color:
     >>> test.socket.respond(outline_url, b"HTTP/1.0 200 OK\r\n" +
     ... b"content-type: text/html\r\n\r\n" +
     ... b"<link rel=stylesheet href='/styles.css'>" +
-    ... b'<div></div>')
+    ... b'<div>test</div>')
 
     >>> browser = lab14.Browser()
     >>> browser.load(lab14.URL(outline_url))
@@ -55,7 +55,8 @@ An outline causes a `DrawOutline` with the given width and color:
     >>> browser.render()
 
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
-     DrawOutline(top=18.0 left=13.0 bottom=18.0 right=787.0 border_color=red thickness=3)
+     DrawText(text=test)
+     DrawOutline(top=21.0 left=13.0 bottom=37.0 right=77.0 border_color=red thickness=3)
 
 Focus
 =====

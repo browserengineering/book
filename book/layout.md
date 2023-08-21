@@ -742,7 +742,7 @@ browser can use that to avoid scrolling past the bottom of the page:
 
 ``` {.python}
 def scrolldown(self, e):
-    max_y = self.document.height - HEIGHT
+    max_y = max(self.document.height - HEIGHT, 0)
     self.scroll = min(self.scroll + SCROLL_STEP, max_y)
     self.draw()
 ```
