@@ -1588,7 +1588,7 @@ class Browser:
                 task = Task(active_tab.set_needs_paint)
                 active_tab.task_runner.schedule_task(task)
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
-                self.load_internal("https://browser.engineering/")
+                self.load_internal(URL("https://browser.engineering/"))
             elif 10 <= e.x < 35 and 50 <= e.y < 90:
                 active_tab = self.tabs[self.active_tab]
                 task = Task(active_tab.go_back)
@@ -1625,7 +1625,7 @@ class Browser:
     def handle_enter(self):
         self.lock.acquire(blocking=True)
         if self.focus == "address bar":
-            self.schedule_load(self.address_bar)
+            self.schedule_load(URL(self.address_bar))
             self.url = self.address_bar
             self.focus = None
             self.set_needs_raster()
@@ -1670,7 +1670,7 @@ class Browser:
         cmds.append(DrawOutline(40, 50, WIDTH - 10, 90, "black", 1))
         if self.focus == "address bar":
             cmds.append(DrawText(55, 55, self.address_bar, buttonfont, "black"))
-            w = buttonfont.measure(self.address_bar)
+            w = buttonfont.measureText(self.address_bar)
             cmds.append(DrawLine(55 + w, 55, 55 + w, 85, "black", 1))
         else:
             url = str(self.tabs[self.active_tab].url)

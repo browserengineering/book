@@ -87,7 +87,7 @@ class URL:
         return headers, body
 
     def origin(self):
-        return self.scheme + "://" + self.host
+        return self.scheme + "://" + self.host + ":" + str(self.port)
         
 COOKIE_JAR = {}
 
