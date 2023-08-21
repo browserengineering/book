@@ -87,7 +87,7 @@ class URL:
         return headers, body
 
     def origin(self):
-        return self.scheme + "://" + self.host
+        return self.scheme + "://" + self.host + ":" + str(self.port)
         
 COOKIE_JAR = {}
 
@@ -136,7 +136,9 @@ class Tab:
         if "content-security-policy" in headers:
            csp = headers["content-security-policy"].split()
            if len(csp) > 0 and csp[0] == "default-src":
-               self.allowed_origins = csp[1:]
+                self.allowed_origins = []
+                for origin in csp[1:]:
+                    self.allowed_origins.append(URL(origin).origin())
 
         self.nodes = HTMLParser(body).parse()
 

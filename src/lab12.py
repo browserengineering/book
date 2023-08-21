@@ -84,6 +84,12 @@ class JSContext:
         self.node_to_handle = {}
         self.handle_to_node = {}
 
+    def run(self, script, code):
+        try:
+            self.interp.evaljs(code)
+        except dukpy.JSRuntimeError as e:
+            print("Script", script, "crashed", e)
+
     def innerHTML_set(self, handle, s):
         doc = HTMLParser(
             "<html><body>" + s + "</body></html>").parse()
@@ -508,7 +514,7 @@ class Browser:
                 task = Task(active_tab.set_needs_render)
                 active_tab.task_runner.schedule_task(task)
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
-                self.load_internal("https://browser.engineering/")
+                self.load_internal(URL("https://browser.engineering/"))
             elif 10 <= e.x < 35 and 50 <= e.y < 90:
                 active_tab = self.tabs[self.active_tab]
                 task = Task(active_tab.go_back)
@@ -545,7 +551,7 @@ class Browser:
     def handle_enter(self):
         self.lock.acquire(blocking=True)
         if self.focus == "address bar":
-            self.schedule_load(self.address_bar)
+            self.schedule_load(URL(self.address_bar))
             self.url = self.address_bar
             self.focus = None
             self.set_needs_raster_and_draw()

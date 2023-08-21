@@ -1248,7 +1248,7 @@ class Frame:
                 assert img.image, "Failed to recognize image format for " + image_url
             except Exception as e:
                 print("Exception loading image: url="
-                    + image_url + " exception=" + str(e))
+                    + str(image_url) + " exception=" + str(e))
                 img.image = BROKEN_IMAGE
 
         iframes = [node
@@ -2055,7 +2055,7 @@ class Browser:
             if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
                 self.set_active_tab(int((e.x - 40) / 80))
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
-                self.load_internal("https://browser.engineering/")
+                self.load_internal(URL("https://browser.engineering/"))
             elif 10 <= e.x < 35 and 50 <= e.y < 90:
                 self.go_back()
             elif 50 <= e.x < WIDTH - 10 and 50 <= e.y < 90:
@@ -2096,7 +2096,7 @@ class Browser:
     def handle_enter(self):
         self.lock.acquire(blocking=True)
         if self.focus == "address bar":
-            self.schedule_load(self.address_bar)
+            self.schedule_load(URL(self.address_bar))
             self.url = self.address_bar
             self.focus = None
             self.set_needs_raster()
@@ -2130,6 +2130,45 @@ class Browser:
     def raster_tab(self):
         for composited_layer in self.composited_layers:
             composited_layer.raster()
+
+    def paint_chrome(self):
+        if self.dark_mode:
+            color = "white"
+        else:
+            color = "black"
+
+        cmds = []
+        cmds.append(DrawLine(0, CHROME_PX - 1, WIDTH, CHROME_PX - 1, color, 1))
+
+        tabfont = get_font(20, "normal", "roman")
+        for i, tab in enumerate(self.tabs):
+            name = "Tab {}".format(i)
+            x1, x2 = 40 + 80 * i, 120 + 80 * i
+            cmds.append(DrawLine(x1, 0, x1, 40, color, 1))
+            cmds.append(DrawLine(x2, 0, x2, 40, color, 1))
+            cmds.append(DrawText(x1 + 10, 10, name, tabfont, color))
+            if i == self.active_tab:
+                cmds.append(DrawLine(0, 40, x1, 40, color, 1))
+                cmds.append(DrawLine(x2, 40, WIDTH, 40, color, 1))
+
+        buttonfont = get_font(30, "normal", "roman")
+        cmds.append(DrawOutline(10, 10, 30, 30, color, 1))
+        cmds.append(DrawText(11, 5, "+", buttonfont, color))
+
+        cmds.append(DrawOutline(40, 50, WIDTH - 10, 90, color, 1))
+        if self.focus == "address bar":
+            cmds.append(DrawText(55, 55, self.address_bar, buttonfont, color))
+            w = buttonfont.measureText(self.address_bar)
+            cmds.append(DrawLine(55 + w, 55, 55 + w, 85, color, 1))
+        else:
+            url = ""
+            if self.tabs[self.active_tab].root_frame:
+                url = str(self.tabs[self.active_tab].root_frame.url)
+            cmds.append(DrawText(55, 55, url, buttonfont, color))
+
+        cmds.append(DrawOutline(10, 50, 35, 90, color, 1))
+        cmds.append(DrawText(15, 55, "<", buttonfont, color))
+        return cmds
 
     def raster_chrome(self):
         canvas = self.chrome_surface.getCanvas()

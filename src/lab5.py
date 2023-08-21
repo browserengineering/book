@@ -214,7 +214,7 @@ class Browser:
             cmd.execute(self.scroll, self.canvas)
 
     def scrolldown(self, e):
-        max_y = self.document.height - HEIGHT
+        max_y = max(self.document.height - HEIGHT, 0)
         self.scroll = min(self.scroll + SCROLL_STEP, max_y)
         self.draw()
 

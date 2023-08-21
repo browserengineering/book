@@ -1198,7 +1198,7 @@ class Browser:
 
     def handle_enter(self):
         if self.focus == "address bar":
-            self.schedule_load(self.address_bar)
+            self.schedule_load(URL(self.address_bar))
             # ...
 
     def load(self, url):

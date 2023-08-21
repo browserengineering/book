@@ -2212,7 +2212,10 @@ class Browser:
         # ...
         if self.hovered_a11y_node:
             self.draw_list.append(DrawOutline(
-                self.hovered_a11y_node.bounds,
+                self.hovered_a11y_node.bounds.fLeft,
+                self.hovered_a11y_node.bounds.fTop,
+                self.hovered_a11y_node.bounds.fRight,
+                self.hovered_a11y_node.bounds.fBottom,
                 "white" if self.dark_mode else "black", 2))
 ```
 

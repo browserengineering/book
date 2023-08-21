@@ -241,8 +241,6 @@ class BlockLayout:
 
         if not is_atomic:
             cmds = paint_visual_effects(self.node, cmds, rect)
-            paint_outline(
-                self.node, cmds, rect, self.zoom)
 
         display_list.extend(cmds)
 
@@ -1471,7 +1469,10 @@ class Browser:
 
         if self.hovered_a11y_node:
             self.draw_list.append(DrawOutline(
-                self.hovered_a11y_node.bounds,
+                self.hovered_a11y_node.bounds.fLeft,
+                self.hovered_a11y_node.bounds.fTop,
+                self.hovered_a11y_node.bounds.fRight,
+                self.hovered_a11y_node.bounds.fBottom,
                 "white" if self.dark_mode else "black", 2))
 
     def update_accessibility(self):
@@ -1682,7 +1683,7 @@ class Browser:
             if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
                 self.set_active_tab(int((e.x - 40) / 80))
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
-                self.load_internal("https://browser.engineering/")
+                self.load_internal(URL("https://browser.engineering/"))
             elif 10 <= e.x < 35 and 50 <= e.y < 90:
                 self.go_back()
             elif 50 <= e.x < WIDTH - 10 and 50 <= e.y < 90:
@@ -1723,7 +1724,7 @@ class Browser:
     def handle_enter(self):
         self.lock.acquire(blocking=True)
         if self.focus == "address bar":
-            self.schedule_load(self.address_bar)
+            self.schedule_load(URL(self.address_bar))
             self.url = self.address_bar
             self.focus = None
             self.set_needs_raster()
@@ -1789,7 +1790,7 @@ class Browser:
         cmds.append(DrawOutline(40, 50, WIDTH - 10, 90, color, 1))
         if self.focus == "address bar":
             cmds.append(DrawText(55, 55, self.address_bar, buttonfont, color))
-            w = buttonfont.measure(self.address_bar)
+            w = buttonfont.measureText(self.address_bar)
             cmds.append(DrawLine(55 + w, 55, 55 + w, 85, color, 1))
         else:
             url = str(self.tabs[self.active_tab].url)

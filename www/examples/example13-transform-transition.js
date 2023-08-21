@@ -4,10 +4,10 @@ function frame() {
 		go();
 	} else {
 		count++;
-		window.requestAnimationFrame(frame);
+		requestAnimationFrame(frame);
 	}
 }
-window.requestAnimationFrame(frame);
+requestAnimationFrame(frame);
 
 var go_up = false;
 var div = document.querySelectorAll("div")[0];
@@ -17,5 +17,5 @@ function go() {
 		div.style = "background-color:lightblue;transform:translate(0px,0px);opacity:0.1";
 	else
 		div.style = "background-color:lightblue;transform:translate(50px,50px);opacity:0.999";
-	window.setTimeout(go, 16*120);
+	setTimeout(go, 16*120);
 }

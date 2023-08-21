@@ -607,7 +607,7 @@ The `origin` function can just strip off the path from a URL:
 ``` {.python}
 class URL:
     def origin(self):
-        return self.scheme + "://" + self.host
+        return self.scheme + "://" + self.host + ":" + str(self.port)
 ```
 
 Now an attacker can't read the guest book web page. But can they write
@@ -1048,7 +1048,9 @@ class Tab:
         if "content-security-policy" in headers:
             csp = headers["content-security-policy"].split()
             if len(csp) > 0 and csp[0] == "default-src":
-                self.allowed_origins = csp[1:]
+                self.allowed_origins = []
+                for origin in csp[1:]:
+                    self.allowed_origins.append(URL(origin).origin())
         # ...
 ```
 

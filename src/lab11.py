@@ -417,6 +417,10 @@ class Browser:
             self.BLUE_MASK = 0x00ff0000
             self.ALPHA_MASK = 0xff000000
 
+    def handle_down(self):
+        self.tabs[self.active_tab].scrolldown()
+        self.draw()
+
     def handle_click(self, e):
         if e.y < CHROME_PX:
             self.focus = None
@@ -425,7 +429,7 @@ class Browser:
                 self.tabs[self.active_tab].render()
                 self.raster_tab()
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
-                self.load("https://browser.engineering/")
+                self.load(URL("https://browser.engineering/"))
             elif 10 <= e.x < 35 and 50 <= e.y < 90:
                 self.tabs[self.active_tab].go_back()
             elif 50 <= e.x < WIDTH - 10 and 50 <= e.y < 90:
@@ -451,7 +455,7 @@ class Browser:
 
     def handle_enter(self):
         if self.focus == "address bar":
-            self.tabs[self.active_tab].load(self.address_bar)
+            self.tabs[self.active_tab].load(URL(self.address_bar))
             self.focus = None
             self.raster_tab()
             self.draw()
@@ -501,7 +505,7 @@ class Browser:
         cmds.append(DrawOutline(40, 50, WIDTH - 10, 90, "black", 1))
         if self.focus == "address bar":
             cmds.append(DrawText(55, 55, self.address_bar, buttonfont, "black"))
-            w = buttonfont.measure(self.address_bar)
+            w = buttonfont.measureText(self.address_bar)
             cmds.append(DrawLine(55 + w, 55, 55 + w, 85, "black", 1))
         else:
             url = str(self.tabs[self.active_tab].url)
