@@ -974,100 +974,164 @@ this question, let's instrument the browser and measure how much time
 is really being spent rendering. It's important to always measure
 before optimizing, because the result is often surprising.
 
-Let's implement some simple instrumentation to measure time. We'll
-want to average across multiple raster-and-draw cycles:
+To instrument our browser, let's have our browser output JSON tracing
+format used by [chrome://tracing](chrome://tracing) in Chrome,
+[Firefox Profiler](https://profiler.firefox.com/) or [Perfetto
+UI](https://ui.perfetto.dev/).[^note-standards] We'll stick to really
+simple traces.
+
+[^note-standards]: Though note that these three tools seem to have
+    somewhat different interpretations of the JSON format and display
+    the same trace in slightly different ways.
+
+To start, let's wrap the actual file and format in a class:
 
 ``` {.python}
 class MeasureTime:
-    def __init__(self, name):
-        self.name = name
-        self.start_time = None
-        self.total_s = 0
-        self.count = 0
-
-    def text(self):
-        if self.count == 0: return ""
-        avg = self.total_s / self.count
-        return "Time in {} on average: {:>.0f}ms".format(
-            self.name, avg * 1000)
+    def __init__(self, filename):
+        self.file = open(filename, "w")
+        self.file.write('{"traceEvents": [')
+        ts = time.time() * 1000000
+        self.file.write(
+            '{ "name": "process_name",' +
+            '"ph": "M",' +
+            '"ts": ' + str(ts) + ',' +
+            '"pid": 1, "cat": "__metadata",' +
+            '"args": {"name": "Browser"}}')
+        self.file.flush()
 ```
 
-We'll measure the time for something like raster and draw by just
-calling `start` and `stop` methods on one of these `MeasureTime`
-objects:
+A trace file is just a JSON object with a `traceEvents`
+field[^and-other-fields] which contains a list of trace events. The
+`ph` and `name` fields of the trace event are the most important.
+Here, we write a trace event with a `ph` of `M` and a `name` of
+`process_name`, which means this record changes the process name
+displayed by the tracing tool (passed in the `args`). Since our
+browser only has one process, I just pass `1` for the process ID, and
+the `cat`egory has to be `__metadata` for metadata trace events. The
+`ts` field stores a timestamp; since this is the first event, it'll
+set the start time for the whole trace, so it's important to put in
+the actual current time.
+
+Updating the process name isn't that important, but writing an initial
+trace event conveniently means every later trace event will need to be
+preceded by a comma. So let's add those later trace events. We
+specifically want `B` and `E` events, which mark the beginning and end
+of some interesting computation:
+
+``` {.python replace=1%7d/%27%20%2b%20str(tid)%20%2b%20%27%7d}
+class MeasureTime:
+    def start(self, name):
+        ts = time.time() * 1000000
+        self.file.write(
+            ', { "ph": "B", "cat": "_",' +
+            '"name": "' + name + '",' +
+            '"ts": ' + str(ts) + ',' +
+            '"pid": 1, "tid": 1}')
+        self.file.flush()
+```
+
+Here the `name` argument to `start` should describe what kind of
+computation is starting, and it needs to match the name passed to the
+corresponding `stop` event:
+
+``` {.python replace=1%7d/%27%20%2b%20str(tid)%20%2b%20%27%7d}
+class MeasureTime:
+    def stop(self, name):
+        ts = time.time() * 1000000
+        self.file.write(
+            ', { "ph": "E", "cat": "_",' +
+            '"name": "' + name + '",' +
+            '"ts": ' + str(ts) + ',' +
+            '"pid": 1, "tid": 1}')
+        self.file.flush()
+```
+
+Finally, when we shut down the browser, we want to leave the file a
+valid JSON file:
 
 ``` {.python}
 class MeasureTime:
-    def start_timing(self):
-        self.start_time = time.time()
-
-    def stop_timing(self):
-        self.total_s += time.time() - self.start_time
-        self.count += 1
-        self.start_time = None
+    def close(self):
+        self.file.write(']}')
+        self.file.close()
 ```
 
-Let's measure the total time for render:
+Note that I call `flush` every time I write to the file. This makes
+sure that if the browser crashes, all of the log events---which might
+help me debug---are already safely on disk.[^invalid-json]
 
-``` {.python}
-class Tab:
-        # ...
-        self.measure_render = MeasureTime("render")
+[^invalid-json]: Some of the tracing tools listed above actually
+accept invalid JSON files, in case the trace comes from a browser
+crash.
 
-    def render(self):
-        if not self.needs_render: return
-        self.measure_render.start_timing()
-        # ...
-        self.measure_render.stop_timing()
-```
-
-And also raster-and-draw:
-
+Now we can use `MeasureTime` to measure how long various browser
+components take. We create it in the `Browser`:
 
 ``` {.python}
 class Browser:
     def __init__(self):
-        self.measure_raster_and_draw = MeasureTime("raster-and-draw")
-
-    def raster_and_draw(self):
-        if not self.needs_raster_and_draw:
-            return
-        self.measure_raster_and_draw.start_timing()
-        # ...
-        self.measure_raster_and_draw.stop_timing()
+        self.measure = MeasureTime("browser.trace")
 ```
 
-We can print out the timing measures when we quit:
+We'll measure the time for something like raster and draw by just
+calling `start` and `stop`:
+
+``` {.python}
+class Browser:
+    def raster_and_draw(self):
+        # ...
+        self.measure.start('raster/draw')
+        self.raster_chrome()
+        self.raster_tab()
+        self.draw()
+        self.measure.stop('raster/draw')
+        # ...
+```
+
+We can also measure tab rendering:
 
 ``` {.python}
 class Tab:
-    def handle_quit(self):
-        print(self.tab.measure_render.text())
-
-class Browser:
-    def handle_quit(self):
-        print(self.measure_raster_and_draw.text())
+    def render(self):
+        if not self.needs_render: return
+        self.browser.measure.start('render')
+        # ...
+        self.browser.measure.stop('render')
 ```
 
-(Naturally you'll need to call these methods before quitting, from the main
-event loop, so it has a chance to print its timing data.)
+We close out the trace file when the browser stops:
+
+``` {.python}
+class Browser:
+    def handle_quit(self):
+        self.measure.close()
+```
+
+Naturally you'll need to call this methods before quitting, from the main
+event loop, so it has a chance to print its timing data.
 
 Fire up the server, open our timer script, wait for it to finish
-counting, and then exit the browser. You should see it output timing
-data. On my computer, it looks like this:
+counting, and then exit the browser. Then open up Chrome tracing or
+one of the other tracing tools named above and load the trace. You
+should see something like this:
 
-    Time in raster-and-draw on average: 66ms
-    Time in render on average: 20ms
+::: {.todo}
+Need screenshots
+:::
 
-On every animation frame, my browser spent about 20ms in `render` and
-about 66ms in `raster_and_draw`. That clearly blows through our 16ms
-budget. So, what can we do?
+In Chrome tracing, you can choosing the cursor icon from the toolbar
+and drag a selection around a set of trace events. That will show
+counts and average times for those events in the details window at the
+bottom of the screen. On my computer, my browser spent about 20ms in
+`render` and about 66ms in `raster_and_draw` on average.
 
-Well, one option, of course, is optimizing raster-and-draw, or even
-render. And if we can, that's the right choice.[^see-go-further] But
-another option---complex, but worthwhile and done by every major
-browser---is to do the render step in parallel with the
-raster-and-draw step by adopting a multi-threaded architecture.
+That clearly blows through our 16ms budget. So, what can we do? Well,
+one option, of course, is optimizing raster-and-draw, or even render.
+And if we can, that's the right choice.[^see-go-further] But another
+option---complex, but worthwhile and done by every major browser---is
+to do the render step in parallel with the raster-and-draw step by
+adopting a multi-threaded architecture.
 
 [^see-go-further]: See the go further at the end of this section for
     some ideas on how to do this.
@@ -1426,6 +1490,71 @@ release the GIL. If they did, then JavaScript or raster-and-draw truly
 could run in parallel with the rest of the browser, and performance
 would improve as well.
 :::
+
+
+Threaded profiling
+==================
+
+Now that we have two threads, we'll want to be able to visualize this
+in the traces we produce. Luckily, the Chrome tracing format supports
+that. First of all, we'll want to make the `MeasureTime` methods
+thread-safe, so they can be called from either thread:
+
+``` {.python}
+class MeasureTime:
+    def __init__(self, filename):
+        self.lock = threading.Lock()
+        # ...
+
+    def start(self, name):
+        self.lock.acquire(blocking=True)
+        # ...
+        self.lock.release()
+
+    def stop(self, name):
+        self.lock.acquire(blocking=True)
+        # ...
+        self.lock.release()
+
+    def close(self):
+        self.lock.acquire(blocking=True)
+        # ...
+        self.lock.release()
+```
+
+Next, in every trace event, we'll want to provide a real thread ID in
+the `tid` field, which we can get by calling `get_ident` from the
+`threading` library:
+
+``` {.python}
+class MeasureTime:
+    def start(self, name):
+        # ...
+        tid = threading.get_ident()
+        self.file.write(
+            ', { "ph": "B", "cat": "_",' +
+            '"name": "' + name + '",' +
+            '"ts": ' + str(ts) + ',' +
+            '"pid": 1, "tid": ' + str(tid) + '}')
+        # ...
+```
+
+Do the same thing in `stop`. Now, if you make a new trace from the
+counting animation and load it into one of the tracing tools, you
+should see something like this:
+
+::: {.todo}
+Trace
+:::
+
+You can see how the render and raster tasks now happen on different
+threads, and how our multi-threaded architecture allows them to happen
+concurrently.
+
+::: {.further}
+
+:::
+
 
 
 Threaded scrolling

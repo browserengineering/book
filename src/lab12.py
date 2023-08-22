@@ -31,31 +31,49 @@ from lab11 import BlockLayout, DocumentLayout, LineLayout, TextLayout, InputLayo
 from lab11 import paint_visual_effects, parse_blend_mode, parse_color, Tab, Browser
 
 class MeasureTime:
-    def __init__(self, name):
-        self.name = name
-        self.start_time = None
-        self.total_s = 0
-        self.count = 0
 
-    def start_timing(self):
-        self.start_time = time.time()
+    def __init__(self, filename):
+        self.lock = threading.Lock()
+        self.file = open(filename, "w")
+        self.file.write('{"traceEvents": [')
+        ts = time.time() * 1000000
+        self.file.write(
+            '{ "name": "process_name",' +
+            '"ph": "M",' +
+            '"ts": ' + str(ts) + ',' +
+            '"pid": 1, "cat": "__metadata",' +
+            '"args": {"name": "Browser"}}')
+        self.file.flush()
 
-    def text_current(self, name):
-        print("Time after {}: {}ms".format(
-            name, (time.time() - self.start_time) * 1000))
+    def start(self, name):
+        ts = time.time() * 1000000
+        tid = threading.get_ident()
+        self.lock.acquire(blocking=True)
+        self.file.write(
+            ', { "ph": "B", "cat": "_",' +
+            '"name": "' + name + '",' +
+            '"ts": ' + str(ts) + ',' +
+            '"pid": 1, "tid": ' + str(tid) + '}')
+        self.file.flush()
+        self.lock.release()
 
-    def stop_timing(self):
-        self.total_s += time.time() - self.start_time
-        self.count += 1
-        self.start_time = None
+    def stop(self, name):
+        ts = time.time() * 1000000
+        tid = threading.get_ident()
+        self.lock.acquire(blocking=True)
+        self.file.write(
+            ', { "ph": "E", "cat": "_",' +
+            '"name": "' + name + '",' +
+            '"ts": ' + str(ts) + ',' +
+            '"pid": 1, "tid": ' + str(tid) + '}')
+        self.file.flush()
+        self.lock.release()
 
-    def text(self):
-        if self.count == 0: return ""
-        avg = self.total_s / self.count
-        self.count = 0
-        self.total_s = 0
-        return "Time in {} on average: {:>.0f}ms".format(
-            self.name, avg * 1000)
+    def close(self):
+        self.lock.acquire(blocking=True)
+        self.file.write(']}')
+        self.file.close()
+        self.lock.release()
 
 SETTIMEOUT_CODE = "__runSetTimeout(dukpy.handle)"
 XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
@@ -156,8 +174,6 @@ class Tab:
             self.task_runner = SingleThreadedTaskRunner(self)
         self.task_runner.start_thread()
 
-        self.measure_render = MeasureTime("render")
-
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
 
@@ -242,15 +258,15 @@ class Tab:
 
     def render(self):
         if not self.needs_render: return
-        self.measure_render.start_timing()
+        self.browser.measure.start('render')
         style(self.nodes, sorted(self.rules,
             key=cascade_priority))
         self.document = DocumentLayout(self.nodes)
         self.document.layout()
         self.display_list = []
         self.document.paint(self.display_list)
-        self.measure_render.stop_timing()
         self.needs_render = False
+        self.browser.measure.stop('render')
 
     def click(self, x, y):
         self.render()
@@ -378,9 +394,8 @@ class TaskRunner:
                 self.condition.wait()
             self.condition.release()
 
-
     def handle_quit(self):
-        print(self.tab.measure_render.text())
+        pass
 
 REFRESH_RATE_SEC = 0.016 # 16ms
 
@@ -406,7 +421,7 @@ class Browser:
         self.url = None
         self.scroll = 0
 
-        self.measure_raster_and_draw = MeasureTime("raster-and-draw")
+        self.measure = MeasureTime("browser.trace")
 
         if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
             self.RED_MASK = 0xff000000
@@ -460,11 +475,11 @@ class Browser:
         if not self.needs_raster_and_draw:
             self.lock.release()
             return
-        self.measure_raster_and_draw.start_timing()
+        self.measure.start('raster/draw')
         self.raster_chrome()
         self.raster_tab()
         self.draw()
-        self.measure_raster_and_draw.stop_timing()
+        self.measure.stop('raster/draw')
         self.needs_raster_and_draw = False
         self.lock.release()
 
@@ -581,7 +596,7 @@ class Browser:
             cmd.execute(canvas)
 
     def handle_quit(self):
-        print(self.measure_raster_and_draw.text())
+        self.measure.close()
         self.tabs[self.active_tab].task_runner.set_needs_quit()
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
