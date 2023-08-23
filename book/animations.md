@@ -752,7 +752,7 @@ class DrawText(DisplayItem):
 ```
 
 Now a `CompositedLayer` can just union the bounding boxes of its
-display items:
+display items, in order to display them:
 
 ``` {.python expected=False}
 class CompositedLayer:
@@ -761,12 +761,33 @@ class CompositedLayer:
         rect = skia.Rect.MakeEmpty()
         for item in self.display_items:
             rect.join(item.rect)
+```
+
+These bounds can then be used to make a surface with the right size.
+Note that we're creating a surface just big enough to store the items in this composited layer; this reduces how much GPU memory we need. That
+being said, there are some tricky corner cases to consider, such as how
+Skia rasters lines or anti-aliased text across multiple pixels
+in order to look nice or align with the pixel
+grid.[^even-more-corner-cases] So let's add in one pixel on each
+side extra to account for that:
+
+[^even-more-corner-cases]: One pixel of "slop" around the edges is
+not good enough for a real browser, which has to deal with lots of
+really subtle issues like nicely blending pixels between adjacent
+composited layers, subpixel positioning and effects with infinite
+theoretical extent like blur filters.
+
+``` {.python expected=False}
+class CompositedLayer:
+    # ...
+    def composited_bounds(self):
+        # ...
+        rect.outset(1, 1)
         return rect
 ```
 
-These bounds can then be used to make a surface with the right size. Note that
-we're creating a surface just big enough to store the items in this composited
-layer; this reduces how much GPU memory we need.
+Raster now uses the composited bounds:
+
 
 ``` {.python}
 class CompositedLayer:
@@ -1684,6 +1705,7 @@ class CompositedLayer:
         rect = skia.Rect.MakeEmpty()
         for item in self.display_items:
             item.add_composited_bounds(rect)
+        rect.outset(1, 1)
         return rect
 ```
 
