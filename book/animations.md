@@ -769,8 +769,8 @@ this composited layer; this reduces how much GPU memory we need. That
 being said, there are some tricky corner cases to consider, such as how
 Skia rasters lines or anti-aliased text across multiple pixels
 in order to look nice or align with the pixel
-grid.[^even-more-corner-cases] So let's add in one pixel on each
-side extra to account for that:
+grid.[^even-more-corner-cases] So let's add in one extra pixel on each
+side to account for that:
 
 [^even-more-corner-cases]: One pixel of "slop" around the edges is
 not good enough for a real browser, which has to deal with lots of
