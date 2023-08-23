@@ -786,6 +786,7 @@ class CSSParser:
                     break
         return rules
 
+@wbetools.patch(JSContext)
 class JSContext:
     def __init__(self, tab):
         self.tab = tab

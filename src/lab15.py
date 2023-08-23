@@ -38,8 +38,8 @@ from lab13 import NumericAnimation, TranslateAnimation
 from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
 from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import DisplayItem, DrawText, DrawCompositedLayer, SaveLayer
-from lab13 import ClipRRect, Transform, DrawLine, DrawRRect, add_main_args
-from lab14 import parse_color, DrawRRect, \
+from lab13 import ClipRRect, Transform, DrawLine, DrawRRect
+from lab14 import parse_color, \
     is_focused, parse_outline, paint_outline, has_outline, \
     device_px, cascade_priority, style, \
     is_focusable, get_tabindex, announce_text, speak_text, \

@@ -34,8 +34,7 @@ from lab13 import NumericAnimation, TranslateAnimation
 from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
 from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import DisplayItem, DrawText, DrawCompositedLayer, SaveLayer
-from lab13 import ClipRRect, Transform, DrawLine, DrawRRect, \
-    add_main_args
+from lab13 import ClipRRect, Transform, DrawLine
 from lab14 import parse_color, parse_outline, DrawRRect, \
     is_focused, paint_outline, has_outline, \
     device_px, cascade_priority, \
@@ -917,6 +916,7 @@ def init_style(node):
             for property in CSS_PROPERTIES
         ])
 
+@wbetools.patch(style)
 def style(node, rules, frame):
     if not node.style:
         init_style(node)
