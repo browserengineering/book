@@ -761,6 +761,7 @@ class CompositedLayer:
         rect = skia.Rect.MakeEmpty()
         for item in self.display_items:
             rect.join(item.rect)
+        # ...
 ```
 
 These bounds can then be used to make a surface with the right size.
@@ -778,9 +779,7 @@ really subtle issues like nicely blending pixels between adjacent
 composited layers, subpixel positioning and effects with infinite
 theoretical extent like blur filters.
 
-``` {.python expected=False}
-class CompositedLayer:
-    # ...
+``` {.python}
     def composited_bounds(self):
         # ...
         rect.outset(1, 1)
