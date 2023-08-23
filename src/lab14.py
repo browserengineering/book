@@ -101,11 +101,6 @@ def parse_outline(outline_str, zoom):
     if values[1] != "solid": return None
     return (device_px(int(values[0][:-2]), zoom), values[2])
 
-def is_focused(node):
-    if isinstance(node, Text):
-        node = node.parent
-    return node.is_focused
-
 def has_outline(node):
     return parse_outline(node.style.get("outline"), 1)
 
@@ -571,7 +566,7 @@ class AccessibilityNode:
         elif self.role == "document":
             self.text = "Document"
 
-        if is_focused(self.node):
+        if self.node.is_focused:
             self.text += " is focused"
 
     def build_internal(self, child_node):
@@ -619,7 +614,7 @@ class PseudoclassSelector:
         if not self.base.matches(node):
             return False
         if self.pseudoclass == "focus":
-            return is_focused(node)
+            return node.is_focused
         else:
             return False
 

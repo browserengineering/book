@@ -1247,7 +1247,7 @@ class PseudoclassSelector:
         if not self.base.matches(node):
             return False
         if self.pseudoclass == "focus":
-            return is_focused(node)
+            return node.is_focused
         else:
             return False
 ```
@@ -1773,7 +1773,7 @@ class AccessibilityNode:
         elif self.role == "focusable text":
             self.text = "Focusable text: " + self.node.text
         elif self.role == "focusable":
-            self.text = "Focusable"
+            self.text = "Focusable element"
         elif self.role == "textbox":
             if "value" in self.node.attributes:
                 value = self.node.attributes["value"]
@@ -1792,7 +1792,7 @@ class AccessibilityNode:
         elif self.role == "document":
             self.text = "Document"
 
-        if is_focused(self.node):
+        if self.node.is_focused:
             self.text += " is focused"
 ```
 
