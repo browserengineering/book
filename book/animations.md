@@ -752,7 +752,7 @@ class DrawText(DisplayItem):
 ```
 
 Now a `CompositedLayer` can just union the bounding boxes of its
-display items, in order to display them:
+display items to compute its own bounds:
 
 ``` {.python expected=False}
 class CompositedLayer:
@@ -764,7 +764,8 @@ class CompositedLayer:
 ```
 
 These bounds can then be used to make a surface with the right size.
-Note that we're creating a surface just big enough to store the items in this composited layer; this reduces how much GPU memory we need. That
+Note that we're creating a surface just big enough to store the items in
+this composited layer; this reduces how much GPU memory we need. That
 being said, there are some tricky corner cases to consider, such as how
 Skia rasters lines or anti-aliased text across multiple pixels
 in order to look nice or align with the pixel
