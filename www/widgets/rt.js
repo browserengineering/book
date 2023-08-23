@@ -655,6 +655,9 @@ class skia {
                     return false;
                 return true;
             };
+            rect.outset = (x, y) => {
+                rect.outset(x, y)
+            };
         },
 
         MakeLTRB: (left, top, right, bottom) => {

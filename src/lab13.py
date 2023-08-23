@@ -1027,6 +1027,7 @@ class CompositedLayer:
         rect = skia.Rect.MakeEmpty()
         for item in self.display_items:
             item.add_composited_bounds(rect)
+        rect.outset(1, 1)
         return rect
 
     def absolute_bounds(self):
