@@ -1741,7 +1741,6 @@ class Browser:
         # ...
         if self.needs_accessibility:
             self.update_accessibility()
-
 ```
 
 Now, what should the screen reader say? Well, that's not really up to

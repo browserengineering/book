@@ -42,7 +42,7 @@ from lab13 import ClipRRect, Transform, DrawLine, DrawRRect
 from lab14 import parse_color, \
     is_focused, parse_outline, paint_outline, has_outline, \
     device_px, cascade_priority, style, \
-    is_focusable, get_tabindex, announce_text, speak_text, \
+    is_focusable, get_tabindex, speak_text, \
     CSSParser, DrawOutline, main_func, Browser
 
 @wbetools.patch(URL)

@@ -38,7 +38,7 @@ from lab13 import ClipRRect, Transform, DrawLine
 from lab14 import parse_color, parse_outline, DrawRRect, \
     is_focused, paint_outline, has_outline, \
     device_px, cascade_priority, \
-    is_focusable, get_tabindex, announce_text, speak_text, \
+    is_focusable, get_tabindex, speak_text, \
     CSSParser, main_func, DrawOutline
 from lab15 import URL, HTMLParser, AttributeParser, DrawImage, DocumentLayout, BlockLayout, \
     EmbedLayout, InputLayout, LineLayout, TextLayout, ImageLayout, \

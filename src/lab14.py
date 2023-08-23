@@ -511,31 +511,6 @@ def is_focusable(node):
     else:
         return node.tag in ["input", "button", "a"]
     
-def announce_text(node, role):
-    text = ""
-    if role == "StaticText":
-        text = node.text
-    elif role == "focusable text":
-        text = "focusable text: " + node.text
-    elif role == "textbox":
-        if "value" in node.attributes:
-            value = node.attributes["value"]
-        elif node.tag != "input" and node.children and \
-            isinstance(node.children[0], Text):
-            value = node.children[0].text
-        else:
-            value = ""
-        text = "Input box: " + value
-    elif role == "button":
-        text = "Button"
-    elif role == "link":
-        text = "Link"
-    elif role == "alert":
-        text = "Alert"
-    if is_focused(node):
-        text += " is focused"
-    return text
-
 class AccessibilityNode:
     def __init__(self, node):
         self.node = node
