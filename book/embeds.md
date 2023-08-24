@@ -668,11 +668,11 @@ handling three significant differences:
   iframes (even nested ones---yes, iframes can include iframes!) use
   the same rendering event loop.
 
-* Cross-origin iframes are *script-isolated* from the containing page.
-  That means that a script in the iframe [can't access][cant-access]
-  the containing page's variables or DOM, nor can scripts in the
-  containing page access the iframe's variables or DOM. Same-origin
-  iframes, however, can.
+* Cross-origin iframes are *script-isolated*\index{script} from the
+  containing page. That means that a script in the iframe
+  [can't access][cant-access] the containing page's variables or DOM,
+  nor can scripts in the containing page access the iframe's variables
+  or DOM. Same-origin iframes, however, can.
 
 [^iframe-event-loop]: For example, if an iframe has the same origin as
     the web page that embeds it, then scripts in the iframe can
@@ -1459,10 +1459,10 @@ by both sides.
 Iframe scripts
 ==============
 
-We've now got users interacting with iframes---but what about scripts
-interacting with them? Of course, each frame can _already_ run
-scripts---but right now, each `Frame` has its own `JSContext`, so
-these scripts can't really interact with each other. Instead
+We've now got users interacting with iframes---but what about
+scripts\index{script} interacting with them? Of course, each frame can
+_already_ run scripts---but right now, each `Frame` has its own
+`JSContext`, so these scripts can't really interact with each other. Instead
 *same-origin* iframes should run in the same JavaScript context and
 should be able to access each other's globals, call each other's
 functions, and modify each other's DOMs. Let's implement that.

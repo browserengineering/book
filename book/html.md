@@ -701,8 +701,8 @@ while True:
 Here, `HEAD_TAGS` lists the tags that you're supposed to put into the
 `<head>` element:[^where-script]
 
-[^where-script]: The `<script>` tag can go in either the head or the
-    body section, but it goes into the head by default.
+[^where-script]: The `<script>`\index{script} tag can go in either the head
+or the body section, but it goes into the head by default.
 
 ``` {.python}
 class HTMLParser:

@@ -31,16 +31,17 @@ connected with contextual links.
 
 *JavaScript*: The main programming language for web scripts.
 
-*URL*: Uniform Resource Locator, the name used to refer uniquely to a web
-page.
-
 *Rendering engine*: The part of a web browser concerned with drawing a
 web page to the screen and interacting with it. There are three main
 rendering engines actively maintained today: Chromium, WebKit, and
 Gecko.
 
 *Script*: A piece of code that extends a web page with more functionality,
-usually written in JavaScript.
+usually written in JavaScript. Also the name of the HTML tag that contains
+scripts.
+
+*URL*: Uniform Resource Locator, the name used to refer uniquely to a web
+page.
 
 *Web security*: The ability to intentionally limit the behavior of web
 browsers, servers, or applications, usually to prevent unintentional

@@ -22,8 +22,8 @@ possible to interact with the web page by touch, keyboard, or voice.
 What is accessibility?
 ======================
 
-Accessibility means that the user can change or customize how they
-interact with a web page in order to make it easier to
+Accessibility\index{accessibility} means that the user can change or
+customize how they interact with a web page in order to make it easier to
 use.[^other-defs] The web's uniquely-flexible
 core technologies mean that browsers offer a lot of accessibility
 features[^not-just-screen-reader] that allow a user to customize the

@@ -83,11 +83,12 @@ The web emerges
 ===============
 
 The concept of [hypertext][hypertext]\index{hypertext} documents linked by
-[hyperlinks][hyperlink] was invented in 1964-65 by [Project Xanadu][xanadu], led
-by Ted Nelson.[^literary-criticism] Hypertext is text that is marked up with
-hyperlinks to other text. A successor called the [Hypertext Editing System] was
-the first to introduce the back button, which all browsers now have. (Since the
-system just had text, the "button" was itself text.)
+[hyperlinks][hyperlink]\index{hyperlink} was invented in 1964-65 by
+[Project Xanadu][xanadu], led by Ted Nelson.[^literary-criticism] Hypertext is
+text that is marked up with hyperlinks to other text. A successor called the
+[Hypertext Editing System] was the first to introduce the back button, which
+all browsers now have. (Since the system just had text, the "button" was
+itself text.)
 
 [Hypertext Editing System]: https://en.wikipedia.org/wiki/Hypertext_Editing_System
 
@@ -150,10 +151,10 @@ decades.[^realize-web-decades]
 
 The word "hyperlink" may have been coined in 1987, in connection with the
 [HyperCard] system on Apple computers. This system was also one of the first, or
-perhaps the first, to introduce the concept of augmenting hypertext with scripts
-that handle user events like clicks and perform actions that enhance the
-UI--just like JavaScript on a web page! It also had graphical UI elements, not
-just text, unlike most predecessors.
+perhaps the first, to introduce the concept of augmenting hypertext with
+scripts\index{script} that handle user events like clicks and perform actions
+that enhance the UI--just like JavaScript on a web page! It also had graphical
+UI elements, not just text, unlike most predecessors.
 
 [HyperCard]: https://en.wikipedia.org/wiki/HyperCard
 
@@ -281,11 +282,12 @@ were also other browsers with smaller market shares; one notable example is
 [Chromium](https://www.chromium.org/)-based browsers, such as Chrome and newer
 versions of [Edge](https://en.wikipedia.org/wiki/Microsoft_Edge), descend from
 this codebase. Likewise, the
-[Gecko](https://en.wikipedia.org/wiki/Gecko_(software)) rendering engine was
-originally developed by Netscape starting in 1997; the
-[Firefox](https://en.wikipedia.org/wiki/Firefox) browser is descended from this
-codebase. During the first browser war, nearly all of the core features of this
-book's simple browser were added, including CSS, DOM, and JavaScript.
+[Gecko](https://en.wikipedia.org/wiki/Gecko_(software)) rendering
+engine\index{rendering engine} was originally developed by Netscape starting
+in 1997; the [Firefox](https://en.wikipedia.org/wiki/Firefox) browser is
+descended from this codebase. During the first browser war, nearly all of the
+core features of this book's simple browser were added, including CSS, DOM,
+and JavaScript.
 
 [Internet Explorer]: https://en.wikipedia.org/wiki/Internet_Explorer
 
@@ -317,7 +319,8 @@ an initial discussion, design and specification precedes any new feature.) Later
 on, the HTML specification ended up moving to a different standards body called
 the [WHATWG](https://whatwg.org/)\index{WHATWG}, but
 [CSS](https://drafts.csswg.org/) and other features are still standardized at
-the W3C. JavaScript is standardized at [TC39](https://tc39.es/)\index{TC39}
+the W3C. JavaScript\index{JavaScript} is
+standardized at [TC39](https://tc39.es/)\index{TC39}
 (“Technical Committee 39” at
 [ECMA](https://www.ecma-international.org/about-ecma/history/), yet another
 standards body). [HTTP](https://tools.ietf.org/html/rfc2616) is standardized by
@@ -372,10 +375,10 @@ Open source
 Another important and interesting outcome of the _second_ browser war was that
 all mainstream browsers today (of which there are *many* more than
 three[^examples-of-browsers-today]) are based on _three open-source web
-rendering / JavaScript engines_: Chromium, Gecko and WebKit.[^javascript-repo]
-Since Chromium and WebKit have a common ancestral codebase, while Gecko is an
-open-source descendant of Netscape, all three date back to the 1990s---almost to
-the beginning of the web.
+rendering / JavaScript\index{JavaScript} engines_: Chromium, Gecko and
+WebKit.[^javascript-repo] Since Chromium and WebKit have a common ancestral
+codebase, while Gecko is an open-source descendant of Netscape, all three date
+back to the 1990s---almost to the beginning of the web.
 
 [^examples-of-browsers-today]: Examples of Chromium-based browsers include
 Chrome, Edge, Opera (which switched to Chromium from the
