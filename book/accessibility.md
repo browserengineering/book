@@ -768,8 +768,8 @@ trickier, because web pages can have any number of links. So the
 standard solution is letting the user `Tab` through all the clickable
 things on the page, and press `Enter` to actually click on them.
 
-We'll implement this by expanding our implementation of *focus*. We
-already have a `focus` property on each `Tab` indicating which `input`
+We'll implement this by expanding our implementation of *focus*.\index{focus}
+We already have a `focus` property on each `Tab` indicating which `input`
 element is capturing keyboard input. Let's allow buttons and links to
 be focused as well. Of course, they don't capture keyboard input, but
 when the user pressed `Enter` we'll press the button or navigate to

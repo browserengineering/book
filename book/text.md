@@ -22,8 +22,8 @@ What is a font?
 
 So far, we've called `create_text` with a character and two
 coordinates to write text to the screen. But we never specified the
-font, the size, or the color. To talk about those things, we need to
-create and use font objects.
+font\index{font}, the size, or the color. To talk about those things,
+we need to create and use font objects.
 
 What is a *font*, exactly? Well, in the olden days, printers arranged
 little metal slugs on rails, covered them with ink, and pressed them

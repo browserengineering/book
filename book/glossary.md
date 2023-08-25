@@ -60,7 +60,8 @@ navigate web pages. Also often just called a "browser".
 
 *Web resource*: Anything with its own URL on the web. Web pages are
 resources, but so are many of their component parts, such as scripts,
-images, and style sheets.
+images, and style sheets. Resources that are not the HTML page itself
+are called *subresources*.
 
 *Website*: A collection of web pages that together provide some user
 service.
@@ -94,12 +95,6 @@ Web Documents
 *Animation*: A sequence of visual changes on a computer screen
 interpreted by humans to look like movement.
 
-*HTML attribute*: A parameter on an element indicating some
-information, such as the source of an image or URL of a style sheet.
-
-*Parsing*: Turning a serialized representation (such as HTML or CSS)
-into a data structure such as the document tree or a style sheet.
-
 *CSS*: Cascading Style Sheet. A format for representing rules that
 specify the (mostly visual) styling of elements in the DOM.
 
@@ -129,6 +124,9 @@ visually highlighted on the screen.
 computer screens. Times New Roman is one common example for Latin-based
 languages.
 
+*HTML attribute*: A parameter on an element indicating some
+information, such as the source of an image or URL of a style sheet.
+
 *Iframe*: A way of embedding one document within another. A
 rectangular window in the parent document shows the child document and
 participates in the layout of the parent.
@@ -140,6 +138,9 @@ HTML element of the same name, for the same purpose.
 
 *Page*: The conceptual container for a document. A page can have
 multiple documents through use of iframes.
+
+*Parsing*: Turning a serialized representation (such as HTML or CSS)
+into a data structure such as the document tree or a style sheet.
 
 *Style sheet*: A web resource that contains CSS rules.
 

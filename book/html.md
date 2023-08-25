@@ -9,14 +9,13 @@ So far, your web browser sees web pages as a stream of open tags,
 close tags, and text. But HTML is actually a tree, and though the tree
 structure hasn't been important yet, it will be once backgrounds,
 margins, and CSS enter the picture. So this chapter adds a proper HTML
-parser and converts the layout engine to use it.
-
+parser\index{parsing} and converts the layout engine to use it.
 
 A tree of nodes
 ===============
 
-The HTML tree[^dom] has one node for each open and close tag pair and for
-each span of text.[^1] So for our browser to be a tree, tokens need to
+The HTML tree[^dom] has one node\index{node} for each open and close tag pair
+and for each span of text.[^1] So for our browser to be a tree, tokens need to
 evolve into nodes. That means adding a list of children and a parent
 pointer to each one. Here's the new `Text` class:[^children]
 
@@ -24,9 +23,10 @@ pointer to each one. Here's the new `Text` class:[^children]
     empty; I'm defining it here to make it easier to write code that
     handles `Text` and `Element` nodes simultaneously.
 
-[^dom]: This is the tree that is usually called the DOM tree, for [Document
-Object Model](https://en.wikipedia.org/wiki/Document_Object_Model). We'll
-keep calling it the HTML tree for now.
+[^dom]: This is the tree that is usually called the
+DOM\index{DOM}\index{document} tree, for
+[Document Object Model](https://en.wikipedia.org/wiki/Document_Object_Model).
+We'll keep calling it the HTML tree for now.
 
 [^1]: In reality there are other types of nodes too, like comments,
     doctypes, and `CDATA` sections, and processing instructions. There
@@ -42,7 +42,8 @@ class Text:
 ```
 
 Since it takes two tags (the open and the close tag) to make a node,
-let's rename the `Tag` class to `Element`, and make it look like this:
+let's rename the `Tag` class to `Element`,\index{element} and make it look
+like this:
 
 ``` {.python expected=False}
 class Element:
@@ -419,8 +420,8 @@ not? Our parser is looking for a tag named `meta`, but it's finding a
 tag named "`meta name=...`". The self-closing code isn't triggered
 because the `<meta>` tag has attributes.
 
-HTML attributes add information about an element; open tags can have
-any number of attributes. Attribute values can be quoted, unquoted, or
+HTML attributes\index{attribute} add information about an element; open tags
+can have any number of attributes. Attribute values can be quoted, unquoted, or
 omitted entirely. Let's focus on basic attribute support, ignoring
 values that contain whitespace, which are a little complicated.
 

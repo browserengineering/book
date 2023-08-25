@@ -986,7 +986,7 @@ URL, if you happen to know the URL off-hand.
 
 Take a moment to notice the complex ritual of typing in an address:
 
-- First, you have to click on the address bar to "focus" on it.
+- First, you have to click on the address bar to "focus"\index{focus} on it.
 - That also selects the full address, so that it's all deleted when
   you start typing.
 - Then, letters you type go into the address bar.

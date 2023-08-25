@@ -160,8 +160,8 @@ UI elements, not just text, unlike most predecessors.
 
 [^world-wide-web-terminology]: Nowadays the World Wide Web is called just “the
 web”, or “the web ecosystem”---ecosystem being another way to capture the same
-concept as “World Wide”. The original wording lives on in the "www" in many
-website\index{website} domain names.
+concept as “World Wide”. The original wording lives on in the "www"\index{WWW}
+in many website\index{website} domain names.
 
 [^realize-web-decades]: Just as the web itself is a realization of previous
 ambitions and dreams, today we strive to realize the vision laid out by the web.

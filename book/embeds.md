@@ -12,11 +12,10 @@ web pages. Support for embedded content has powerful implications for
 browser architecture, performance, security, and open information
 access, and has played a key role throughout the web's history.
 
-
 Images
 ======
 
-Images are certainly the most popular kind of embedded
+Images\index{image} are certainly the most popular kind of embedded
 content on the web,[^img-late] dating back to [early
 1993][img-email].[^img-history] They're included on web pages via the
 `<img>` tag, which looks like this:
@@ -631,7 +630,8 @@ input elements. While both are important and widely-used,[^variants]
 they don't offer quite the customizability[^openui] and flexibility
 that complex embedded content use cases like maps, PDFs, ads, and social media
 controls require. So in modern browsers, these are handled by
-*embedding one web page within another* using the `<iframe>` element.
+*embedding one web page within another* using the `<iframe>`\index{iframe}
+element.
 
 [^variants]: As are variations like the [`<canvas>`][canvas-elt]
     element. Instead of loading an image from the network, JavaScript

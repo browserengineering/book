@@ -14,9 +14,9 @@ sophisticated systems for controlling access to cookies and preventing
 their misuse.
 
 ::: {.warning}
-Web security is a vast topic, covering browser, network, and
-applications security. It also involves educating the user, so that
-attackers can't mislead them into revealing their own secure data.
+Web security\index{web security} is a vast topic, covering browser,
+network, and applications security. It also involves educating the user,
+so that attackers can't mislead them into revealing their own secure data.
 This chapter can't cover all of that: if you're writing web
 applications or other security-sensitive code, this book is not
 enough.
