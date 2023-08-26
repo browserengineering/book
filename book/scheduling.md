@@ -413,7 +413,8 @@ parts. The first part will resolve the URL and do security checks:
 
 ``` {.python}
 class JSContext:
-    def XMLHttpRequest_send(self, method, url, body, isasync, handle):
+    def XMLHttpRequest_send(
+        self, method, url, body, isasync, handle):
         full_url = self.tab.url.resolve(url)
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
@@ -427,7 +428,8 @@ task for running callbacks:
 
 ``` {.python}
 class JSContext:
-    def XMLHttpRequest_send(self, method, url, body, isasync, handle):
+    def XMLHttpRequest_send(
+        self, method, url, body, isasync, handle):
         # ...
         def run_load():
             headers, response = full_url.request(self.tab.url, body)
@@ -445,7 +447,8 @@ this function right away, or in a new thread:
 
 ``` {.python}
 class JSContext:
-    def XMLHttpRequest_send(self, method, url, body, isasync, handle):
+    def XMLHttpRequest_send(
+        self, method, url, body, isasync, handle):
         # ...
         if not isasync:
             return run_load()
