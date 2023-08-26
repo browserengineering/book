@@ -427,7 +427,8 @@ task for running callbacks:
 
 ``` {.python}
 class JSContext:
-    def XMLHttpRequest_send(self, method, url, body, isasync, handle):
+    def XMLHttpRequest_send(
+        self, method, url, body, isasync, handle):
         # ...
         def run_load():
             headers, response = full_url.request(self.tab.url, body)
