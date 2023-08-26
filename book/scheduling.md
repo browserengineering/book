@@ -445,7 +445,8 @@ this function right away, or in a new thread:
 
 ``` {.python}
 class JSContext:
-    def XMLHttpRequest_send(self, method, url, body, isasync, handle):
+    def XMLHttpRequest_send(
+        self, method, url, body, isasync, handle):
         # ...
         if not isasync:
             return run_load()
