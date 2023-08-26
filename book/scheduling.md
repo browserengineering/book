@@ -413,7 +413,8 @@ parts. The first part will resolve the URL and do security checks:
 
 ``` {.python}
 class JSContext:
-    def XMLHttpRequest_send(self, method, url, body, isasync, handle):
+    def XMLHttpRequest_send(
+        self, method, url, body, isasync, handle):
         full_url = self.tab.url.resolve(url)
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
