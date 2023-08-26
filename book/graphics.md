@@ -47,7 +47,7 @@ application.
 ::: {.further}
 You should also keep in mind that not all web page interactions are animations -
 there are also discrete actions such as mouse clicks. Research has shown that it
-usually suffices to respond to a discrete action in 100ms - below that
+usually suffices to respond to a discrete action in [100ms] - below that
 threshold, most humans are not sensitive to discrete action speed. This is very
 different than interactions such as scroll, where speed less than 60Hz or so is
 quite noticeable. The difference between the two has to do with the way the
@@ -55,6 +55,8 @@ human mind processes movement (animation) versus discrete action, and the time
 it takes for the brain to decide upon such an action, execute it, and understand
 its result.
 :::
+
+[100ms]: https://www.nngroup.com/articles/response-times-3-important-limits/
 
 [^sixty-hertz]: Most screens today have a refresh rate of 60Hz, and that
 is generally considered fast enough to look smooth. However, new hardware
