@@ -146,7 +146,7 @@ translations:
     >>> Test.expr("repr(node)")
     (node.toString())
     >>> Test.expr("str(node)")
-    (node.toString())
+    (await node.toString())
     >>> Test.expr("ord(e.char)")
     (e.char.charCodeAt(0))
     >>> Test.expr("enumerate(self.tabs)")
