@@ -20,10 +20,11 @@ Promise.all([ckLoaded, loadFont]).then(([CanvasKit, robotoData]) => {
     let typeface = font_manager.MakeTypefaceFromData(
             robotoData);
 
-  Promise.all([import("./rt.js"), import("./lab13.js"),
+  Promise.all([import("./rt.js"), import("./lab8.js"), import("./lab13.js"),
     import("./server10.js")]).then(
-  ([rt, lab11, server10]) => {
+  ([rt, lab8, lab11, server10]) => {
     let { init_skia, init_window, socket, Widget, rt_constants} = rt;
+    let { URL } = lab8;
     let { Browser, constants } = lab11;
     let { handle_connection } = server10;
 
@@ -40,7 +41,7 @@ Promise.all([ckLoaded, loadFont]).then(([CanvasKit, robotoData]) => {
         let url = "https://localhost:8000";
         let b = await (new Browser()).init();
         init_window(b);
-        await b.load(url);
+        await b.load(await (new URL().init(url)));
         await b.render();
         interval = setInterval(async function() {
           await b.render();

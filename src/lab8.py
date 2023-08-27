@@ -13,11 +13,11 @@ import urllib.parse
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
-from lab5 import BLOCK_ELEMENTS, DrawRect
+from lab5 import BLOCK_ELEMENTS, DrawRect, DocumentLayout
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import DrawText, URL, tree_to_list
-from lab7 import DrawLine, DrawOutline, DocumentLayout, BlockLayout, LineLayout, TextLayout
+from lab7 import DrawLine, DrawOutline, BlockLayout, LineLayout, TextLayout
 from lab7 import CHROME_PX, Tab, Browser
 
 @wbetools.patch(Element)
