@@ -170,10 +170,10 @@ def layout(self):
     self.height = sum([child.height for child in self.children])
 ```
 
-With the `display_list` gone, we can also remove the part of `paint`
-that handles it. Painting all the lines in a paragraph is now just
-automatically handled by recursing into the child layout objects. So
-by adding `LineLayout` and `TextLayout` we made `BlockLayout` quite a
+With the `display_list` gone, we can also remove the part of
+`paint`\index{paint} that handles it. Painting all the lines in a paragraph
+is now just automatically handled by recursing into the child layout objects.
+So by adding `LineLayout` and `TextLayout` we made `BlockLayout` quite a
 bit simpler and shared more code between block and inline layout modes.
 
 You might also be tempted to delete the `flush` method, since it's no
@@ -463,9 +463,10 @@ new web pages.
 ::: {.further}
 On mobile devices, a "click" happens over an area, not just at a
 single point. Since mobile "taps" are often pretty inaccurate, click
-should [use the area information][rect-based] for "hit testing". This
-can happen even with a [normal mouse click][hit-test] when the click
-is on a rotated or scaled element.
+should [use the area information][rect-based] for
+"hit testing".\index{hit testing} This can happen even with a
+[normal mouse click][hit-test] when the click is on a rotated or scaled
+element.
 :::
 
 [rect-based]: http://www.chromium.org/developers/design-documents/views-rect-based-targeting

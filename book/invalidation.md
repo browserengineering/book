@@ -9,8 +9,8 @@ We [used compositing](animations.md) to make animations smoother, but
 that doesn't help with interactions that affect layout, like text
 editing or DOM modifications. Luckily, we can avoid redundant layout
 work by treating the layout tree as a kind of cache, and only
-recomputing the parts that change. This *invalidation* technique is
-traditionally complex and bug-prone, but we'll use a principled
+recomputing the parts that change. This *invalidation*\index{invalidation}
+technique is traditionally complex and bug-prone, but we'll use a principled
 approach and simple abstractions to make it manageable.
 
 Editing Content

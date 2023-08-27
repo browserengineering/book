@@ -88,7 +88,7 @@ class TaskRunner:
 ```
 
 To run those tasks, we need to call the `run` method on our
-`TaskRunner`, which we can do in the main event loop:
+`TaskRunner`, which we can do in the main event loop\index{event loop}:
 
 ``` {.python expected=False}
 class Tab:
@@ -548,7 +548,7 @@ we update the display, not individual `Tab`s.
 
 Let's make that happen. First, let's write a `schedule_animation_frame`
 method[^animation-frame] on `Browser` that schedules a `render` task to run the
-`Tab` half of the rendering pipeline:
+`Tab` half of the rendering pipeline:\index{rendering pipeline}
 
 [^animation-frame]: It's called an "animation frame" because
 sequential rendering of different pixels is an animation, and each
@@ -1274,8 +1274,8 @@ a `commit` method that a `Tab` can call when it's finished creating a
 display list. And if you look carefully at our raster-and-draw code,
 you'll see that to draw a display list we also need to know the URL
 (to update the browser chrome), the document height (to allocate a
-surface of the right size), and the scroll position (to draw the right
-part of the surface).
+surface of the right size), and the scroll\index{scroll} position (to draw the
+right part of the surface).
 
 Let's make a simple class for storing this data:
 
@@ -1731,7 +1731,7 @@ style and layout off the main thread, similar to optimistically doing
 threaded scrolling if a web page doesn't `preventDefault` a scroll. Is
 that a good idea? Maybe, but forced style and layout aren't just
 caused by JavaScript execution. One example is our implementation of
-`click`, which causes a forced render before hit testing:
+`click`, which causes a forced render before hit testing\index{hit testing}:
 
 ``` {.python}
 class Tab:

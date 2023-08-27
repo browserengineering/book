@@ -14,7 +14,7 @@ browser developers) to define how a web page ought to look.
 Parsing with functions
 ======================
 
-One way a web page can change its appearance is with the `style`
+One way a web page can change its appearance is with the `style`\index{style}
 attribute. For example, this changes an element's background color:
 
 ``` {.example}
@@ -22,7 +22,8 @@ attribute. For example, this changes an element's background color:
 ```
 
 More generally, a `style` attribute contains property/value pairs
-separated by semicolons. The browser looks at those property-value
+separated by semicolons. The browser looks at those CSS
+property-value\{css property value}
 pairs to determine how an element looks, for example to determine its
 background color.
 
@@ -273,8 +274,9 @@ to improve on this state of affairs:
 - CSS is future-proof and supports browsers with different features
 
 To achieve these goals, CSS extends the `style` attribute with two
-related ideas: *selectors* and *cascading*. Selectors describe which
-HTML elements a list of property/value pairs apply to:[^media-queries]
+related ideas: *selectors*\{CSS selector} and *cascading*. Selectors
+describe which HTML elements a list of property/value pairs
+apply to:[^media-queries]
 
 [^media-queries]: CSS rules can also be guarded by "media queries",
     which say that a rule should apply only in certain browsing
@@ -286,8 +288,8 @@ HTML elements a list of property/value pairs apply to:[^media-queries]
 selector { property-1: value-1; property-2: value-2; }
 ```
 
-Since one of these *rules* can apply to many elements, it's possible
-for several rules to apply to the same element. So browsers have a
+Since one of these *rules*\{CSS rule} can apply to many elements, it's
+possible for several rules to apply to the same element. So browsers have a
 *cascading* mechanism to resolve conflicts in favor of the most
 specific rule. Cascading also means a browser can ignore rules it
 doesn't understand and choose the next-most-specific rule that it does
@@ -648,7 +650,7 @@ Each browser has its own browser style sheet ([Chromium][blink-css],
 style sheets][mdn-reset] are often used to overcome any differences.
 This works because web page style sheets take precedence over the
 browser style sheet, just like in our browser, though real browsers
-[fiddle with priorities][cascade-order] to make that
+[fiddle with priorities][cascade-order]\index{cascade order} to make that
 happen.[^ours-works]
 :::
 
@@ -735,9 +737,9 @@ sheets.
 Inherited styles
 ================
 
-The way text styles work in CSS is called *inheritance*. Inheritance
-means that if some node doesn't have a value for a certain property,
-it uses its parent's value instead. That includes text nodes. Some
+The way text styles work in CSS is called *inheritance*.\index{inheritance}
+Inheritance means that if some node doesn't have a value for a certain
+property, it uses its parent's value instead. That includes text nodes. Some
 properties are inherited and some aren't; it depends on the property.
 Background color isn't inherited, but text color and other font
 properties are.
@@ -781,7 +783,8 @@ it shouldn't be another 50% bigger than the rest of the heading text?
 
 So, in fact, browsers resolve percentages to absolute pixel units
 before storing them in the `style` and before those values are
-inherited; it's called a "computed style".[^css-computed] Of the
+inherited; it's called a
+"computed style".\index{computed style}[^css-computed] Of the
 properties our toy browser supports, only `font-size` needs to be
 computed in this way:
 
