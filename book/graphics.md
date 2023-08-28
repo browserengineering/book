@@ -97,8 +97,8 @@ while True:
 Here, `drawScreen` draws the various widgets, `pendingEvent` asks the
 desktop environment for recent mouse clicks or key presses, and
 `handleEvent` calls into library user code in response to that event.
-This *event loop* pattern is common in many applications, from web
-browsers to video games. A simple window does not need much event
+This *event loop*\index{event loop} pattern is common in many applications,
+from web browsers to video games. A simple window does not need much event
 handling (it ignores all events) or much drawing (it is a uniform
 white or gray). But in more complex graphical applications the event
 loop pattern makes sure that all events are eventually handled and the
@@ -118,7 +118,7 @@ handle errors.
 Drawing to the window
 =====================
 
-Our toy browser will draw the web page text to a *canvas*, a
+Our toy browser will draw the web page text to a *canvas*,\index{canvas} a
 rectangular Tk widget that you can draw circles, lines, and text
 in.[^6] Tk also has widgets like buttons and dialog boxes, but our
 browser won't use them: we will need finer-grained control over
@@ -292,7 +292,7 @@ makes it possible to read more than a single line:
 
 Now we can read a lot of text, but still not all of it: if there's
 enough text, all of the lines of text don't fit on the screen. We want
-users to *scroll* the page to look at different parts of it.
+users to *scroll*\index{scroll} the page to look at different parts of it.
 
 ::: {.further}
 Chinese characters are usually, but not always, independent: <span
@@ -327,7 +327,8 @@ according to the scroll, and the result is rendered to the screen. [Chapter 12](
 will have more on this topic.
 
 Our browser will have the same split. Right now `load` both computes
-the position of each character and draws it: layout and rendering.
+the position of each character and draws it: layout\index{layout} and
+rendering.\index{rendering}
 Let's have a `layout` function to compute and store the position of
 each character, and a separate `draw` function to then draw each
 character based on the stored position. This way, `layout` can operate
@@ -349,10 +350,10 @@ def layout(text):
     return display_list
 ```
 
-The resulting list is called a *display list*: it is a list of things
-to display.^[The term is standard.] Since `layout` is all about page
-coordinates, we don't need to change anything else about it to support
-scrolling.
+The resulting list is called a *display list*:\index{display list} it is a
+list of things to display.^[The term is standard.] Since `layout` is all
+about page coordinates, we don't need to change anything else about it
+to support scrolling.
 
 Once the display list is computed, `draw` needs to loop through
 the display list and draw each character:

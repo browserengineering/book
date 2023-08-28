@@ -8,10 +8,10 @@ next: styles
 So far, layout has been a linear process that handles open tags and
 close tags independently. But web pages are trees, and look like them:
 borders and backgrounds visually nest inside one another. To support
-that, this chapter switches to *tree-based layout*, where the tree of
-elements is transformed into a tree of *layout objects* for the visual
-elements of the page. In the process, we'll make our web pages more
-colorful with backgrounds.
+that, this chapter switches to *tree-based layout*,\index{layout}
+where the tree of elements is transformed into a tree of *layout objects*
+for the visual elements of the page. In the process, we'll make our web
+pages more colorful with backgrounds.
 
 The layout tree
 ===============
@@ -23,12 +23,11 @@ information about the element as a whole, like its width and height,
 is never computed. That makes it pretty hard to draw a background color
 behind text. So web browsers structure layout differently.
 
-In a browser, layout is about producing a *layout tree*, whose nodes
-are *layout objects*, each associated with an HTML element,[^no-box]
-and each with a size and a position. The browser walks the HTML tree
-to produce the layout tree, then computes the size and position for
-each layout object, and finally draws each layout object to the
-screen.
+In a browser, layout is about producing a *layout tree*,\index{layout tree}
+whose nodes are *layout objects*, each associated with an HTML
+element,[^no-box] and each with a size and a position. The browser walks
+the HTML tree to produce the layout tree, then computes the size and position
+for each layout object, and finally draws each layout object to the screen.
 
 [^no-box]: Elements like `<script>` don't generate layout objects, and
     some elements generate multiple (`<li>` elements have a layout
@@ -533,8 +532,8 @@ moment to extract just one part of this, the display list part. Along
 the way, we can stop copying the display list contents over and over
 again as we go up the layout tree.
 
-I think it's most convenient to do that by adding a `paint` function
-to each layout object, which appends any of its own layout objects to
+I think it's most convenient to do that by adding a `paint`\index{paint}
+function to each layout object, which appends any of its own layout objects to
 the display list and then recursively paints the child layouts. A neat
 trick here is to pass the list itself as an argument, and have the
 recursive function append to that list. For `DocumentLayout`, which
