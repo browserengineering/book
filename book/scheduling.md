@@ -1716,9 +1716,9 @@ do that work, but that's even worse, because forcing work on the
 compositor thread will make scrolling janky unless you do even more work to
 avoid that somehow.
 
-[^servo]: The [Servo] rendering engine uses multiple threads to take
-advantage of parallelism in style and layout, but those steps still
-block, for example, JavaScript execution on the main thread.
+[^servo]: The [Servo] rendering engine\index{rendering engine} uses multiple
+threads to take advantage of parallelism in style and layout, but those steps
+still block, for example, JavaScript execution on the main thread.
 
 [Servo]: https://en.wikipedia.org/wiki/Servo_(software)
 

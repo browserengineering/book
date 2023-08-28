@@ -5,8 +5,9 @@ prev: styles
 next: forms
 ...
 
-Our toy browser is still missing the key insight of *hypertext*:
-documents linked together by hyperlinks. It lets us watch the
+Our toy browser is still missing the key insight of
+*hypertext*\index{hypertext}: documents linked together by
+hyperlinks\index{hyperlink}. It lets us watch the
 waves, but not surf the web. So in this chapter, we'll implement
 hyperlinks, an address bar, and the rest of the browser
 interface---the part of the browser that decides *which* page we are
@@ -612,10 +613,10 @@ Browser chrome
 
 Real web browsers don't just show web page contents---they've got
 labels and icons and buttons.[^ohmy] This is called the browser
-"chrome";[^chrome] all of this stuff is drawn by the browser to the
-same window as the page contents, and it requires information about
-the browser as a whole (like the list of all tabs), so it has to
-happen in the `Browser` class.
+"chrome"\index{browser chrome};[^chrome] all of this stuff is drawn by
+the browser to the same window as the page contents, and it requires
+information about the browser as a whole (like the list of all tabs),
+so it has to happen in the `Browser` class.
 
 [^ohmy]: Oh my!
 
@@ -986,7 +987,7 @@ URL, if you happen to know the URL off-hand.
 
 Take a moment to notice the complex ritual of typing in an address:
 
-- First, you have to click on the address bar to "focus" on it.
+- First, you have to click on the address bar to "focus"\index{focus} on it.
 - That also selects the full address, so that it's all deleted when
   you start typing.
 - Then, letters you type go into the address bar.

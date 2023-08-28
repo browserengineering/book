@@ -8,8 +8,8 @@ next: chrome
 In the [last chapter](layout.md), we gave each `pre` element a gray
 background. It looks OK, and it *is* good to have defaults... but of
 course sites want a say in how they look. Websites do that with
-_Cascading Style Sheets_, which allow web authors (and, as we'll see,
-browser developers) to define how a web page ought to look.
+_Cascading Style Sheets_ (CSS), which allow web authors (and, as
+we'll see, browser developers) to define how a web page ought to look.
 
 Parsing with functions
 ======================
@@ -22,13 +22,15 @@ attribute. For example, this changes an element's background color:
 ```
 
 More generally, a `style` attribute contains property/value pairs
-separated by semicolons. The browser looks at those CSS
+separated by semicolons. The browser looks at those [CSS]
 property-value\{css property value}
 pairs to determine how an element looks, for example to determine its
 background color.
 
-To add this to our browser, we'll need to start by parsing these
-property/value pairs. I'll use recursive *parsing functions*, which
+[CSS]: https://developer.mozilla.org/en-US/docs/Web/CSS
+
+To add this to our browser, we'll need to start by parsing\index{parsing}
+these property/value pairs. I'll use recursive *parsing functions*, which
 are a good way to build a complex parser step by step. The idea is
 that each parsing function advances through the text being parsed and
 returns the data it parsed. We'll have different functions for
@@ -266,8 +268,8 @@ So this is one way web pages can change their appearance. And in the
 early days of the web,^[I'm talking Netscape 3. The late 90s.]
 something like this was the *only* way. But honestly, it's a
 pain---you need to set a `style` attribute on each element, and if you
-change the style that's a lot of attributes to edit. CSS was invented
-to improve on this state of affairs:
+change the style that's a lot of attributes to edit. CSS\index{CSS}
+was invented to improve on this state of affairs:
 
 - One CSS file can consistently style many web pages at once
 - One line of CSS can consistently style many elements at once
@@ -487,7 +489,7 @@ and fix such bugs.
 [bug-3]: https://nvd.nist.gov/vuln/detail/CVE-2010-1663
 [fuzzing]: https://hacks.mozilla.org/2021/02/browser-fuzzing-at-mozilla/
 
-Applying style sheets
+Applying style sheets\index{style sheet}
 =====================
 
 With the parser debugged, the next step is applying the parsed style

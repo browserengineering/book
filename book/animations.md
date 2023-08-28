@@ -5,8 +5,8 @@ prev: scheduling
 next: accessibility
 ...
 
-Complex web application use *animations* when transitioning between
-states. These animations help users understand the change and improve
+Complex web application use *animations*\index{animation} when transitioning
+between states. These animations help users understand the change and improve
 visual polish by replacing sudden jumps with gradual changes. But to
 execute these animations smoothly, the browser must minimize time in each
 animation frame, using GPU acceleration to speed up
