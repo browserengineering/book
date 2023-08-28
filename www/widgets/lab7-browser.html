@@ -12,6 +12,7 @@
 <script type="module">
 import { rt_constants, Widget } from "./rt.js";
 import { Browser, constants } from "./lab7.js";
+import { URL } from "./lab7.js";
 
 rt_constants.ROOT_CANVAS = document.querySelector("#canvas");
 
@@ -20,7 +21,7 @@ widget.run(async function() {
     constants.WIDTH = window.innerWidth;
     let url = "https://browser.engineering/chrome.html";
     let b = await (new Browser()).init();
-    await b.load(url)
+    await b.load(await (new URL().init(url)))
 });
 widget.next();
 </script>

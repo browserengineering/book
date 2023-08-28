@@ -18,7 +18,7 @@ import wbetools
 
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab4 import print_tree, HTMLParser
-from lab5 import BLOCK_ELEMENTS
+from lab5 import BLOCK_ELEMENTS, DocumentLayout
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import tree_to_list
@@ -27,7 +27,7 @@ from lab8 import Text, Element, INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, JSContext, URL
 from lab11 import get_font, FONTS, DrawLine, DrawRect, DrawOutline, linespace, DrawText, SaveLayer, ClipRRect
-from lab11 import BlockLayout, DocumentLayout, LineLayout, TextLayout, InputLayout
+from lab11 import BlockLayout, LineLayout, TextLayout, InputLayout
 from lab11 import paint_visual_effects, parse_blend_mode, parse_color, Tab, Browser
 
 class MeasureTime:

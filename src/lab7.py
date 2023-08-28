@@ -12,10 +12,10 @@ import tkinter.font
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
-from lab5 import BLOCK_ELEMENTS, DrawRect
+from lab5 import BLOCK_ELEMENTS, DrawRect, DocumentLayout
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
-from lab6 import DrawText, URL, tree_to_list, BlockLayout, DocumentLayout
+from lab6 import DrawText, URL, tree_to_list, BlockLayout
 import wbetools
 
 @wbetools.patch(URL)

@@ -24,6 +24,7 @@
 <script type="module">
 import { http_textarea, rt_constants, Widget } from "./rt.js";
 import { Browser, constants } from "./lab2.js";
+import { URL } from "./lab1.js";
 
 rt_constants.ROOT_CANVAS = document.querySelector("#canvas");
 rt_constants.URLS = {
@@ -38,6 +39,6 @@ widget.run(async function() {
     constants.HSTEP = 16;
     constants.VSTEP = 20;
     let b = await (new Browser()).init();
-    await b.load("http://input/");
+    await b.load(await (new URL().init("http://input/")));
 });
 </script>

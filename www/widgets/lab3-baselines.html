@@ -79,6 +79,7 @@ line.baseline { stroke-dasharray: 5, 5; }
 <script type="module">
 import { http_textarea, rt_constants, Widget } from "./rt.js";
 import { Browser, constants } from "./lab3.js";
+import { URL } from "./lab1.js";
 
 rt_constants.ZOOM = 1.5;
 rt_constants.ROOT_CANVAS = document.createElement("canvas");
@@ -240,6 +241,6 @@ widget.pause("final_y", record("final_y"));
 widget.run(async function() {
     STATE = {};
     let b = await (new Browser()).init();
-    await b.load("http://input/")
+    await b.load(await (new URL().init("http://input/")))
 });
 </script>
