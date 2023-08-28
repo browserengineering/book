@@ -138,8 +138,8 @@ Let's start with the simplest accessibility problem: text on the
 screen that is too small to read. It's a problem many of us will face
 sooner or later, and possibly the most common user disability issue.
 The simplest and most effective way to address this is by increasing font
-and element sizes. This approach is called *CSS zoom*,[^zoom] which 
-means to lay out the page as if all of the CSS sizes were increased or
+and element sizes. This approach is called *CSS zoom*,[^zoom]\index{zoom}
+which  means to lay out the page as if all of the CSS sizes were increased or
 decreased by a specified factor.
 
 [^zoom]: The word zoom evokes an analogy to a camera zooming in, but
@@ -1450,7 +1450,8 @@ HTML elements (like `<div>`) group content for styling that is
 meaningless to screen reader users. Alternatively, some HTML elements
 may be invisible on the screen,[^invisible-example] but relevant to
 screen reader users. The browser therefore builds a separate
-[accessibility tree][at] to support screen reader navigation.
+[accessibility tree][at]\index{accessibility tree} to support screen
+reader navigation.
 
 [at]: https://developer.mozilla.org/en-US/docs/Glossary/Accessibility_tree
 

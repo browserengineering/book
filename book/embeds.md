@@ -46,7 +46,7 @@ Luckily, implementing images isn't too hard, so let's just get
 started. There are four steps to displaying images in our browser:
 
 1. Download the image from a URL.
-2. Decode the image into a buffer in memory.
+2. Decode\index{decoding} the image into a buffer in memory.
 3. Lay the image out on the page.
 4. Paint the image in the display list.
 

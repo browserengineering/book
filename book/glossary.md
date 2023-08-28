@@ -186,7 +186,7 @@ elements after applying all rules according to the cascade order.
 *CSS property*: A single concept (such as "color" or "width") used to style
 a specific part of an element.
 
-*CSS property value*: a key-value pair of a CSS property and its value
+*CSS property-value*: a key-value pair of a CSS property and its value
 (e.g. "color" and "blue" or "width" and "30px").
 
 *CSS rule*: The combination of a selector and property values.
@@ -199,10 +199,8 @@ from its parent element. Sometimes mistakenly called "cascading". Some
 CSS properties (such as font sizing) are inherited by default.
 
 *Style*: All the pieces of information necessary to determine the visual
-display of an element.
-
-*Cascade*: The order in which to apply multiple rules to the same
-element.
+display of an element. Also the name of a corresponding attribute to
+specify inline styles.
 
 Coordinate spaces
 =================

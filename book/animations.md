@@ -10,7 +10,7 @@ between states. These animations help users understand the change and improve
 visual polish by replacing sudden jumps with gradual changes. But to
 execute these animations smoothly, the browser must minimize time in each
 animation frame, using GPU acceleration to speed up
-visual effects and compositing to minimize redundant work.
+visual effects and compositing\index{compositing} to minimize redundant work.
 
 JavaScript Animations
 =====================
@@ -293,7 +293,8 @@ class Browser:
                 self.skia_context,
                 skia.GrBackendRenderTarget(
                     WIDTH, HEIGHT, 0, 0,
-                    skia.GrGLFramebufferInfo(0, OpenGL.GL.GL_RGBA8)),
+                    skia.GrGLFramebufferInfo(
+                        0, OpenGL.GL.GL_RGBA8)),
                     skia.kBottomLeft_GrSurfaceOrigin,
                     skia.kRGBA_8888_ColorType,
                     skia.ColorSpace.MakeSRGB())

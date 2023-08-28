@@ -27,8 +27,8 @@ looks like this:
     EOF
 :::
 
-This URL has three parts: the scheme explains *how* to get the
-information; the host explains *where* to get it; and the path
+This URL has three parts: the scheme\index{scheme} explains *how* to get the
+information; the host explains *where* to get it; and the path\index{path}
 explains *what* information to get. There are also optional parts to
 the URL, like ports, queries, and fragments, which we'll see later.
 
@@ -338,8 +338,8 @@ class URL:
 ```
 
 Once you have a socket, you need to tell it to connect to the other
-computer. For that, you need the host and a *port*. The port depends
-on the type of server you're connecting to; for now it should be 80.
+computer. For that, you need the host and a *port*.\index{port} The port
+depends on the type of server you're connecting to; for now it should be 80.
 
 ``` {.python replace=80/self.port}
 class URL:

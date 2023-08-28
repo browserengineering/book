@@ -35,7 +35,7 @@ requests would be indistinguishable from those of not-logged-in users.
     who might use *browser fingerprinting* or similar techniques to
     tell users apart. I mean anonymous in the good-faith sense.
 
-The web fixes this problem with cookies. A cookie---the name is
+The web fixes this problem with cookies\index{cookie}. A cookie---the name is
 meaningless, ignore it---is a little bit of information stored by your
 browser on behalf of a web server. The cookie distinguishes your
 browser, and is sent with each web request so the server can
