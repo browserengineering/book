@@ -65,9 +65,8 @@ def word(self):
             self.i += 1
         else:
             break
-        if not (self.i > start):
-            raise Exception("Parsing error")
-        
+    if not (self.i > start):
+        raise Exception("Parsing error")
     return self.s[start:self.i]
 ```
 
