@@ -68,7 +68,7 @@ def word(self):
         if not (self.i > start):
             raise Exception("Parsing error")
         
-        return self.s[start:self.i]
+    return self.s[start:self.i]
 ```
 
 This function increments `i` through any word characters,[^word-chars]
