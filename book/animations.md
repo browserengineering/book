@@ -167,11 +167,13 @@ second; for smooth animations we want sixty! So we need to speed up
 raster and draw.
 
 The best way to do that is to move raster and draw to the [GPU][gpu].
+\index{GPU}
 A GPU is essentially a chip in your computer that runs programs much
-like your CPU, but specialized toward running very simple programs with
-massive parallelism---it was developed to apply simple operations, in
-parallel, for every pixel on the screen. This makes GPUs faster for
-drawing simple shapes and *much* faster for applying visual effects.
+like your CPU\index{CPU}, but specialized toward running very simple
+programs with massive parallelism---it was developed to apply simple
+operations, in parallel, for every pixel on the screen. This makes GPUs
+faster for drawing simple shapes and *much* faster for applying visual
+effects.
 
 At a high level, to raster and draw on the GPU our browser
 must:[^gpu-variations]
@@ -990,7 +992,7 @@ an example:
 your browser)
 
 Visually, it looks more or less identical[^animation-curve] to the
-JavaScript animation. But since the browser *understands* the
+Java animation. But since the browser *understands* the
 animation, it can optimize how the animation is run. For example,
 since `opacity` only affects `SaveLayer` commands that end up in the
 draw display list, the browser knows that this animation does not

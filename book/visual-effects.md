@@ -21,9 +21,9 @@ While Tkinter is great for basic shapes and handling input, it lacks
 built-in support for many visual effects.[^tkinter-before-gpu]
 Implementing all details of the web's many visual effects is fun, but
 it's outside the scope of this book, so we need a new graphics library.
-Let's use [Skia][skia], the library that Chromium uses. Unlike Tkinter,
-Skia doesn't handle inputs or create graphical windows, so we'll pair it
-with the [SDL][sdl] GUI library.
+Let's use [Skia][skia],\index{Skia} the library that Chromium uses.
+Unlike Tkinter, Skia doesn't handle inputs or create graphical windows,
+so we'll pair it with the [SDL][sdl] GUI library.\index{SDL}
 
 [skia]: https://skia.org
 [sdl]: https://www.libsdl.org/

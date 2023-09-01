@@ -70,8 +70,8 @@ describe your program's window in terms of *widgets* like buttons,
 tabs, or text boxes, and take care of drawing and redrawing the window
 contents to match that description.
 
-Python comes with a graphical toolkit called Tk using the Python package
-`tkinter`.[^4] Using it is quite simple:
+Python comes with a graphical toolkit called Tk\index{Tk} using the
+Python package `tkinter`.[^4] Using it is quite simple:
 
 ``` {.python expected=False}
 import tkinter
