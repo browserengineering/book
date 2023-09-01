@@ -65,10 +65,9 @@ def word(self):
             self.i += 1
         else:
             break
-        if not (self.i > start):
-            raise Exception("Parsing error")
-        
-        return self.s[start:self.i]
+    if not (self.i > start):
+        raise Exception("Parsing error")
+    return self.s[start:self.i]
 ```
 
 This function increments `i` through any word characters,[^word-chars]
