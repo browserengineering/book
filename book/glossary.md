@@ -331,3 +331,5 @@ of this book.
 
 *Tk*: A UI drawing library for computer programs used in early chapters of
 this book.
+
+*Tkinter A Python library wrapping Tk.
