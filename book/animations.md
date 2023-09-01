@@ -992,7 +992,7 @@ an example:
 your browser)
 
 Visually, it looks more or less identical[^animation-curve] to the
-Java animation. But since the browser *understands* the
+JavaScript animation. But since the browser *understands* the
 animation, it can optimize how the animation is run. For example,
 since `opacity` only affects `SaveLayer` commands that end up in the
 draw display list, the browser knows that this animation does not

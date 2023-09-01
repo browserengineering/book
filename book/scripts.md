@@ -21,7 +21,7 @@ implementation if it sounds interesting!] so this chapter uses the
 `dukpy` library for executing JavaScript.
 
 [DukPy](https://github.com/amol-/dukpy)\index{DukPy} wraps a
-JavaScript interpreter called [Duktape](https://duktape.org). The mos
+JavaScript interpreter called [Duktape](https://duktape.org). The most
 famous JavaScript interpreters are those used in browsers:
 TraceMonkey (Firefox), JavaScriptCore (Safari), and V8 (Chrome). Unlike
 those implementations, which are extremely fast but also extremely complex,
