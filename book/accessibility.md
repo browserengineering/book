@@ -312,7 +312,7 @@ class InputLayout:
     # ....
     def layout(self):
         # ...
-        size =device_px(float(self.node.style["font-size"][:-2]),
+        size = device_px(float(self.node.style["font-size"][:-2]),
             self.zoom)
 ```
 
