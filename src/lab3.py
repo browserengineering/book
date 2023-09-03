@@ -50,7 +50,8 @@ FONTS = {}
 def get_font(size, weight, slant):
     key = (size, weight, slant)
     if key not in FONTS:
-        font = tkinter.font.Font(size=size, weight=weight, slant=slant)
+        font = tkinter.font.Font(size=size, weight=weight,
+            slant=slant)
         FONTS[key] = font
     return FONTS[key]
 

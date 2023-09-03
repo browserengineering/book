@@ -297,11 +297,13 @@ class BlockLayout:
 	# ....
     def word(self, node, word):
     	# ...
-        size = device_px(float(node.style["font-size"][:-2]), self.zoom)
+        size = device_px(float(node.style["font-size"][:-2]),
+            self.zoom)
 
     def input(self, node):
 	    # ...
-        size = device_px(float(node.style["font-size"][:-2]), self.zoom)
+        size = device_px(float(node.style["font-size"][:-2]),
+            self.zoom)
 ```
 
 
@@ -310,8 +312,8 @@ class InputLayout:
     # ....
     def layout(self):
         # ...
-        size = \
-            device_px(float(self.node.style["font-size"][:-2]), self.zoom)
+        size = device_px(float(self.node.style["font-size"][:-2]),
+            self.zoom)
 ```
 
 As well as the font size in `TextLayout`:[^min-font-size]
@@ -1320,7 +1322,8 @@ def has_outline(node):
 
 def paint_outline(node, cmds, rect, zoom):
     if has_outline(node):
-        thickness, color = parse_outline(node.style.get("outline"), zoom)
+        thickness, color = \
+            parse_outline(node.style.get("outline"), zoom)
         cmds.append(DrawOutline(
             rect.left(), rect.top(),
             rect.right(), rect.bottom(),

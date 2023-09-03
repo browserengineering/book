@@ -34,6 +34,7 @@
 <script type="module">
 import { http_textarea, rt_constants, Widget } from "./rt.js";
 import { BlockLayout, Browser, DocumentLayout } from "./lab5.js";
+import { URL } from "./lab1.js";
 
 rt_constants.ROOT_CANVAS = document.createElement("canvas");
 rt_constants.URLS = {
@@ -82,6 +83,6 @@ widget.pause("layout_post", (node) => draw_tree(node, "done"));
 
 widget.run(async function() {
     let b = await (new Browser()).init();
-    await b.load("http://input/")
+    await b.load(await (new URL().init("http://input/")))
 });
 </script>
