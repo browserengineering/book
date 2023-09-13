@@ -172,9 +172,12 @@ LIBRARY_METHODS = [
     "height",
     "isEmpty",
     "roundOut",
+    "rect",
+    "intersect",
     "intersects",
     "Intersects",
     "join",
+    "makeOffset",
 
     # skia.RRect
     "MakeRectXY",
