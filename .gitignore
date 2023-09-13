@@ -22,4 +22,12 @@ exercises/
 videos/
 .idea/
 src/*.full.py
-latex/*
+latex/*-chapter.tex
+*.aux
+latex/book.fdb_latexmk
+latex/book.fls
+latex/book.idx
+latex/book.ilg
+latex/book.ind
+latex/book.log
+latex/book.pdf
