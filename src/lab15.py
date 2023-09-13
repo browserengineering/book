@@ -36,9 +36,9 @@ from lab13 import diff_styles, parse_transition, clamp_scroll, add_parent_pointe
 from lab13 import absolute_bounds, absolute_bounds_for_obj
 from lab13 import NumericAnimation, TranslateAnimation
 from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
-from lab13 import CompositedLayer, paint_visual_effects
-from lab13 import DisplayItem, DrawText, DrawCompositedLayer, SaveLayer
-from lab13 import ClipRRect, Transform, DrawLine, DrawRRect, add_main_args
+from lab13 import CompositedLayer, paint_visual_effects, add_main_args
+from lab13 import DrawCommand, DrawText, DrawCompositedLayer, DrawOutline, DrawLine, DrawRRect
+from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform
 from lab14 import parse_color, DrawRRect, \
     is_focused, parse_outline, paint_outline, has_outline, \
     device_px, cascade_priority, style, \
@@ -108,7 +108,7 @@ class URL:
         s.close()
         return headers, body
 
-class DrawImage(DisplayItem):
+class DrawImage(DrawCommand):
     def __init__(self, image, rect, quality):
         super().__init__(rect)
         self.image = image
@@ -1787,9 +1787,8 @@ class Browser:
 
         non_composited_commands = [cmd
             for cmd in all_commands
-            if not cmd.needs_compositing and \
-                (not cmd.parent or \
-                 cmd.parent.needs_compositing)
+            if isinstance(cmd, DrawCommand) or not cmd.needs_compositing
+            if not cmd.parent or cmd.parent.needs_compositing
         ]
         for cmd in non_composited_commands:
             for layer in reversed(self.composited_layers):
