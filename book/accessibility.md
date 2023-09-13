@@ -1562,16 +1562,16 @@ accessibility tree and describe each node to the user.
 
 ::: {.further}
 
-In a multi-process browser ([like Chromium][chrome-mp]), the browser and
-main threads run in different processes, and sending data from one to
-the other can be slow. Chromium, therefore, [stores two
-copies][chrome-mp-a11y] of the accessibility tree, one in the browser
-and one in the main thread, and only sends changes between the two. An
-alternative design, used by pre-Chromium Microsoft Edge and some other
-browsers, has each tab process respond to accessibility API requests
-from the operating system. This removes the need to duplicate the
-accessibility tree, but exposing the operating system to individual
-tabs can lead to security issues.
+In a multi-process\index{process} browser
+([like Chromium][chrome-mp]), the browser and main threads run in
+different processes, and sending data from one to the other can be slow.
+Chromium, therefore, [stores two copies][chrome-mp-a11y] of the
+accessibility tree, one in the browser and one in the main thread, and
+only sends changes between the two. An alternative design, used by
+pre-Chromium Microsoft Edge and some other browsers, has each tab
+process respond to accessibility API requests from the operating system.
+This removes the need to duplicate the accessibility tree, but exposing
+the operating system to individual tabs can lead to security issues.
 
 :::
 
@@ -1903,8 +1903,9 @@ output device is quite different, the accessibility tree would still
 contain all the information about what content is on the page, whether
 it can be interacted with, its state, and so on. Moreover, by using
 the same accessibility tree for all output devices, users who use more
-than one *assistive technology* (like a braille display and a screen
-reader) are sure to receive consistent information.
+than one *assistive technology*\index{assistive technology}
+(like a braille display and a screen reader) are sure to receive
+consistent information.
 
 :::
 

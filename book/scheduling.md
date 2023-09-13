@@ -9,8 +9,8 @@ Modern browsers must run sophisticated applications while staying
 responsive to user actions. Doing so means choosing which of its many
 tasks to prioritize and which to delay until later---tasks like
 JavaScript callbacks, user input, and rendering. Moreover, browser
-work must be split across multiple threads, with different threads running
-events in parallel to maximize responsiveness.
+work must be split across multiple CPU threads\index{thread}, with
+different threads running events in parallel to maximize responsiveness.
 
 Tasks and task queues
 =====================
@@ -167,8 +167,8 @@ this:[^polling]
 `Task` is supposed to occur, and compare against the current time in
 the event loop. This is called *polling*, and is what, for example,
 the SDL event loop does to look for events and tasks. However, that
-can mean wasting CPU cycles in a loop until the task is ready, so I expect
-the `Timer` to be more efficient.
+can mean wasting CPU\index{CPU} cycles in a loop until the task is ready,
+so I expect the `Timer` to be more efficient.
 
 [timer]: https://docs.python.org/3/library/threading.html#timer-objects
 [threading]: https://docs.python.org/3/library/threading.html

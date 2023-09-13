@@ -40,8 +40,8 @@ arrange it so that this doesn't make later chapters more difficult.
 [^jrwilcox-idea]: This idea is from [J.R. Wilcox][jrw], inspired in turn by
     [S. Zdancewic][sz]'s course on compilers.
 
-The code in this book [uses Python 3](blog/why-python.md), and we
-recommend you follow along in the same. When the book shows Python
+The code in this book [uses Python 3](blog/why-python.md),\index{Python}
+and we recommend you follow along in the same. When the book shows Python
 command lines, it calls the Python binary `python3`.^[A few operating
 systems use `python`, but on most that means Python 2.] That said, the
 text avoids dependencies where possible and you can try to follow
