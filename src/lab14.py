@@ -111,7 +111,8 @@ def has_outline(node):
 
 def paint_outline(node, cmds, rect, zoom):
     if has_outline(node):
-        thickness, color = parse_outline(node.style.get("outline"), zoom)
+        thickness, color = \
+            parse_outline(node.style.get("outline"), zoom)
         cmds.append(DrawOutline(
             rect.left(), rect.top(),
             rect.right(), rect.bottom(),
@@ -192,7 +193,8 @@ class BlockLayout:
     def word(self, node, word):
         weight = node.style["font-weight"]
         style = node.style["font-style"]
-        size = device_px(float(node.style["font-size"][:-2]), self.zoom)
+        size = device_px(float(node.style["font-size"][:-2]),
+            self.zoom)
         font = get_font(size, weight, size)
         w = font.measureText(word)
         if self.cursor_x + w > self.width:
@@ -213,7 +215,8 @@ class BlockLayout:
         self.previous_word = input
         weight = node.style["font-weight"]
         style = node.style["font-style"]
-        size = device_px(float(node.style["font-size"][:-2]), self.zoom)
+        size = device_px(float(node.style["font-size"][:-2]),
+            self.zoom)
         font = get_font(size, weight, size)
         self.cursor_x += w + font.measureText(" ")
 
@@ -448,8 +451,8 @@ class InputLayout:
         self.zoom = self.parent.zoom
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
-        size = \
-            device_px(float(self.node.style["font-size"][:-2]), self.zoom)
+        size = device_px(float(self.node.style["font-size"][:-2]),
+            self.zoom)
         self.font = get_font(size, weight, style)
 
         self.width = device_px(INPUT_WIDTH_PX, self.zoom)

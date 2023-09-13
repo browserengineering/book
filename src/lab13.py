@@ -1014,6 +1014,7 @@ class CompositedLayer:
         rect = skia.Rect.MakeEmpty()
         for item in self.display_items:
             rect.join(item.rect)
+        rect.outset(1, 1)
         return rect
 
     def absolute_bounds(self):
@@ -1337,7 +1338,8 @@ class Browser:
                 self.skia_context,
                 skia.GrBackendRenderTarget(
                     WIDTH, HEIGHT, 0, 0, 
-                    skia.GrGLFramebufferInfo(0, OpenGL.GL.GL_RGBA8)),
+                    skia.GrGLFramebufferInfo(
+                        0, OpenGL.GL.GL_RGBA8)),
                     skia.kBottomLeft_GrSurfaceOrigin,
                     skia.kRGBA_8888_ColorType,
                     skia.ColorSpace.MakeSRGB())

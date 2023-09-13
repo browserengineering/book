@@ -7,10 +7,11 @@ next: scheduling
 
 Right now our browser can only draw colored rectangles and
 text---pretty boring! Real browsers support all kinds of *visual
-effects* that change how pixels and colors blend together. Let's
-implement these effects using the Skia graphics library, and also see
+effects*\index{visual effect} that change how pixels and colors blend together.
+Let's implement these effects using the Skia graphics library, and also see
 a bit of how Skia is implemented under the hood. That'll also allow us
-to use surfaces for *browser compositing* to accelerate scrolling.
+to use surfaces for *browser compositing*\index{compositing} to accelerate
+scrolling.
 
 Installing Skia and SDL
 =======================
@@ -20,9 +21,9 @@ While Tkinter is great for basic shapes and handling input, it lacks
 built-in support for many visual effects.[^tkinter-before-gpu]
 Implementing all details of the web's many visual effects is fun, but
 it's outside the scope of this book, so we need a new graphics library.
-Let's use [Skia][skia], the library that Chromium uses. Unlike Tkinter,
-Skia doesn't handle inputs or create graphical windows, so we'll pair it
-with the [SDL][sdl] GUI library.
+Let's use [Skia][skia],\index{Skia} the library that Chromium uses.
+Unlike Tkinter, Skia doesn't handle inputs or create graphical windows,
+so we'll pair it with the [SDL][sdl] GUI library.\index{SDL}
 
 [skia]: https://skia.org
 [sdl]: https://www.libsdl.org/
@@ -62,7 +63,7 @@ SDL were installed correctly. Note that the `ctypes` module comes
 standard in Python; it is used to convert between Python and C types.
 
 ::: {.further}
-The [`<canvas>`][canvas] HTML element provides a JavaScript
+The [`<canvas>`][canvas]\index{canvas} HTML element provides a JavaScript
 API that is similar to Skia and Tkinter. Combined with [WebGL][webgl],
 it's possible to implement basically all of SDL and Skia in
 JavaScript. Alternatively, one can [compile Skia][canvaskit]
@@ -97,7 +98,7 @@ class Browser:
 ```
 
 To set up Skia to draw to this window, we also need to create a
-*surface* for it:[^surface]
+*surface*\index{surface} for it:[^surface]
 
 [^surface]: In Skia and SDL, a *surface* is a representation of a
 graphics buffer into which you can draw *pixels* (bits representing
@@ -120,8 +121,8 @@ class Browser:
                 at=skia.kUnpremul_AlphaType))
 ```
 
-Typically, we'll draw to the Skia surface, and then once we're done
-with it we'll copy it to the SDL surface to display on the screen.
+Typically, we'll draw\index{draw} to the Skia surface, and then once
+we're done with it we'll copy it to the SDL surface to display on the screen.
 This will be a little hairy, because we are moving data between two
 low-level libraries, but really it's just copying pixels from one
 place to another.
@@ -256,13 +257,11 @@ SDL is most popular for making games. Their site lists [a selection of
 books](https://wiki.libsdl.org/Books) about game programming in SDL.
 :::
 
-
-
 Skia provides the canvas
 ========================
 
-Now our browser is creating an SDL window and can draw to it via Skia.
-But most of the browser codebase is still using Tkinter drawing
+\index{canvas}Now our browser is creating an SDL window and can draw to it
+via Skia. But most of the browser codebase is still using Tkinter drawing
 commands, which we now need to replace. Skia is a bit more verbose
 than Tkinter, so let's abstract over some details with helper
 functions.[^skia-docs] First, a helper function to convert colors to
@@ -453,7 +452,7 @@ faster, because Skia and SDL are faster than Tkinter. This is one
 advantage of Skia: since it is also used by the Chromium browser, we
 know it has fast, built-in support for all of the shapes we might
 need. And if the transition felt easy---well, that's one of the benefits to
-abstracting over the drawing backend using a display list!
+abstracting over the drawing backend using a display list!\index{display list}
 
 ::: {.further}
 [Font rasterization](https://en.wikipedia.org/wiki/Font_rasterization)
@@ -544,15 +543,14 @@ few lines of Python.
 [rtr-book]: https://www.realtimerendering.com/
 [classic]: https://en.wikipedia.org/wiki/Computer_Graphics:_Principles_and_Practice
 
-
 Pixels, color, and raster
 =========================
 
 Skia, like the Tkinter canvas we've been using until now, is a
-_rasterization_ library: it converts shapes like rectangles and text into
- pixels. Before we move on to Skia's advanced features, let's talk about how
- rasterization works at a deeper level. This will help to understand how
- exactly those features work.
+_rasterization_\index{raster} library: it converts shapes like rectangles and
+text into pixels. Before we move on to Skia's advanced features, let's talk
+about how rasterization works at a deeper level. This will help to understand
+how exactly those features work.
 
 You probably already know that computer screens are a 2D array of
 pixels. Each pixel contains red, green and blue lights,[^lcd-design]
@@ -920,8 +918,9 @@ top" are blending into the pixels "below", so we call the top surface
 the *source surface*, with source pixels, and the bottom surface the
 *destination surface*, with destination pixels. When we combine them,
 there are lots of ways we could do it, but the default on the web is
-called "simple alpha compositing" or *source-over* compositing. In
-Python, the code to implement it looks like this:[^simple-alpha]
+called "simple alpha compositing"\index{compositing} or *source-over*
+compositing. In Python, the code to implement it looks like
+this:[^simple-alpha]
 
 [^simple-alpha]: The formula for this code can be found
 [here](https://www.w3.org/TR/SVG11/masking.html#SimpleAlphaBlending).

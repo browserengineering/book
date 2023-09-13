@@ -8,13 +8,13 @@ next: chrome
 In the [last chapter](layout.md), we gave each `pre` element a gray
 background. It looks OK, and it *is* good to have defaults... but of
 course sites want a say in how they look. Websites do that with
-_Cascading Style Sheets_, which allow web authors (and, as we'll see,
-browser developers) to define how a web page ought to look.
+_Cascading Style Sheets_ (CSS), which allow web authors (and, as
+we'll see, browser developers) to define how a web page ought to look.
 
 Parsing with functions
 ======================
 
-One way a web page can change its appearance is with the `style`
+One way a web page can change its appearance is with the `style`\index{style}
 attribute. For example, this changes an element's background color:
 
 ``` {.example}
@@ -22,12 +22,15 @@ attribute. For example, this changes an element's background color:
 ```
 
 More generally, a `style` attribute contains property/value pairs
-separated by semicolons. The browser looks at those property-value
+separated by semicolons. The browser looks at those [CSS]
+property-value\{css property value}
 pairs to determine how an element looks, for example to determine its
 background color.
 
-To add this to our browser, we'll need to start by parsing these
-property/value pairs. I'll use recursive *parsing functions*, which
+[CSS]: https://developer.mozilla.org/en-US/docs/Web/CSS
+
+To add this to our browser, we'll need to start by parsing\index{parsing}
+these property/value pairs. I'll use recursive *parsing functions*, which
 are a good way to build a complex parser step by step. The idea is
 that each parsing function advances through the text being parsed and
 returns the data it parsed. We'll have different functions for
@@ -62,10 +65,9 @@ def word(self):
             self.i += 1
         else:
             break
-        if not (self.i > start):
-            raise Exception("Parsing error")
-        
-        return self.s[start:self.i]
+    if not (self.i > start):
+        raise Exception("Parsing error")
+    return self.s[start:self.i]
 ```
 
 This function increments `i` through any word characters,[^word-chars]
@@ -265,16 +267,17 @@ So this is one way web pages can change their appearance. And in the
 early days of the web,^[I'm talking Netscape 3. The late 90s.]
 something like this was the *only* way. But honestly, it's a
 pain---you need to set a `style` attribute on each element, and if you
-change the style that's a lot of attributes to edit. CSS was invented
-to improve on this state of affairs:
+change the style that's a lot of attributes to edit. CSS\index{CSS}
+was invented to improve on this state of affairs:
 
 - One CSS file can consistently style many web pages at once
 - One line of CSS can consistently style many elements at once
 - CSS is future-proof and supports browsers with different features
 
 To achieve these goals, CSS extends the `style` attribute with two
-related ideas: *selectors* and *cascading*. Selectors describe which
-HTML elements a list of property/value pairs apply to:[^media-queries]
+related ideas: *selectors*\{CSS selector} and *cascading*. Selectors
+describe which HTML elements a list of property/value pairs
+apply to:[^media-queries]
 
 [^media-queries]: CSS rules can also be guarded by "media queries",
     which say that a rule should apply only in certain browsing
@@ -286,8 +289,8 @@ HTML elements a list of property/value pairs apply to:[^media-queries]
 selector { property-1: value-1; property-2: value-2; }
 ```
 
-Since one of these *rules* can apply to many elements, it's possible
-for several rules to apply to the same element. So browsers have a
+Since one of these *rules*\{CSS rule} can apply to many elements, it's
+possible for several rules to apply to the same element. So browsers have a
 *cascading* mechanism to resolve conflicts in favor of the most
 specific rule. Cascading also means a browser can ignore rules it
 doesn't understand and choose the next-most-specific rule that it does
@@ -485,7 +488,7 @@ and fix such bugs.
 [bug-3]: https://nvd.nist.gov/vuln/detail/CVE-2010-1663
 [fuzzing]: https://hacks.mozilla.org/2021/02/browser-fuzzing-at-mozilla/
 
-Applying style sheets
+Applying style sheets\index{style sheet}
 =====================
 
 With the parser debugged, the next step is applying the parsed style
@@ -648,7 +651,7 @@ Each browser has its own browser style sheet ([Chromium][blink-css],
 style sheets][mdn-reset] are often used to overcome any differences.
 This works because web page style sheets take precedence over the
 browser style sheet, just like in our browser, though real browsers
-[fiddle with priorities][cascade-order] to make that
+[fiddle with priorities][cascade-order]\index{cascade order} to make that
 happen.[^ours-works]
 :::
 
@@ -735,9 +738,9 @@ sheets.
 Inherited styles
 ================
 
-The way text styles work in CSS is called *inheritance*. Inheritance
-means that if some node doesn't have a value for a certain property,
-it uses its parent's value instead. That includes text nodes. Some
+The way text styles work in CSS is called *inheritance*.\index{inheritance}
+Inheritance means that if some node doesn't have a value for a certain
+property, it uses its parent's value instead. That includes text nodes. Some
 properties are inherited and some aren't; it depends on the property.
 Background color isn't inherited, but text color and other font
 properties are.
@@ -781,7 +784,8 @@ it shouldn't be another 50% bigger than the rest of the heading text?
 
 So, in fact, browsers resolve percentages to absolute pixel units
 before storing them in the `style` and before those values are
-inherited; it's called a "computed style".[^css-computed] Of the
+inherited; it's called a
+"computed style".\index{computed style}[^css-computed] Of the
 properties our toy browser supports, only `font-size` needs to be
 computed in this way:
 

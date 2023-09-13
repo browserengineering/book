@@ -389,7 +389,7 @@ def compile_function(name, args, ctx):
         return "await (new " + name + "()).init(" + ", ".join(args_js) + ")"
     elif name == "str":
         assert len(args) == 1
-        return args_js[0] + ".toString()"
+        return "await " + args_js[0] + ".toString()"
     elif name == "len":
         assert len(args) == 1
         return args_js[0] + ".length"
@@ -699,7 +699,7 @@ def compile(tree, ctx, indent=0, patches=[]):
         to_import = []
         to_bind = []
         for name in names:
-            if name.isupper(): # Global constant
+            if name.isupper() and name != "URL": # Global constant
                 to_import.append("constants as {}_constants".format(tree.module))
                 to_bind.append(name)
             elif name[0].isupper(): # Class
@@ -718,8 +718,7 @@ def compile(tree, ctx, indent=0, patches=[]):
         ctx[tree.name] = {"is_class": True}
         ctx2 = Context("class", ctx)
         parts = [compile(part, indent=indent + INDENT, ctx=ctx2) for part in tree.body]
-        if tree.name not in patches:
-            EXPORTS.append(tree.name)
+        EXPORTS.append(tree.name)
         extends = ''
         if tree.bases:
             assert len(tree.bases) == 1
@@ -727,6 +726,11 @@ def compile(tree, ctx, indent=0, patches=[]):
         class_name = tree.name
         if class_name in patches:
             class_name = class_name + "Patch"
+        # Layout is renamed to BlockLayout in lab5. This rename
+        # to LayoutPatch enables the patching to work; code elsewhere
+        # creates the alias called BlockLayout.
+        elif "Layout" in patches and class_name == "BlockLayout":
+            class_name = "LayoutPatch"
         return " " * indent + "class " + class_name + extends + " {\n" + "\n\n".join(parts) + "\n}"
     elif isinstance(tree, ast.FunctionDef):
         if tree.name in SKIPPED_FNS:
@@ -752,6 +756,11 @@ def compile(tree, ctx, indent=0, patches=[]):
             return def_line + body + ret_line + last_line
         elif tree.name == "__repr__":
             # This actually defines a 'toString' operator
+            assert ctx.type == "class"
+            def_line = " " * indent + "async toString(" + ", ".join(args) + ") {\n"
+            last_line = "\n" + " " * indent + "}"
+            return def_line + body + last_line
+        elif tree.name == "__str__":
             assert ctx.type == "class"
             def_line = " " * indent + "async toString(" + ", ".join(args) + ") {\n"
             last_line = "\n" + " " * indent + "}"
@@ -946,6 +955,11 @@ def compile_module(tree, patches):
         items.append(
             "patch_class({cls}, {cls}Patch)\n".format(
             cls=name))
+        # Layout is renamed to BlockLayout in lab5. The Layout class is patched,
+        # but we also need to declare BLockLayout an alias of this patched
+        # class.
+        if name == "Layout":
+            items.append("var BlockLayout = Layout")
 
     exports = ""
     rt_imports = ""

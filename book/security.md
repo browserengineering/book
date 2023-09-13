@@ -14,9 +14,9 @@ sophisticated systems for controlling access to cookies and preventing
 their misuse.
 
 ::: {.warning}
-Web security is a vast topic, covering browser, network, and
-applications security. It also involves educating the user, so that
-attackers can't mislead them into revealing their own secure data.
+Web security\index{web security} is a vast topic, covering browser,
+network, and applications security. It also involves educating the user,
+so that attackers can't mislead them into revealing their own secure data.
 This chapter can't cover all of that: if you're writing web
 applications or other security-sensitive code, this book is not
 enough.
@@ -35,7 +35,7 @@ requests would be indistinguishable from those of not-logged-in users.
     who might use *browser fingerprinting* or similar techniques to
     tell users apart. I mean anonymous in the good-faith sense.
 
-The web fixes this problem with cookies. A cookie---the name is
+The web fixes this problem with cookies\index{cookie}. A cookie---the name is
 meaningless, ignore it---is a little bit of information stored by your
 browser on behalf of a web server. The cookie distinguishes your
 browser, and is sent with each web request so the server can

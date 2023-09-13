@@ -12,11 +12,10 @@ web pages. Support for embedded content has powerful implications for
 browser architecture, performance, security, and open information
 access, and has played a key role throughout the web's history.
 
-
 Images
 ======
 
-Images are certainly the most popular kind of embedded
+Images\index{image} are certainly the most popular kind of embedded
 content on the web,[^img-late] dating back to [early
 1993][img-email].[^img-history] They're included on web pages via the
 `<img>` tag, which looks like this:
@@ -47,7 +46,7 @@ Luckily, implementing images isn't too hard, so let's just get
 started. There are four steps to displaying images in our browser:
 
 1. Download the image from a URL.
-2. Decode the image into a buffer in memory.
+2. Decode\index{decoding} the image into a buffer in memory.
 3. Lay the image out on the page.
 4. Paint the image in the display list.
 
@@ -631,7 +630,8 @@ input elements. While both are important and widely-used,[^variants]
 they don't offer quite the customizability[^openui] and flexibility
 that complex embedded content use cases like maps, PDFs, ads, and social media
 controls require. So in modern browsers, these are handled by
-*embedding one web page within another* using the `<iframe>` element.
+*embedding one web page within another* using the `<iframe>`\index{iframe}
+element.
 
 [^variants]: As are variations like the [`<canvas>`][canvas-elt]
     element. Instead of loading an image from the network, JavaScript
@@ -668,11 +668,11 @@ handling three significant differences:
   iframes (even nested ones---yes, iframes can include iframes!) use
   the same rendering event loop.
 
-* Cross-origin iframes are *script-isolated* from the containing page.
-  That means that a script in the iframe [can't access][cant-access]
-  the containing page's variables or DOM, nor can scripts in the
-  containing page access the iframe's variables or DOM. Same-origin
-  iframes, however, can.
+* Cross-origin iframes are *script-isolated*\index{script} from the
+  containing page. That means that a script in the iframe
+  [can't access][cant-access] the containing page's variables or DOM,
+  nor can scripts in the containing page access the iframe's variables
+  or DOM. Same-origin iframes, however, can.
 
 [^iframe-event-loop]: For example, if an iframe has the same origin as
     the web page that embeds it, then scripts in the iframe can
@@ -1459,10 +1459,10 @@ by both sides.
 Iframe scripts
 ==============
 
-We've now got users interacting with iframes---but what about scripts
-interacting with them? Of course, each frame can _already_ run
-scripts---but right now, each `Frame` has its own `JSContext`, so
-these scripts can't really interact with each other. Instead
+We've now got users interacting with iframes---but what about
+scripts\index{script} interacting with them? Of course, each frame can
+_already_ run scripts---but right now, each `Frame` has its own
+`JSContext`, so these scripts can't really interact with each other. Instead
 *same-origin* iframes should run in the same JavaScript context and
 should be able to access each other's globals, call each other's
 functions, and modify each other's DOMs. Let's implement that.

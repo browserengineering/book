@@ -5,12 +5,12 @@ prev: scheduling
 next: accessibility
 ...
 
-Complex web application use *animations* when transitioning between
-states. These animations help users understand the change and improve
+Complex web application use *animations*\index{animation} when transitioning
+between states. These animations help users understand the change and improve
 visual polish by replacing sudden jumps with gradual changes. But to
 execute these animations smoothly, the browser must minimize time in each
 animation frame, using GPU acceleration to speed up
-visual effects and compositing to minimize redundant work.
+visual effects and compositing\index{compositing} to minimize redundant work.
 
 JavaScript Animations
 =====================
@@ -167,11 +167,13 @@ second; for smooth animations we want sixty! So we need to speed up
 raster and draw.
 
 The best way to do that is to move raster and draw to the [GPU][gpu].
+\index{GPU}
 A GPU is essentially a chip in your computer that runs programs much
-like your CPU, but specialized toward running very simple programs with
-massive parallelism---it was developed to apply simple operations, in
-parallel, for every pixel on the screen. This makes GPUs faster for
-drawing simple shapes and *much* faster for applying visual effects.
+like your CPU\index{CPU}, but specialized toward running very simple
+programs with massive parallelism---it was developed to apply simple
+operations, in parallel, for every pixel on the screen. This makes GPUs
+faster for drawing simple shapes and *much* faster for applying visual
+effects.
 
 At a high level, to raster and draw on the GPU our browser
 must:[^gpu-variations]
@@ -293,7 +295,8 @@ class Browser:
                 self.skia_context,
                 skia.GrBackendRenderTarget(
                     WIDTH, HEIGHT, 0, 0,
-                    skia.GrGLFramebufferInfo(0, OpenGL.GL.GL_RGBA8)),
+                    skia.GrGLFramebufferInfo(
+                        0, OpenGL.GL.GL_RGBA8)),
                     skia.kBottomLeft_GrSurfaceOrigin,
                     skia.kRGBA_8888_ColorType,
                     skia.ColorSpace.MakeSRGB())
@@ -734,12 +737,33 @@ class CompositedLayer:
         rect = skia.Rect.MakeEmpty()
         for item in self.display_items:
             rect.join(item.rect)
+        # ...
+```
+
+These bounds can then be used to make a surface with the right size.
+Note that we're creating a surface just big enough to store the items in
+this composited layer; this reduces how much GPU memory we need. That
+being said, there are some tricky corner cases to consider, such as how
+Skia rasters lines or anti-aliased text across multiple pixels
+in order to look nice or align with the pixel
+grid.[^even-more-corner-cases] So let's add in one extra pixel on each
+side to account for that:
+
+[^even-more-corner-cases]: One pixel of "slop" around the edges is
+not good enough for a real browser, which has to deal with lots of
+really subtle issues like nicely blending pixels between adjacent
+composited layers, subpixel positioning and effects with infinite
+theoretical extent like blur filters.
+
+``` {.python}
+    def composited_bounds(self):
+        # ...
+        rect.outset(1, 1)
         return rect
 ```
 
-These bounds can then be used to make a surface with the right size. Note that
-we're creating a surface just big enough to store the items in this composited
-layer; this reduces how much GPU memory we need.
+Raster now uses the composited bounds:
+
 
 ``` {.python}
 class CompositedLayer:
@@ -1640,6 +1664,37 @@ class Browser:
 
 The multiple `if` statements inside the list comprehension are "and"ed
 together.
+=======
+Since internal nodes can now be in a `CompositedLayer`, there is also a bit of
+added complexity to `composited_bounds`.  We'll need to recursively union the
+rects of the subtree of non-composited display items, so let's add a
+`DisplayItem` method to do that:
+
+``` {.python}
+class DisplayItem:
+    def __init__(self, rect, children=[], node=None):
+        self.rect = rect
+    # ...
+
+    def add_composited_bounds(self, rect):
+        rect.join(self.rect)
+        for cmd in self.children:
+            cmd.add_composited_bounds(rect)
+```
+
+And use this new method as follows:
+
+``` {.python}
+class CompositedLayer:
+    # ...
+    def composited_bounds(self):
+        rect = skia.Rect.MakeEmpty()
+        for item in self.display_items:
+            item.add_composited_bounds(rect)
+        rect.outset(1, 1)
+        return rect
+```
+>>>>>>> main
 
 Our compositing algorithm now creates way fewer layers! It does a good job of
 grouping together non-animating content to reduce the number of composited

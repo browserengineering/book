@@ -22,8 +22,8 @@ possible to interact with the web page by touch, keyboard, or voice.
 What is accessibility?
 ======================
 
-Accessibility means that the user can change or customize how they
-interact with a web page in order to make it easier to
+Accessibility\index{accessibility} means that the user can change or
+customize how they interact with a web page in order to make it easier to
 use.[^other-defs] The web's uniquely-flexible
 core technologies mean that browsers offer a lot of accessibility
 features[^not-just-screen-reader] that allow a user to customize the
@@ -138,8 +138,8 @@ Let's start with the simplest accessibility problem: text on the
 screen that is too small to read. It's a problem many of us will face
 sooner or later, and possibly the most common user disability issue.
 The simplest and most effective way to address this is by increasing font
-and element sizes. This approach is called *CSS zoom*,[^zoom] which 
-means to lay out the page as if all of the CSS sizes were increased or
+and element sizes. This approach is called *CSS zoom*,[^zoom]\index{zoom}
+which  means to lay out the page as if all of the CSS sizes were increased or
 decreased by a specified factor.
 
 [^zoom]: The word zoom evokes an analogy to a camera zooming in, but
@@ -297,11 +297,13 @@ class BlockLayout:
 	# ....
     def word(self, node, word):
     	# ...
-        size = device_px(float(node.style["font-size"][:-2]), self.zoom)
+        size = device_px(float(node.style["font-size"][:-2]),
+            self.zoom)
 
     def input(self, node):
 	    # ...
-        size = device_px(float(node.style["font-size"][:-2]), self.zoom)
+        size = device_px(float(node.style["font-size"][:-2]),
+            self.zoom)
 ```
 
 
@@ -310,8 +312,8 @@ class InputLayout:
     # ....
     def layout(self):
         # ...
-        size = \
-            device_px(float(self.node.style["font-size"][:-2]), self.zoom)
+        size = device_px(float(self.node.style["font-size"][:-2]),
+            self.zoom)
 ```
 
 As well as the font size in `TextLayout`:[^min-font-size]
@@ -768,8 +770,8 @@ trickier, because web pages can have any number of links. So the
 standard solution is letting the user `Tab` through all the clickable
 things on the page, and press `Enter` to actually click on them.
 
-We'll implement this by expanding our implementation of *focus*. We
-already have a `focus` property on each `Tab` indicating which `input`
+We'll implement this by expanding our implementation of *focus*.\index{focus}
+We already have a `focus` property on each `Tab` indicating which `input`
 element is capturing keyboard input. Let's allow buttons and links to
 be focused as well. Of course, they don't capture keyboard input, but
 when the user pressed `Enter` we'll press the button or navigate to
@@ -1320,7 +1322,8 @@ def has_outline(node):
 
 def paint_outline(node, cmds, rect, zoom):
     if has_outline(node):
-        thickness, color = parse_outline(node.style.get("outline"), zoom)
+        thickness, color = \
+            parse_outline(node.style.get("outline"), zoom)
         cmds.append(DrawOutline(
             rect.left(), rect.top(),
             rect.right(), rect.bottom(),
@@ -1450,7 +1453,8 @@ HTML elements (like `<div>`) group content for styling that is
 meaningless to screen reader users. Alternatively, some HTML elements
 may be invisible on the screen,[^invisible-example] but relevant to
 screen reader users. The browser therefore builds a separate
-[accessibility tree][at] to support screen reader navigation.
+[accessibility tree][at]\index{accessibility tree} to support screen
+reader navigation.
 
 [at]: https://developer.mozilla.org/en-US/docs/Glossary/Accessibility_tree
 
@@ -1558,16 +1562,16 @@ accessibility tree and describe each node to the user.
 
 ::: {.further}
 
-In a multi-process browser ([like Chromium][chrome-mp]), the browser and
-main threads run in different processes, and sending data from one to
-the other can be slow. Chromium, therefore, [stores two
-copies][chrome-mp-a11y] of the accessibility tree, one in the browser
-and one in the main thread, and only sends changes between the two. An
-alternative design, used by pre-Chromium Microsoft Edge and some other
-browsers, has each tab process respond to accessibility API requests
-from the operating system. This removes the need to duplicate the
-accessibility tree, but exposing the operating system to individual
-tabs can lead to security issues.
+In a multi-process\index{process} browser
+([like Chromium][chrome-mp]), the browser and main threads run in
+different processes, and sending data from one to the other can be slow.
+Chromium, therefore, [stores two copies][chrome-mp-a11y] of the
+accessibility tree, one in the browser and one in the main thread, and
+only sends changes between the two. An alternative design, used by
+pre-Chromium Microsoft Edge and some other browsers, has each tab
+process respond to accessibility API requests from the operating system.
+This removes the need to duplicate the accessibility tree, but exposing
+the operating system to individual tabs can lead to security issues.
 
 :::
 
@@ -1899,8 +1903,9 @@ output device is quite different, the accessibility tree would still
 contain all the information about what content is on the page, whether
 it can be interacted with, its state, and so on. Moreover, by using
 the same accessibility tree for all output devices, users who use more
-than one *assistive technology* (like a braille display and a screen
-reader) are sure to receive consistent information.
+than one *assistive technology*\index{assistive technology}
+(like a braille display and a screen reader) are sure to receive
+consistent information.
 
 :::
 

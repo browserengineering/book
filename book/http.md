@@ -17,7 +17,8 @@ identifies a particular web page that the browser should visit. A URL
 looks like this:
 
 [^url]: "URL" stands for "Uniform Resource Locator", meaning that it
-    is a portable (uniform) way to identify web pages (resources) and
+    is a portable (uniform) way to identify web pages
+    (resources\index{web resource}) and
     also that it describes how to access those files (locator).
 
 ::: {.cmd html=True}
@@ -26,8 +27,8 @@ looks like this:
     EOF
 :::
 
-This URL has three parts: the scheme explains *how* to get the
-information; the host explains *where* to get it; and the path
+This URL has three parts: the scheme\index{scheme} explains *how* to get the
+information; the host explains *where* to get it; and the path\index{path}
 explains *what* information to get. There are also optional parts to
 the URL, like ports, queries, and fragments, which we'll see later.
 
@@ -337,8 +338,8 @@ class URL:
 ```
 
 Once you have a socket, you need to tell it to connect to the other
-computer. For that, you need the host and a *port*. The port depends
-on the type of server you're connecting to; for now it should be 80.
+computer. For that, you need the host and a *port*.\index{port} The port
+depends on the type of server you're connecting to; for now it should be 80.
 
 ``` {.python replace=80/self.port}
 class URL:
@@ -546,8 +547,8 @@ ends with a `>`; generally speaking, tags tell you what kind of thing
 some content is, while text is the actual content.[^22] Most tags come
 in pairs of a start and an end tag; for example, the title of the page
 is enclosed in a pair of tags: `<title>` and `</title>`. Each tag, inside
-the angle brackets, has a tag name (like `title` here), and then
-optionally a space followed by *attributes*, and its pair has a `/`
+the angle brackets, has a tag name\index{tag name} (like `title` here),
+and then optionally a space followed by *attributes*, and its pair has a `/`
 followed by the tag name (and no attributes). Some tags do not have
 pairs, because they don't surround text, they just carry information.
 For example, on <http://example.org/index.html>, there is the tag:

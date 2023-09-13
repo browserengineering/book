@@ -4,6 +4,8 @@ https://creativecommons.org/licenses/by/3.0/deed.en
 Copied from https://commons.wikimedia.org/wiki/File:Broken_Image.png without
 changes.
 
+** End Broken_Image
+
 ** CanvasKit:
 
 canvaskit.js copied from https://unpkg.com/canvaskit-wasm@0.19.0/bin/canvaskit.js
@@ -43,3 +45,5 @@ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+** End CanvasKit
