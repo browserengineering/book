@@ -1852,7 +1852,7 @@ class Browser:
             sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 
     def handle_quit(self):
-        self.measure.close())
+        self.measure.close()
         self.tabs[self.active_tab].task_runner.set_needs_quit()
         if wbetools.USE_GPU:
             sdl2.SDL_GL_DeleteContext(self.gl_context)
