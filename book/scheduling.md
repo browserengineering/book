@@ -974,11 +974,14 @@ this question, let's instrument the browser and measure how much time
 is really being spent rendering. It's important to always measure
 before optimizing, because the result is often surprising.
 
-To instrument our browser, let's have our browser output JSON tracing
-format used by [chrome://tracing](chrome://tracing) in Chrome,
-[Firefox Profiler](https://profiler.firefox.com/) or [Perfetto
-UI](https://ui.perfetto.dev/).[^note-standards] We'll stick to really
-simple traces.
+To instrument our browser, let's have our browser output the
+[JSON][json] tracing format used by [chrome://tracing][chrome-tracing]
+in Chrome, [Firefox Profiler](https://profiler.firefox.com/) or
+[Perfetto UI](https://ui.perfetto.dev/).[^note-standards] We'll stick
+to really simple traces.
+
+[json]: https://www.json.org/
+[chrome-tracing]: https://www.chromium.org/developers/how-tos/trace-event-profiling-tool/
 
 [^note-standards]: Though note that these three tools seem to have
     somewhat different interpretations of the JSON format and display
@@ -1108,8 +1111,8 @@ class Browser:
         self.measure.close()
 ```
 
-Naturally you'll need to call this methods before quitting, from the main
-event loop, so it has a chance to print its timing data.
+Naturally you'll need to call this method before quitting, from the
+main event loop, so it has a chance to print its timing data.
 
 Fire up the server, open our timer script, wait for it to finish
 counting, and then exit the browser. Then open up Chrome tracing or
