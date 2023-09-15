@@ -33,6 +33,7 @@ from lab11 import paint_visual_effects, parse_blend_mode, parse_color, Tab, Brow
 class MeasureTime:
 
     def __init__(self, filename):
+        if not wbetools.OUTPUT_TRACE: return
         self.lock = threading.Lock()
         self.file = open(filename, "w")
         self.file.write('{"traceEvents": [')
@@ -46,6 +47,7 @@ class MeasureTime:
         self.file.flush()
 
     def start(self, name):
+        if not wbetools.OUTPUT_TRACE: return
         ts = time.time() * 1000000
         tid = threading.get_ident()
         self.lock.acquire(blocking=True)
@@ -58,6 +60,7 @@ class MeasureTime:
         self.lock.release()
 
     def stop(self, name):
+        if not wbetools.OUTPUT_TRACE: return
         ts = time.time() * 1000000
         tid = threading.get_ident()
         self.lock.acquire(blocking=True)
@@ -70,6 +73,7 @@ class MeasureTime:
         self.lock.release()
 
     def close(self):
+        if not wbetools.OUTPUT_TRACE: return
         self.lock.acquire(blocking=True)
         self.file.write(']}')
         self.file.close()
@@ -608,9 +612,12 @@ if __name__ == "__main__":
     parser.add_argument("url", type=str, help="URL to load")
     parser.add_argument('--single_threaded', action="store_true", default=False,
         help='Whether to run the browser without a browser thread')
+    parser.add_argument('--trace', action="store_true", default=False,
+        help='Whether to generate a browser trace file')
     args = parser.parse_args()
 
     wbetools.USE_BROWSER_THREAD = not args.single_threaded
+    wbetools.OUTPUT_TRACE = args.trace
 
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
