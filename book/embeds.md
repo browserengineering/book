@@ -826,7 +826,7 @@ on each frame to do style and layout:
 ``` {.python}
 class Tab:
     def render(self):
-        self.measure_render.start_timing()
+        self.browser.measure.start('render')
 
         for id, frame in self.window_id_to_frame.items():
             frame.render()
@@ -836,6 +836,8 @@ class Tab:
 
         if self.pending_hover:
             # ...
+
+        self.browser.measure.stop('render')
 ```
 
 Note that the `needs_accessibility`, `pending_hover`, and other flags

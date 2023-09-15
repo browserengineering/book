@@ -1460,7 +1460,6 @@ class Tab:
             self.task_runner = SingleThreadedTaskRunner(self)
         self.task_runner.start_thread()
 
-        self.measure_render = MeasureTime("render")
         self.composited_updates = []
         self.zoom = 1.0
 
@@ -1555,7 +1554,7 @@ class Tab:
         self.browser.commit(self, commit_data)
 
     def render(self):
-        self.measure_render.start_timing()
+        self.browser.measure.start('render')
 
         for id, frame in self.window_id_to_frame.items():
             frame.render()
@@ -1571,7 +1570,7 @@ class Tab:
             self.root_frame.paint(self.display_list)
             self.needs_paint = False
 
-        self.measure_render.stop_timing()
+        self.browser.measure.stop('render')
 
     def click(self, x, y):
         self.render()
@@ -1683,7 +1682,7 @@ class Browser:
         self.url = None
         self.scroll = 0
 
-        self.measure_composite_raster_and_draw = MeasureTime("raster-and-draw")
+        self.measure = MeasureTime("browser.trace")
 
         if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
             self.RED_MASK = 0xff000000
@@ -1901,7 +1900,7 @@ class Browser:
             and not self.needs_raster and not self.needs_draw:
             self.lock.release()
             return
-        self.measure_composite_raster_and_draw.start_timing()
+        self.measure.start('raster/draw')
         start_time = time.time()
         if self.needs_composite:
             self.composite()
@@ -1912,7 +1911,7 @@ class Browser:
             self.paint_draw_list()
             self.draw()
 
-        self.measure_composite_raster_and_draw.stop_timing()
+        self.measure.stop('raster/draw')
 
         if self.needs_accessibility:
             self.update_accessibility()
@@ -2223,7 +2222,7 @@ class Browser:
             sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 
     def handle_quit(self):
-        print(self.measure_composite_raster_and_draw.text())
+        self.measure.close()
         self.tabs[self.active_tab].task_runner.set_needs_quit()
         if wbetools.USE_GPU:
             sdl2.SDL_GL_DeleteContext(self.gl_context)
