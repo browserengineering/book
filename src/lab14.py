@@ -101,14 +101,13 @@ def parse_outline(outline_str):
     if values[1] != "solid": return None
     return int(values[0][:-2]), values[2]
 
-def paint_outline(node, cmds, rect, zoom):
-    outline = parse_outline(node.style.get("outline"))
-    if outline:
-        thickness, color = outline
-        cmds.append(DrawOutline(
-            rect.left(), rect.top(),
-            rect.right(), rect.bottom(),
-            color, device_px(thickness, zoom)))
+def paint_outline(outline, rect, cmds, zoom):
+    if not outline: return
+    thickness, color = outline
+    cmds.append(DrawOutline(
+        rect.left(), rect.top(),
+        rect.right(), rect.bottom(),
+        color, device_px(thickness, zoom)))
 
 class BlockLayout:
     def __init__(self, node, parent, previous):
@@ -286,15 +285,14 @@ class LineLayout:
 
         outline_rect = skia.Rect.MakeEmpty()
         focused_node = None
+        outline = None
         for child in self.children:
-            node = child.node
-            if parse_outline(node.parent.style.get("outline")):
-                focused_node = node.parent
+            child_outline = parse_outline(child.node.parent.style.get("outline"))
+            if child_outline:
                 outline_rect.join(child.rect())
+                outline = child_outline
 
-        if focused_node:
-            paint_outline(
-                focused_node, display_list, outline_rect, self.zoom)
+        paint_outline(outline, outline_rect, display_list, self.zoom)
 
     def role(self):
         return "none"
@@ -491,7 +489,8 @@ class InputLayout:
                                  "black", 1))
 
         cmds = paint_visual_effects(self.node, cmds, rect)
-        paint_outline(self.node, cmds, rect, self.zoom)
+        outline = parse_outline(self.node.style.get("outline"))
+        paint_outline(outline, rect, cmds, self.zoom)
         display_list.extend(cmds)
 
     def __repr__(self):
