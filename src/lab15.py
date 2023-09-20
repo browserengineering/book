@@ -32,7 +32,7 @@ from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, linespace, parse_blend_mode
 from lab12 import MeasureTime, REFRESH_RATE_SEC
 from lab12 import Task, TaskRunner, SingleThreadedTaskRunner
-from lab13 import diff_styles, parse_transition, clamp_scroll, add_parent_pointers
+from lab13 import diff_styles, parse_transition, add_parent_pointers
 from lab13 import absolute_bounds, absolute_bounds_for_obj
 from lab13 import NumericAnimation, TranslateAnimation
 from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
@@ -1935,16 +1935,19 @@ class Browser:
                 self.animation_timer.start()
         self.lock.release()
 
+    def clamp_scroll(self, scroll):
+        height = self.active_tab_height
+        maxscroll = height - (HEIGHT - CHROME_PX)
+        return max(0, min(scroll, maxscroll))
+
     def handle_down(self):
         self.lock.acquire(blocking=True)
         if self.root_frame_focused:
             if not self.active_tab_height:
                 self.lock.release()
                 return
-            scroll = clamp_scroll(
-                self.scroll + SCROLL_STEP,
-                self.active_tab_height)
-            self.scroll = scroll
+            self.scroll = \
+                self.clamp_scroll(self.scroll + SCROLL_STEP)
             self.set_needs_draw()
             self.needs_animation_frame = True
             self.lock.release()
