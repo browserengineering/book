@@ -154,10 +154,6 @@ class ResolvePatches(ast.NodeTransformer):
         self.visit(tree)
         return self.visit(tree)
         
-    def double_visit_and_patches(self, tree):
-        self.visit(tree)
-        return (self.visit(tree), self.patches)
-
 class ResolveJSHide(ast.NodeTransformer):
     def visit_FunctionDef(self, cmd):
         if any([
@@ -210,8 +206,9 @@ def inline(tree):
     return ast.fix_missing_locations(tree4)
 
 def resolve_patches_and_return_them(tree):
-    (tree2, patches) = ResolvePatches().double_visit_and_patches(tree)
-    return (ast.fix_missing_locations(tree2), patches)
+    r = ResolvePatches()
+    tree2 = r.double_visit(tree)
+    return (ast.fix_missing_locations(tree2), r.patches)
 
 def unparse(tree, explain=False):
     return AST39.unparse(tree, explain=explain)

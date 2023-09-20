@@ -36,9 +36,9 @@ from lab13 import CompositedLayer, paint_visual_effects, add_main_args
 from lab13 import DrawCommand, DrawText, DrawCompositedLayer, DrawOutline, DrawLine, DrawRRect
 from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform
 from lab14 import parse_color, parse_outline, DrawRRect, \
-    is_focused, paint_outline, has_outline, \
+    paint_outline, has_outline, \
     device_px, cascade_priority, \
-    is_focusable, get_tabindex, announce_text, speak_text, \
+    is_focusable, get_tabindex, speak_text, \
     CSSParser, main_func, DrawOutline
 from lab15 import URL, HTMLParser, AttributeParser, DrawImage, DocumentLayout, BlockLayout, \
     EmbedLayout, InputLayout, LineLayout, TextLayout, ImageLayout, \
@@ -916,6 +916,7 @@ def init_style(node):
             for property in CSS_PROPERTIES
         ])
 
+@wbetools.patch(style)
 def style(node, rules, frame):
     if not node.style:
         init_style(node)

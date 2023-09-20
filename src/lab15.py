@@ -40,9 +40,9 @@ from lab13 import CompositedLayer, paint_visual_effects, add_main_args
 from lab13 import DrawCommand, DrawText, DrawCompositedLayer, DrawOutline, DrawLine, DrawRRect
 from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform
 from lab14 import parse_color, DrawRRect, \
-    is_focused, parse_outline, paint_outline, has_outline, \
+    parse_outline, paint_outline, has_outline, \
     device_px, cascade_priority, style, \
-    is_focusable, get_tabindex, announce_text, speak_text, \
+    is_focusable, get_tabindex, speak_text, \
     CSSParser, DrawOutline, main_func, Browser
 
 @wbetools.patch(URL)
@@ -1035,7 +1035,7 @@ class AccessibilityNode:
         elif self.role == "focusable text":
             self.text = "Focusable text: " + self.node.text
         elif self.role == "focusable":
-            self.text = "Focusable"
+            self.text = "Focusable element"
         elif self.role == "textbox":
             if "value" in self.node.attributes:
                 value = self.node.attributes["value"]
@@ -1061,7 +1061,7 @@ class AccessibilityNode:
         elif self.role == "iframe":
             self.text = "Child document"
 
-        if is_focused(self.node):
+        if self.node.is_focused:
             self.text += " is focused"
 
     def build_internal(self, child_node):
