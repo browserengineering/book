@@ -284,7 +284,6 @@ class LineLayout:
             child.paint(display_list)
 
         outline_rect = skia.Rect.MakeEmpty()
-        focused_node = None
         outline = None
         for child in self.children:
             child_outline = parse_outline(child.node.parent.style.get("outline"))

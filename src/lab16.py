@@ -36,7 +36,7 @@ from lab13 import CompositedLayer, paint_visual_effects, add_main_args
 from lab13 import DrawCommand, DrawText, DrawCompositedLayer, DrawOutline, DrawLine, DrawRRect
 from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform
 from lab14 import parse_color, parse_outline, DrawRRect, \
-    paint_outline, has_outline, \
+    paint_outline, \
     device_px, cascade_priority, \
     is_focusable, get_tabindex, speak_text, \
     CSSParser, main_func, DrawOutline
@@ -77,15 +77,6 @@ def tree_to_list(tree, l):
         tree_to_list(child, l)
     return l
 
-@wbetools.patch(paint_outline)
-def paint_outline(node, cmds, rect, zoom):
-    if has_outline(node):
-        thickness, color = parse_outline(node.style['outline'].get(), zoom)
-        cmds.append(DrawOutline(
-            rect.left(), rect.top(),
-            rect.right(), rect.bottom(),
-            color, thickness))
-
 @wbetools.patch(font)
 def font(notify, css_style, zoom):
     weight = css_style['font-weight'].read(notify)
@@ -96,10 +87,6 @@ def font(notify, css_style, zoom):
         size = 16
     font_size = device_px(size, zoom)
     return get_font(font_size, weight, style)
-
-@wbetools.patch(has_outline)
-def has_outline(node):
-    return parse_outline(node.style['outline'].get(), 1)
 
 @wbetools.patch(absolute_bounds_for_obj)
 def absolute_bounds_for_obj(obj):
@@ -604,16 +591,18 @@ class LineLayout:
         self.has_dirty_descendants = False
 
     def paint(self, display_list):
-        outline_rect = skia.Rect.MakeEmpty()
-        outline_node = None
         for child in self.children:
-            node = child.node
-            if isinstance(node, Text) and has_outline(node.parent):
-                outline_node = node.parent
-                outline_rect.join(child.rect())
             child.paint(display_list)
-        if outline_node:
-            paint_outline(outline_node, display_list, outline_rect, self.zoom.get())
+
+        outline_rect = skia.Rect.MakeEmpty()
+        outline = None
+        for child in self.children:
+            child_outline = parse_outline(child.node.parent.style["outline"].get())
+            if child_outline:
+                outline_rect.join(child.rect())
+                outline = child_outline
+
+        paint_outline(outline, outline_rect, display_list, self.zoom.get())
 
 @wbetools.patch(TextLayout)
 class TextLayout:
@@ -817,7 +806,8 @@ class InputLayout(EmbedLayout):
             cmds.append(DrawCursor(self, self.font.get().measureText(text)))
 
         cmds = paint_visual_effects(self.node, cmds, rect)
-        paint_outline(self.node, cmds, rect, self.zoom.get())
+        outline = parse_outline(self.node.style["outline"].get())
+        paint_outline(outline, rect, cmds, self.zoom.get())
         display_list.extend(cmds)
 
 @wbetools.patch(ImageLayout)
@@ -903,7 +893,8 @@ class IframeLayout(EmbedLayout):
         cmds = [Transform(offset, rect, self.node, frame_cmds)]
         inner_rect = skia.Rect.MakeLTRB(self.x.get() + diff, self.y.get() + diff, self.x.get() + self.width.get() - diff, self.y.get() + self.height.get() - diff)
         cmds = paint_visual_effects(self.node, cmds, inner_rect)
-        paint_outline(self.node, cmds, rect, self.zoom.get())
+        outline = parse_outline(self.node.style["outline"].get())
+        paint_outline(outline, rect, cmds, self.zoom.get())
         display_list.extend(cmds)
 
 def init_style(node):

@@ -40,7 +40,7 @@ from lab13 import CompositedLayer, paint_visual_effects, add_main_args
 from lab13 import DrawCommand, DrawText, DrawCompositedLayer, DrawOutline, DrawLine, DrawRRect
 from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform
 from lab14 import parse_color, DrawRRect, \
-    parse_outline, paint_outline, has_outline, \
+    parse_outline, paint_outline, \
     device_px, cascade_priority, style, \
     is_focusable, get_tabindex, speak_text, \
     CSSParser, DrawOutline, main_func, Browser
@@ -390,7 +390,8 @@ class InputLayout(EmbedLayout):
             cmds.append(DrawLine(cx, self.y, cx, self.y + self.height, color, 1))
 
         cmds = paint_visual_effects(self.node, cmds, rect)
-        paint_outline(self.node, cmds, rect, self.zoom)
+        outline = parse_outline(self.node.style.get("outline"))
+        paint_outline(outline, rect, cmds, self.zoom)
         display_list.extend(cmds)
 
     def __repr__(self):
@@ -435,17 +436,18 @@ class LineLayout:
         self.height = max_ascent + max_descent
 
     def paint(self, display_list):
-        outline_rect = skia.Rect.MakeEmpty()
-        outline_node = None
         for child in self.children:
-            node = child.node
-            if isinstance(node, Text) and has_outline(node.parent):
-                outline_node = node.parent
-                outline_rect.join(child.rect())
             child.paint(display_list)
 
-        if outline_node:
-            paint_outline(outline_node, display_list, outline_rect, self.zoom)
+        outline_rect = skia.Rect.MakeEmpty()
+        outline = None
+        for child in self.children:
+            child_outline = parse_outline(child.node.parent.style.get("outline"))
+            if child_outline:
+                outline_rect.join(child.rect())
+                outline = child_outline
+
+        paint_outline(outline, outline_rect, display_list, self.zoom)
 
     def role(self):
         return "none"
@@ -607,7 +609,8 @@ class IframeLayout(EmbedLayout):
             self.x + diff, self.y + diff,
             self.x + self.width - diff, self.y + self.height - diff)
         cmds = paint_visual_effects(self.node, cmds, inner_rect)
-        paint_outline(self.node, cmds, rect, self.zoom)
+        outline = parse_outline(self.node.style.get("outline"))
+        paint_outline(outline, rect, cmds, self.zoom)
         display_list.extend(cmds)
 
     def __repr__(self):

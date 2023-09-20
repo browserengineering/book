@@ -23,17 +23,12 @@ Outlines
 
 The outline css property can be parsed:
 
-    >>> lab14.parse_outline("12px solid red", 1)
+    >>> lab14.parse_outline("12px solid red")
     (12, 'red')
-
-If zoom is set, it is incorporated:
-
-    >>> lab14.parse_outline("12px solid red", 2)
-    (24, 'red')
 
 Values other than "solid" for the secnod word are ignored:
 
-    >>> lab14.parse_outline("12px dashed red", 1)
+    >>> lab14.parse_outline("12px dashed red")
 
 An outline causes a `DrawOutline` with the given width and color:
 
