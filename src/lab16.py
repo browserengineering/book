@@ -77,6 +77,16 @@ def tree_to_list(tree, l):
         tree_to_list(child, l)
     return l
 
+@wbetools.patch(paint_outline)
+def paint_outline(node, cmds, rect, zoom):
+    outline = parse_outline(node.style["outline"].get())
+    if not outline: return
+    thickness, color = outline
+    cmds.append(DrawOutline(
+        rect.left(), rect.top(),
+        rect.right(), rect.bottom(),
+        color, device_px(thickness, zoom)))
+
 @wbetools.patch(font)
 def font(notify, css_style, zoom):
     weight = css_style['font-weight'].read(notify)
@@ -595,14 +605,15 @@ class LineLayout:
             child.paint(display_list)
 
         outline_rect = skia.Rect.MakeEmpty()
-        outline = None
+        outline_node = None
         for child in self.children:
             child_outline = parse_outline(child.node.parent.style["outline"].get())
             if child_outline:
                 outline_rect.join(child.rect())
-                outline = child_outline
+                outline_node = child.node.parent
 
-        paint_outline(outline, outline_rect, display_list, self.zoom.get())
+        if outline_node:
+            paint_outline(outline_node, display_list, outline_rect, self.zoom.get())
 
 @wbetools.patch(TextLayout)
 class TextLayout:
@@ -806,8 +817,7 @@ class InputLayout(EmbedLayout):
             cmds.append(DrawCursor(self, self.font.get().measureText(text)))
 
         cmds = paint_visual_effects(self.node, cmds, rect)
-        outline = parse_outline(self.node.style["outline"].get())
-        paint_outline(outline, rect, cmds, self.zoom.get())
+        paint_outline(self.node, cmds, rect, self.zoom.get())
         display_list.extend(cmds)
 
 @wbetools.patch(ImageLayout)
@@ -893,8 +903,7 @@ class IframeLayout(EmbedLayout):
         cmds = [Transform(offset, rect, self.node, frame_cmds)]
         inner_rect = skia.Rect.MakeLTRB(self.x.get() + diff, self.y.get() + diff, self.x.get() + self.width.get() - diff, self.y.get() + self.height.get() - diff)
         cmds = paint_visual_effects(self.node, cmds, inner_rect)
-        outline = parse_outline(self.node.style["outline"].get())
-        paint_outline(outline, rect, cmds, self.zoom.get())
+        paint_outline(self.node, cmds, rect, self.zoom.get())
         display_list.extend(cmds)
 
 def init_style(node):

@@ -390,8 +390,7 @@ class InputLayout(EmbedLayout):
             cmds.append(DrawLine(cx, self.y, cx, self.y + self.height, color, 1))
 
         cmds = paint_visual_effects(self.node, cmds, rect)
-        outline = parse_outline(self.node.style.get("outline"))
-        paint_outline(outline, rect, cmds, self.zoom)
+        paint_outline(self.node, cmds, rect, self.zoom)
         display_list.extend(cmds)
 
     def __repr__(self):
@@ -440,14 +439,15 @@ class LineLayout:
             child.paint(display_list)
 
         outline_rect = skia.Rect.MakeEmpty()
-        outline = None
+        outline_node = None
         for child in self.children:
             child_outline = parse_outline(child.node.parent.style.get("outline"))
             if child_outline:
                 outline_rect.join(child.rect())
-                outline = child_outline
+                outline_node = child.node.parent
 
-        paint_outline(outline, outline_rect, display_list, self.zoom)
+        if outline_node:
+            paint_outline(outline_node, display_list, outline_rect, self.zoom)
 
     def role(self):
         return "none"
@@ -609,8 +609,7 @@ class IframeLayout(EmbedLayout):
             self.x + diff, self.y + diff,
             self.x + self.width - diff, self.y + self.height - diff)
         cmds = paint_visual_effects(self.node, cmds, inner_rect)
-        outline = parse_outline(self.node.style.get("outline"))
-        paint_outline(outline, rect, cmds, self.zoom)
+        paint_outline(self.node, cmds, rect, self.zoom)
         display_list.extend(cmds)
 
     def __repr__(self):
