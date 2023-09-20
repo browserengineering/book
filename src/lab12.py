@@ -46,7 +46,7 @@ class MeasureTime:
             '"args": {"name": "Browser"}}')
         self.file.flush()
 
-    def start(self, name):
+    def time(self, name):
         if not wbetools.OUTPUT_TRACE: return
         ts = time.time() * 1000000
         tid = threading.get_ident()
@@ -72,7 +72,7 @@ class MeasureTime:
         self.file.flush()
         self.lock.release()
 
-    def close(self):
+    def finish(self):
         if not wbetools.OUTPUT_TRACE: return
         self.lock.acquire(blocking=True)
         self.file.write(']}')
@@ -262,7 +262,7 @@ class Tab:
 
     def render(self):
         if not self.needs_render: return
-        self.browser.measure.start('render')
+        self.browser.measure.time('render')
         style(self.nodes, sorted(self.rules,
             key=cascade_priority))
         self.document = DocumentLayout(self.nodes)
@@ -479,7 +479,7 @@ class Browser:
         if not self.needs_raster_and_draw:
             self.lock.release()
             return
-        self.measure.start('raster/draw')
+        self.measure.time('raster/draw')
         self.raster_chrome()
         self.raster_tab()
         self.draw()
@@ -600,7 +600,7 @@ class Browser:
             cmd.execute(canvas)
 
     def handle_quit(self):
-        self.measure.close()
+        self.measure.finish()
         self.tabs[self.active_tab].task_runner.set_needs_quit()
         sdl2.SDL_DestroyWindow(self.sdl_window)
 

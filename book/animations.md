@@ -1223,7 +1223,7 @@ instead of checking `needs_render` at the start:[^timer-obsolete]
 ``` {.python}
 class Tab:
     def render(self):
-        self.browser.measure.start('render')
+        self.browser.measure.time('render')
 
         if self.needs_style:
             # ...

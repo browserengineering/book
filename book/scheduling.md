@@ -1024,7 +1024,7 @@ of some interesting computation:
 
 ``` {.python replace=1%7d/%27%20%2b%20str(tid)%20%2b%20%27%7d}
 class MeasureTime:
-    def start(self, name):
+    def time(self, name):
         ts = time.time() * 1000000
         self.file.write(
             ', { "ph": "B", "cat": "_",' +
@@ -1055,7 +1055,7 @@ valid JSON file:
 
 ``` {.python}
 class MeasureTime:
-    def close(self):
+    def finish(self):
         self.file.write(']}')
         self.file.close()
 ```
@@ -1084,7 +1084,7 @@ calling `start` and `stop`:
 class Browser:
     def raster_and_draw(self):
         # ...
-        self.measure.start('raster/draw')
+        self.measure.time('raster/draw')
         self.raster_chrome()
         self.raster_tab()
         self.draw()
@@ -1098,7 +1098,7 @@ We can also measure tab rendering:
 class Tab:
     def render(self):
         if not self.needs_render: return
-        self.browser.measure.start('render')
+        self.browser.measure.time('render')
         # ...
         self.browser.measure.stop('render')
 ```
@@ -1108,7 +1108,7 @@ We close out the trace file when the browser stops:
 ``` {.python}
 class Browser:
     def handle_quit(self):
-        self.measure.close()
+        self.measure.finish()
 ```
 
 Naturally you'll need to call this method before quitting, from the
@@ -1509,7 +1509,7 @@ class MeasureTime:
         self.lock = threading.Lock()
         # ...
 
-    def start(self, name):
+    def time(self, name):
         self.lock.acquire(blocking=True)
         # ...
         self.lock.release()
@@ -1519,7 +1519,7 @@ class MeasureTime:
         # ...
         self.lock.release()
 
-    def close(self):
+    def finish(self):
         self.lock.acquire(blocking=True)
         # ...
         self.lock.release()
@@ -1531,7 +1531,7 @@ the `tid` field, which we can get by calling `get_ident` from the
 
 ``` {.python}
 class MeasureTime:
-    def start(self, name):
+    def time(self, name):
         # ...
         tid = threading.get_ident()
         self.file.write(

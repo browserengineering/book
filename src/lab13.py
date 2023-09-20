@@ -1228,7 +1228,7 @@ class Tab:
         self.browser.commit(self, commit_data)
 
     def render(self):
-        self.browser.measure.start('render')
+        self.browser.measure.time('render')
 
         if self.needs_style:
             style(self.nodes, sorted(self.rules, key=cascade_priority), self)
@@ -1519,7 +1519,7 @@ class Browser:
             self.lock.release()
             return
 
-        self.measure.start('raster/draw')
+        self.measure.time('raster/draw')
         start_time = time.time()
         if self.needs_composite:
             self.composite()
@@ -1724,7 +1724,7 @@ class Browser:
             sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 
     def handle_quit(self):
-        self.measure.close()
+        self.measure.finish()
         self.tabs[self.active_tab].task_runner.set_needs_quit()
         if wbetools.USE_GPU:
             sdl2.SDL_GL_DeleteContext(self.gl_context)

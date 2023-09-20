@@ -826,7 +826,7 @@ on each frame to do style and layout:
 ``` {.python}
 class Tab:
     def render(self):
-        self.browser.measure.start('render')
+        self.browser.measure.time('render')
 
         for id, frame in self.window_id_to_frame.items():
             frame.render()
