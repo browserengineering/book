@@ -1593,9 +1593,6 @@ class Tab:
             frame = self.focused_frame or self.root_frame
             frame.activate_element(self.focus)
 
-    def get_tabindex(node):
-        return int(node.attributes.get("tabindex", 9999999))
-
     def advance_tab(self):
         frame = self.focused_frame or self.root_frame
         frame.advance_tab()
