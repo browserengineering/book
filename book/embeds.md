@@ -182,7 +182,7 @@ Luckily, Skia will automatically do the decoding for us, so drawing
 the image is pretty simple:
 
 ``` {.python replace=%2c%20rect/%2c%20rect%2c%20quality,self.rect)/self.rect%2c%20paint)}
-class DrawImage(DisplayItem):
+class DrawImage(DrawCommand):
     def __init__(self, image, rect):
         super().__init__(rect)
         self.image = image
@@ -234,7 +234,7 @@ indicates which algorithm to use. Let's add that as an argument to
 [image-rendering]: https://developer.mozilla.org/en-US/docs/Web/CSS/image-rendering
 
 ``` {.python}
-class DrawImage(DisplayItem):
+class DrawImage(DrawCommand):
     def __init__(self, image, rect, quality):
         # ...
         if quality == "high-quality":
