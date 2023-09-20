@@ -1016,11 +1016,13 @@ the `cat`egory has to be `__metadata` for metadata trace events. The
 set the start time for the whole trace, so it's important to put in
 the actual current time.
 
-Updating the process name isn't that important, but writing an initial
-trace event conveniently means every later trace event will need to be
-preceded by a comma. So let's add those later trace events. We
-specifically want `B` and `E` events, which mark the beginning and end
-of some interesting computation:
+Updating the process name isn't that important,[^multi-process] but
+writing an initial trace event conveniently means every later trace
+event will need to be preceded by a comma. So let's add those later
+trace events. We specifically want `B` and `E` events, which mark the
+beginning and end of some interesting computation:
+
+[^multi-process]: Though it would be, in a multi-process browser!
 
 ``` {.python replace=1%7d/%27%20%2b%20str(tid)%20%2b%20%27%7d}
 class MeasureTime:
@@ -1050,8 +1052,8 @@ class MeasureTime:
         self.file.flush()
 ```
 
-Finally, when we shut down the browser, we want to leave the file a
-valid JSON file:
+Finally, when we finish tracing (that is, when we close the browser
+window), we want to leave the file a valid JSON file:
 
 ``` {.python}
 class MeasureTime:
@@ -1069,7 +1071,7 @@ accept invalid JSON files, in case the trace comes from a browser
 crash.
 
 Now we can use `MeasureTime` to measure how long various browser
-components take. We create it in the `Browser`:
+components take. Create it in the `Browser`:
 
 ``` {.python}
 class Browser:
@@ -1103,7 +1105,7 @@ class Tab:
         self.browser.measure.stop('render')
 ```
 
-We close out the trace file when the browser stops:
+And close out the trace file when the browser stops:
 
 ``` {.python}
 class Browser:
