@@ -430,7 +430,9 @@ class ClipRRect:
             return "ClipRRect(<no-op>)"
 ```
 
-Now we can print out our browser's display list:
+You'll also need to add `children` fields to all of the paint
+commands, since `print_tree` relies on those. Now we can print out our
+browser's display list:
 
 ``` {.python expected=False}
 class Tab:
@@ -1664,37 +1666,6 @@ class Browser:
 
 The multiple `if` statements inside the list comprehension are "and"ed
 together.
-=======
-Since internal nodes can now be in a `CompositedLayer`, there is also a bit of
-added complexity to `composited_bounds`.  We'll need to recursively union the
-rects of the subtree of non-composited display items, so let's add a
-`DisplayItem` method to do that:
-
-``` {.python}
-class DisplayItem:
-    def __init__(self, rect, children=[], node=None):
-        self.rect = rect
-    # ...
-
-    def add_composited_bounds(self, rect):
-        rect.join(self.rect)
-        for cmd in self.children:
-            cmd.add_composited_bounds(rect)
-```
-
-And use this new method as follows:
-
-``` {.python}
-class CompositedLayer:
-    # ...
-    def composited_bounds(self):
-        rect = skia.Rect.MakeEmpty()
-        for item in self.display_items:
-            item.add_composited_bounds(rect)
-        rect.outset(1, 1)
-        return rect
-```
->>>>>>> main
 
 Our compositing algorithm now creates way fewer layers! It does a good job of
 grouping together non-animating content to reduce the number of composited
