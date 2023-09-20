@@ -283,7 +283,8 @@ class Tab:
                     if elt.tag == "form" and "action" in elt.attributes:
                         return self.submit_form(elt)
                     elt = elt.parent
-            elt = elt.parent
+            if elt:
+                elt = elt.parent
 
 class Task:
     def __init__(self, task_code, *args):
