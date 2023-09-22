@@ -441,8 +441,8 @@ class LineLayout:
         outline_rect = skia.Rect.MakeEmpty()
         outline_node = None
         for child in self.children:
-            child_outline = parse_outline(child.node.parent.style.get("outline"))
-            if child_outline:
+            outline_str = child.node.parent.style.get("outline")
+            if parse_outline(outline_str):
                 outline_rect.join(child.rect())
                 outline_node = child.node.parent
 

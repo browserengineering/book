@@ -1089,16 +1089,14 @@ around this, let's draw the focus ring in `LineLayout`. Each
 `LineLayout` finds all of its child `TextLayout`s that are focused,
 and draws a rectangle around them all:
 
-``` {.python}
+``` {.python replace=child.node.parent.is_focused/parse_outline(outline_str)}
 class LineLayout:
     def paint(self, display_list):
         # ...
         outline_rect = skia.Rect.MakeEmpty()
         outline_node = None
         for child in self.children:
-            outline_str = child.node.parent.style.get("outline")
-            outline = parse_outline(outline_str)
-            if outline:
+            if child.node.parent.is_focused:
                 outline_rect.join(child.rect())
                 outline_node = child.node.parent
         if outline_node:
@@ -1360,8 +1358,7 @@ class LineLayout:
     def paint(self, display_list):
         for child in self.children:
             outline_str = child.node.parent.style.get("outline")
-            outline = parse_outline(outline_str)
-            if outline:
+            if parse_outline(outline_str):
                 outline_rect.join(child.rect())
                 outline_node = child.node.parent
 ```

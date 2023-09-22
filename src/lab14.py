@@ -288,8 +288,7 @@ class LineLayout:
         outline_node = None
         for child in self.children:
             outline_str = child.node.parent.style.get("outline")
-            outline = parse_outline(outline_str)
-            if outline:
+            if parse_outline(outline_str):
                 outline_rect.join(child.rect())
                 outline_node = child.node.parent
 
