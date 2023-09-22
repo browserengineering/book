@@ -142,12 +142,11 @@ class Tab:
                 return self.render()
             elif elt.tag == "button":
                 if self.js.dispatch_event("click", elt): return
-                while elt:
+                while elt.parent:
                     if elt.tag == "form" and "action" in elt.attributes:
                         return self.submit_form(elt)
                     elt = elt.parent
-            if elt:
-                elt = elt.parent
+            elt = elt.parent
 
     def submit_form(self, elt):
         if self.js.dispatch_event("submit", elt): return
