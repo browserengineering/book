@@ -52,25 +52,22 @@ class Element:
         self.is_focused = False
         self.animations = {}
 
-class DisplayItem:
-    def __init__(self, rect, children=[], node=None):
+class DrawCommand:
+    def __init__(self, rect):
         self.rect = rect
+        self.children = []
+
+class VisualEffect:
+    def __init__(self, rect, children, node=None):
+        self.rect = rect.makeOffset(0.0, 0.0)
         self.children = children
+        for child in self.children:
+            self.rect.join(child.rect)
         self.node = node
         self.needs_compositing = any([
             child.needs_compositing for child in self.children
+            if isinstance(child, VisualEffect)
         ])
-
-    def is_paint_command(self):
-        return False
-
-    def map(self, rect):
-        return rect
-
-    def add_composited_bounds(self, rect):
-        rect.join(self.rect)
-        for cmd in self.children:
-            cmd.add_composited_bounds(rect)
 
 def map_translation(rect, translation):
     if not translation:
@@ -81,7 +78,7 @@ def map_translation(rect, translation):
         matrix.setTranslate(x, y)
         return matrix.mapRect(rect)
 
-class Transform(DisplayItem):
+class Transform(VisualEffect):
     def __init__(self, translation, rect, node, children):
         super().__init__(rect, children, node)
         self.translation = translation
@@ -110,7 +107,7 @@ class Transform(DisplayItem):
         else:
             return "Transform(<no-op>)"
 
-class DrawLine(DisplayItem):
+class DrawLine(DrawCommand):
     def __init__(self, x1, y1, x2, y2, color, thickness):
         super().__init__(skia.Rect.MakeLTRB(x1, y1, x2, y2))
         self.x1 = x1
@@ -119,9 +116,6 @@ class DrawLine(DisplayItem):
         self.y2 = y2
         self.color = color
         self.thickness = thickness
-
-    def is_paint_command(self):
-        return True
 
     def execute(self, canvas):
         path = skia.Path().moveTo(self.x1, self.y1).lineTo(self.x2, self.y2)
@@ -134,14 +128,11 @@ class DrawLine(DisplayItem):
         return "DrawLine top={} left={} bottom={} right={}".format(
             self.y1, self.x1, self.y2, self.x2)
 
-class DrawRRect(DisplayItem):
+class DrawRRect(DrawCommand):
     def __init__(self, rect, radius, color):
         super().__init__(rect)
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
         self.color = color
-
-    def is_paint_command(self):
-        return True
 
     def execute(self, canvas):
         sk_color = parse_color(self.color)
@@ -155,7 +146,7 @@ class DrawRRect(DisplayItem):
         return "DrawRRect(rect={}, color={})".format(
             str(self.rrect), self.color)
 
-class DrawText(DisplayItem):
+class DrawText(DrawCommand):
     def __init__(self, x1, y1, text, font, color):
         self.left = x1
         self.top = y1
@@ -167,9 +158,6 @@ class DrawText(DisplayItem):
         super().__init__(skia.Rect.MakeLTRB(x1, y1,
             self.right, self.bottom))
 
-    def is_paint_command(self):
-        return True
-
     def execute(self, canvas):
         paint = skia.Paint(AntiAlias=True, Color=parse_color(self.color))
         baseline = self.top - self.font.getMetrics().fAscent
@@ -179,7 +167,7 @@ class DrawText(DisplayItem):
     def __repr__(self):
         return "DrawText(text={})".format(self.text)
 
-class DrawRect(DisplayItem):
+class DrawRect(DrawCommand):
     def __init__(self, x1, y1, x2, y2, color):
         super().__init__(skia.Rect.MakeLTRB(x1, y1, x2, y2))
         self.top = y1
@@ -187,9 +175,6 @@ class DrawRect(DisplayItem):
         self.bottom = y2
         self.right = x2
         self.color = color
-
-    def is_paint_command(self):
-        return True
 
     def execute(self, canvas):
         paint = skia.Paint()
@@ -202,14 +187,11 @@ class DrawRect(DisplayItem):
             self.top, self.left, self.bottom,
             self.right, self.color)
 
-class DrawOutline(DisplayItem):
+class DrawOutline(DrawCommand):
     def __init__(self, x1, y1, x2, y2, color, thickness):
         super().__init__(skia.Rect.MakeLTRB(x1, y1, x2, y2))
         self.color = color
         self.thickness = thickness
-
-    def is_paint_command(self):
-        return True
 
     def execute(self, canvas):
         paint = skia.Paint()
@@ -228,7 +210,7 @@ class DrawOutline(DisplayItem):
             self.thickness)
 
 
-class ClipRRect(DisplayItem):
+class ClipRRect(VisualEffect):
     def __init__(self, rect, radius, children, should_clip=True):
         super().__init__(rect, children)
         self.should_clip = should_clip
@@ -244,6 +226,11 @@ class ClipRRect(DisplayItem):
         if self.should_clip:
             canvas.restore()
 
+    def map(self, rect):
+        bounds = self.rrect.rect()
+        bounds.intersect(rect)
+        return bounds
+
     def clone(self, children):
         return ClipRRect(self.rect, self.radius, children, \
             self.should_clip)
@@ -254,7 +241,7 @@ class ClipRRect(DisplayItem):
         else:
             return "ClipRRect(<no-op>)"
 
-class SaveLayer(DisplayItem):
+class SaveLayer(VisualEffect):
     def __init__(self, sk_paint, node, children, should_save=True):
         super().__init__(skia.Rect.MakeEmpty(), children, node)
         self.should_save = should_save
@@ -271,6 +258,9 @@ class SaveLayer(DisplayItem):
         if self.should_save:
             canvas.restore()
 
+    def map(self, rect):
+        return rect
+
     def clone(self, children):
         return SaveLayer(self.sk_paint, self.node, children, \
             self.should_save)
@@ -281,7 +271,7 @@ class SaveLayer(DisplayItem):
         else:
             return "SaveLayer(<no-op>)"
 
-class DrawCompositedLayer(DisplayItem):
+class DrawCompositedLayer(DrawCommand):
     def __init__(self, composited_layer):
         self.composited_layer = composited_layer
         super().__init__(
@@ -295,7 +285,6 @@ class DrawCompositedLayer(DisplayItem):
 
     def __repr__(self):
         return "DrawCompositedLayer()"
-
 
 def parse_transform(transform_str):
     if transform_str.find('translate(') < 0:
@@ -1000,12 +989,10 @@ def absolute_bounds_for_obj(obj):
     return rect
 
 def absolute_bounds(display_item):
-    rect = skia.Rect.MakeEmpty()
-    display_item.add_composited_bounds(rect)
-    effect = display_item.parent
-    while effect:
-        rect = effect.map(rect)
-        effect = effect.parent
+    rect = display_item.rect
+    while display_item.parent:
+        rect = display_item.parent.map(rect)
+        display_item = display_item.parent
     return rect
 
 class CompositedLayer:
@@ -1026,7 +1013,7 @@ class CompositedLayer:
     def composited_bounds(self):
         rect = skia.Rect.MakeEmpty()
         for item in self.display_items:
-            item.add_composited_bounds(rect)
+            rect.join(item.rect)
         rect.outset(1, 1)
         return rect
 
@@ -1066,14 +1053,9 @@ class CompositedLayer:
             DrawOutline(0, 0, irect.width() - 1, irect.height() - 1, "red", 1).execute(canvas)
 
     def __repr__(self):
-        composited_bounds = skia.Rect.MakeEmpty()
-        self.add_composited_bounds(composited_bounds)
-        absolute_bounds = skia.Rect.MakeEmpty()
-        self.add_absolute_bounds(absolute_bounds)
-
         return ("layer: composited_bounds={} " +
             "absolute_bounds={} first_chunk={}").format(
-            composited_bounds, absolute_bounds,
+            self.composited_bounds(), self.absolute_bounds(),
             self.display_items if len(self.display_items) > 0 else 'None')
 
 def raster(display_list, canvas):
@@ -1466,9 +1448,8 @@ class Browser:
                 tree_to_list(cmd, all_commands)
         non_composited_commands = [cmd
             for cmd in all_commands
-            if not cmd.needs_compositing and \
-                (not cmd.parent or \
-                 cmd.parent.needs_compositing)
+            if isinstance(cmd, DrawCommand) or not cmd.needs_compositing
+            if not cmd.parent or cmd.parent.needs_compositing
         ]
         for cmd in non_composited_commands:
             did_break = False

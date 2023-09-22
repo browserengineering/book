@@ -32,14 +32,14 @@ from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, linespace, parse_blend_mode
 from lab12 import MeasureTime, REFRESH_RATE_SEC
 from lab12 import Task, TaskRunner, SingleThreadedTaskRunner
-from lab13 import diff_styles, parse_transition, clamp_scroll, add_parent_pointers
+from lab13 import diff_styles, parse_transition, add_parent_pointers
 from lab13 import absolute_bounds, absolute_bounds_for_obj
 from lab13 import NumericAnimation, TranslateAnimation
 from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
-from lab13 import CompositedLayer, paint_visual_effects
-from lab13 import DisplayItem, DrawText, DrawCompositedLayer, SaveLayer
-from lab13 import ClipRRect, Transform, DrawLine, DrawRRect
-from lab14 import parse_color, \
+from lab13 import CompositedLayer, paint_visual_effects, add_main_args
+from lab13 import DrawCommand, DrawText, DrawCompositedLayer, DrawOutline, DrawLine, DrawRRect
+from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform
+from lab14 import parse_color, DrawRRect, \
     parse_outline, paint_outline, has_outline, \
     device_px, cascade_priority, style, \
     is_focusable, get_tabindex, speak_text, \
@@ -108,7 +108,7 @@ class URL:
         s.close()
         return headers, body
 
-class DrawImage(DisplayItem):
+class DrawImage(DrawCommand):
     def __init__(self, image, rect, quality):
         super().__init__(rect)
         self.image = image
@@ -1593,9 +1593,6 @@ class Tab:
             frame = self.focused_frame or self.root_frame
             frame.activate_element(self.focus)
 
-    def get_tabindex(node):
-        return int(node.attributes.get("tabindex", 9999999))
-
     def advance_tab(self):
         frame = self.focused_frame or self.root_frame
         frame.advance_tab()
@@ -1787,9 +1784,8 @@ class Browser:
 
         non_composited_commands = [cmd
             for cmd in all_commands
-            if not cmd.needs_compositing and \
-                (not cmd.parent or \
-                 cmd.parent.needs_compositing)
+            if isinstance(cmd, DrawCommand) or not cmd.needs_compositing
+            if not cmd.parent or cmd.parent.needs_compositing
         ]
         for cmd in non_composited_commands:
             for layer in reversed(self.composited_layers):
@@ -1939,16 +1935,19 @@ class Browser:
                 self.animation_timer.start()
         self.lock.release()
 
+    def clamp_scroll(self, scroll):
+        height = self.active_tab_height
+        maxscroll = height - (HEIGHT - CHROME_PX)
+        return max(0, min(scroll, maxscroll))
+
     def handle_down(self):
         self.lock.acquire(blocking=True)
         if self.root_frame_focused:
             if not self.active_tab_height:
                 self.lock.release()
                 return
-            scroll = clamp_scroll(
-                self.scroll + SCROLL_STEP,
-                self.active_tab_height)
-            self.scroll = scroll
+            self.scroll = \
+                self.clamp_scroll(self.scroll + SCROLL_STEP)
             self.set_needs_draw()
             self.needs_animation_frame = True
             self.lock.release()

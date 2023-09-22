@@ -182,7 +182,7 @@ Luckily, Skia will automatically do the decoding for us, so drawing
 the image is pretty simple:
 
 ``` {.python replace=%2c%20rect/%2c%20rect%2c%20quality,self.rect)/self.rect%2c%20paint)}
-class DrawImage(DisplayItem):
+class DrawImage(DrawCommand):
     def __init__(self, image, rect):
         super().__init__(rect)
         self.image = image
@@ -234,7 +234,7 @@ indicates which algorithm to use. Let's add that as an argument to
 [image-rendering]: https://developer.mozilla.org/en-US/docs/Web/CSS/image-rendering
 
 ``` {.python}
-class DrawImage(DisplayItem):
+class DrawImage(DrawCommand):
     def __init__(self, image, rect, quality):
         # ...
         if quality == "high-quality":
@@ -1289,8 +1289,19 @@ class Frame:
         return max(0, min(scroll, maxscroll))
 ```
 
-Make sure to use the new `clamp_scroll` in place of the old one,
-everywhere in `Frame`:
+For browser-thread scrolling we'll have a similar function that uses
+the active tab height:
+
+``` {.python}
+class Browser:
+    def clamp_scroll(self, scroll):
+        height = self.active_tab_height
+        maxscroll = height - (HEIGHT - CHROME_PX)
+        return max(0, min(scroll, maxscroll))
+```
+
+Make sure to use the new `clamp_scroll` methods in place of the old
+ones everywhere. For example, in `scroll_to`:
 
 ``` {.python}
 class Frame:

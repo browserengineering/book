@@ -28,13 +28,13 @@ from lab10 import COOKIE_JAR
 from lab11 import FONTS, get_font, linespace, parse_blend_mode
 from lab12 import MeasureTime, REFRESH_RATE_SEC
 from lab12 import Task, TaskRunner, SingleThreadedTaskRunner
-from lab13 import diff_styles, parse_transition, clamp_scroll, add_parent_pointers
+from lab13 import diff_styles, parse_transition, add_parent_pointers
 from lab13 import absolute_bounds, absolute_bounds_for_obj
 from lab13 import NumericAnimation, TranslateAnimation
 from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
-from lab13 import CompositedLayer, paint_visual_effects
-from lab13 import DisplayItem, DrawText, DrawCompositedLayer, SaveLayer
-from lab13 import ClipRRect, Transform, DrawLine
+from lab13 import CompositedLayer, paint_visual_effects, add_main_args
+from lab13 import DrawCommand, DrawText, DrawCompositedLayer, DrawOutline, DrawLine, DrawRRect
+from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform
 from lab14 import parse_color, parse_outline, DrawRRect, \
     paint_outline, has_outline, \
     device_px, cascade_priority, \
