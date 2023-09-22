@@ -94,24 +94,21 @@ def parse_color(color):
     else:
         return skia.ColorBLACK
 
-def parse_outline(outline_str, zoom):
+def parse_outline(outline_str):
     if not outline_str: return None
     values = outline_str.split(" ")
     if len(values) != 3: return None
     if values[1] != "solid": return None
-    return (device_px(int(values[0][:-2]), zoom), values[2])
-
-def has_outline(node):
-    return parse_outline(node.style.get("outline"), 1)
+    return int(values[0][:-2]), values[2]
 
 def paint_outline(node, cmds, rect, zoom):
-    if has_outline(node):
-        thickness, color = \
-            parse_outline(node.style.get("outline"), zoom)
-        cmds.append(DrawOutline(
-            rect.left(), rect.top(),
-            rect.right(), rect.bottom(),
-            color, thickness))
+    outline = parse_outline(node.style.get("outline"))
+    if not outline: return
+    thickness, color = outline
+    cmds.append(DrawOutline(
+        rect.left(), rect.top(),
+        rect.right(), rect.bottom(),
+        color, device_px(thickness, zoom)))
 
 class BlockLayout:
     def __init__(self, node, parent, previous):
@@ -288,16 +285,16 @@ class LineLayout:
             child.paint(display_list)
 
         outline_rect = skia.Rect.MakeEmpty()
-        focused_node = None
+        outline_node = None
         for child in self.children:
-            node = child.node
-            if has_outline(node.parent):
-                focused_node = node.parent
+            outline_str = child.node.parent.style.get("outline")
+            if parse_outline(outline_str):
                 outline_rect.join(child.rect())
+                outline_node = child.node.parent
 
-        if focused_node:
+        if outline_node:
             paint_outline(
-                focused_node, display_list, outline_rect, self.zoom)
+                outline_node, display_list, outline_rect, self.zoom)
 
     def role(self):
         return "none"

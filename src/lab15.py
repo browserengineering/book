@@ -40,7 +40,7 @@ from lab13 import CompositedLayer, paint_visual_effects, add_main_args
 from lab13 import DrawCommand, DrawText, DrawCompositedLayer, DrawOutline, DrawLine, DrawRRect
 from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform
 from lab14 import parse_color, DrawRRect, \
-    parse_outline, paint_outline, has_outline, \
+    parse_outline, paint_outline, \
     device_px, cascade_priority, style, \
     is_focusable, get_tabindex, speak_text, \
     CSSParser, DrawOutline, main_func, Browser
@@ -435,14 +435,16 @@ class LineLayout:
         self.height = max_ascent + max_descent
 
     def paint(self, display_list):
+        for child in self.children:
+            child.paint(display_list)
+
         outline_rect = skia.Rect.MakeEmpty()
         outline_node = None
         for child in self.children:
-            node = child.node
-            if isinstance(node, Text) and has_outline(node.parent):
-                outline_node = node.parent
+            outline_str = child.node.parent.style.get("outline")
+            if parse_outline(outline_str):
                 outline_rect.join(child.rect())
-            child.paint(display_list)
+                outline_node = child.node.parent
 
         if outline_node:
             paint_outline(outline_node, display_list, outline_rect, self.zoom)

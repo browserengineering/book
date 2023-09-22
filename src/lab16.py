@@ -36,7 +36,7 @@ from lab13 import CompositedLayer, paint_visual_effects, add_main_args
 from lab13 import DrawCommand, DrawText, DrawCompositedLayer, DrawOutline, DrawLine, DrawRRect
 from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform
 from lab14 import parse_color, parse_outline, DrawRRect, \
-    paint_outline, has_outline, \
+    paint_outline, \
     device_px, cascade_priority, \
     is_focusable, get_tabindex, speak_text, \
     CSSParser, main_func, DrawOutline
@@ -79,12 +79,13 @@ def tree_to_list(tree, l):
 
 @wbetools.patch(paint_outline)
 def paint_outline(node, cmds, rect, zoom):
-    if has_outline(node):
-        thickness, color = parse_outline(node.style['outline'].get(), zoom)
-        cmds.append(DrawOutline(
-            rect.left(), rect.top(),
-            rect.right(), rect.bottom(),
-            color, thickness))
+    outline = parse_outline(node.style["outline"].get())
+    if not outline: return
+    thickness, color = outline
+    cmds.append(DrawOutline(
+        rect.left(), rect.top(),
+        rect.right(), rect.bottom(),
+        color, device_px(thickness, zoom)))
 
 @wbetools.patch(font)
 def font(notify, css_style, zoom):
@@ -96,10 +97,6 @@ def font(notify, css_style, zoom):
         size = 16
     font_size = device_px(size, zoom)
     return get_font(font_size, weight, style)
-
-@wbetools.patch(has_outline)
-def has_outline(node):
-    return parse_outline(node.style['outline'].get(), 1)
 
 @wbetools.patch(absolute_bounds_for_obj)
 def absolute_bounds_for_obj(obj):
@@ -604,14 +601,17 @@ class LineLayout:
         self.has_dirty_descendants = False
 
     def paint(self, display_list):
+        for child in self.children:
+            child.paint(display_list)
+
         outline_rect = skia.Rect.MakeEmpty()
         outline_node = None
         for child in self.children:
-            node = child.node
-            if isinstance(node, Text) and has_outline(node.parent):
-                outline_node = node.parent
+            child_outline = parse_outline(child.node.parent.style["outline"].get())
+            if child_outline:
                 outline_rect.join(child.rect())
-            child.paint(display_list)
+                outline_node = child.node.parent
+
         if outline_node:
             paint_outline(outline_node, display_list, outline_rect, self.zoom.get())
 

@@ -1038,13 +1038,13 @@ drawing a vertical line in `InputLayout`'s `paint` method. We'll
 add a call to `paint_outline` in that method, to draw a rectangle around the focused
 element:
 
-``` {.python replace=node.is_focused/has_outline(node),%22black%22/color,1/thickness}
+``` {.python replace=node.is_focused/outline,%22black%22/color,1/device_px(thickness%2c%20zoom)}
 def paint_outline(node, cmds, rect, zoom):
-    if node.is_focused:
-        cmds.append(DrawOutline(
-            rect.left(), rect.top(),
-            rect.right(), rect.bottom(),
-            "black", 1))
+    if not node.is_focused: return
+    cmds.append(DrawOutline(
+        rect.left(), rect.top(),
+        rect.right(), rect.bottom(),
+        "black", 1))
 ```
 
 We'll set this flag in a new `focus_element` method that we'll now use
@@ -1089,20 +1089,19 @@ around this, let's draw the focus ring in `LineLayout`. Each
 `LineLayout` finds all of its child `TextLayout`s that are focused,
 and draws a rectangle around them all:
 
-``` {.python}
+``` {.python replace=child.node.parent.is_focused/parse_outline(outline_str)}
 class LineLayout:
     def paint(self, display_list):
         # ...
         outline_rect = skia.Rect.MakeEmpty()
-        focused_node = None
+        outline_node = None
         for child in self.children:
-            node = child.node
-            if has_outline(node.parent):
-                focused_node = node.parent
+            if child.node.parent.is_focused:
                 outline_rect.join(child.rect())
-        if focused_node:
+                outline_node = child.node.parent
+        if outline_node:
             paint_outline(
-                focused_node, display_list, outline_rect, self.zoom)
+                outline_node, display_list, outline_rect, self.zoom)
 ```
 
 You should also add a `paint_outline` call to `BlockLayout`, since
@@ -1305,29 +1304,26 @@ parse that into a thickness and a color, assuming that we only want to
 support `solid` outlines:
 
 ``` {.python}
-def parse_outline(outline_str, zoom):
+def parse_outline(outline_str):
     if not outline_str: return None
     values = outline_str.split(" ")
     if len(values) != 3: return None
     if values[1] != "solid": return None
-    return (device_px(int(values[0][:-2]), zoom), values[2])
+    return int(values[0][:-2]), values[2]
 ```
 
 Now we can use this `parse_outline` method when drawing an outline, in
 `paint_outline`:
 
 ``` {.python}
-def has_outline(node):
-    return parse_outline(node.style.get("outline"), 1)
-
 def paint_outline(node, cmds, rect, zoom):
-    if has_outline(node):
-        thickness, color = \
-            parse_outline(node.style.get("outline"), zoom)
-        cmds.append(DrawOutline(
-            rect.left(), rect.top(),
-            rect.right(), rect.bottom(),
-            color, thickness))
+    outline = parse_outline(node.style.get("outline"))
+    if not outline: return
+    thickness, color = outline
+    cmds.append(DrawOutline(
+        rect.left(), rect.top(),
+        rect.right(), rect.bottom(),
+        color, device_px(thickness, zoom)))
 ```
 
 The default two-pixel black outline can now be moved into the browser
@@ -1361,8 +1357,10 @@ to the browser style sheet above:
 class LineLayout:
     def paint(self, display_list):
         for child in self.children:
-            if has_outline(node.parent):
-                # ...
+            outline_str = child.node.parent.style.get("outline")
+            if parse_outline(outline_str):
+                outline_rect.join(child.rect())
+                outline_node = child.node.parent
 ```
 
 As with dark mode, focus outlines are a case where adding an
