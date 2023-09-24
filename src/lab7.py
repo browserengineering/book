@@ -230,10 +230,10 @@ class DrawOutline:
             self.left, self.top, self.right, self.bottom, self.color, self.thickness)
 
 class Tab:
-    def __init__(self, chrome_px):
+    def __init__(self, chrome_bottom):
         self.url = None
         self.history = []
-        self.chrome_px = chrome_px
+        self.chrome_bottom = chrome_bottom
 
         with open("browser6.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
@@ -267,12 +267,12 @@ class Tab:
 
     def draw(self, canvas):
         for cmd in self.display_list:
-            if cmd.top > self.scroll + HEIGHT - self.chrome_px: continue
+            if cmd.top > self.scroll + HEIGHT - self.chrome_bottom: continue
             if cmd.bottom < self.scroll: continue
-            cmd.execute(self.scroll - self.chrome_px, canvas)
+            cmd.execute(self.scroll - self.chrome_bottom, canvas)
 
     def scrolldown(self):
-        max_y = max(self.document.height - (HEIGHT - self.chrome_px), 0)
+        max_y = max(self.document.height - (HEIGHT - self.chrome_bottom), 0)
         self.scroll = min(self.scroll + SCROLL_STEP, max_y)
 
     def click(self, x, y):
@@ -319,16 +319,14 @@ class Browser:
         self.active_tab = None
         self.focus = None
         self.address_bar = ""
-        self.init_chrome()
 
-    def init_chrome(self):
         self.chrome_font = get_font(20, "normal", "roman")
-        self.padding = 5
         chrome_font_height = self.chrome_font.metrics("linespace")
-        self.tab_height = self.chrome_font.metrics("linespace") + 2 * self.padding
-        self.chrome_tab_height = chrome_font_height + 2 * self.padding
-        self.addressbar_top = self.tab_height + self.padding
-        self.chrome_px = \
+
+        self.padding = 5
+        self.tab_header_bottom = chrome_font_height + 2 * self.padding
+        self.addressbar_top = self.tab_header_bottom + self.padding
+        self.chrome_bottom = \
             self.addressbar_top + chrome_font_height + 2 * self.padding
 
     def handle_down(self, e):
@@ -337,7 +335,7 @@ class Browser:
 
     def handle_click(self, e):
         self.focus = None
-        if e.y < self.chrome_px:
+        if e.y < self.chrome_bottom:
             if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
                 self.active_tab = int((e.x - 40) / 80)
             elif 10 <= e.x < 30 and 10 <= e.y < 30:
@@ -348,7 +346,7 @@ class Browser:
                 self.focus = "address bar"
                 self.address_bar = ""
         else:
-            self.tabs[self.active_tab].click(e.x, e.y - self.chrome_px)
+            self.tabs[self.active_tab].click(e.x, e.y - self.chrome_bottom)
         self.draw()
 
     def handle_key(self, e):
@@ -365,72 +363,101 @@ class Browser:
             self.draw()
 
     def load(self, url):
-        new_tab = Tab(self.chrome_px)
+        new_tab = Tab(self.chrome_bottom)
         new_tab.load(url)
         self.active_tab = len(self.tabs)
         self.tabs.append(new_tab)
         self.draw()
 
-    def paint_chrome(self):
-        cmds = []
-        # background of page
-        cmds.append(DrawRect(0, 0, WIDTH, self.chrome_px, "white"))
-
-        # box around +
+    def plus_bounds(self):
         plus_width = self.chrome_font.measure("+")
-        cmds.append(DrawOutline(
-            self.padding, self.padding,
-            plus_width + self.padding,
-            self.tab_height - self.padding, "black", 1))
-        # +
-        cmds.append(DrawText(self.padding, self.padding, "+", self.chrome_font, "black"))
+        return (self.padding, self.padding,
+            plus_width + self.padding, self.tab_header_bottom - self.padding)
+
+    def tab_bounds(self, i):
+        (plus_left, plus_top, plus_right, plus_bottom) = self.plus_bounds()
+        tab_start_x = plus_right + self.padding
 
         tab_width = self.chrome_font.measure("Tab 1") + 2 * self.padding
 
-        tab_start_x = plus_width + 2 * self.padding
+        return (tab_start_x + tab_width * i, self.padding,
+            tab_start_x + tab_width + tab_width * i, self.tab_header_bottom)
+
+    def backbutton_bounds(self):
+        backbutton_width = self.chrome_font.measure("<")
+        return (self.padding, self.addressbar_top,
+            self.padding + backbutton_width, self.chrome_bottom)
+
+    def addressbar_bounds(self):
+        (backbutton_left, backbutton_top, backbutton_right, backbutton_bottom) = \
+            self.backbutton_bounds()
+
+        return (backbutton_right + self.padding, self.addressbar_top,
+            WIDTH - 10, self.chrome_bottom)
+
+    def paint_chrome(self):
+        cmds = []
+        # background of page
+        cmds.append(DrawRect(0, 0, WIDTH, self.chrome_bottom, "white"))
+
+        # box around +
+        (plus_left, plus_top, plus_right, plus_bottom) = self.plus_bounds()
+        cmds.append(DrawOutline(
+            plus_left, plus_top, plus_right, plus_bottom, "black", 1))
+        # +
+        cmds.append(DrawText(
+            plus_left, plus_top, "+", self.chrome_font, "black"))
 
         for i, tab in enumerate(self.tabs):
             name = "Tab {}".format(i)
-            x1, x2 = tab_start_x + tab_width * i, \
-                tab_start_x + tab_width + tab_width * i
+            (tab_left, tab_top, tab_right, tab_bottom) = self.tab_bounds(i)
+
             # vertical line on LHS of tab
-            cmds.append(DrawLine(x1, 0, x1, self.tab_height, "black", 1))
+            cmds.append(DrawLine(tab_left, 0, tab_left, tab_bottom, "black", 1))
             # vertical line on RHS of TAB
-            cmds.append(DrawLine(x2, 0, x2, self.tab_height, "black", 1))
+            cmds.append(DrawLine(tab_right, 0, tab_right, tab_bottom, "black", 1))
             # tab name
             cmds.append(DrawText(
-                x1 + self.padding, self.padding, name, self.chrome_font, "black"))
+                tab_left + self.padding, tab_top, name, self.chrome_font, "black"))
             if i == self.active_tab:
-                cmds.append(DrawLine(0, self.tab_height, x1, self.tab_height, "black", 1))
-                cmds.append(DrawLine(x2, self.tab_height, WIDTH, self.tab_height, "black", 1))
+                cmds.append(DrawLine(
+                    0, tab_bottom, tab_left, tab_bottom, "black", 1))
+                cmds.append(DrawLine(
+                    tab_right, tab_bottom, WIDTH, tab_bottom, "black", 1))
 
         addressbar = self.addressbar_top + self.padding
 
         backbutton_width = self.chrome_font.measure("<")
 
+        (backbutton_left, backbutton_top, backbutton_right, backbutton_bottom) = \
+            self.backbutton_bounds()
+
         # back button
         cmds.append(DrawOutline(
-            self.padding, self.addressbar_top,
-            self.padding + backbutton_width, self.chrome_px,
+            backbutton_left, backbutton_top, backbutton_right, backbutton_bottom,
             "black", 1))
-        cmds.append(DrawText(self.padding, addressbar, "<", self.chrome_font, "black"))
+        cmds.append(DrawText(
+            backbutton_left, backbutton_top + self.padding, "<", self.chrome_font, "black"))
 
-        addressbar_left = backbutton_width + 2 * self.padding
+        (addressbar_left, addressbar_top, addressbar_right, addressbar_bottom) = \
+            self.addressbar_bounds()
 
         # bounds around address bar
         cmds.append(DrawOutline(
-            addressbar_left, self.addressbar_top, WIDTH - 10,
-            self.chrome_px, "black", 1))
+            addressbar_left, addressbar_top, addressbar_right,
+            addressbar_bottom, "black", 1))
         if self.focus == "address bar":
             # address user is editng
             cmds.append(DrawText(
-                addressbar_left + addressbar_self.padding, addressbar,
+                addressbar_left + self.padding, addressbar,
                 self.address_bar, self.chrome_font, "black"))
             w = self.chrome_font.measure(self.address_bar)
             # caret
             cmds.append(DrawLine(
-                addressbar_left + w, self.addressbar_top + self.padding,
-                addressbar_left + w, self.chrome_px - self.padding, "red", 1))
+                addressbar_left + self.padding + w,
+                self.addressbar_top + self.padding,
+                addressbar_left + self.padding + w,
+                self.chrome_bottom - self.padding, "red", 1))
         else:
             url = str(self.tabs[self.active_tab].url)
             cmds.append(DrawText(
@@ -438,10 +465,8 @@ class Browser:
 
         # line between chrome and content
         cmds.append(DrawLine(
-            0, self.chrome_px + self.padding, WIDTH,
-            self.chrome_px + self.padding, "black", 1))
-
-        self.chrome_px = self.chrome_px
+            0, self.chrome_bottom + self.padding, WIDTH,
+            self.chrome_bottom + self.padding, "black", 1))
 
         return cmds
 
