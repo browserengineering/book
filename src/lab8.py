@@ -18,7 +18,7 @@ from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import DrawText, URL, tree_to_list
 from lab7 import DrawLine, DrawOutline, BlockLayout, LineLayout, TextLayout
-from lab7 import Tab, Browser
+from lab7 import Tab, Browser, intersects
 
 @wbetools.patch(Element)
 class Element:

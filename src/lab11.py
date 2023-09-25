@@ -18,7 +18,7 @@ from lab5 import BLOCK_ELEMENTS, DrawRect, DocumentLayout
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import DrawText, tree_to_list
-from lab7 import DrawLine, DrawOutline, LineLayout, TextLayout, CHROME_PX
+from lab7 import DrawLine, DrawOutline, LineLayout, TextLayout, intersects
 from lab8 import Text, Element, BlockLayout, InputLayout, INPUT_WIDTH_PX, Browser
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, URL, JSContext, Tab
@@ -398,7 +398,7 @@ class Browser:
             WIDTH, HEIGHT,
             ct=skia.kRGBA_8888_ColorType,
             at=skia.kUnpremul_AlphaType))
-        self.chrome_surface = skia.Surface(WIDTH, CHROME_PX)
+        self.chrome_surface = skia.Surface(WIDTH, self.chrome_bottom)
         self.tab_surface = None
 
         self.tabs = []
@@ -422,23 +422,24 @@ class Browser:
         self.draw()
 
     def handle_click(self, e):
-        if e.y < CHROME_PX:
+        if e.y < self.chrome_bottom:
             self.focus = None
-            if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
-                self.active_tab = int((e.x - 40) / 80)
-                self.tabs[self.active_tab].render()
-                self.raster_tab()
-            elif 10 <= e.x < 30 and 10 <= e.y < 30:
+            if intersects(e.x, e.y, self.plus_bounds()):
                 self.load(URL("https://browser.engineering/"))
-            elif 10 <= e.x < 35 and 50 <= e.y < 90:
+            elif intersects(e.x, e.y, self.backbutton_bounds()):
                 self.tabs[self.active_tab].go_back()
-            elif 50 <= e.x < WIDTH - 10 and 50 <= e.y < 90:
+            elif intersects(e.x, e.y, self.addressbar_bounds()):
                 self.focus = "address bar"
                 self.address_bar = ""
+            else:
+                for i in range(0, len(self.tabs)):
+                    if intersects(e.x, e.y, self.tab_bounds(i)):
+                        self.active_tab = int((e.x - 40) / 80)
+                        break
             self.raster_chrome()
         else:
             self.focus = "content"
-            self.tabs[self.active_tab].click(e.x, e.y - CHROME_PX)
+            self.tabs[self.active_tab].click(e.x, e.y - self.chrome_bottom)
             self.raster_tab()
         self.draw()
 
