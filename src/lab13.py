@@ -1634,35 +1634,84 @@ class Browser:
 
     def paint_chrome(self):
         cmds = []
-        cmds.append(DrawRect(0, 0, WIDTH, CHROME_PX, "white"))
-        cmds.append(DrawLine(0, CHROME_PX - 1, WIDTH, CHROME_PX - 1, "black", 1))
+        # Background of page
+        cmds.append(DrawRect(0, 0, WIDTH, self.chrome_bottom, "white"))
 
-        tabfont = get_font(20, "normal", "roman")
+        # Box around plus icon
+        (plus_left, plus_top, plus_right, plus_bottom) = self.plus_bounds()
+        cmds.append(DrawOutline(
+            plus_left, plus_top, plus_right, plus_bottom, "black", 1))
+        # Plus icon
+        cmds.append(DrawText(
+            plus_left, plus_top, "+", self.chrome_font, "black"))
+
+        # List of tabs
         for i, tab in enumerate(self.tabs):
             name = "Tab {}".format(i)
-            x1, x2 = 40 + 80 * i, 120 + 80 * i
-            cmds.append(DrawLine(x1, 0, x1, 40, "black", 1))
-            cmds.append(DrawLine(x2, 0, x2, 40, "black", 1))
-            cmds.append(DrawText(x1 + 10, 10, name, tabfont, "black"))
+            (tab_left, tab_top, tab_right, tab_bottom) = self.tab_bounds(i)
+
+            # Vertical line on LHS of tab
+            cmds.append(DrawLine(
+                tab_left, 0,tab_left, tab_bottom, "black", 1))
+            # Vertical line on RHS of TAB
+            cmds.append(DrawLine(
+                tab_right, 0, tab_right, tab_bottom, "black", 1))
+            # Tab name
+            cmds.append(DrawText(
+                tab_left + self.padding, tab_top,
+                name, self.chrome_font, "black"))
+            # Active tab indication lines
             if i == self.active_tab:
-                cmds.append(DrawLine(0, 40, x1, 40, "black", 1))
-                cmds.append(DrawLine(x2, 40, WIDTH, 40, "black", 1))
+                cmds.append(DrawLine(
+                    0, tab_bottom, tab_left, tab_bottom, "black", 1))
+                cmds.append(DrawLine(
+                    tab_right, tab_bottom, WIDTH, tab_bottom, "black", 1))
 
-        buttonfont = get_font(30, "normal", "roman")
-        cmds.append(DrawOutline(10, 10, 30, 30, "black", 1))
-        cmds.append(DrawText(11, 5, "+", buttonfont, "black"))
+        # Back button
+        backbutton_width = self.chrome_font.measure("<")
+        (backbutton_left, backbutton_top, backbutton_right, backbutton_bottom) = \
+            self.backbutton_bounds()
+        cmds.append(DrawOutline(
+            backbutton_left, backbutton_top,
+            backbutton_right, backbutton_bottom,
+            "black", 1))
+        cmds.append(DrawText(
+            backbutton_left, backbutton_top + self.padding,
+            "<", self.chrome_font, "black"))
 
-        cmds.append(DrawOutline(40, 50, WIDTH - 10, 90, "black", 1))
+        (addressbar_left, addressbar_top, \
+            addressbar_right, addressbar_bottom) = \
+            self.addressbar_bounds()
+
+        # Bounds around address bar
+        cmds.append(DrawOutline(
+            addressbar_left, addressbar_top, addressbar_right,
+            addressbar_bottom, "black", 1))
+        left_bar = addressbar_left + self.padding
+        top_bar = addressbar_top + self.padding
         if self.focus == "address bar":
-            cmds.append(DrawText(55, 55, self.address_bar, buttonfont, "black"))
-            w = buttonfont.measureText(self.address_bar)
-            cmds.append(DrawLine(55 + w, 55, 55 + w, 85, "black", 1))
+            # Address user is editing
+            cmds.append(DrawText(
+                left_bar, top_bar,
+                self.address_bar, self.chrome_font, "black"))
+            w = self.chrome_font.measure(self.address_bar)
+            # Caret
+            cmds.append(DrawLine(
+                left_bar + w, top_bar,
+                left_bar + w,
+                self.chrome_bottom - self.padding, "red", 1))
         else:
             url = str(self.tabs[self.active_tab].url)
-            cmds.append(DrawText(55, 55, url, buttonfont, "black"))
+            cmds.append(DrawText(
+                left_bar,
+                top_bar,
+                url, self.chrome_font, "black"))
 
-        cmds.append(DrawOutline(10, 50, 35, 90, "black", 1))
-        cmds.append(DrawText(15, 55, "<", buttonfont, "black"))
+        # Line between chrome and content
+        cmds.append(DrawLine(
+            0, self.chrome_bottom + self.padding, WIDTH,
+            self.chrome_bottom + self.padding, "black", 1))
+
         return cmds
 
     def raster_chrome(self):
