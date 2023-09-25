@@ -379,7 +379,6 @@ class TaskRunner:
                 self.condition.wait()
             self.condition.release()
 
-
     def handle_quit(self):
         print(self.tab.measure_render.text())
 

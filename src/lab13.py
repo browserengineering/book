@@ -23,7 +23,7 @@ from lab5 import BLOCK_ELEMENTS
 from lab6 import TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, cascade_priority
 from lab6 import tree_to_list
-from lab7 import CHROME_PX
+from lab7 import intersects
 from lab8 import Text, Element, INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, URL
@@ -1063,7 +1063,7 @@ def raster(display_list, canvas):
         cmd.execute(canvas)
 
 def clamp_scroll(scroll, tab_height):
-    return max(0, min(scroll, tab_height - (HEIGHT - CHROME_PX)))
+    return max(0, min(scroll, tab_height - (HEIGHT - self.chrome_bottom)))
 
 class Tab:
     def __init__(self, browser):
@@ -1347,7 +1347,7 @@ class Browser:
 
             self.chrome_surface = skia.Surface.MakeRenderTarget(
                     self.skia_context, skia.Budgeted.kNo,
-                    skia.ImageInfo.MakeN32Premul(WIDTH, CHROME_PX))
+                    skia.ImageInfo.MakeN32Premul(WIDTH, self.chrome_bottom))
             assert self.chrome_surface is not None
         else:
             self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
@@ -1358,7 +1358,7 @@ class Browser:
                 WIDTH, HEIGHT,
                 ct=skia.kRGBA_8888_ColorType,
                 at=skia.kUnpremul_AlphaType))
-            self.chrome_surface = skia.Surface(WIDTH, CHROME_PX)
+            self.chrome_surface = skia.Surface(WIDTH, self.chrome_bottom)
             self.skia_context = None
 
         self.tabs = []
@@ -1563,28 +1563,30 @@ class Browser:
 
     def handle_click(self, e):
         self.lock.acquire(blocking=True)
-        if e.y < CHROME_PX:
+        if e.y < self.chrome_bottom:
             self.focus = None
-            if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
-                self.set_active_tab(int((e.x - 40) / 80))
-                active_tab = self.tabs[self.active_tab]
-                task = Task(active_tab.set_needs_paint)
-                active_tab.task_runner.schedule_task(task)
-            elif 10 <= e.x < 30 and 10 <= e.y < 30:
+            if intersects(e.x, e.y, self.plus_bounds()):
                 self.load_internal(URL("https://browser.engineering/"))
-            elif 10 <= e.x < 35 and 50 <= e.y < 90:
+            elif intersects(e.x, e.y, self.backbutton_bounds()):
                 active_tab = self.tabs[self.active_tab]
                 task = Task(active_tab.go_back)
                 active_tab.task_runner.schedule_task(task)
-                self.clear_data()
-            elif 50 <= e.x < WIDTH - 10 and 50 <= e.y < 90:
+            elif intersects(e.x, e.y, self.addressbar_bounds()):
                 self.focus = "address bar"
                 self.address_bar = ""
+            else:
+                for i in range(0, len(self.tabs)):
+                    if intersects(e.x, e.y, self.tab_bounds(i)):
+                        self.set_active_tab(int((e.x - 40) / 80))
+                        active_tab = self.tabs[self.active_tab]
+                        task = Task(active_tab.set_needs_render)
+                        active_tab.task_runner.schedule_task(task)
+                        break
             self.set_needs_raster()
         else:
             self.focus = "content"
             active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.click, e.x, e.y - CHROME_PX)
+            task = Task(active_tab.click, e.x, e.y - self.chrome_bottom)
             active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
