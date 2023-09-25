@@ -18,7 +18,7 @@ from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import DrawText, URL, tree_to_list
 from lab7 import DrawLine, DrawOutline, BlockLayout, LineLayout, TextLayout
-from lab7 import CHROME_PX, Tab, Browser
+from lab7 import Tab, Browser
 
 @wbetools.patch(Element)
 class Element:
@@ -249,9 +249,9 @@ class Tab:
 
     def draw(self, canvas):
         for cmd in self.display_list:
-            if cmd.top > self.scroll + HEIGHT - CHROME_PX: continue
+            if cmd.top > self.scroll + HEIGHT - self.chrome_bottom: continue
             if cmd.bottom < self.scroll: continue
-            cmd.execute(self.scroll - CHROME_PX, canvas)
+            cmd.execute(self.scroll - self.chrome_bottom, canvas)
 
     def click(self, x, y):
         self.focus = None
@@ -327,20 +327,23 @@ class Browser:
         self.address_bar = ""
 
     def handle_click(self, e):
-        if e.y < CHROME_PX:
+        if e.y < self.chrome_bottom:
             self.focus = None
-            if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
-                self.active_tab = int((e.x - 40) / 80)
-            elif 10 <= e.x < 30 and 10 <= e.y < 30:
+            if intersects(e.x, e.y, self.plus_bounds()):
                 self.load(URL("https://browser.engineering/"))
-            elif 10 <= e.x < 35 and 50 <= e.y < 90:
+            elif intersects(e.x, e.y, self.backbutton_bounds()):
                 self.tabs[self.active_tab].go_back()
-            elif 50 <= e.x < WIDTH - 10 and 50 <= e.y < 90:
+            elif intersects(e.x, e.y, self.addressbar_bounds()):
                 self.focus = "address bar"
                 self.address_bar = ""
+            else:
+                for i in range(0, len(self.tabs)):
+                    if intersects(e.x, e.y, self.tab_bounds(i)):
+                        self.active_tab = int((e.x - 40) / 80)
+                        break
         else:
             self.focus = "content"
-            self.tabs[self.active_tab].click(e.x, e.y - CHROME_PX)
+            self.tabs[self.active_tab].click(e.x, e.y - self.chrome_bottom)
         self.draw()
 
     def handle_key(self, e):

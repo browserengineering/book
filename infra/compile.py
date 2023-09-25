@@ -438,6 +438,8 @@ def compile_function(name, args, ctx):
         return "(new Error(" + args_js[0] + "))"
     elif name == "type":
         return args_js[0] + ".constructor"
+    elif name == "range":
+        return "[...Array(" + args_js[1] + ").keys()]"
     else:
         raise UnsupportedConstruct()
 

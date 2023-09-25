@@ -299,6 +299,10 @@ class Tab:
     def __repr__(self):
         return "Tab(history={})".format(self.history)
 
+def intersects(x, y, rect):
+    (left, top, right, bottom) = rect
+    return x >= left and x < right and y >= top and y < bottom
+
 class Browser:
     def __init__(self):
         self.window = tkinter.Tk()
@@ -336,15 +340,18 @@ class Browser:
     def handle_click(self, e):
         self.focus = None
         if e.y < self.chrome_bottom:
-            if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
-                self.active_tab = int((e.x - 40) / 80)
-            elif 10 <= e.x < 30 and 10 <= e.y < 30:
+            if intersects(e.x, e.y, self.plus_bounds()):
                 self.load(URL("https://browser.engineering/"))
-            elif 10 <= e.x < 35 and 50 <= e.y < 90:
+            elif intersects(e.x, e.y, self.backbutton_bounds()):
                 self.tabs[self.active_tab].go_back()
-            elif 50 <= e.x < WIDTH - 10 and 50 <= e.y < 90:
+            elif intersects(e.x, e.y, self.addressbar_bounds()):
                 self.focus = "address bar"
                 self.address_bar = ""
+            else:
+                for i in range(0, len(self.tabs)):
+                    if intersects(e.x, e.y, self.tab_bounds(i)):
+                        self.active_tab = int((e.x - 40) / 80)
+                        break
         else:
             self.tabs[self.active_tab].click(e.x, e.y - self.chrome_bottom)
         self.draw()
@@ -397,73 +404,80 @@ class Browser:
 
     def paint_chrome(self):
         cmds = []
-        # background of page
+        # Background of page
         cmds.append(DrawRect(0, 0, WIDTH, self.chrome_bottom, "white"))
 
-        # box around +
+        # Box around plus icon
         (plus_left, plus_top, plus_right, plus_bottom) = self.plus_bounds()
         cmds.append(DrawOutline(
             plus_left, plus_top, plus_right, plus_bottom, "black", 1))
-        # +
+        # Plus icon
         cmds.append(DrawText(
             plus_left, plus_top, "+", self.chrome_font, "black"))
 
+        # List of tabs
         for i, tab in enumerate(self.tabs):
             name = "Tab {}".format(i)
             (tab_left, tab_top, tab_right, tab_bottom) = self.tab_bounds(i)
 
-            # vertical line on LHS of tab
-            cmds.append(DrawLine(tab_left, 0, tab_left, tab_bottom, "black", 1))
-            # vertical line on RHS of TAB
-            cmds.append(DrawLine(tab_right, 0, tab_right, tab_bottom, "black", 1))
-            # tab name
+            # Vertical line on LHS of tab
+            cmds.append(DrawLine(
+                tab_left, 0,tab_left, tab_bottom, "black", 1))
+            # Vertical line on RHS of TAB
+            cmds.append(DrawLine(
+                tab_right, 0, tab_right, tab_bottom, "black", 1))
+            # Tab name
             cmds.append(DrawText(
-                tab_left + self.padding, tab_top, name, self.chrome_font, "black"))
+                tab_left + self.padding, tab_top,
+                name, self.chrome_font, "black"))
+            # Active tab indication lines
             if i == self.active_tab:
                 cmds.append(DrawLine(
                     0, tab_bottom, tab_left, tab_bottom, "black", 1))
                 cmds.append(DrawLine(
                     tab_right, tab_bottom, WIDTH, tab_bottom, "black", 1))
 
-        addressbar = self.addressbar_top + self.padding
-
+        # Back button
         backbutton_width = self.chrome_font.measure("<")
-
         (backbutton_left, backbutton_top, backbutton_right, backbutton_bottom) = \
             self.backbutton_bounds()
-
-        # back button
         cmds.append(DrawOutline(
-            backbutton_left, backbutton_top, backbutton_right, backbutton_bottom,
+            backbutton_left, backbutton_top,
+            backbutton_right, backbutton_bottom,
             "black", 1))
         cmds.append(DrawText(
-            backbutton_left, backbutton_top + self.padding, "<", self.chrome_font, "black"))
+            backbutton_left, backbutton_top + self.padding,
+            "<", self.chrome_font, "black"))
 
-        (addressbar_left, addressbar_top, addressbar_right, addressbar_bottom) = \
+        (addressbar_left, addressbar_top, \
+            addressbar_right, addressbar_bottom) = \
             self.addressbar_bounds()
 
-        # bounds around address bar
+        # Bounds around address bar
         cmds.append(DrawOutline(
             addressbar_left, addressbar_top, addressbar_right,
             addressbar_bottom, "black", 1))
+        left_bar = addressbar_left + self.padding
+        top_bar = addressbar_top + self.padding
         if self.focus == "address bar":
-            # address user is editng
+            # Address user is editing
             cmds.append(DrawText(
-                addressbar_left + self.padding, addressbar,
+                left_bar, top_bar,
                 self.address_bar, self.chrome_font, "black"))
             w = self.chrome_font.measure(self.address_bar)
-            # caret
+            # Caret
             cmds.append(DrawLine(
-                addressbar_left + self.padding + w,
-                self.addressbar_top + self.padding,
-                addressbar_left + self.padding + w,
+                left_bar + w, top_bar,
+                left_bar + w,
                 self.chrome_bottom - self.padding, "red", 1))
         else:
             url = str(self.tabs[self.active_tab].url)
             cmds.append(DrawText(
-                addressbar_left + self.padding, addressbar, url, self.chrome_font, "black"))
+                left_bar,
+                top_bar,
+                url, self.chrome_font, "black"))
 
-        # line between chrome and content
+        # Line between chrome and content
         cmds.append(DrawLine(
             0, self.chrome_bottom + self.padding, WIDTH,
             self.chrome_bottom + self.padding, "black", 1))
