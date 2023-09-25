@@ -575,15 +575,15 @@ class Browser:
         canvas = self.root_surface.getCanvas()
         canvas.clear(skia.ColorWHITE)
         
-        tab_rect = skia.Rect.MakeLTRB(0, CHROME_PX, WIDTH, HEIGHT)
-        tab_offset = CHROME_PX - self.tabs[self.active_tab].scroll
+        tab_rect = skia.Rect.MakeLTRB(0, self.chrome_bottom, WIDTH, HEIGHT)
+        tab_offset = self.chrome_bottom - self.tabs[self.active_tab].scroll
         canvas.save()
         canvas.clipRect(tab_rect)
         canvas.translate(0, tab_offset)
         self.tab_surface.draw(canvas, 0, 0)
         canvas.restore()
 
-        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, CHROME_PX)
+        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, self.chrome_bottom)
         canvas.save()
         canvas.clipRect(chrome_rect)
         self.chrome_surface.draw(canvas, 0, 0)
