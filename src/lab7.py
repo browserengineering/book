@@ -406,37 +406,30 @@ class Browser:
         cmds = []
         cmds.append(DrawRect(0, 0, WIDTH, self.chrome_bottom, "white"))
 
-        # Box around plus icon
         (plus_left, plus_top, plus_right, plus_bottom) = self.plus_bounds()
         cmds.append(DrawOutline(
             plus_left, plus_top, plus_right, plus_bottom, "black", 1))
-        # Plus icon
         cmds.append(DrawText(
             plus_left, plus_top, "+", self.chrome_font, "black"))
 
-        # List of tabs
         for i, tab in enumerate(self.tabs):
             name = "Tab {}".format(i)
             (tab_left, tab_top, tab_right, tab_bottom) = self.tab_bounds(i)
 
-            # Vertical line on LHS of tab
             cmds.append(DrawLine(
                 tab_left, 0,tab_left, tab_bottom, "black", 1))
-            # Vertical line on RHS of TAB
             cmds.append(DrawLine(
                 tab_right, 0, tab_right, tab_bottom, "black", 1))
-            # Tab name
             cmds.append(DrawText(
                 tab_left + self.padding, tab_top,
                 name, self.chrome_font, "black"))
-            # Active tab indication lines
+
             if i == self.active_tab:
                 cmds.append(DrawLine(
                     0, tab_bottom, tab_left, tab_bottom, "black", 1))
                 cmds.append(DrawLine(
                     tab_right, tab_bottom, WIDTH, tab_bottom, "black", 1))
 
-        # Back button
         backbutton_width = self.chrome_font.measure("<")
         (backbutton_left, backbutton_top, backbutton_right, backbutton_bottom) = \
             self.backbutton_bounds()
@@ -476,7 +469,6 @@ class Browser:
                 top_bar,
                 url, self.chrome_font, "black"))
 
-        # Line between chrome and content
         cmds.append(DrawLine(
             0, self.chrome_bottom, WIDTH,
             self.chrome_bottom, "black", 1))
