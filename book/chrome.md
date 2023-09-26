@@ -845,12 +845,11 @@ for i, tab in enumerate(self.tabs):
         tab_left + self.padding, tab_top,
         name, self.chrome_font, "black"))
 ```
-```
 
 Finally, to identify which tab is the active tab, we've got to make
 that file folder shape with the current tab sticking up:
 
-``` {.python}
+``` {.python indent=8}
 for i, tab in enumerate(self.tabs):
     # ...
     if i == self.active_tab:
