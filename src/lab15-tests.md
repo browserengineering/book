@@ -125,6 +125,7 @@ Iframes can be sized too:
     ... b'content-type: text/html\r\n\r\n' +
     ... b'.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.' +
     ... b'<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.' +
+    ... b'<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.' +
     ... b'<iframe width=50 height=30 src="http://test.test/">')
 
     >>> browser = lab15.Browser()
@@ -157,11 +158,21 @@ Iframes can be sized too:
      DrawText(text=.)
      DrawText(text=.)
      DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
      SaveLayer(alpha=1.0)
-       ClipRRect(RRect(46, 479, 96, 509, 1))
-         Transform(translate(46.0, 479.0))
+       ClipRRect(RRect(46, 679, 96, 709, 1))
+         Transform(translate(46.0, 679.0))
            DrawImage(rect=Rect(13, 29, 18, 34))
-     DrawOutline(top=478.0 left=45.0 bottom=510.0 right=97.0 border_color=black thickness=1.0)
+     DrawOutline(top=678.0 left=45.0 bottom=710.0 right=97.0 border_color=black thickness=1.0)
 
 Now let's test scrolling of the root frame:
 
@@ -178,11 +189,10 @@ Clicking the sub-frame focuses it:
     >>> browser.render()
     >>> browser.tabs[0].advance_tab()
     >>> browser.render()
-    >>> e = Event(50, browser.chrome_bottom + 500)
+    >>> e = Event(50, browser.chrome_bottom + 700)
     >>> browser.handle_click(e)
     >>> browser.render()
-    >>> child_frame = browser.tabs[0].root_frame.nodes.children[0].children[47].frame
-
+    >>> child_frame = browser.tabs[0].root_frame.nodes.children[0].children[67].frame
     >>> browser.tabs[0].focused_frame == child_frame
     True
     >>> browser.root_frame_focused
@@ -190,13 +200,13 @@ Clicking the sub-frame focuses it:
 
 And now scrolling affects just the child frame:
 
-    >>> browser.tabs[0].root_frame.nodes.children[0].children[47].frame.scroll
+    >>> browser.tabs[0].root_frame.nodes.children[0].children[67].frame.scroll
     0
     >>> browser.handle_down()
     >>> browser.render()
     >>> browser.scroll > 0
     False
-    >>> browser.tabs[0].root_frame.nodes.children[0].children[47].frame.scroll
+    >>> browser.tabs[0].root_frame.nodes.children[0].children[67].frame.scroll
     22.0
 
 Accessibility
