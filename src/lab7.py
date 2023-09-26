@@ -452,12 +452,10 @@ class Browser:
         left_bar = addressbar_left + self.padding
         top_bar = addressbar_top + self.padding
         if self.focus == "address bar":
-            # Address user is editing
             cmds.append(DrawText(
                 left_bar, top_bar,
                 self.address_bar, self.chrome_font, "black"))
             w = self.chrome_font.measure(self.address_bar)
-            # Caret
             cmds.append(DrawLine(
                 left_bar + w, top_bar,
                 left_bar + w,

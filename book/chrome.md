@@ -658,7 +658,7 @@ pass to each `Tab`:
 class Tab:
     def __init__(self, chrome_bottom):
         ...
-        self.chrohrome_bottom = chrome_bottom
+        self.chrome_bottom = chrome_bottom
 ```
 
 Each tab needs to make sure not to draw to those pixels:
@@ -667,9 +667,9 @@ Each tab needs to make sure not to draw to those pixels:
 class Tab:
     def draw(self, canvas):
         for cmd in self.display_list:
-            if cmd.top > self.scroll + HEIGHT - chrome_bottom: continue
+            if cmd.top > self.scroll + HEIGHT - self.chrome_bottom: continue
             if cmd.bottom < self.scroll: continue
-            cmd.execute(self.scroll - chrome_bottom, canvas)
+            cmd.execute(self.scroll - self.chrome_bottom, canvas)
 ```
 
 Now let's turn our attention to designing the UI. 
@@ -683,7 +683,6 @@ come in a moment):
 class Browser:
     def paint_chrome(self):
         cmds = []
-        # Background of page
         cmds.append(DrawRect(0, 0, WIDTH, self.chrome_bottom, "white"))
         return cmds
 ```
@@ -802,7 +801,6 @@ class Browser:
         (plus_left, plus_top, plus_right, plus_bottom) = self.plus_bounds()
         cmds.append(DrawOutline(
             plus_left, plus_top, plus_right, plus_bottom, "black", 1))
-        # Plus icon
         cmds.append(DrawText(
             plus_left, plus_top, "+", self.chrome_font, "black"))
         # ...
@@ -834,7 +832,7 @@ Next up is drawing the tabs. Python's `enumerate` function lets you iterate over
 both the indices and the contents of an array at the same time. For each tab,
 we need to create a border on the left and right and then draw the tab name:
 
-``` {.python}
+``` {.python indent=8}
 for i, tab in enumerate(self.tabs):
     name = "Tab {}".format(i)
     (tab_left, tab_top, tab_right, tab_bottom) = self.tab_bounds(i)
@@ -843,7 +841,6 @@ for i, tab in enumerate(self.tabs):
         tab_left, 0,tab_left, tab_bottom, "black", 1))
     cmds.append(DrawLine(
         tab_right, 0, tab_right, tab_bottom, "black", 1))
-    # Tab name
     cmds.append(DrawText(
         tab_left + self.padding, tab_top,
         name, self.chrome_font, "black"))
@@ -918,17 +915,13 @@ And then use it to choose between clicking to add a tab, go back, focus the
 address bar, or select an open tab.
 
 ``` {.python}
-class Browesr:
+class Browser:
     def handle_click(self, e):
         self.focus = None
         if e.y < self.chrome_bottom:
             if intersects(e.x, e.y, self.plus_bounds()):
                 self.load(URL("https://browser.engineering/"))
-            elif intersects(e.x, e.y, self.backbutton_bounds()):
-                self.tabs[self.active_tab].go_back()
-            elif intersects(e.x, e.y, self.addressbar_bounds()):
-                self.focus = "address bar"
-                self.address_bar = ""
+            # ...
             else:
                 for i in range(0, len(self.tabs)):
                     if intersects(e.x, e.y, self.tab_bounds(i)):
@@ -963,9 +956,14 @@ address bar that shows the current URL would help a lot.
 class Browser:
     def paint_chrome(self):
         # ...
-        cmds.append(DrawOutline(40, 50, WIDTH - 10, 90, "black", 1))
-        url = str(self.tabs[self.active_tab].url)
-        cmds.append(DrawText(55, 55, url, buttonfont, "black"))
+        left_bar = addressbar_left + self.padding
+        top_bar = addressbar_top + self.padding
+        # ...
+            url = str(self.tabs[self.active_tab].url)
+            cmds.append(DrawText(
+                left_bar,
+                top_bar,
+                url, self.chrome_font, "black"))
 ```
 
 Here `str` is a built-in Python function that we can override to
@@ -991,8 +989,16 @@ I'll start by drawing the back button itself:
 class Browser:
     def paint_chrome(self):
         # ...
-        cmds.append(DrawOutline(10, 50, 35, 90, "black", 1))
-        cmds.append(DrawText(15, 50, "<", buttonfont, "black"))
+        backbutton_width = self.chrome_font.measure("<")
+        (backbutton_left, backbutton_top, backbutton_right, backbutton_bottom) = \
+            self.backbutton_bounds()
+        cmds.append(DrawOutline(
+            backbutton_left, backbutton_top,
+            backbutton_right, backbutton_bottom,
+            "black", 1))
+        cmds.append(DrawText(
+            backbutton_left, backbutton_top + self.padding,
+            "<", self.chrome_font, "black"))
 ```
 
 So what happens when that button is clicked? Well, *that tab* goes
@@ -1004,7 +1010,7 @@ class Browser:
     def handle_click(self, e):
         if e.y < self.chrome_bottom:
             # ...
-            elif 10 <= e.x < 35 and 50 <= e.y < 90:
+            elif intersects(e.x, e.y, self.backbutton_bounds()):
                 self.tabs[self.active_tab].go_back()
             # ...
 ```
@@ -1014,7 +1020,7 @@ which pages it's visited before:
 
 ``` {.python}
 class Tab:
-    def __init__(self):
+    def __init__(self, chrome_bottom):
         # ...
         self.history = []
 ```
@@ -1106,9 +1112,9 @@ should clear `focus`:
 class Browser:
     def handle_click(self, e):
         self.focus = None
-        if e.y < CHROME_PX:
+        if e.y < self.chrome_bottom:
             # ...
-            elif 50 <= e.x < WIDTH - 10 and 50 <= e.y < 90:
+            elif intersects(e.x, e.y, self.addressbar_bounds()):
                 self.focus = "address bar"
                 self.address_bar = ""
         # ...
@@ -1127,10 +1133,14 @@ class Browser:
         # ...
         if self.focus == "address bar":
             cmds.append(DrawText(
-                55, 55, self.address_bar, buttonfont, "black"))
+                left_bar, top_bar,
+                self.address_bar, self.chrome_font, "black"))
         else:
             url = str(self.tabs[self.active_tab].url)
-            cmds.append(DrawText(55, 55, url, buttonfont, "black"))
+            cmds.append(DrawText(
+                left_bar,
+                top_bar,
+                url, self.chrome_font, "black"))
 ```
 
 When the user is typing in the address bar, let's also draw a cursor.
@@ -1140,8 +1150,11 @@ cursor) makes the software easier to use:
 ``` {.python indent=8}
 if self.focus == "address bar":
     # ...
-    w = buttonfont.measure(self.address_bar)
-    cmds.append(DrawLine(55 + w, 55, 55 + w, 85, "black", 1))
+    w = self.chrome_font.measure(self.address_bar)
+    cmds.append(DrawLine(
+        left_bar + w, top_bar,
+        left_bar + w,
+        self.chrome_bottom - self.padding, "red", 1))
 ```
 
 Next, when the address bar is focused, we need to support typing in a
