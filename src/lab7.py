@@ -393,18 +393,17 @@ class Browser:
     def backbutton_bounds(self):
         backbutton_width = self.chrome_font.measure("<")
         return (self.padding, self.addressbar_top,
-            self.padding + backbutton_width, self.chrome_bottom)
+            self.padding + backbutton_width, self.chrome_bottom - self.padding)
 
     def addressbar_bounds(self):
         (backbutton_left, backbutton_top, backbutton_right, backbutton_bottom) = \
             self.backbutton_bounds()
 
         return (backbutton_right + self.padding, self.addressbar_top,
-            WIDTH - 10, self.chrome_bottom)
+            WIDTH - 10, self.chrome_bottom - self.padding)
 
     def paint_chrome(self):
         cmds = []
-        # Background of page
         cmds.append(DrawRect(0, 0, WIDTH, self.chrome_bottom, "white"))
 
         # Box around plus icon
@@ -479,8 +478,8 @@ class Browser:
 
         # Line between chrome and content
         cmds.append(DrawLine(
-            0, self.chrome_bottom + self.padding, WIDTH,
-            self.chrome_bottom + self.padding, "black", 1))
+            0, self.chrome_bottom, WIDTH,
+            self.chrome_bottom, "black", 1))
 
         return cmds
 

@@ -447,7 +447,7 @@ elif elt.tag == "a" and "href" in elt.attributes:
 Note that when a link has a relative URL, that URL is resolved
 relative to the current page, so store the current URL in `load`:
 
-``` {.python replace=Browser/Tab}
+``` {.python replace=Browser/Tab,self)/self%2c%20chrome_bottom)}
 class Browser:
     def __init__(self):
         # ...
@@ -499,7 +499,7 @@ the active tab.
 Since the `Tab` class is responsible for layout, styling, and
 painting, the default style sheet moves to the `Tab` constructor:
 
-``` {.python replace=browser.css/browser6.css}
+``` {.python replace=browser.css/browser6.css,self)/self%2c%20chrome_bottom)}
 class Tab:
     def __init__(self):
         with open("browser.css") as f:
@@ -552,7 +552,7 @@ class Browser:
 Since these events need page-specific information to resolve, these
 handler methods just forward the event to the active tab:
 
-``` {.python replace=e.y/e.y%20-%20CHROME_PX}
+``` {.python replace=e.y/e.y%20-%20self.chrome_bottom}
 class Browser:
     def handle_down(self, e):
         self.tabs[self.active_tab].scrolldown()
@@ -584,7 +584,7 @@ We're basically done splitting `Tab` from `Browser`, and after a
 refactor like this we need to test things. To do that, we'll need to
 create at least one tab, like this:
 
-``` {.python}
+``` {.python replace=Tab()/Tab(self.chrome_bottom)}
 class Browser:
     def load(self, url):
         new_tab = Tab()
@@ -644,10 +644,21 @@ might be saved and only updated when the chrome changes.
 
 First things first: we need to avoid drawing page contents to the part
 of the browser window where the tab bar goes. Let's reserve some space
-for the browser chrome---100 pixels, say:
+at the top for the browser chrome. But how much? One way could be to
+pick some arbitrary browser chrome height, then try to squeeze the chrome
+into it (making fonts smaller as necessary). Another, better way, is to
+pick a font size that is easy enough to read, then compute the chrome
+height accordingly.
+
+We don't know that height yet without computing it as part of designing
+the UI of the browser, chrome, but we do know it will be a value we can
+pass to each `Tab`:
 
 ``` {.python}
-CHROME_PX = 100
+class Tab:
+    def __init__(self, chrome_bottom):
+        ...
+        self.chrohrome_bottom = chrome_bottom
 ```
 
 Each tab needs to make sure not to draw to those pixels:
@@ -656,30 +667,34 @@ Each tab needs to make sure not to draw to those pixels:
 class Tab:
     def draw(self, canvas):
         for cmd in self.display_list:
-            if cmd.top > self.scroll + HEIGHT - CHROME_PX: continue
+            if cmd.top > self.scroll + HEIGHT - chrome_bottom: continue
             if cmd.bottom < self.scroll: continue
-            cmd.execute(self.scroll - CHROME_PX, canvas)
+            cmd.execute(self.scroll - chrome_bottom, canvas)
 ```
+
+Now let's turn our attention to designing the UI. 
 
 There are still sometimes going to be halves of letters that stick out
 into the browser chrome, but we can hide them by just drawing over
-them:
+them (here I'm assuming we've already computed `chrome_bottom`; that will
+come in a moment):
 
 ``` {.python}
 class Browser:
     def paint_chrome(self):
         cmds = []
-        cmds.append(DrawRect(0, 0, WIDTH, CHROME_PX, "white"))
+        # Background of page
+        cmds.append(DrawRect(0, 0, WIDTH, self.chrome_bottom, "white"))
         return cmds
 ```
 
 You'll also need to adjust `scrolldown` to account for the height of
-the page content now being `HEIGHT - CHROME_PX`:
+the page content now being `HEIGHT - self.chrome_bottom`:
 
 ``` {.python}
 class Tab:
     def scrolldown(self):
-        max_y = max(self.document.height - (HEIGHT - CHROME_PX), 0)
+        max_y = max(self.document.height - (HEIGHT - self.chrome_bottom), 0)
         self.scroll = min(self.scroll + SCROLL_STEP, max_y)
 ```
 
@@ -689,8 +704,10 @@ To better separate the chrome from the page, let's also add a border:
 class Browser:
     def paint_chrome(self):
         # ...
-        cmds.append(DrawRect(0, 0, WIDTH, CHROME_PX, "white"))
-        cmds.append(DrawLine(0, CHROME_PX - 1, WIDTH, CHROME_PX - 1, "black", 1))
+        cmds.append(DrawRect(0, 0, WIDTH, self.chrome_bottom, "white"))
+        cmds.append(DrawLine(
+            0, self.chrome_bottom + self.padding, WIDTH,
+            self.chrome_bottom + self.padding, "black", 1))
         # ...
 ```
 
