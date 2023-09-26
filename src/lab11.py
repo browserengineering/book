@@ -390,6 +390,8 @@ class Tab:
 @wbetools.patch(Browser)
 class Browser:
     def __init__(self):
+        self.init_chrome()
+
         self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
             sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
             WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
@@ -416,6 +418,16 @@ class Browser:
             self.GREEN_MASK = 0x0000ff00
             self.BLUE_MASK = 0x00ff0000
             self.ALPHA_MASK = 0xff000000
+
+    def init_chrome(self):
+        self.chrome_font = get_font(20, "normal", "roman")
+        chrome_font_height = linespace(self.chrome_font)
+
+        self.padding = 5
+        self.tab_header_bottom = chrome_font_height + 2 * self.padding
+        self.addressbar_top = self.tab_header_bottom + self.padding
+        self.chrome_bottom = \
+            self.addressbar_top + chrome_font_height + 2 * self.padding
 
     def handle_down(self):
         self.tabs[self.active_tab].scrolldown()
@@ -462,7 +474,7 @@ class Browser:
             self.draw()
 
     def load(self, url):
-        new_tab = Tab()
+        new_tab = Tab(self.chrome_bottom)
         new_tab.load(url)
         self.active_tab = len(self.tabs)
         self.tabs.append(new_tab)
@@ -481,6 +493,25 @@ class Browser:
         canvas = self.tab_surface.getCanvas()
         canvas.clear(skia.ColorWHITE)
         active_tab.raster(canvas)
+
+    def plus_bounds(self):
+        plus_width = self.chrome_font.measureText("+")
+        return (self.padding, self.padding,
+            plus_width + self.padding, self.tab_header_bottom - self.padding)
+
+    def tab_bounds(self, i):
+        (plus_left, plus_top, plus_right, plus_bottom) = self.plus_bounds()
+        tab_start_x = plus_right + self.padding
+
+        tab_width = self.chrome_font.measureText("Tab 1") + 2 * self.padding
+
+        return (tab_start_x + tab_width * i, self.padding,
+            tab_start_x + tab_width + tab_width * i, self.tab_header_bottom)
+
+    def backbutton_bounds(self):
+        backbutton_width = self.chrome_font.measureText("<")
+        return (self.padding, self.addressbar_top,
+            self.padding + backbutton_width, self.chrome_bottom - self.padding)
 
     def paint_chrome(self):
         cmds = []
@@ -518,7 +549,7 @@ class Browser:
                     tab_right, tab_bottom, WIDTH, tab_bottom, "black", 1))
 
         # Back button
-        backbutton_width = self.chrome_font.measure("<")
+        backbutton_width = self.chrome_font.measureText("<")
         (backbutton_left, backbutton_top, backbutton_right, backbutton_bottom) = \
             self.backbutton_bounds()
         cmds.append(DrawOutline(
@@ -544,7 +575,7 @@ class Browser:
             cmds.append(DrawText(
                 left_bar, top_bar,
                 self.address_bar, self.chrome_font, "black"))
-            w = self.chrome_font.measure(self.address_bar)
+            w = self.chrome_font.measureText(self.address_bar)
             # Caret
             cmds.append(DrawLine(
                 left_bar + w, top_bar,

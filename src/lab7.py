@@ -323,7 +323,9 @@ class Browser:
         self.active_tab = None
         self.focus = None
         self.address_bar = ""
+        self.init_chrome()
 
+    def init_chrome(self):
         self.chrome_font = get_font(20, "normal", "roman")
         chrome_font_height = self.chrome_font.metrics("linespace")
 

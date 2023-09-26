@@ -710,7 +710,7 @@ handlers:
 ``` {.python}
 class Browser:
     def handle_click(self, e):
-        if e.y < CHROME_PX:
+        if e.y < self.chrome_bottom:
             # ...
             self.set_needs_raster_and_draw()
 
@@ -1212,19 +1212,19 @@ class Browser:
 Event handlers are mostly similar, except that we need to be careful
 to distinguish events that affect the browser chrome from those that
 affect the tab. For example, consider `handle_click`. If the user
-clicked on the browser chrome (meaning `e.y < CHROME_PX`), we can
+clicked on the browser chrome (meaning `e.y < self.chrome_bottom`), we can
 handle it right there in the browser thread. But if the user clicked
 on the web page, we must schedule a task on the main thread:
 
 ``` {.python}
 class Browser:
     def handle_click(self, e):
-        if e.y < CHROME_PX:
+        if e.y < self.chrome_bottom:
              # ...
         else:
             # ...
             active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.click, e.x, e.y - CHROME_PX)
+            task = Task(active_tab.click, e.x, e.y - self.chrome_bottom)
             active_tab.task_runner.schedule_task(task)
 ```
 
@@ -1477,7 +1477,7 @@ variable on the `Browser`, and update it when the user scrolls:
 
 ``` {.python}
 def clamp_scroll(scroll, tab_height):
-    return max(0, min(scroll, tab_height - (HEIGHT - CHROME_PX)))
+    return max(0, min(scroll, tab_height - (HEIGHT - self.chrome_bottom)))
 
 class Browser:
     def __init__(self):

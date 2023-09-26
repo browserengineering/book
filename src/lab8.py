@@ -210,11 +210,12 @@ class BlockLayout:
 
 @wbetools.patch(Tab)
 class Tab:
-    def __init__(self):
+    def __init__(self, chrome_bottom):
         self.history = []
         self.url = None
         self.focus = None
-
+        self.chrome_bottom = chrome_bottom
+ 
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
 
@@ -325,6 +326,8 @@ class Browser:
         self.active_tab = None
         self.focus = None
         self.address_bar = ""
+
+        self.init_chrome()
 
     def handle_click(self, e):
         if e.y < self.chrome_bottom:
