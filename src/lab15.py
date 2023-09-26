@@ -1439,8 +1439,9 @@ class CommitData:
 
 
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, browser, chrome_bottom):
         self.url = ""
+        self.chrome_bottom = chrome_bottom
         self.history = []
         self.focus = None
         self.focused_frame = None
@@ -1632,6 +1633,8 @@ class Tab:
 @wbetools.patch(Browser)
 class Browser:
     def __init__(self):
+        self.init_chrome()
+
         if wbetools.USE_GPU:
             self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
                 sdl2.SDL_WINDOWPOS_CENTERED,
@@ -2131,7 +2134,7 @@ class Browser:
         self.lock.release()
 
     def load_internal(self, url):
-        new_tab = Tab(self)
+        new_tab = Tab(self, self.chrome_bottom)
         self.tabs.append(new_tab)
         self.set_active_tab(len(self.tabs) - 1)
         self.schedule_load(url)
@@ -2144,7 +2147,7 @@ class Browser:
         if self.dark_mode:
             color = "white"
         else:
-            color = color
+            color = "black"
 
         cmds = []
 
@@ -2179,7 +2182,7 @@ class Browser:
                     tab_right, tab_bottom, WIDTH, tab_bottom, color, 1))
 
         # Back button
-        backbutton_width = self.chrome_font.measure("<")
+        backbutton_width = self.chrome_font.measureText("<")
         (backbutton_left, backbutton_top, backbutton_right, backbutton_bottom) = \
             self.backbutton_bounds()
         cmds.append(DrawOutline(
@@ -2244,12 +2247,12 @@ class Browser:
             canvas.clear(skia.ColorWHITE)
 
         canvas.save()
-        canvas.translate(0, CHROME_PX - self.scroll)
+        canvas.translate(0, self.chrome_bottom - self.scroll)
         for item in self.draw_list:
             item.execute(canvas)
         canvas.restore()
 
-        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, CHROME_PX)
+        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, selqf.chrome_bottom)
         canvas.save()
         canvas.clipRect(chrome_rect)
         self.chrome_surface.draw(canvas, 0, 0)

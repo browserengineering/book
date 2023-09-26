@@ -315,7 +315,7 @@ class Browser:
     def draw(self):
         canvas = self.root_surface.getCanvas()
         # ...
-        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, CHROME_PX)
+        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, self.chrome_bottom)
         canvas.save()
         canvas.clipRect(chrome_rect)
         self.chrome_surface.draw(canvas, 0, 0)
@@ -335,7 +335,7 @@ class Browser:
         # ...
         self.chrome_surface = skia.Surface.MakeRenderTarget(
                 self.skia_context, skia.Budgeted.kNo,
-                skia.ImageInfo.MakeN32Premul(WIDTH, CHROME_PX))
+                skia.ImageInfo.MakeN32Premul(WIDTH, self.chrome_bottom))
         assert self.chrome_surface is not None
 ```
 
@@ -832,7 +832,7 @@ class Browser:
     def draw(self):
         # ...
         canvas.save()
-        canvas.translate(0, CHROME_PX - self.scroll)
+        canvas.translate(0, self.chrome_bottom - self.scroll)
         for item in self.draw_list:
             item.execute(canvas)
         canvas.restore()
@@ -1194,7 +1194,7 @@ cases that just require style and paint, or other combinations.]
 
 ``` {.python}
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, browser, chrome_bottom):
         # ...
         self.needs_style = False
         self.needs_layout = False

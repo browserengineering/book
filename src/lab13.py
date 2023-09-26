@@ -29,7 +29,7 @@ from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, parse_color, parse_blend_mode, linespace
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
-from lab12 import Task, REFRESH_RATE_SEC
+from lab12 import Task, REFRESH_RATE_SEC, clamp_scroll
 
 @wbetools.patch(Text)
 class Text:
@@ -1062,12 +1062,10 @@ def raster(display_list, canvas):
     for cmd in display_list:
         cmd.execute(canvas)
 
-def clamp_scroll(scroll, tab_height):
-    return max(0, min(scroll, tab_height - (HEIGHT - self.chrome_bottom)))
-
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, browser, chrome_bottom):
         self.history = []
+        self.chrome_bottom = chrome_bottom
         self.focus = None
         self.url = None
         self.scroll = 0
@@ -1186,7 +1184,8 @@ class Tab:
         self.render()
 
         document_height = math.ceil(self.document.height)
-        clamped_scroll = clamp_scroll(self.scroll, document_height)
+        clamped_scroll = clamp_scroll(
+            self.scroll, document_height, self.chrome_bottom)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
         if clamped_scroll != self.scroll:
@@ -1318,6 +1317,8 @@ def add_parent_pointers(nodes, parent=None):
 
 class Browser:
     def __init__(self):
+        self.init_chrome()
+
         if wbetools.USE_GPU:
             self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
                 sdl2.SDL_WINDOWPOS_CENTERED,
@@ -1395,6 +1396,16 @@ class Browser:
         self.composited_updates = {}
         self.composited_layers = []
         self.draw_list = []
+
+    def init_chrome(self):
+        self.chrome_font = get_font(20, "normal", "roman")
+        chrome_font_height = linespace(self.chrome_font)
+
+        self.padding = 5
+        self.tab_header_bottom = chrome_font_height + 2 * self.padding
+        self.addressbar_top = self.tab_header_bottom + self.padding
+        self.chrome_bottom = \
+            self.addressbar_top + chrome_font_height + 2 * self.padding
 
     def render(self):
         assert not wbetools.USE_BROWSER_THREAD
@@ -1623,7 +1634,7 @@ class Browser:
         self.lock.release()
 
     def load_internal(self, url):
-        new_tab = Tab(self)
+        new_tab = Tab(self, self.chrome_bottom)
         self.set_active_tab(len(self.tabs))
         self.tabs.append(new_tab)
         self.schedule_load(url)
@@ -1631,6 +1642,32 @@ class Browser:
     def raster_tab(self):
         for composited_layer in self.composited_layers:
             composited_layer.raster()
+
+    def plus_bounds(self):
+        plus_width = self.chrome_font.measureText("+")
+        return (self.padding, self.padding,
+            plus_width + self.padding, self.tab_header_bottom - self.padding)
+
+    def tab_bounds(self, i):
+        (plus_left, plus_top, plus_right, plus_bottom) = self.plus_bounds()
+        tab_start_x = plus_right + self.padding
+
+        tab_width = self.chrome_font.measureText("Tab 1") + 2 * self.padding
+
+        return (tab_start_x + tab_width * i, self.padding,
+            tab_start_x + tab_width + tab_width * i, self.tab_header_bottom)
+
+    def backbutton_bounds(self):
+        backbutton_width = self.chrome_font.measureText("<")
+        return (self.padding, self.addressbar_top,
+            self.padding + backbutton_width, self.chrome_bottom - self.padding)
+
+    def addressbar_bounds(self):
+        (backbutton_left, backbutton_top, backbutton_right, backbutton_bottom) = \
+            self.backbutton_bounds()
+
+        return (backbutton_right + self.padding, self.addressbar_top,
+            WIDTH - 10, self.chrome_bottom - self.padding)
 
     def paint_chrome(self):
         cmds = []
@@ -1668,7 +1705,7 @@ class Browser:
                     tab_right, tab_bottom, WIDTH, tab_bottom, "black", 1))
 
         # Back button
-        backbutton_width = self.chrome_font.measure("<")
+        backbutton_width = self.chrome_font.measureText("<")
         (backbutton_left, backbutton_top, backbutton_right, backbutton_bottom) = \
             self.backbutton_bounds()
         cmds.append(DrawOutline(

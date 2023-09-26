@@ -137,13 +137,15 @@ class JSContext:
     def requestAnimationFrame(self):
         self.tab.browser.set_needs_animation_frame(self.tab)
 
-def clamp_scroll(scroll, tab_height):
-    return max(0, min(scroll, tab_height - (HEIGHT - self.chrome_bottom)))
+def clamp_scroll(scroll, tab_height, chrome_bottom):
+    return max(0, min(
+        scroll, tab_height - (HEIGHT - chrome_bottom)))
 
 @wbetools.patch(Tab)
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, browser, chrome_bottom):
         self.history = []
+        self.chrome_bottom = chrome_bottom
         self.focus = None
         self.url = None
         self.scroll = 0
@@ -225,7 +227,8 @@ class Tab:
         self.render()
 
         document_height = math.ceil(self.document.height)
-        clamped_scroll = clamp_scroll(self.scroll, document_height)
+        clamped_scroll = clamp_scroll(
+            self.scroll, document_height, self.chrome_bottom)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
         if clamped_scroll != self.scroll:
@@ -387,6 +390,8 @@ REFRESH_RATE_SEC = 0.016 # 16ms
 @wbetools.patch(Browser)
 class Browser:
     def __init__(self):
+        self.init_chrome()
+
         self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
             sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
             WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
@@ -492,7 +497,8 @@ class Browser:
             return
         scroll = clamp_scroll(
             self.scroll + SCROLL_STEP,
-            self.active_tab_height)
+            self.active_tab_height,
+            self.chrome_bottom)
         self.scroll = scroll
         self.set_needs_raster_and_draw()
         self.needs_animation_frame = True
@@ -566,7 +572,7 @@ class Browser:
         self.lock.release()
 
     def load_internal(self, url):
-        new_tab = Tab(self)
+        new_tab = Tab(self, self.chrome_bottom)
         self.set_active_tab(len(self.tabs))
         self.tabs.append(new_tab)
         self.schedule_load(url)
