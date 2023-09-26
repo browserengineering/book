@@ -124,7 +124,8 @@ Clicking on a browser tab focuses it:
 
     >>> browser.active_tab
     1
-    >>> browser.handle_click(test.Event(40, 1))
+    >>> (l, t, r, b) = browser.tab_bounds(0)
+    >>> browser.handle_click(test.Event(l + 10, 1))
     >>> browser.active_tab
     0
     >>> browser.handle_click(test.Event(120, 1))
