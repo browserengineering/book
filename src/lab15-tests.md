@@ -178,7 +178,7 @@ Clicking the sub-frame focuses it:
     >>> browser.render()
     >>> browser.tabs[0].advance_tab()
     >>> browser.render()
-    >>> e = Event(50, 600)
+    >>> e = Event(50, browser.chrome_bottom + 500)
     >>> browser.handle_click(e)
     >>> browser.render()
     >>> child_frame = browser.tabs[0].root_frame.nodes.children[0].children[47].frame

@@ -2252,7 +2252,7 @@ class Browser:
             item.execute(canvas)
         canvas.restore()
 
-        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, selqf.chrome_bottom)
+        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, self.chrome_bottom)
         canvas.save()
         canvas.clipRect(chrome_rect)
         self.chrome_surface.draw(canvas, 0, 0)
