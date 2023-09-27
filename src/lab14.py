@@ -1677,7 +1677,7 @@ class Browser:
             else:
                 for i in range(0, len(self.tabs)):
                     if intersects(e.x, e.y, self.tab_bounds(i)):
-                        self.set_active_tab(int((e.x - 40) / 80))
+                        self.set_active_tab(i)
                         active_tab = self.tabs[self.active_tab]
                         task = Task(active_tab.set_needs_render)
                         active_tab.task_runner.schedule_task(task)

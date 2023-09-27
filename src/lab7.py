@@ -355,7 +355,7 @@ class Browser:
             else:
                 for i in range(0, len(self.tabs)):
                     if intersects(e.x, e.y, self.tab_bounds(i)):
-                        self.active_tab = int((e.x - 40) / 80)
+                        self.active_tab = i
                         break
         else:
             self.tabs[self.active_tab].click(
