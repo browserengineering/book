@@ -1405,7 +1405,8 @@ class Browser:
         self.tab_header_bottom = chrome_font_height + 2 * self.padding
         self.addressbar_top = self.tab_header_bottom + self.padding
         self.chrome_bottom = \
-            self.addressbar_top + chrome_font_height + 2 * self.padding
+            math.ceil(
+                self.addressbar_top + chrome_font_height + 2 * self.padding)
 
     def render(self):
         assert not wbetools.USE_BROWSER_THREAD
@@ -1555,7 +1556,8 @@ class Browser:
             return
         scroll = clamp_scroll(
             self.scroll + SCROLL_STEP,
-            self.active_tab_height)
+            self.active_tab_height,
+            self.chrome_bottom)
         self.scroll = scroll
         self.set_needs_draw()
         self.needs_animation_frame = True
@@ -1595,6 +1597,8 @@ class Browser:
                         break
             self.set_needs_raster()
         else:
+            if self.focus != "content":
+                self.set_needs_raster()
             self.focus = "content"
             active_tab = self.tabs[self.active_tab]
             task = Task(active_tab.click, e.x, e.y - self.chrome_bottom)
@@ -1731,7 +1735,7 @@ class Browser:
             cmds.append(DrawText(
                 left_bar, top_bar,
                 self.address_bar, self.chrome_font, "black"))
-            w = self.chrome_font.measure(self.address_bar)
+            w = self.chrome_font.measureText(self.address_bar)
             # Caret
             cmds.append(DrawLine(
                 left_bar + w, top_bar,

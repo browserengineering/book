@@ -427,7 +427,8 @@ class Browser:
         self.tab_header_bottom = chrome_font_height + 2 * self.padding
         self.addressbar_top = self.tab_header_bottom + self.padding
         self.chrome_bottom = \
-            self.addressbar_top + chrome_font_height + 2 * self.padding
+            math.ceil(
+                self.addressbar_top + chrome_font_height + 2 * self.padding)
 
     def handle_down(self):
         self.tabs[self.active_tab].scrolldown()
@@ -448,8 +449,11 @@ class Browser:
                     if intersects(e.x, e.y, self.tab_bounds(i)):
                         self.active_tab = i
                         break
+                self.raster_tab()
             self.raster_chrome()
         else:
+            if self.focus != "content":
+                self.raster_chrome()
             self.focus = "content"
             self.tabs[self.active_tab].click(e.x, e.y - self.chrome_bottom)
             self.raster_tab()

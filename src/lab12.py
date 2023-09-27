@@ -533,6 +533,8 @@ class Browser:
                         break
             self.set_needs_raster_and_draw()
         else:
+            if self.focus != "content":
+                self.set_needs_raster_and_draw()
             self.focus = "content"
             active_tab = self.tabs[self.active_tab]
             task = Task(active_tab.click, e.x, e.y - self.chrome_bottom)
