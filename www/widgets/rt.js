@@ -662,6 +662,13 @@ class skia {
                     rect.right() + 1,
                     rect.bottom() + 1);
             };
+            rect.makeOffset = () => {
+                return skia.Rect.MakeLTRB(
+                    rect.left(),
+                    rect.top(),
+                    rect.right(),
+                    rect.bottom());
+            };
         },
 
         MakeLTRB: (left, top, right, bottom) => {
