@@ -644,11 +644,7 @@ chrome, meaning `paint_chrome` will be fast. In a real browser, it
 might be saved and only updated when the chrome changes.
 
 First things first: we need to avoid drawing page contents to the part of the
-browser window where the browser chrome is. Let's reserve some space for it at
-the top. But how much? One way could be to pick some arbitrary browser chrome
-height, then try to squeeze the chrome into it (and making its font smaller as
-necessary). Another, better way, is to pick a font size that is easy enough to
-read, then compute the chrome height accordingly.
+browser window where the browser chrome is.
 
 We don't know that height yet without computing it as part of designing
 the UI of the browser, chrome, but we do know it will be a number we can
@@ -740,6 +736,12 @@ Let's start drawing the chrome. We'll end up with the following:
 
 * Underneath, the URL of of the current web page, and a "`<`" button to
   represent the browser back-button.
+
+Let's reserve some space for all this at the top of the window. But how much?
+One way could be to pick some arbitrary browser chrome height, then try to
+squeeze the chrome into it (and making its font smaller as necessary). Another,
+better way, is to pick a font size that is easy enough to read, then compute
+the chrome height accordingly.
 
 Given this design, we can now figure out `chrome_bottom`: it's the vertical
 height of those two lines plus some padding between and after them. For
