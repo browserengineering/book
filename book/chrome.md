@@ -559,7 +559,8 @@ class Browser:
         self.draw()
 
     def handle_click(self, e):
-        self.tabs[self.active_tab].click(e.x, e.y)
+        self.tabs[self.active_tab].click(
+            e.x, e.y)
         self.draw()
 ```
 
@@ -863,29 +864,6 @@ for i, tab in enumerate(self.tabs):
             tab_right, tab_bottom, WIDTH, tab_bottom, "black", 1))
 ```
 
-The whole point of tab support is to have more than one tab around,
-and for that we need a button that creates a new tab. Let's put
-that on the left of the tab bar, with a big plus in the middle:
-
-``` {.python}
-        (plus_left, plus_top, plus_right, plus_bottom) = self.plus_bounds()
-        cmds.append(DrawOutline(
-            plus_left, plus_top, plus_right, plus_bottom, "black", 1))
-        cmds.append(DrawText(
-            plus_left, plus_top, "+", self.chrome_font, "black"))
-```
-
-``` {.python}
-class Browser:
-    def addressbar_bounds(self):
-        (backbutton_left, backbutton_top, backbutton_right,
-            backbutton_bottom) = \
-            self.backbutton_bounds()
-
-        return (backbutton_right + self.padding, self.addressbar_top,
-            WIDTH - 10, self.chrome_bottom - self.padding)
-```
-
 The next step is clicking on tabs to switch between them. That has to
 happen in the `Browser` class, since it's the `Browser` that stores
 which tab is active. So let's go to the `handle_click` method and add
@@ -996,7 +974,7 @@ class Browser:
     def paint_chrome(self):
         # ...
         backbutton_width = self.chrome_font.measure("<")
-        (backbutton_left, backbutton_top, backbutton_right, \
+        (backbutton_left, backbutton_top, backbutton_right,
             backbutton_bottom) = self.backbutton_bounds()
         cmds.append(DrawOutline(
             backbutton_left, backbutton_top,

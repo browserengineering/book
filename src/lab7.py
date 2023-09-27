@@ -419,7 +419,8 @@ class Browser:
         cmds.append(
             DrawRect(0, 0, WIDTH, self.chrome_bottom, "white"))
 
-        (plus_left, plus_top, plus_right, plus_bottom) = self.plus_bounds()
+        (plus_left, plus_top, plus_right, plus_bottom) = \
+            self.plus_bounds()
         cmds.append(DrawOutline(
             plus_left, plus_top, plus_right, plus_bottom, "black", 1))
         cmds.append(DrawText(
