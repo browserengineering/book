@@ -267,12 +267,14 @@ class Tab:
 
     def draw(self, canvas):
         for cmd in self.display_list:
-            if cmd.top > self.scroll + HEIGHT - self.chrome_bottom: continue
+            if cmd.top > self.scroll + HEIGHT - self.chrome_bottom:
+                continue
             if cmd.bottom < self.scroll: continue
             cmd.execute(self.scroll - self.chrome_bottom, canvas)
 
     def scrolldown(self):
-        max_y = max(self.document.height - (HEIGHT - self.chrome_bottom), 0)
+        max_y = max(
+            self.document.height - (HEIGHT - self.chrome_bottom), 0)
         self.scroll = min(self.scroll + SCROLL_STEP, max_y)
 
     def click(self, x, y):
@@ -333,7 +335,8 @@ class Browser:
         self.tab_header_bottom = chrome_font_height + 2 * self.padding
         self.addressbar_top = self.tab_header_bottom + self.padding
         self.chrome_bottom = \
-            self.addressbar_top + chrome_font_height + 2 * self.padding
+            self.addressbar_top + chrome_font_height + \
+            2 * self.padding
 
     def handle_down(self, e):
         self.tabs[self.active_tab].scrolldown()
@@ -355,7 +358,8 @@ class Browser:
                         self.active_tab = int((e.x - 40) / 80)
                         break
         else:
-            self.tabs[self.active_tab].click(e.x, e.y - self.chrome_bottom)
+            self.tabs[self.active_tab].click(
+                e.x, e.y - self.chrome_bottom)
         self.draw()
 
     def handle_key(self, e):
@@ -381,24 +385,30 @@ class Browser:
     def plus_bounds(self):
         plus_width = self.chrome_font.measure("+")
         return (self.padding, self.padding,
-            plus_width + self.padding, self.tab_header_bottom - self.padding)
+            plus_width + self.padding,
+            self.tab_header_bottom - self.padding)
 
     def tab_bounds(self, i):
-        (plus_left, plus_top, plus_right, plus_bottom) = self.plus_bounds()
+        (plus_left, plus_top, plus_right, plus_bottom) = \
+            self.plus_bounds()
         tab_start_x = plus_right + self.padding
 
-        tab_width = self.chrome_font.measure("Tab 1") + 2 * self.padding
+        tab_width = self.chrome_font.measure("Tab 1") + \
+            2 * self.padding
 
         return (tab_start_x + tab_width * i, self.padding,
-            tab_start_x + tab_width + tab_width * i, self.tab_header_bottom)
+            tab_start_x + tab_width + tab_width * i,
+            self.tab_header_bottom)
 
     def backbutton_bounds(self):
         backbutton_width = self.chrome_font.measure("<")
         return (self.padding, self.addressbar_top,
-            self.padding + backbutton_width, self.chrome_bottom - self.padding)
+            self.padding + backbutton_width,
+            self.chrome_bottom - self.padding)
 
     def addressbar_bounds(self):
-        (backbutton_left, backbutton_top, backbutton_right, backbutton_bottom) = \
+        (backbutton_left, backbutton_top, backbutton_right,
+            backbutton_bottom) = \
             self.backbutton_bounds()
 
         return (backbutton_right + self.padding, self.addressbar_top,
@@ -406,7 +416,8 @@ class Browser:
 
     def paint_chrome(self):
         cmds = []
-        cmds.append(DrawRect(0, 0, WIDTH, self.chrome_bottom, "white"))
+        cmds.append(
+            DrawRect(0, 0, WIDTH, self.chrome_bottom, "white"))
 
         (plus_left, plus_top, plus_right, plus_bottom) = self.plus_bounds()
         cmds.append(DrawOutline(
@@ -419,7 +430,7 @@ class Browser:
             (tab_left, tab_top, tab_right, tab_bottom) = self.tab_bounds(i)
 
             cmds.append(DrawLine(
-                tab_left, 0,tab_left, tab_bottom, "black", 1))
+                tab_left, 0, tab_left, tab_bottom, "black", 1))
             cmds.append(DrawLine(
                 tab_right, 0, tab_right, tab_bottom, "black", 1))
             cmds.append(DrawText(
@@ -433,8 +444,8 @@ class Browser:
                     tab_right, tab_bottom, WIDTH, tab_bottom, "black", 1))
 
         backbutton_width = self.chrome_font.measure("<")
-        (backbutton_left, backbutton_top, backbutton_right, backbutton_bottom) = \
-            self.backbutton_bounds()
+        (backbutton_left, backbutton_top, backbutton_right,
+            backbutton_bottom) = self.backbutton_bounds()
         cmds.append(DrawOutline(
             backbutton_left, backbutton_top,
             backbutton_right, backbutton_bottom,

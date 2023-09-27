@@ -283,6 +283,7 @@ def device_px(css_px, zoom):
     return css_px * zoom
 ```
 
+\index{device pixel ratio}
 Think about `device_px` not as a simple helper method, but as a unit
 conversion from a *CSS pixel* (the units specified in a CSS declaration)
 to a *device pixel* (what's actually drawn on the screen). In a real

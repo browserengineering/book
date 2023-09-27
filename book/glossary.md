@@ -254,6 +254,9 @@ surfaces on a GPU, in order to speed up animations.
 *Decode*: converting from a compressed format for a resource (such as an 
 an image) into a simpler format in memory (such as a bitmap).
 
+*Device pixel ratio*: the ratio between the screen pixel resolution and a
+"typical" screen (defined as the pixel resolution of a 90's CRT).
+
 *Display list*: A sequence of graphics commands explaining how to draw a
 web page to a computer screen.
 

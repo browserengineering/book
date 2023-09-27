@@ -484,10 +484,10 @@ little toy browser doesn't.[^ffx]
 [^ffx]: Back in the day, browser tabs were the feature that would
     convince friends and relatives to switch from IE 6 to Firefox.
 
-Fundamentally, tabbed browsing means distinguishing between the
-browser itself and tabs that show individual web pages. The canvas the
-browser draws to, for example, is shared by all web pages, but the
-layout tree and display list are specific to one page. We need to
+Fundamentally, implementing tabbed browsing requires us to distinguish
+between the browser itself and tabs that show individual web pages.
+The canvas the browser draws to, for example, is shared by all web pages,
+but the layout tree and display list are specific to one page. We need to
 tease these two types of things apart.
 
 Here's the plan: the `Browser` class will store the window and canvas,
@@ -642,16 +642,15 @@ storing it somewhere, because our browser will have pretty simple
 chrome, meaning `paint_chrome` will be fast. In a real browser, it
 might be saved and only updated when the chrome changes.
 
-First things first: we need to avoid drawing page contents to the part
-of the browser window where the tab bar goes. Let's reserve some space
-at the top for the browser chrome. But how much? One way could be to
-pick some arbitrary browser chrome height, then try to squeeze the chrome
-into it (making fonts smaller as necessary). Another, better way, is to
-pick a font size that is easy enough to read, then compute the chrome
-height accordingly.
+First things first: we need to avoid drawing page contents to the part of the
+browser window where the browser chrome is. Let's reserve some space for it at
+the top. But how much? One way could be to pick some arbitrary browser chrome
+height, then try to squeeze the chrome into it (and making its font smaller as
+necessary). Another, better way, is to pick a font size that is easy enough to
+read, then compute the chrome height accordingly.
 
 We don't know that height yet without computing it as part of designing
-the UI of the browser, chrome, but we do know it will be a value we can
+the UI of the browser, chrome, but we do know it will be a number we can
 pass to each `Tab`:
 
 ``` {.python}
@@ -667,7 +666,8 @@ Each tab needs to make sure not to draw to those pixels:
 class Tab:
     def draw(self, canvas):
         for cmd in self.display_list:
-            if cmd.top > self.scroll + HEIGHT - self.chrome_bottom: continue
+            if cmd.top > self.scroll + HEIGHT - self.chrome_bottom:
+                continue
             if cmd.bottom < self.scroll: continue
             cmd.execute(self.scroll - self.chrome_bottom, canvas)
 ```
@@ -683,7 +683,8 @@ come in a moment):
 class Browser:
     def paint_chrome(self):
         cmds = []
-        cmds.append(DrawRect(0, 0, WIDTH, self.chrome_bottom, "white"))
+        cmds.append(
+            DrawRect(0, 0, WIDTH, self.chrome_bottom, "white"))
         return cmds
 ```
 
@@ -693,7 +694,8 @@ the page content now being `HEIGHT - self.chrome_bottom`:
 ``` {.python}
 class Tab:
     def scrolldown(self):
-        max_y = max(self.document.height - (HEIGHT - self.chrome_bottom), 0)
+        max_y = max(
+            self.document.height - (HEIGHT - self.chrome_bottom), 0)
         self.scroll = min(self.scroll + SCROLL_STEP, max_y)
 ```
 
@@ -730,17 +732,21 @@ class DrawLine:
         )
 ```
 
-Let's start drawing the chrome. We'll have the following:
-* At the top, a list of tab names, separated by vertical lines, and a "+"
-  button ot add a new tab.
-* Underneath, the URL of of the current web page, plus a "<" to indicate the
-  browser back-button.
+Let's start drawing the chrome. We'll end up with the following:
+
+* At the top, a list of tab names, separated by vertical lines, and a "`+`"
+  button to add a new tab.
+
+* Underneath, the URL of of the current web page, and a "`<`" button to
+  represent the browser back-button.
 
 Given this design, we can now figure out `chrome_bottom`: it's the vertical
-height of those two lines plus some padding after them. For convenience, and
-to use them later for processing mouse clicks, I'll store these parameters
-on the `Browser` object:
-
+height of those two lines plus some padding between and after them. For
+convenience, and to use them later for processing mouse clicks, I'll store
+these parameters on the `Browser` object:^[I also chose `20px` as the
+font size. Depending on your computer, this may end up looking smaller,
+\index{device pixel ratio}
+because of the device pixel ratio of the screen.]
 
 ``` {.python}
 class Browser:
@@ -752,53 +758,51 @@ class Browser:
         self.tab_header_bottom = chrome_font_height + 2 * self.padding
         self.addressbar_top = self.tab_header_bottom + self.padding
         self.chrome_bottom = \
-            self.addressbar_top + chrome_font_height + 2 * self.padding    
+            self.addressbar_top + chrome_font_height + \
+            2 * self.padding    
 ```
 
 In addition, it's convenient to define some methods that return the bounds of
-the plus, each tab, back button, and the addressbar. Note how the size of each
+the plus and each tab. Note how the size of each
 elements' bounds is as wide as the font says it is. That way, if we change our
 mind later, we can just change the font size, and everything else just draws
-correctly.^[Also, we chouse "Tab 1" as the fixed size of a tab, but in real
+correctly.^[Also, we chose "Tab 1" as the fixed size of a tab, but in real
 life many fonts draw different numbers (like "1" and "6") with different
-widths, and this doesn't work for two-digit tab numbers.]
+widths, and this approximation also doesn't work for two-digit tab numbers.
+Real browsers size their tabs to fit the [title], but we skipped that for
+simplicity.]
+
+[title]: https://developer.mozilla.org/en-US/docs/Web/API/Document/title
 
 ``` {.python}
     def plus_bounds(self):
         plus_width = self.chrome_font.measure("+")
         return (self.padding, self.padding,
-            plus_width + self.padding, self.tab_header_bottom - self.padding)
+            plus_width + self.padding,
+            self.tab_header_bottom - self.padding)
 
     def tab_bounds(self, i):
-        (plus_left, plus_top, plus_right, plus_bottom) = self.plus_bounds()
+        (plus_left, plus_top, plus_right, plus_bottom) = \
+            self.plus_bounds()
         tab_start_x = plus_right + self.padding
 
-        tab_width = self.chrome_font.measure("Tab 1") + 2 * self.padding
+        tab_width = self.chrome_font.measure("Tab 1") + \
+            2 * self.padding
 
         return (tab_start_x + tab_width * i, self.padding,
-            tab_start_x + tab_width + tab_width * i, self.tab_header_bottom)
-
-    def backbutton_bounds(self):
-        backbutton_width = self.chrome_font.measure("<")
-        return (self.padding, self.addressbar_top,
-            self.padding + backbutton_width, self.chrome_bottom - self.padding)
-
-    def addressbar_bounds(self):
-        (backbutton_left, backbutton_top, backbutton_right, backbutton_bottom) = \
-            self.backbutton_bounds()
-
-        return (backbutton_right + self.padding, self.addressbar_top,
-            WIDTH - 10, self.chrome_bottom - self.padding)
+            tab_start_x + tab_width + tab_width * i,
+            self.tab_header_bottom)
 ```
 
 Now for drawing the actual UI, starting with the tab bar at the top of the
-browser window. Here's the plus icon.
+browser window. Here's the plus icon:
 
 ``` {.python}
 class Browser:
     def paint_chrome(self):
         # ...
-        (plus_left, plus_top, plus_right, plus_bottom) = self.plus_bounds()
+        (plus_left, plus_top, plus_right, plus_bottom) = \
+            self.plus_bounds()
         cmds.append(DrawOutline(
             plus_left, plus_top, plus_right, plus_bottom, "black", 1))
         cmds.append(DrawText(
@@ -806,7 +810,7 @@ class Browser:
         # ...
 ```
 
-Here the `DrawOutline` command draws a rectangle's border instead of
+The `DrawOutline` command draws a rectangle's border instead of
 its inside. It's defined like this:
 
 ``` {.python}
@@ -838,7 +842,7 @@ for i, tab in enumerate(self.tabs):
     (tab_left, tab_top, tab_right, tab_bottom) = self.tab_bounds(i)
 
     cmds.append(DrawLine(
-        tab_left, 0,tab_left, tab_bottom, "black", 1))
+        tab_left, 0, tab_left, tab_bottom, "black", 1))
     cmds.append(DrawLine(
         tab_right, 0, tab_right, tab_bottom, "black", 1))
     cmds.append(DrawText(
@@ -864,19 +868,22 @@ and for that we need a button that creates a new tab. Let's put
 that on the left of the tab bar, with a big plus in the middle:
 
 ``` {.python}
-class Browser:
-    def paint_chrome(self):
-        # ...
-        backbutton_width = self.chrome_font.measure("<")
-        (backbutton_left, backbutton_top, backbutton_right, backbutton_bottom) = \
-            self.backbutton_bounds()
+        (plus_left, plus_top, plus_right, plus_bottom) = self.plus_bounds()
         cmds.append(DrawOutline(
-            backbutton_left, backbutton_top,
-            backbutton_right, backbutton_bottom,
-            "black", 1))
+            plus_left, plus_top, plus_right, plus_bottom, "black", 1))
         cmds.append(DrawText(
-            backbutton_left, backbutton_top + self.padding,
-            "<", self.chrome_font, "black"))
+            plus_left, plus_top, "+", self.chrome_font, "black"))
+```
+
+``` {.python}
+class Browser:
+    def addressbar_bounds(self):
+        (backbutton_left, backbutton_top, backbutton_right,
+            backbutton_bottom) = \
+            self.backbutton_bounds()
+
+        return (backbutton_right + self.padding, self.addressbar_top,
+            WIDTH - 10, self.chrome_bottom - self.padding)
 ```
 
 The next step is clicking on tabs to switch between them. That has to
@@ -890,7 +897,8 @@ class Browser:
         if e.y < self.chrome_bottom:
             # ...
         else:
-            self.tabs[self.active_tab].click(e.x, e.y - self.chrome_bottom)
+            self.tabs[self.active_tab].click(
+                e.x, e.y - self.chrome_bottom)
         self.draw()
 ```
 
@@ -899,7 +907,7 @@ browser handles it directly, but if the click is on the page content
 (the `else` branch) it is still forwarded to the active tab,
 subtracting `self.chrome_bottom` to fix up the coordinates.
 
-If the `y` coordinate is as high as `self.chrome_bottom`, it's just as matter
+If the `y` coordinate is as high as `self.chrome_bottom`, it's just a matter
 of comparing it against each of the bounds methods we've already defined. To
 that end, let's add a quick method to test whether a point intersects one
 of them:
@@ -910,8 +918,7 @@ def intersects(x, y, rect):
     return x >= left and x < right and y >= top and y < bottom
 ```
 
-And then use it to choose between clicking to add a tab, go back, focus the
-address bar, or select an open tab.
+And then use it to choose between clicking to add a tab or select an open tab.
 
 ``` {.python}
 class Browser:
@@ -989,8 +996,8 @@ class Browser:
     def paint_chrome(self):
         # ...
         backbutton_width = self.chrome_font.measure("<")
-        (backbutton_left, backbutton_top, backbutton_right, backbutton_bottom) = \
-            self.backbutton_bounds()
+        (backbutton_left, backbutton_top, backbutton_right, \
+            backbutton_bottom) = self.backbutton_bounds()
         cmds.append(DrawOutline(
             backbutton_left, backbutton_top,
             backbutton_right, backbutton_bottom,
@@ -998,6 +1005,17 @@ class Browser:
         cmds.append(DrawText(
             backbutton_left, backbutton_top + self.padding,
             "<", self.chrome_font, "black"))
+```
+
+And of course add the `backbutton_bounds` method:
+
+``` {.python}
+class Browser:
+    def backbutton_bounds(self):
+        backbutton_width = self.chrome_font.measure("<")
+        return (self.padding, self.addressbar_top,
+            self.padding + backbutton_width,
+            self.chrome_bottom - self.padding)
 ```
 
 So what happens when that button is clicked? Well, *that tab* goes
@@ -1068,11 +1086,13 @@ A browser's navigation history can contain sensitive information about
 which websites a user likes visiting, so keeping it secure is
 important. Surprisingly, this is pretty hard, because CSS features
 like the [`:visited` selector][visited-selector] can be used to
-[check][history-sniffing] whether a URL has been visited before.
+[check][history-sniffing] whether a URL has been visited before. For
+this reason, there are [efforts] to restrict `:visited`.
 :::
 
 [visited-selector]: https://developer.mozilla.org/en-US/docs/Web/CSS/:visited
 [history-sniffing]: https://blog.mozilla.org/security/2010/03/31/plugging-the-css-history-leak/
+[efforts]: https://github.com/kyraseevers/Partitioning-visited-links-history
 
 Editing the URL
 ===============
@@ -1117,6 +1137,19 @@ class Browser:
                 self.focus = "address bar"
                 self.address_bar = ""
         # ...
+```
+
+With this definition of the bounds:
+
+``` {.python}
+class Browser:
+    def addressbar_bounds(self):
+        (backbutton_left, backbutton_top, backbutton_right,
+            backbutton_bottom) = \
+            self.backbutton_bounds()
+
+        return (backbutton_right + self.padding, self.addressbar_top,
+            WIDTH - 10, self.chrome_bottom - self.padding)
 ```
 
 Note that clicking on the address bar also clears the address bar
@@ -1307,8 +1340,26 @@ should delete the character before the cursor, and typing other keys
 should add characters at the cursor. (Remember that the cursor can be
 before the first character or after the last!)
 
-*Multiple windows* Add support for multiple browser windows in
+*Multiple windows*: Add support for multiple browser windows in
 addition to tabs. This will require keeping track of multiple Tk
 windows and canvases and grouping tabs by their containing window.
 You'll also need some way to create a new window, perhaps with a
 keypress such as `Ctrl+N`.
+
+*Reusing HTML*: Browser chrome is quite complicated in real browsers, and even
+their layouts contain a lot of details, such as font sizes, padding, outlines,
+shadows, icons and so on. This makes it tempting to try to reuse our
+implementation of those features for web pages---imagine replacing the
+contents of `paint_chrome` with a call to paint some HTML instead that
+represents the UI of the browser chrome. Implement this, including support for
+the [`padding`][padding] CSS property (even if you can't implement the
+whole UI faithfully---outline will have to wait for [Chapter
+14](accessibility.md), for example).[^real-browser-reuse]
+
+[padding]: https://developer.mozilla.org/en-US/docs/Web/CSS/padding
+
+[^real-browser-reuse]: Real browsers have in fact gone down this implementation
+path multiple times. Firefox [has one](https://en.wikipedia.org/wiki/XUL),
+and [so does Chrome](https://www.chromium.org/developers/webui/). However,
+because it's so important for the browser chrome to be very fast and responsive
+to draw, such approaches have had mixed success.
