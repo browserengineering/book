@@ -793,7 +793,7 @@ FONTS = {}
 
 The keys to this dictionary will be size/weight/style triples, and the
 values will be `Font` objects. We can put the caching logic itself in
-a new `get_font` function:
+a new `get_font` function:[^get_font-hack]
 
 ``` {.python}
 def get_font(size, weight, slant):
@@ -801,9 +801,15 @@ def get_font(size, weight, slant):
     if key not in FONTS:
         font = tkinter.font.Font(size=size, weight=weight,
             slant=slant)
-        FONTS[key] = font
-    return FONTS[key]
+        label = tkinter.Label(font=font)
+        FONTS[key] = (font, label)
+    return FONTS[key][0]
 ```
+
+[^get_font-hack]: This method has a hack in it to make the cache work better.
+Notice how we are creting a `tkinter.Label` object for no apparent reason,
+then storing it in the cache. This trick dramatically improves performance,
+possibly because this new object keeps the font object alive.
 
 Now, inside the `text` method we can call `get_font` instead of
 creating a `Font` object directly:
