@@ -807,9 +807,9 @@ def get_font(size, weight, slant):
 ```
 
 [^get_font-hack]: This method has a hack in it to make the cache work better.
-Notice how we are creting a `tkinter.Label` object for no apparent reason,
-then storing it in the cache. This trick dramatically improves performance,
-possibly because this new object keeps the font object alive.
+Notice how we are creating a `tkinter.Label` object for no apparent reason,
+then storing it in the cache. This trick dramatically improves performance
+(possibly because th label object keeps the font object alive).
 
 Now, inside the `text` method we can call `get_font` instead of
 creating a `Font` object directly:
