@@ -159,7 +159,7 @@ def thanks():
         "Pranav Shridhar",
         "Sujal Singh",
         "Michal Čaplygin",
-        "Fredrik Lundh"
+        "Lars Hamann",
         "Bruno P. Kinoshita",
         "Daniel Rosenwasser",
         "metamas",
