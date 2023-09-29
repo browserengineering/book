@@ -4,6 +4,7 @@ up to and including Chapter 14 (Making Content Accessible),
 without exercises.
 """
 
+import sys
 import ctypes
 import dukpy
 import math
@@ -41,7 +42,7 @@ from lab13 import JSContext, diff_styles, clamp_scroll, add_parent_pointers
 from lab13 import absolute_bounds, absolute_bounds_for_obj
 from lab13 import NumericAnimation, TranslateAnimation
 from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
-from lab13 import CompositedLayer, paint_visual_effects, add_main_args
+from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import DrawCommand, DrawText, DrawCompositedLayer, DrawOutline, DrawLine, DrawRRect
 from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform
 
@@ -1829,12 +1830,10 @@ class Browser:
             sdl2.SDL_GL_DeleteContext(self.gl_context)
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
-def main_func(args):
-    import sys
-
+def main_func(url):
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
-    browser.load(URL(args.url))
+    browser.load(url)
 
     event = sdl2.SDL_Event()
     ctrl_down = False
@@ -1902,6 +1901,6 @@ def main_func(args):
         browser.schedule_animation_frame()
 
 if __name__ == "__main__":
-    args = add_main_args()
-    main_func(args)
+    wbetools.parse_flags()
+    main_func(URL(sys.argv[1]))
 
