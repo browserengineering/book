@@ -1588,7 +1588,7 @@ class Browser:
                 self.focus = "address bar"
                 self.address_bar = ""
             else:
-                for i in range(0, len(self.tabs)):
+                for i, tab in enumerate(self.tabs):
                     if intersects(e.x, e.y, self.tab_bounds(i)):
                         self.set_active_tab(i)
                         active_tab = self.tabs[self.active_tab]

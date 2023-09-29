@@ -909,7 +909,7 @@ class Browser:
                 self.load(URL("https://browser.engineering/"))
             # ...
             else:
-                for i in range(0, len(self.tabs)):
+                for i, tab in enumerate(self.tabs):
                     if intersects(e.x, e.y, self.tab_bounds(i)):
                         self.active_tab = i
                         break
