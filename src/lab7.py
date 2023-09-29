@@ -389,9 +389,8 @@ class Browser:
             self.tab_header_bottom - self.padding)
 
     def tab_bounds(self, i):
-        (plus_left, plus_top, plus_right, plus_bottom) = \
-            self.plus_bounds()
-        tab_start_x = plus_right + self.padding
+        tab_start_x = self.chrome_font.measure("+") + \
+            self.padding + self.padding
 
         tab_width = self.chrome_font.measure("Tab 1") + \
             2 * self.padding
