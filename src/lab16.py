@@ -32,7 +32,7 @@ from lab13 import diff_styles, parse_transition, clamp_scroll, add_parent_pointe
 from lab13 import absolute_bounds, absolute_bounds_for_obj
 from lab13 import NumericAnimation, TranslateAnimation
 from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
-from lab13 import CompositedLayer, paint_visual_effects, add_main_args
+from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import DrawCommand, DrawText, DrawCompositedLayer, DrawOutline, DrawLine, DrawRRect
 from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform
 from lab14 import parse_color, parse_outline, DrawRRect, \
@@ -1292,39 +1292,6 @@ class Tab:
 
         self.browser.commit(self, commit_data)
 
-def add_main_args():
-    import argparse
-
-    parser = argparse.ArgumentParser(description='Chapter 13 code')
-    parser.add_argument("url", type=str, help="URL to load")
-    parser.add_argument('--single_threaded', action="store_true", default=False,
-        help='Whether to run the browser without a browser thread')
-    parser.add_argument('--disable_compositing', action="store_true",
-        default=False, help='Whether to composite some elements')
-    parser.add_argument('--disable_gpu', action='store_true',
-        default=False, help='Whether to disable use of the GPU')
-    parser.add_argument('--show_composited_layer_borders', action="store_true",
-        default=False, help='Whether to visually indicate composited layer borders')
-    parser.add_argument("--force_cross_origin_iframes", action="store_true",
-        default=False, help="Whether to treat all iframes as cross-origin")
-    parser.add_argument("--assert_layout_clean", action="store_true",
-        default=False, help="Assert layout is clean once complete")
-    parser.add_argument("--print_invalidation_dependencies", action="store_true",
-        default=False, help="Whether to print out all invalidation dependencies")
-    args = parser.parse_args()
-
-    wbetools.USE_BROWSER_THREAD = not args.single_threaded
-    wbetools.USE_GPU = not args.disable_gpu
-    wbetools.USE_COMPOSITING = not args.disable_compositing and not args.disable_gpu
-    wbetools.SHOW_COMPOSITED_LAYER_BORDERS = args.show_composited_layer_borders
-    wbetools.FORCE_CROSS_ORIGIN_IFRAMES = args.force_cross_origin_iframes
-    wbetools.ASSERT_LAYOUT_CLEAN = args.assert_layout_clean
-    wbetools.PRINT_INVALIDATION_DEPENDENCIES = \
-        args.print_invalidation_dependencies
-
-    return args
-    
-
 if __name__ == "__main__":
-    args = add_main_args()
-    main_func(args)
+    wbetools.parse_flags()
+    main_func(URL(sys.argv[1]))

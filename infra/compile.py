@@ -115,7 +115,7 @@ RENAME_FNS = {
     "AnimationClass": "AnimationClass"
 }
 
-SKIPPED_FNS = ["add_main_args"]
+SKIPPED_FNS = []
 
 # These are filled in as import statements are read
 RT_IMPORTS = []
