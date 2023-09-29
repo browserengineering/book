@@ -4,6 +4,7 @@ up to and including Chapter 15 (Supporting Embedded Content),
 without exercises.
 """
 
+import sys
 import ctypes
 import dukpy
 import gtts

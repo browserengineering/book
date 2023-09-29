@@ -4,6 +4,7 @@ up to and including Chapter 14 (Making Content Accessible),
 without exercises.
 """
 
+import sys
 import ctypes
 import dukpy
 import math

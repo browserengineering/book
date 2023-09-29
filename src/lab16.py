@@ -4,6 +4,7 @@ up to and including Chapter 16 (Reusing Previous Computations),
 without exercises.
 """
 
+import sys
 import sdl2
 import skia
 import ctypes
