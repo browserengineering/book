@@ -159,9 +159,10 @@ def thanks():
         "Pranav Shridhar",
         "Sujal Singh",
         "Michal Čaplygin",
-        "metamas",
+        "Fredrik Lundh"
         "Bruno P. Kinoshita",
         "Daniel Rosenwasser",
+        "metamas",
     }
 
     # These should be in order of sponsorship, oldest first.
