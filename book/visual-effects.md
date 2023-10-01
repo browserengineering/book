@@ -1500,7 +1500,7 @@ switching tabs.
 class Browser:
     def __init__(self):
         # ...
-        self.chrome_surface = skia.Surface(WIDTH, self.chrome_bottom)
+        self.chrome_surface = skia.Surface(WIDTH, self.chrome.bottom)
         self.tab_surface = None
 ```
 
@@ -1574,15 +1574,15 @@ class Browser:
     def draw(self):
         # ...
         
-        tab_rect = skia.Rect.MakeLTRB(0, self.chrome_bottom, WIDTH, HEIGHT)
-        tab_offset = self.chrome_bottom - self.tabs[self.active_tab].scroll
+        tab_rect = skia.Rect.MakeLTRB(0, self.chrome.bottom, WIDTH, HEIGHT)
+        tab_offset = self.chrome.bottom - self.tabs[self.active_tab].scroll
         canvas.save()
         canvas.clipRect(tab_rect)
         canvas.translate(0, tab_offset)
         self.tab_surface.draw(canvas, 0, 0)
         canvas.restore()
 
-        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, self.chrome_bottom)
+        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, self.chrome.bottom)
         canvas.save()
         canvas.clipRect(chrome_rect)
         self.chrome_surface.draw(canvas, 0, 0)
@@ -1598,7 +1598,7 @@ call either `raster_tab` or `raster_chrome` first. For example, in
 ``` {.python}
 class Browser:
     def handle_click(self, e):
-        if e.y < self.chrome_bottom:
+        if e.y < self.chrome.bottom:
             # ...
             self.raster_chrome()
         else:

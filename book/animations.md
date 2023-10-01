@@ -315,7 +315,7 @@ class Browser:
     def draw(self):
         canvas = self.root_surface.getCanvas()
         # ...
-        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, self.chrome_bottom)
+        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, self.chrome.bottom)
         canvas.save()
         canvas.clipRect(chrome_rect)
         self.chrome_surface.draw(canvas, 0, 0)
@@ -335,7 +335,7 @@ class Browser:
         # ...
         self.chrome_surface = skia.Surface.MakeRenderTarget(
                 self.skia_context, skia.Budgeted.kNo,
-                skia.ImageInfo.MakeN32Premul(WIDTH, self.chrome_bottom))
+                skia.ImageInfo.MakeN32Premul(WIDTH, self.chrome.bottom))
         assert self.chrome_surface is not None
 ```
 
@@ -832,7 +832,7 @@ class Browser:
     def draw(self):
         # ...
         canvas.save()
-        canvas.translate(0, self.chrome_bottom - self.scroll)
+        canvas.translate(0, self.chrome.bottom - self.scroll)
         for item in self.draw_list:
             item.execute(canvas)
         canvas.restore()

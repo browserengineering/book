@@ -710,7 +710,7 @@ handlers:
 ``` {.python}
 class Browser:
     def handle_click(self, e):
-        if e.y < self.chrome_bottom:
+        if e.y < self.chrome.bottom:
             # ...
             self.set_needs_raster_and_draw()
 
@@ -744,7 +744,7 @@ constructed:
 ``` {.python}
 class Browser:
     def load(self, url):
-        new_tab = Tab(self, self.chrome_bottom)
+        new_tab = Tab(self, self.chrome.bottom)
         # ...
 ```
 
@@ -1219,12 +1219,12 @@ on the web page, we must schedule a task on the main thread:
 ``` {.python}
 class Browser:
     def handle_click(self, e):
-        if e.y < self.chrome_bottom:
+        if e.y < self.chrome.bottom:
              # ...
         else:
             # ...
             active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.click, e.x, e.y - self.chrome_bottom)
+            task = Task(active_tab.click, e.x, e.y - self.chrome.bottom)
             active_tab.task_runner.schedule_task(task)
 ```
 
@@ -1493,7 +1493,7 @@ class Browser:
         scroll = clamp_scroll(
             self.scroll + SCROLL_STEP,
             self.active_tab_height,
-            self.chrome_bottom)
+            self.chrome.bottom)
         self.scroll = scroll
         self.set_needs_raster_and_draw()
         self.needs_animation_frame = True

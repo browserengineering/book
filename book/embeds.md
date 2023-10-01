@@ -1296,7 +1296,7 @@ the active tab height:
 class Browser:
     def clamp_scroll(self, scroll):
         height = self.active_tab_height
-        maxscroll = height - (HEIGHT - self.chrome_bottom)
+        maxscroll = height - (HEIGHT - self.chrome.bottom)
         return max(0, min(scroll, maxscroll))
 ```
 

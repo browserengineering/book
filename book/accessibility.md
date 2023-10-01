@@ -467,20 +467,20 @@ class Browser:
         # ...
 ```
 
-Similarly, in `paint_chrome`, we need to use the right foreground
+Similarly, in `paint` on `Chrome`, we need to use the right foreground
 color:
 
 ``` {.python}
-class Browser:
-    def paint_chrome(self):
-        if self.dark_mode:
+class Chrome:
+    def paint(self):
+        if self.browser.dark_mode:
             color = "white"
         else:
             color = "black"
 ```
 
 Then we just need to use `color` instead of `black` everywhere. Make
-that change in `paint_chrome`.[^more-colors]
+that change in `paint`.[^more-colors]
 
 [^more-colors]: Of course, a full-featured browser's chrome has many
     more buttons and colors to adjust than our browser's. Most
@@ -2151,7 +2151,7 @@ class Browser:
         if not self.accessibility_is_on or \
             not self.accessibility_tree:
             return
-        self.pending_hover = (event.x, event.y - self.chrome_bottom)
+        self.pending_hover = (event.x, event.y - self.chrome.bottom)
         self.set_needs_accessibility()
 ```
 
