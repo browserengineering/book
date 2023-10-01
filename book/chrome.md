@@ -617,21 +617,20 @@ labels and icons and buttons.[^ohmy] This is called the browser
 "chrome"\index{browser chrome};[^chrome] all of this stuff is drawn by
 the browser to the same window as the page contents, and it requires
 information about the browser as a whole (like the list of all tabs),
-so it has to happen in the `Browser` class.
+so it has to happen at the browser level, not per-tab.
 
 [^ohmy]: Oh my!
 
 [^chrome]: Yep, that predates and inspired the name of Google's Chrome
     browser.
 
- A browser's UI is quite complicated, so let's put that code in a new `Chrome`
- class.^[for browser chrome, not any reference to the Google browser of the
- same name.] It will have a `paint` method to paint the browser chrome. The
- `paint` method constructs the display list for the browser chrome; I'm just
- constructing and using it directly, instead of storing it somewhere, because
- our browser will have pretty simple chrome, meaning `paint_chrome` will be
- fast. In a real browser, it might be saved and only updated when the chrome
- changes.
+However, a browser's UI is quite complicated, so let's put that code in a new
+`Chrome` helper class. It will have a `paint` method to paint the browser
+chrome. The `paint` method constructs the display list for the browser chrome;
+I'm just constructing and using it directly, instead of storing it somewhere,
+because our browser will have pretty simple chrome, meaning `paint_chrome` will
+be fast. In a real browser, it might be saved and only updated when the chrome
+changes.
 
 ``` {.python}
 class Chrome:
@@ -649,10 +648,9 @@ class Browser:
         self.chrome = Chrome(self)
 ```
 
-Much like tabs, the browser chrome is going to generate a display list
-and then draw it to the canvas. However, unlike tabs, this display
-list will always be drawn at the top of the window and won't be
-scrolled:
+The browser chrome generates a display list just like a tab. However, unlike
+tabs, this display list will always be drawn at the top of the window and won't
+be scrolled:
 
 ``` {.python}
 class Browser:
@@ -663,10 +661,11 @@ class Browser:
 ```
 
 First things first: we need to avoid drawing page contents to the part of the
-browser window where the browser chrome is.
-
-We don't know that height yet without computing it as part of designing
-the UI of the browser, chrome, but we do know it will be a number we can
+browser window where the browser chrome is. Browser chrome is at the top of the
+window, with tab contents below it. So we need to figure out how tall
+the browser chrome is, to know how much to shrink the available tab area.
+We don't know that yet without computing it as part of designing
+the UI of the browser chrome, but we do know it will be a number we can
 pass to each `Tab`:
 
 ``` {.python}
@@ -690,9 +689,10 @@ class Tab:
 
 Now let's turn our attention to designing the UI.
 
-There are still sometimes going to be halves of letters that stick out
+First, there are still sometimes going to be halves of letters that stick out
 into the browser chrome, but we can hide them by just drawing over
-them (here I'm assuming we've already computed `chrome_bottom`; that will
+them (here I'm assuming we've already computed `self.bottom` (representing
+the bottom y coordinate of the browser chrome); that will
 come in a moment):
 
 ``` {.python}
@@ -705,7 +705,7 @@ class Chrome:
 ```
 
 You'll also need to adjust `scrolldown` to account for the height of
-the page content now being `HEIGHT - self.chrome_bottom`:
+the page content now being `HEIGHT - self.bottom`:
 
 ``` {.python}
 class Tab:
@@ -748,7 +748,7 @@ class DrawLine:
         )
 ```
 
-Let's start drawing the chrome. We'll end up with the following:
+Now let's figure out the browser chrome size. We'll end up with the following:
 
 * At the top, a list of tab names, separated by vertical lines, and a "`+`"
   button to add a new tab.
@@ -762,7 +762,7 @@ squeeze the chrome into it (and making its font smaller as necessary). Another,
 better way, is to pick a font size that is easy enough to read, then compute
 the chrome height accordingly.
 
-Given this design, we can now figure out `chrome_bottom`: it's the vertical
+Given this design, we can now figure out `self.bottom`: it's the vertical
 height of those two lines plus some padding between and after them. For
 convenience, and to use them later for processing mouse clicks, I'll store
 these parameters on the `Browser` object:^[I also chose `20px` as the
@@ -865,7 +865,8 @@ class Chrome:
         # ...
         for i, tab in enumerate(self.browser.tabs):
             name = "Tab {}".format(i)
-            (tab_left, tab_top, tab_right, tab_bottom) = self.tab_bounds(i)
+            (tab_left, tab_top, tab_right, tab_bottom) = \
+                self.tab_bounds(i)
 
             cmds.append(DrawLine(
                 tab_left, 0, tab_left, tab_bottom, "black", 1))
@@ -889,7 +890,8 @@ class Chrome:
                 cmds.append(DrawLine(
                     0, tab_bottom, tab_left, tab_bottom, "black", 1))
                 cmds.append(DrawLine(
-                    tab_right, tab_bottom, WIDTH, tab_bottom, "black", 1))
+                    tab_right, tab_bottom, WIDTH, tab_bottom,
+                    "black", 1))
 ```
 
 The next step is clicking on tabs to switch between them. That has to

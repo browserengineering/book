@@ -365,7 +365,8 @@ class Chrome:
 
         for i, tab in enumerate(self.browser.tabs):
             name = "Tab {}".format(i)
-            (tab_left, tab_top, tab_right, tab_bottom) = self.tab_bounds(i)
+            (tab_left, tab_top, tab_right, tab_bottom) = \
+                self.tab_bounds(i)
 
             cmds.append(DrawLine(
                 tab_left, 0, tab_left, tab_bottom, "black", 1))
@@ -379,7 +380,8 @@ class Chrome:
                 cmds.append(DrawLine(
                     0, tab_bottom, tab_left, tab_bottom, "black", 1))
                 cmds.append(DrawLine(
-                    tab_right, tab_bottom, WIDTH, tab_bottom, "black", 1))
+                    tab_right, tab_bottom, WIDTH, tab_bottom,
+                    "black", 1))
 
         backbutton_width = self.font.measure("<")
         (backbutton_left, backbutton_top, backbutton_right,
