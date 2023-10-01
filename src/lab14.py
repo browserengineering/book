@@ -1304,7 +1304,6 @@ class Chrome:
 
         return cmds
 
-
 class Browser:
     def __init__(self):
         self.chrome = Chrome(self)
