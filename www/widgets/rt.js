@@ -361,6 +361,8 @@ class tkinter {
             }
         })
     }
+
+    static Label = function(font) {}
 }
 
 function init_window(browser) {
