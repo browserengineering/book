@@ -19,7 +19,8 @@ from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import DrawText, tree_to_list
 from lab7 import DrawLine, DrawOutline, LineLayout, TextLayout, intersects
-from lab8 import Text, Element, BlockLayout, InputLayout, INPUT_WIDTH_PX, Browser
+from lab8 import Text, Element, BlockLayout, InputLayout, INPUT_WIDTH_PX
+from lab8 import Browser, Chrome
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, URL, JSContext, Tab
 import wbetools
@@ -387,10 +388,128 @@ class Tab:
         for cmd in self.display_list:
             cmd.execute(canvas)
 
+@wbetools.patch(Chrome)
+class Chrome:
+    def __init__(self, browser):
+        self.browser = browser
+        self.font = get_font(20, "normal", "roman")
+        font_height = linespace(self.font)
+
+        self.padding = 5
+        self.tab_header_bottom = font_height + 2 * self.padding
+        self.addressbar_top = self.tab_header_bottom + self.padding
+        self.bottom = \
+            math.ceil(
+                self.addressbar_top + font_height + 2 * self.padding)
+
+    def plus_bounds(self):
+        plus_width = self.font.measureText("+")
+        return (self.padding, self.padding,
+            plus_width + self.padding, self.tab_header_bottom - self.padding)
+
+    def tab_bounds(self, i):
+        tab_start_x = self.font.measureText("+") + \
+            self.padding + self.padding
+
+        tab_width = self.font.measureText("Tab 1") + 2 * self.padding
+
+        return (tab_start_x + tab_width * i, self.padding,
+            tab_start_x + tab_width + tab_width * i, self.tab_header_bottom)
+
+    def backbutton_bounds(self):
+        backbutton_width = self.font.measureText("<")
+        return (self.padding, self.addressbar_top,
+            self.padding + backbutton_width, self.bottom - self.padding)
+
+    def paint(self):
+        cmds = []
+        cmds.append(DrawRect(0, 0, WIDTH, self.bottom, "white"))
+
+        (plus_left, plus_top, plus_right, plus_bottom) = self.plus_bounds()
+        cmds.append(DrawOutline(
+            plus_left, plus_top, plus_right, plus_bottom, "black", 1))
+        cmds.append(DrawText(
+            plus_left, plus_top, "+", self.font, "black"))
+
+        for i, tab in enumerate(self.browser.tabs):
+            name = "Tab {}".format(i)
+            (tab_left, tab_top, tab_right, tab_bottom) = self.tab_bounds(i)
+
+            cmds.append(DrawLine(
+                tab_left, 0,tab_left, tab_bottom, "black", 1))
+            cmds.append(DrawLine(
+                tab_right, 0, tab_right, tab_bottom, "black", 1))
+            cmds.append(DrawText(
+                tab_left + self.padding, tab_top,
+                name, self.font, "black"))
+            if i == self.browser.active_tab:
+                cmds.append(DrawLine(
+                    0, tab_bottom, tab_left, tab_bottom, "black", 1))
+                cmds.append(DrawLine(
+                    tab_right, tab_bottom, WIDTH, tab_bottom, "black", 1))
+
+        backbutton_width = self.font.measureText("<")
+        (backbutton_left, backbutton_top, backbutton_right, backbutton_bottom) = \
+            self.backbutton_bounds()
+        cmds.append(DrawOutline(
+            backbutton_left, backbutton_top,
+            backbutton_right, backbutton_bottom,
+            "black", 1))
+        cmds.append(DrawText(
+            backbutton_left, backbutton_top + self.padding,
+            "<", self.font, "black"))
+
+        (addressbar_left, addressbar_top, \
+            addressbar_right, addressbar_bottom) = \
+            self.addressbar_bounds()
+
+        cmds.append(DrawOutline(
+            addressbar_left, addressbar_top, addressbar_right,
+            addressbar_bottom, "black", 1))
+        left_bar = addressbar_left + self.padding
+        top_bar = addressbar_top + self.padding
+        if self.browser.focus == "address bar":
+            cmds.append(DrawText(
+                left_bar, top_bar,
+                self.browser.address_bar, self.font, "black"))
+            w = self.font.measureText(self.browser.address_bar)
+            cmds.append(DrawLine(
+                left_bar + w, top_bar,
+                left_bar + w,
+                self.bottom - self.padding, "red", 1))
+        else:
+            url = str(self.browser.tabs[self.browser.active_tab].url)
+            cmds.append(DrawText(
+                left_bar,
+                top_bar,
+                url, self.font, "black"))
+
+        cmds.append(DrawLine(
+            0, self.bottom + self.padding, WIDTH,
+            self.bottom + self.padding, "black", 1))
+
+        return cmds
+
+    def click(self, x, y):
+        if intersects(x, y, self.plus_bounds()):
+            self.browser.load(URL("https://browser.engineering/"))
+        elif intersects(x, y, self.backbutton_bounds()):
+            self.browser.tabs[self.browser.active_tab].go_back()
+        elif intersects(x, y, self.addressbar_bounds()):
+            self.browser.focus = "address bar"
+            self.browser.address_bar = ""
+        else:
+            for i, tab in enumerate(self.browser.tabs):
+                if intersects(x, y, self.tab_bounds(i)):
+                    self.browser.active_tab = i
+                    break
+            self.browser.raster_tab()
+
+
 @wbetools.patch(Browser)
 class Browser:
     def __init__(self):
-        self.init_chrome()
+        self.chrome = Chrome(self)
 
         self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
             sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
@@ -400,7 +519,7 @@ class Browser:
             WIDTH, HEIGHT,
             ct=skia.kRGBA_8888_ColorType,
             at=skia.kUnpremul_AlphaType))
-        self.chrome_surface = skia.Surface(WIDTH, self.chrome_bottom)
+        self.chrome_surface = skia.Surface(WIDTH, self.chrome.bottom)
         self.tab_surface = None
 
         self.tabs = []
@@ -419,43 +538,22 @@ class Browser:
             self.BLUE_MASK = 0x00ff0000
             self.ALPHA_MASK = 0xff000000
 
-    def init_chrome(self):
-        self.chrome_font = get_font(20, "normal", "roman")
-        chrome_font_height = linespace(self.chrome_font)
-
-        self.padding = 5
-        self.tab_header_bottom = chrome_font_height + 2 * self.padding
-        self.addressbar_top = self.tab_header_bottom + self.padding
-        self.chrome_bottom = \
-            math.ceil(
-                self.addressbar_top + chrome_font_height + 2 * self.padding)
-
     def handle_down(self):
         self.tabs[self.active_tab].scrolldown()
         self.draw()
 
     def handle_click(self, e):
-        if e.y < self.chrome_bottom:
+        if e.y < self.chrome.bottom:
             self.focus = None
-            if intersects(e.x, e.y, self.plus_bounds()):
-                self.load(URL("https://browser.engineering/"))
-            elif intersects(e.x, e.y, self.backbutton_bounds()):
-                self.tabs[self.active_tab].go_back()
-            elif intersects(e.x, e.y, self.addressbar_bounds()):
-                self.focus = "address bar"
-                self.address_bar = ""
-            else:
-                for i, tab in enumerate(self.tabs):
-                    if intersects(e.x, e.y, self.tab_bounds(i)):
-                        self.active_tab = i
-                        break
-                self.raster_tab()
+            self.chrome.click(e.x, e.y)
             self.raster_chrome()
         else:
             if self.focus != "content":
+                self.focus = "content"
                 self.raster_chrome()
-            self.focus = "content"
-            self.tabs[self.active_tab].click(e.x, e.y - self.chrome_bottom)
+            else:
+                self.focus = "content"
+            self.tabs[self.active_tab].click(e.x, e.y - self.chrome.bottom)
             self.raster_tab()
         self.draw()
 
@@ -478,7 +576,7 @@ class Browser:
             self.draw()
 
     def load(self, url):
-        new_tab = Tab(self.chrome_bottom)
+        new_tab = Tab(self.chrome.bottom)
         new_tab.load(url)
         self.active_tab = len(self.tabs)
         self.tabs.append(new_tab)
@@ -498,114 +596,26 @@ class Browser:
         canvas.clear(skia.ColorWHITE)
         active_tab.raster(canvas)
 
-    def plus_bounds(self):
-        plus_width = self.chrome_font.measureText("+")
-        return (self.padding, self.padding,
-            plus_width + self.padding, self.tab_header_bottom - self.padding)
-
-    def tab_bounds(self, i):
-        tab_start_x = self.chrome_font.measureText("+") + \
-            self.padding + self.padding
-
-        tab_width = self.chrome_font.measureText("Tab 1") + 2 * self.padding
-
-        return (tab_start_x + tab_width * i, self.padding,
-            tab_start_x + tab_width + tab_width * i, self.tab_header_bottom)
-
-    def backbutton_bounds(self):
-        backbutton_width = self.chrome_font.measureText("<")
-        return (self.padding, self.addressbar_top,
-            self.padding + backbutton_width, self.chrome_bottom - self.padding)
-
-    def paint_chrome(self):
-        cmds = []
-        cmds.append(DrawRect(0, 0, WIDTH, self.chrome_bottom, "white"))
-
-        (plus_left, plus_top, plus_right, plus_bottom) = self.plus_bounds()
-        cmds.append(DrawOutline(
-            plus_left, plus_top, plus_right, plus_bottom, "black", 1))
-        cmds.append(DrawText(
-            plus_left, plus_top, "+", self.chrome_font, "black"))
-
-        for i, tab in enumerate(self.tabs):
-            name = "Tab {}".format(i)
-            (tab_left, tab_top, tab_right, tab_bottom) = self.tab_bounds(i)
-
-            cmds.append(DrawLine(
-                tab_left, 0,tab_left, tab_bottom, "black", 1))
-            cmds.append(DrawLine(
-                tab_right, 0, tab_right, tab_bottom, "black", 1))
-            cmds.append(DrawText(
-                tab_left + self.padding, tab_top,
-                name, self.chrome_font, "black"))
-            if i == self.active_tab:
-                cmds.append(DrawLine(
-                    0, tab_bottom, tab_left, tab_bottom, "black", 1))
-                cmds.append(DrawLine(
-                    tab_right, tab_bottom, WIDTH, tab_bottom, "black", 1))
-
-        backbutton_width = self.chrome_font.measureText("<")
-        (backbutton_left, backbutton_top, backbutton_right, backbutton_bottom) = \
-            self.backbutton_bounds()
-        cmds.append(DrawOutline(
-            backbutton_left, backbutton_top,
-            backbutton_right, backbutton_bottom,
-            "black", 1))
-        cmds.append(DrawText(
-            backbutton_left, backbutton_top + self.padding,
-            "<", self.chrome_font, "black"))
-
-        (addressbar_left, addressbar_top, \
-            addressbar_right, addressbar_bottom) = \
-            self.addressbar_bounds()
-
-        cmds.append(DrawOutline(
-            addressbar_left, addressbar_top, addressbar_right,
-            addressbar_bottom, "black", 1))
-        left_bar = addressbar_left + self.padding
-        top_bar = addressbar_top + self.padding
-        if self.focus == "address bar":
-            cmds.append(DrawText(
-                left_bar, top_bar,
-                self.address_bar, self.chrome_font, "black"))
-            w = self.chrome_font.measureText(self.address_bar)
-            cmds.append(DrawLine(
-                left_bar + w, top_bar,
-                left_bar + w,
-                self.chrome_bottom - self.padding, "red", 1))
-        else:
-            url = str(self.tabs[self.active_tab].url)
-            cmds.append(DrawText(
-                left_bar,
-                top_bar,
-                url, self.chrome_font, "black"))
-
-        cmds.append(DrawLine(
-            0, self.chrome_bottom + self.padding, WIDTH,
-            self.chrome_bottom + self.padding, "black", 1))
-
-        return cmds
-
     def raster_chrome(self):
         canvas = self.chrome_surface.getCanvas()
         canvas.clear(skia.ColorWHITE)
 
-        for cmd in self.paint_chrome():
+        for cmd in self.chrome.paint():
             cmd.execute(canvas)
 
     def draw(self):
         canvas = self.root_surface.getCanvas()
         canvas.clear(skia.ColorWHITE)
         
-        tab_rect = skia.Rect.MakeLTRB(0, self.chrome_bottom, WIDTH, HEIGHT)
-        tab_offset = self.chrome_bottom - self.tabs[self.active_tab].scroll
+        tab_rect = skia.Rect.MakeLTRB(0, self.chrome.bottom, WIDTH, HEIGHT)
+        tab_offset = self.chrome.bottom - self.tabs[self.active_tab].scroll
         canvas.save()
         canvas.clipRect(tab_rect)
         canvas.translate(0, tab_offset)
         self.tab_surface.draw(canvas, 0, 0)
         canvas.restore()
 
-        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, self.chrome_bottom)
+        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, self.chrome.bottom)
         canvas.save()
         canvas.clipRect(chrome_rect)
         self.chrome_surface.draw(canvas, 0, 0)
