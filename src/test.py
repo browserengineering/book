@@ -192,6 +192,12 @@ class TkFont:
 
 tkinter.font.Font = TkFont
 
+class TkLabel:
+    def __init__(self, font):
+        pass
+
+tkinter.Label = TkLabel
+
 def breakpoint(name, *args):
     args_str = (", " + ", ".join(["'{}'".format(arg) for arg in args]) if args else "")
     print("breakpoint(name='{}'{})".format(name, args_str))

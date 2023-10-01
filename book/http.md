@@ -88,9 +88,19 @@ now talk to `example.org`.
 ::: {.further}
 The syntax of URLs is defined in [RFC
 3987](https://tools.ietf.org/html/rfc3986), which is pretty readable.
-Try to implement the full URL standard, including encodings for reserved
-characters.
+Its first author is Tim Berners-Lee (no surprise, as he is the creator of the
+web). The second author is Roy Fielding, one of the key contributors to the
+design of URLs and HTTP. Fielding is also well-known for identifying
+the architecure of the web, and coining the term REST to name this architecture.
+REST is defined in Fielding's [PhD thesis][rest-thesis], and is characterized
+by its key properties that allowed the web to grow in a decentralized way.
+Since then, the concept of a "RESTful API" has come into being, as a way to
+describe whether other networked APIs follow the definition of REST (though
+there does seem to be [some confusion][what-is-rest] about it).
 :::
+
+[rest-thesis]: https://ics.uci.edu/~fielding/pubs/dissertation/fielding_dissertation_2up.pdf
+[what-is-rest]: https://twobithistory.org/2020/06/28/rest.html
 
 Requesting information
 ======================
@@ -154,7 +164,22 @@ The HTTP/1.0 standard is also known as [RFC
 1945](https://tools.ietf.org/html/rfc1945). The HTTP/1.1 standard is
 [RFC 2616](https://tools.ietf.org/html/rfc2616), so if you're
 interested in `Connection` and keep-alive, look there.
+
+HTTP was designed to be as simple as possible to understand and implement,
+so that it would be easy for any kind of computer to adopt it.
+It's no coincidence that it's easy to type HTTP commands into `telnet`,
+or that it's so easy to write the HTTP code for our toy browser.
+
+HTTP is also a "line-based protocol", where one side talks to the other by
+way of lines of text separated by newline characters. This design did not
+start with HTTP; other Internet protocols like [SMTP] (for email) are like this.
+Ultimately, the whole pattern derives from how the original computers only
+had line-based text input. In fact, one of the first two browsers implemented
+had a [line mode UI][line-mode].
 :::
+
+[SMTP]: https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol
+[line-mode]: https://en.wikipedia.org/wiki/Line_Mode_Browser
 
 The server's response
 =====================
@@ -228,7 +253,19 @@ Let's now switch gears from manual connections to Python.
 Many common (and uncommon) HTTP headers are described
 [on
 Wikipedia](https://en.wikipedia.org/wiki/List_of_HTTP_header_fields).
+
+Some of the HTTP response codes that were originally designed were never used.
+One interesting one is response code [402], meaning "payment required".
+According to MDN, this code was intended to be used for "digital cash or
+(micro) payment systems". While we all know that e-commerce is alive and well
+on the web without the use of response code 402, [micropayments] have not
+(yet?) gained much traction, even though many people (including me!) think
+they are a good idea.
 :::
+
+[402]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/402
+
+[micropayments]: https://en.wikipedia.org/wiki/Micropayment
 
 Telnet in Python
 ================
@@ -366,8 +403,14 @@ numbers of arguments.
 ::: {.further}
 You can find out more about the "sockets" API on
 [Wikipedia](https://en.wikipedia.org/wiki/Berkeley_sockets). Python
-more or less implements that API directly.
+more or less implements that API directly. Many sockets
+implementations derive from the original
+"Berkeley sockets" code from the BSD Unix distribution in 1983.
+In particular, macOS and iOS [still use][mac-bsd] large amounts of
+code that descended from this original code base.
 :::
+
+[mac-bsd]: https://developer.apple.com/library/archive/documentation/Darwin/Conceptual/KernelProgramming/BSD/BSD.html
 
 Request and response
 ====================
@@ -620,6 +663,15 @@ Try running this code on the URL `http://example.org/`:
 
 You should see some short text welcoming you to the official example
 web page. You can also try using it on this chapter!
+
+::: {.further}
+HTML, just like URLs and HTTP, is designed to be very easy to parse and
+display at a basic level. And in the beginning, there were very few features
+of HTML, so it was possible to code up something not so much more fancy than
+what you see here, yet still display the content in a usable way. Even our
+super simple and basic HTML parser can already print out the text of the
+`browser.engineering` website.
+:::
 
 Encrypted connections
 =====================
