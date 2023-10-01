@@ -87,7 +87,7 @@ Testing form submission
 
 Forms are submitted via a click on the submit button.
 
-    >>> browser.handle_click(test.Event(20, 55 + browser.chrome_bottom))
+    >>> browser.handle_click(test.Event(20, 55 + browser.chrome.bottom))
     >>> lab8.print_tree(browser.tabs[0].document.node)
      <html>
        <body>

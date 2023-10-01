@@ -18,7 +18,7 @@ from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import DrawText, URL, tree_to_list
 from lab7 import DrawLine, DrawOutline, BlockLayout, LineLayout, TextLayout
-from lab7 import Tab, Browser, intersects
+from lab7 import Tab, Browser, Chrome, intersects
 
 @wbetools.patch(Element)
 class Element:
@@ -326,27 +326,15 @@ class Browser:
         self.active_tab = None
         self.focus = None
         self.address_bar = ""
-
-        self.init_chrome()
+        self.chrome = Chrome(self)
 
     def handle_click(self, e):
-        if e.y < self.chrome_bottom:
+        if e.y < self.chrome.bottom:
             self.focus = None
-            if intersects(e.x, e.y, self.plus_bounds()):
-                self.load(URL("https://browser.engineering/"))
-            elif intersects(e.x, e.y, self.backbutton_bounds()):
-                self.tabs[self.active_tab].go_back()
-            elif intersects(e.x, e.y, self.addressbar_bounds()):
-                self.focus = "address bar"
-                self.address_bar = ""
-            else:
-                for i, tab in enumerate(self.tabs):
-                    if intersects(e.x, e.y, self.tab_bounds(i)):
-                        self.active_tab = i
-                        break
+            self.chrome.click(e.x, e.y)
         else:
             self.focus = "content"
-            self.tabs[self.active_tab].click(e.x, e.y - self.chrome_bottom)
+            self.tabs[self.active_tab].click(e.x, e.y - self.chrome.bottom)
         self.draw()
 
     def handle_key(self, e):

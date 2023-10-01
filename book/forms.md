@@ -414,7 +414,7 @@ page, not the browser interface:
 ``` {.python}
 class Browser:
     def handle_click(self, e):
-        if e.y < self.chrome_bottom:
+        if e.y < self.chrome.bottom:
             self.focus = None
             # ...
         else:
