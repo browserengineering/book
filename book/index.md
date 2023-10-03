@@ -52,7 +52,7 @@ Part 2: Viewing Documents
 4. [Constructing a Document Tree](html.md)\
     Parsing and fixing HTML
 5. [Laying Out Pages](layout.md)\
-    Inline and block layout, plus the box model
+    Inline and block layout
 6. [Applying Author Styles](styles.md)\
     Parsing and applying CSS
 7. [Handling Buttons and Links](chrome.md)\
