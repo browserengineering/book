@@ -1360,16 +1360,16 @@ keypress such as `Ctrl+N`.
 object. While it doesn't have a whole lot of logic in it, there is special
 logic for `Text` objects and `a` tags. Real browsers have many more special
 kinds of nodes, plus more complicated layout, so they tend to implement this
-logic directly on the layout tree.^[And they also use this logic for more than
-just clicking. The more general task of determining which objects on screen
-overlap a given point or region is called *hit testing*---by analogy with
+logic directly on the layout tree.^[Real browsers call this logic *hit testing*,
+because it's used for more than just clicking. The name comes from thinking
 whether an arrow shot at that location would "hit" the object.] Implement
 `click` on the layout tree.
 
 *Hit testing on the display list*: Hit testing can be thought of as a "reversed"
-version of `paint`, since it looks at the elements front-to-back in paint order,
-as opposed to back-to-front. Building on this observation, we could also create
-a special display list that represents hit testing information, or build all
+version of `paint`: `paint` turns elements into pixels,
+while hit testing turns pixels into elements. Plus, it looks
+at the elements front-to-back in paint order,
+as opposed to back-to-front. Building on this observation, we could build all
 of the necessary information for hit testing directly into the display list
 instead of the layout tree. Implement one of these.^[You might want to implement
 hit testing in this way in a browser because display lists are pure data

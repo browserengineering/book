@@ -1765,7 +1765,7 @@ other scrollable elements.
 
  [overflow-doc]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Flow_Layout/Flow_Layout_and_Overflow
 
-*Touch input*: Many desktop (and all mobile, of course) screensn these
+*Touch input*: Many desktop (and all mobile, of course) screens these
 days support touch and multitouch input. And SDL has [APIs][sdl-touch]
 to support it. Implement a touch-input variant of `click`.^[You might want
 to go back and look at a go-further block in [Chapter 7](chrome.md) for some
