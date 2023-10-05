@@ -767,7 +767,7 @@ the chrome height accordingly.
 For our design, the chrome's height should be the vertical
 height of those two lines plus some padding between and after them. For
 convenience, and to use them later for processing mouse clicks, I'll store
-these parameters on the `Browser` object:^[I also chose `20px` as the
+these parameters on the `Chrome` object:^[I also chose `20px` as the
 font size. Depending on your computer, this may end up looking smaller,
 \index{device pixel ratio}
 because of the device pixel ratio of the screen.]
@@ -1357,8 +1357,8 @@ windows and canvases and grouping tabs by their containing window.
 You'll also need some way to create a new window, perhaps with a
 keypress such as `Ctrl+N`.
 
-*Reusing HTML*: Browser chrome is quite complicated in real browsers, and even
-their layouts contain a lot of details, such as font sizes, padding, outlines,
+*Reusing HTML*: Browser chrome is quite complicated in real browsers,
+with tricky details such as font sizes, padding, outlines,
 shadows, icons and so on. This makes it tempting to try to reuse our
 implementation of those features for web pages---imagine replacing the
 contents of `paint_chrome` with a call to paint some HTML instead that
