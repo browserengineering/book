@@ -133,6 +133,9 @@ LIBRARY_METHODS = [
     "readline",
     "read",
     "close",
+    
+    # files
+    "write",
 
     # tkinter
     "pack",
@@ -421,9 +424,11 @@ def compile_function(name, args, ctx):
         assert len(args) == 1
         return args_js[0] + ".toString()"
     elif name == "open":
-        assert len(args) == 1
         assert isinstance(args[0], ast.Str)
-        FILES.append(args[0].s)
+        if len(args) == 1:
+            FILES.append(args[0].s)
+        else:
+            assert isinstance(args[1], ast.Str)
         return "filesystem.open(" + args_js[0] + ")"
     elif name == "enumerate":
         assert len(args) == 1

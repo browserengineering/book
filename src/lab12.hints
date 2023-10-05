@@ -5,7 +5,6 @@
  {"code": "'content-security-policy' in headers", "type": "dict"},
  {"code": "b'Browser'", "js": "'Browser'"},
  {"code": "print", "js": "console.log"},
- {"code": "'Time in {} on average: {:>.0f}ms'.format(self.name, avg * 1000)", "js": "('')"},
  {"code": "self.task_code(*self.args)", "js": "await this.task_code(this.args)"},
  {"code": "run_callback", "js": "await run_callback()"},
  {"code": "run_load()", "js": "await run_load()"},
