@@ -758,7 +758,7 @@ Now let's design the browser chrome. I think it should have the following:
 * Underneath, the URL of of the current web page, and a "`<`" button to
   represent the browser back-button.
 
-We'll need reserve some space for all this at the top of the window. But how much?
+We'll need to reserve some space for all this at the top of the window. But how much?
 One way could be to pick some arbitrary browser chrome height, then try to
 squeeze the chrome into it (and making its font smaller as necessary). Another,
 better way, is to pick a font size that is easy enough to read, then compute
