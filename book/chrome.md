@@ -693,8 +693,8 @@ Now let's turn our attention to designing the UI.
 
 First, there are still sometimes going to be halves of letters that stick out
 into the browser chrome, but we can hide them by just drawing over
-them. Here I'm assuming we've already computed `self.bottom` (representing
-the bottom y coordinate of the browser chrome); that will
+them. Here I'm assuming we've already computed `self.bottom`
+(representing the bottom y coordinate of the browser chrome); that will
 come in a moment:
 
 ``` {.python}
