@@ -635,7 +635,7 @@ need to run `render`, let's call our dirty bit `needs_render`:
 
 ``` {.python}
 class Tab:
-    def __init__(self, browser, chrome_bottom):
+    def __init__(self, browser, tab_height):
         # ...
         self.needs_render = False
 
@@ -744,7 +744,7 @@ constructed:
 ``` {.python}
 class Browser:
     def load(self, url):
-        new_tab = Tab(self, self.chrome.bottom)
+        new_tab = Tab(self, HEIGHT - self.chrome.bottom)
         # ...
 ```
 
@@ -1212,7 +1212,7 @@ class Browser:
 Event handlers are mostly similar, except that we need to be careful
 to distinguish events that affect the browser chrome from those that
 affect the tab. For example, consider `handle_click`. If the user
-clicked on the browser chrome (meaning `e.y < self.chrome_bottom`), we can
+clicked on the browser chrome (meaning `e.y < self.chrome.bottom`), we can
 handle it right there in the browser thread. But if the user clicked
 on the web page, we must schedule a task on the main thread:
 
@@ -1295,7 +1295,7 @@ and move `__runRAFHandlers` there too:
 
 ``` {.python replace=self.scroll%2c/scroll%2c,(self)/(self%2c%20scroll)}
 class Tab:
-    def __init__(self, browser, chrome_bottom):
+    def __init__(self, browser, tab_height):
         # ...
         self.browser = browser
 
@@ -1476,9 +1476,9 @@ Let's implement that. To start, we'll need to store a `scroll`
 variable on the `Browser`, and update it when the user scrolls:
 
 ``` {.python}
-def clamp_scroll(scroll, tab_height, chrome_bottom):
+def clamp_scroll(scroll, document_height, tab_height):
     return max(0, min(
-        scroll, tab_height - (HEIGHT - chrome_bottom)))
+        scroll, document_height - tab_height))
 
 class Browser:
     def __init__(self):
@@ -1493,7 +1493,7 @@ class Browser:
         scroll = clamp_scroll(
             self.scroll + SCROLL_STEP,
             self.active_tab_height,
-            self.chrome.bottom)
+            HEIGHT - self.chrome.bottom)
         self.scroll = scroll
         self.set_needs_raster_and_draw()
         self.needs_animation_frame = True
@@ -1563,7 +1563,7 @@ concurrency and distributed state.
 
 ``` {.python}
 class Tab:
-    def __init__(self, browser, chrome_bottom):
+    def __init__(self, browser, tab_height):
         # ...
         self.scroll_changed_in_tab = False
 
@@ -1586,7 +1586,7 @@ class Tab:
         # ...
         document_height = math.ceil(self.document.height)
         clamped_scroll = clamp_scroll(
-            self.scroll, document_height, self.chrome_bottom)
+            self.scroll, document_height, self.tab_height)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
         self.scroll = clamped_scroll

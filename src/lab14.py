@@ -890,9 +890,9 @@ class CommitData:
         self.focus = focus
 
 class Tab:
-    def __init__(self, browser, chrome_bottom):
+    def __init__(self, browser, tab_height):
         self.history = []
-        self.chrome_bottom = chrome_bottom
+        self.tab_height = tab_height
         self.focus = None
         self.needs_focus_scroll = False
         self.url = None
@@ -1023,7 +1023,7 @@ class Tab:
 
         document_height = math.ceil(self.document.height)
         clamped_scroll = clamp_scroll(
-            self.scroll, document_height, self.chrome_bottom)
+            self.scroll, document_height, self.tab_height)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
         self.scroll = clamped_scroll
@@ -1119,13 +1119,13 @@ class Tab:
         if not objs: return
         obj = objs[0]
 
-        content_height = HEIGHT - self.chrome_bottom
-        if self.scroll < obj.y < self.scroll + content_height:
+        if self.scroll < obj.y < self.scroll + self.tab_height:
             return
 
         document_height = math.ceil(self.document.height)
         new_scroll = obj.y - SCROLL_STEP
-        self.scroll = clamp_scroll(new_scroll, document_height)
+        self.scroll = clamp_scroll(
+            new_scroll, document_height, self.tab_height)
         self.scroll_changed_in_tab = True
 
     def click(self, x, y):
@@ -1627,7 +1627,7 @@ class Browser:
         scroll = clamp_scroll(
             self.scroll + SCROLL_STEP,
             self.active_tab_height,
-            self.chrome.bottom)
+            HEIGHT - self.chrome.bottom)
         self.scroll = scroll
         self.set_needs_draw()
         self.needs_animation_frame = True
@@ -1799,7 +1799,7 @@ class Browser:
         self.lock.release()
 
     def load_internal(self, url):
-        new_tab = Tab(self, self.chrome.bottom)
+        new_tab = Tab(self, HEIGHT -self.chrome.bottom)
         self.tabs.append(new_tab)
         self.set_active_tab(len(self.tabs) - 1)
         self.schedule_load(url)

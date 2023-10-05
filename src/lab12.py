@@ -137,15 +137,15 @@ class JSContext:
     def requestAnimationFrame(self):
         self.tab.browser.set_needs_animation_frame(self.tab)
 
-def clamp_scroll(scroll, tab_height, chrome_bottom):
+def clamp_scroll(scroll, document_height, tab_height):
     return max(0, min(
-        scroll, tab_height - (HEIGHT - chrome_bottom)))
+        scroll, document_height - tab_height))
 
 @wbetools.patch(Tab)
 class Tab:
-    def __init__(self, browser, chrome_bottom):
+    def __init__(self, browser, tab_height):
         self.history = []
-        self.chrome_bottom = chrome_bottom
+        self.tab_height = tab_height
         self.focus = None
         self.url = None
         self.scroll = 0
@@ -228,7 +228,7 @@ class Tab:
 
         document_height = math.ceil(self.document.height)
         clamped_scroll = clamp_scroll(
-            self.scroll, document_height, self.chrome_bottom)
+            self.scroll, document_height, self.tab_height)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
         if clamped_scroll != self.scroll:
@@ -519,7 +519,7 @@ class Browser:
         scroll = clamp_scroll(
             self.scroll + SCROLL_STEP,
             self.active_tab_height,
-            self.chrome.bottom)
+            HEIGHT - self.chrome.bottom)
         self.scroll = scroll
         self.set_needs_raster_and_draw()
         self.needs_animation_frame = True
@@ -581,7 +581,7 @@ class Browser:
         self.lock.release()
 
     def load_internal(self, url):
-        new_tab = Tab(self, self.chrome.bottom)
+        new_tab = Tab(self, HEIGHT - self.chrome.bottom)
         self.set_active_tab(len(self.tabs))
         self.tabs.append(new_tab)
         self.schedule_load(url)

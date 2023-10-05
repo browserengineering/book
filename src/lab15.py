@@ -1440,9 +1440,9 @@ class CommitData:
 
 
 class Tab:
-    def __init__(self, browser, chrome_bottom):
+    def __init__(self, browser, tab_height):
         self.url = ""
-        self.chrome_bottom = chrome_bottom
+        self.tab_height = tab_height
         self.history = []
         self.focus = None
         self.focused_frame = None
@@ -1477,7 +1477,7 @@ class Tab:
         self.root_frame = Frame(self, None, None)
         self.root_frame.load(url, body)
         self.root_frame.frame_width = WIDTH
-        self.root_frame.frame_height = HEIGHT - self.chrome_bottom
+        self.root_frame.frame_height = self.tab_height
 
     def get_js(self, origin):
         if wbetools.FORCE_CROSS_ORIGIN_IFRAMES:
@@ -2213,7 +2213,7 @@ class Browser:
         self.lock.release()
 
     def load_internal(self, url):
-        new_tab = Tab(self, self.chrome.bottom)
+        new_tab = Tab(self, HEIGHT - self.chrome.bottom)
         self.tabs.append(new_tab)
         self.set_active_tab(len(self.tabs) - 1)
         self.schedule_load(url)

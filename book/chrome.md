@@ -447,7 +447,7 @@ elif elt.tag == "a" and "href" in elt.attributes:
 Note that when a link has a relative URL, that URL is resolved
 relative to the current page, so store the current URL in `load`:
 
-``` {.python replace=Browser/Tab,self)/self%2c%20chrome_bottom)}
+``` {.python replace=Browser/Tab,self)/self%2c%20tab_height)}
 class Browser:
     def __init__(self):
         # ...
@@ -499,7 +499,7 @@ the active tab.
 Since the `Tab` class is responsible for layout, styling, and
 painting, the default style sheet moves to the `Tab` constructor:
 
-``` {.python replace=browser.css/browser6.css,self)/self%2c%20chrome_bottom)}
+``` {.python replace=browser.css/browser6.css,self)/self%2c%20tab_height)}
 class Tab:
     def __init__(self):
         with open("browser.css") as f:
@@ -518,7 +518,7 @@ argument:
 
 [^unless-windows]: Unless the browser implements multiple windows, of course.
 
-``` {.python}
+``` {.python replace=canvas/canvas%2c%20offset}
 class Tab:
     def draw(self, canvas):
         # ...
@@ -571,7 +571,7 @@ You'll need to tweak the `Tab`'s `scrolldown` and `click` methods:
 
 Finally, the `Browser`'s `draw` call also calls into the active tab:
 
-``` {.python}
+``` {.python replace=canvas)/canvas%2c%20self.chrome.bottom)}
 class Browser:
     def draw(self):
         self.canvas.delete("all")
@@ -585,7 +585,7 @@ We're basically done splitting `Tab` from `Browser`, and after a
 refactor like this we need to test things. To do that, we'll need to
 create at least one tab, like this:
 
-``` {.python replace=Tab()/Tab(self.chrome.bottom)}
+``` {.python replace=Tab()/Tab(HEIGHT%20-%20self.chrome.bottom)}
 class Browser:
     def load(self, url):
         new_tab = Tab()
@@ -665,26 +665,28 @@ browser window where the browser chrome is. Browser chrome is at the top of the
 window, with tab contents below it. So we need to figure out how tall
 the browser chrome is, to know how much to shrink the available tab area.
 We don't know that yet without computing it as part of designing
-the UI of the browser chrome, but we do know it will be a number we can
-pass to each `Tab`:
+the UI of the browser chrome, but we do know it will determien the `tab_height`
+we can pass to each `Tab`:
 
 ``` {.python}
 class Tab:
-    def __init__(self, chrome_bottom):
+    def __init__(self, tab_height):
         ...
-        self.chrome_bottom = chrome_bottom
+        self.tab_height = tab_height
 ```
 
-Each tab needs to make sure not to draw to those pixels:
+Each tab needs to make sure not to draw to those pixels. We need to pass an
+extra `offset` parameter to account for the (still to be determined) browser
+chrome height.
 
 ``` {.python}
 class Tab:
-    def draw(self, canvas):
+    def draw(self, canvas, offset):
         for cmd in self.display_list:
-            if cmd.top > self.scroll + HEIGHT - self.chrome_bottom:
+            if cmd.top > self.scroll + self.tab_height:
                 continue
             if cmd.bottom < self.scroll: continue
-            cmd.execute(self.scroll - self.chrome_bottom, canvas)
+            cmd.execute(self.scroll - offset, canvas)
 ```
 
 Now let's turn our attention to designing the UI.
@@ -705,13 +707,13 @@ class Chrome:
 ```
 
 You'll also need to adjust `scrolldown` to account for the height of
-the page content now being `HEIGHT - self.bottom`:
+the page content now being `tab_height`:
 
 ``` {.python}
 class Tab:
     def scrolldown(self):
         max_y = max(
-            self.document.height - (HEIGHT - self.chrome_bottom), 0)
+            self.document.height - self.tab_height, 0)
         self.scroll = min(self.scroll + SCROLL_STEP, max_y)
 ```
 
@@ -1046,7 +1048,7 @@ which pages it's visited before:
 
 ``` {.python}
 class Tab:
-    def __init__(self, chrome_bottom):
+    def __init__(self, tab_height):
         # ...
         self.history = []
 ```

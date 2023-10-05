@@ -577,7 +577,7 @@ class Browser:
             self.draw()
 
     def load(self, url):
-        new_tab = Tab(self.chrome.bottom)
+        new_tab = Tab(HEIGHT - self.chrome.bottom)
         new_tab.load(url)
         self.active_tab = len(self.tabs)
         self.tabs.append(new_tab)

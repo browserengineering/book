@@ -232,10 +232,10 @@ class DrawOutline:
             self.color, self.thickness)
 
 class Tab:
-    def __init__(self, chrome_bottom):
+    def __init__(self, tab_height):
         self.url = None
         self.history = []
-        self.chrome_bottom = chrome_bottom
+        self.tab_height = tab_height
 
         with open("browser6.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
@@ -267,16 +267,16 @@ class Tab:
         self.display_list = []
         self.document.paint(self.display_list)
 
-    def draw(self, canvas):
+    def draw(self, canvas, offset):
         for cmd in self.display_list:
-            if cmd.top > self.scroll + HEIGHT - self.chrome_bottom:
+            if cmd.top > self.scroll + self.tab_height:
                 continue
             if cmd.bottom < self.scroll: continue
-            cmd.execute(self.scroll - self.chrome_bottom, canvas)
+            cmd.execute(self.scroll - offset, canvas)
 
     def scrolldown(self):
         max_y = max(
-            self.document.height - (HEIGHT - self.chrome_bottom), 0)
+            self.document.height - self.tab_height, 0)
         self.scroll = min(self.scroll + SCROLL_STEP, max_y)
 
     def click(self, x, y):
@@ -489,7 +489,7 @@ class Browser:
             self.draw()
 
     def load(self, url):
-        new_tab = Tab(self.chrome.bottom)
+        new_tab = Tab(HEIGHT - self.chrome.bottom)
         new_tab.load(url)
         self.active_tab = len(self.tabs)
         self.tabs.append(new_tab)
@@ -497,7 +497,7 @@ class Browser:
 
     def draw(self):
         self.canvas.delete("all")
-        self.tabs[self.active_tab].draw(self.canvas)
+        self.tabs[self.active_tab].draw(self.canvas, self.chrome.bottom)
         for cmd in self.chrome.paint():
             cmd.execute(0, self.canvas)
 

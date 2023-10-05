@@ -215,7 +215,7 @@ usually triggered by a global OS setting.
 
 ``` {.python}
 class Tab:
-    def __init__(self, browser, chrome_bottom):
+    def __init__(self, browser, tab_height):
     	# ...
     	self.zoom = 1
 
@@ -506,7 +506,7 @@ And in `Tab`:
 
 ``` {.python}
 class Tab:
-    def __init__(self, browser, chrome_bottom):
+    def __init__(self, browser, tab_height):
         # ...
         self.dark_mode = browser.dark_mode
 
@@ -1123,7 +1123,7 @@ we'll set a new `needs_focus_scroll` bit on `Tab`:
 
 ``` {.python}
 class Tab:
-    def __init__(self, browser, chrome_bottom):
+    def __init__(self, browser, tab_height):
         # ...
         self.needs_focus_scroll = False
 
@@ -1166,8 +1166,7 @@ class Tab:
     def scroll_to(self, elt):
         # ...
 
-        content_height = HEIGHT - self.chrome_bottom
-        if self.scroll < obj.y < self.scroll + content_height:
+        if self.scroll < obj.y < self.scroll + self.tab_height:
             return
 
         document_height = math.ceil(self.document.height)
@@ -1466,7 +1465,7 @@ rendering phase just after layout:
 
 ``` {.python}
 class Tab:
-    def __init__(self, browser, chrome_bottom):
+    def __init__(self, browser, tab_height):
         # ...
         self.needs_accessibility = False
         self.accessibility_tree = None

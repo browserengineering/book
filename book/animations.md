@@ -1194,7 +1194,7 @@ cases that just require style and paint, or other combinations.]
 
 ``` {.python}
 class Tab:
-    def __init__(self, browser, chrome_bottom):
+    def __init__(self, browser, tab_height):
         # ...
         self.needs_style = False
         self.needs_layout = False

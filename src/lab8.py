@@ -210,11 +210,11 @@ class BlockLayout:
 
 @wbetools.patch(Tab)
 class Tab:
-    def __init__(self, chrome_bottom):
+    def __init__(self, tab_height):
         self.history = []
         self.url = None
         self.focus = None
-        self.chrome_bottom = chrome_bottom
+        self.tab_height = tab_height
  
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
@@ -248,11 +248,11 @@ class Tab:
         self.display_list = []
         self.document.paint(self.display_list)
 
-    def draw(self, canvas):
+    def draw(self, canvas, offset):
         for cmd in self.display_list:
-            if cmd.top > self.scroll + HEIGHT - self.chrome_bottom: continue
+            if cmd.top > self.scroll + self.tab_height: continue
             if cmd.bottom < self.scroll: continue
-            cmd.execute(self.scroll - self.chrome_bottom, canvas)
+            cmd.execute(self.scroll - offset, canvas)
 
     def click(self, x, y):
         self.focus = None
