@@ -1356,6 +1356,26 @@ windows and canvases and grouping tabs by their containing window.
 You'll also need some way to create a new window, perhaps with a
 keypress such as `Ctrl+N`.
 
+*Hit testing in layout*: The `click` method we implemented is on the `Tab`
+object. While it doesn't have a whole lot of logic in it, there is special
+logic for `Text` objects and `a` tags. Real browsers have many more special
+kinds of nodes, plus more complicated layout, so they tend to implement this
+logic directly on the layout tree.^[Real browsers call this logic *hit testing*,
+because it's used for more than just clicking. The name comes from thinking
+whether an arrow shot at that location would "hit" the object.] Implement
+`click` on the layout tree.
+
+*Hit testing on the display list*: Hit testing can be thought of as a "reversed"
+version of `paint`: `paint` turns elements into pixels,
+while hit testing turns pixels into elements. Plus, it looks
+at the elements front-to-back in paint order,
+as opposed to back-to-front. Building on this observation, we could build all
+of the necessary information for hit testing directly into the display list
+instead of the layout tree. Implement one of these.^[You might want to implement
+hit testing in this way in a browser because display lists are pure data
+structurs and therefore easier to optimize or execute in different
+threads.]
+
 *Reusing HTML*: Browser chrome is quite complicated in real browsers,
 with tricky details such as font sizes, padding, outlines,
 shadows, icons and so on. This makes it tempting to try to reuse our
