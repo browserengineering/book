@@ -215,7 +215,7 @@ usually triggered by a global OS setting.
 
 ``` {.python}
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, browser, tab_height):
     	# ...
     	self.zoom = 1
 
@@ -283,6 +283,7 @@ def device_px(css_px, zoom):
     return css_px * zoom
 ```
 
+\index{device pixel ratio}
 Think about `device_px` not as a simple helper method, but as a unit
 conversion from a *CSS pixel* (the units specified in a CSS declaration)
 to a *device pixel* (what's actually drawn on the screen). In a real
@@ -466,20 +467,20 @@ class Browser:
         # ...
 ```
 
-Similarly, in `paint_chrome`, we need to use the right foreground
+Similarly, in `paint` on `Chrome`, we need to use the right foreground
 color:
 
 ``` {.python}
-class Browser:
-    def paint_chrome(self):
-        if self.dark_mode:
+class Chrome:
+    def paint(self):
+        if self.browser.dark_mode:
             color = "white"
         else:
             color = "black"
 ```
 
 Then we just need to use `color` instead of `black` everywhere. Make
-that change in `paint_chrome`.[^more-colors]
+that change in `paint`.[^more-colors]
 
 [^more-colors]: Of course, a full-featured browser's chrome has many
     more buttons and colors to adjust than our browser's. Most
@@ -505,7 +506,7 @@ And in `Tab`:
 
 ``` {.python}
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, browser, tab_height):
         # ...
         self.dark_mode = browser.dark_mode
 
@@ -1122,7 +1123,7 @@ we'll set a new `needs_focus_scroll` bit on `Tab`:
 
 ``` {.python}
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, browser, tab_height):
         # ...
         self.needs_focus_scroll = False
 
@@ -1165,13 +1166,13 @@ class Tab:
     def scroll_to(self, elt):
         # ...
 
-        content_height = HEIGHT - CHROME_PX
-        if self.scroll < obj.y < self.scroll + content_height:
+        if self.scroll < obj.y < self.scroll + self.tab_height:
             return
 
         document_height = math.ceil(self.document.height)
         new_scroll = obj.y - SCROLL_STEP
-        self.scroll = clamp_scroll(new_scroll, document_height)
+        self.scroll = clamp_scroll(
+            new_scroll, document_height, self.tab_height)
         self.scroll_changed_in_tab = True
 ```
 
@@ -1465,7 +1466,7 @@ rendering phase just after layout:
 
 ``` {.python}
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, browser, tab_height):
         # ...
         self.needs_accessibility = False
         self.accessibility_tree = None
@@ -2150,7 +2151,7 @@ class Browser:
         if not self.accessibility_is_on or \
             not self.accessibility_tree:
             return
-        self.pending_hover = (event.x, event.y - CHROME_PX)
+        self.pending_hover = (event.x, event.y - self.chrome.bottom)
         self.set_needs_accessibility()
 ```
 

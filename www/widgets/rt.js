@@ -413,7 +413,8 @@ class math {
 
 class JSInterpreterError extends ExpectedError {
     constructor() {
-        super("This widget cannot work unless crossOriginIsolated is true.");
+        super("This widget cannot execute JavaScript due to sandboxing, " +
+             "but the book's Python code should work correctly.");
         this.name = "JSEnvironmentError."
     }
 }

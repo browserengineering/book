@@ -1500,7 +1500,7 @@ switching tabs.
 class Browser:
     def __init__(self):
         # ...
-        self.chrome_surface = skia.Surface(WIDTH, CHROME_PX)
+        self.chrome_surface = skia.Surface(WIDTH, self.chrome.bottom)
         self.tab_surface = None
 ```
 
@@ -1566,7 +1566,7 @@ the page's height changes.
 
 Next, we need new code in `draw` to copy from the chrome and tab
 surfaces to the root surface. Moreover, we need to translate the
-`tab_surface` down by `CHROME_PX` and up by `scroll`, and clips it to
+`tab_surface` down by `chrome_bottom` and up by `scroll`, and clips it to
 only the area of the window that doesn't overlap the browser chrome:
 
 ``` {.python}
@@ -1574,15 +1574,15 @@ class Browser:
     def draw(self):
         # ...
         
-        tab_rect = skia.Rect.MakeLTRB(0, CHROME_PX, WIDTH, HEIGHT)
-        tab_offset = CHROME_PX - self.tabs[self.active_tab].scroll
+        tab_rect = skia.Rect.MakeLTRB(0, self.chrome.bottom, WIDTH, HEIGHT)
+        tab_offset = self.chrome.bottom - self.tabs[self.active_tab].scroll
         canvas.save()
         canvas.clipRect(tab_rect)
         canvas.translate(0, tab_offset)
         self.tab_surface.draw(canvas, 0, 0)
         canvas.restore()
 
-        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, CHROME_PX)
+        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, self.chrome.bottom)
         canvas.save()
         canvas.clipRect(chrome_rect)
         self.chrome_surface.draw(canvas, 0, 0)
@@ -1598,7 +1598,7 @@ call either `raster_tab` or `raster_chrome` first. For example, in
 ``` {.python}
 class Browser:
     def handle_click(self, e):
-        if e.y < CHROME_PX:
+        if e.y < self.chrome.bottom:
             # ...
             self.raster_chrome()
         else:
@@ -1613,7 +1613,7 @@ call `raster_tab` at all, since scrolling doesn't change the page.
 
 We also have some related changes in `Tab`. First, we no longer need
 to pass around the scroll offset to the `execute` methods, or account
-for `CHROME_PX`, because we always draw the whole tab to the tab
+for `chrome_bottom`, because we always draw the whole tab to the tab
 surface:
 
 ``` {.python}
