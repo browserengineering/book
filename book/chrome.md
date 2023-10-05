@@ -750,7 +750,7 @@ class DrawLine:
         )
 ```
 
-Now let's figure out the browser chrome size. We'll end up with the following:
+Now let's design the browser chrome. I think it should have the following:
 
 * At the top, a list of tab names, separated by vertical lines, and a "`+`"
   button to add a new tab.
