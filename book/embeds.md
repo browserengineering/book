@@ -729,7 +729,7 @@ Now let's look at how `Frame`s are created. The first place is in
 
 ``` {.python}
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, browser, tab_height):
         # ...
         self.root_frame = None
 
@@ -776,7 +776,7 @@ class Frame:
         self.tab.window_id_to_frame[self.window_id] = self
 
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, browser, tab_height):
         # ...
         self.window_id_to_frame = {}
 ```
@@ -983,7 +983,7 @@ class Tab:
     def load(self, url, body=None):
         # ...
         self.root_frame.frame_width = WIDTH
-        self.root_frame.frame_height = HEIGHT - CHROME_PX
+        self.root_frame.frame_height = self.tab_height
 ```
 
 Note that there's a tricky dependency order here. We need the parent
@@ -1172,7 +1172,7 @@ frame the focused element is on too:
 
 ``` {.python}
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, browser, tab_height):
         self.focus = None
         self.focused_frame = None
 ```
@@ -1296,7 +1296,7 @@ the active tab height:
 class Browser:
     def clamp_scroll(self, scroll):
         height = self.active_tab_height
-        maxscroll = height - (HEIGHT - CHROME_PX)
+        maxscroll = height - (HEIGHT - self.chrome.bottom)
         return max(0, min(scroll, maxscroll))
 ```
 
@@ -1466,7 +1466,6 @@ by both sides.
 [threaded-scroll]: https://developer.chrome.com/articles/renderingng/#threaded-scrolling-animations-and-decode
 
 
-
 Iframe scripts
 ==============
 
@@ -1485,7 +1484,7 @@ in a dictionary that maps origins to JS contexts:
 
 ``` {.python}
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, browser, tab_height):
         # ...
         self.origin_to_js = {}
 

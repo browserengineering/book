@@ -18,7 +18,7 @@ from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import DrawText, URL, tree_to_list
 from lab7 import DrawLine, DrawOutline, BlockLayout, LineLayout, TextLayout
-from lab7 import CHROME_PX, Tab, Browser
+from lab7 import Tab, Browser, Chrome, intersects
 
 @wbetools.patch(Element)
 class Element:
@@ -210,11 +210,12 @@ class BlockLayout:
 
 @wbetools.patch(Tab)
 class Tab:
-    def __init__(self):
+    def __init__(self, tab_height):
         self.history = []
         self.url = None
         self.focus = None
-
+        self.tab_height = tab_height
+ 
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
 
@@ -247,11 +248,11 @@ class Tab:
         self.display_list = []
         self.document.paint(self.display_list)
 
-    def draw(self, canvas):
+    def draw(self, canvas, offset):
         for cmd in self.display_list:
-            if cmd.top > self.scroll + HEIGHT - CHROME_PX: continue
+            if cmd.top > self.scroll + self.tab_height: continue
             if cmd.bottom < self.scroll: continue
-            cmd.execute(self.scroll - CHROME_PX, canvas)
+            cmd.execute(self.scroll - offset, canvas)
 
     def click(self, x, y):
         self.focus = None
@@ -325,22 +326,15 @@ class Browser:
         self.active_tab = None
         self.focus = None
         self.address_bar = ""
+        self.chrome = Chrome(self)
 
     def handle_click(self, e):
-        if e.y < CHROME_PX:
+        if e.y < self.chrome.bottom:
             self.focus = None
-            if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
-                self.active_tab = int((e.x - 40) / 80)
-            elif 10 <= e.x < 30 and 10 <= e.y < 30:
-                self.load(URL("https://browser.engineering/"))
-            elif 10 <= e.x < 35 and 50 <= e.y < 90:
-                self.tabs[self.active_tab].go_back()
-            elif 50 <= e.x < WIDTH - 10 and 50 <= e.y < 90:
-                self.focus = "address bar"
-                self.address_bar = ""
+            self.chrome.click(e.x, e.y)
         else:
             self.focus = "content"
-            self.tabs[self.active_tab].click(e.x, e.y - CHROME_PX)
+            self.tabs[self.active_tab].click(e.x, e.y - self.chrome.bottom)
         self.draw()
 
     def handle_key(self, e):
