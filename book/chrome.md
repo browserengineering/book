@@ -804,15 +804,15 @@ class Chrome:
     def plus_bounds(self):
         plus_width = self.font.measure("+")
         return (self.padding, self.padding,
-            plus_width + self.padding,
+            self.padding + plus_width,
             self.tab_header_bottom - self.padding)
 
     def tab_bounds(self, i):
-        tab_start_x = self.font.measure("+") + \
-            self.padding + self.padding
+        tab_start_x = self.padding + self.font.measure("+") + \
+            self.padding
 
-        tab_width = self.font.measure("Tab 1") + \
-            2 * self.padding
+        tab_width = self.padding + self.font.measure("Tab 1") + \
+            self.padding
 
         return (tab_start_x + tab_width * i, self.padding,
             tab_start_x + tab_width + tab_width * i,
@@ -977,12 +977,11 @@ class Chrome:
         # ...
         left_bar = addressbar_left + self.padding
         top_bar = addressbar_top + self.padding
-        # ...
-            url = str(self.browser.tabs[self.browser.active_tab].url)
-            cmds.append(DrawText(
-                left_bar,
-                top_bar,
-                url, self.font, "black"))
+        url = str(self.browser.tabs[self.browser.active_tab].url)
+        cmds.append(DrawText(
+            left_bar,
+            top_bar,
+            url, self.font, "black"))
 ```
 
 Here `str` is a built-in Python function that we can override to

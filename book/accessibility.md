@@ -1171,7 +1171,8 @@ class Tab:
 
         document_height = math.ceil(self.document.height)
         new_scroll = obj.y - SCROLL_STEP
-        self.scroll = clamp_scroll(new_scroll, document_height)
+        self.scroll = clamp_scroll(
+            new_scroll, document_height, self.tab_height)
         self.scroll_changed_in_tab = True
 ```
 
