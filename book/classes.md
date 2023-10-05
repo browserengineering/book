@@ -62,3 +62,33 @@ In Fall 2019, it was taught by [Pavel
 Panchekha](https://pavpanchekha.com) under course number CS 6968.
 [Syllabus](https://pavpanchekha.com/teach/wbe-fa19-syllabus.pdf)
 available. Contact instructor for teaching materials.
+
+# HAW Hamburg
+
+Web Browser Technology (“Technik von Webbrowsern”) is an
+undergraduate-level course at Hamburg University of Applied Sciences.
+It has been taught three times so far over the past 1.5 years (up to
+fall 2023). A course description reads (translation via Google Translate):
+
+> Every day we come into contact with web browsers, consciously or
+> unconsciously. Be it because we explicitly use an available browser
+> such as Firefox, Chrome or Edge or because we use a
+> mobile phone app that uses an internal browser to display pages.
+
+> Modern web browsers have to handle a number of tasks. They communicate with
+> servers and process their answer into a user-friendly display. The answer
+> consists of a variety of artifacts such as HTML documents, layout
+> information and script data. The display is optimized based on the device used
+> and must also be sensitive to changes, e.g. react through scripts. And all
+> of this needs to be done as quickly as possible by the browser so that users
+> don't switch to another one.
+
+> In this class you will learn the basic structure of a browser. Starting with
+> communicating with servers and simply displaying text, through more complex
+> layouts and simple interaction (links and buttons) to executing scripts, you
+> will learn the basic techniques used by modern browsers.
+
+> During the lecture period, you will work on your browser to delve deeper into
+> the topics covered. During the lab, all participants will work on a
+> common browser project. Here you will implement extended functions of a web
+> browser according to your interests.
