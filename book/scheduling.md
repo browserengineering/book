@@ -1114,7 +1114,7 @@ class Browser:
 ```
 
 Naturally you'll need to call this method before quitting, from the
-main event loop, so it has a chance to print its timing data.
+main event loop, so it has a chance to close out the JSON file.
 
 Fire up the server, open our timer script, wait for it to finish
 counting, and then exit the browser. Then open up Chrome tracing or
@@ -1125,7 +1125,7 @@ should see something like this:
 Need screenshots
 :::
 
-In Chrome tracing, you can choosing the cursor icon from the toolbar
+In Chrome tracing, you can choose the cursor icon from the toolbar
 and drag a selection around a set of trace events. That will show
 counts and average times for those events in the details window at the
 bottom of the screen. On my computer, my browser spent about 20ms in
@@ -1557,7 +1557,13 @@ threads, and how our multi-threaded architecture allows them to happen
 concurrently.
 
 ::: {.further}
-
+The tracing system we introduced in this chapter comes directly from
+real browsers. And it's used every day by browser engineers to
+understand the performance characteristics of the browser in different
+situations, find bottlenecks, and fix them. Without these tools,
+browsers would not have been able to make many of the performance
+leaps they did in recent years. Good debugging tools are essential to
+software engineering!
 :::
 
 
