@@ -991,8 +991,8 @@ To start, let's wrap the actual file and format in a class:
 
 ``` {.python}
 class MeasureTime:
-    def __init__(self, filename):
-        self.file = open(filename, "w")
+    def __init__(self):
+        self.file = open("browser.trace", "w")
         self.file.write('{"traceEvents": [')
         ts = time.time() * 1000000
         self.file.write(
@@ -1076,7 +1076,7 @@ components take. Create it in the `Browser`:
 ``` {.python}
 class Browser:
     def __init__(self):
-        self.measure = MeasureTime("browser.trace")
+        self.measure = MeasureTime()
 ```
 
 We'll measure the time for something like raster and draw by just
@@ -1507,7 +1507,7 @@ thread-safe, so they can be called from either thread:
 
 ``` {.python}
 class MeasureTime:
-    def __init__(self, filename):
+    def __init__(self):
         self.lock = threading.Lock()
         # ...
 

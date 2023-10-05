@@ -1383,7 +1383,7 @@ class Browser:
         self.url = None
         self.scroll = 0
 
-        self.measure = MeasureTime("browser.trace")
+        self.measure = MeasureTime()
 
         if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
             self.RED_MASK = 0xff000000

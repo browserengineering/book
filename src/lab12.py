@@ -32,10 +32,10 @@ from lab11 import paint_visual_effects, parse_blend_mode, parse_color, Tab, Brow
 
 class MeasureTime:
 
-    def __init__(self, filename):
+    def __init__(self):
         if not wbetools.OUTPUT_TRACE: return
         self.lock = threading.Lock()
-        self.file = open(filename, "w")
+        self.file = open("browser.trace", "w")
         self.file.write('{"traceEvents": [')
         ts = time.time() * 1000000
         self.file.write(
@@ -425,7 +425,7 @@ class Browser:
         self.url = None
         self.scroll = 0
 
-        self.measure = MeasureTime("browser.trace")
+        self.measure = MeasureTime()
 
         if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
             self.RED_MASK = 0xff000000
