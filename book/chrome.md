@@ -764,7 +764,7 @@ squeeze the chrome into it (and making its font smaller as necessary). Another,
 better way, is to pick a font size that is easy enough to read, then compute
 the chrome height accordingly.
 
-Given this design, we can now figure out `self.bottom`: it's the vertical
+For our design, the chrome's height should be the vertical
 height of those two lines plus some padding between and after them. For
 convenience, and to use them later for processing mouse clicks, I'll store
 these parameters on the `Browser` object:^[I also chose `20px` as the
