@@ -217,7 +217,7 @@ def lex(body):
   # ...
   for c in body:
       # ...
-      elif not in_angle:
+      elif not in_tag:
           text += c
     return text
 ```

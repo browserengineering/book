@@ -49,20 +49,20 @@ class URL:
         version, status, explanation = statusline.split(" ", 2)
         assert status == "200", "{}: {}".format(status, explanation)
     
-        headers = {}
+        response_headers = {}
         while True:
             line = response.readline()
             if line == "\r\n": break
             header, value = line.split(":", 1)
-            headers[header.lower()] = value.strip()
+            response_headers[header.lower()] = value.strip()
     
-        assert "transfer-encoding" not in headers
-        assert "content-encoding" not in headers
+        assert "transfer-encoding" not in response_headers
+        assert "content-encoding" not in response_headers
     
         body = response.read()
         s.close()
     
-        return headers, body
+        return response_headers, body
 
     @wbetools.js_hide
     def __repr__(self):
@@ -70,13 +70,13 @@ class URL:
             self.scheme, self.host, self.port, self.path)
 
 def show(body):
-    in_angle = False
+    in_tag = False
     for c in body:
         if c == "<":
-            in_angle = True
+            in_tag = True
         elif c == ">":
-            in_angle = False
-        elif not in_angle:
+            in_tag = False
+        elif not in_tag:
             print(c, end="")
 
 def load(url):

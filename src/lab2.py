@@ -12,13 +12,13 @@ from lab1 import URL
 
 def lex(body):
     text = ""
-    in_angle = False
+    in_tag = False
     for c in body:
         if c == "<":
-            in_angle = True
+            in_tag = True
         elif c == ">":
-            in_angle = False
-        elif not in_angle:
+            in_tag = False
+        elif not in_tag:
             text += c
         wbetools.record("lex", text)
     return text
