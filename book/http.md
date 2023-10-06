@@ -67,9 +67,8 @@ nc -v example.org 80
 ```
 
 The output is a little different but it works in the same way.
-On most Linux systems, you can install `telnet` from the package
-manager; plus, the `nc` command is usually available from a package
-called `netcat`.
+On most Linux systems, you can install `telnet` or `nc` from the package
+manager, usually from packages called `telnet` and `netcat`.
 :::
 
 You'll get output that looks like this:
@@ -86,17 +85,15 @@ now talk to `example.org`.
     obscure `telnet` features.
 
 ::: {.further}
-The syntax of URLs is defined in [RFC
-3987](https://tools.ietf.org/html/rfc3986), which is pretty readable.
-Its first author is Tim Berners-Lee (no surprise, as he is the creator of the
-web). The second author is Roy Fielding, one of the key contributors to the
-design of URLs and HTTP. Fielding is also well-known for identifying
-the architecure of the web, and coining the term REST to name this architecture.
-REST is defined in Fielding's [PhD thesis][rest-thesis], and is characterized
-by its key properties that allowed the web to grow in a decentralized way.
-Since then, the concept of a "RESTful API" has come into being, as a way to
-describe whether other networked APIs follow the definition of REST (though
-there does seem to be [some confusion][what-is-rest] about it).
+The URL syntax is defined in [RFC
+3987](https://tools.ietf.org/html/rfc3986), written Tim
+Berners-Lee---no surprise there! The second author is Roy Fielding,
+a key contributors to the design HTTP and also well-known for
+describing the architecture of the web, in his [PhD
+thesis][rest-thesis] and explaining how they allowed the web to grow
+in a decentralized way. Today, many services provide "REST APIs" that
+also follow these principles, though there does seem to be [some
+confusion][what-is-rest] about it.
 :::
 
 [rest-thesis]: https://ics.uci.edu/~fielding/pubs/dissertation/fielding_dissertation_2up.pdf
@@ -106,9 +103,9 @@ Requesting information
 ======================
 
 Once it's connected, the browser requests information from the server
-by giving its *path*, the path being the part of a URL that comes after
-the host name, like `/index.html`. The request looks like this; you
-should type it into `telnet`:
+by giving its *path*, the path being the part of a URL that comes
+after the host name, like `/index.html`. The request looks like this;
+type it into `telnet`:
 
 ::: {.cmd html=True}
     python3 infra/annotate_code.py <<EOF
@@ -123,8 +120,8 @@ Make sure to type a blank line after the `Host` line.
 Here, the word `GET`\index{GET} means that the browser would like to receive
 information,[^11] then comes the path, and finally there is the word
 `HTTP/1.0` which tells the host that the browser speaks version 1.0 of
-[HTTP]\index{HTTP}.[^12] There are several versions of HTTP ([0.9, 1.0, 1.1, and
-2.0](https://medium.com/platform-engineer/evolution-of-http-69cfe6531ba0)).
+[HTTP]\index{HTTP}. There are several versions of HTTP ([0.9, 1.0, 1.1, 
+2.0, and 3.0](https://medium.com/platform-engineer/evolution-of-http-69cfe6531ba0)).
 The HTTP 1.1 standard adds a variety of useful features, like
 keep-alive, but in the interest of simplicity our browser won't use
 them. We're also not implementing HTTP 2.0; HTTP 2.0 is much more
@@ -147,10 +144,6 @@ and you should get a response from `example.org`.
 [^11]: It could say `POST` if it intended to send information, plus
     there are some other, more obscure options.
 
-[^12]: Why not 1.1? You can use 1.1, but then you need another header
-    (`Connection`) to handle a feature called "keep-alive". Using 1.0
-    avoids this complexity.
-
 [^13]: This is useful when the same IP address corresponds to multiple
     host names and hosts multiple websites (for example, `example.com`
     and `example.org`). The `Host` header tells the server which of
@@ -160,22 +153,16 @@ and you should get a response from `example.org`.
 
 
 ::: {.further}
-The HTTP/1.0 standard is also known as [RFC
-1945](https://tools.ietf.org/html/rfc1945). The HTTP/1.1 standard is
-[RFC 2616](https://tools.ietf.org/html/rfc2616), so if you're
-interested in `Connection` and keep-alive, look there.
-
-HTTP was designed to be as simple as possible to understand and implement,
-so that it would be easy for any kind of computer to adopt it.
-It's no coincidence that it's easy to type HTTP commands into `telnet`,
-or that it's so easy to write the HTTP code for our toy browser.
-
-HTTP is also a "line-based protocol", where one side talks to the other by
-way of lines of text separated by newline characters. This design did not
-start with HTTP; other Internet protocols like [SMTP] (for email) are like this.
-Ultimately, the whole pattern derives from how the original computers only
-had line-based text input. In fact, one of the first two browsers implemented
-had a [line mode UI][line-mode].
+HTTP/1.0 is standardized in [RFC
+1945](https://tools.ietf.org/html/rfc1945), and HTTP/1.1 in
+[RFC 2616](https://tools.ietf.org/html/rfc2616).
+HTTP was designed to be simple to understand and implement, making it
+easy for any kind of computer to adopt it. It's no coincidence that
+you can type HTTP directly into `telnet`! Nor is it an accident that
+HTTP is a "line-based protocol", using plain text and newlines,
+similar to [SMTP] for email. Ultimately, the whole pattern derives
+from early computers only having line-based text input. In
+fact, one of the first two browsers had a [line mode UI][line-mode].
 :::
 
 [SMTP]: https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol
@@ -250,18 +237,18 @@ code that contains the content of the web page itself.
 Let's now switch gears from manual connections to Python.
 
 ::: {.further}
-Many common (and uncommon) HTTP headers are described
-[on
-Wikipedia](https://en.wikipedia.org/wiki/List_of_HTTP_header_fields).
-
-Some of the HTTP response codes that were originally designed were never used.
-One interesting one is response code [402], meaning "payment required".
-According to MDN, this code was intended to be used for "digital cash or
-(micro) payment systems". While we all know that e-commerce is alive and well
-on the web without the use of response code 402, [micropayments] have not
-(yet?) gained much traction, even though many people (including me!) think
-they are a good idea.
+Wikipedia has nice lists of HTTP [headers][headers] and [response codes][codes].
+Some of the HTTP response codes are almost never used, like [402]
+"Payment Required". This code was intended to be used for "digital
+cash or (micro) payment systems". While e-commerce is alive and well
+without the response code 402, [micropayments] have not (yet?) gained
+much traction, even though many people (including me!) think they are
+a good idea.
 :::
+
+[header]: https://en.wikipedia.org/wiki/List_of_HTTP_header_fields
+
+[codes]: https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
 
 [402]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/402
 
@@ -307,7 +294,7 @@ class URL:
 
 Now we must separate the host from the path. The host comes before the
 first `/`, while the path is that slash and everything after it. Let's
-add function that parses all parts of a URL:
+add a function that parses all parts of a URL:
 
 ``` {.python}
 class URL:
@@ -319,15 +306,14 @@ class URL:
         self.path = "/" + url
 ```
 
-(When you see a code block with a `# ...`, like this one, that you're
-adding code to an existing method or block.) The `split(s, n)` method
-splits a string at the first `n` copies of `s`. Note that there's some
-tricky logic here for handling the slash between the host name and the
-path. That (optional) slash is part of the path.
+(When you see a code block with a `# ...`, like this one, that means
+you're adding code to an existing method or block.) The `split(s, n)`
+method splits a string at the first `n` copies of `s`. Note that
+there's some tricky logic here for handling the slash between the host
+name and the path. That (optional) slash is part of the path.
 
-Our browser will create a `URL` object based on user input, and then
-it will want to download the web page at that URL. We'll do that in a
-new method, `request`:
+Now that the `URL` has the `host` and `path` fields, we can download
+the web page at that URL. We'll do that in a new method, `request`:
 
 ``` {.python}
 class URL:
@@ -376,7 +362,7 @@ class URL:
 
 Once you have a socket, you need to tell it to connect to the other
 computer. For that, you need the host and a *port*.\index{port} The port
-depends on the type of server you're connecting to; for now it should be 80.
+depends on the protocol you are using; for now it should be 80.
 
 ``` {.python replace=80/self.port}
 class URL:
@@ -401,14 +387,14 @@ port. This is because different address families have different
 numbers of arguments.
 
 ::: {.further}
-You can find out more about the "sockets" API on
-[Wikipedia](https://en.wikipedia.org/wiki/Berkeley_sockets). Python
-more or less implements that API directly. Many sockets
-implementations derive from the original
-"Berkeley sockets" code from the BSD Unix distribution in 1983.
-In particular, macOS and iOS [still use][mac-bsd] large amounts of
-code that descended from this original code base.
+The "sockets" API, which Python more or less implements directly,
+derives from the original "[Berkeley sockets][bsd-sockets]" API design
+for 4.2 BSD Unix in 1983. Of course, Windows and Linux merely
+re-implement the API, but macOS and iOS actually do [still
+use][mac-bsd] large amounts of code descended from BSD Unix.
 :::
+
+[bsd-sockets]: https://en.wikipedia.org/wiki/Berkeley_sockets
 
 [mac-bsd]: https://developer.apple.com/library/archive/documentation/Darwin/Conceptual/KernelProgramming/BSD/BSD.html
 
@@ -426,13 +412,19 @@ class URL:
                 "Host: {}\r\n\r\n".format(self.host)) \
                .encode("utf8"))
 ```
-
-There are a few things to note here that have to be exactly right. First,
+The `send` method just sends the request to the server.[^send-return]
+There are a few things in this code that have to be exactly right. First,
 it's very important to use `\r\n` instead of `\n` for newlines. It's
 also essential that you put *two* newlines `\r\n` at the end, so that
 you send that blank line at the end of the request. If you forget
 that, the other computer will keep waiting on you to send that
 newline, and you'll keep waiting on its response.[^literal]
+
+[^send-return]: `send` actually returns a number, in this case `47`.
+    That tells you how many bytes of data you sent to the other
+    computer; if, say, your network connection failed midway through
+    sending the data, you might want to know how much you sent before
+    the connection failed.
 
 [^literal]: Computers are endlessly literal-minded.
 
@@ -460,18 +452,11 @@ types to text and to bytes:
 If you see an error about `str` versus `bytes`, it's because you
 forgot to call `encode` or `decode` somewhere.
 
-Finally, `send` just sends the request to the server.[^send-return]
-To read its response, you'd generally use the `read` function on
+To read the server's response, you could use the `read` function on
 sockets, which gives whatever bits of the response have already
-arrived. Then you write a loop that collects bits of the response as
-they arrive. However, in Python you can use the `makefile` helper
-function, which hides the loop:[^19]
-
-[^send-return]: `send` actually returns a number, in this case `47`.
-    That tells you how many bytes of data you sent to the other
-    computer; if, say, your network connection failed midway through
-    sending the data, you might want to know how much you sent before
-    the connection failed.
+arrived. Then you write a loop to collect those bits as they arrive.
+However, in Python you can use the `makefile` helper function, which
+hides the loop:[^19]
 
 ``` {.python}
 class URL:
@@ -510,12 +495,12 @@ After the status line come the headers:
 class URL:
     def request(self):
         # ...
-        headers = {}
+        response_headers = {}
         while True:
             line = response.readline()
             if line == "\r\n": break
             header, value = line.split(":", 1)
-            headers[header.lower()] = value.strip()
+            response_headers[header.lower()] = value.strip()
 ```
 
 For the headers, I split each line at the first colon and fill in a
@@ -537,8 +522,8 @@ of those are present:[^if-te]
 class URL:
     def request(self):
         # ...
-        assert "transfer-encoding" not in headers
-        assert "content-encoding" not in headers
+        assert "transfer-encoding" not in response_headers
+        assert "content-encoding" not in response_headers
 ```
 
 The usual way to send the data, then, is everything after the headers:
@@ -558,7 +543,7 @@ Let's also return the headers, in case they are useful to someone:
 class URL:
     def request(self):
         # ...
-        return headers, body
+        return response_headers, body
 ```
 
 Now let's actually display the text in the response body.
@@ -612,31 +597,26 @@ aforementioned title, information about how the page should look
 tag).
 
 So, to create our very, very simple web browser, let's take the page
-HTML and print all the text, but not the tags, in it:[^23]
-
-``` {.python}
-in_angle = False
-for c in body:
-    if c == "<":
-        in_angle = True
-    elif c == ">":
-        in_angle = False
-    elif not in_angle:
-        print(c, end="")
-```
-
-This code is pretty complex. It goes through the request body character
-by character, and it has two states: `in_angle`, when it is currently
-between a pair of angle brackets, and `not in_angle`. When the current
-character is an angle bracket, it changes between those states; 
-normal characters not inside a tag, are printed.[^24]
-
-Let's put this code into a new function, `show`:
+HTML and print all the text, but not the tags, in it.[^23] I'll do
+this in a new function, `show`:
 
 ``` {.python}
 def show(body):
-    # ...
+    in_tag = False
+    for c in body:
+        if c == "<":
+            in_tag = True
+        elif c == ">":
+            in_tag = False
+        elif not in_tag:
+            print(c, end="")
 ```
+
+This code is pretty complex. It goes through the request body character
+by character, and it has two states: `in_tag`, when it is currently
+between a pair of angle brackets, and `not in_tag`. When the current
+character is an angle bracket, it changes between those states; 
+normal characters, not inside a tag, are printed.[^24]
 
 We can now load a web page just by stringing together `request` and
 `show`:
@@ -655,7 +635,8 @@ if __name__ == "__main__":
     load(URL(sys.argv[1]))
 ```
 
-This is Python's version of a `main` function---it reads the first
+The first line is Python's version of a `main` function, run only when
+executing this script from the command line. The code reads the first
 argument (`sys.argv[1]`) from the command line and uses it as a URL.
 Try running this code on the URL `http://example.org/`:
 
@@ -676,10 +657,9 @@ super simple and basic HTML parser can already print out the text of the
 Encrypted connections
 =====================
 
-So far, our browser supports the `http` scheme. That's pretty good:
-it's the most common scheme on the web today. But more and more,
-websites are migrating to the `https`\index{HTTPS} scheme. I'd like this
-toy browser to support `https` because many websites today require it.
+So far, our browser supports the `http` scheme. That's a pretty common
+scheme. But more and more, websites are migrating to the
+`https`\index{HTTPS} scheme, and many websites require it.
 
 The difference between `http` and `https` is that `https` is more
 secure---but let's be a little more specific. The `https` scheme, or
@@ -700,7 +680,7 @@ Making an encrypted connection with `ssl` is pretty easy. Suppose
 you've already created a socket, `s`, and connected it to
 `example.org`. To encrypt the connection, you use
 `ssl.create_default_context` to create a *context* `ctx` and use that
-context to *wrap* the socket `s`. That produces a new socket, `s`:
+context to *wrap* the socket `s`:
 
 ``` {.python .example}
 import ssl
@@ -708,10 +688,11 @@ ctx = ssl.create_default_context()
 s = ctx.wrap_socket(s, server_hostname=host)
 ```
 
-When you wrap `s`, you pass a `server_hostname` argument, and it
-should match the `Host` header. Note that I save the new socket back
-into the `s` variable. That's because you don't want to send over the
-original socket; it would be unencrypted and also confusing.
+Note that `wrap_socket` returns a new socket, which I save back into
+the `s` variable. That's because you don't want to send any data over
+the original socket; it would be unencrypted and also confusing. The
+`server_hostname` argument is used to check that you've connected to
+the right server. It should match the `Host` header.
 
 ::: {.installation}
 On macOS, you'll need to [run a program called "Install
@@ -796,11 +777,10 @@ class URL:
 Custom ports are handy for debugging. Python has a built-in web server
 you can use to serve files on your computer. For example, if you run
 
-    python3 -m http.server 8000
+    python3 -m http.server 8000 -d /some/directory
 
-from some directory, then going to `http://localhost:8000/` should
-show you all the files in that directory. This is going to be a good
-way to test your browser.
+then going to `http://localhost:8000/` should show you all the files
+in that directory. This is a good way to test your browser.
 
 ::: {.further}
 TLS is pretty complicated. You can read the details in [RFC
@@ -840,10 +820,6 @@ should look something like this:
 Exercises
 =========
 
-*Alternate encodings:* add support for a non-`utf8` value for
-`Content-Type`. Test it on a real site such as `google.com`
-(which doesn't use `utf8`).
-
 *HTTP/1.1:* Along with `Host`, send the `Connection` header in the
 `request` function with the value `close`. Your browser can now
 declare that it is using `HTTP/1.1`. Also add a `User-Agent` header.
@@ -857,17 +833,15 @@ make it so that, if your browser is started without a URL being given,
 some specific file on your computer is opened. You can use that file
 for quick testing.
 
+*Alternate encodings:* read the encoding from the `Content-Type`
+header instead of always using `utf8`. Test it on a real site that
+doesn't use `utf8`, like `google.com`.
+
 *data:* Yet another scheme is *data*, which
 allows inlining HTML content into the URL itself. Try navigating to
 `data:text/html,Hello world!` in a real browser to see what happens. Add
 support for this scheme to your browser. The *data* scheme is especially
 convenient for making tests without having to put them in separate files.
-
-*Body tag:* Only show text in an HTML document if it is between
-`<body>` and `</body>`. This avoids printing the title and style
-information. Try to do this in a single pass through the
-document---that means not using string methods like `split` or similar. The
-loop in `show` will need more variables to track tag names.
 
 *Entities:* Implement support for the less-than (`&lt;`) and
 greater-than (`&gt;`) entities. These should be printed as `<` and
@@ -876,36 +850,19 @@ greater-than (`&gt;`) entities. These should be printed as `<` and
 Entities allow web pages to include these special characters without
 the browser interpreting them as tags.
 
-*view-source:* In addition to HTTP and HTTPS, there are other schemes,
-such as *view-source*; navigating in a real browser to
-`view-source:http://browser.engineering/http.html` shows the HTML
-source of this chapter rather than its rendered output. Add support
-for the view-source scheme. Your browser should print the entire HTML
-file as if it was text. *Hint*: To do so, you can utilize the entities
-from the previous exercise, and add an extra `transform()` method that
-adjusts the input to `show()` when in view-source mode, like this:
-`show(transform(body))`.
+*view-source:* Add support for the `view-source` scheme; navigating to
+`view-source:http://example.org/` should shows HTML source instead of
+the rendered page. Add support for this scheme. Your browser should
+print the entire HTML file as if it was text. You'll want to have also
+implemented the entities exercise.
 
-*Compression:* Add support for HTTP compression, in which the browser
-[informs the server][negotiate] that compressed data is acceptable.
-Your browser must send the `Accept-Encoding` header with the value
-`gzip`. If the server supports compression, its response will have a
-`Content-Encoding` header with value `gzip`. The body is then
-compressed. Add support for this case. To decompress the data, you can
-use the `decompress` method in the `gzip` module. Calling `makefile`
-with the `encoding` argument will no longer work, because compressed
-data is not `utf8`-encoded. You can change the first argument `"rb"`
-to work with raw bytes instead of encoded text. Most web servers send
-compressed data in a `Transfer-Encoding` called [`chunked`][chunked].
-You'll need to add support for that, too, to access most web servers
-that support compressed data.[^te-gzip]
-
-[negotiate]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Content_negotiation
-
-[chunked]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding
-
-[^te-gzip]: There's also a couple of `Transfer-Encoding`s that
-    compress the data. Those aren't commonly used.
+*Keep-alive:* Implement the HTTP/1.1 exercise; however, do not send
+the `Connection: close` header. Instead, when reading the body from
+the socket, only read as many bytes as given in the `Content-Length`
+header and don't close the socket afterwards. Instead, save the
+socket, and if another request is made to the same socket reuse the
+same socket instead of creating a new one. This will speed up repeated
+requests to the same server, which is common.
 
 *Redirects:* Error codes in the 300 range request a redirect. When
 your browser encounters one, it should make a new request to the URL
@@ -917,7 +874,8 @@ case. You don't, however, want to get stuck in a redirect loop, so
 make sure limit how many redirects your browser can follow in a row.
 You can test this with the URL
 <http://browser.engineering/redirect>, which redirects back to this
-page.
+page, and its `/redirect2` and `/redirect3` cousins which do more
+complicated redirect chains.
 
 *Caching:* Typically the same images, styles, and scripts are used on
 multiple pages; downloading them repeatedly is a waste. It's generally
@@ -930,7 +888,27 @@ header, specifically for `no-store` and `max-age` values. If the
 `Cache-Control` header contains any other value than these two, it's best not
 to cache the response.
 
-[^5]: On some systems, you can run `dig +short example.org` to do this
+*Compression:* Add support for HTTP compression, in which the browser
+[informs the server][negotiate] that compressed data is acceptable.
+Your browser must send the `Accept-Encoding` header with the value
+`gzip`. If the server supports compression, its response will have a
+`Content-Encoding` header with value `gzip`. The body is then
+compressed. Add support for this case. To decompress the data, you can
+use the `decompress` method in the `gzip` module. GZip data is not
+`utf8`-encoded, so pass `"rb"` to `makefile` to work with raw bytes
+instead. Most web servers send compressed data in a
+`Transfer-Encoding` called [`chunked`][chunked]. You'll need to add
+support for that, too.[^te-gzip]
+
+[negotiate]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Content_negotiation
+
+[chunked]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding
+
+[^te-gzip]: There's also a couple of `Transfer-Encoding`s that
+    compress the data. Those aren't commonly used.
+
+[^5]: You can use a DNS lookup tool like
+    [nslookup.io](https://nslookup.io) or the `dig` command to do this
     conversion yourself.
 
 [^6]: Today there are two versions of IP: IPv4 and IPv6. IPv6 addresses
@@ -948,7 +926,7 @@ to cache the response.
     forward the reply back, especially in the case of NATs.
 
 
-[^15]: The `DGRAM` stands for "datagram" and think of it like a
+[^15]: The `DGRAM` stands for "datagram", which I imagine to be like a
     postcard.
 
 [^16]: Newer versions of HTTP use something called
@@ -956,7 +934,7 @@ to cache the response.
     browser will stick to HTTP 1.0.
 
 [^17]: While this code uses the Python `socket` library, your favorite
-    language likely contains a very similar library. This API is
+    language likely contains a very similar library; the API is
     basically standardized. In Python, the flags we pass are defaults,
     so you can actually call `socket.socket()`; I'm keeping the flags
     here in case you're following along in another language.
@@ -978,7 +956,7 @@ to cache the response.
 
 [^23]: If this example causes Python to produce a `SyntaxError` pointing
     to the `end` on the last line, it is likely because you are running
-    Python 2 instead of Python 3. These chapters assume Python 3.
+    Python 2 instead of Python 3. Make sure you are using Python 3.
 
 [^24]: The `end` argument tells Python not to print a newline after the
     character, which it otherwise would.
