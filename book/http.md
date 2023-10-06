@@ -86,13 +86,13 @@ now talk to `example.org`.
 
 ::: {.further}
 The URL syntax is defined in [RFC
-3987](https://tools.ietf.org/html/rfc3986), written Tim
-Berners-Lee---no surprise there! The second author is Roy Fielding,
-a key contributors to the design HTTP and also well-known for
-describing the architecture of the web, in his [PhD
-thesis][rest-thesis] and explaining how they allowed the web to grow
-in a decentralized way. Today, many services provide "REST APIs" that
-also follow these principles, though there does seem to be [some
+3987](https://tools.ietf.org/html/rfc3986), whose first author is Tim
+Berners-Lee---no surprise there! The second author is Roy Fielding, a
+key contributors to the design HTTP and also well-known for describing
+the "REST" architecture of the web in his [PhD thesis][rest-thesis]
+and explaining how it allowed the web to grow in a decentralized
+way. Today, many services provide "REST APIs" that also follow these
+principles, though there does seem to be [some
 confusion][what-is-rest] about it.
 :::
 
