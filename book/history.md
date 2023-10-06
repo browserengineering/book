@@ -112,7 +112,7 @@ within documents as well as between them. For example, the URL
 "http://browser.engineering/history.html#the-web-emerges" refers to a
 document called "`history.html`" and specifically to the element in it
 with the name "`the-web-emerges`": this section. Visiting that URL
-will load this chapter and scroll to the this section.
+will load this chapter and scroll to this section.
 
 This work also formed and inspired one of the key parts of Douglas Engelbart's
 [mother of all demos](https://en.wikipedia.org/wiki/The_Mother_of_All_Demos),
