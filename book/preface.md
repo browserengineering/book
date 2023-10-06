@@ -14,7 +14,7 @@ understood.
 
 But web browsers are still opaque, not just to students but to
 industry programmers and even to researchers. This book dissipates
-this mystery by systematically explaining all major components of a
+that mystery by systematically explaining all major components of a
 modern web browser.
 
 
