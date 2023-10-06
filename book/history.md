@@ -5,13 +5,10 @@ next: http
 prev: intro
 ...
 
-If you've read this far, hopefully you're convinced that browsers are
-interesting and important to study. Now we'll dig a bit into the web\index{web}
-itself, where it came from, and how the web and browsers have evolved to date.
-This history is by no means exhaustive.[^sgml] Instead, it'll focus on some key
-events and ideas that led to the web. These ideas and events will explain how
-exactly a thing such as the web came to be, as well as the motivations and goals
-of those who created it and its predecessors.
+This chapter digs into the web\index{web} itself: where it came from,
+and how the web and browsers have evolved to date. This history is not
+exhaustive;[^sgml] the focus is the key events and ideas that led to
+the web, and the goals and motivations of its inventors.
 
 [^sgml]: For example, there is nothing much about
 [SGML](https://en.wikipedia.org/wiki/Standard_Generalized_Markup_Language) or
@@ -29,11 +26,11 @@ The Memex concept
   </figcaption>
 </figure>
 
-The earliest exploration of how computers might revolutionize information is a
-1945 essay by Vannevar Bush entitled [As We May
+An influential early exploration of how computers might revolutionize
+information is a 1945 essay by Vannevar Bush entitled [As We May
 Think](https://en.wikipedia.org/wiki/As_We_May_Think). This essay envisioned a
-machine called a [Memex](https://en.wikipedia.org/wiki/Memex) that helps (think:
-User Agent) an individual human see and explore all the information in the
+machine called a [Memex](https://en.wikipedia.org/wiki/Memex) that
+helps an individual human see and explore all the information in the
 world. It was described in terms of the microfilm screen technology of the time,
 but its purpose and concept has some clear similarities to the web as we know it
 today, even if the user interface and technology details differ.
@@ -45,7 +42,7 @@ the capacity of a single mind, organization, library, country, culture, group or
 language. However, while we as humans cannot possibly know even a tiny fraction
 of what it is possible to know, we can use technology to learn more efficiently
 than before, and, *in particular*, to quickly access information we need to
-learn, remember or recall. Consider this imagined research session described by
+learn, remember, or recall. Consider this imagined research session described by
 Vannevar Bush--one that is remarkably similar to how we sometimes use the web:
 
 > The owner of the memex, let us say, is interested in the origin and properties
@@ -76,8 +73,7 @@ the importance of the latter---we learn by making previously unknown
 
 By "association", Bush meant a trail of thought leading from one record
 to the next via a human-curated link. He imagined not just a universal
-library, but a universal way to record the results of what we learn. That is
-what the web can do today.
+library, but a universal way to record the results of what we learn.
 
 The web emerges
 ===============
@@ -85,10 +81,16 @@ The web emerges
 The concept of [hypertext][hypertext]\index{hypertext} documents linked by
 [hyperlinks][hyperlink]\index{hyperlink} was invented in 1964-65 by
 [Project Xanadu][xanadu], led by Ted Nelson.[^literary-criticism] Hypertext is
-text that is marked up with hyperlinks to other text. A successor called the
-[Hypertext Editing System] was the first to introduce the back button, which
-all browsers now have. (Since the system just had text, the "button" was
-itself text.)
+text that is marked up with hyperlinks to other text.[^back-button]
+Sound familiar? A web page\index{web page} is hypertext, and links
+between web pages are hyperlinks. The format for writing web pages is
+HTML, which is short for HyperText Markup Language. The protocol for
+loading web pages is HTTP, which is short for HyperText Transport
+Protocol.
+
+[^back-button]: A successor called the [Hypertext Editing System] was
+    the first to introduce the back button, which all browsers now
+    have. Since the system only had text, the "button" was itself text.
 
 [Hypertext Editing System]: https://en.wikipedia.org/wiki/Hypertext_Editing_System
 
@@ -98,12 +100,6 @@ itself text.)
 criticism in academic and literary communities. The Project Xanadu research
 papers were heavily motivated by this use case.
 
-Hypertext is text that is marked up with hyperlinks to other text. Sounds
-familiar? A web page\index{web page} is hypertext, and links between web pages
-are hyperlinks. The format for writing web pages is HTML, which is short for
-HyperText Markup Language. The protocol for loading web pages is HTTP, which is
-short for HyperText Transport Protocol.
-
 <figure>
 	<img src="im/hes.jpg" alt="A computer operator using a hypertext editing system in 1969">
     <figcaption>Hypertext Editing System <br/> (Gregory Lloyd from <a href="https://commons.wikimedia.org/wiki/File:HypertextEditingSystemConsoleBrownUniv1969.jpg">Wikipedia</a>, <a href="https://creativecommons.org/licenses/by/2.0/legalcode" rel="license">CC BY 2.0</a>)</figcaption>
@@ -112,10 +108,11 @@ short for HyperText Transport Protocol.
 Independently of Project Xanadu, the first hyperlink system appeared for
 scrolling within a single document; it was later generalized to linking between
 multiple documents. And just like those original systems, the web has linking
-within documents as well as between them. For example, the url
-"http://example.com/doc.html#link" refers to a document called "`doc.html`",
-specifically to the element with the name "`link`" within it. Clicking on a link
-to that URL will load `doc.html` and scroll to the `link` element.
+within documents as well as between them. For example, the URL
+"http://browser.engineering/history.html#the-web-emerges" refers to a
+document called "`history.html`" and specifically to the element in it
+with the name "`the-web-emerges`": this section. Visiting that URL
+will load this chapter and scroll to this section.
 
 This work also formed and inspired one of the key parts of Douglas Engelbart's
 [mother of all demos](https://en.wikipedia.org/wiki/The_Mother_of_All_Demos),
@@ -131,8 +128,7 @@ course central components of a browser UI.[^even-more]
 </figure>
 
 [^even-more]: That demo went beyond even this! There are some parts of it that
-have not yet been realized in any computer system. I highly recommend watching
-the demo yourself.
+have not yet been realized in any computer system. Watch it!
 
 [hypertext]: https://en.wikipedia.org/wiki/Hypertext
 
@@ -186,7 +182,7 @@ group](https://www.w3.org/People/Berners-Lee/1991/08/art-6484.txt).
 	ACM</a>, August 1994)</caption>
 </figure>
 
-[^no-css]: No CSS!
+[^no-css]: No CSS! No JS! Not even images!
 
 [^more-less-powerful]: For example, the first browser included the concept of an
 index page meant for searching within a site (vestiges of which exist today in
@@ -209,12 +205,14 @@ worked. The decentralized nature of the web is a key feature that distinguishes
 it from many systems that came before or after, and his explanation of it is
 worth quoting here (highlight is mine):
 
-> There was clearly a need for something like Enquire [ed: a predecessor
-> web-like database system, also written by Berners-Lee] but accessible to
-> everyone. I wanted it to scale so that if two people started to use it
-> independently, and later started to work together, *they could start linking
-> together their information without making any other changes*. This was the
-> concept of the web.
+> There was clearly a need for something like Enquire[^enquire] but
+> accessible to everyone. I wanted it to scale so that if two people
+> started to use it independently, and later started to work together,
+> *they could start linking together their information without making
+> any other changes*. This was the concept of the web.
+
+[^enquire]: Enquire was a predecessor web-like database system, also
+    written by Berners-Lee.
 
 This quote captures one of the key value propositions of the web. The web was
 successful for several reasons, but I believe it’s primarily the following
@@ -247,6 +245,10 @@ Mosaic](https://en.wikipedia.org/wiki/Mosaic_(web_browser)), which launched in
 which built [Netscape
 Navigator](https://en.wikipedia.org/wiki/Netscape_Navigator), the first
 _commercial browser_,[^commercial-browser] which launched in 1994.
+[Feeling threatened][internet-tidal-wave], Microsoft launched Internet
+Explorer in 1995 and soon bundled it with Windows 95.
+
+[internet-tidal-wave]: https://lettersofnote.com/2011/07/22/the-internet-tidal-wave/
 
 <div class="grid" style="display: grid; grid-template-columns: repeat(2, 1fr);">
 <figure>
@@ -285,7 +287,7 @@ this codebase. Likewise, the
 [Gecko](https://en.wikipedia.org/wiki/Gecko_(software)) rendering
 engine\index{rendering engine} was originally developed by Netscape starting
 in 1997; the [Firefox](https://en.wikipedia.org/wiki/Firefox) browser is
-descended from this codebase. During the first browser war, nearly all of the
+descended from that codebase. During the first browser war, nearly all of the
 core features of this book's simple browser were added, including CSS, DOM,
 and JavaScript.
 
@@ -293,14 +295,14 @@ and JavaScript.
 
 The "second browser war", which according to Wikipedia was
 [2004-2017](https://en.wikipedia.org/wiki/Browser_wars#Second_Browser_War_(2004%E2%80%932017)),
-was fought between a variety of browsers, in particular Internet Explorer,
-Firefox, Safari and Chrome. Chrome split off its rendering engine subsystem into
-its own code base called
-[Blink](https://en.wikipedia.org/wiki/Blink_(browser_engine)) in 2013. The
-second browser war saw the development of many features of the modern web,
-including widespread use of AJAX requests, HTML5 features like
-`<canvas>`, and a huge explosion in third-party JavaScript libraries
-and frameworks.
+was fought between a variety of browsers, in particular Internet
+Explorer, Firefox, Safari, and Chrome. Initially, Safari and Chrome
+used the same rendering engine, but Chrome split
+[Blink](https://en.wikipedia.org/wiki/Blink_(browser_engine)) in 2013,
+which Microsoft Edge adopted by 2020. The second browser war saw the
+development of many features of the modern web, including widespread
+use of AJAX requests, HTML5 features like `<canvas>`, and a huge
+explosion in third-party JavaScript libraries and frameworks.
 
 [^commercial-browser]: By commercial I mean built by a for-profit entity.
 Netscape's early versions were also not free software---you had to buy them from
@@ -335,7 +337,7 @@ strength of the W3C. Another important reason was the networked nature of the
 web, and therefore the necessity for web developers to make sure their pages
 worked correctly in most or all of the browsers (otherwise they would lose
 customers), leading them to avoid proprietary extensions. On the
-contrary---browsers worked hard to carefully reproduce each other's undocumented
+contrary, browsers worked hard to carefully reproduce each other's undocumented
 behaviors---even bugs---to make sure they continued supporting the whole web.
 
 There never really was a point where any browser openly attempted to break away
@@ -366,19 +368,19 @@ integration.
 
 Given the outcomes---multiple competing browsers and well-developed
 standards---it is in retrospect not that relevant which browser “won” or “lost”
-each of the browser “wars”. In both cases _the web won_ and was preserved and
-enhanced for the future.
+each of the browser “wars”. In each cases _the web_ won, because it
+gained users and grew in capability.
 
 Open source
 ===========
 
 Another important and interesting outcome of the _second_ browser war was that
-all mainstream browsers today (of which there are *many* more than
-three[^examples-of-browsers-today]) are based on _three open-source web
-rendering / JavaScript\index{JavaScript} engines_: Chromium, Gecko and
-WebKit.[^javascript-repo] Since Chromium and WebKit have a common ancestral
-codebase, while Gecko is an open-source descendant of Netscape, all three date
-back to the 1990s---almost to the beginning of the web.
+all mainstream browsers today[^examples-of-browsers-today] are based
+on _three open-source web rendering / JavaScript\index{JavaScript}
+engines_: Chromium, Gecko and WebKit.[^javascript-repo] Since Chromium
+and WebKit have a common ancestral codebase, while Gecko is an
+open-source descendant of Netscape, all three date back to the
+1990s---almost to the beginning of the web.
 
 [^examples-of-browsers-today]: Examples of Chromium-based browsers include
 Chrome, Edge, Opera (which switched to Chromium from the
@@ -388,25 +390,25 @@ many "embedded" browsers, based on one or another of the three engines, for a
 wide variety of automobiles, phones, TVs and other electronic devices.
 
 [^javascript-repo]: The JavaScript engines are actually in different
-repositories (as are various other sub-components that we won’t get into here),
-and can and do get used outside the browser as JavaScript virtual machines. One
-important application is the use of
-[v8](https://en.wikipedia.org/wiki/V8_(JavaScript_engine)) to power
-[node.js](https://en.wikipedia.org/wiki/Node.js). However, each of the three
-rendering engines does have a corresponding JavaScript implementation, so
-conflating the two is reasonable.
+repositories (as are various other sub-components), and can and do get
+used outside the browser as JavaScript virtual machines. One important
+application is the use of
+[V8](https://en.wikipedia.org/wiki/V8_(JavaScript_engine)) to power
+[node.js](https://en.wikipedia.org/wiki/Node.js). However, each of the
+three rendering engines does have a corresponding JavaScript
+implementation, so conflating the two is reasonable.
 
 This is not an accident, and in fact tells us something quite interesting about
 the most cost-effective way to implement a rendering engine based on a commodity
-set of platform APIs. For example, it's common for a wide variety of independent
-developers (ones not paid by the company nominally controlling the browser) to
-contribute code and features. There are even companies and individuals that
-specialize in implementing these features! And every major browser being open
-source feeds back into the standards process, reinforcing the web's
-decentralized nature.
+set of platform APIs. For example, it's common for independent
+developers, not paid by the company nominally controlling the browser,
+to contribute code and features. There are even companies and
+individuals that specialize in implementing browser features! And every
+major browser being open source feeds back into the standards process,
+reinforcing the web's decentralized nature.
 
-Putting it all together
-=======================
+Summary
+=======
 
 In summary, the history went like this:
 
@@ -422,23 +424,16 @@ capitalize on the web's opportunity.
 4. Standards organizations were introduced in order to negotiate between the
 browsers and avoid proprietary control.
 
-5. Browsers continued to compete and evolve at a rapid pace; that pace has
-overall not slowed in the years since.
+5. Competition between browsers grew their power and complexity at a
+   rapid pace.
 
-6. Browsers appeared on all devices and operating systems, including all
-desktop and mobile devices & OSes, as well as embedded devices such as
-televisions, watches and kiosks.
-
-7. The web continued to grow in power and complexity, even going beyond the
-original conception of a web browser.
+6. Browsers appeared on all devices and operating systems, from desktop
+   to mobile to embedded.
 
 8. Eventually, all web rendering engines became open source, as a recognition of
-their being a shared effort larger than any single entity.
+   their being a shared effort larger than any single entity.
 
-The web has come a long way! It'll be interesting to see where it goes in the
-future.
-
-But one thing seems clear: it isn't done yet.
+The web has come a long way! But one thing seems clear: it isn't done yet.
 
 Exercises
 =========
