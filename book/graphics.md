@@ -7,8 +7,8 @@ next: text
 
 A web browser doesn't just download a web page; it also has to show
 that page to the user. In the 21^st^ century, that means a graphical
-application. How does that work? In this chapter we'll equip the toy
-browser with a graphical user interface.[^1]
+application. So in this chapter we'll equip the toy browser with a
+graphical user interface.[^1]
 
 [^1]: There are some obscure text-based browsers: I used `w3m` as my
     main browser for most of 2011. I don't anymore.
@@ -17,61 +17,53 @@ Creating windows
 ================
 
 Desktop and laptop computers run operating systems that provide
-*desktop environments*: windows, buttons, and a mouse. So programs
-don't directly draw to the screen; the desktop environment controls
-the screen. Instead:
+*desktop environments*: windows, buttons, and a mouse. So
+responsibility ends up split: programs control their window, but the
+desktop environment controls the screen. Therefore:
 
--   The program asks for a new window and the desktop environment shows
-    it somewhere on the screen.
--   The program draws things in its window and the desktop environment
-    puts that on the screen.
+-   The program asks for a new window and the desktop environment
+    actually displays it.
+-   The program draws to its window and the desktop environment puts
+    that on the screen.
 -   The desktop environment tells the program about clicks and key
-    presses.
--   The desktop environment periodically asks the program to redraw
-    its window.
+    presses, and the program responds and redraws its window.
 
-Though the desktop environment is responsible for displaying the window, the
-program is responsible for drawing its contents. Applications have to redraw
-these contents quickly for interactions to feel fluid,[^3] and must respond
-quickly to clicks and key presses so the user doesn't get frustrated.
-
-<a name="framebudget"></a>
-
-"Feel fluid" can be made more precise. Graphical applications such as browsers
-typically aim to redraw at a speed equal to the refresh rate, or *frame rate*,
-of the screen, and/or a fixed 60Hz[^sixty-hertz]. This means that the browser
-has to finish all its work in less than 1/60th of a second, or 16ms, in order to
-keep up. For this reason, 16ms is called the *animation frame budget* of the
-application.
+<a name="framebudget"></a> Applications have to redraw these contents
+quickly for interactions to feel fluid,[^3] and must respond quickly
+to clicks and key presses so the user doesn't get frustrated. "Feel
+fluid" can be made more precise. Graphical applications such as
+browsers typically aim to redraw at a speed equal to the refresh rate,
+or *frame rate*, of the screen, and/or a fixed 60Hz[^sixty-hertz].
+This means that the browser has to finish all its work in less than
+1/60th of a second, or 16ms, in order to keep up. For this reason,
+16ms is called the *animation frame budget* of the application.
 
 ::: {.further}
-You should also keep in mind that not all web page interactions are animations -
-there are also discrete actions such as mouse clicks. Research has shown that it
-usually suffices to respond to a discrete action in [100ms] - below that
-threshold, most humans are not sensitive to discrete action speed. This is very
-different than interactions such as scroll, where speed less than 60Hz or so is
-quite noticeable. The difference between the two has to do with the way the
-human mind processes movement (animation) versus discrete action, and the time
-it takes for the brain to decide upon such an action, execute it, and understand
-its result.
+You should also keep in mind that not all web page interactions are
+animations---there are also discrete actions such as mouse clicks.
+Research has shown that it usually suffices to respond to a discrete
+action in [100ms]---below that threshold, most humans are not
+sensitive to discrete action speed. This is very different than
+interactions such as scroll, where speed less than 60Hz or so is quite
+noticeable. The difference between the two has to do with the way the
+human mind processes movement (animation) versus discrete action, and
+the time it takes for the brain to decide upon such an action, execute
+it, and understand its result.
 :::
 
 [100ms]: https://www.nngroup.com/articles/response-times-3-important-limits/
 
-[^sixty-hertz]: Most screens today have a refresh rate of 60Hz, and that
-is generally considered fast enough to look smooth. However, new hardware
-is increasingly appearing with higher refresh rates, such as 120Hz. Sometimes
-rendering engines, games in particular, refresh at lower rates on purpose if
-they know the rendering speed can't keep up.
+[^sixty-hertz]: Most screens today have a refresh rate of 60Hz, and
+that is generally considered fast enough to look smooth. However, new
+hardware is increasingly appearing with higher refresh rates, such as
+120Hz. It's not yet clear if browsers can be made that fast. Some
+rendering engines, games in particular, refresh at lower rates on
+purpose if they know the rendering speed can't keep up.
 
-Doing all of this by hand is a bit of a drag, so programs usually use a
-*graphical toolkit* to simplify these steps. These toolkits allow you to
-describe your program's window in terms of *widgets* like buttons,
-tabs, or text boxes, and take care of drawing and redrawing the window
-contents to match that description.
-
-Python comes with a graphical toolkit called Tk\index{Tk} using the
-Python package `tkinter`.[^4]\index{Tkinter}} Using it is quite simple:
+Doing all of this by hand is a bit of a drag, so programs usually use
+a *graphical toolkit* to simplify these steps. Python comes with a
+graphical toolkit called Tk\index{Tk} using the Python package
+`tkinter`.[^4]\index{Tkinter} Using it is quite simple:
 
 ``` {.python expected=False}
 import tkinter
@@ -79,11 +71,9 @@ window = tkinter.Tk()
 tkinter.mainloop()
 ```
 
-Here `tkinter.Tk()` creates a window and `tkinter.mainloop()` starts
-the process of redrawing the screen. Inside Tk, `tkinter.Tk()` asks
-the desktop environment to create the window and returns its
-identifier, while `tkinter.mainloop()` enters a loop that looks
-similar to this [^5]:
+Here `tkinter.Tk()` asks the desktop environment to create a window
+and returns an object that you can use to draw to the window. The
+`tkinter.mainloop()` call enters a loop that looks like this:[^5]
 
 <a name="eventloop"></a>
 
@@ -94,16 +84,13 @@ while True:
     drawScreen()
 ```
 
-Here, `drawScreen` draws the various widgets, `pendingEvent` asks the
-desktop environment for recent mouse clicks or key presses, and
-`handleEvent` calls into library user code in response to that event.
-This *event loop*\index{event loop} pattern is common in many applications,
-from web browsers to video games. A simple window does not need much event
-handling (it ignores all events) or much drawing (it is a uniform
-white or gray). But in more complex graphical applications the event
-loop pattern makes sure that all events are eventually handled and the
-screen is eventually updated, both essential to a good user
-experience.
+Here, `pendingEvent` first asks the desktop environment for recent
+mouse clicks or key presses, then `handleEvent` calls your application
+to update state, and then `drawScreen` redraws the window. This *event
+loop*\index{event loop} pattern is common in many applications, from
+web browsers to video games, because in complex graphical applications
+it ensures that all events are eventually handled and the screen is
+eventually updated.
 
 ::: {.further}
 Tk's event loop is the `Tk_UpdateObjCmd` function, found in
@@ -120,9 +107,7 @@ Drawing to the window
 
 Our toy browser will draw the web page text to a *canvas*,\index{canvas} a
 rectangular Tk widget that you can draw circles, lines, and text
-in.[^6] Tk also has widgets like buttons and dialog boxes, but our
-browser won't use them: we will need finer-grained control over
-appearance, which a canvas provides:[^7]
+on:[^6]
 
 ``` {.python expected=False}
 WIDTH, HEIGHT = 800, 600
@@ -133,13 +118,14 @@ canvas.pack()
 
 The first line creates the window, as above; the second creates the
 `Canvas` inside that window. We pass the window as an argument, so
-that Tk knows where to display the canvas, and some arguments that
-define the canvas's size; I chose 800×600 because that was a common
-old-timey monitor size.[^8] The third line is a Tk peculiarity, which
-positions the canvas inside the window.
+that Tk knows where to display the canvas. The other arguments define
+the canvas's size; I chose 800×600 because that was a common old-timey
+monitor size.[^8] The third line is a Tk peculiarity, which positions
+the canvas inside the window. Tk also has widgets like buttons and
+dialog boxes, but our browser won't use them: we will need
+finer-grained control over appearance, which a canvas provides.[^7]
 
-There's going to be a window, a canvas, and later some other things,
-so to keep it all organized let's make an object:
+To keep it all organized let's put this code in a class:
 
 ``` {.python}
 class Browser:
@@ -209,7 +195,7 @@ to draw the characters on the canvas instead.
 
 To start, let's change the `show` function from the previous chapter
 into a function that I'll call `lex`[^9] which just *returns* the
-text-not-tags content of an HTML document, without printing it:
+textual content of an HTML document without printing it:
 
 ``` {.python}
 def lex(body):
@@ -253,9 +239,11 @@ for c in text:
 The variables `cursor_x` and `cursor_y` point to where the next
 character will go, as if you were typing the text with in a word
 processor. I picked the magic numbers—13 and 18—by trying a few
-different values and picking one that looked most readable. In the
-[next chapter](text.md), we'll replace magic numbers with font
-metrics.
+different values and picking one that looked most
+readable.[^font-metrics]
+
+[^font-metrics]: In the [next chapter](text.md), we'll replace magic
+numbers with font metrics.
 
 The text now forms a line from left to right. But with an 800 pixel
 wide canvas and 13 pixels per character, one line only fits about 60
@@ -295,20 +283,19 @@ enough text, all of the lines of text don't fit on the screen. We want
 users to *scroll*\index{scroll} the page to look at different parts of it.
 
 ::: {.further}
-Chinese characters are usually, but not always, independent: <span
-lang="zh">开关</span> means "button" but is composed of <span
-lang="zh">开</span> "on" and <span lang="zh">关</span> "off". A line
-break between them would be confusing, because you'd read "on off"
-instead of "button". The [ICU library][icu], used by both Firefox and
-Chrome, [uses dynamic programming][icu-wb] to guess phrase boundaries
-based on a [word frequency table][cjdict].
+In English text, you can't wrap to the next line in the middle of a
+word, but in Chinese that's mostly not a problem. Mostly, but not
+always! <span lang="zh">开关</span> means "button" but is composed of
+<span lang="zh">开</span> "on" and <span lang="zh">关</span> "off". A
+line break between them would be confusing, because you'd read "on
+off" instead of "button". The [ICU library][icu], used by both Firefox
+and Chrome, [uses dynamic programming][icu-wb] to guess phrase
+boundaries based on a [word frequency table][cjdict].
 :::
 
 [icu]: http://site.icu-project.org
 [icu-wb]: https://unicode-org.github.io/icu/userguide/boundaryanalysis/break-rules.html#details-about-dictionary-based-break-iteration
 [cjdict]: https://github.com/unicode-org/icu/blob/master/icu4c/source/data/brkitr/dictionaries/cjdict.txt
-
-<a name="graphics-scrolling"></a>
 
 Scrolling text
 ==============
@@ -327,13 +314,12 @@ according to the scroll, and the result is rendered to the screen. [Chapter 12](
 will have more on this topic.
 
 Our browser will have the same split. Right now `load` both computes
-the position of each character and draws it: layout\index{layout} and
-rendering.\index{rendering}
-Let's have a `layout` function to compute and store the position of
-each character, and a separate `draw` function to then draw each
-character based on the stored position. This way, `layout` can operate
-with page coordinates and only `draw` needs to think about screen
-coordinates.
+both the position of each character and draws it: layout\index{layout}
+and rendering.\index{rendering} Let's instead have a `layout` function
+to compute and store the position of each character, and a separate
+`draw` function to then draw each character based on the stored
+position. This way, `layout` can operate with page coordinates and
+only `draw` needs to think about screen coordinates.
 
 Let's start with `layout`. Instead of calling `canvas.create_text` on
 each character let's add it to a list, together with its position.
@@ -350,13 +336,14 @@ def layout(text):
     return display_list
 ```
 
-The resulting list is called a *display list*:\index{display list} it is a
-list of things to display.^[The term is standard.] Since `layout` is all
-about page coordinates, we don't need to change anything else about it
-to support scrolling.
+The resulting list of things to display is called a *display
+list*^[The term is standard.] Since `layout` is all about page
+coordinates, we don't need to change anything else about it to support
+scrolling.
 
-Once the display list is computed, `draw` needs to loop through
-the display list and draw each character:
+Once the display list is computed, `draw` needs to loop through the
+display list and draw each character. Since `draw` does need access to
+the canvas, we make it a method on `Browser`:
 
 ``` {.python expected=False}
 class Browser:
@@ -365,9 +352,7 @@ class Browser:
             self.canvas.create_text(x, y, text=c)
 ```
 
-Since `draw` does need access to the canvas, we keep it a method on
-`Browser`. Now the `load` just needs to call `layout` followed by
-`draw`:
+Now `load` just needs to call `layout` followed by `draw`:
 
 ``` {.python}
 class Browser:
@@ -378,7 +363,7 @@ class Browser:
         self.draw()
 ```
 
-Now we can add scrolling. Let's have a variable for how far you've
+Now we can add scrolling. Let's have a field for how far you've
 scrolled:
 
 ``` {.python}
@@ -468,10 +453,9 @@ pixels on the screen are always correct).
 [^slow-scroll]: How fast exactly seems to depend a lot on your
     operating system and default font.
 
-Real browsers incorporate a lot of quite tricky optimizations to this
-process, but for this toy browser let's limit ourselves to a simple
-improvement: on a long page most characters are outside the viewing
-window, and we can skip drawing them in `draw`:
+Real browsers have a lot of quite tricky optimizations for this, but
+for our toy browser let's limit ourselves to a simple improvement:
+skip drawing characters that are offscreen:
 
 ``` {.python}
 for x, y, c in self.display_list:
@@ -482,8 +466,8 @@ for x, y, c in self.display_list:
 
 The first `if` statement skips characters below the viewing window;
 the second skips characters above it. In that second `if` statement,
-`y + VSTEP` computes the bottom edge of the character, so that
-characters that are halfway inside the viewing window are still drawn.
+`y + VSTEP` is the bottom edge of the character, because characters
+that are halfway inside the viewing window still have to be drawn.
 
 Scrolling should now be pleasantly fast, and hopefully well within the 16ms
 animation frame budget. And because we split `layout` and `draw`, we don't need
@@ -492,36 +476,40 @@ to change `layout` at all to implement this optimization.
 Mobile devices
 ==============
 
-Though you're probably writing your browser on a desktop computer, many people
-access the web through mobile devices such as phones or tablets. On mobile
-devices, there's still a screen, a rendering loop, and most other things discussed in this book.[^same-code-on-mobile] But there are several differences worth noting:
+Though you're probably writing your browser on a desktop computer,
+many people access the web through mobile devices such as phones or
+tablets. On mobile devices, there's still a screen, a rendering loop,
+and most other things discussed in this book.[^same-code-on-mobile]
+But there are several differences worth noting:
 
-* Applications are usually full-screen, with only one
-application drawing to the screen at a time. Also, "background"
-applications may be killed and restarted at any time.
-* There is always a touch screen, no mouse, and a virtual keyboard instead of a
-physical one.
-* There is a concept of a "visual viewport" not present on
-desktop. [^meta-viewport]
-* Screen pixel density is much higher, and the total screen resolution is lower.
-* Power efficiency is much more important, because the device runs on a battery,
-while at the same time the CPU and memory are significantly slower and less
-capable. As a result, it becomes more important to take advantage of GPU
-hardware on these devices, as well as an even greater focus on performance than
-usual.
++ Applications are usually full-screen,
+  with only one application drawing to the screen at a time.
++ There's no mouse and only a virtual keyboard,
+  so the main form of iteraction is touch.
++ There is a concept of a "visual viewport" not present on desktop,
+  to accommodate "desktop-only" and "mobile-ready" sites.[^meta-viewport]
++ Screen pixel density is much higher,
+  but the total screen resolution is usually lower.
+
+Also, power efficiency is much more important, because the device runs
+on a battery, while at the same time the CPU and memory are
+significantly slower and less capable. That makes it much more
+important to take advantage of GPU hardware, and the slow CPU makes
+good performance harder to achieve. Mobile browsers are challenging!
 
 [^same-code-on-mobile]: For example, most real browsers have both desktop and
 mobile editions, and the rendering engine code is almost exactly the same for
 both.
 
-[^meta-viewport]: Look at the source of this webpage. In the `<head>` you'll see
-a "viewport" `<meta>` tag. This tag gives instructions to the browser for how to
-handle zooming on a mobile device. Without this tag, the browser makes
-assumptions, for historical reasons, that the site is "desktop-only" and needs
-some special tricks to make it readable on a mobile device, such as allowing the
-user to use a pinch-zoom or double-tap touchscreen gesture to focus in on one
-part of the page. Once zoomed in, the part of the page visible on the screen is
-the "visual viewport" and the whole documents' bounds are the "layout viewport".
+[^meta-viewport]: Look at the source of this webpage. In the `<head>`
+you'll see a "viewport" `<meta>` tag. This tag tells the browser that
+the page expects mobile devices; without it, the browser assumes that
+the site is "desktop-only" and renders it differently, such as
+allowing the user to use a pinch-zoom or double-tap gesture to focus
+in on one part of the page. Once zoomed in, the part of the page
+visible on the screen is the "visual viewport" and the whole
+documents' bounds are the "layout viewport". This is kind of a mix
+between zooming and scrolling that's absent on desktop.
 
 Summary
 =======
@@ -572,14 +560,14 @@ Linux, scrolling instead uses the `<Button-4>` and `<Button-5>`
 events.[^more-mousewheel]
 
 [^why-only-top]: It's harder to stop scrolling past the bottom of the
-    page; we will implement this in [Chapter 5](layout.md)
+    page; we will implement this in [Chapter 5](layout.md).
 
 [^laptop-mousewheel]: It will also trigger with touchpad gestures,
     if you don't have a mouse.
     
 [^more-mousewheel]: The [Tk manual][tk-mousewheel] has more
-    information about this. It's not easy to write cross-platform
-    applications!
+    information about this. Cross-platform applications are much
+    harder to write than cross-browser ones!
 
 [tk-mousewheel]: https://wiki.tcl-lang.org/page/mousewheel
 
@@ -596,52 +584,41 @@ In fact, download the whole OpenMoji library (look for the "Get
 OpenMojis" button at the top right)---then your browser can look up
 whatever emoji is used in the page.
 
-*Resizing*: Make the browser resizable. To do so, pass the `fill` and
-`expand` arguments to `canvas.pack`, call and bind to the
-`<Configure>` event, which happens when the window is resized. The
+*Resizing*: Make the browser resizable. To do so, [pass the `fill` and
+`expand` arguments][fill-expand] to `canvas.pack`, call and bind to
+the `<Configure>` event, which happens when the window is resized. The
 window's new width and height can be found in the `width` and `height`
 fields on the event object. Remember that when the window is resized,
 the line breaks must change, so you will need to call `layout` again.
 
-*Zoom*: Make the `+` key double the text size. You will need to use
-the `font` argument in `create_text` to change the size of text, like
-this:
+[fill-expand]: https://web.archive.org/web/20201111222645id_/http://effbot.org/tkinterbook/pack.htm
 
-``` {.python expected=False}
-font = tkinter.font.Font(size=32)
-canvas.create_text(200, 150, text="Hi!", font=font)
-```
-
-Be careful in how you split the task between `layout` and `draw`. Make
-sure that text doesn't overlap when you zoom in and that scrolling
-works when zoomed in.
-
-[^3]: On older systems, applications drew directly to the screen, and if
-    they didn't update, whatever was there last would stay in place,
-    which is why in error conditions you'd often have one window leave
-    "trails" on another. Modern systems use a technique called
+[^3]: On older systems, applications drew directly to the screen, and
+    if they didn't update, whatever was there last would stay in
+    place, which is why in error conditions you'd often have one
+    window leave "trails" on another. Modern systems use
     [compositing](https://en.wikipedia.org/wiki/Compositing_window_manager),
-    in part to avoid trails (performance and application isolation are
-    additional reasons). Even while using compositing, applications
-    must redraw their window contents to change what is
-    displayed. [Chapter 13](animations.md) will discuss compositing in more
-    detail.
+    which avoids trails and also improves performance and isolation.
+    Applications still redraw their window contents, though, to change
+    what is displayed. [Chapter 13](animations.md) discusses
+    compositing in more detail.
 
 [^4]: The library is called Tk, and it was originally written for a
     different language called Tcl. Python contains an interface to it,
     hence the name.
 
-[^5]: The example event loop above may look like an infinite loop that
-locks up the computer, but it's not, because of preemptive multitasking
-among threads and processes and/or a variant of the event loop that
-sleeps unless it has inputs that wake it up from another thread or process.
+[^5]: This pseudocode may look like an infinite loop that locks up the
+computer, but it's not. Either the operating system will multitask
+among threads and processes, or the `pendingEvents` call will sleep
+until events are available, or both; in any case, other code will run
+and create events for the loop to respond to.
 
 [^6]: You may be familiar with the HTML `<canvas>` element, which is a
     similar idea: a 2D rectangle in which you can draw shapes.
 
 [^7]: This is why desktop applications are more uniform than web pages:
-    desktop applications generally use the widgets provided by a common
-    graphical toolkit, which limits their creative possibilities.
+    desktop applications generally use widgets provided by a common
+    graphical toolkit, which makes them look similar.
 
 [^8]: This size, called Super Video Graphics Array, was standardized in
     1987, and probably did seem super back then.
