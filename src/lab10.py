@@ -59,32 +59,31 @@ class URL:
         version, status, explanation = statusline.split(" ", 2)
         assert status == "200", "{}: {}".format(status, explanation)
     
-        headers = {}
+        response_headers = {}
         while True:
             line = response.readline()
             if line == "\r\n": break
             header, value = line.split(":", 1)
-            headers[header.lower()] = value.strip()
+            response_headers[header.lower()] = value.strip()
     
-        if "set-cookie" in headers:
+        if "set-cookie" in response_headers:
+            cookie = response_headers["set-cookie"]
             params = {}
-            if ";" in headers["set-cookie"]:
-                cookie, rest = headers["set-cookie"].split(";", 1)
+            if ";" in cookie:
+                cookie, rest = cookie.split(";", 1)
                 for param_pair in rest.split(";"):
                     if '=' in param_pair:
                         name, value = param_pair.strip().split("=", 1)
                         params[name.lower()] = value.lower()
-            else:
-                cookie = headers["set-cookie"]
             COOKIE_JAR[self.host] = (cookie, params)
     
-        assert "transfer-encoding" not in headers
-        assert "content-encoding" not in headers
+        assert "transfer-encoding" not in response_headers
+        assert "content-encoding" not in response_headers
     
         body = response.read()
         s.close()
     
-        return headers, body
+        return response_headers, body
 
     def origin(self):
         return self.scheme + "://" + self.host + ":" + str(self.port)

@@ -375,13 +375,13 @@ Symmetrically, the browser has to update the cookie jar when it sees a
 [^multiple-set-cookies]: A server can actually send multiple
     `Set-Cookie` headers to set multiple cookies in one request.
 
-``` {.python replace=(self/(self%2c%20top_level_url,%3d%20kv/%3d%20(kv%2c%20params),kv/cookie}
+``` {.python replace=(self/(self%2c%20top_level_url,%3d%20cookie/%3d%20(cookie%2c%20params)}
 class URL:
     def request(self, payload=None):
         # ...
-        if "set-cookie" in headers:
-            kv = headers["set-cookie"]
-            COOKIE_JAR[self.host] = kv
+        if "set-cookie" in response_headers:
+            cookie = response_headers["set-cookie"]
+            COOKIE_JAR[self.host] = cookie
         # ...
 ```
 
@@ -787,15 +787,14 @@ then parse those parameters out of `Set-Cookie` headers:
 
 ``` {.python indent=4 replace=(self/(self%2c%20top_level_url}
 def request(self, payload=None):
-    if "set-cookie" in headers:
+    if "set-cookie" in response_headers:
+        cookie = response_headers["set-cookie"]
         params = {}
-        if ";" in headers["set-cookie"]:
-            cookie, rest = headers["set-cookie"].split(";", 1)
+        if ";" in cookie:
+            cookie, rest = cookie.split(";", 1)
             for param_pair in rest.split(";"):
                 name, value = param_pair.strip().split("=", 1)
                 params[name.lower()] = value.lower()
-        else:
-            cookie = headers["set-cookie"]
         COOKIE_JAR[self.host] = (cookie, params)
 ```
 

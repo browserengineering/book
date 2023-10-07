@@ -68,19 +68,19 @@ class URL:
         version, status, explanation = statusline.split(" ", 2)
         assert status == "200", "{}: {}".format(status, explanation)
     
-        headers = {}
+        response_headers = {}
         while True:
             line = response.readline()
             if line == "\r\n": break
             header, value = line.split(":", 1)
-            headers[header.lower()] = value.strip()
+            response_headers[header.lower()] = value.strip()
     
-        assert "transfer-encoding" not in headers
-        assert "content-encoding" not in headers
+        assert "transfer-encoding" not in response_headers
+        assert "content-encoding" not in response_headers
     
         body = response.read()
         s.close()
-        return headers, body
+        return response_headers, body
 
 INPUT_WIDTH_PX = 200
 
