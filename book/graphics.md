@@ -238,7 +238,7 @@ for c in text:
 
 The variables `cursor_x` and `cursor_y` point to where the next
 character will go, as if you were typing the text with in a word
-processor. I picked the magic numbers—13 and 18—by trying a few
+processor. I picked the magic numbers---13 and 18---by trying a few
 different values and picking one that looked most
 readable.[^font-metrics]
 
@@ -284,7 +284,7 @@ users to *scroll*\index{scroll} the page to look at different parts of it.
 
 ::: {.further}
 In English text, you can't wrap to the next line in the middle of a
-word, but in Chinese that's mostly not a problem. Mostly, but not
+word (without hyphenation at least), but in Chinese that's mostly not a problem. Mostly, but not
 always! <span lang="zh">开关</span> means "button" but is composed of
 <span lang="zh">开</span> "on" and <span lang="zh">关</span> "off". A
 line break between them would be confusing, because you'd read "on
@@ -313,7 +313,7 @@ first drawn into a bitmap or GPU texture, then that bitmap/texture is shifted
 according to the scroll, and the result is rendered to the screen. [Chapter 12](visual-effects.md)
 will have more on this topic.
 
-Our browser will have the same split. Right now `load` both computes
+Our browser will have the same split. Right now `load` computes
 both the position of each character and draws it: layout\index{layout}
 and rendering.\index{rendering} Let's instead have a `layout` function
 to compute and store the position of each character, and a separate
@@ -487,7 +487,7 @@ But there are several differences worth noting:
 + There's no mouse and only a virtual keyboard,
   so the main form of iteraction is touch.
 + There is a concept of a "visual viewport" not present on desktop,
-  to accommodate "desktop-only" and "mobile-ready" sites.[^meta-viewport]
+  to accommodate "desktop-only" and "mobile-ready" sites, as well as pinch zoom.[^meta-viewport]
 + Screen pixel density is much higher,
   but the total screen resolution is usually lower.
 
