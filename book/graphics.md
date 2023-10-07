@@ -503,13 +503,13 @@ both.
 
 [^meta-viewport]: Look at the source of this webpage. In the `<head>`
 you'll see a "viewport" `<meta>` tag. This tag tells the browser that
-the page expects mobile devices; without it, the browser assumes that
+the page supports mobile devices; without it, the browser assumes that
 the site is "desktop-only" and renders it differently, such as
 allowing the user to use a pinch-zoom or double-tap gesture to focus
 in on one part of the page. Once zoomed in, the part of the page
 visible on the screen is the "visual viewport" and the whole
 documents' bounds are the "layout viewport". This is kind of a mix
-between zooming and scrolling that's absent on desktop.
+between zooming and scrolling that's usually absent on desktop.
 
 Summary
 =======
