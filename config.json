@@ -107,6 +107,11 @@
             "show_toc": true,
             "show_signup": true
         },
+        "print": {
+            "show_toc": true,
+            "show_signup": false,
+            "print": true
+        },
         "draft": {
             "base": "../",
             "draft": true,

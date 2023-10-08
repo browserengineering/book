@@ -50,7 +50,6 @@ and JavaScript evaluation (the text uses DukPy).
 [^py3-cmd]: This is for clarity. On some operating systems, `python`
 means Python 3, but on others that means Python 2. Check which version
 you have!
-[jrw]: https://jamesrwilcox.com
 [sz]: https://www.cis.upenn.edu/~stevez/
 
 This book's browser is irreverent toward standards: it handles only a
@@ -88,6 +87,7 @@ gave me the strength to finish this many-year-long project.
 [mwillsey]: https://www.mwillsey.com/
 [saras]: https://www.sscharmingds.com/
 [ztatlock]: https://homes.cs.washington.edu/~ztatlock/
+[jrw]: https://jamesrwilcox.com
 
 *Chris*: I am eternally grateful to my wife Sara for patiently
 listening to my endless musings about the web, and encouraging me to
@@ -99,6 +99,8 @@ me to join the adventure. (Turns out Pavel and I had the same idea!)
 
 [dan-gildea]: https://www.cs.rochester.edu/u/gildea/
 
+::: {.web-only}
+
 A final note
 ============
 
@@ -109,3 +111,5 @@ code is also available [on GitHub][github], though we prefer to
 receive comments through the built-in tools.
 
 [github]: https://github.com/browserengineering/book
+
+:::
