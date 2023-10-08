@@ -284,7 +284,7 @@ Try this out on this web page, parsing the HTML source code and then
 calling `print_tree` to visualize it:
 
 ``` {.python expected=False}
-headers, body = URL(sys.argv[1]).request()
+body = URL(sys.argv[1]).request()
 nodes = HTMLParser(body).parse()
 print_tree(nodes)
 ```
@@ -432,7 +432,7 @@ whitespace to get the tag name and the attribute-value pairs:
 class HTMLParser:
     def get_attributes(self, text):
         parts = text.split()
-        tag = parts[0].lower()
+        tag = parts[0].casefold()
         attributes = {}
         for attrpair in parts[1:]:
             # ...
@@ -460,7 +460,7 @@ def get_attributes(self, text):
     for attrpair in parts[1:]:
         if "=" in attrpair:
             key, value = attrpair.split("=", 1)
-            attributes[key.lower()] = value
+            attributes[key.casefold()] = value
     # ...
 ```
 
@@ -471,7 +471,7 @@ case the attribute value defaults to the empty string:
 for attrpair in parts[1:]:
     # ...
     else:
-        attributes[attrpair.lower()] = ""
+        attributes[attrpair.casefold()] = ""
 ```
 
 Finally, the value can be quoted, in which case the quotes have to be
@@ -589,7 +589,7 @@ the node tree, like this:
 ``` {.python}
 class Browser:
     def load(self, url):
-        headers, body = url.request()
+        body = url.request()
         self.nodes = HTMLParser(body).parse()
         self.display_list = Layout(self.nodes).display_list
         self.draw()

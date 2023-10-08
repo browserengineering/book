@@ -63,7 +63,7 @@ class URL:
             line = response.readline()
             if line == "\r\n": break
             header, value = line.split(":", 1)
-            response_headers[header.lower()] = value.strip()
+            response_headers[header.casefold()] = value.strip()
     
         if "set-cookie" in response_headers:
             cookie = response_headers["set-cookie"]
@@ -73,7 +73,7 @@ class URL:
                 for param_pair in rest.split(";"):
                     if '=' in param_pair:
                         name, value = param_pair.strip().split("=", 1)
-                        params[name.lower()] = value.lower()
+                        params[name.casefold()] = value.casefold()
             COOKIE_JAR[self.host] = (cookie, params)
     
         assert "transfer-encoding" not in response_headers

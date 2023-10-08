@@ -55,7 +55,7 @@ class Browser:
         self.window.bind("<Down>", self.scrolldown)
 
     def load(self, url):
-        headers, body = url.request()
+        body = url.request()
         text = lex(body)
         self.display_list = layout(text)
         self.draw()

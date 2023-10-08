@@ -357,7 +357,7 @@ Now `load` just needs to call `layout` followed by `draw`:
 ``` {.python}
 class Browser:
     def load(self, url):
-        headers, body = url.request()
+        body = url.request()
         text = lex(body)
         self.display_list = layout(text)
         self.draw()

@@ -34,9 +34,9 @@ class socket:
         if self.method == "POST":
             beginning, self.body = self.request.decode("latin1").split("\r\n\r\n")
             headers = [item.split(": ") for item in beginning.split("\r\n")[1:]]
-            assert any(name.lower() == "content-length" for name, value in headers)
+            assert any(name.casefold() == "content-length" for name, value in headers)
             assert all(int(value) == len(self.body) for name, value in headers
-                       if name.lower() == "content-length")
+                       if name.casefold() == "content-length")
 
     def makefile(self, mode, encoding=None, newline=None):
         assert self.connected and self.host and self.port

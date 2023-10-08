@@ -68,7 +68,7 @@ class CSSParser:
         self.literal(":")
         self.whitespace()
         val = self.word()
-        return prop.lower(), val
+        return prop.casefold(), val
 
     def ignore_until(self, chars):
         while self.i < len(self.s):
@@ -82,7 +82,7 @@ class CSSParser:
         while self.i < len(self.s) and self.s[self.i] != "}":
             try:
                 prop, val = self.pair()
-                pairs[prop.lower()] = val
+                pairs[prop.casefold()] = val
                 self.whitespace()
                 self.literal(";")
                 self.whitespace()
@@ -96,11 +96,11 @@ class CSSParser:
         return pairs
 
     def selector(self):
-        out = TagSelector(self.word().lower())
+        out = TagSelector(self.word().casefold())
         self.whitespace()
         while self.i < len(self.s) and self.s[self.i] != "{":
             tag = self.word()
-            descendant = TagSelector(tag.lower())
+            descendant = TagSelector(tag.casefold())
             out = DescendantSelector(out, descendant)
             self.whitespace()
         return out
@@ -294,7 +294,7 @@ class Browser:
             self.default_style_sheet = CSSParser(f.read()).parse()
 
     def load(self, url):
-        headers, body = url.request()
+        body = url.request()
         self.nodes = HTMLParser(body).parse()
 
         rules = self.default_style_sheet.copy()
@@ -306,7 +306,7 @@ class Browser:
                  and node.attributes.get("rel") == "stylesheet"]
         for link in links:
             try:
-                header, body = url.resolve(link).request()
+                body = url.resolve(link).request()
             except:
                 continue
             rules.extend(CSSParser(body).parse())

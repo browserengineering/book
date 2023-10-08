@@ -52,7 +52,7 @@ class URL:
             line = response.readline()
             if line == "\r\n": break
             header, value = line.split(":", 1)
-            response_headers[header.lower()] = value.strip()
+            response_headers[header.casefold()] = value.strip()
     
         assert "transfer-encoding" not in response_headers
         assert "content-encoding" not in response_headers
@@ -60,7 +60,7 @@ class URL:
         body = response.read()
         s.close()
     
-        return response_headers, body
+        return body
 
     @wbetools.js_hide
     def __repr__(self):
@@ -78,7 +78,7 @@ def show(body):
             print(c, end="")
 
 def load(url):
-    headers, body = url.request()
+    body = url.request()
     show(body)
 
 if __name__ == "__main__":

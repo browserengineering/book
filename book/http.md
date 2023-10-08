@@ -554,19 +554,23 @@ class URL:
             line = response.readline()
             if line == "\r\n": break
             header, value = line.split(":", 1)
-            response_headers[header.lower()] = value.strip()
+            response_headers[header.casefold()] = value.strip()
 ```
 
-For the headers, I split each line at the first colon and fill in a
-map of header names to header values. Headers are case-insensitive, so
-I normalize them to lower case. Also, white-space is insignificant in
-HTTP header values, so I strip off extra whitespace at the beginning
-and end.
+For the headers, I split each line at the first colon and fill in a map of
+header names to header values. Headers are case-insensitive, so I normalize
+them to lower case.[^casefold] Also, white-space is insignificant in HTTP
+header values, so I strip off extra whitespace at the beginning and end.
+
+[^casefold]: I used [`casefold`][casefold] instead of `lower`, because it works
+better for more languages.
+
+[casefold]: https://docs.python.org/3/library/stdtypes.html#str.casefold
 
 Headers can describe all sorts of information, but a couple of headers
 are especially important because they tell us that the data we're
 trying to access is being sent in an unusual way. Let's make sure none
-of those are present:[^if-te]
+of those are present.[^if-te]
 
 [^if-te]: The "compression" exercise at the end of this chapter
     describes how your browser should handle these headers if they are
@@ -590,14 +594,13 @@ class URL:
         s.close()
 ```
 
-It's that body that we're going to display, so let's return that.
-Let's also return the headers, in case they are useful to someone:
+It's that body that we're going to display, so let's return that:
 
 ``` {.python}
 class URL:
     def request(self):
         # ...
-        return response_headers, body
+        return body
 ```
 
 Now let's actually display the text in the response body.
@@ -668,7 +671,7 @@ We can now load a web page just by stringing together `request` and
 
 ``` {.python}
 def load(url):
-    headers, body = url.request()
+    body = url.request()
     show(body)
 ```
 
@@ -754,8 +757,7 @@ detect which scheme is being used:
 class URL:
     def __init__(self, url):
         self.scheme, url = url.split("://", 1)
-        assert self.scheme in ["http", "https"], \
-            "Unknown scheme {}".format(self.scheme)
+        assert self.scheme in ["http", "https"]
         # ...
 ```
 

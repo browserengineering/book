@@ -855,7 +855,7 @@ def handle_connection(conx):
         line = req.readline().decode('utf8')
         if line == '\r\n': break
         header, value = line.split(":", 1)
-        headers[header.lower()] = value.strip()
+        headers[header.casefold()] = value.strip()
 ```
 
 Finally we read the body, but only when the `Content-Length` header

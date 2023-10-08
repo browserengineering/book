@@ -198,7 +198,7 @@ class DrawRect:
 @wbetools.patch(Browser)
 class Browser:
     def load(self, url):
-        headers, body = url.request()
+        body = url.request()
         self.nodes = HTMLParser(body).parse()
         self.document = DocumentLayout(self.nodes)
         self.document.layout()
