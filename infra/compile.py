@@ -97,7 +97,7 @@ def check_args(args, ctx):
     return out
 
 RENAME_METHODS = {
-    "lower": "toLowerCase",
+    "casefold": "toLowerCase",
     "upper": "toUpperCase",
     "strip": "trim",
     "append": "push",
