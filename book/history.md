@@ -5,10 +5,10 @@ next: http
 prev: intro
 ...
 
-This chapter digs into the web\index{web} itself: where it came from,
-and how the web and browsers have evolved to date. This history is not
-exhaustive;[^sgml] the focus is the key events and ideas that led to
-the web, and the goals and motivations of its inventors.
+This chapter dives into the history of the web\index{web} itself: where it came
+from, and how the web and browsers have evolved to date. This history is not
+exhaustive;[^sgml] the focus is the key events and ideas that led to the web,
+and the goals and motivations of its inventors.
 
 [^sgml]: For example, there is nothing much about
 [SGML](https://en.wikipedia.org/wiki/Standard_Generalized_Markup_Language) or
@@ -56,7 +56,7 @@ Computers, and the internet, allow us to _process and store_ the information we
 want. But it is _the web_ that helps us _organize and find_ that information,
 that knowledge, making it useful.[^google-mission]
 
-[^google-mission]: The Google search engine's well-known
+[^google-mission]: Google's well-known
 [mission](https://about.google/) statement to “organize the world’s information
 and make it universally accessible and useful” is almost exactly the same.
 This is not a coincidence---the search engine concept is inherently
@@ -85,7 +85,7 @@ text that is marked up with hyperlinks to other text.[^back-button]
 Sound familiar? A web page\index{web page} is hypertext, and links
 between web pages are hyperlinks. The format for writing web pages is
 HTML, which is short for HyperText Markup Language. The protocol for
-loading web pages is HTTP, which is short for HyperText Transport
+loading web pages is HTTP, which is short for HyperText Transfer
 Protocol.
 
 [^back-button]: A successor called the [Hypertext Editing System] was
@@ -108,8 +108,11 @@ papers were heavily motivated by this use case.
 Independently of Project Xanadu, the first hyperlink system appeared for
 scrolling within a single document; it was later generalized to linking between
 multiple documents. And just like those original systems, the web has linking
-within documents as well as between them. For example, the URL
-"http://browser.engineering/history.html#the-web-emerges" refers to a
+within documents as well as between them. For example, the URL:
+
+  http://browser.engineering/history.html#the-web-emerges
+
+refers to a
 document called "`history.html`" and specifically to the element in it
 with the name "`the-web-emerges`": this section. Visiting that URL
 will load this chapter and scroll to this section.
@@ -127,7 +130,7 @@ course central components of a browser UI.[^even-more]
 	href="https://www.dougengelbart.org/content/view/374/464/">Doug Engelbart Institute</a>)</figcaption>
 </figure>
 
-[^even-more]: That demo went beyond even this! There are some parts of it that
+[^even-more]: That demo went beyond even this. There are some parts of it that
 have not yet been realized in any computer system. Watch it!
 
 [hypertext]: https://en.wikipedia.org/wiki/Hypertext
@@ -214,22 +217,22 @@ worth quoting here (highlight is mine):
 [^enquire]: Enquire was a predecessor web-like database system, also
     written by Berners-Lee.
 
-This quote captures one of the key value propositions of the web. The web was
-successful for several reasons, but I believe it’s primarily the following
-three:
+This quote captures one of the key value propositions of the web: its
+decentralized nature. The web was successful for several reasons, but they
+all had to do with decentralization:
 
- - It provides a very low-friction way to publish information and applications.
-There is no gatekeeper to doing anything, and it’s easy for novices to make a
-simple web page and publish it.
+ - It provided a very low-friction way to publish information and applications.
+   There was no gatekeeper to doing anything, and it was easy for novices to
+   make a simple web page and publish it.
 
- - Once bootstrapped, it builds quickly upon itself via [network
+ - Once bootstrapped, it built quickly upon itself via [network
 effects](https://en.wikipedia.org/wiki/Network_effect) made possible by
 compatibility between sites and the power of the hyperlink to reinforce this
-compatibility. Hyperlinks drive traffic between sites, but also into the web
+compatibility. Hyperlinks drove traffic between sites, but also into the web
 _from the outside_, from sources such as email, social networking, and search
 engines.
 
- - It is outside the control of any one entity---and kept that way via
+ - It was outside the control of any one entity---and kept that way via
 standards organizations---and therefore not subject to problems of monopoly
 control or manipulation.
 
@@ -238,7 +241,7 @@ Browsers
 
 The first _widely distributed_ browser may have been
 [ViolaWWW](https://en.wikipedia.org/wiki/ViolaWWW); this browser also pioneered
-multiple interesting features such as applets and images. This browser was in
+multiple interesting features such as applets and images. It was in
 turn the inspiration for [NCSA
 Mosaic](https://en.wikipedia.org/wiki/Mosaic_(web_browser)), which launched in
 1993. One of the two original authors of Mosaic went on to co-found Netscape,
@@ -297,7 +300,7 @@ The "second browser war", which according to Wikipedia was
 [2004-2017](https://en.wikipedia.org/wiki/Browser_wars#Second_Browser_War_(2004%E2%80%932017)),
 was fought between a variety of browsers, in particular Internet
 Explorer, Firefox, Safari, and Chrome. Initially, Safari and Chrome
-used the same rendering engine, but Chrome split
+used the same rendering engine, but Chrome forked into
 [Blink](https://en.wikipedia.org/wiki/Blink_(browser_engine)) in 2013,
 which Microsoft Edge adopted by 2020. The second browser war saw the
 development of many features of the modern web, including widespread
@@ -399,13 +402,14 @@ three rendering engines does have a corresponding JavaScript
 implementation, so conflating the two is reasonable.
 
 This is not an accident, and in fact tells us something quite interesting about
-the most cost-effective way to implement a rendering engine based on a commodity
-set of platform APIs. For example, it's common for independent
-developers, not paid by the company nominally controlling the browser,
-to contribute code and features. There are even companies and
-individuals that specialize in implementing browser features! And every
-major browser being open source feeds back into the standards process,
-reinforcing the web's decentralized nature.
+the most cost-effective way to implement a rendering engine based on a
+commodity set of platform APIs. For example, it's common for independent
+developers, not paid by the company nominally controlling the browser, to
+contribute code and features. There are even companies and individuals that
+specialize in implementing browser features! It's also common for features in
+one browser to copy code from another. And every major browser being
+open source feeds back into the standards process, reinforcing the web's
+decentralized nature.
 
 Summary
 =======
@@ -415,8 +419,8 @@ In summary, the history went like this:
 1. Basic research was performed into the ways to represent and explore
 information.
 
-2. Once the technology became mature enough, the web proper was proposed and
-implemented.
+2. Once the necessary technology became mature enough, the web proper was
+proposed and implemented.
 
 3. The web became popular quite quickly, and many browsers appeared in order to
 capitalize on the web's opportunity.
