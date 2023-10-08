@@ -11,8 +11,7 @@ import wbetools
 class URL:
     def __init__(self, url):
         self.scheme, url = url.split("://", 1)
-        assert self.scheme in ["http", "https"], \
-            "Unknown scheme {}".format(self.scheme)
+        assert self.scheme in ["http", "https"]
 
         if "/" not in url:
             url = url + "/"
@@ -47,7 +46,6 @@ class URL:
     
         statusline = response.readline()
         version, status, explanation = statusline.split(" ", 2)
-        assert status == "200", "{}: {}".format(status, explanation)
     
         response_headers = {}
         while True:

@@ -81,7 +81,6 @@ class URL:
     
         statusline = response.readline().decode("utf8")
         version, status, explanation = statusline.split(" ", 2)
-        assert status == "200", "{}: {}".format(status, explanation)
     
         response_headers = {}
         while True:

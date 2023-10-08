@@ -591,6 +591,13 @@ window's new width and height can be found in the `width` and `height`
 fields on the event object. Remember that when the window is resized,
 the line breaks must change, so you will need to call `layout` again.
 
+*about:blank:* Currently, a malformed URL causes the browser to crash.
+It would be much better to have error recovery for that, and instead
+show a blank page, so that the user can fix the error. To do this, add
+support for the special `about:blank` URL, which should just render
+a blank page, and cause malformed URLs to automatically render as if they
+were `about:blank`.
+
 [fill-expand]: https://web.archive.org/web/20201111222645id_/http://effbot.org/tkinterbook/pack.htm
 
 [^3]: On older systems, applications drew directly to the screen, and
