@@ -22,7 +22,7 @@ felt I was seeing the future of computing. In some ways, the web and I grew
 together---for example, in 1994, the year the web went commercial, was the same
 year I started college; while there I spent a fair amount of time surfing it,
 and by the time I graduated in 1999, the browser had fueled the famous dot-com
-speculation gold rush. Not only that, but he company for which I now work,
+speculation gold rush. Not only that, but the company for which I now work,
 Google, is a child of the web and was founded during that time. 
 
 [^theweb]: Broadly defined, the web is the interlinked network (“web”)
@@ -198,7 +198,7 @@ are vital to the world’s economy. Browser engineers must therefore fix and
 improve rather than abandon and replace. And since the character of the web
 itself is highly decentralized, the use cases met by browsers are to a
 significant extent _not determined_ by the companies “owning” or “controlling” a
-particular browser. Other people---includingyou---can and do contribute ideas,
+particular browser. Other people---including you---can and do contribute ideas,
 proposals, and implementations.
 
 What's amazing is that, despite the scale and the pace and the complexity, there
