@@ -109,7 +109,7 @@ Berners-Lee---no surprise there! The second author is Roy Fielding, a
 key contributor to the design HTTP and also well-known for describing
 the "REST" architecture of the web in his [PhD thesis][rest-thesis],
 which explains how REST allowed the web to grow in a decentralized
-way. Today, many services provide "REST APIs" that also follow these
+way. Today, many services provide "RESTful APIs" that also follow these
 principles, though there does seem to be [some
 confusion][what-is-rest] about it.
 :::
@@ -264,7 +264,7 @@ much traction, even though many people (including me!) think they are
 a good idea.
 :::
 
-[header]: https://en.wikipedia.org/wiki/List_of_HTTP_header_fields
+[headers]: https://en.wikipedia.org/wiki/List_of_HTTP_header_fields
 
 [codes]: https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
 
@@ -517,17 +517,13 @@ endings.
 
 
 Let's now split the response into pieces. The first line is the
-status line:^[A status code other than 200 indicates various forms of
-action needed by the browser, such as a [redirect] code like 301, or
-action needed by the user, such as the famous [404]. I could have asserted
+status line:^[I could have asserted
 that 200 is required, since that's the only code our browser supports,
 but it's better to just let the browser render the returned body, because
 servers will generally output a helpful and user-readable HTML error page
 even for these codes. This is another way in which the web is easy to
 implement incrementally.]
 
-[redirect]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections
-[404]: https://en.wikipedia.org/wiki/HTTP_404
 
 ``` {.python}
 class URL:
@@ -635,6 +631,9 @@ is enclosed in a pair of tags: `<title>` and `</title>`. Each tag, inside
 the angle brackets, has a tag name\index{tag name} (like `title` here),
 and then optionally a space followed by *attributes*, and its pair has a `/`
 followed by the tag name (and no attributes). 
+
+[^content-tag]: That said, some tags, like `img`, are content, not information
+    about it.
 
 So, to create our very, very simple web browser, let's take the page
 HTML and print all the text, but not the tags, in it.[^python2] I'll do
@@ -842,7 +841,7 @@ Summary
 This chapter went from an empty file to a rudimentary web browser that
 can:
 
--   Parse a URL into a scheme, host, port and path.
+-   Parse a URL into a scheme, host, port and path
 -   Connect to that host using the `sockets` and `ssl` libraries
 -   Send an HTTP request to that host, including a `Host` header
 -   Split the HTTP response into a status line, headers, and a body
