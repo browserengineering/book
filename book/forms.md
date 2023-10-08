@@ -627,7 +627,7 @@ The new `body` argument to `load` is then passed through to `request`:
 ``` {.python indent=4}
 def load(self, url, body=None):
     # ...
-    headers, body = url.request(body)
+    body = url.request(body)
     # ...
 ```
 

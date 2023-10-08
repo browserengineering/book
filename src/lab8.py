@@ -222,7 +222,7 @@ class Tab:
         self.scroll = 0
         self.url = url
         self.history.append(url)
-        headers, body = url.request(body)
+        body = url.request(body)
         self.nodes = HTMLParser(body).parse()
 
         self.rules = self.default_style_sheet.copy()
@@ -234,7 +234,7 @@ class Tab:
                  and node.attributes.get("rel") == "stylesheet"]
         for link in links:
             try:
-                header, body = url.resolve(link).request()
+                body = url.resolve(link).request()
             except:
                 continue
             self.rules.extend(CSSParser(body).parse())

@@ -73,8 +73,6 @@ Then we request the URL and test both request and response:
     b'GET /example1 HTTP/1.0\r\nHost: test.test\r\n\r\n'
     >>> body
     'Body text'
-    >>> headers
-    {'header1': 'Value1'}
 
 With an unusual `Transfer-Encoding` the request should fail:
 
