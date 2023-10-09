@@ -221,20 +221,18 @@ This quote captures one of the key value propositions of the web: its
 decentralized nature. The web was successful for several reasons, but they
 all had to do with decentralization:
 
- - It provided a very low-friction way to publish information and applications.
-   There was no gatekeeper to doing anything, and it was easy for novices to
-   make a simple web page and publish it.
+ - Because there was no gatekeeper to doing anything, it was easy for anyone,
+ even novices, to make simple web pages and publish them.
 
- - Once bootstrapped, it built quickly upon itself via [network
-effects](https://en.wikipedia.org/wiki/Network_effect) made possible by
-compatibility between sites and the power of the hyperlink to reinforce this
-compatibility. Hyperlinks drove traffic between sites, but also into the web
-_from the outside_, from sources such as email, social networking, and search
-engines.
+ - Because pages were identified simply by URLs, traffic could come to the web
+   from outside sources like email, social networking, and search engines.
+   Further, compatibilty between sites and the power of hyperlinks created
+   [network effects](https://en.wikipedia.org/wiki/Network_effect) that further
+   strengthened the effect of hyperlinks from *within* the web.
 
- - It was outside the control of any one entity---and kept that way via
-standards organizations---and therefore not subject to problems of monopoly
-control or manipulation.
+ - Because the web was outside the control of any one entity---and kept that way
+   via standards organizations---it avoided the problems of monopoly control
+   and manipulation.
 
 Browsers
 ========
