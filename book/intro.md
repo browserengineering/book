@@ -22,8 +22,8 @@ felt I was seeing the future of computing. In some ways, the web and I grew
 together---for example, in 1994, the year the web went commercial, was the same
 year I started college; while there I spent a fair amount of time surfing it,
 and by the time I graduated in 1999, the browser had fueled the famous dot-com
-speculation gold rush. The company for which I now work, Google, is a child of
-the web and was founded during that time. 
+speculation gold rush. Not only that, but the company for which I now work,
+Google, is a child of the web and was founded during that time. 
 
 [^theweb]: Broadly defined, the web is the interlinked network (“web”)
 of [web pages](https://en.wikipedia.org/wiki/Web_page) on the
@@ -75,9 +75,9 @@ The web in history
 The web is a grand, crazy experiment. It's natural, nowadays, to watch videos,
 read news, and connect with friends on the web. That can make the web seem
 simple and obvious, finished, already built. But the web is neither simple nor
-obvious. It is the result of experiments and research reaching back to nearly
-the beginning of computing[^precursors] about how to help people connect and
-learn from each other.
+obvious (and is certainly not finished). It is the result of experiments and
+research, reaching back to nearly the beginning of computing,[^precursors] about
+how to help people connect and learn from each other.
 
 [^precursors]: And the web _also_ needed rich computer displays, powerful
 UI-building libraries, fast networks, and sufficient CPU power and information
@@ -86,12 +86,11 @@ predecessors, but only took its modern form once all the pieces came together.
 
 In the early days, the internet was a world-wide network of computers, largely
 at universities, labs, and major corporations, linked by physical cables and
-communicating over application-specific protocols. The early web built on this
-foundation. Web pages were files in a specific format stored on specific
-computers, and web browsers used a custom protocol to request them. URLs for web
-pages named the computer and the file, and early servers did little besides read
-files from a disk. The logical structure of the web mirrored its physical
-structure.
+communicating over application-specific protocols. The (very) early web mostly
+built on this foundation. Web pages were files in a specific format stored on
+specific computers. URLs for web pages named the computer and the file, and
+early servers did little besides read files from a disk. The logical structure
+of the web mirrored its physical structure.
 
 A lot has changed. HTML is now usually dynamically assembled on the
 fly[^server-side-rendering] and sent on demand to your browser. The pieces being
@@ -142,20 +141,23 @@ this original design.
 [^perhaps]: It is indeed true that one or more of the implementation choices
 could be replaced, and perhaps that will happen over time. For example,
 JavaScript might eventually be replaced by another language or technology, HTTP
-by some other protocol, or HTML by a successor. Yet the web will stay the web.
+by some other protocol, or HTML by a successor. Yet the web will stay the web,
+because any successor format is sure to support a *superset* of functionality,
+and have the same fundamental structure.
 
-The key thing to understand is this grand experiment is [not over](change.md).
+The key thing to understand is this grand experiment is not over.
 The essence of the web will stay, but by building web browsers you have the
 chance to shape its future.
 
 Real browser codebases
 ======================
 
-So let me tell you what it's like to contribute. Some time during my first few
-months of working on Chrome, I came across the code implementing the
-[`<br>`][br-tag] tag---look at that, the good-old `<br>` tag, which I’ve used
-many times to insert newlines into web pages! And the implementation turns out
-to be barely any code at all, both in Chrome and in this book's simple browser.
+So let me tell you what it's like to contribute to a browser. Some time during
+my first few months of working on Chrome, I came across the code implementing
+the[`<br>`][br-tag] tag---look at that, the good-old `<br>` tag, which I’ve
+used many times to insert newlines into web pages! And the implementation turns
+out to be barely any code at all, both in Chrome and in this book's simple
+browser.
 
 [br-tag]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/br
 
@@ -187,7 +189,7 @@ modularization and abstraction.
 
 [^browsers-abstraction-hard]: Browsers are so performance-sensitive that, in
 many places, merely the introduction of an abstraction---the function call or
-branching overhead---has an unacceptable performance cost!
+branching overhead---can have an unacceptable performance cost!
 
 What makes a browser different from most massive code bases is their _urgency_.
 Browsers are nearly as old as any “legacy” codebase, but are _not_ legacy, not
@@ -196,8 +198,8 @@ are vital to the world’s economy. Browser engineers must therefore fix and
 improve rather than abandon and replace. And since the character of the web
 itself is highly decentralized, the use cases met by browsers are to a
 significant extent _not determined_ by the companies “owning” or “controlling” a
-particular browser. Other people---you---can contribute ideas and proposals and
-implementations.
+particular browser. Other people---including you---can and do contribute ideas,
+proposals, and implementations.
 
 What's amazing is that, despite the scale and the pace and the complexity, there
 is still plenty of room to contribute. Every browser today is open-source, which
@@ -205,7 +207,7 @@ opens up its implementation to the whole community of web developers. Browsers
 evolve like giant R&D projects, where new ideas are constantly being proposed
 and tested out. As you would expect, some features fail and some succeed. The
 ones that succeed end up in specifications and are implemented by other
-browsers. That means that every web browser is open to contributions---whether
+browsers. Every web browser is open to contributions---whether
 fixing bugs or proposing new features or implementing promising optimizations.
 
 And it's worth contributing, because working on web browsers is a lot of fun.
@@ -218,7 +220,7 @@ specifies _what_ outcome to achieve, and the _browser itself_ is
 responsible for figuring out the _how_ to achieve it. Web developers
 don't, and mostly can't, draw their web page's pixels on their own.
 
-That can make the browser both magical or frustrating---depending on
+That can make the browser magical or frustrating---depending on
 whether it is doing the right thing! But that also makes a browser a pretty
 unusual piece of software, with unique challenges, interesting algorithms, and
 clever optimizations. Browsers are worth studying for the pure pleasure of it.
@@ -226,32 +228,33 @@ clever optimizations. Browsers are worth studying for the pure pleasure of it.
 [^loss-of-control]: Loss of control is not necessarily specific to the web---much
 of computing these days relies on mountains of other peoples’ code.
 
+What makes that all work is the web browser's implementations of [inversion of
+control][inversion], [constraint programming][constraints], and
+[declarative programming][declarative]. The web _inverts control_, with an
+intermediary---the browser---handling most of the rendering, and the web
+developer specifying rendering parameters and content to this intermediary.
+[^forms] Further, these parameters usually take the form of _constraints_
+between relative sizes and positions of on-screen elements instead of
+specifying their values directly;[^constraints] the browser solves the
+constraints to find those values. The same idea applies for actions: web pages
+mostly require _that_ actions take place without specifying _when_ they do.
+This _declarative_ style means that from the point of view of a developer,
+changes "apply immediately," but under the hood, the browser can be
+[lazy] and delay applying the changes until they become externally visible,
+either due to subsequent API calls or because the page has to be displayed to
+the user.[^style-calculation]
+
+[inversion]: https://en.wikipedia.org/wiki/Inversion_of_control
+[constraints]: https://en.wikipedia.org/wiki/Constraint_programming
+[declarative]: https://en.wikipedia.org/wiki/Declarative_programming
+[lazy]: https://en.wikipedia.org/wiki/Lazy_evaluation
+
 There are practical reasons for the unusual design of a browser. Yes, developers
 lose some control and agency---when pixels are wrong, developers cannot fix them
 directly.[^loss-of-control] But they gain the ability to deploy content on the
 web without worrying about the details, to make that content instantly available
 on almost every computing device in existence, and to keep it accessible in the
 future, mostly avoiding software's inevitable obsolescence.
-
-What makes that all work is the web browser's implementations of [inversion of
-control][inversion], [constraint programming][constraints], and [declarative
-programming][declarative]. The web _inverts control_, with an intermediary---the
-browser---handling most of the rendering, and the web developer specifying
-parameters and content to this intermediary.[^forms] Further, these parameters
-usually take the form of _constraints_ over relative sizes and positions instead
-of specifying their values directly;[^constraints] the browser solves the
-constraints to find those values. The same idea applies for actions: web pages
-mostly require _that_ actions take place without specifying _when_ they do. This
-_declarative_ style means that from the point of view of a developer, changes
-"apply immediately," but under the hood, the browser can be [lazy][lazy] and
-delay applying the changes until they become externally visible, either due to
-subsequent API calls or because the page has to be displayed to the
-user.[^style-calculation]
-
-[inversion]: https://en.wikipedia.org/wiki/Inversion_of_control
-[constraints]: https://en.wikipedia.org/wiki/Constraint_programming
-[declarative]: https://en.wikipedia.org/wiki/Declarative_programming
-[lazy]: https://en.wikipedia.org/wiki/Lazy_evaluation
 
 [^forms]: For example, in HTML there are many built-in [form control
 elements][forms] that take care of the various ways the user of a web page can
@@ -264,8 +267,7 @@ browser.
 
 [^constraints]: Constraint programming is clearest during web page layout, where
 font and window sizes, desired positions and sizes, and the relative arrangement
-of widgets is rarely specified directly. A fun question to consider: what does
-the browser "optimize for" when computing a layout?
+of widgets is rarely specified directly.
 
 [^style-calculation]: For example, when exactly does the browser
 compute HTML element's styles? Any change to the styles is visible to
@@ -283,12 +285,12 @@ sandbox; and a uniquely dynamic system for storing data.
 
 And the truth is---you use the browser all the time, maybe for reading this
 book! That makes the algorithms more approachable in a browser than almost
-anywhere else: the web is already familiar. After all, it's at the center of
-modern computing.
+anywhere else, because the web is already familiar.
 
 The role of the browser
 =======================
 
+The web is at the center of modern computing.
 Every year the web expands its reach to more and more of what we do with
 computers. It now goes far beyond its original use for document-based
 information sharing: many people now spend their entire day in a browser, not
@@ -307,15 +309,13 @@ enhancement][prog-enhance-def].
     likely increasing over time. In some markets like China, "super-apps" act
     like a mobile web browser for web-view-based games and widgets.
     
-So given this centrality, it's worth knowing how the web works. And in fact, the
-web is built on simple concepts: open, decentralized, and safe computing; a
-declarative document model for describing UIs; hyperlinks; and the User Agent
-model.[^useragent] It's the browser that makes these concepts real. The browser
-is the User Agent, but also the _mediator_ of the web's interactions and the
-_enforcer_ of its rules. The browser is the _implementer_ of the web: Its
-sandbox keeps web browsing safe; its algorithms implement the declarative
-document model; its UI navigates links. Web pages load fast and react smoothly
-only when the browser is hyper-efficient.
+So given this centrality, it's worth knowing how the web works. And in
+particular, it's worth focusing on the browser, which is the user
+agent[^useragent] and the mediator of the web's interactions, which
+ultimately is what makes the web's principles real. The browser is also the
+_implementer_ of the web: Its sandbox keeps web browsing safe; its algorithms
+implement the declarative document model; its UI navigates links. Web pages
+load fast and react smoothly only when the browser is hyper-efficient.
 
 [^useragent]: The User Agent concept views a computer, or software within the
     computer, as a trusted assistant and advocate of the human user.
@@ -325,21 +325,18 @@ Browsers and you
 
 This book explains how to build a simple browser, one that can---despite its
 simplicity---display interesting-looking web pages and support many interesting
-behaviors.[^prog-enhance] As you’ll see, it’s surprisingly easy, and it
+behaviors. As you’ll see, it’s surprisingly easy, and it
 demonstrates all the core concepts you need to understand a real-world browser.
 The browser stops being a mystery when it becomes code.
-
-[^prog-enhance]: You might relate this to the history of the web and the idea of
-[progressive enhancement][prog-enhance-def].
 
 [prog-enhance-def]:
 https://en.wikipedia.org/wiki/Progressive_enhancement
 
 The intention is for you to build your own browser as you work through the early
 chapters. Once it is up and running, there are endless opportunities to improve
-performance or add features. Many of these exercises are features implemented in
-real browsers, and I encourage you to try them---adding features is one of the
-best parts of browser development!
+performance or add features, some of which are suggested as exercises. Many of
+these exercises are features implemented in real browsers, and I encourage you
+to try them---adding features is one of the best parts of browser development!
 
 The book then moves on to details and advanced features that flesh out the
 architecture of a real browser’s rendering engine, based on my experiences with
