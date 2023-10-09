@@ -336,7 +336,7 @@ https://en.wikipedia.org/wiki/Progressive_enhancement
 
 The intention is for you to build your own browser as you work through the early
 chapters. Once it is up and running, there are endless opportunities to improve
-performance or add features. some of which are suggested as exercises. Many of
+performance or add features, some of which are suggested as exercises. Many of
 these exercises are features implemented in real browsers, and I encourage you
 to try them---adding features is one of the best parts of browser development!
 
