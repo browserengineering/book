@@ -1221,10 +1221,10 @@ checks if that's followed by a colon and a pseudo-class name:
 ``` {.python}
 class CSSParser:
     def simple_selector(self):
-        out = TagSelector(self.word().lower())
+        out = TagSelector(self.word().casefold())
         if self.i < len(self.s) and self.s[self.i] == ":":
             self.literal(":")
-            pseudoclass = self.word().lower()
+            pseudoclass = self.word().casefold()
             out = PseudoclassSelector(pseudoclass, out)
         return out
 ```

@@ -66,21 +66,20 @@ class URL:
     
         statusline = response.readline()
         version, status, explanation = statusline.split(" ", 2)
-        assert status == "200", "{}: {}".format(status, explanation)
     
         response_headers = {}
         while True:
             line = response.readline()
             if line == "\r\n": break
             header, value = line.split(":", 1)
-            response_headers[header.lower()] = value.strip()
+            response_headers[header.casefold()] = value.strip()
     
         assert "transfer-encoding" not in response_headers
         assert "content-encoding" not in response_headers
     
         body = response.read()
         s.close()
-        return response_headers, body
+        return body
 
 INPUT_WIDTH_PX = 200
 
@@ -223,7 +222,7 @@ class Tab:
         self.scroll = 0
         self.url = url
         self.history.append(url)
-        headers, body = url.request(body)
+        body = url.request(body)
         self.nodes = HTMLParser(body).parse()
 
         self.rules = self.default_style_sheet.copy()
@@ -235,7 +234,7 @@ class Tab:
                  and node.attributes.get("rel") == "stylesheet"]
         for link in links:
             try:
-                header, body = url.resolve(link).request()
+                body = url.resolve(link).request()
             except:
                 continue
             self.rules.extend(CSSParser(body).parse())

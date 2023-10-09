@@ -15,7 +15,7 @@ def handle_connection(conx):
         line = req.readline().decode('utf8')
         if line == '\r\n': break
         header, value = line.split(":", 1)
-        headers[header.lower()] = value.strip()
+        headers[header.casefold()] = value.strip()
     if 'content-length' in headers:
         length = int(headers['content-length'])
         body = req.read(length).decode('utf8')

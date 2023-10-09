@@ -794,7 +794,7 @@ def request(self, payload=None):
             cookie, rest = cookie.split(";", 1)
             for param_pair in rest.split(";"):
                 name, value = param_pair.strip().split("=", 1)
-                params[name.lower()] = value.lower()
+                params[name.casefold()] = value.casefold()
         COOKIE_JAR[self.host] = (cookie, params)
 ```
 

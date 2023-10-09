@@ -35,17 +35,35 @@ the URL, like ports, queries, and fragments, which we'll see later.
 From a URL, the browser can start the process of downloading the web
 page. The browser first asks the OS to put it in touch with the
 *server* described by the *host name*. The OS then talks to a *DNS*
-server which converts[^5] a host name like `example.org` into a
-*destination IP address* like `93.184.216.34`.[^6] Then the OS decides
+server which converts[^dns] a host name like `example.org` into a
+*destination IP address* like `93.184.216.34`.[^ipv6] Then the OS decides
 which hardware is best for communicating with that destination IP
 address (say, wireless or wired) using what is called a *routing
 table*, and then uses device drivers to send signals over a wire or
-over the air.[^7] Those signals are picked up and transmitted by a
-series of *routers*[^8] which each choose the best direction to send
-your message so that it eventually gets to the destination.[^9] When
-the message reaches the server, a connection is created. Anyway, the
+over the air.[^skipped-steps] Those signals are picked up and transmitted by a
+series of *routers*[^switch-ap] which each choose the best direction to send
+your message so that it eventually gets to the destination.[^network-tracing]
+When the message reaches the server, a connection is created. Anyway, the
 point of this is that the browser tells the OS, “Hey, put me in touch
 with `example.org`”, and it does.
+
+[^dns]: You can use a DNS lookup tool like
+    [nslookup.io](https://nslookup.io) or the `dig` command to do this
+    conversion yourself.
+
+[^ipv6]: Today there are two versions of IP: IPv4 and IPv6. IPv6 addresses
+    are a lot longer and are usually in hex, but otherwise the
+    differences don't matter here.
+
+[^skipped-steps]: I'm skipping steps here. On wires you first have to wrap
+    communications in ethernet frames, on wireless you have to do even
+    more. I'm trying to be brief.
+
+[^switch-ap]: Or a switch, or an access point, there are a lot of possibilities,
+but eventually there is a router.
+
+[^network-tracing]: They may also record where the message came from so they can
+forward the reply back, especially in the case of NATs.
 
 On many systems, you can set up this kind of connection using the
 `telnet` program, like this:^[The "80" is the port, discussed below.]
@@ -91,7 +109,7 @@ Berners-Lee---no surprise there! The second author is Roy Fielding, a
 key contributor to the design HTTP and also well-known for describing
 the "REST" architecture of the web in his [PhD thesis][rest-thesis],
 which explains how REST allowed the web to grow in a decentralized
-way. Today, many services provide "REST APIs" that also follow these
+way. Today, many services provide "RESTful APIs" that also follow these
 principles, though there does seem to be [some
 confusion][what-is-rest] about it.
 :::
@@ -246,7 +264,7 @@ much traction, even though many people (including me!) think they are
 a good idea.
 :::
 
-[header]: https://en.wikipedia.org/wiki/List_of_HTTP_header_fields
+[headers]: https://en.wikipedia.org/wiki/List_of_HTTP_header_fields
 
 [codes]: https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
 
@@ -288,8 +306,7 @@ URL by `://`. Our browser only supports `http`, so I check that, too:
 class URL:
     def __init__(self, url):
         self.scheme, url = url.split("://", 1)
-        assert self.scheme == "http", \
-            "Unknown scheme {}".format(self.scheme)
+        assert self.scheme == "http"
 ```
 
 Now we must separate the host from the path. The host comes before the
@@ -341,12 +358,26 @@ multiple ways to talk to other computers:
     that's going to happen. Types have names that begin with `SOCK`. We
     want `SOCK_STREAM`, which means each computer can send arbitrary
     amounts of data over, but there's also `SOCK_DGRAM`, in which case
-    they send each other packets of some fixed size.[^15]
+    they send each other packets of some fixed size.[^dgram]
 -   A socket has a *protocol*, which describes the steps by which the
     two computers will establish a connection. Protocols have names that
-    depend on the address family, but we want `IPPROTO_TCP`.[^16]
+    depend on the address family, but we want `IPPROTO_TCP`.[^quic]
 
-By picking all of these options, we can create a socket like so:[^17]
+[^dgram]: The `DGRAM` stands for "datagram", which I imagine to be like a
+postcard.
+
+[^quic]: Newer versions of HTTP use something called
+    [QUIC](https://en.wikipedia.org/wiki/QUIC) instead of TCP, but our
+    browser will stick to HTTP 1.0.
+
+
+By picking all of these options, we can create a socket like so:[^sockets]
+
+[^sockets]: While this code uses the Python `socket` library, your favorite
+    language likely contains a very similar library; the API is
+    basically standardized. In Python, the flags we pass are defaults,
+    so you can actually call `socket.socket()`; I'm keeping the flags
+    here in case you're following along in another language.
 
 ``` {.python}
 import socket
@@ -456,7 +487,12 @@ To read the server's response, you could use the `read` function on
 sockets, which gives whatever bits of the response have already
 arrived. Then you write a loop to collect those bits as they arrive.
 However, in Python you can use the `makefile` helper function, which
-hides the loop:[^19]
+hides the loop:[^socket-loop]
+
+[^socket-loop]: If you're in another language, you might only have `socket.read`
+available. You'll need to write the loop, checking the socket status,
+yourself.
+
 
 ``` {.python}
 class URL:
@@ -468,11 +504,26 @@ class URL:
 Here `makefile` returns a file-like object containing every byte we
 receive from the server. I am instructing Python to turn those bytes
 into a string using the `utf8` *encoding*, or method of associating
-bytes to letters.[^21] I'm also informing Python of HTTP's weird line
+bytes to letters.[^utf8] I'm also informing Python of HTTP's weird line
 endings.
 
+[^utf8]: Hard-coding `utf8` is not correct, but it's a shortcut that
+    will work alright on most English-language websites. In fact, the
+    `Content-Type` header usually contains a `charset` declaration
+    that specifies encoding of the body. If it's absent, browsers
+    still won't default to `utf8`; they'll guess, based on letter
+    frequencies, and you see ugly � strange áççêñ£ß when they guess
+    wrong. Incorrect-but-common `utf8` skips all that complexity.
+
+
 Let's now split the response into pieces. The first line is the
-status line:
+status line:^[I could have asserted
+that 200 is required, since that's the only code our browser supports,
+but it's better to just let the browser render the returned body, because
+servers will generally output a helpful and user-readable HTML error page
+even for these codes. This is another way in which the web is easy to
+implement incrementally.]
+
 
 ``` {.python}
 class URL:
@@ -480,7 +531,6 @@ class URL:
         # ...
         statusline = response.readline()
         version, status, explanation = statusline.split(" ", 2)
-        assert status == "200", "{}: {}".format(status, explanation)
 ```
 
 Note that I do *not* check that the server's version of HTTP is the
@@ -500,19 +550,23 @@ class URL:
             line = response.readline()
             if line == "\r\n": break
             header, value = line.split(":", 1)
-            response_headers[header.lower()] = value.strip()
+            response_headers[header.casefold()] = value.strip()
 ```
 
-For the headers, I split each line at the first colon and fill in a
-map of header names to header values. Headers are case-insensitive, so
-I normalize them to lower case. Also, white-space is insignificant in
-HTTP header values, so I strip off extra whitespace at the beginning
-and end.
+For the headers, I split each line at the first colon and fill in a map of
+header names to header values. Headers are case-insensitive, so I normalize
+them to lower case.[^casefold] Also, white-space is insignificant in HTTP
+header values, so I strip off extra whitespace at the beginning and end.
+
+[^casefold]: I used [`casefold`][casefold] instead of `lower`, because it works
+better for more languages.
+
+[casefold]: https://docs.python.org/3/library/stdtypes.html#str.casefold
 
 Headers can describe all sorts of information, but a couple of headers
 are especially important because they tell us that the data we're
 trying to access is being sent in an unusual way. Let's make sure none
-of those are present:[^if-te]
+of those are present.[^if-te]
 
 [^if-te]: The "compression" exercise at the end of this chapter
     describes how your browser should handle these headers if they are
@@ -536,14 +590,13 @@ class URL:
         s.close()
 ```
 
-It's that body that we're going to display, so let's return that.
-Let's also return the headers, in case they are useful to someone:
+It's that body that we're going to display, so let's return that:
 
 ``` {.python}
 class URL:
     def request(self):
         # ...
-        return response_headers, body
+        return body
 ```
 
 Now let's actually display the text in the response body.
@@ -572,33 +625,24 @@ me keep it very simple.
 
 In HTML, there are *tags* and *text*. Each tag starts with a `<` and
 ends with a `>`; generally speaking, tags tell you what kind of thing
-some content is, while text is the actual content.[^22] Most tags come
+some content is, while text is the actual content.[^content-tag] Most tags come
 in pairs of a start and an end tag; for example, the title of the page
 is enclosed in a pair of tags: `<title>` and `</title>`. Each tag, inside
 the angle brackets, has a tag name\index{tag name} (like `title` here),
 and then optionally a space followed by *attributes*, and its pair has a `/`
-followed by the tag name (and no attributes). Some tags do not have
-pairs, because they don't surround text, they just carry information.
-For example, on <http://example.org/index.html>, there is the tag:
+followed by the tag name (and no attributes). 
 
-``` {.example}
-<meta charset="utf-8" />
-```
-
-This tag explains that the character set with which to interpret the
-page body is `utf-8`. Sometimes, tags that don't contain information
-end in a slash, but not always; it's a matter of preference.
-
-The most important HTML tag is called `<body>` (with its pair,
-`</body>`). Between these tags is the content of the page; outside of
-these tags is various information about the page, like the
-aforementioned title, information about how the page should look
-(`<style>` and `</style>`), and metadata (the aforementioned `<meta>`
-tag).
+[^content-tag]: That said, some tags, like `img`, are content, not information
+    about it.
 
 So, to create our very, very simple web browser, let's take the page
-HTML and print all the text, but not the tags, in it.[^23] I'll do
+HTML and print all the text, but not the tags, in it.[^python2] I'll do
 this in a new function, `show`:
+
+[^python2]: If this example causes Python to produce a `SyntaxError` pointing to
+the `end` on the last line, it is likely because you are running Python 2
+instead of Python 3. Make sure you are using Python 3.
+
 
 ``` {.python}
 def show(body):
@@ -616,14 +660,17 @@ This code is pretty complex. It goes through the request body character
 by character, and it has two states: `in_tag`, when it is currently
 between a pair of angle brackets, and `not in_tag`. When the current
 character is an angle bracket, it changes between those states; 
-normal characters, not inside a tag, are printed.[^24]
+normal characters, not inside a tag, are printed.[^python-newline]
+
+[^python-newline]: The `end` argument tells Python not to print a newline after
+the character, which it otherwise would.
 
 We can now load a web page just by stringing together `request` and
 `show`:
 
 ``` {.python}
 def load(url):
-    headers, body = url.request()
+    body = url.request()
     show(body)
 ```
 
@@ -709,8 +756,7 @@ detect which scheme is being used:
 class URL:
     def __init__(self, url):
         self.scheme, url = url.split("://", 1)
-        assert self.scheme in ["http", "https"], \
-            "Unknown scheme {}".format(self.scheme)
+        assert self.scheme in ["http", "https"]
         # ...
 ```
 
@@ -795,7 +841,7 @@ Summary
 This chapter went from an empty file to a rudimentary web browser that
 can:
 
--   Parse a URL into a scheme, host, port and path.
+-   Parse a URL into a scheme, host, port and path
 -   Connect to that host using the `sockets` and `ssl` libraries
 -   Send an HTTP request to that host, including a `Host` header
 -   Split the HTTP response into a status line, headers, and a body
@@ -906,57 +952,3 @@ support for that, too.[^te-gzip]
 
 [^te-gzip]: There's also a couple of `Transfer-Encoding`s that
     compress the data. Those aren't commonly used.
-
-[^5]: You can use a DNS lookup tool like
-    [nslookup.io](https://nslookup.io) or the `dig` command to do this
-    conversion yourself.
-
-[^6]: Today there are two versions of IP: IPv4 and IPv6. IPv6 addresses
-    are a lot longer and are usually in hex, but otherwise the
-    differences don't matter here.
-
-[^7]: I'm skipping steps here. On wires you first have to wrap
-    communications in ethernet frames, on wireless you have to do even
-    more. I'm trying to be brief.
-
-[^8]: Or a switch, or an access point, there are a lot of possibilities,
-    but eventually there is a router.
-
-[^9]: They may also record where the message came from so they can
-    forward the reply back, especially in the case of NATs.
-
-
-[^15]: The `DGRAM` stands for "datagram", which I imagine to be like a
-    postcard.
-
-[^16]: Newer versions of HTTP use something called
-    [QUIC](https://en.wikipedia.org/wiki/QUIC) instead of TCP, but our
-    browser will stick to HTTP 1.0.
-
-[^17]: While this code uses the Python `socket` library, your favorite
-    language likely contains a very similar library; the API is
-    basically standardized. In Python, the flags we pass are defaults,
-    so you can actually call `socket.socket()`; I'm keeping the flags
-    here in case you're following along in another language.
-
-[^19]: If you're in another language, you might only have `socket.read`
-    available. You'll need to write the loop, checking the socket
-    status, yourself.
-
-[^21]: Hard-coding `utf8` is not correct, but it's a shortcut that
-    will work alright on most English-language websites. In fact, the
-    `Content-Type` header usually contains a `charset` declaration
-    that specifies encoding of the body. If it's absent, browsers
-    still won't default to `utf8`; they'll guess, based on letter
-    frequencies, and you see ugly � strange áççêñ£ß when they guess
-    wrong. Incorrect-but-common `utf8` skips all that complexity.
-
-[^22]: That said, some tags, like `img`, are content, not information
-    about it.
-
-[^23]: If this example causes Python to produce a `SyntaxError` pointing
-    to the `end` on the last line, it is likely because you are running
-    Python 2 instead of Python 3. Make sure you are using Python 3.
-
-[^24]: The `end` argument tells Python not to print a newline after the
-    character, which it otherwise would.

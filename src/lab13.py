@@ -341,7 +341,7 @@ class CSSParser:
         self.literal(":")
         self.whitespace()
         val = self.until_semicolon()
-        return prop.lower(), val
+        return prop.casefold(), val
 
     def ignore_until(self, chars):
         while self.i < len(self.s):
@@ -355,7 +355,7 @@ class CSSParser:
         while self.i < len(self.s) and self.s[self.i] != "}":
             try:
                 prop, val = self.pair()
-                pairs[prop.lower()] = val
+                pairs[prop.casefold()] = val
                 self.whitespace()
                 self.literal(";")
                 self.whitespace()
@@ -369,11 +369,11 @@ class CSSParser:
         return pairs
 
     def selector(self):
-        out = TagSelector(self.word().lower())
+        out = TagSelector(self.word().casefold())
         self.whitespace()
         while self.i < len(self.s) and self.s[self.i] != "{":
             tag = self.word()
-            descendant = TagSelector(tag.lower())
+            descendant = TagSelector(tag.casefold())
             out = DescendantSelector(out, descendant)
             self.whitespace()
         return out

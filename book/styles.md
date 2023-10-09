@@ -111,7 +111,7 @@ def pair(self):
     self.literal(":")
     self.whitespace()
     val = self.word()
-    return prop.lower(), val
+    return prop.casefold(), val
 ```
 
 We can parse sequences by calling parsing functions in a loop. For
@@ -122,7 +122,7 @@ def body(self):
     pairs = {}
     while self.i < len(self.s):
         prop, val = self.pair()
-        pairs[prop.lower()] = val
+        pairs[prop.casefold()] = val
         self.whitespace()
         self.literal(";")
         self.whitespace()
@@ -378,11 +378,11 @@ elements with those tags.
 
 ``` {.python indent=4}
 def selector(self):
-    out = TagSelector(self.word().lower())
+    out = TagSelector(self.word().casefold())
     self.whitespace()
     while self.i < len(self.s) and self.s[self.i] != "{":
         tag = self.word()
-        descendant = TagSelector(tag.lower())
+        descendant = TagSelector(tag.casefold())
         out = DescendantSelector(out, descendant)
         self.whitespace()
     return out
@@ -635,7 +635,7 @@ def load(self, url):
     # ...
     for link in links:
         try:
-            header, body = url.resolve(link).request()
+            body = url.resolve(link).request()
         except:
             continue
         rules.extend(CSSParser(body).parse())

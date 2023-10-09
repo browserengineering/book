@@ -141,7 +141,7 @@ class Browser:
         self.display_list = []
 
     def load(self, url):
-        headers, body = url.request()
+        body = url.request()
         tokens = lex(body)
         self.display_list = Layout(tokens).display_list
         self.draw()

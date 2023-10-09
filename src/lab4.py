@@ -66,16 +66,16 @@ class HTMLParser:
 
     def get_attributes(self, text):
         parts = text.split()
-        tag = parts[0].lower()
+        tag = parts[0].casefold()
         attributes = {}
         for attrpair in parts[1:]:
             if "=" in attrpair:
                 key, value = attrpair.split("=", 1)
                 if len(value) > 2 and value[0] in ["'", "\""]:
                     value = value[1:-1]
-                attributes[key.lower()] = value
+                attributes[key.casefold()] = value
             else:
-                attributes[attrpair.lower()] = ""
+                attributes[attrpair.casefold()] = ""
         return tag, attributes
 
     def add_text(self, text):
@@ -193,7 +193,7 @@ class Layout:
 @wbetools.patch(Browser)
 class Browser:
     def load(self, url):
-        headers, body = url.request()
+        body = url.request()
         self.nodes = HTMLParser(body).parse()
         self.display_list = Layout(self.nodes).display_list
         self.draw()

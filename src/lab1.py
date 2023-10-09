@@ -11,8 +11,7 @@ import wbetools
 class URL:
     def __init__(self, url):
         self.scheme, url = url.split("://", 1)
-        assert self.scheme in ["http", "https"], \
-            "Unknown scheme {}".format(self.scheme)
+        assert self.scheme in ["http", "https"]
 
         if "/" not in url:
             url = url + "/"
@@ -47,14 +46,13 @@ class URL:
     
         statusline = response.readline()
         version, status, explanation = statusline.split(" ", 2)
-        assert status == "200", "{}: {}".format(status, explanation)
     
         response_headers = {}
         while True:
             line = response.readline()
             if line == "\r\n": break
             header, value = line.split(":", 1)
-            response_headers[header.lower()] = value.strip()
+            response_headers[header.casefold()] = value.strip()
     
         assert "transfer-encoding" not in response_headers
         assert "content-encoding" not in response_headers
@@ -62,7 +60,7 @@ class URL:
         body = response.read()
         s.close()
     
-        return response_headers, body
+        return body
 
     @wbetools.js_hide
     def __repr__(self):
@@ -80,7 +78,7 @@ def show(body):
             print(c, end="")
 
 def load(url):
-    headers, body = url.request()
+    body = url.request()
     show(body)
 
 if __name__ == "__main__":
