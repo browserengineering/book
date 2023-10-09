@@ -310,14 +310,12 @@ enhancement][prog-enhance-def].
     like a mobile web browser for web-view-based games and widgets.
     
 So given this centrality, it's worth knowing how the web works. And in
-particular, how the principles I listed earlier are put into practice by the
-User Agent, i.e. *the web browser*.[^useragent] It's the browser that makes
-these concepts real. The browser is the User Agent, but also the _mediator_ of
-the web's interactions and the
-_enforcer_ of its rules. The browser is the _implementer_ of the web: Its
-sandbox keeps web browsing safe; its algorithms implement the declarative
-document model; its UI navigates links. Web pages load fast and react smoothly
-only when the browser is hyper-efficient.
+particular, it's worth focusing on the browser, which is the user
+agent[^useragent] and the mediator of the web's interactions, which
+ultimately is what makes the web's principles real. The browser is also the
+_implementer_ of the web: Its sandbox keeps web browsing safe; its algorithms
+implement the declarative document model; its UI navigates links. Web pages
+load fast and react smoothly only when the browser is hyper-efficient.
 
 [^useragent]: The User Agent concept views a computer, or software within the
     computer, as a trusted assistant and advocate of the human user.
