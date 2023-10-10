@@ -840,7 +840,7 @@ Here is what it should output for [this example][example-simple]:
 
 [example-simple]: examples/example1-simple.html
 
-```
+``` {.example}
 
   
     This is a simple
