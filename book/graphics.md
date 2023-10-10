@@ -246,7 +246,7 @@ def load(self, url):
 Let's test this code on a real webpage. For reasons that might seem
 inscrutable[^delay], let's test it on the [first chapter of <span
 lang="zh">西游记</span> or "Journey to the
-West"](/examples/xiyouji.html), a classic Chinese novel
+West"][ex-monkey], a classic Chinese novel
 about a monkey. Run this URL[^instructions] through `request`, `lex`, and
 `load`. You should see a window with a big blob of black pixels
 inset a bit from the top left corner of the window.
@@ -290,10 +290,16 @@ for c in text:
 
 The code increases `cursor_y` and resets `cursor_x`[^crlf] once
 `cursor_x` goes past 787 pixels.[^not-800] Wrapping the text this way
-makes it possible to read more than a single line:
+makes it possible to read more than a single line.
+
+::: {.web-only}
+
+Here's an widget demonstrating that concept:
 
 ::: {.widget height=204}
     lab2-render.html
+:::
+
 :::
 
 [^crlf]: In the olden days of typewriters, increasing *y* meant
@@ -307,6 +313,17 @@ makes it possible to read more than a single line:
 
 [^not-800]: Not 800, because we started at pixel 13 and I want to leave an
     even gap on both sides.
+
+At this point you should be able to load up [this page][ex-monkey] in your
+browser and have it look about like this:
+
+<figure>
+<img src="examples/example2-text-screenshot.png"
+     alt="Screenshot of Chinese text of 'Journey to the West'">
+</figure>
+
+[ex-monkey]: examples/xiyouji.html
+
 
 Now we can read a lot of text, but still not all of it: if there's
 enough text, all of the lines of text don't fit on the screen. We want
