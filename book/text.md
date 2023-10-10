@@ -929,4 +929,5 @@ paragraphs, text inside `<pre>` tags doesn't automatically break
 lines, and whitespace like spaces and newlines are preserved. Use a
 fixed-width font like `Courier New` or `SFMono` as well. Make sure
 tags work normally inside `<pre>` tags: it should be possible to bold
-some text inside a `<pre>`.
+some text inside a `<pre>`. The results will look best if you also do
+the "Entities" exercise in [Chapter 1](http.md#exercises).
