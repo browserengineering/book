@@ -1,3 +1,4 @@
+body { overflow:hidden }
 html, body, #widget, fieldset { border: none; margin: 0; padding: 0; }
 #widget, #controls { width: 100%; }
 #controls {
