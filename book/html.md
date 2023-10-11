@@ -20,10 +20,6 @@ and for each span of text.[^1] So for our browser to use a tree, tokens need to
 evolve into nodes. That means adding a list of children and a parent
 pointer to each one. Here's the new `Text` class:
 
-[^children]: The `children` field of a `Text` node will always be
-    empty; I'm defining it here to make it easier to write code that
-    handles `Text` and `Element` nodes simultaneously.
-
 [^dom]: This is the tree that is usually called the
 DOM\index{DOM}\index{document} tree, for
 [Document Object Model](https://en.wikipedia.org/wiki/Document_Object_Model).
