@@ -835,7 +835,7 @@ not recommended. It's very difficult to write a custom TLS
 implementation that is not only correct but secure.
 :::
 
-At this point you should be able to run your program on any web plage.
+At this point you should be able to run your program on any web page.
 Here is what it should output for [this example][example-simple]:
 
 [example-simple]: examples/example1-simple.html
