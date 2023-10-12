@@ -462,7 +462,7 @@ So a block's `x` must therefore be computed before its children's `x`.
 That means the `x` computation has to go *before* the recursive
 `layout` call.
 
-On the contrary, an element's `height` field
+On the other hand, an element's `height` field
 depends on its children's heights. So while `x`
 must be computed _before_ the recursive call, `height` has to be
 computed _after_.
