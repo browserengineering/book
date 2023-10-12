@@ -6,8 +6,8 @@ next: chrome
 ...
 
 In the [last chapter](layout.md), we gave each `pre` element a gray
-background. It looks OK, and it *is* good to have defaults... but of
-course sites want a say in how they look. Websites do that with
+background. It looks OK, and it *is* good to have defaults, but
+sites want a say in how they look. Websites do that with
 _Cascading Style Sheets_ (CSS), which allow web authors (and, as
 we'll see, browser developers) to define how a web page ought to look.
 
@@ -23,7 +23,7 @@ attribute. For example, this changes an element's background color:
 
 More generally, a `style` attribute contains property/value pairs
 separated by semicolons. The browser looks at those [CSS]
-property-value\{css property value}
+property-value\index{css property value}
 pairs to determine how an element looks, for example to determine its
 background color.
 
@@ -53,9 +53,8 @@ def whitespace(self):
         self.i += 1
 ```
 
-Whitespace is insignificant, so there's no data to return in this
-case. On the other hand, we'll want to return property names and
-values when we parse them:
+Whitespace is meaningless, so there's no parsed data to return.
+But when we parse property names, we'll want to return property them:
 
 ``` {.python indent=4}
 def word(self):
@@ -145,6 +144,7 @@ def ignore_until(self, chars):
             return self.s[self.i]
         else:
             self.i += 1
+    return None
 ```
 
 When we fail to parse a property-value pair, we either skip to the
@@ -193,7 +193,7 @@ but accept even minimally conformant input.
     `calc` and `url` functions.
     
 [^for-jon]: After a line in the specification of TCP, written by Jon
-    Postel
+    Postel.
 
 [^from-circuits]: After a similar idea in circuit design, where
     transistors must be nonlinear to reduce analog noise.
@@ -201,45 +201,44 @@ but accept even minimally conformant input.
 ::: {.further}
 This parsing method is formally called recursive descent parsing for
 an [LL(1)][ll-parser] language. Parsers that use this method can be
-really, really fast, at least if you put a lot of work into it. In a
+[really, really fast][simdjson], at least if you put a lot of work
+into it. In a
 browser, faster parsing means pages load faster.
 :::
 
+[simdjson]: https://simdjson.org/
 [ll-parser]: https://en.wikipedia.org/wiki/LL_parser
 
 The `style` attribute
 =====================
 
 Now that the `style` attribute is parsed, we can use that parsed
-information in the rest of the browser. We'll store the parsed
-information in a `style` field on each node:
+information in the rest of the browser. Let's do that inside a `style`
+function, which saves the parsed `style` attribute in the node's
+`style` field:
+
+``` {.python replace=(node)/(node%2C%20rules)}
+def style(node):
+    node.style = {}
+    if isinstance(node, Element) and "style" in node.attributes:
+        pairs = CSSParser(node.attributes["style"]).body()
+        for property, value in pairs.items():
+            node.style[property] = value
+```
+
+The method can recurse through the HTML tree to make sure each element
+gets a style:
 
 ``` {.python replace=(node)/(node%2C%20rules),(child)/(child%2C%20rules)}
 def style(node):
-    node.style = {}
     # ...
     for child in node.children:
         style(child)
 ```
 
 Call `style` in the browser's `load` method, after parsing the HTML
-but before doing layout.
-
-This `style` function will also fill in the `style` field by parsing
-the element's `style` attribute:
-    
-``` {.python replace=(node)/(node%2C%20rules)}
-def style(node):
-    # ...
-    if isinstance(node, Element) and "style" in node.attributes:
-        pairs = CSSParser(node.attributes["style"]).body()
-        for property, value in pairs.items():
-            node.style[property] = value
-    # ...
-```
-
-With the `style` information stored on each element, the browser can
-consult it for styling information:
+but before doing layout. With the `style` information stored on each
+element, the browser can consult it for styling information:
 
 ``` {.python}
 class BlockLayout:
@@ -275,28 +274,23 @@ was invented to improve on this state of affairs:
 - CSS is future-proof and supports browsers with different features
 
 To achieve these goals, CSS extends the `style` attribute with two
-related ideas: *selectors*\{CSS selector} and *cascading*. Selectors
+related ideas: *selectors*\index{CSS selector} and *cascading*. Selectors
 describe which HTML elements a list of property/value pairs
-apply to:[^media-queries]
+apply to.[^media-queries] The combination of the two is called a
+*rule*\index{CSS rule}:
 
 [^media-queries]: CSS rules can also be guarded by "media queries",
     which say that a rule should apply only in certain browsing
     environments (like only on mobile or only in landscape mode).
     Media queries are super-important for building sites that work
-    across many devices, like reading this book on a phone.
+    across many devices, like reading this book on a phone. We'll meet
+    them in [Chapter 14](accessibility.md)
 
 ``` {.css .example}
 selector { property-1: value-1; property-2: value-2; }
 ```
 
-Since one of these *rules*\{CSS rule} can apply to many elements, it's
-possible for several rules to apply to the same element. So browsers have a
-*cascading* mechanism to resolve conflicts in favor of the most
-specific rule. Cascading also means a browser can ignore rules it
-doesn't understand and choose the next-most-specific rule that it does
-understand.
-
-So next, let's add support for CSS to our browser. We'll need to parse
+Let's add support for CSS to our browser. We'll need to parse
 CSS files into selectors and property/value pairs; figure out which
 elements on the page match each selector; and then copy those property
 values to the elements' `style` fields.
@@ -339,6 +333,7 @@ Each selector class will also test whether the selector matches an
 element:
         
 ``` {.python}
+class TagSelector:
     def matches(self, node):
         return isinstance(node, Element) and self.tag == node.tag
 ```
@@ -353,8 +348,7 @@ class DescendantSelector:
         self.descendant = descendant
 ```
 
-Then the `match` method is recursive (and bottoms out at, say, a
-`TagSelector`):
+Then the `match` method is recursive:
 
 ``` {.python}
 class DescendantSelector:
@@ -370,22 +364,23 @@ Now, to create these selector objects, we need a parser. In this case,
 that's just another parsing function:[^not-quite-word]
 
 [^not-quite-word]: Once again, using `word` here for tag names is
-actually not quite right, but it's close enough. One tricky side
+actually not quite right, but it's close enough. One side
 effect of using `word` is that a class name selector (like `.main`) or
 an identifier selector (like `#signup`) is mis-parsed as a tag name
-selector. But that won't cause any harm since there aren't any
+selector. But, luckily, that won't cause any harm since there aren't any
 elements with those tags.
 
-``` {.python indent=4}
-def selector(self):
-    out = TagSelector(self.word().casefold())
-    self.whitespace()
-    while self.i < len(self.s) and self.s[self.i] != "{":
-        tag = self.word()
-        descendant = TagSelector(tag.casefold())
-        out = DescendantSelector(out, descendant)
+``` {.python}
+class CSSParser:
+    def selector(self):
+        out = TagSelector(self.word().casefold())
         self.whitespace()
-    return out
+        while self.i < len(self.s) and self.s[self.i] != "{":
+            tag = self.word()
+            descendant = TagSelector(tag.casefold())
+            out = DescendantSelector(out, descendant)
+            self.whitespace()
+        return out
 ```
 
 A CSS file is just a sequence of selectors and blocks:
@@ -525,11 +520,7 @@ Let's store that in a new file, `browser.css`, and have our browser
 read it when it starts:
 
 ``` {.python replace=browser.css/browser6.css}
-class Browser:
-    def __init__(self):
-        # ...
-        with open("browser.css") as f:
-            self.default_style_sheet = CSSParser(f.read()).parse()
+DEFAULT_STYLE_SHEET = CSSParser(open("browser.css").read()).parse()
 ```
 
 Now, when the browser loads a web page, it can apply that default
@@ -538,13 +529,13 @@ style sheet to set up its default styling for each element:
 ``` {.python indent=8 expected=False}
 def load(self, url):
     # ...
-    rules = self.default_style_sheet.copy()
+    rules = DEFAULT_STYLE_SHEET.copy()
     style(self.nodes, rules)
     # ...
 ```
 
 The browser style sheet is the default for the whole web. But each web
-site can also use CSS to set a consistent style for the whole site. by
+site can also use CSS to set a consistent style for the whole site by
 referencing CSS files using `link` elements:
 
 ``` {.example}
@@ -577,7 +568,7 @@ def tree_to_list(tree, list):
     return list
 ```
 
-I've written this helper to work on both HTML and layout tree, for
+I've written this helper to work on both HTML and layout trees, for
 later. We can use `tree_to_list` with a Python list
 comprehension[^crazy] to grab the URL of each linked style sheet:
 
@@ -591,13 +582,13 @@ def load(self, url):
              for node in tree_to_list(self.nodes, [])
              if isinstance(node, Element)
              and node.tag == "link"
-             and "href" in node.attributes
-             and node.attributes.get("rel") == "stylesheet"]
+             and node.attributes.get("rel") == "stylesheet"
+             and "href" in node.attributes]
     # ...
 ```
 
 Now, these style sheet URLs are usually not full URLs; they are
-something called *relative URLs*, such as:^[There are other flavors,
+something called *relative URLs*, which can be:^[There are other flavors,
 including query-relative and scheme-relative URLs, that I'm skipping.]
 
 -   A normal URL, which specifies a scheme, host, path, and so on;
@@ -615,17 +606,25 @@ class URL:
         if "://" in url: return URL(url)
         if not url.startswith("/"):
             dir, _ = self.path.rsplit("/", 1)
-            while url.startswith("../"):
-                _, url = url.split("/", 1)
-                if "/" in dir:
-                    dir, _ = dir.rsplit("/", 1)
             url = dir + "/" + url
         return URL(self.scheme + "://" + self.host + \
                    ":" + str(self.port) + url)
 ```
 
-Note the logic for handling `..` in the relative URL; for whatever
-reason, this is handled by the browser, not the server.
+Also, for some reason, browsers are responsible for resolving parent
+directories (`..`) in relative URLs:
+
+``` {.python}
+class URL:
+    def resolve(self, url):
+        if not url.startswith("/"):
+            dir, _ = self.path.rsplit("/", 1)
+            while url.startswith("../"):
+                _, url = url.split("/", 1)
+                if "/" in dir:
+                    dir, _ = dir.rsplit("/", 1)
+            url = dir + "/" + url
+```
 
 Now the browser can request each linked style sheet and add its rules
 to the `rules` list:
@@ -711,9 +710,9 @@ def load(self, url):
     # ...
 ```
 
-Note that before sorting `rules`, it is in file order. Since Python's
-`sorted` function keeps the relative order of things when possible,
-file order thus acts as a tie breaker, as it should.
+Note that before sorting `rules`, it is in file order. Python's
+`sorted` function keeps the relative order of things with equal
+priority, so file order acts as a tie breaker, as it should.
 
 That's it: we've added CSS to our web browser! I mean---for background
 colors. But there's more to web design than that. For example, if
@@ -745,12 +744,7 @@ properties are inherited and some aren't; it depends on the property.
 Background color isn't inherited, but text color and other font
 properties are.
 
-Let's implement inheritance for four font properties: `color`,
-`font-weight` (`normal` or `bold`), `font-style` (`normal` or
-`italic`), and `font-size` (a length or percentage).
-
-Let's start by listing our inherited properties and their default
-values:
+Let's implement inheritance for four font properties:
 
 ``` {.python}
 INHERITED_PROPERTIES = {
@@ -761,6 +755,7 @@ INHERITED_PROPERTIES = {
 }
 ```
 
+The values in this dictionary are each property's defaults.
 We'll then add the actual inheritance code to the `style` function. It
 has to come *before* the other loops, since explicit rules should
 override inheritance:
@@ -782,16 +777,14 @@ surrounding text. But what if you had, say, a `code` element inside an
 `h1` tag---would that inherit the `150%` value for `font-size`? Surely
 it shouldn't be another 50% bigger than the rest of the heading text?
 
-So, in fact, browsers resolve percentages to absolute pixel units
-before storing them in the `style` and before those values are
-inherited; it's called a
-"computed style".\index{computed style}[^css-computed] Of the
-properties our toy browser supports, only `font-size` needs to be
-computed in this way:
+So, in fact, browsers resolve font size percentages
+to absolute pixel units
+before those values are inherited; it's called a
+"computed style".\index{computed style}[^css-computed]
 
-[^css-computed]: Full CSS is a bit more confusing: there are
+[^css-computed]: The full CSS standard is a bit more confusing: there are
 [specified, computed, used, and actual values][css-computed], and they
-affect lots of CSS properties besides `font-size`. We're just not
+affect lots of CSS properties besides `font-size`. But we're not
 implementing those other properties in this book.
 
 [css-computed]: https://www.w3.org/TR/CSS2/cascade.html#value-stages
@@ -829,7 +822,8 @@ def style(node, rules):
 
 Note that this happens after all of the different sources of style
 values are handled (so we are working with the final `font-size`
-value) but before we recurse (so children can assume *our* `font-size`
+value) but before we recurse (so any children can assume
+that their parent's `font-size`
 has been resolved to a pixel value).
 
 ::: {.further}
@@ -978,16 +972,17 @@ specific tags, like the `style`, `weight`, and `size` properties and
 the `open_tag` and `close_tag` methods. Let's refactor a bit to get
 rid of them:
 
-``` {.python indent=4}
-def recurse(self, node):
-    if isinstance(node, Text):
-        for word in node.text.split():
-            self.word(node, word)
-    else:
-        if node.tag == "br":
-            self.flush()
-        for child in node.children:
-            self.recurse(child)
+``` {.python}
+class BlockLayout:
+    def recurse(self, node):
+        if isinstance(node, Text):
+            for word in node.text.split():
+                self.word(node, word)
+        else:
+            if node.tag == "br":
+                self.flush()
+            for child in node.children:
+                self.recurse(child)
 ```
 
 Styling not only lets web page authors style their own web pages; it
@@ -1000,15 +995,14 @@ browsers get to reuse a format, CSS, they need to support anyway.
 Usually a point is one 72^nd^ of an inch while pixel size depends on
 the screen, but CSS instead [defines an inch][css-fixed] as 96 pixels,
 because that was once a common screen resolution. And these CSS pixels
-[need not be][dppx] physical pixels! Seem weird? [OS
-internals][why-72] are equally bizarre, let alone [traditional
-typesetting][why-7227].
+[need not be][dppx] physical pixels! Seem weird? This complexity is
+the result of changes in browsers (zooming) and hardware (high-DPI
+screens) plus the need to be compatible with older web pages meant for
+the time when all screens had 96 pixels per inch.
 :::
 
 [css-fixed]: https://www.w3.org/TR/2011/REC-CSS2-20110607/syndata.html#length-units
 [dppx]: https://developer.mozilla.org/en-US/docs/Web/CSS/resolution
-[why-72]: https://tonsky.me/blog/font-size/
-[why-7227]: https://tex.stackexchange.com/questions/200934/why-does-a-tex-point-differ-from-a-desktop-publishing-point
 
 
 Summary
@@ -1048,17 +1042,17 @@ that names which font should be used in an element. Make text inside
 `<code>` elements use a nice monospaced font like `Courier`. Beware
 the font cache.
 
-*Width/Height*: Add support to block layout objects for the `width`
-and `height` properties. These can either be a pixel value, which
-directly sets the width or height of the layout object, or the word
-`auto`, in which case the existing layout algorithm is used.
+*Width/Height*: Add support for the `width` and `height` properties to
+block layout. These can either be a pixel value, which directly sets
+the width or height of the layout object, or the word `auto`, in which
+case the existing layout algorithm is used.
 
 *Class Selectors*: Any HTML element can have a `class` attribute,
 whose value is a space-separated list of that element's classes. A CSS
 class selector, like `.main`, affects all elements with the `main`
 class. Implement class selectors; give them priority 10. If you've
-implemented them correctly, the code blocks in this book should be
-syntax-highlighted.
+implemented them correctly, you should see syntax highlighting for the
+code blocks in this book.
 
 *Display*: Right now, the `layout_mode` function relies on a
 hard-coded list of block elements. In a real browser, the `display`
@@ -1072,6 +1066,19 @@ bold 100% Times` sets the `font-style`, `font-weight`, `font-size`,
 and `font-family` properties all at once. Add shorthand properties to
 your parser. (If you haven't implemented `font-family`, just ignore
 that part.)
+
+*Inline Style Sheets*: The `link rel=stylesheet` syntax allows importing an
+ external style sheet (meaning one loaded via its own HTTP request). There is
+ also a way to provide a style sheet inline, as part of the HTML, via the
+ `<style>` tag---everything up to the following `</style>` tag is interpreted
+ as a style sheet.[^ordered] Inline style sheets are useful for creating
+ self-contained example web pages, but more importantly are a way that web
+ sites can load faster by reducing the number of round-trip network requests to
+ the server. Since style sheets typically don't contain left angle brackets,
+ you can implement this feature without modifying the HTML parser.
+
+[^ordered]: Inline style sheets should apply after all external
+style sheets in the cascade, and apply in order of their position in the HTML.
 
 *Fast Descendant Selectors*: Right now, matching a selector like `div
 div div div div` can take a long time---it's *O(nd)* in the worst
@@ -1092,7 +1099,7 @@ these and modify the parser to parse them. Sum priorities.[^lexicographic]
     compare the number of ID, class, and tag selectors in
     lexicographic order, but summing the priorities of the selectors
     in the sequence will work fine as long as no one strings more than
-    16 selectors together.
+    10 selectors together.
 
 *Important*: a CSS property-value pair can be marked "important" using
 the `!important` syntax, like this:
@@ -1104,26 +1111,13 @@ higher priority than any other selector (except for other `!important`
 selector). Parse and implement `!important`, giving any property-value pairs
 marked this way a priority 10000 higher than normal property-value pairs.
 
-*Ancestor Selectors*: An ancestor selector is the inverse of a
+*`:has` Selectors*: The [`:has` selector][has-selector] is the inverse of a
 descendant selector---it styles an ancestor according to the presence
-of a descendant. This feature is one of the benefits provided by the
-[`:has` syntax](https://drafts.csswg.org/selectors-4/#relational). Try
-to implement ancestor selectors. As I write this, no browser has
-actually implemented `:has`; why do you think that is? Hint: analyze
+of a descendant. Implement `:has` selectors. Analyze
 the asymptotic speed of your implementation. There is a clever
 implementation that is *O(1)* amortized per element---can you find
-it?^[No, this clever implementation is still not fast enough for real
-browsers to implement.]
+it?^[In fact, browsers have to do something [even more
+complex][has-blog] to implement `:has` efficiently.]
 
-*Inline Style Sheets*: The `link rel=stylesheet` syntax allows importing an
- external style sheet (meaning one loaded via its own HTTP request). There is
- also a way to provide a style sheet inline, as part of the HTML, via the
- `<style>` tag---everything up to the following `</style>` tag is interpreted
- as a style sheet.[^ordered] Inline style sheets are useful for creating
- self-contained example web pages, but more importantly are a way that web
- sites can load faster by reducing the number of round-trip network requests to
- the server. Since style sheets typically don't contain left angle brackets,
- you can implement this feature without modifying the HTML parser.
-
-[^ordered]: Inline style sheets should apply after all external
-style sheets in the cascade, and apply in order of their position in the HTML.
+[has-selector]: https://drafts.csswg.org/selectors-4/#relational
+[has-blog]: https://blogs.igalia.com/blee/posts/2022/04/12/how-blink-tests-has-pseudo-class.html
