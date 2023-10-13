@@ -63,5 +63,41 @@ USE_BROWSER_THREAD = True
 FORCE_CROSS_ORIGIN_IFRAMES = False
 ASSERT_LAYOUT_CLEAN = False
 PRINT_INVALIDATION_DEPENDENCIES = False
-WINDOW_COUNT = 0
 OUTPUT_TRACE = False
+
+def parse_flags():
+    import argparse, sys
+    global SHOW_COMPOSITED_LAYER_BORDERS, \
+        USE_COMPOSITING, USE_GPU, USE_BROWSER_THREAD, \
+        FORCE_CROSS_ORIGIN_IFRAMES, ASSERT_LAYOUT_CLEAN, \
+        PRINT_INVALIDATION_DEPENDENCIES
+
+    parser = argparse.ArgumentParser(description='Chapter 13 code')
+    parser.add_argument("url", type=str, help="URL to load")
+    parser.add_argument('--single_threaded', action="store_true", default=False,
+        help='Whether to run the browser without a browser thread')
+    parser.add_argument('--disable_compositing', action="store_true",
+        default=False, help='Whether to composite some elements')
+    parser.add_argument('--disable_gpu', action='store_true',
+        default=False, help='Whether to disable use of the GPU')
+    parser.add_argument('--show_composited_layer_borders', action="store_true",
+        default=False, help='Whether to visually indicate composited layer borders')
+    parser.add_argument("--force_cross_origin_iframes", action="store_true",
+        default=False, help="Whether to treat all iframes as cross-origin")
+    parser.add_argument("--assert_layout_clean", action="store_true",
+        default=False, help="Assert layout is clean once complete")
+    parser.add_argument("--print_invalidation_dependencies", action="store_true",
+        default=False, help="Whether to print out all invalidation dependencies")
+    parser.add_argument("--trace", action="store_true",
+        default=False, help="Whether to output a browser.trace file")
+    args = parser.parse_args()
+
+    USE_BROWSER_THREAD = not args.single_threaded
+    USE_GPU = not args.disable_gpu
+    USE_COMPOSITING = not args.disable_compositing and not args.disable_gpu
+    SHOW_COMPOSITED_LAYER_BORDERS = args.show_composited_layer_borders
+    FORCE_CROSS_ORIGIN_IFRAMES = args.force_cross_origin_iframes
+    ASSERT_LAYOUT_CLEAN = args.assert_layout_clean
+    PRINT_INVALIDATION_DEPENDENCIES = args.print_invalidation_dependencies
+
+    sys.argv = [sys.argv[0], args.url]

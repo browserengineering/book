@@ -68,13 +68,11 @@ To test it, we use the `test.socket` object, which mocks the HTTP server:
 
 Then we request the URL and test both request and response:
 
-    >>> headers, body = lab1.URL(url).request()
+    >>> body = lab1.URL(url).request()
     >>> test.socket.last_request(url)
     b'GET /example1 HTTP/1.0\r\nHost: test.test\r\n\r\n'
     >>> body
     'Body text'
-    >>> headers
-    {'header1': 'Value1'}
 
 With an unusual `Transfer-Encoding` the request should fail:
 
@@ -106,7 +104,7 @@ Here we're making sure that SSL support is enabled.
 
     >>> url = 'https://test.test/example2'
     >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n\r\n")
-    >>> header, body = lab1.URL(url).request()
+    >>> body = lab1.URL(url).request()
     >>> body
     ''
 
@@ -114,7 +112,7 @@ SSL support also means some support for ports:
 
     >>> url = 'https://test.test:400/example3'
     >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n\r\nHi")
-    >>> header, body = lab1.URL(url).request()
+    >>> body = lab1.URL(url).request()
     >>> body
     'Hi'
 

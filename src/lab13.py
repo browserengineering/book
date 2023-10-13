@@ -4,6 +4,7 @@ up to and including Chapter 13 (Animations and Compositing),
 without exercises.
 """
 
+import sys
 import ctypes
 import dukpy
 import math
@@ -23,13 +24,13 @@ from lab5 import BLOCK_ELEMENTS
 from lab6 import TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, cascade_priority
 from lab6 import tree_to_list
-from lab7 import CHROME_PX
+from lab7 import intersects
 from lab8 import Text, Element, INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, parse_color, parse_blend_mode, linespace
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
-from lab12 import Task, REFRESH_RATE_SEC
+from lab12 import Task, REFRESH_RATE_SEC, clamp_scroll, Chrome
 
 @wbetools.patch(Text)
 class Text:
@@ -52,25 +53,22 @@ class Element:
         self.is_focused = False
         self.animations = {}
 
-class DisplayItem:
-    def __init__(self, rect, children=[], node=None):
+class DrawCommand:
+    def __init__(self, rect):
         self.rect = rect
+        self.children = []
+
+class VisualEffect:
+    def __init__(self, rect, children, node=None):
+        self.rect = rect.makeOffset(0.0, 0.0)
         self.children = children
+        for child in self.children:
+            self.rect.join(child.rect)
         self.node = node
         self.needs_compositing = any([
             child.needs_compositing for child in self.children
+            if isinstance(child, VisualEffect)
         ])
-
-    def is_paint_command(self):
-        return False
-
-    def map(self, rect):
-        return rect
-
-    def add_composited_bounds(self, rect):
-        rect.join(self.rect)
-        for cmd in self.children:
-            cmd.add_composited_bounds(rect)
 
 def map_translation(rect, translation):
     if not translation:
@@ -81,7 +79,7 @@ def map_translation(rect, translation):
         matrix.setTranslate(x, y)
         return matrix.mapRect(rect)
 
-class Transform(DisplayItem):
+class Transform(VisualEffect):
     def __init__(self, translation, rect, node, children):
         super().__init__(rect, children, node)
         self.translation = translation
@@ -110,7 +108,7 @@ class Transform(DisplayItem):
         else:
             return "Transform(<no-op>)"
 
-class DrawLine(DisplayItem):
+class DrawLine(DrawCommand):
     def __init__(self, x1, y1, x2, y2, color, thickness):
         super().__init__(skia.Rect.MakeLTRB(x1, y1, x2, y2))
         self.x1 = x1
@@ -119,9 +117,6 @@ class DrawLine(DisplayItem):
         self.y2 = y2
         self.color = color
         self.thickness = thickness
-
-    def is_paint_command(self):
-        return True
 
     def execute(self, canvas):
         path = skia.Path().moveTo(self.x1, self.y1).lineTo(self.x2, self.y2)
@@ -134,14 +129,11 @@ class DrawLine(DisplayItem):
         return "DrawLine top={} left={} bottom={} right={}".format(
             self.y1, self.x1, self.y2, self.x2)
 
-class DrawRRect(DisplayItem):
+class DrawRRect(DrawCommand):
     def __init__(self, rect, radius, color):
         super().__init__(rect)
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
         self.color = color
-
-    def is_paint_command(self):
-        return True
 
     def execute(self, canvas):
         sk_color = parse_color(self.color)
@@ -155,7 +147,7 @@ class DrawRRect(DisplayItem):
         return "DrawRRect(rect={}, color={})".format(
             str(self.rrect), self.color)
 
-class DrawText(DisplayItem):
+class DrawText(DrawCommand):
     def __init__(self, x1, y1, text, font, color):
         self.left = x1
         self.top = y1
@@ -167,9 +159,6 @@ class DrawText(DisplayItem):
         super().__init__(skia.Rect.MakeLTRB(x1, y1,
             self.right, self.bottom))
 
-    def is_paint_command(self):
-        return True
-
     def execute(self, canvas):
         paint = skia.Paint(AntiAlias=True, Color=parse_color(self.color))
         baseline = self.top - self.font.getMetrics().fAscent
@@ -179,7 +168,7 @@ class DrawText(DisplayItem):
     def __repr__(self):
         return "DrawText(text={})".format(self.text)
 
-class DrawRect(DisplayItem):
+class DrawRect(DrawCommand):
     def __init__(self, x1, y1, x2, y2, color):
         super().__init__(skia.Rect.MakeLTRB(x1, y1, x2, y2))
         self.top = y1
@@ -187,9 +176,6 @@ class DrawRect(DisplayItem):
         self.bottom = y2
         self.right = x2
         self.color = color
-
-    def is_paint_command(self):
-        return True
 
     def execute(self, canvas):
         paint = skia.Paint()
@@ -202,14 +188,11 @@ class DrawRect(DisplayItem):
             self.top, self.left, self.bottom,
             self.right, self.color)
 
-class DrawOutline(DisplayItem):
+class DrawOutline(DrawCommand):
     def __init__(self, x1, y1, x2, y2, color, thickness):
         super().__init__(skia.Rect.MakeLTRB(x1, y1, x2, y2))
         self.color = color
         self.thickness = thickness
-
-    def is_paint_command(self):
-        return True
 
     def execute(self, canvas):
         paint = skia.Paint()
@@ -228,7 +211,7 @@ class DrawOutline(DisplayItem):
             self.thickness)
 
 
-class ClipRRect(DisplayItem):
+class ClipRRect(VisualEffect):
     def __init__(self, rect, radius, children, should_clip=True):
         super().__init__(rect, children)
         self.should_clip = should_clip
@@ -244,6 +227,11 @@ class ClipRRect(DisplayItem):
         if self.should_clip:
             canvas.restore()
 
+    def map(self, rect):
+        bounds = self.rrect.rect()
+        bounds.intersect(rect)
+        return bounds
+
     def clone(self, children):
         return ClipRRect(self.rect, self.radius, children, \
             self.should_clip)
@@ -254,7 +242,7 @@ class ClipRRect(DisplayItem):
         else:
             return "ClipRRect(<no-op>)"
 
-class SaveLayer(DisplayItem):
+class SaveLayer(VisualEffect):
     def __init__(self, sk_paint, node, children, should_save=True):
         super().__init__(skia.Rect.MakeEmpty(), children, node)
         self.should_save = should_save
@@ -271,6 +259,9 @@ class SaveLayer(DisplayItem):
         if self.should_save:
             canvas.restore()
 
+    def map(self, rect):
+        return rect
+
     def clone(self, children):
         return SaveLayer(self.sk_paint, self.node, children, \
             self.should_save)
@@ -281,7 +272,7 @@ class SaveLayer(DisplayItem):
         else:
             return "SaveLayer(<no-op>)"
 
-class DrawCompositedLayer(DisplayItem):
+class DrawCompositedLayer(DrawCommand):
     def __init__(self, composited_layer):
         self.composited_layer = composited_layer
         super().__init__(
@@ -295,7 +286,6 @@ class DrawCompositedLayer(DisplayItem):
 
     def __repr__(self):
         return "DrawCompositedLayer()"
-
 
 def parse_transform(transform_str):
     if transform_str.find('translate(') < 0:
@@ -351,7 +341,7 @@ class CSSParser:
         self.literal(":")
         self.whitespace()
         val = self.until_semicolon()
-        return prop.lower(), val
+        return prop.casefold(), val
 
     def ignore_until(self, chars):
         while self.i < len(self.s):
@@ -365,7 +355,7 @@ class CSSParser:
         while self.i < len(self.s) and self.s[self.i] != "}":
             try:
                 prop, val = self.pair()
-                pairs[prop.lower()] = val
+                pairs[prop.casefold()] = val
                 self.whitespace()
                 self.literal(";")
                 self.whitespace()
@@ -379,11 +369,11 @@ class CSSParser:
         return pairs
 
     def selector(self):
-        out = TagSelector(self.word().lower())
+        out = TagSelector(self.word().casefold())
         self.whitespace()
         while self.i < len(self.s) and self.s[self.i] != "{":
             tag = self.word()
-            descendant = TagSelector(tag.lower())
+            descendant = TagSelector(tag.casefold())
             out = DescendantSelector(out, descendant)
             self.whitespace()
         return out
@@ -1000,12 +990,10 @@ def absolute_bounds_for_obj(obj):
     return rect
 
 def absolute_bounds(display_item):
-    rect = skia.Rect.MakeEmpty()
-    display_item.add_composited_bounds(rect)
-    effect = display_item.parent
-    while effect:
-        rect = effect.map(rect)
-        effect = effect.parent
+    rect = display_item.rect
+    while display_item.parent:
+        rect = display_item.parent.map(rect)
+        display_item = display_item.parent
     return rect
 
 class CompositedLayer:
@@ -1026,7 +1014,8 @@ class CompositedLayer:
     def composited_bounds(self):
         rect = skia.Rect.MakeEmpty()
         for item in self.display_items:
-            item.add_composited_bounds(rect)
+            rect.join(item.rect)
+        rect.outset(1, 1)
         return rect
 
     def absolute_bounds(self):
@@ -1065,26 +1054,19 @@ class CompositedLayer:
             DrawOutline(0, 0, irect.width() - 1, irect.height() - 1, "red", 1).execute(canvas)
 
     def __repr__(self):
-        composited_bounds = skia.Rect.MakeEmpty()
-        self.add_composited_bounds(composited_bounds)
-        absolute_bounds = skia.Rect.MakeEmpty()
-        self.add_absolute_bounds(absolute_bounds)
-
         return ("layer: composited_bounds={} " +
             "absolute_bounds={} first_chunk={}").format(
-            composited_bounds, absolute_bounds,
+            self.composited_bounds(), self.absolute_bounds(),
             self.display_items if len(self.display_items) > 0 else 'None')
 
 def raster(display_list, canvas):
     for cmd in display_list:
         cmd.execute(canvas)
 
-def clamp_scroll(scroll, tab_height):
-    return max(0, min(scroll, tab_height - (HEIGHT - CHROME_PX)))
-
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, browser, tab_height):
         self.history = []
+        self.tab_height = tab_height
         self.focus = None
         self.url = None
         self.scroll = 0
@@ -1201,7 +1183,8 @@ class Tab:
         self.render()
 
         document_height = math.ceil(self.document.height)
-        clamped_scroll = clamp_scroll(self.scroll, document_height)
+        clamped_scroll = clamp_scroll(
+            self.scroll, document_height, self.tab_height)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
         if clamped_scroll != self.scroll:
@@ -1275,7 +1258,7 @@ class Tab:
                 self.set_needs_render()
                 return
             elif elt.tag == "button":
-                while elt:
+                while elt.parent:
                     if elt.tag == "form" and "action" in elt.attributes:
                         return self.submit_form(elt)
                     elt = elt.parent
@@ -1333,6 +1316,8 @@ def add_parent_pointers(nodes, parent=None):
 
 class Browser:
     def __init__(self):
+        self.chrome = Chrome(self)
+
         if wbetools.USE_GPU:
             self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
                 sdl2.SDL_WINDOWPOS_CENTERED,
@@ -1353,7 +1338,8 @@ class Browser:
                 self.skia_context,
                 skia.GrBackendRenderTarget(
                     WIDTH, HEIGHT, 0, 0, 
-                    skia.GrGLFramebufferInfo(0, OpenGL.GL.GL_RGBA8)),
+                    skia.GrGLFramebufferInfo(
+                        0, OpenGL.GL.GL_RGBA8)),
                     skia.kBottomLeft_GrSurfaceOrigin,
                     skia.kRGBA_8888_ColorType,
                     skia.ColorSpace.MakeSRGB())
@@ -1361,7 +1347,7 @@ class Browser:
 
             self.chrome_surface = skia.Surface.MakeRenderTarget(
                     self.skia_context, skia.Budgeted.kNo,
-                    skia.ImageInfo.MakeN32Premul(WIDTH, CHROME_PX))
+                    skia.ImageInfo.MakeN32Premul(WIDTH, self.chrome.bottom))
             assert self.chrome_surface is not None
         else:
             self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
@@ -1372,7 +1358,7 @@ class Browser:
                 WIDTH, HEIGHT,
                 ct=skia.kRGBA_8888_ColorType,
                 at=skia.kUnpremul_AlphaType))
-            self.chrome_surface = skia.Surface(WIDTH, CHROME_PX)
+            self.chrome_surface = skia.Surface(WIDTH, self.chrome.bottom)
             self.skia_context = None
 
         self.tabs = []
@@ -1461,9 +1447,8 @@ class Browser:
                 tree_to_list(cmd, all_commands)
         non_composited_commands = [cmd
             for cmd in all_commands
-            if not cmd.needs_compositing and \
-                (not cmd.parent or \
-                 cmd.parent.needs_compositing)
+            if isinstance(cmd, DrawCommand) or not cmd.needs_compositing
+            if not cmd.parent or cmd.parent.needs_compositing
         ]
         for cmd in non_composited_commands:
             did_break = False
@@ -1559,7 +1544,8 @@ class Browser:
             return
         scroll = clamp_scroll(
             self.scroll + SCROLL_STEP,
-            self.active_tab_height)
+            self.active_tab_height,
+            HEIGHT - self.chrome.bottom)
         self.scroll = scroll
         self.set_needs_draw()
         self.needs_animation_frame = True
@@ -1578,28 +1564,16 @@ class Browser:
 
     def handle_click(self, e):
         self.lock.acquire(blocking=True)
-        if e.y < CHROME_PX:
+        if e.y < self.chrome.bottom:
             self.focus = None
-            if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
-                self.set_active_tab(int((e.x - 40) / 80))
-                active_tab = self.tabs[self.active_tab]
-                task = Task(active_tab.set_needs_paint)
-                active_tab.task_runner.schedule_task(task)
-            elif 10 <= e.x < 30 and 10 <= e.y < 30:
-                self.load_internal(URL("https://browser.engineering/"))
-            elif 10 <= e.x < 35 and 50 <= e.y < 90:
-                active_tab = self.tabs[self.active_tab]
-                task = Task(active_tab.go_back)
-                active_tab.task_runner.schedule_task(task)
-                self.clear_data()
-            elif 50 <= e.x < WIDTH - 10 and 50 <= e.y < 90:
-                self.focus = "address bar"
-                self.address_bar = ""
+            self.chrome.click(e.x, e.y)
             self.set_needs_raster()
         else:
+            if self.focus != "content":
+                self.set_needs_raster()
             self.focus = "content"
             active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.click, e.x, e.y - CHROME_PX)
+            task = Task(active_tab.click, e.x, e.y - self.chrome.bottom)
             active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
@@ -1636,7 +1610,7 @@ class Browser:
         self.lock.release()
 
     def load_internal(self, url):
-        new_tab = Tab(self)
+        new_tab = Tab(self, HEIGHT - self.chrome.bottom)
         self.set_active_tab(len(self.tabs))
         self.tabs.append(new_tab)
         self.schedule_load(url)
@@ -1645,44 +1619,11 @@ class Browser:
         for composited_layer in self.composited_layers:
             composited_layer.raster()
 
-    def paint_chrome(self):
-        cmds = []
-        cmds.append(DrawRect(0, 0, WIDTH, CHROME_PX, "white"))
-        cmds.append(DrawLine(0, CHROME_PX - 1, WIDTH, CHROME_PX - 1, "black", 1))
-
-        tabfont = get_font(20, "normal", "roman")
-        for i, tab in enumerate(self.tabs):
-            name = "Tab {}".format(i)
-            x1, x2 = 40 + 80 * i, 120 + 80 * i
-            cmds.append(DrawLine(x1, 0, x1, 40, "black", 1))
-            cmds.append(DrawLine(x2, 0, x2, 40, "black", 1))
-            cmds.append(DrawText(x1 + 10, 10, name, tabfont, "black"))
-            if i == self.active_tab:
-                cmds.append(DrawLine(0, 40, x1, 40, "black", 1))
-                cmds.append(DrawLine(x2, 40, WIDTH, 40, "black", 1))
-
-        buttonfont = get_font(30, "normal", "roman")
-        cmds.append(DrawOutline(10, 10, 30, 30, "black", 1))
-        cmds.append(DrawText(11, 5, "+", buttonfont, "black"))
-
-        cmds.append(DrawOutline(40, 50, WIDTH - 10, 90, "black", 1))
-        if self.focus == "address bar":
-            cmds.append(DrawText(55, 55, self.address_bar, buttonfont, "black"))
-            w = buttonfont.measureText(self.address_bar)
-            cmds.append(DrawLine(55 + w, 55, 55 + w, 85, "black", 1))
-        else:
-            url = str(self.tabs[self.active_tab].url)
-            cmds.append(DrawText(55, 55, url, buttonfont, "black"))
-
-        cmds.append(DrawOutline(10, 50, 35, 90, "black", 1))
-        cmds.append(DrawText(15, 55, "<", buttonfont, "black"))
-        return cmds
-
     def raster_chrome(self):
         canvas = self.chrome_surface.getCanvas()
         canvas.clear(skia.ColorWHITE)
 
-        for cmd in self.paint_chrome():
+        for cmd in self.chrome.paint():
             cmd.execute(canvas)
 
     def draw(self):
@@ -1690,12 +1631,12 @@ class Browser:
         canvas.clear(skia.ColorWHITE)
 
         canvas.save()
-        canvas.translate(0, CHROME_PX - self.scroll)
+        canvas.translate(0, self.chrome.bottom - self.scroll)
         for item in self.draw_list:
             item.execute(canvas)
         canvas.restore()
 
-        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, CHROME_PX)
+        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, self.chrome.bottom)
         canvas.save()
         canvas.clipRect(chrome_rect)
         self.chrome_surface.draw(canvas, 0, 0)
@@ -1730,34 +1671,12 @@ class Browser:
             sdl2.SDL_GL_DeleteContext(self.gl_context)
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
-def add_main_args():
-    import argparse
-    parser = argparse.ArgumentParser(description='Toy browser')
-    parser.add_argument("url", type=str, help="URL to load")
-    parser.add_argument('--single_threaded', action="store_true", default=False,
-        help='Whether to run the browser without a browser thread')
-    parser.add_argument('--disable_compositing', action="store_true",
-        default=False, help='Whether to composite some elements')
-    parser.add_argument('--disable_gpu', action='store_true',
-        default=False, help='Whether to disable use of the GPU')
-    parser.add_argument('--show_composited_layer_borders', action="store_true",
-        default=False, help='Whether to visually indicate composited layer borders')
-    args = parser.parse_args()
-
-    wbetools.USE_BROWSER_THREAD = not args.single_threaded
-    wbetools.USE_GPU = not args.disable_gpu
-    wbetools.USE_COMPOSITING = not args.disable_compositing and not args.disable_gpu
-    wbetools.SHOW_COMPOSITED_LAYER_BORDERS = args.show_composited_layer_borders
-    return args
-
 if __name__ == "__main__":
-    import sys
-
-    args = add_main_args()
+    wbetools.parse_flags()
 
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
-    browser.load(URL(args.url))
+    browser.load(URL(sys.argv[1]))
 
     event = sdl2.SDL_Event()
     while True:

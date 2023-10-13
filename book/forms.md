@@ -414,7 +414,7 @@ page, not the browser interface:
 ``` {.python}
 class Browser:
     def handle_click(self, e):
-        if e.y < CHROME_PX:
+        if e.y < self.chrome.bottom:
             self.focus = None
             # ...
         else:
@@ -627,7 +627,7 @@ The new `body` argument to `load` is then passed through to `request`:
 ``` {.python indent=4}
 def load(self, url, body=None):
     # ...
-    headers, body = url.request(body)
+    body = url.request(body)
     # ...
 ```
 
@@ -855,7 +855,7 @@ def handle_connection(conx):
         line = req.readline().decode('utf8')
         if line == '\r\n': break
         header, value = line.split(":", 1)
-        headers[header.lower()] = value.strip()
+        headers[header.casefold()] = value.strip()
 ```
 
 Finally we read the body, but only when the `Content-Length` header

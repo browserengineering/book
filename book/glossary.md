@@ -31,16 +31,17 @@ connected with contextual links.
 
 *JavaScript*: The main programming language for web scripts.
 
-*URL*: Uniform Resource Locator, the name used to refer uniquely to a web
-page.
-
 *Rendering engine*: The part of a web browser concerned with drawing a
 web page to the screen and interacting with it. There are three main
 rendering engines actively maintained today: Chromium, WebKit, and
 Gecko.
 
 *Script*: A piece of code that extends a web page with more functionality,
-usually written in JavaScript.
+usually written in JavaScript. Also the name of the HTML tag that contains
+scripts.
+
+*URL*: Uniform Resource Locator, the name used to refer uniquely to a web
+page.
 
 *Web security*: The ability to intentionally limit the behavior of web
 browsers, servers, or applications, usually to prevent unintentional
@@ -59,7 +60,8 @@ navigate web pages. Also often just called a "browser".
 
 *Web resource*: Anything with its own URL on the web. Web pages are
 resources, but so are many of their component parts, such as scripts,
-images, and style sheets.
+images, and style sheets. Resources that are not the HTML page itself
+are called *subresources*.
 
 *Website*: A collection of web pages that together provide some user
 service.
@@ -93,12 +95,6 @@ Web Documents
 *Animation*: A sequence of visual changes on a computer screen
 interpreted by humans to look like movement.
 
-*HTML attribute*: A parameter on an element indicating some
-information, such as the source of an image or URL of a style sheet.
-
-*Parsing*: Turning a serialized representation (such as HTML or CSS)
-into a data structure such as the document tree or a style sheet.
-
 *CSS*: Cascading Style Sheet. A format for representing rules that
 specify the (mostly visual) styling of elements in the DOM.
 
@@ -128,6 +124,9 @@ visually highlighted on the screen.
 computer screens. Times New Roman is one common example for Latin-based
 languages.
 
+*HTML attribute*: A parameter on an element indicating some
+information, such as the source of an image or URL of a style sheet.
+
 *Iframe*: A way of embedding one document within another. A
 rectangular window in the parent document shows the child document and
 participates in the layout of the parent.
@@ -139,6 +138,9 @@ HTML element of the same name, for the same purpose.
 
 *Page*: The conceptual container for a document. A page can have
 multiple documents through use of iframes.
+
+*Parsing*: Turning a serialized representation (such as HTML or CSS)
+into a data structure such as the document tree or a style sheet.
 
 *Style sheet*: A web resource that contains CSS rules.
 
@@ -184,7 +186,7 @@ elements after applying all rules according to the cascade order.
 *CSS property*: A single concept (such as "color" or "width") used to style
 a specific part of an element.
 
-*CSS property value*: a key-value pair of a CSS property and its value
+*CSS property-value*: a key-value pair of a CSS property and its value
 (e.g. "color" and "blue" or "width" and "30px").
 
 *CSS rule*: The combination of a selector and property values.
@@ -197,10 +199,8 @@ from its parent element. Sometimes mistakenly called "cascading". Some
 CSS properties (such as font sizing) are inherited by default.
 
 *Style*: All the pieces of information necessary to determine the visual
-display of an element.
-
-*Cascade*: The order in which to apply multiple rules to the same
-element.
+display of an element. Also the name of a corresponding attribute to
+specify inline styles.
 
 Coordinate spaces
 =================
@@ -253,6 +253,9 @@ surfaces on a GPU, in order to speed up animations.
 
 *Decode*: converting from a compressed format for a resource (such as an 
 an image) into a simpler format in memory (such as a bitmap).
+
+*Device pixel ratio*: the ratio between the screen pixel resolution and a
+"typical" screen (defined as the pixel resolution of a 90's CRT).
 
 *Display list*: A sequence of graphics commands explaining how to draw a
 web page to a computer screen.
@@ -331,3 +334,5 @@ of this book.
 
 *Tk*: A UI drawing library for computer programs used in early chapters of
 this book.
+
+*Tkinter*: A Python library wrapping Tk.

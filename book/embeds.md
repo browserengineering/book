@@ -12,11 +12,10 @@ web pages. Support for embedded content has powerful implications for
 browser architecture, performance, security, and open information
 access, and has played a key role throughout the web's history.
 
-
 Images
 ======
 
-Images are certainly the most popular kind of embedded
+Images\index{image} are certainly the most popular kind of embedded
 content on the web,[^img-late] dating back to [early
 1993][img-email].[^img-history] They're included on web pages via the
 `<img>` tag, which looks like this:
@@ -47,7 +46,7 @@ Luckily, implementing images isn't too hard, so let's just get
 started. There are four steps to displaying images in our browser:
 
 1. Download the image from a URL.
-2. Decode the image into a buffer in memory.
+2. Decode\index{decoding} the image into a buffer in memory.
 3. Lay the image out on the page.
 4. Paint the image in the display list.
 
@@ -183,7 +182,7 @@ Luckily, Skia will automatically do the decoding for us, so drawing
 the image is pretty simple:
 
 ``` {.python replace=%2c%20rect/%2c%20rect%2c%20quality,self.rect)/self.rect%2c%20paint)}
-class DrawImage(DisplayItem):
+class DrawImage(DrawCommand):
     def __init__(self, image, rect):
         super().__init__(rect)
         self.image = image
@@ -235,7 +234,7 @@ indicates which algorithm to use. Let's add that as an argument to
 [image-rendering]: https://developer.mozilla.org/en-US/docs/Web/CSS/image-rendering
 
 ``` {.python}
-class DrawImage(DisplayItem):
+class DrawImage(DrawCommand):
     def __init__(self, image, rect, quality):
         # ...
         if quality == "high-quality":
@@ -631,7 +630,8 @@ input elements. While both are important and widely-used,[^variants]
 they don't offer quite the customizability[^openui] and flexibility
 that complex embedded content use cases like maps, PDFs, ads, and social media
 controls require. So in modern browsers, these are handled by
-*embedding one web page within another* using the `<iframe>` element.
+*embedding one web page within another* using the `<iframe>`\index{iframe}
+element.
 
 [^variants]: As are variations like the [`<canvas>`][canvas-elt]
     element. Instead of loading an image from the network, JavaScript
@@ -668,11 +668,11 @@ handling three significant differences:
   iframes (even nested ones---yes, iframes can include iframes!) use
   the same rendering event loop.
 
-* Cross-origin iframes are *script-isolated* from the containing page.
-  That means that a script in the iframe [can't access][cant-access]
-  the containing page's variables or DOM, nor can scripts in the
-  containing page access the iframe's variables or DOM. Same-origin
-  iframes, however, can.
+* Cross-origin iframes are *script-isolated*\index{script} from the
+  containing page. That means that a script in the iframe
+  [can't access][cant-access] the containing page's variables or DOM,
+  nor can scripts in the containing page access the iframe's variables
+  or DOM. Same-origin iframes, however, can.
 
 [^iframe-event-loop]: For example, if an iframe has the same origin as
     the web page that embeds it, then scripts in the iframe can
@@ -729,7 +729,7 @@ Now let's look at how `Frame`s are created. The first place is in
 
 ``` {.python}
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, browser, tab_height):
         # ...
         self.root_frame = None
 
@@ -776,7 +776,7 @@ class Frame:
         self.tab.window_id_to_frame[self.window_id] = self
 
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, browser, tab_height):
         # ...
         self.window_id_to_frame = {}
 ```
@@ -985,7 +985,7 @@ class Tab:
     def load(self, url, body=None):
         # ...
         self.root_frame.frame_width = WIDTH
-        self.root_frame.frame_height = HEIGHT - CHROME_PX
+        self.root_frame.frame_height = self.tab_height
 ```
 
 Note that there's a tricky dependency order here. We need the parent
@@ -1174,7 +1174,7 @@ frame the focused element is on too:
 
 ``` {.python}
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, browser, tab_height):
         self.focus = None
         self.focused_frame = None
 ```
@@ -1291,8 +1291,19 @@ class Frame:
         return max(0, min(scroll, maxscroll))
 ```
 
-Make sure to use the new `clamp_scroll` in place of the old one,
-everywhere in `Frame`:
+For browser-thread scrolling we'll have a similar function that uses
+the active tab height:
+
+``` {.python}
+class Browser:
+    def clamp_scroll(self, scroll):
+        height = self.active_tab_height
+        maxscroll = height - (HEIGHT - self.chrome.bottom)
+        return max(0, min(scroll, maxscroll))
+```
+
+Make sure to use the new `clamp_scroll` methods in place of the old
+ones everywhere. For example, in `scroll_to`:
 
 ``` {.python}
 class Frame:
@@ -1457,14 +1468,13 @@ by both sides.
 [threaded-scroll]: https://developer.chrome.com/articles/renderingng/#threaded-scrolling-animations-and-decode
 
 
-
 Iframe scripts
 ==============
 
-We've now got users interacting with iframes---but what about scripts
-interacting with them? Of course, each frame can _already_ run
-scripts---but right now, each `Frame` has its own `JSContext`, so
-these scripts can't really interact with each other. Instead
+We've now got users interacting with iframes---but what about
+scripts\index{script} interacting with them? Of course, each frame can
+_already_ run scripts---but right now, each `Frame` has its own
+`JSContext`, so these scripts can't really interact with each other. Instead
 *same-origin* iframes should run in the same JavaScript context and
 should be able to access each other's globals, call each other's
 functions, and modify each other's DOMs. Let's implement that.
@@ -1476,7 +1486,7 @@ in a dictionary that maps origins to JS contexts:
 
 ``` {.python}
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, browser, tab_height):
         # ...
         self.origin_to_js = {}
 

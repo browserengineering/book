@@ -9,14 +9,13 @@ So far, your web browser sees web pages as a stream of open tags,
 close tags, and text. But HTML is actually a tree, and though the tree
 structure hasn't been important yet, it will be once backgrounds,
 margins, and CSS enter the picture. So this chapter adds a proper HTML
-parser and converts the layout engine to use it.
-
+parser\index{parsing} and converts the layout engine to use it.
 
 A tree of nodes
 ===============
 
-The HTML tree[^dom] has one node for each open and close tag pair and for
-each span of text.[^1] So for our browser to be a tree, tokens need to
+The HTML tree[^dom] has one node\index{node} for each open and close tag pair
+and for each span of text.[^1] So for our browser to be a tree, tokens need to
 evolve into nodes. That means adding a list of children and a parent
 pointer to each one. Here's the new `Text` class:[^children]
 
@@ -24,9 +23,10 @@ pointer to each one. Here's the new `Text` class:[^children]
     empty; I'm defining it here to make it easier to write code that
     handles `Text` and `Element` nodes simultaneously.
 
-[^dom]: This is the tree that is usually called the DOM tree, for [Document
-Object Model](https://en.wikipedia.org/wiki/Document_Object_Model). We'll
-keep calling it the HTML tree for now.
+[^dom]: This is the tree that is usually called the
+DOM\index{DOM}\index{document} tree, for
+[Document Object Model](https://en.wikipedia.org/wiki/Document_Object_Model).
+We'll keep calling it the HTML tree for now.
 
 [^1]: In reality there are other types of nodes too, like comments,
     doctypes, and `CDATA` sections, and processing instructions. There
@@ -42,7 +42,8 @@ class Text:
 ```
 
 Since it takes two tags (the open and the close tag) to make a node,
-let's rename the `Tag` class to `Element`, and make it look like this:
+let's rename the `Tag` class to `Element`,\index{element} and make it look
+like this:
 
 ``` {.python expected=False}
 class Element:
@@ -283,7 +284,7 @@ Try this out on this web page, parsing the HTML source code and then
 calling `print_tree` to visualize it:
 
 ``` {.python expected=False}
-headers, body = URL(sys.argv[1]).request()
+body = URL(sys.argv[1]).request()
 nodes = HTMLParser(body).parse()
 print_tree(nodes)
 ```
@@ -419,8 +420,8 @@ not? Our parser is looking for a tag named `meta`, but it's finding a
 tag named "`meta name=...`". The self-closing code isn't triggered
 because the `<meta>` tag has attributes.
 
-HTML attributes add information about an element; open tags can have
-any number of attributes. Attribute values can be quoted, unquoted, or
+HTML attributes\index{attribute} add information about an element; open tags
+can have any number of attributes. Attribute values can be quoted, unquoted, or
 omitted entirely. Let's focus on basic attribute support, ignoring
 values that contain whitespace, which are a little complicated.
 
@@ -431,7 +432,7 @@ whitespace to get the tag name and the attribute-value pairs:
 class HTMLParser:
     def get_attributes(self, text):
         parts = text.split()
-        tag = parts[0].lower()
+        tag = parts[0].casefold()
         attributes = {}
         for attrpair in parts[1:]:
             # ...
@@ -459,7 +460,7 @@ def get_attributes(self, text):
     for attrpair in parts[1:]:
         if "=" in attrpair:
             key, value = attrpair.split("=", 1)
-            attributes[key.lower()] = value
+            attributes[key.casefold()] = value
     # ...
 ```
 
@@ -470,7 +471,7 @@ case the attribute value defaults to the empty string:
 for attrpair in parts[1:]:
     # ...
     else:
-        attributes[attrpair.lower()] = ""
+        attributes[attrpair.casefold()] = ""
 ```
 
 Finally, the value can be quoted, in which case the quotes have to be
@@ -588,7 +589,7 @@ the node tree, like this:
 ``` {.python}
 class Browser:
     def load(self, url):
-        headers, body = url.request()
+        body = url.request()
         self.nodes = HTMLParser(body).parse()
         self.display_list = Layout(self.nodes).display_list
         self.draw()
@@ -701,8 +702,8 @@ while True:
 Here, `HEAD_TAGS` lists the tags that you're supposed to put into the
 `<head>` element:[^where-script]
 
-[^where-script]: The `<script>` tag can go in either the head or the
-    body section, but it goes into the head by default.
+[^where-script]: The `<script>`\index{script} tag can go in either the head
+or the body section, but it goes into the head by default.
 
 ``` {.python}
 class HTMLParser:

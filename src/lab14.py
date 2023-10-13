@@ -4,6 +4,7 @@ up to and including Chapter 14 (Making Content Accessible),
 without exercises.
 """
 
+import sys
 import ctypes
 import dukpy
 import math
@@ -30,7 +31,7 @@ from lab5 import BLOCK_ELEMENTS
 from lab6 import TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES
 from lab6 import tree_to_list
-from lab7 import CHROME_PX
+from lab7 import intersects
 from lab8 import INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, URL
@@ -42,8 +43,8 @@ from lab13 import absolute_bounds, absolute_bounds_for_obj
 from lab13 import NumericAnimation, TranslateAnimation
 from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
 from lab13 import CompositedLayer, paint_visual_effects
-from lab13 import DisplayItem, DrawText, DrawCompositedLayer, SaveLayer, DrawOutline
-from lab13 import ClipRRect, Transform, DrawLine, DrawRRect, add_main_args
+from lab13 import DrawCommand, DrawText, DrawCompositedLayer, DrawOutline, DrawLine, DrawRRect
+from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform, Chrome
 
 @wbetools.patch(Element)
 class Element:
@@ -94,28 +95,21 @@ def parse_color(color):
     else:
         return skia.ColorBLACK
 
-def parse_outline(outline_str, zoom):
+def parse_outline(outline_str):
     if not outline_str: return None
     values = outline_str.split(" ")
     if len(values) != 3: return None
     if values[1] != "solid": return None
-    return (device_px(int(values[0][:-2]), zoom), values[2])
-
-def is_focused(node):
-    if isinstance(node, Text):
-        node = node.parent
-    return node.is_focused
-
-def has_outline(node):
-    return parse_outline(node.style.get("outline"), 1)
+    return int(values[0][:-2]), values[2]
 
 def paint_outline(node, cmds, rect, zoom):
-    if has_outline(node):
-        thickness, color = parse_outline(node.style.get("outline"), zoom)
-        cmds.append(DrawOutline(
-            rect.left(), rect.top(),
-            rect.right(), rect.bottom(),
-            color, thickness))
+    outline = parse_outline(node.style.get("outline"))
+    if not outline: return
+    thickness, color = outline
+    cmds.append(DrawOutline(
+        rect.left(), rect.top(),
+        rect.right(), rect.bottom(),
+        color, device_px(thickness, zoom)))
 
 class BlockLayout:
     def __init__(self, node, parent, previous):
@@ -192,7 +186,8 @@ class BlockLayout:
     def word(self, node, word):
         weight = node.style["font-weight"]
         style = node.style["font-style"]
-        size = device_px(float(node.style["font-size"][:-2]), self.zoom)
+        size = device_px(float(node.style["font-size"][:-2]),
+            self.zoom)
         font = get_font(size, weight, size)
         w = font.measureText(word)
         if self.cursor_x + w > self.width:
@@ -213,7 +208,8 @@ class BlockLayout:
         self.previous_word = input
         weight = node.style["font-weight"]
         style = node.style["font-style"]
-        size = device_px(float(node.style["font-size"][:-2]), self.zoom)
+        size = device_px(float(node.style["font-size"][:-2]),
+            self.zoom)
         font = get_font(size, weight, size)
         self.cursor_x += w + font.measureText(" ")
 
@@ -290,16 +286,16 @@ class LineLayout:
             child.paint(display_list)
 
         outline_rect = skia.Rect.MakeEmpty()
-        focused_node = None
+        outline_node = None
         for child in self.children:
-            node = child.node
-            if has_outline(node.parent):
-                focused_node = node.parent
+            outline_str = child.node.parent.style.get("outline")
+            if parse_outline(outline_str):
                 outline_rect.join(child.rect())
+                outline_node = child.node.parent
 
-        if focused_node:
+        if outline_node:
             paint_outline(
-                focused_node, display_list, outline_rect, self.zoom)
+                outline_node, display_list, outline_rect, self.zoom)
 
     def role(self):
         return "none"
@@ -448,8 +444,8 @@ class InputLayout:
         self.zoom = self.parent.zoom
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
-        size = \
-            device_px(float(self.node.style["font-size"][:-2]), self.zoom)
+        size = device_px(float(self.node.style["font-size"][:-2]),
+            self.zoom)
         self.font = get_font(size, weight, style)
 
         self.width = device_px(INPUT_WIDTH_PX, self.zoom)
@@ -511,31 +507,6 @@ def is_focusable(node):
     else:
         return node.tag in ["input", "button", "a"]
     
-def announce_text(node, role):
-    text = ""
-    if role == "StaticText":
-        text = node.text
-    elif role == "focusable text":
-        text = "focusable text: " + node.text
-    elif role == "textbox":
-        if "value" in node.attributes:
-            value = node.attributes["value"]
-        elif node.tag != "input" and node.children and \
-            isinstance(node.children[0], Text):
-            value = node.children[0].text
-        else:
-            value = ""
-        text = "Input box: " + value
-    elif role == "button":
-        text = "Button"
-    elif role == "link":
-        text = "Link"
-    elif role == "alert":
-        text = "Alert"
-    if is_focused(node):
-        text += " is focused"
-    return text
-
 class AccessibilityNode:
     def __init__(self, node):
         self.node = node
@@ -577,7 +548,7 @@ class AccessibilityNode:
         elif self.role == "focusable text":
             self.text = "Focusable text: " + self.node.text
         elif self.role == "focusable":
-            self.text = "Focusable"
+            self.text = "Focusable element"
         elif self.role == "textbox":
             if "value" in self.node.attributes:
                 value = self.node.attributes["value"]
@@ -596,7 +567,7 @@ class AccessibilityNode:
         elif self.role == "document":
             self.text = "Document"
 
-        if is_focused(self.node):
+        if self.node.is_focused:
             self.text += " is focused"
 
     def build_internal(self, child_node):
@@ -644,7 +615,7 @@ class PseudoclassSelector:
         if not self.base.matches(node):
             return False
         if self.pseudoclass == "focus":
-            return is_focused(node)
+            return node.is_focused
         else:
             return False
 
@@ -697,7 +668,7 @@ class CSSParser:
         self.literal(":")
         self.whitespace()
         val = self.until_char(until)
-        return prop.lower(), val
+        return prop.casefold(), val
 
     def ignore_until(self, chars):
         while self.i < len(self.s):
@@ -711,7 +682,7 @@ class CSSParser:
         while self.i < len(self.s) and self.s[self.i] != "}":
             try:
                 prop, val = self.pair([";", "}"])
-                pairs[prop.lower()] = val
+                pairs[prop.casefold()] = val
                 self.whitespace()
                 self.literal(";")
                 self.whitespace()
@@ -725,10 +696,10 @@ class CSSParser:
         return pairs
 
     def simple_selector(self):
-        out = TagSelector(self.word().lower())
+        out = TagSelector(self.word().casefold())
         if self.i < len(self.s) and self.s[self.i] == ":":
             self.literal(":")
-            pseudoclass = self.word().lower()
+            pseudoclass = self.word().casefold()
             out = PseudoclassSelector(pseudoclass, out)
         return out
 
@@ -786,6 +757,7 @@ class CSSParser:
                     break
         return rules
 
+@wbetools.patch(JSContext)
 class JSContext:
     def __init__(self, tab):
         self.tab = tab
@@ -918,8 +890,9 @@ class CommitData:
         self.focus = focus
 
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, browser, tab_height):
         self.history = []
+        self.tab_height = tab_height
         self.focus = None
         self.needs_focus_scroll = False
         self.url = None
@@ -1048,7 +1021,8 @@ class Tab:
         self.render()
 
         document_height = math.ceil(self.document.height)
-        clamped_scroll = clamp_scroll(self.scroll, document_height)
+        clamped_scroll = clamp_scroll(
+            self.scroll, document_height, self.tab_height)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
         self.scroll = clamped_scroll
@@ -1144,13 +1118,13 @@ class Tab:
         if not objs: return
         obj = objs[0]
 
-        content_height = HEIGHT - CHROME_PX
-        if self.scroll < obj.y < self.scroll + content_height:
+        if self.scroll < obj.y < self.scroll + self.tab_height:
             return
 
         document_height = math.ceil(self.document.height)
         new_scroll = obj.y - SCROLL_STEP
-        self.scroll = clamp_scroll(new_scroll, document_height)
+        self.scroll = clamp_scroll(
+            new_scroll, document_height, self.tab_height)
         self.scroll_changed_in_tab = True
 
     def click(self, x, y):
@@ -1254,8 +1228,85 @@ def draw_line(canvas, x1, y1, x2, y2, color):
     paint.setStrokeWidth(1)
     canvas.drawPath(path, paint)
 
+@wbetools.patch(Chrome)
+class Chrome:
+    def paint(self):
+        if self.browser.dark_mode:
+            color = "white"
+        else:
+            color = "black"
+
+        cmds = []
+
+        (plus_left, plus_top, plus_right, plus_bottom) = self.plus_bounds()
+        cmds.append(DrawOutline(
+            plus_left, plus_top, plus_right, plus_bottom, color, 1))
+        cmds.append(DrawText(
+            plus_left, plus_top, "+", self.font, color))
+
+        for i, tab in enumerate(self.browser.tabs):
+            name = "Tab {}".format(i)
+            (tab_left, tab_top, tab_right, tab_bottom) = self.tab_bounds(i)
+
+            cmds.append(DrawLine(
+                tab_left, 0,tab_left, tab_bottom, color, 1))
+            cmds.append(DrawLine(
+                tab_right, 0, tab_right, tab_bottom, color, 1))
+            cmds.append(DrawText(
+                tab_left + self.padding, tab_top,
+                name, self.font, color))
+            if i == self.browser.active_tab:
+                cmds.append(DrawLine(
+                    0, tab_bottom, tab_left, tab_bottom, color, 1))
+                cmds.append(DrawLine(
+                    tab_right, tab_bottom, WIDTH, tab_bottom, color, 1))
+
+        backbutton_width = self.font.measureText("<")
+        (backbutton_left, backbutton_top, backbutton_right, backbutton_bottom) = \
+            self.backbutton_bounds()
+        cmds.append(DrawOutline(
+            backbutton_left, backbutton_top,
+            backbutton_right, backbutton_bottom,
+            color, 1))
+        cmds.append(DrawText(
+            backbutton_left, backbutton_top + self.padding,
+            "<", self.font, color))
+
+        (addressbar_left, addressbar_top, \
+            addressbar_right, addressbar_bottom) = \
+            self.addressbar_bounds()
+
+        cmds.append(DrawOutline(
+            addressbar_left, addressbar_top, addressbar_right,
+            addressbar_bottom, color, 1))
+        left_bar = addressbar_left + self.padding
+        top_bar = addressbar_top + self.padding
+        if self.browser.focus == "address bar":
+            cmds.append(DrawText(
+                left_bar, top_bar,
+                self.browser.address_bar, self.font, color))
+            w = self.font.measureText(self.browser.address_bar)
+            cmds.append(DrawLine(
+                left_bar + w, top_bar,
+                left_bar + w,
+                self.bottom - self.padding, "red", 1))
+        else:
+            url = str(self.browser.tabs[self.browser.active_tab].url)
+            cmds.append(DrawText(
+                left_bar,
+                top_bar,
+                url, self.font, color))
+
+        cmds.append(DrawLine(
+            0, self.bottom + self.padding, WIDTH,
+            self.bottom + self.padding, color, 1))
+
+        return cmds
+
 class Browser:
     def __init__(self):
+        self.chrome = Chrome(self)
+
         if wbetools.USE_GPU:
             self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
                 sdl2.SDL_WINDOWPOS_CENTERED,
@@ -1284,7 +1335,7 @@ class Browser:
 
             self.chrome_surface = skia.Surface.MakeRenderTarget(
                     self.skia_context, skia.Budgeted.kNo,
-                    skia.ImageInfo.MakeN32Premul(WIDTH, CHROME_PX))
+                    skia.ImageInfo.MakeN32Premul(WIDTH, self.chrome.bottom))
             assert self.chrome_surface is not None
         else:
             self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
@@ -1295,7 +1346,7 @@ class Browser:
                 WIDTH, HEIGHT,
                 ct=skia.kRGBA_8888_ColorType,
                 at=skia.kUnpremul_AlphaType))
-            self.chrome_surface = skia.Surface(WIDTH, CHROME_PX)
+            self.chrome_surface = skia.Surface(WIDTH, self.chrome.bottom)
             self.skia_context = None
 
         self.tabs = []
@@ -1408,9 +1459,8 @@ class Browser:
                 tree_to_list(cmd, all_commands)
         non_composited_commands = [cmd
             for cmd in all_commands
-            if not cmd.needs_compositing and \
-                (not cmd.parent or \
-                 cmd.parent.needs_compositing)
+            if isinstance(cmd, DrawCommand) or not cmd.needs_compositing
+            if not cmd.parent or cmd.parent.needs_compositing
         ]
         for cmd in non_composited_commands:
             for layer in reversed(self.composited_layers):
@@ -1575,7 +1625,8 @@ class Browser:
             return
         scroll = clamp_scroll(
             self.scroll + SCROLL_STEP,
-            self.active_tab_height)
+            self.active_tab_height,
+            HEIGHT - self.chrome.bottom)
         self.scroll = scroll
         self.set_needs_draw()
         self.needs_animation_frame = True
@@ -1677,22 +1728,16 @@ class Browser:
 
     def handle_click(self, e):
         self.lock.acquire(blocking=True)
-        if e.y < CHROME_PX:
+        if e.y < self.chrome.bottom:
             self.focus = None
-            if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
-                self.set_active_tab(int((e.x - 40) / 80))
-            elif 10 <= e.x < 30 and 10 <= e.y < 30:
-                self.load_internal(URL("https://browser.engineering/"))
-            elif 10 <= e.x < 35 and 50 <= e.y < 90:
-                self.go_back()
-            elif 50 <= e.x < WIDTH - 10 and 50 <= e.y < 90:
-                self.focus = "address bar"
-                self.address_bar = ""
+            self.chrome.click(e.x, e.y)
             self.set_needs_raster()
         else:
+            if self.focus != "content":
+                self.set_needs_raster()
             self.focus = "content"
             active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.click, e.x, e.y - CHROME_PX)
+            task = Task(active_tab.click, e.x, e.y - self.chrome.bottom)
             active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
@@ -1700,7 +1745,7 @@ class Browser:
         if not self.accessibility_is_on or \
             not self.accessibility_tree:
             return
-        self.pending_hover = (event.x, event.y - CHROME_PX)
+        self.pending_hover = (event.x, event.y - self.chrome.bottom)
         self.set_needs_accessibility()
 
     def handle_key(self, char):
@@ -1753,7 +1798,7 @@ class Browser:
         self.lock.release()
 
     def load_internal(self, url):
-        new_tab = Tab(self)
+        new_tab = Tab(self, HEIGHT -self.chrome.bottom)
         self.tabs.append(new_tab)
         self.set_active_tab(len(self.tabs) - 1)
         self.schedule_load(url)
@@ -1761,43 +1806,6 @@ class Browser:
     def raster_tab(self):
         for composited_layer in self.composited_layers:
             composited_layer.raster()
-
-    def paint_chrome(self):
-        if self.dark_mode:
-            color = "white"
-        else:
-            color = "black"
-
-        cmds = []
-        cmds.append(DrawLine(0, CHROME_PX - 1, WIDTH, CHROME_PX - 1, color, 1))
-
-        tabfont = get_font(20, "normal", "roman")
-        for i, tab in enumerate(self.tabs):
-            name = "Tab {}".format(i)
-            x1, x2 = 40 + 80 * i, 120 + 80 * i
-            cmds.append(DrawLine(x1, 0, x1, 40, color, 1))
-            cmds.append(DrawLine(x2, 0, x2, 40, color, 1))
-            cmds.append(DrawText(x1 + 10, 10, name, tabfont, color))
-            if i == self.active_tab:
-                cmds.append(DrawLine(0, 40, x1, 40, color, 1))
-                cmds.append(DrawLine(x2, 40, WIDTH, 40, color, 1))
-
-        buttonfont = get_font(30, "normal", "roman")
-        cmds.append(DrawOutline(10, 10, 30, 30, color, 1))
-        cmds.append(DrawText(11, 5, "+", buttonfont, color))
-
-        cmds.append(DrawOutline(40, 50, WIDTH - 10, 90, color, 1))
-        if self.focus == "address bar":
-            cmds.append(DrawText(55, 55, self.address_bar, buttonfont, color))
-            w = buttonfont.measureText(self.address_bar)
-            cmds.append(DrawLine(55 + w, 55, 55 + w, 85, color, 1))
-        else:
-            url = str(self.tabs[self.active_tab].url)
-            cmds.append(DrawText(55, 55, url, buttonfont, color))
-
-        cmds.append(DrawOutline(10, 50, 35, 90, color, 1))
-        cmds.append(DrawText(15, 55, "<", buttonfont, color))
-        return cmds
 
     def raster_chrome(self):
         canvas = self.chrome_surface.getCanvas()
@@ -1807,7 +1815,7 @@ class Browser:
             background_color = skia.ColorWHITE
         canvas.clear(background_color)
     
-        for cmd in self.paint_chrome():
+        for cmd in self.chrome.paint():
             cmd.execute(canvas)
 
     def draw(self):
@@ -1818,12 +1826,12 @@ class Browser:
             canvas.clear(skia.ColorWHITE)
 
         canvas.save()
-        canvas.translate(0, CHROME_PX - self.scroll)
+        canvas.translate(0, self.chrome.bottom - self.scroll)
         for item in self.draw_list:
             item.execute(canvas)
         canvas.restore()
 
-        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, CHROME_PX)
+        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, self.chrome.bottom)
         canvas.save()
         canvas.clipRect(chrome_rect)
         self.chrome_surface.draw(canvas, 0, 0)
@@ -1858,12 +1866,10 @@ class Browser:
             sdl2.SDL_GL_DeleteContext(self.gl_context)
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
-def main_func(args):
-    import sys
-
+def main_func(url):
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
-    browser.load(URL(args.url))
+    browser.load(url)
 
     event = sdl2.SDL_Event()
     ctrl_down = False
@@ -1931,6 +1937,6 @@ def main_func(args):
         browser.schedule_animation_frame()
 
 if __name__ == "__main__":
-    args = add_main_args()
-    main_func(args)
+    wbetools.parse_flags()
+    main_func(URL(sys.argv[1]))
 

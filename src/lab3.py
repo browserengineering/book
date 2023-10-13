@@ -50,9 +50,11 @@ FONTS = {}
 def get_font(size, weight, slant):
     key = (size, weight, slant)
     if key not in FONTS:
-        font = tkinter.font.Font(size=size, weight=weight, slant=slant)
-        FONTS[key] = font
-    return FONTS[key]
+        font = tkinter.font.Font(size=size, weight=weight,
+            slant=slant)
+        label = tkinter.Label(font=font)
+        FONTS[key] = (font, label)
+    return FONTS[key][0]
 
 class Layout:
     def __init__(self, tokens):
@@ -139,7 +141,7 @@ class Browser:
         self.display_list = []
 
     def load(self, url):
-        headers, body = url.request()
+        body = url.request()
         tokens = lex(body)
         self.display_list = Layout(tokens).display_list
         self.draw()

@@ -13,12 +13,12 @@ import urllib.parse
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
-from lab5 import BLOCK_ELEMENTS, DrawRect
+from lab5 import BLOCK_ELEMENTS, DrawRect, DocumentLayout
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import DrawText, URL, tree_to_list
-from lab7 import DrawLine, DrawOutline, DocumentLayout, BlockLayout, LineLayout, TextLayout
-from lab7 import CHROME_PX, Tab, Browser
+from lab7 import DrawLine, DrawOutline, BlockLayout, LineLayout, TextLayout
+from lab7 import Tab, Browser, Chrome, intersects
 
 @wbetools.patch(Element)
 class Element:
@@ -66,21 +66,20 @@ class URL:
     
         statusline = response.readline()
         version, status, explanation = statusline.split(" ", 2)
-        assert status == "200", "{}: {}".format(status, explanation)
     
-        headers = {}
+        response_headers = {}
         while True:
             line = response.readline()
             if line == "\r\n": break
             header, value = line.split(":", 1)
-            headers[header.lower()] = value.strip()
+            response_headers[header.casefold()] = value.strip()
     
-        assert "transfer-encoding" not in headers
-        assert "content-encoding" not in headers
+        assert "transfer-encoding" not in response_headers
+        assert "content-encoding" not in response_headers
     
         body = response.read()
         s.close()
-        return headers, body
+        return body
 
 INPUT_WIDTH_PX = 200
 
@@ -210,11 +209,12 @@ class BlockLayout:
 
 @wbetools.patch(Tab)
 class Tab:
-    def __init__(self):
+    def __init__(self, tab_height):
         self.history = []
         self.url = None
         self.focus = None
-
+        self.tab_height = tab_height
+ 
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
 
@@ -222,7 +222,7 @@ class Tab:
         self.scroll = 0
         self.url = url
         self.history.append(url)
-        headers, body = url.request(body)
+        body = url.request(body)
         self.nodes = HTMLParser(body).parse()
 
         self.rules = self.default_style_sheet.copy()
@@ -234,7 +234,7 @@ class Tab:
                  and node.attributes.get("rel") == "stylesheet"]
         for link in links:
             try:
-                header, body = url.resolve(link).request()
+                body = url.resolve(link).request()
             except:
                 continue
             self.rules.extend(CSSParser(body).parse())
@@ -247,11 +247,11 @@ class Tab:
         self.display_list = []
         self.document.paint(self.display_list)
 
-    def draw(self, canvas):
+    def draw(self, canvas, offset):
         for cmd in self.display_list:
-            if cmd.top > self.scroll + HEIGHT - CHROME_PX: continue
+            if cmd.top > self.scroll + self.tab_height: continue
             if cmd.bottom < self.scroll: continue
-            cmd.execute(self.scroll - CHROME_PX, canvas)
+            cmd.execute(self.scroll - offset, canvas)
 
     def click(self, x, y):
         self.focus = None
@@ -325,22 +325,15 @@ class Browser:
         self.active_tab = None
         self.focus = None
         self.address_bar = ""
+        self.chrome = Chrome(self)
 
     def handle_click(self, e):
-        if e.y < CHROME_PX:
+        if e.y < self.chrome.bottom:
             self.focus = None
-            if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
-                self.active_tab = int((e.x - 40) / 80)
-            elif 10 <= e.x < 30 and 10 <= e.y < 30:
-                self.load(URL("https://browser.engineering/"))
-            elif 10 <= e.x < 35 and 50 <= e.y < 90:
-                self.tabs[self.active_tab].go_back()
-            elif 50 <= e.x < WIDTH - 10 and 50 <= e.y < 90:
-                self.focus = "address bar"
-                self.address_bar = ""
+            self.chrome.click(e.x, e.y)
         else:
             self.focus = "content"
-            self.tabs[self.active_tab].click(e.x, e.y - CHROME_PX)
+            self.tabs[self.active_tab].click(e.x, e.y - self.chrome.bottom)
         self.draw()
 
     def handle_key(self, e):

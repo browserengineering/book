@@ -9,8 +9,8 @@ Modern browsers must run sophisticated applications while staying
 responsive to user actions. Doing so means choosing which of its many
 tasks to prioritize and which to delay until later---tasks like
 JavaScript callbacks, user input, and rendering. Moreover, browser
-work must be split across multiple threads, with different threads running
-events in parallel to maximize responsiveness.
+work must be split across multiple CPU threads\index{thread}, with
+different threads running events in parallel to maximize responsiveness.
 
 Tasks and task queues
 =====================
@@ -88,7 +88,7 @@ class TaskRunner:
 ```
 
 To run those tasks, we need to call the `run` method on our
-`TaskRunner`, which we can do in the main event loop:
+`TaskRunner`, which we can do in the main event loop\index{event loop}:
 
 ``` {.python expected=False}
 class Tab:
@@ -167,8 +167,8 @@ this:[^polling]
 `Task` is supposed to occur, and compare against the current time in
 the event loop. This is called *polling*, and is what, for example,
 the SDL event loop does to look for events and tasks. However, that
-can mean wasting CPU cycles in a loop until the task is ready, so I expect
-the `Timer` to be more efficient.
+can mean wasting CPU\index{CPU} cycles in a loop until the task is ready,
+so I expect the `Timer` to be more efficient.
 
 [timer]: https://docs.python.org/3/library/threading.html#timer-objects
 [threading]: https://docs.python.org/3/library/threading.html
@@ -413,7 +413,8 @@ parts. The first part will resolve the URL and do security checks:
 
 ``` {.python}
 class JSContext:
-    def XMLHttpRequest_send(self, method, url, body, isasync, handle):
+    def XMLHttpRequest_send(
+        self, method, url, body, isasync, handle):
         full_url = self.tab.url.resolve(url)
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
@@ -427,7 +428,8 @@ task for running callbacks:
 
 ``` {.python}
 class JSContext:
-    def XMLHttpRequest_send(self, method, url, body, isasync, handle):
+    def XMLHttpRequest_send(
+        self, method, url, body, isasync, handle):
         # ...
         def run_load():
             headers, response = full_url.request(self.tab.url, body)
@@ -445,7 +447,8 @@ this function right away, or in a new thread:
 
 ``` {.python}
 class JSContext:
-    def XMLHttpRequest_send(self, method, url, body, isasync, handle):
+    def XMLHttpRequest_send(
+        self, method, url, body, isasync, handle):
         # ...
         if not isasync:
             return run_load()
@@ -545,7 +548,7 @@ we update the display, not individual `Tab`s.
 
 Let's make that happen. First, let's write a `schedule_animation_frame`
 method[^animation-frame] on `Browser` that schedules a `render` task to run the
-`Tab` half of the rendering pipeline:
+`Tab` half of the rendering pipeline:\index{rendering pipeline}
 
 [^animation-frame]: It's called an "animation frame" because
 sequential rendering of different pixels is an animation, and each
@@ -632,7 +635,7 @@ need to run `render`, let's call our dirty bit `needs_render`:
 
 ``` {.python}
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, browser, tab_height):
         # ...
         self.needs_render = False
 
@@ -707,7 +710,7 @@ handlers:
 ``` {.python}
 class Browser:
     def handle_click(self, e):
-        if e.y < CHROME_PX:
+        if e.y < self.chrome.bottom:
             # ...
             self.set_needs_raster_and_draw()
 
@@ -741,7 +744,7 @@ constructed:
 ``` {.python}
 class Browser:
     def load(self, url):
-        new_tab = Tab(self)
+        new_tab = Tab(self, HEIGHT - self.chrome.bottom)
         # ...
 ```
 
@@ -1288,19 +1291,19 @@ class Browser:
 Event handlers are mostly similar, except that we need to be careful
 to distinguish events that affect the browser chrome from those that
 affect the tab. For example, consider `handle_click`. If the user
-clicked on the browser chrome (meaning `e.y < CHROME_PX`), we can
+clicked on the browser chrome (meaning `e.y < self.chrome.bottom`), we can
 handle it right there in the browser thread. But if the user clicked
 on the web page, we must schedule a task on the main thread:
 
 ``` {.python}
 class Browser:
     def handle_click(self, e):
-        if e.y < CHROME_PX:
+        if e.y < self.chrome.bottom:
              # ...
         else:
             # ...
             active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.click, e.x, e.y - CHROME_PX)
+            task = Task(active_tab.click, e.x, e.y - self.chrome.bottom)
             active_tab.task_runner.schedule_task(task)
 ```
 
@@ -1350,8 +1353,8 @@ a `commit` method that a `Tab` can call when it's finished creating a
 display list. And if you look carefully at our raster-and-draw code,
 you'll see that to draw a display list we also need to know the URL
 (to update the browser chrome), the document height (to allocate a
-surface of the right size), and the scroll position (to draw the right
-part of the surface).
+surface of the right size), and the scroll\index{scroll} position (to draw the
+right part of the surface).
 
 Let's make a simple class for storing this data:
 
@@ -1371,7 +1374,7 @@ and move `__runRAFHandlers` there too:
 
 ``` {.python replace=self.scroll%2c/scroll%2c,(self)/(self%2c%20scroll)}
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, browser, tab_height):
         # ...
         self.browser = browser
 
@@ -1637,8 +1640,9 @@ Let's implement that. To start, we'll need to store a `scroll`
 variable on the `Browser`, and update it when the user scrolls:
 
 ``` {.python}
-def clamp_scroll(scroll, tab_height):
-    return max(0, min(scroll, tab_height - (HEIGHT - CHROME_PX)))
+def clamp_scroll(scroll, document_height, tab_height):
+    return max(0, min(
+        scroll, document_height - tab_height))
 
 class Browser:
     def __init__(self):
@@ -1652,7 +1656,8 @@ class Browser:
             return
         scroll = clamp_scroll(
             self.scroll + SCROLL_STEP,
-            self.active_tab_height)
+            self.active_tab_height,
+            HEIGHT - self.chrome.bottom)
         self.scroll = scroll
         self.set_needs_raster_and_draw()
         self.needs_animation_frame = True
@@ -1722,7 +1727,7 @@ concurrency and distributed state.
 
 ``` {.python}
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, browser, tab_height):
         # ...
         self.scroll_changed_in_tab = False
 
@@ -1744,7 +1749,8 @@ class Tab:
     def run_animation_frame(self, scroll):
         # ...
         document_height = math.ceil(self.document.height)
-        clamped_scroll = clamp_scroll(self.scroll, document_height)
+        clamped_scroll = clamp_scroll(
+            self.scroll, document_height, self.tab_height)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
         self.scroll = clamped_scroll
@@ -1877,9 +1883,9 @@ do that work, but that's even worse, because forcing work on the
 compositor thread will make scrolling janky unless you do even more work to
 avoid that somehow.
 
-[^servo]: The [Servo] rendering engine uses multiple threads to take
-advantage of parallelism in style and layout, but those steps still
-block, for example, JavaScript execution on the main thread.
+[^servo]: The [Servo] rendering engine\index{rendering engine} uses multiple
+threads to take advantage of parallelism in style and layout, but those steps
+still block, for example, JavaScript execution on the main thread.
 
 [Servo]: https://en.wikipedia.org/wiki/Servo_(software)
 
@@ -1892,7 +1898,7 @@ style and layout off the main thread, similar to optimistically doing
 threaded scrolling if a web page doesn't `preventDefault` a scroll. Is
 that a good idea? Maybe, but forced style and layout aren't just
 caused by JavaScript execution. One example is our implementation of
-`click`, which causes a forced render before hit testing:
+`click`, which causes a forced render before hit testing\index{hit testing}:
 
 ``` {.python}
 class Tab:

@@ -15,16 +15,16 @@ this key web application technology to our toy browser.
 Installing DukPy
 ================
 
-Actually writing a JavaScript interpreter is beyond the scope of this
-book,^[But check out a book on programming language implementation
-if it sounds interesting!] so this chapter uses the `dukpy` library
-for executing JavaScript.
+Actually writing a JavaScript\index{JavaScript} interpreter is beyond
+the scope of this book,^[But check out a book on programming language
+implementation if it sounds interesting!] so this chapter uses the
+`dukpy` library for executing JavaScript.
 
-[DukPy](https://github.com/amol-/dukpy) wraps a JavaScript interpreter
-called [Duktape](https://duktape.org). The most famous JavaScript
-interpreters are those used in browsers: TraceMonkey (Firefox),
-JavaScriptCore (Safari), and V8 (Chrome). Unlike those
-implementations, which are extremely fast but also extremely complex,
+[DukPy](https://github.com/amol-/dukpy)\index{DukPy} wraps a
+JavaScript interpreter called [Duktape](https://duktape.org). The most
+famous JavaScript interpreters are those used in browsers:
+TraceMonkey (Firefox), JavaScriptCore (Safari), and V8 (Chrome). Unlike
+those implementations, which are extremely fast but also extremely complex,
 Duktape aims to be simple and extensible, and is usually embedded
 inside a larger C or C++ project.[^1]
 
@@ -627,8 +627,8 @@ that code often wants to change the page *in response* to user
 actions.
 
 Here's how that works. Any time the user interacts with the page, the
-browser generates *events*. Each event has a type, like `change`,
-`click`, or `submit`, and happens at a *target element*. The
+browser generates *events*.\index{event} Each event has a type, like
+`change`, `click`, or `submit`, and happens at a *target element*. The
 `addEventListener` method allows JavaScript to react to those events:
 `node.addEventListener('click', func)` sets `func` to run every
 time the element corresponding to `node` generates a `click` event.

@@ -18,16 +18,16 @@ import wbetools
 
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab4 import print_tree, HTMLParser
-from lab5 import BLOCK_ELEMENTS
+from lab5 import BLOCK_ELEMENTS, DocumentLayout
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import tree_to_list
-from lab7 import CHROME_PX
+from lab7 import intersects
 from lab8 import Text, Element, INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, JSContext, URL
 from lab11 import get_font, FONTS, DrawLine, DrawRect, DrawOutline, linespace, DrawText, SaveLayer, ClipRRect
-from lab11 import BlockLayout, DocumentLayout, LineLayout, TextLayout, InputLayout
+from lab11 import BlockLayout, LineLayout, TextLayout, InputLayout, Chrome
 from lab11 import paint_visual_effects, parse_blend_mode, parse_color, Tab, Browser
 
 class MeasureTime:
@@ -140,7 +140,8 @@ class JSContext:
         do_default = self.interp.evaljs(
             XHR_ONLOAD_CODE, out=out, handle=handle)
 
-    def XMLHttpRequest_send(self, method, url, body, isasync, handle):
+    def XMLHttpRequest_send(
+        self, method, url, body, isasync, handle):
         full_url = self.tab.url.resolve(url)
         if not self.tab.allowed_request(full_url):
             raise Exception("Cross-origin XHR blocked by CSP")
@@ -163,13 +164,15 @@ class JSContext:
     def requestAnimationFrame(self):
         self.tab.browser.set_needs_animation_frame(self.tab)
 
-def clamp_scroll(scroll, tab_height):
-    return max(0, min(scroll, tab_height - (HEIGHT - CHROME_PX)))
+def clamp_scroll(scroll, document_height, tab_height):
+    return max(0, min(
+        scroll, document_height - tab_height))
 
 @wbetools.patch(Tab)
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, browser, tab_height):
         self.history = []
+        self.tab_height = tab_height
         self.focus = None
         self.url = None
         self.scroll = 0
@@ -249,7 +252,8 @@ class Tab:
         self.render()
 
         document_height = math.ceil(self.document.height)
-        clamped_scroll = clamp_scroll(self.scroll, document_height)
+        clamped_scroll = clamp_scroll(
+            self.scroll, document_height, self.tab_height)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
         if clamped_scroll != self.scroll:
@@ -303,7 +307,7 @@ class Tab:
                 self.set_needs_render()
                 return
             elif elt.tag == "button":
-                while elt:
+                while elt.parent:
                     if elt.tag == "form" and "action" in elt.attributes:
                         return self.submit_form(elt)
                     elt = elt.parent
@@ -411,9 +415,32 @@ class TaskRunner:
 
 REFRESH_RATE_SEC = 0.016 # 16ms
 
+@wbetools.patch(Chrome)
+class Chrome:
+    def click(self, x, y):
+        if intersects(x, y, self.plus_bounds()):
+            self.browser.load_internal(URL("https://browser.engineering/"))
+        elif intersects(x, y, self.backbutton_bounds()):
+            active_tab = self.browser.tabs[self.browser.active_tab]
+            task = Task(active_tab.go_back)
+            active_tab.task_runner.schedule_task(task)
+        elif intersects(x, y, self.addressbar_bounds()):
+            self.browser.focus = "address bar"
+            self.browser.raddress_bar = ""
+        else:
+            for i, tab in enumerate(self.browser.tabs):
+                if intersects(x, y, self.tab_bounds(i)):
+                    self.browser.set_active_tab(i)
+                    active_tab = self.browser.tabs[self.browser.active_tab]
+                    task = Task(active_tab.set_needs_render)
+                    active_tab.task_runner.schedule_task(task)
+                    break
+
 @wbetools.patch(Browser)
 class Browser:
     def __init__(self):
+        self.chrome = Chrome(self)
+
         self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
             sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
             WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
@@ -422,7 +449,7 @@ class Browser:
             WIDTH, HEIGHT,
             ct=skia.kRGBA_8888_ColorType,
             at=skia.kUnpremul_AlphaType))
-        self.chrome_surface = skia.Surface(WIDTH, CHROME_PX)
+        self.chrome_surface = skia.Surface(WIDTH, self.chrome.bottom)
         self.tab_surface = None
 
         self.tabs = []
@@ -520,7 +547,8 @@ class Browser:
             return
         scroll = clamp_scroll(
             self.scroll + SCROLL_STEP,
-            self.active_tab_height)
+            self.active_tab_height,
+            HEIGHT - self.chrome.bottom)
         self.scroll = scroll
         self.set_needs_raster_and_draw()
         self.needs_animation_frame = True
@@ -534,27 +562,18 @@ class Browser:
 
     def handle_click(self, e):
         self.lock.acquire(blocking=True)
-        if e.y < CHROME_PX:
+        if e.y < self.chrome.bottom:
             self.focus = None
-            if 40 <= e.x < 40 + 80 * len(self.tabs) and 0 <= e.y < 40:
-                self.set_active_tab(int((e.x - 40) / 80))
-                active_tab = self.tabs[self.active_tab]
-                task = Task(active_tab.set_needs_render)
-                active_tab.task_runner.schedule_task(task)
-            elif 10 <= e.x < 30 and 10 <= e.y < 30:
-                self.load_internal(URL("https://browser.engineering/"))
-            elif 10 <= e.x < 35 and 50 <= e.y < 90:
-                active_tab = self.tabs[self.active_tab]
-                task = Task(active_tab.go_back)
-                active_tab.task_runner.schedule_task(task)
-            elif 50 <= e.x < WIDTH - 10 and 50 <= e.y < 90:
-                self.focus = "address bar"
-                self.address_bar = ""
+            self.chrome.click(e.x, e.y)
             self.set_needs_raster_and_draw()
         else:
-            self.focus = "content"
+            if self.focus != "content":
+                self.focus = "content"
+                self.set_needs_raster_and_draw()
+            else:
+                self.focus = "content"
             active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.click, e.x, e.y - CHROME_PX)
+            task = Task(active_tab.click, e.x, e.y - self.chrome.bottom)
             active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
@@ -591,7 +610,7 @@ class Browser:
         self.lock.release()
 
     def load_internal(self, url):
-        new_tab = Tab(self)
+        new_tab = Tab(self, HEIGHT - self.chrome.bottom)
         self.set_active_tab(len(self.tabs))
         self.tabs.append(new_tab)
         self.schedule_load(url)

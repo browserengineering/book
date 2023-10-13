@@ -361,6 +361,8 @@ class tkinter {
             }
         })
     }
+
+    static Label = function(font) {}
 }
 
 function init_window(browser) {
@@ -654,6 +656,20 @@ class skia {
                     other_rect.left() > rect.right())
                     return false;
                 return true;
+            };
+            rect.outset = (x, y) => {
+                return skia.Rect.MakeLTRB(
+                    rect.left() - 1,
+                    rect.top() - 1,
+                    rect.right() + 1,
+                    rect.bottom() + 1);
+            };
+            rect.makeOffset = (x, y) => {
+                return skia.Rect.MakeLTRB(
+                    rect.left() + x,
+                    rect.top() + y,
+                    rect.right() + x,
+                    rect.bottom() + y);
             };
         },
 

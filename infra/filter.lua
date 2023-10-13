@@ -62,6 +62,10 @@ end
 function Div(el)
   if not config.show_todos and el.classes[1] == "todo" then
     return pandoc.RawBlock("html", "")
+  elseif not config.print and el.classes[1] == "print-only" then
+    return pandoc.RawBlock("html", "")
+  elseif config.print and el.classes[1] == "web-only" then
+    return pandoc.RawBlock("html", "")
   elseif config.show_signup and el.classes[1] == "signup" then
     local signup = assert(io.open("infra/signup.html")):read("*all")
     return pandoc.RawBlock("html", signup)

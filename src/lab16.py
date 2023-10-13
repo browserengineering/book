@@ -4,6 +4,7 @@ up to and including Chapter 16 (Reusing Previous Computations),
 without exercises.
 """
 
+import sys
 import sdl2
 import skia
 import ctypes
@@ -21,25 +22,23 @@ from lab5 import BLOCK_ELEMENTS
 from lab14 import Text, Element
 from lab6 import TagSelector, DescendantSelector
 from lab6 import tree_to_list, INHERITED_PROPERTIES
-from lab7 import CHROME_PX
 from lab8 import INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR
 from lab11 import FONTS, get_font, linespace, parse_blend_mode
 from lab12 import MeasureTime, REFRESH_RATE_SEC
 from lab12 import Task, TaskRunner, SingleThreadedTaskRunner
-from lab13 import diff_styles, parse_transition, clamp_scroll, add_parent_pointers
+from lab13 import diff_styles, parse_transition, add_parent_pointers
 from lab13 import absolute_bounds, absolute_bounds_for_obj
 from lab13 import NumericAnimation, TranslateAnimation
 from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
 from lab13 import CompositedLayer, paint_visual_effects
-from lab13 import DisplayItem, DrawText, DrawCompositedLayer, SaveLayer
-from lab13 import ClipRRect, Transform, DrawLine, DrawRRect, \
-    add_main_args
+from lab13 import DrawCommand, DrawText, DrawCompositedLayer, DrawOutline, DrawLine, DrawRRect
+from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform
 from lab14 import parse_color, parse_outline, DrawRRect, \
-    is_focused, paint_outline, has_outline, \
+    paint_outline, \
     device_px, cascade_priority, \
-    is_focusable, get_tabindex, announce_text, speak_text, \
+    is_focusable, get_tabindex, speak_text, \
     CSSParser, main_func, DrawOutline
 from lab15 import URL, HTMLParser, AttributeParser, DrawImage, DocumentLayout, BlockLayout, \
     EmbedLayout, InputLayout, LineLayout, TextLayout, ImageLayout, \
@@ -80,12 +79,13 @@ def tree_to_list(tree, l):
 
 @wbetools.patch(paint_outline)
 def paint_outline(node, cmds, rect, zoom):
-    if has_outline(node):
-        thickness, color = parse_outline(node.style['outline'].get(), zoom)
-        cmds.append(DrawOutline(
-            rect.left(), rect.top(),
-            rect.right(), rect.bottom(),
-            color, thickness))
+    outline = parse_outline(node.style["outline"].get())
+    if not outline: return
+    thickness, color = outline
+    cmds.append(DrawOutline(
+        rect.left(), rect.top(),
+        rect.right(), rect.bottom(),
+        color, device_px(thickness, zoom)))
 
 @wbetools.patch(font)
 def font(notify, css_style, zoom):
@@ -97,10 +97,6 @@ def font(notify, css_style, zoom):
         size = 16
     font_size = device_px(size, zoom)
     return get_font(font_size, weight, style)
-
-@wbetools.patch(has_outline)
-def has_outline(node):
-    return parse_outline(node.style['outline'].get(), 1)
 
 @wbetools.patch(absolute_bounds_for_obj)
 def absolute_bounds_for_obj(obj):
@@ -605,14 +601,17 @@ class LineLayout:
         self.has_dirty_descendants = False
 
     def paint(self, display_list):
+        for child in self.children:
+            child.paint(display_list)
+
         outline_rect = skia.Rect.MakeEmpty()
         outline_node = None
         for child in self.children:
-            node = child.node
-            if isinstance(node, Text) and has_outline(node.parent):
-                outline_node = node.parent
+            child_outline = parse_outline(child.node.parent.style["outline"].get())
+            if child_outline:
                 outline_rect.join(child.rect())
-            child.paint(display_list)
+                outline_node = child.node.parent
+
         if outline_node:
             paint_outline(outline_node, display_list, outline_rect, self.zoom.get())
 
@@ -917,6 +916,7 @@ def init_style(node):
             for property in CSS_PROPERTIES
         ])
 
+@wbetools.patch(style)
 def style(node, rules, frame):
     if not node.style:
         init_style(node)
@@ -1292,39 +1292,6 @@ class Tab:
 
         self.browser.commit(self, commit_data)
 
-def add_main_args():
-    import argparse
-
-    parser = argparse.ArgumentParser(description='Chapter 13 code')
-    parser.add_argument("url", type=str, help="URL to load")
-    parser.add_argument('--single_threaded', action="store_true", default=False,
-        help='Whether to run the browser without a browser thread')
-    parser.add_argument('--disable_compositing', action="store_true",
-        default=False, help='Whether to composite some elements')
-    parser.add_argument('--disable_gpu', action='store_true',
-        default=False, help='Whether to disable use of the GPU')
-    parser.add_argument('--show_composited_layer_borders', action="store_true",
-        default=False, help='Whether to visually indicate composited layer borders')
-    parser.add_argument("--force_cross_origin_iframes", action="store_true",
-        default=False, help="Whether to treat all iframes as cross-origin")
-    parser.add_argument("--assert_layout_clean", action="store_true",
-        default=False, help="Assert layout is clean once complete")
-    parser.add_argument("--print_invalidation_dependencies", action="store_true",
-        default=False, help="Whether to print out all invalidation dependencies")
-    args = parser.parse_args()
-
-    wbetools.USE_BROWSER_THREAD = not args.single_threaded
-    wbetools.USE_GPU = not args.disable_gpu
-    wbetools.USE_COMPOSITING = not args.disable_compositing and not args.disable_gpu
-    wbetools.SHOW_COMPOSITED_LAYER_BORDERS = args.show_composited_layer_borders
-    wbetools.FORCE_CROSS_ORIGIN_IFRAMES = args.force_cross_origin_iframes
-    wbetools.ASSERT_LAYOUT_CLEAN = args.assert_layout_clean
-    wbetools.PRINT_INVALIDATION_DEPENDENCIES = \
-        args.print_invalidation_dependencies
-
-    return args
-    
-
 if __name__ == "__main__":
-    args = add_main_args()
-    main_func(args)
+    wbetools.parse_flags()
+    main_func(URL(sys.argv[1]))

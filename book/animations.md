@@ -5,12 +5,12 @@ prev: scheduling
 next: accessibility
 ...
 
-Complex web application use *animations* when transitioning between
-states. These animations help users understand the change and improve
+Complex web application use *animations*\index{animation} when transitioning
+between states. These animations help users understand the change and improve
 visual polish by replacing sudden jumps with gradual changes. But to
 execute these animations smoothly, the browser must minimize time in each
 animation frame, using GPU acceleration to speed up
-visual effects and compositing to minimize redundant work.
+visual effects and compositing\index{compositing} to minimize redundant work.
 
 JavaScript Animations
 =====================
@@ -167,11 +167,13 @@ second; for smooth animations we want sixty! So we need to speed up
 raster and draw.
 
 The best way to do that is to move raster and draw to the [GPU][gpu].
+\index{GPU}
 A GPU is essentially a chip in your computer that runs programs much
-like your CPU, but specialized toward running very simple programs with
-massive parallelism---it was developed to apply simple operations, in
-parallel, for every pixel on the screen. This makes GPUs faster for
-drawing simple shapes and *much* faster for applying visual effects.
+like your CPU\index{CPU}, but specialized toward running very simple
+programs with massive parallelism---it was developed to apply simple
+operations, in parallel, for every pixel on the screen. This makes GPUs
+faster for drawing simple shapes and *much* faster for applying visual
+effects.
 
 At a high level, to raster and draw on the GPU our browser
 must:[^gpu-variations]
@@ -293,7 +295,8 @@ class Browser:
                 self.skia_context,
                 skia.GrBackendRenderTarget(
                     WIDTH, HEIGHT, 0, 0,
-                    skia.GrGLFramebufferInfo(0, OpenGL.GL.GL_RGBA8)),
+                    skia.GrGLFramebufferInfo(
+                        0, OpenGL.GL.GL_RGBA8)),
                     skia.kBottomLeft_GrSurfaceOrigin,
                     skia.kRGBA_8888_ColorType,
                     skia.ColorSpace.MakeSRGB())
@@ -312,7 +315,7 @@ class Browser:
     def draw(self):
         canvas = self.root_surface.getCanvas()
         # ...
-        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, CHROME_PX)
+        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, self.chrome.bottom)
         canvas.save()
         canvas.clipRect(chrome_rect)
         self.chrome_surface.draw(canvas, 0, 0)
@@ -332,7 +335,7 @@ class Browser:
         # ...
         self.chrome_surface = skia.Surface.MakeRenderTarget(
                 self.skia_context, skia.Budgeted.kNo,
-                skia.ImageInfo.MakeN32Premul(WIDTH, CHROME_PX))
+                skia.ImageInfo.MakeN32Premul(WIDTH, self.chrome.bottom))
         assert self.chrome_surface is not None
 ```
 
@@ -401,48 +404,12 @@ of multiple windows. "Compositing" can also refer to multi-threaded rendering.
 
 [compositing]: https://en.wikipedia.org/wiki/Compositing
 
-To explain compositing, we'll need to think about our browser's display list,
-and to do that it's useful to print it out. Printing it is going to require
-similar code in every display command, so let's give them all a new
-`DisplayItem` superclass. This also makes it easy to create default behavior
-that's overridden for specific display commands. For example, we can make sure
-that every display command has a `children` field:
+To explain compositing, we'll need to think about our browser's
+display list, and to do that it's useful to print it out. For example,
+for `DrawRect` you might print:
 
-``` {.python replace=children%3d[]/rect%2c%20children%3d[]%2c%20node%3dNone}
-class DisplayItem:
-    def __init__(self, children=[]):
-        self.children = children
-```
-
-We'll need that `children` field to use `print_tree` to print the
-display list.
-
-Now each display command needs to be a subclass of `DisplayItem`; to
-do that, you need to name the superclass when the class is declared
-and also use some special syntax in the constructor:
-
-``` {.python expected=False}
-class DrawRect(DisplayItem):
-    def __init__(self, x1, y1, x2, y2, color):
-        super().__init__()
-        # ...
-```
-
-Commands that already had a `children` field need to pass it to the
-`__init__` call:
-
-``` {.python replace=children)/rect%2c%20children)}
-class ClipRRect(DisplayItem):
-    def __init__(self, rect, radius, children, should_clip=True):
-        super().__init__(children)
-        # ...
-```
-
-To print the display list in a useful form, let's add a printable form
-to each display command. For example, for `DrawRect` you might print:
-
-``` {.python}
-class DrawRect(DisplayItem):
+``` {.python replace=DrawRect:/DrawRect(DrawCommand):}
+class DrawRect:
     def __repr__(self):
         return ("DrawRect(top={} left={} " +
             "bottom={} right={} color={})").format(
@@ -454,8 +421,8 @@ Some of our display commands have a flag to do nothing, like
 `ClipRRect`'s `should_clip` flag. It's useful to explicitly indicate
 that:
 
-``` {.python}
-class ClipRRect(DisplayItem):
+``` {.python replace=ClipRRect:/ClipRRect(VisualEffect):}
+class ClipRRect:
     def __repr__(self):
         if self.should_clip:
             return "ClipRRect({})".format(str(self.rrect))
@@ -463,7 +430,9 @@ class ClipRRect(DisplayItem):
             return "ClipRRect(<no-op>)"
 ```
 
-Now we can print out our browser's display list:
+You'll also need to add `children` fields to all of the paint
+commands, since `print_tree` relies on those. Now we can print out our
+browser's display list:
 
 ``` {.python expected=False}
 class Tab:
@@ -584,29 +553,59 @@ size.
 Compositing leaves
 ==================
 
-Let's implementing compositing. We'll need to traverse the display
-list, identify paint commands, and move them to composited layers.
-Then we'll need to create the draw display list that combines these
-composited layers. To keep things simple, we'll start by creating a
-composited layer for every paint command.
+Let's implementing compositing. We'll need identify paint commands and
+move them to composited layers. Then we'll need to create the draw
+display list that combines these composited layers. To keep things
+simple, we'll start by creating a composited layer for every paint
+command.
 
-We'll want an `is_paint_command` method on display items to identify
-paint commands. It'll return `False` by default:
-
-``` {.python}
-class DisplayItem:
-    def is_paint_command(self):
-        return False
-```
-
-But for `DrawLine`, `DrawRRect`, `DrawRect`, and `DrawText` it'll
-return `True` instead. For example, here's `DrawLine`:
+To identify paint commands, it'll be helpful to give them all a
+superclass. I call it `DrawCommand`, since all the paint commands
+already start with `Draw`:
 
 ``` {.python}
-class DrawLine(DisplayItem):
-    def is_paint_command(self):
-        return True
+class DrawCommand:
+    def __init__(self, rect):
+        self.rect = rect
+        self.children = []
 ```
+
+Now each paint command needs to be a subclass of `DrawCommand`; to do
+that, you need to name the superclass when the class is declared and
+also use some special syntax in the constructor:
+
+``` {.python}
+class DrawLine(DrawCommand):
+    def __init__(self, x1, y1, x2, y2, color, thickness):
+        super().__init__(skia.Rect.MakeLTRB(x1, y1, x2, y2))
+        # ...
+```
+
+The `MakeLTRB` creates the `rect` for the `DrawCommand` constructor.
+It'll be useful to have these as Skia `Rect` objects instead of just
+four `x1`/`y1`/`x2`/`y2` fields.
+
+We can also give a superclass to visual effects:
+
+``` {.python replace=):/%2c%20node%3dNone):}
+class VisualEffect:
+    def __init__(self, rect, children):
+        self.rect = rect.makeOffset(0.0, 0.0)
+        self.children = children
+        for child in self.children:
+            self.rect.join(child.rect)
+```
+
+Note that since visual effects have children, we need to not only pass
+those to the constructor, but also add their `rect` fields to our own.
+I use the `makeOffset` function to make a copy of the original `rect`,
+which is then grown by later `join` methods to include all of the
+children as well.
+
+Go ahead and modify each paint command and visual effect class to be a
+subclass of one of these two new classes. Make sure you both declare
+the superclass on the `class` line and also call the superclass
+constructor in the `__init__` method using the `super()` syntax.
 
 We can now list all of the paint_commands using `tree_to_list`:
 
@@ -616,8 +615,8 @@ class Browser:
         all_commands = []
         for cmd in self.active_tab_display_list:
             all_commands = tree_to_list(cmd, all_commands)
-        paint_commands = [cmd
-            for cmd in all_commands if cmd.is_paint_command()]
+        paint_commands = [cmd for cmd in all_commands
+            if isinstance(cmd, DrawCommand)]
 ```
 
 Next we need to group paint commands into layers. For now, let's do the
@@ -676,7 +675,7 @@ to the visual effects classes. For `SaveLayer`, it'll create a new
 `SaveLayer` with the same parameters but new children:
 
 ``` {.python}
-class SaveLayer(DisplayItem):
+class SaveLayer(VisualEffect):
     # ...
     def clone(self, children):
         return SaveLayer(self.sk_paint, self.node, children, \
@@ -728,45 +727,45 @@ class Browser:
             composited_layer.raster()
 ```
 
-Inside `raster`, the composited layer needs to allocate a surface to raster
-itself into. To start, it'll need to know how big a surface
-to allocate. That's just the union of the bounding boxes of all of its
-paint commands. First add a `rect` field to display items:
-
-
-``` {.python expected=False}
-class DisplayItem:
-    def __init__(self, rect, children=[]):
-        self.rect = rect
-```
-
-Drawing commands then need to pass that argument to the superclass
-constructor. Here's `DrawText`, for example:
+Inside `raster`, the composited layer needs to allocate a surface to
+raster itself into. To start, it'll need to know how big a surface to
+allocate. That's just the union of the bounding boxes of all of its
+paint commands---the `rect` field:
 
 ``` {.python}
-class DrawText(DisplayItem):
-    def __init__(self, x1, y1, text, font, color):
-        # ...
-        super().__init__(skia.Rect.MakeLTRB(x1, y1,
-            self.right, self.bottom))
-```
-
-Now a `CompositedLayer` can just union the bounding boxes of its
-display items:
-
-``` {.python expected=False}
 class CompositedLayer:
     # ...
     def composited_bounds(self):
         rect = skia.Rect.MakeEmpty()
         for item in self.display_items:
             rect.join(item.rect)
+        # ...
+```
+
+These bounds can then be used to make a surface with the right size.
+Note that we're creating a surface just big enough to store the items in
+this composited layer; this reduces how much GPU memory we need. That
+being said, there are some tricky corner cases to consider, such as how
+Skia rasters lines or anti-aliased text across multiple pixels
+in order to look nice or align with the pixel
+grid.[^even-more-corner-cases] So let's add in one extra pixel on each
+side to account for that:
+
+[^even-more-corner-cases]: One pixel of "slop" around the edges is
+not good enough for a real browser, which has to deal with lots of
+really subtle issues like nicely blending pixels between adjacent
+composited layers, subpixel positioning and effects with infinite
+theoretical extent like blur filters.
+
+``` {.python}
+    def composited_bounds(self):
+        # ...
+        rect.outset(1, 1)
         return rect
 ```
 
-These bounds can then be used to make a surface with the right size. Note that
-we're creating a surface just big enough to store the items in this composited
-layer; this reduces how much GPU memory we need.
+Raster now uses the composited bounds:
+
 
 ``` {.python}
 class CompositedLayer:
@@ -805,7 +804,7 @@ to implement the `DrawCompositedLayer` command. It takes a composited
 layer to draw:
 
 ``` {.python}
-class DrawCompositedLayer(DisplayItem):
+class DrawCompositedLayer(DrawCommand):
     def __init__(self, composited_layer):
         self.composited_layer = composited_layer
         super().__init__(
@@ -819,7 +818,7 @@ Executing a `DrawCompositedLayer` is straightforward---just draw its surface
 into the parent surface, adjusting for the correct offset:
 
 ``` {.python}
-class DrawCompositedLayer(DisplayItem):
+class DrawCompositedLayer(DrawCommand):
     def execute(self, canvas):
         layer = self.composited_layer
         bounds = layer.composited_bounds()
@@ -833,7 +832,7 @@ class Browser:
     def draw(self):
         # ...
         canvas.save()
-        canvas.translate(0, CHROME_PX - self.scroll)
+        canvas.translate(0, self.chrome.bottom - self.scroll)
         for item in self.draw_list:
             item.execute(canvas)
         canvas.restore()
@@ -1195,7 +1194,7 @@ cases that just require style and paint, or other combinations.]
 
 ``` {.python}
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, browser, tab_height):
         # ...
         self.needs_style = False
         self.needs_layout = False
@@ -1293,8 +1292,8 @@ add a `node` field to each display item, storing the node that painted
 it, as a sort of identifier:
 
 ``` {.python}
-class DisplayItem:
-    def __init__(self, rect, children=[], node=None):
+class VisualEffect:
+    def __init__(self, rect, children, node=None):
         # ...
         self.node = node
 ```
@@ -1608,17 +1607,25 @@ aren't animating into the same composited layer. This will let us run
 some visual effects in the raster phase, reducing the number of
 composited layers even more.
 
-To implement this, replace the `is_paint_command` method on
-`DisplayItem`s with a new `needs_compositing` field, which is `True`
-when a visual effect should go in the draw display list and `False`
-when it should go into a composited layer. As a simple heuristic,
-we'll always set it to `True` for `SaveLayer`s (when they actually do
-something, not for no-ops), regardless of whether they are animating,
-but we'll set it to `False` for `ClipRRect` commands, since those
-can't animate in our browser.
+To implement this, add a new `needs_compositing` field, which is
+`True` when a visual effect should go in the draw display list and
+`False` when it should go into a composited layer. We'll set it to
+`False` for most visual effects:
+
+``` {.python expected=False}
+class VisualEffect:
+    def __init__(self, rect, children):
+        self.needs_compositing=False
+```
+
+We should set it to `True` when compositing would help us animate
+something. There are all sorts of complex heuristics real browsers
+use, but to keep things simple let's just set it to `True` for
+`SaveLayer`s (when they actually do something, not for no-ops),
+regardless of whether they are animating:
 
 ``` {.python replace=self.should_save/wbetools.USE_COMPOSITING%20and%20self.should_save}
-class SaveLayer(DisplayItem):
+class SaveLayer(VisualEffect):
     def __init__(self, sk_paint, node, children, should_save=True):
         # ...
         if self.should_save:
@@ -1631,8 +1638,8 @@ run on the GPU, then one way or another the ones above it will have to be as
 well:
 
 ``` {.python}
-class DisplayItem:
-    def __init__(self, rect, children=[], node=None):
+class VisualEffect:
+    def __init__(self, rect, children, node=None):
         # ...
         self.needs_compositing = any([
             child.needs_compositing for child in self.children
@@ -1648,9 +1655,8 @@ class Browser:
         # ...
         non_composited_commands = [cmd
             for cmd in all_commands
-            if not cmd.needs_compositing and \
-                (not cmd.parent or \
-                 cmd.parent.needs_compositing)
+            if isinstance(cmd, DrawCommand) or not cmd.needs_compositing
+            if not cmd.parent or cmd.parent.needs_compositing
         ]
         # ...
         for cmd in non_composited_commands:
@@ -1658,34 +1664,8 @@ class Browser:
 
 ```
 
-Since internal nodes can now be in a `CompositedLayer`, there is also a bit of
-added complexity to `composited_bounds`.  We'll need to recursively union the
-rects of the subtree of non-composited display items, so let's add a
-`DisplayItem` method to do that:
-
-``` {.python}
-class DisplayItem:
-    def __init__(self, rect, children=[], node=None):
-        self.rect = rect
-    # ...
-
-    def add_composited_bounds(self, rect):
-        rect.join(self.rect)
-        for cmd in self.children:
-            cmd.add_composited_bounds(rect)
-```
-
-And use this new method as follows:
-
-``` {.python}
-class CompositedLayer:
-    # ...
-    def composited_bounds(self):
-        rect = skia.Rect.MakeEmpty()
-        for item in self.display_items:
-            item.add_composited_bounds(rect)
-        return rect
-```
+The multiple `if` statements inside the list comprehension are "and"ed
+together.
 
 Our compositing algorithm now creates way fewer layers! It does a good job of
 grouping together non-animating content to reduce the number of composited
@@ -1735,7 +1715,7 @@ class CompositedLayer:
 ```
 
 I also recommend you add a mode to your browser that disables compositing
-(i.e. set `needs_compositing` to `False` for every `DisplayItem`), and
+(i.e. set `needs_compositing` to `False` for every `VisualEffect`), and
 disables use of the GPU (i.e. go back to the old way of making Skia surfaces).
 Everything should still work (albeit more slowly) in all of the modes, and you
 can use these additional modes to debug your browser more fully and benchmark
@@ -1885,7 +1865,7 @@ These `Transform` display items just call the conveniently built-in
 Skia canvas `translate` method:
 
 ``` {.python replace=self.translation%20or/USE_COMPOSITING%20and%20self.translation%20or}
-class Transform(DisplayItem):
+class Transform(VisualEffect):
     def __init__(self, translation, rect, node, children):
         super().__init__(rect, children, node)
         self.translation = translation
@@ -1987,13 +1967,19 @@ the output of calling `map` on a rect would translate it by 20 pixels
 in the *x* direction.
 
 ``` {.python}
-class DisplayItem:
-    def map(self, rect):
-        return rect
-
-class Transform(DisplayItem):
+class Transform(VisualEffect):
     def map(self, rect):
         return map_translation(rect, self.translation)
+
+class ClipRRect(VisualEffect):
+    def map(self, rect):
+        bounds = self.rrect.rect()
+        bounds.intersect(rect)
+        return bounds
+
+class SaveLayer(VisualEffect):
+    def map(self, rect):
+        return rect
 ```
 
 Now we can compute the absolute bounds of a display item mapping its
@@ -2003,12 +1989,10 @@ display list and not the layout object tree:
 
 ``` {.python}
 def absolute_bounds(display_item):
-    rect = skia.Rect.MakeEmpty()
-    display_item.add_composited_bounds(rect)
-    effect = display_item.parent
-    while effect:
-        rect = effect.map(rect)
-        effect = effect.parent
+    rect = display_item.rect
+    while display_item.parent:
+        rect = display_item.parent.map(rect)
+        display_item = display_item.parent
     return rect
 ```
 

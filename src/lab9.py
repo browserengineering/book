@@ -14,13 +14,13 @@ import dukpy
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
 from lab4 import print_tree, HTMLParser
-from lab5 import BLOCK_ELEMENTS, DrawRect
+from lab5 import BLOCK_ELEMENTS, DrawRect, DocumentLayout
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import DrawText, tree_to_list
-from lab7 import DrawLine, DrawOutline, LineLayout, TextLayout, CHROME_PX
+from lab7 import DrawLine, DrawOutline, LineLayout, TextLayout
 from lab8 import URL, Element, Text, Browser, Tab
-from lab8 import DocumentLayout, BlockLayout, InputLayout, INPUT_WIDTH_PX
+from lab8 import BlockLayout, InputLayout, INPUT_WIDTH_PX
 
 EVENT_DISPATCH_CODE = \
     "new Node(dukpy.handle).dispatchEvent(new Event(dukpy.type))"
@@ -86,7 +86,7 @@ class Tab:
         self.scroll = 0
         self.url = url
         self.history.append(url)
-        headers, body = url.request(body)
+        body = url.request(body)
         self.nodes = HTMLParser(body).parse()
 
         self.js = JSContext(self)
@@ -96,7 +96,7 @@ class Tab:
                    and node.tag == "script"
                    and "src" in node.attributes]
         for script in scripts:
-            header, body = url.resolve(script).request()
+            body = url.resolve(script).request()
             try:
                 self.js.run(body)
             except dukpy.JSRuntimeError as e:
@@ -111,7 +111,7 @@ class Tab:
                  and node.attributes.get("rel") == "stylesheet"]
         for link in links:
             try:
-                header, body = url.resolve(link).request()
+                body = url.resolve(link).request()
             except:
                 continue
             self.rules.extend(CSSParser(body).parse())
@@ -142,7 +142,7 @@ class Tab:
                 return self.render()
             elif elt.tag == "button":
                 if self.js.dispatch_event("click", elt): return
-                while elt:
+                while elt.parent:
                     if elt.tag == "form" and "action" in elt.attributes:
                         return self.submit_form(elt)
                     elt = elt.parent

@@ -22,8 +22,8 @@ What is a font?
 
 So far, we've called `create_text` with a character and two
 coordinates to write text to the screen. But we never specified the
-font, the size, or the color. To talk about those things, we need to
-create and use font objects.
+font\index{font}, the size, or the color. To talk about those things,
+we need to create and use font objects.
 
 What is a *font*, exactly? Well, in the olden days, printers arranged
 little metal slugs on rails, covered them with ink, and pressed them
@@ -511,7 +511,7 @@ function, it can be replaced with calls into `Layout`:
 ``` {.python}
 class Browser:
     def load(self, url):
-        headers, body = url.request()
+        body = url.request()
         tokens = lex(body)
         self.display_list = Layout(tokens).display_list
         self.draw()
@@ -793,16 +793,23 @@ FONTS = {}
 
 The keys to this dictionary will be size/weight/style triples, and the
 values will be `Font` objects. We can put the caching logic itself in
-a new `get_font` function:
+a new `get_font` function:[^get_font-hack]
 
 ``` {.python}
 def get_font(size, weight, slant):
     key = (size, weight, slant)
     if key not in FONTS:
-        font = tkinter.font.Font(size=size, weight=weight, slant=slant)
-        FONTS[key] = font
-    return FONTS[key]
+        font = tkinter.font.Font(size=size, weight=weight,
+            slant=slant)
+        label = tkinter.Label(font=font)
+        FONTS[key] = (font, label)
+    return FONTS[key][0]
 ```
+
+[^get_font-hack]: This method has a hack in it to make the cache work better.
+Notice how we are creating a `tkinter.Label` object for no apparent reason,
+then storing it in the cache. This trick dramatically improves performance
+(possibly because the label object keeps the font object alive).
 
 Now, inside the `text` method we can call `get_font` instead of
 creating a `Font` object directly:

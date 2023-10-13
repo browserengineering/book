@@ -1,5 +1,5 @@
-[{"code": "'transfer-encoding' not in headers", "type": "dict"},
- {"code": "'content-encoding' not in headers", "type": "dict"},
+[{"code": "'transfer-encoding' not in response_headers", "type": "dict"},
+ {"code": "'content-encoding' not in response_headers", "type": "dict"},
  {"code": "child.tag in BLOCK_ELEMENTS", "type": "list"},
  {"code": "'href' in node.attributes", "type": "dict"},
  {"code": "'action' in elt.attributes", "type": "dict"},

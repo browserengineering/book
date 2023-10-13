@@ -22,8 +22,8 @@ possible to interact with the web page by touch, keyboard, or voice.
 What is accessibility?
 ======================
 
-Accessibility means that the user can change or customize how they
-interact with a web page in order to make it easier to
+Accessibility\index{accessibility} means that the user can change or
+customize how they interact with a web page in order to make it easier to
 use.[^other-defs] The web's uniquely-flexible
 core technologies mean that browsers offer a lot of accessibility
 features[^not-just-screen-reader] that allow a user to customize the
@@ -138,8 +138,8 @@ Let's start with the simplest accessibility problem: text on the
 screen that is too small to read. It's a problem many of us will face
 sooner or later, and possibly the most common user disability issue.
 The simplest and most effective way to address this is by increasing font
-and element sizes. This approach is called *CSS zoom*,[^zoom] which 
-means to lay out the page as if all of the CSS sizes were increased or
+and element sizes. This approach is called *CSS zoom*,[^zoom]\index{zoom}
+which  means to lay out the page as if all of the CSS sizes were increased or
 decreased by a specified factor.
 
 [^zoom]: The word zoom evokes an analogy to a camera zooming in, but
@@ -215,7 +215,7 @@ usually triggered by a global OS setting.
 
 ``` {.python}
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, browser, tab_height):
     	# ...
     	self.zoom = 1
 
@@ -283,6 +283,7 @@ def device_px(css_px, zoom):
     return css_px * zoom
 ```
 
+\index{device pixel ratio}
 Think about `device_px` not as a simple helper method, but as a unit
 conversion from a *CSS pixel* (the units specified in a CSS declaration)
 to a *device pixel* (what's actually drawn on the screen). In a real
@@ -297,11 +298,13 @@ class BlockLayout:
 	# ....
     def word(self, node, word):
     	# ...
-        size = device_px(float(node.style["font-size"][:-2]), self.zoom)
+        size = device_px(float(node.style["font-size"][:-2]),
+            self.zoom)
 
     def input(self, node):
 	    # ...
-        size = device_px(float(node.style["font-size"][:-2]), self.zoom)
+        size = device_px(float(node.style["font-size"][:-2]),
+            self.zoom)
 ```
 
 
@@ -310,8 +313,8 @@ class InputLayout:
     # ....
     def layout(self):
         # ...
-        size = \
-            device_px(float(self.node.style["font-size"][:-2]), self.zoom)
+        size = device_px(float(self.node.style["font-size"][:-2]),
+            self.zoom)
 ```
 
 As well as the font size in `TextLayout`:[^min-font-size]
@@ -464,20 +467,20 @@ class Browser:
         # ...
 ```
 
-Similarly, in `paint_chrome`, we need to use the right foreground
+Similarly, in `paint` on `Chrome`, we need to use the right foreground
 color:
 
 ``` {.python}
-class Browser:
-    def paint_chrome(self):
-        if self.dark_mode:
+class Chrome:
+    def paint(self):
+        if self.browser.dark_mode:
             color = "white"
         else:
             color = "black"
 ```
 
 Then we just need to use `color` instead of `black` everywhere. Make
-that change in `paint_chrome`.[^more-colors]
+that change in `paint`.[^more-colors]
 
 [^more-colors]: Of course, a full-featured browser's chrome has many
     more buttons and colors to adjust than our browser's. Most
@@ -503,7 +506,7 @@ And in `Tab`:
 
 ``` {.python}
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, browser, tab_height):
         # ...
         self.dark_mode = browser.dark_mode
 
@@ -768,8 +771,8 @@ trickier, because web pages can have any number of links. So the
 standard solution is letting the user `Tab` through all the clickable
 things on the page, and press `Enter` to actually click on them.
 
-We'll implement this by expanding our implementation of *focus*. We
-already have a `focus` property on each `Tab` indicating which `input`
+We'll implement this by expanding our implementation of *focus*.\index{focus}
+We already have a `focus` property on each `Tab` indicating which `input`
 element is capturing keyboard input. Let's allow buttons and links to
 be focused as well. Of course, they don't capture keyboard input, but
 when the user pressed `Enter` we'll press the button or navigate to
@@ -1036,13 +1039,13 @@ drawing a vertical line in `InputLayout`'s `paint` method. We'll
 add a call to `paint_outline` in that method, to draw a rectangle around the focused
 element:
 
-``` {.python replace=node.is_focused/has_outline(node),%22black%22/color,1/thickness}
+``` {.python replace=node.is_focused/outline,%22black%22/color,1/device_px(thickness%2c%20zoom)}
 def paint_outline(node, cmds, rect, zoom):
-    if node.is_focused:
-        cmds.append(DrawOutline(
-            rect.left(), rect.top(),
-            rect.right(), rect.bottom(),
-            "black", 1))
+    if not node.is_focused: return
+    cmds.append(DrawOutline(
+        rect.left(), rect.top(),
+        rect.right(), rect.bottom(),
+        "black", 1))
 ```
 
 We'll set this flag in a new `focus_element` method that we'll now use
@@ -1087,20 +1090,19 @@ around this, let's draw the focus ring in `LineLayout`. Each
 `LineLayout` finds all of its child `TextLayout`s that are focused,
 and draws a rectangle around them all:
 
-``` {.python}
+``` {.python replace=child.node.parent.is_focused/parse_outline(outline_str)}
 class LineLayout:
     def paint(self, display_list):
         # ...
         outline_rect = skia.Rect.MakeEmpty()
-        focused_node = None
+        outline_node = None
         for child in self.children:
-            node = child.node
-            if has_outline(node.parent):
-                focused_node = node.parent
+            if child.node.parent.is_focused:
                 outline_rect.join(child.rect())
-        if focused_node:
+                outline_node = child.node.parent
+        if outline_node:
             paint_outline(
-                focused_node, display_list, outline_rect, self.zoom)
+                outline_node, display_list, outline_rect, self.zoom)
 ```
 
 You should also add a `paint_outline` call to `BlockLayout`, since
@@ -1121,7 +1123,7 @@ we'll set a new `needs_focus_scroll` bit on `Tab`:
 
 ``` {.python}
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, browser, tab_height):
         # ...
         self.needs_focus_scroll = False
 
@@ -1164,13 +1166,13 @@ class Tab:
     def scroll_to(self, elt):
         # ...
 
-        content_height = HEIGHT - CHROME_PX
-        if self.scroll < obj.y < self.scroll + content_height:
+        if self.scroll < obj.y < self.scroll + self.tab_height:
             return
 
         document_height = math.ceil(self.document.height)
         new_scroll = obj.y - SCROLL_STEP
-        self.scroll = clamp_scroll(new_scroll, document_height)
+        self.scroll = clamp_scroll(
+            new_scroll, document_height, self.tab_height)
         self.scroll_changed_in_tab = True
 ```
 
@@ -1219,10 +1221,10 @@ checks if that's followed by a colon and a pseudo-class name:
 ``` {.python}
 class CSSParser:
     def simple_selector(self):
-        out = TagSelector(self.word().lower())
+        out = TagSelector(self.word().casefold())
         if self.i < len(self.s) and self.s[self.i] == ":":
             self.literal(":")
-            pseudoclass = self.word().lower()
+            pseudoclass = self.word().casefold()
             out = PseudoclassSelector(pseudoclass, out)
         return out
 ```
@@ -1247,7 +1249,7 @@ class PseudoclassSelector:
         if not self.base.matches(node):
             return False
         if self.pseudoclass == "focus":
-            return is_focused(node)
+            return node.is_focused
         else:
             return False
 ```
@@ -1303,28 +1305,26 @@ parse that into a thickness and a color, assuming that we only want to
 support `solid` outlines:
 
 ``` {.python}
-def parse_outline(outline_str, zoom):
+def parse_outline(outline_str):
     if not outline_str: return None
     values = outline_str.split(" ")
     if len(values) != 3: return None
     if values[1] != "solid": return None
-    return (device_px(int(values[0][:-2]), zoom), values[2])
+    return int(values[0][:-2]), values[2]
 ```
 
 Now we can use this `parse_outline` method when drawing an outline, in
 `paint_outline`:
 
 ``` {.python}
-def has_outline(node):
-    return parse_outline(node.style.get("outline"), 1)
-
 def paint_outline(node, cmds, rect, zoom):
-    if has_outline(node):
-        thickness, color = parse_outline(node.style.get("outline"), zoom)
-        cmds.append(DrawOutline(
-            rect.left(), rect.top(),
-            rect.right(), rect.bottom(),
-            color, thickness))
+    outline = parse_outline(node.style.get("outline"))
+    if not outline: return
+    thickness, color = outline
+    cmds.append(DrawOutline(
+        rect.left(), rect.top(),
+        rect.right(), rect.bottom(),
+        color, device_px(thickness, zoom)))
 ```
 
 The default two-pixel black outline can now be moved into the browser
@@ -1358,8 +1358,10 @@ to the browser style sheet above:
 class LineLayout:
     def paint(self, display_list):
         for child in self.children:
-            if has_outline(node.parent):
-                # ...
+            outline_str = child.node.parent.style.get("outline")
+            if parse_outline(outline_str):
+                outline_rect.join(child.rect())
+                outline_node = child.node.parent
 ```
 
 As with dark mode, focus outlines are a case where adding an
@@ -1450,7 +1452,8 @@ HTML elements (like `<div>`) group content for styling that is
 meaningless to screen reader users. Alternatively, some HTML elements
 may be invisible on the screen,[^invisible-example] but relevant to
 screen reader users. The browser therefore builds a separate
-[accessibility tree][at] to support screen reader navigation.
+[accessibility tree][at]\index{accessibility tree} to support screen
+reader navigation.
 
 [at]: https://developer.mozilla.org/en-US/docs/Glossary/Accessibility_tree
 
@@ -1463,7 +1466,7 @@ rendering phase just after layout:
 
 ``` {.python}
 class Tab:
-    def __init__(self, browser):
+    def __init__(self, browser, tab_height):
         # ...
         self.needs_accessibility = False
         self.accessibility_tree = None
@@ -1558,16 +1561,16 @@ accessibility tree and describe each node to the user.
 
 ::: {.further}
 
-In a multi-process browser ([like Chromium][chrome-mp]), the browser and
-main threads run in different processes, and sending data from one to
-the other can be slow. Chromium, therefore, [stores two
-copies][chrome-mp-a11y] of the accessibility tree, one in the browser
-and one in the main thread, and only sends changes between the two. An
-alternative design, used by pre-Chromium Microsoft Edge and some other
-browsers, has each tab process respond to accessibility API requests
-from the operating system. This removes the need to duplicate the
-accessibility tree, but exposing the operating system to individual
-tabs can lead to security issues.
+In a multi-process\index{process} browser
+([like Chromium][chrome-mp]), the browser and main threads run in
+different processes, and sending data from one to the other can be slow.
+Chromium, therefore, [stores two copies][chrome-mp-a11y] of the
+accessibility tree, one in the browser and one in the main thread, and
+only sends changes between the two. An alternative design, used by
+pre-Chromium Microsoft Edge and some other browsers, has each tab
+process respond to accessibility API requests from the operating system.
+This removes the need to duplicate the accessibility tree, but exposing
+the operating system to individual tabs can lead to security issues.
 
 :::
 
@@ -1741,7 +1744,6 @@ class Browser:
         # ...
         if self.needs_accessibility:
             self.update_accessibility()
-
 ```
 
 Now, what should the screen reader say? Well, that's not really up to
@@ -1774,7 +1776,7 @@ class AccessibilityNode:
         elif self.role == "focusable text":
             self.text = "Focusable text: " + self.node.text
         elif self.role == "focusable":
-            self.text = "Focusable"
+            self.text = "Focusable element"
         elif self.role == "textbox":
             if "value" in self.node.attributes:
                 value = self.node.attributes["value"]
@@ -1793,7 +1795,7 @@ class AccessibilityNode:
         elif self.role == "document":
             self.text = "Document"
 
-        if is_focused(self.node):
+        if self.node.is_focused:
             self.text += " is focused"
 ```
 
@@ -1899,8 +1901,9 @@ output device is quite different, the accessibility tree would still
 contain all the information about what content is on the page, whether
 it can be interacted with, its state, and so on. Moreover, by using
 the same accessibility tree for all output devices, users who use more
-than one *assistive technology* (like a braille display and a screen
-reader) are sure to receive consistent information.
+than one *assistive technology*\index{assistive technology}
+(like a braille display and a screen reader) are sure to receive
+consistent information.
 
 :::
 
@@ -2148,7 +2151,7 @@ class Browser:
         if not self.accessibility_is_on or \
             not self.accessibility_tree:
             return
-        self.pending_hover = (event.x, event.y - CHROME_PX)
+        self.pending_hover = (event.x, event.y - self.chrome.bottom)
         self.set_needs_accessibility()
 ```
 

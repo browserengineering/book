@@ -65,7 +65,7 @@ Note that keyword arguments become dictionary arguments at the end.
 
 Some library methods need to be renamed:
 
-    >>> Test.expr("header.lower()")
+    >>> Test.expr("header.casefold()")
     (header.toLowerCase())
     >>> Test.expr("value.strip()")
     (value.trim())
@@ -146,7 +146,7 @@ translations:
     >>> Test.expr("repr(node)")
     (node.toString())
     >>> Test.expr("str(node)")
-    (node.toString())
+    (await node.toString())
     >>> Test.expr("ord(e.char)")
     (e.char.charCodeAt(0))
     >>> Test.expr("enumerate(self.tabs)")
