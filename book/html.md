@@ -347,7 +347,8 @@ def add_text(self, text):
     # ...
 ```
 
-The parsed HTML tree now looks like this:
+The first part of parsed HTML tree for the browser.engineering home page
+now looks something like this:
 
 ``` {.example}
 <html lang="en-US" xml:lang="en-US">
@@ -764,6 +765,17 @@ that every browser does the *same* thing, rather than each trying to
 guess what the *right* thing is.
 
 [html5-parsing]: https://html.spec.whatwg.org/multipage/parsing.html
+
+And now for the payoff! Here is a screenshot of our very own website,
+loaded in our own browser. It still doesn't have much styling, but
+it does load and display!^[To be fair, it actually looks about the same with
+the Chapter 3 browser, but significantly better than with
+[the Chapter 2 browser](examples/example2-browserengineering-screenshot.png).]
+
+<figure>
+<img src="examples/example4-browserengineering-screenshot.png"
+     alt="Screenshot of the browser.engineering website with this chapter's browser.">
+</figure>
 
 ::: {.further}
 Thanks to implicit tags, you can mostly skip the `<html>`, `<body>`,
