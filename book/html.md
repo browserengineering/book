@@ -50,6 +50,9 @@ class Element:
         self.parent = parent
 ```
 
+I added a `children` field to both `Text` and `Element`, even though
+text nodes never have children, for consistency.
+
 Constructing a tree of nodes from source code is called parsing. A
 parser builds a tree one element or text node at a time. But that
 means the parser needs to store an *incomplete* tree. For example,
@@ -239,9 +242,10 @@ The ill-considered Javascript `document.write` method allows
 Javascript to modify the HTML source code while it's being parsed!
 This is actually a [bad idea][document-write-bad]. A naive
 implementation of `document.write` would have the HTML parser stop to
-execute JavaScript, but that would be very slow. In fact, modern
-browsers use [speculative][speculative-parsing] parsing to make this
-fast and avoid evaluating Javascript while parsing.
+execute JavaScript, but that would be slow down requests for images,
+CSS, and JavaScript used later in the page. In fact, modern
+browsers use [speculative][speculative-parsing] parsing to start
+loading additional resources even before parsing is done.
 :::
 
 [speculative-parsing]: https://developer.mozilla.org/en-US/docs/Glossary/speculative_parsing
