@@ -4,7 +4,6 @@ up to and including Chapter 13 (Animations and Compositing),
 without exercises.
 """
 
-import sys
 import ctypes
 import dukpy
 import math
@@ -1672,6 +1671,7 @@ class Browser:
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
 if __name__ == "__main__":
+    import sys
     wbetools.parse_flags()
 
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)

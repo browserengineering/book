@@ -7,6 +7,7 @@
  {"code": "print", "js": "console.log"},
  {"code": "self.task_code(*self.args)", "js": "await this.task_code(this.args)"},
  {"code": "run_callback", "js": "await run_callback()"},
+ {"code": "MeasureTime()", "js": "new MeasureTime()"},
  {"code": "run_load()", "js": "await run_load()"},
  {"code": "run_load", "js": "run_load"},
  {"code": "def __init__(self, task_code, *args):\n    self.task_code = task_code\n    self.args = args\n    self.__name__ = 'task'", "js": "  async init(task_code) {\n    this.task_code = task_code;\n    this.args = Array.prototype.slice.call(arguments, 1);\n    this.__name__ = 'task'; \n    return this;\n  }"},

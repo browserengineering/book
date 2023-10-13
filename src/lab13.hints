@@ -6,6 +6,7 @@
  {"code": "'name' in node.attributes", "type": "dict"},
  {"code": "'content-security-policy' in headers", "type": "dict"},
  {"code": "b'Browser'", "js": "'Browser'"},
+ {"code": "MeasureTime()", "js": "new MeasureTime()"},
  {"code": "print", "js": "console.log"},
  {"code": "elt not in self.node_to_handle", "type": "map"},
  {"code": "run_callback", "js": "await run_callback()"},

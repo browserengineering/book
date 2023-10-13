@@ -1138,6 +1138,9 @@ class threading {
 
         release() {}        
     });
+
+    static current_thread() { return {} } 
+    static enumerate() { return [] } 
 }
 
 class time {
