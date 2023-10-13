@@ -1229,14 +1229,24 @@ them. We'll put that loop inside the `TaskRunner`'s `run` method.
 class TaskRunner:
     def __init__(self, tab):
         # ...
-        self.main_thread = threading.Thread(target=self.run)
+        self.main_thread = threading.Thread(
+            target=self.run,
+            name="Main thread",
+        )
 
     def start_thread(self):
         self.main_thread.start()
+```
 
-    def run(self):
-        while True:
-            # ...
+Note that I name the thread; this is a good habit that helps with
+debugging. Let's also name the browser thread:
+
+``` {.python}
+class Browser:
+    def __init__(self):
+        # ...
+        threading.current_thread().name = "Browser thread"
+        # ...
 ```
 
 Remove the call to `run` from the top-level `while True` loop, since
@@ -1544,9 +1554,23 @@ class MeasureTime:
         # ...
 ```
 
-Do the same thing in `stop`. Now, if you make a new trace from the
-counting animation and load it into one of the tracing tools, you
-should see something like this:
+Do the same thing in `stop`. We can also show human-readable thread
+names by adding metadata events when finishing the trace:
+
+``` {.python}
+class MeasureTime:
+    def finish(self):
+        self.lock.acquire(blocking=True)
+        for thread in threading.enumerate():
+            self.file.write(
+                ', { "ph": "M", "name": "thread_name",' +
+                '"pid": 1, "tid": ' + str(thread.ident) + ',' +
+                '"args": { "name": "' + thread.name + '"}}')
+        # ...
+```
+
+Now, if you make a new trace from the counting animation and load it
+into one of the tracing tools, you should see something like this:
 
 ::: {.todo}
 Trace

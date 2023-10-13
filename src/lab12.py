@@ -75,6 +75,11 @@ class MeasureTime:
     def finish(self):
         if not wbetools.OUTPUT_TRACE: return
         self.lock.acquire(blocking=True)
+        for thread in threading.enumerate():
+            self.file.write(
+                ', { "ph": "M", "name": "thread_name",' +
+                '"pid": 1, "tid": ' + str(thread.ident) + ',' +
+                '"args": { "name": "' + thread.name + '"}}')
         self.file.write(']}')
         self.file.close()
         self.lock.release()
@@ -354,7 +359,10 @@ class TaskRunner:
         self.condition = threading.Condition()
         self.tab = tab
         self.tasks = []
-        self.main_thread = threading.Thread(target=self.run)
+        self.main_thread = threading.Thread(
+            target=self.run,
+            name="Main thread",
+        )
         self.needs_quit = False
 
     def schedule_task(self, task):
@@ -426,6 +434,7 @@ class Browser:
         self.scroll = 0
 
         self.measure = MeasureTime()
+        threading.current_thread().name = "Browser thread"
 
         if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
             self.RED_MASK = 0xff000000
