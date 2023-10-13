@@ -611,8 +611,8 @@ class URL:
                    ":" + str(self.port) + url)
 ```
 
-Also, for some reason, browsers are responsible for resolving parent
-directories (`..`) in relative URLs:
+Also, because of the early web architecture, browsers are responsible
+for resolving parent directories (`..`) in relative URLs:
 
 ``` {.python}
 class URL:
@@ -744,7 +744,8 @@ properties are inherited and some aren't; it depends on the property.
 Background color isn't inherited, but text color and other font
 properties are.
 
-Let's implement inheritance for four font properties:
+Let's implement inheritance for four font properties: `font-size`,
+`font-style` (for `italic`), `font-weight` (for `bold`), and `color`:
 
 ``` {.python}
 INHERITED_PROPERTIES = {
@@ -1077,8 +1078,9 @@ that part.)
  the server. Since style sheets typically don't contain left angle brackets,
  you can implement this feature without modifying the HTML parser.
 
-[^ordered]: Inline style sheets should apply after all external
-style sheets in the cascade, and apply in order of their position in the HTML.
+[^ordered]: Both inline and external stylesheet apply in the order of
+    their appearance in the HTML, though it might be easier to first
+    implement inline style sheets applying after external ones.
 
 *Fast Descendant Selectors*: Right now, matching a selector like `div
 div div div div` can take a long time---it's *O(nd)* in the worst
