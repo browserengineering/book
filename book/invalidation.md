@@ -1391,8 +1391,7 @@ class DocumentLayout:
 
     def layout(self, width, zoom):
         # ...
-        child_height = child.height.read(notify=self.height)
-        self.height.set(child_height + 2 * device_px(VSTEP, zoom))
+        self.height.copy(child.height)
 ```
 
 `BlockLayout` is similar, except it loops over multiple children:

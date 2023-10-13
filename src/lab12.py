@@ -226,7 +226,7 @@ class Tab:
 
         self.render()
 
-        document_height = math.ceil(self.document.height)
+        document_height = math.ceil(self.document.height + 2*VSTEP)
         clamped_scroll = clamp_scroll(
             self.scroll, document_height, self.tab_height)
         if clamped_scroll != self.scroll:

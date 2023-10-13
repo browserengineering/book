@@ -541,7 +541,7 @@ class DocumentLayout:
         self.x = HSTEP
         self.y = VSTEP
         child.layout()
-        self.height = child.height + 2*VSTEP
+        self.height = child.height
 
     def paint(self, display_list):
         self.children[0].paint(display_list)
@@ -1184,7 +1184,7 @@ class Tab:
         needs_composite = self.needs_style or self.needs_layout
         self.render()
 
-        document_height = math.ceil(self.document.height)
+        document_height = math.ceil(self.document.height + 2*VSTEP)
         clamped_scroll = clamp_scroll(
             self.scroll, document_height, self.tab_height)
         if clamped_scroll != self.scroll:

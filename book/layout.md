@@ -505,7 +505,7 @@ class DocumentLayout:
         self.x = HSTEP
         self.y = VSTEP
         child.layout()
-        self.height = child.height + 2*VSTEP
+        self.height = child.height
 ```
 
 Note that there's some padding around the contents---`HSTEP` on the
@@ -734,10 +734,13 @@ browser can use that to avoid scrolling past the bottom of the page:
 
 ``` {.python}
 def scrolldown(self, e):
-    max_y = max(self.document.height - HEIGHT, 0)
+    max_y = max(self.document.height + 2*VSTEP - HEIGHT, 0)
     self.scroll = min(self.scroll + SCROLL_STEP, max_y)
     self.draw()
 ```
+
+Note the `2*VSTEP`, to account for a `VSTEP` of whitespace at the top
+and bottom of the page.
 
 So those are the basics of tree-based layout! In fact, as we'll see in
 the next two chapters, this is just one part of the layout tree's central role in

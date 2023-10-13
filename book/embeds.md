@@ -1284,7 +1284,7 @@ class Frame:
         self.scroll = self.clamp_scroll(self.scroll + SCROLL_STEP)
 
     def clamp_scroll(self, scroll):
-        height = math.ceil(self.document.height)
+        height = math.ceil(self.document.height + 2*VSTEP)
         maxscroll = height - self.frame_height
         return max(0, min(scroll, maxscroll))
 ```
