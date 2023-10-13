@@ -1977,6 +1977,9 @@ the cadence?
 [setInterval]: https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/setInterval
 [clearInterval]: https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/clearInterval
 
+*Task timing*: Modify `Task` to add trace events every time a task
+executes.
+
 *Clock-based frame timing*: Right now our browser schedules the next
 animation frame to happen exactly 16ms later than the first time
 `set_needs_animation_frame` is called. However, this actually leads to
