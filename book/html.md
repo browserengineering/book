@@ -347,8 +347,8 @@ def add_text(self, text):
     # ...
 ```
 
-The first part of parsed HTML tree for the browser.engineering home page
-now looks something like this:
+The first part of the parsed HTML tree for the browser.engineering home page now
+looks something like this:
 
 ``` {.example}
 <html lang="en-US" xml:lang="en-US">
