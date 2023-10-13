@@ -99,5 +99,6 @@ def parse_flags():
     FORCE_CROSS_ORIGIN_IFRAMES = args.force_cross_origin_iframes
     ASSERT_LAYOUT_CLEAN = args.assert_layout_clean
     PRINT_INVALIDATION_DEPENDENCIES = args.print_invalidation_dependencies
+    OUTPUT_TRACE = args.trace
 
     sys.argv = [sys.argv[0], args.url]
