@@ -41,7 +41,7 @@ typing. Variations—like bold or italic letters—were called that type's
     metal shapes.
 
 This nomenclature reflects the world of the printing press: metal
-shapes in boxes in cases from different foundaries. Our modern world
+shapes in boxes in cases from different foundries. Our modern world
 instead has dropdown menus, and the old words no longer match it.
 "Font" can now mean font, typeface, or type,[^3] and we say a font
 contains several different *weights* (like "bold" and "normal"),[^4]
@@ -192,12 +192,13 @@ of course, since different letters have different widths:[^9]
 31
 ```
 
-[^9]: It's a bit of a coincidence that the sum of the individual
-    letters is the sum of the word. Tk uses fractional pixels
-    internally, but rounds up to return whole pixels in the `measure`
-    call. Plus, some fonts use something called *kerning* to shift
-    letters a little bit when particular pairs of letters are next to
-    one another.
+[^9]: It's a bit of a coincidence that in this example the sum of the
+    individual letters' lengths is the length of the word. Tk uses
+    fractional pixels internally, but rounds up to return whole pixels
+    in the `measure` call. Plus, some fonts use something called
+    *kerning* to shift letters a little bit when particular pairs of
+    letters are next to one another, or even *shaping* to make two
+    letters look one glyph.
 
 
 You can use this information to lay text out on the page. For example,
@@ -315,13 +316,15 @@ Breaking lines in the middle of a word is called hyphenation, and can
 be turned on via the [`hyphens` CSS property][hyphens]. The state of
 the art is the [Knuth-Liang hyphenation algorithm][liang], which uses
 a dictionary of word fragments to prioritize possible hyphenation
-points, to implement this. However, it's not clear that the CSS
-specification [allows browsers to use this algorithm][css-hyphen].
+points, to implement this. At first, the CSS specification [was
+incompatible][css-hyphen] with this algorithm, but the recent
+[`text-wrap-style` property][css4-text] fixed that.
 :::
 
 [liang]: http://www.tug.org/docs/liang/liang-thesis.pdf
 [hyphens]: https://drafts.csswg.org/css-text-3/#hyphens-property
 [css-hyphen]: https://news.ycombinator.com/item?id=19472922
+[css4-test]: https://drafts.csswg.org/css-text-4/#propdef-text-wrap-style
 
 Styling text
 ============
@@ -855,7 +858,7 @@ class Layout:
 ```
 
 Now identical words will use identical fonts and text measurements
-will hit cache.
+will hit the cache.
 
 ::: {.further}
 Fonts for scripts like Chinese can be megabytes in size, so they are
@@ -899,7 +902,11 @@ Exercises
 *Centered Text:* This book's page titles are centered; make your
 browser do the same for text between `<h1 class="title">` and `</h1>`.
 Each line has to be centered individually, because different lines
-will have different lengths.
+will have different lengths.[^center-tag]
+
+[^center-tag]: In early HTML there was a `<center>` that did exactly
+    this, but nowadays centering is typically done in CSS, through the
+    `text-align` property.
 
 *Superscripts:* Add support for the `<sup>` tag. Text in this tag
 should be smaller (perhaps half the normal text size) and be placed so
