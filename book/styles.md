@@ -993,7 +993,7 @@ converting code to data like this means maintaining a new format, but
 browsers get to reuse a format, CSS, they need to support anyway.
 
 But of course our chapter also has the nice benefit of even better rendering
-of the book's homepage. Notice how the background is no longer gray, and the
+of this book's homepage. Notice how the background is no longer gray, and the
 links have colors.
 
 <figure>

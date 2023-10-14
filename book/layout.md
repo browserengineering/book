@@ -753,7 +753,7 @@ and bottom of the page.
 So those are the basics of tree-based layout! In fact, as we'll see in
 the next two chapters, this is just one part of the layout tree's central role in
 the browser. But before we get to that, we need to add some styling
-capabilities to our browser. However, even with layout the browser.engineering
+capabilities to our browser. However, even with layout the `browser.engineering`
 homepage looks a bit better:
 
 <figure>
