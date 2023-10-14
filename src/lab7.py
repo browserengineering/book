@@ -252,8 +252,8 @@ class Tab:
                  for node in tree_to_list(self.nodes, [])
                  if isinstance(node, Element)
                  and node.tag == "link"
-                 and "href" in node.attributes
-                 and node.attributes.get("rel") == "stylesheet"]
+                 and node.attributes.get("rel") == "stylesheet"
+                 and "href" in node.attributes]
         for link in links:
             try:
                 body = url.resolve(link).request()
