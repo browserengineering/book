@@ -906,7 +906,7 @@ will have different lengths.[^center-tag]
 
 [^center-tag]: In early HTML there was a `<center>` that did exactly
     this, but nowadays centering is typically done in CSS, through the
-    `text-align` property.
+    `text-align` property. The approach in this exercise is of course non-standard, and just for learning purposes.
 
 *Superscripts:* Add support for the `<sup>` tag. Text in this tag
 should be smaller (perhaps half the normal text size) and be placed so
