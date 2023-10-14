@@ -992,6 +992,15 @@ improvement: the style sheet is simpler and easier to edit. Sometimes
 converting code to data like this means maintaining a new format, but
 browsers get to reuse a format, CSS, they need to support anyway.
 
+But of course our chapter also has the nice benefit of even better rendering
+of this book's homepage. Notice how the background is no longer gray, and the
+links have colors.
+
+<figure>
+<img src="examples/example6-browserengineering-screenshot.png"
+     alt="Screenshot of the browser.engineering website with this chapter's browser.">
+</figure>
+
 ::: {.further}
 Usually a point is one 72^nd^ of an inch while pixel size depends on
 the screen, but CSS instead [defines an inch][css-fixed] as 96 pixels,

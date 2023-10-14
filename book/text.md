@@ -681,10 +681,14 @@ This new `flush` function has three responsibilities:
 2. It must add all those words to the display list; and
 3. It must update the `cursor_x` and `cursor_y` fields
 
+::: {.web-only}
+
 Here's what it looks like, step by step:
 
 ::: {.widget height=204}
     lab3-baselines.html
+:::
+
 :::
 
 Since we want words to line up "on the line", let's start by computing
@@ -770,6 +774,14 @@ def token(self, tok):
 
 I add a bit extra to `cursor_y` here to create a little gap between
 paragraphs.
+
+By this point you should be able to load up your browser and display
+[this page](examples/example3-sizes.html). It should look about like this:
+
+<figure>
+<img src="examples/example3-sizes-screenshot.png"
+     alt="Screenshot of a web page demonstrating different text sizes.">
+</figure>
 
 ::: {.further}
 Actually, browsers support not only *horizontal* but also [*vertical*
@@ -920,7 +932,8 @@ for it.[^entity] If a word doesn't fit at the end of a line, check if
 it has soft hyphens, and if so break the word across lines. Remember
 that a word can have multiple soft hyphens in it, and make sure to
 draw a hyphen when you break a word. The word
-"super­cala­fraga­listic­expi­ala­do­shus" is a good test case.
+"super­cala­fraga­listic­expi­ala­do­shus"
+is a good test case.
 
 [^entity]: If you've done a [previous exercise](http.md#exercises) on
     HTML entities, you might also want to add support for the `&shy;`

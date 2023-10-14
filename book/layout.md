@@ -296,8 +296,12 @@ you can use `print_tree` to see this tree in the `Browser`'s `load` method.
 You'll see that large web pages like this chapter produce large and
 complex layout trees!
 
+::: {.web-only}
+
 ::: {.widget big-height=490px small-height=860px}
     layout-container-example.html?embed=true
+:::
+
 :::
 
 Oh, and you might also notice that the text on these web pages is now
@@ -481,10 +485,14 @@ That is, the `layout` method should perform its steps in this order:
 + Finally, `layout` computes the `height` field, reading from the
   child layout objects.
 
+::: {.web-only}
+
 You can see these steps in action in this widget:
 
 ::: {.widget height=204}
     lab5-propagate.html
+:::
+
 :::
 
 This kind of dependency reasoning is crucial to layout and more
@@ -745,7 +753,13 @@ and bottom of the page.
 So those are the basics of tree-based layout! In fact, as we'll see in
 the next two chapters, this is just one part of the layout tree's central role in
 the browser. But before we get to that, we need to add some styling
-capabilities to our browser.
+capabilities to our browser. However, even with layout the `browser.engineering`
+homepage looks a bit better:
+
+<figure>
+<img src="examples/example5-browserengineering-screenshot.png"
+     alt="Screenshot of the browser.engineering website with this chapter's browser.">
+</figure>
 
 ::: {.further}
 The draft CSS [Painting API][mdn-houdini] allows pages to extend the
