@@ -374,7 +374,7 @@ class DocumentLayout:
         self.x = device_px(HSTEP, self.zoom)
         self.y = device_px(VSTEP, self.zoom)
         child.layout()
-        self.height = child.height + 2* device_px(VSTEP, self.zoom)
+        self.height = child.height
 
     def paint(self, display_list):
         self.children[0].paint(display_list)
@@ -915,7 +915,6 @@ class Tab:
             self.task_runner = SingleThreadedTaskRunner(self)
         self.task_runner.start_thread()
 
-        self.measure_render = MeasureTime("render")
         self.composited_updates = []
         self.zoom = 1.0
 
@@ -970,8 +969,8 @@ class Tab:
                  for node in tree_to_list(self.nodes, [])
                  if isinstance(node, Element)
                  and node.tag == "link"
-                 and "href" in node.attributes
-                 and node.attributes.get("rel") == "stylesheet"]
+                 and node.attributes.get("rel") == "stylesheet"
+                 and "href" in node.attributes]
         for link in links:
             style_url = url.resolve(link)
             if not self.allowed_request(style_url):
@@ -1021,7 +1020,7 @@ class Tab:
         needs_composite = self.needs_style or self.needs_layout
         self.render()
 
-        document_height = math.ceil(self.document.height)
+        document_height = math.ceil(self.document.height + 2*VSTEP)
         clamped_scroll = clamp_scroll(
             self.scroll, document_height, self.tab_height)
         if clamped_scroll != self.scroll:
@@ -1054,7 +1053,7 @@ class Tab:
         self.browser.commit(self, commit_data)
 
     def render(self):
-        self.measure_render.start_timing()
+        self.browser.measure.time('render')
 
         if self.needs_style:
             if self.dark_mode:
@@ -1084,7 +1083,7 @@ class Tab:
             self.document.paint(self.display_list)
             self.needs_paint = False
 
-        self.measure_render.stop_timing()
+        self.browser.measure.stop('render')
 
     def focus_element(self, node):
         if node and node != self.focus:
@@ -1122,7 +1121,7 @@ class Tab:
         if self.scroll < obj.y < self.scroll + self.tab_height:
             return
 
-        document_height = math.ceil(self.document.height)
+        document_height = math.ceil(self.document.height + 2*VSTEP)
         new_scroll = obj.y - SCROLL_STEP
         self.scroll = clamp_scroll(
             new_scroll, document_height, self.tab_height)
@@ -1358,7 +1357,7 @@ class Browser:
         self.url = None
         self.scroll = 0
 
-        self.measure_composite_raster_and_draw = MeasureTime("raster-and-draw")
+        self.measure = MeasureTime()
 
         if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
             self.RED_MASK = 0xff000000
@@ -1578,7 +1577,7 @@ class Browser:
             self.needs_accessibility:
             self.lock.release()
             return
-        self.measure_composite_raster_and_draw.start_timing()
+        self.measure.time('raster/draw')
         start_time = time.time()
         if self.needs_composite:
             self.composite()
@@ -1590,7 +1589,7 @@ class Browser:
             self.paint_draw_list()
             self.draw()
 
-        self.measure_composite_raster_and_draw.stop_timing()
+        self.measure.stop('raster/draw')
 
         if self.needs_accessibility:
             self.update_accessibility()
@@ -1861,7 +1860,7 @@ class Browser:
             sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 
     def handle_quit(self):
-        print(self.measure_composite_raster_and_draw.text())
+        self.measure.finish()
         self.tabs[self.active_tab].task_runner.set_needs_quit()
         if wbetools.USE_GPU:
             sdl2.SDL_GL_DeleteContext(self.gl_context)

@@ -826,7 +826,7 @@ on each frame to do style and layout:
 ``` {.python}
 class Tab:
     def render(self):
-        self.measure_render.start_timing()
+        self.browser.measure.time('render')
 
         for id, frame in self.window_id_to_frame.items():
             frame.render()
@@ -836,6 +836,8 @@ class Tab:
 
         if self.pending_hover:
             # ...
+
+        # ...
 ```
 
 Note that the `needs_accessibility`, `pending_hover`, and other flags
@@ -1284,7 +1286,7 @@ class Frame:
         self.scroll = self.clamp_scroll(self.scroll + SCROLL_STEP)
 
     def clamp_scroll(self, scroll):
-        height = math.ceil(self.document.height)
+        height = math.ceil(self.document.height + 2*VSTEP)
         maxscroll = height - self.frame_height
         return max(0, min(scroll, maxscroll))
 ```

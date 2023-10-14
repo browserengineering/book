@@ -713,7 +713,7 @@ the page content now being `tab_height`:
 class Tab:
     def scrolldown(self):
         max_y = max(
-            self.document.height - self.tab_height, 0)
+            self.document.height + 2*VSTEP - self.tab_height, 0)
         self.scroll = min(self.scroll + SCROLL_STEP, max_y)
 ```
 

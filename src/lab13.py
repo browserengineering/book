@@ -4,7 +4,6 @@ up to and including Chapter 13 (Animations and Compositing),
 without exercises.
 """
 
-import sys
 import ctypes
 import dukpy
 import math
@@ -541,7 +540,7 @@ class DocumentLayout:
         self.x = HSTEP
         self.y = VSTEP
         child.layout()
-        self.height = child.height + 2*VSTEP
+        self.height = child.height
 
     def paint(self, display_list):
         self.children[0].paint(display_list)
@@ -1082,8 +1081,6 @@ class Tab:
             self.task_runner = SingleThreadedTaskRunner(self)
         self.task_runner.start_thread()
 
-        self.measure_render = MeasureTime("render")
-
         self.composited_updates = []
 
         with open("browser8.css") as f:
@@ -1133,8 +1130,8 @@ class Tab:
                  for node in tree_to_list(self.nodes, [])
                  if isinstance(node, Element)
                  and node.tag == "link"
-                 and "href" in node.attributes
-                 and node.attributes.get("rel") == "stylesheet"]
+                 and node.attributes.get("rel") == "stylesheet"
+                 and "href" in node.attributes]
         for link in links:
             style_url = url.resolve(link)
             if not self.allowed_request(style_url):
@@ -1184,7 +1181,7 @@ class Tab:
         needs_composite = self.needs_style or self.needs_layout
         self.render()
 
-        document_height = math.ceil(self.document.height)
+        document_height = math.ceil(self.document.height + 2*VSTEP)
         clamped_scroll = clamp_scroll(
             self.scroll, document_height, self.tab_height)
         if clamped_scroll != self.scroll:
@@ -1213,7 +1210,7 @@ class Tab:
         self.browser.commit(self, commit_data)
 
     def render(self):
-        self.measure_render.start_timing()
+        self.browser.measure.time('render')
 
         if self.needs_style:
             style(self.nodes, sorted(self.rules, key=cascade_priority), self)
@@ -1231,7 +1228,7 @@ class Tab:
             self.document.paint(self.display_list)
             self.needs_paint = False
 
-        self.measure_render.stop_timing()
+        self.browser.measure.stop('render')
 
     def click(self, x, y):
         self.render()
@@ -1371,7 +1368,7 @@ class Browser:
         self.url = None
         self.scroll = 0
 
-        self.measure_composite_raster_and_draw = MeasureTime("raster-and-draw")
+        self.measure = MeasureTime()
 
         if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
             self.RED_MASK = 0xff000000
@@ -1506,7 +1503,7 @@ class Browser:
             self.lock.release()
             return
 
-        self.measure_composite_raster_and_draw.start_timing()
+        self.measure.time('raster/draw')
         start_time = time.time()
         if self.needs_composite:
             self.composite()
@@ -1516,7 +1513,7 @@ class Browser:
         if self.needs_draw:
             self.paint_draw_list()
             self.draw()
-        self.measure_composite_raster_and_draw.stop_timing()
+        self.measure.stop('raster/draw')
         self.needs_composite = False
         self.needs_raster = False
         self.needs_draw = False
@@ -1667,13 +1664,14 @@ class Browser:
             sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 
     def handle_quit(self):
-        print(self.measure_composite_raster_and_draw.text())
+        self.measure.finish()
         self.tabs[self.active_tab].task_runner.set_needs_quit()
         if wbetools.USE_GPU:
             sdl2.SDL_GL_DeleteContext(self.gl_context)
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
 if __name__ == "__main__":
+    import sys
     wbetools.parse_flags()
 
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)

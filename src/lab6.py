@@ -76,6 +76,7 @@ class CSSParser:
                 return self.s[self.i]
             else:
                 self.i += 1
+        return None
 
     def body(self):
         pairs = {}
@@ -274,6 +275,8 @@ class DrawText:
     def __repr__(self):
         return "DrawText(text={})".format(self.text)
 
+DEFAULT_STYLE_SHEET = CSSParser(open("browser6.css").read()).parse()
+
 @wbetools.patch(Browser)
 class Browser:
     def __init__(self):
@@ -290,20 +293,17 @@ class Browser:
         self.window.bind("<Down>", self.scrolldown)
         self.display_list = []
 
-        with open("browser6.css") as f:
-            self.default_style_sheet = CSSParser(f.read()).parse()
-
     def load(self, url):
         body = url.request()
         self.nodes = HTMLParser(body).parse()
 
-        rules = self.default_style_sheet.copy()
+        rules = DEFAULT_STYLE_SHEET.copy()
         links = [node.attributes["href"]
                  for node in tree_to_list(self.nodes, [])
                  if isinstance(node, Element)
                  and node.tag == "link"
-                 and "href" in node.attributes
-                 and node.attributes.get("rel") == "stylesheet"]
+                 and node.attributes.get("rel") == "stylesheet"
+                 and "href" in node.attributes]
         for link in links:
             try:
                 body = url.resolve(link).request()

@@ -63,6 +63,7 @@ USE_BROWSER_THREAD = True
 FORCE_CROSS_ORIGIN_IFRAMES = False
 ASSERT_LAYOUT_CLEAN = False
 PRINT_INVALIDATION_DEPENDENCIES = False
+OUTPUT_TRACE = False
 
 def parse_flags():
     import argparse, sys
@@ -87,6 +88,8 @@ def parse_flags():
         default=False, help="Assert layout is clean once complete")
     parser.add_argument("--print_invalidation_dependencies", action="store_true",
         default=False, help="Whether to print out all invalidation dependencies")
+    parser.add_argument("--trace", action="store_true",
+        default=False, help="Whether to output a browser.trace file")
     args = parser.parse_args()
 
     USE_BROWSER_THREAD = not args.single_threaded
@@ -96,5 +99,6 @@ def parse_flags():
     FORCE_CROSS_ORIGIN_IFRAMES = args.force_cross_origin_iframes
     ASSERT_LAYOUT_CLEAN = args.assert_layout_clean
     PRINT_INVALIDATION_DEPENDENCIES = args.print_invalidation_dependencies
+    OUTPUT_TRACE = args.trace
 
     sys.argv = [sys.argv[0], args.url]

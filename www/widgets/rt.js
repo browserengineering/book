@@ -1065,9 +1065,15 @@ async function asyncfilter(fn, arr) {
 class File {
     constructor(contents) {
         this.contents = contents;
+        this.writable = false;
     }
     read() {
         return this.contents;
+    }
+    write(s) {
+        if (! this.writable)
+            throw "File is not writable"
+        this.contents += s;
     }
     close() {}
 }
@@ -1079,8 +1085,14 @@ class FileSystem {
     register(name, contents) {
         this.files[name] = contents;
     }
-    open(name) {
-        return new File(this.files[name]);
+    open(name, mode="r") {
+        if (mode === "r") {
+            return new File(this.files[name]);
+        } else {
+            let f = new File("");
+            f.writable = true;
+            return f;
+        }
     }
 }
 
@@ -1126,6 +1138,9 @@ class threading {
 
         release() {}        
     });
+
+    static current_thread() { return {} } 
+    static enumerate() { return [] } 
 }
 
 class time {

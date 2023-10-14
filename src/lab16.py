@@ -306,8 +306,7 @@ class DocumentLayout:
         child.layout()
         self.has_dirty_descendants = False
 
-        child_height = child.height.read(notify=self.height)
-        self.height.set(child_height + 2 * device_px(VSTEP, zoom))
+        self.height.copy(child.height)
 
         if wbetools.ASSERT_LAYOUT_CLEAN:
             for obj in tree_to_list(self, []):
@@ -1057,8 +1056,8 @@ class Frame:
                  for node in tree_to_list(self.nodes, [])
                  if isinstance(node, Element)
                  and node.tag == "link"
-                 and "href" in node.attributes
-                 and node.attributes.get("rel") == "stylesheet"]
+                 and node.attributes.get("rel") == "stylesheet"
+                 and "href" in node.attributes]
         for link in links:  
             style_url = url.resolve(link)
             if not self.allowed_request(style_url):
@@ -1175,7 +1174,7 @@ class Frame:
         self.set_needs_render()
 
     def clamp_scroll(self, scroll):
-        height = math.ceil(self.document.height.get())
+        height = math.ceil(self.document.height.get() + 2*VSTEP)
         maxscroll = height - self.frame_height
         return max(0, min(scroll, maxscroll))
 

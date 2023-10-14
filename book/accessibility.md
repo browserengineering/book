@@ -357,14 +357,13 @@ pixels and *does* need to be converted:
 
 ``` {.python}
 class DocumentLayout:
-	# ...
     def layout(self, zoom):
     	# ...
         self.width = WIDTH - 2 * device_px(HSTEP, self.zoom)
         self.x = device_px(HSTEP, self.zoom)
         self.y = device_px(VSTEP, self.zoom)
         child.layout()
-        self.height = child.height + 2* device_px(VSTEP, self.zoom)
+        self.height = child.height
 ```
 
 Now try it out. All of the fonts should get about 10% bigger each
@@ -1169,7 +1168,7 @@ class Tab:
         if self.scroll < obj.y < self.scroll + self.tab_height:
             return
 
-        document_height = math.ceil(self.document.height)
+        document_height = math.ceil(self.document.height + 2*VSTEP)
         new_scroll = obj.y - SCROLL_STEP
         self.scroll = clamp_scroll(
             new_scroll, document_height, self.tab_height)
