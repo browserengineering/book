@@ -132,8 +132,8 @@ class HTMLParser:
                 break
 
     def finish(self):
-        if len(self.unfinished) == 0:
-            self.add_tag("html")
+        if not self.unfinished:
+            self.implicit_tags(None)
         while len(self.unfinished) > 1:
             node = self.unfinished.pop()
             parent = self.unfinished[-1]
