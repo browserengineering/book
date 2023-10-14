@@ -539,7 +539,7 @@ the second skips characters above it. In that second `if` statement,
 that are halfway inside the viewing window still have to be drawn.
 
 Scrolling should now be pleasantly fast, and hopefully close to the 16ms
-animation frame budget.^[on my computer, it was still about double that budget,
+animation frame budget.^[On my computer, it was still about double that budget,
 so there is work to do---we'll get to that in future chapters.] And because we
 split `layout` and `draw`, we don't need to change `layout` at all to implement
 this optimization.
