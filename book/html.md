@@ -387,9 +387,10 @@ new `doctype` version for HTML will ever be added again.] It's called a
 all the time as features are added. The mechanism for these changes is
 simply browsers shipping new features, not any change to the "version" of HTML.
 In general, the web is an *unversioned platform*---new features are often added
-as  enhancements, but don't break existing ones.^[Features can be removed,
-but only if they stop being used by the vast majority of sites. This makes
-it very hard to remove web features compared with other platforms.]
+as enhancements, but only so long as they don't break existing
+ones.^[Features can be removed, but only if they stop being used by the vast
+majority of sites. This makes it very hard to remove web features compared
+with other platforms.]
 :::
 
 [living-standard]: https://html.spec.whatwg.org/
