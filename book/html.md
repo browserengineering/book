@@ -240,7 +240,7 @@ works!
 ::: {.further}
 The ill-considered Javascript `document.write` method allows
 Javascript to modify the HTML source code while it's being parsed!
-This is actually a [bad idea][document-write-bad]. A naive
+This is actually a [bad idea][document-write-bad].
 implementation of `document.write` would have the HTML parser stop to
 execute JavaScript, but that would be slow down requests for images,
 CSS, and JavaScript used later in the page. In fact, modern
