@@ -1067,6 +1067,32 @@ def add_entry(params):
     return show_comments()
 ```
 
+::: {.further}
+
+Search engines are constantly [crawling] the web and [indexing] all of the web
+pages they can find. In the early days, indexing was just a matter of loading
+the HTML, parsing it and extracting the information. But these days, a lot of
+[single-page app][spa] sites use JavaScript to ["hydrate"][hydration]
+[^why-hydrate] their site into its full contents. On such sites, before
+hydration happens, the information in the site is hidden inside of JavaScript
+data structures. For this reason, search engines need to not just parse HTML,
+but also run JavaScript (and load style sheets) during indexing. In other
+words, the indexing systems use browsers (such as for example
+[headless Chrome][headless])---one more place browsers appear in the web
+ecosystem.
+
+[spa]: https://en.wikipedia.org/wiki/Single-page_application
+[hydration]: https://en.wikipedia.org/wiki/Hydration_(web_development)
+[headless]: https://chromium.googlesource.com/chromium/src/+/lkgr/headless/README.md
+
+[^why-hydrate]: This process is called "hydration" by analogy with how water
+is added to dehydrated food to make it edible again.
+
+:::
+
+[crawling]: https://en.wikipedia.org/wiki/Web_crawler
+[indexing]: https://en.wikipedia.org/wiki/Search_engine_indexing
+
 A closing thought
 =================
 

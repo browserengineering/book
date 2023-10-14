@@ -375,9 +375,24 @@ In SGML, document type declarations contained a URL which defined the
 valid tags, and in older versions of HTML that was also recommended.
 Browsers do use the absence of a document type declaration to
 [identify][quirks-mode] very old, pre-SGML versions of
-HTML,[^almost-standards-mode] but don't use the URL, so `<!doctype
-html>` is the best document type declaration for modern HTML.
+HTML,[^almost-standards-mode] but don't use the URL, so
+`<!doctype html>` is the best document type declaration for modern HTML.
+
+The `doctype` syntax is a form of versioning---declaring which version of HTML
+the web page is using. But in fact, the `html` value for `doctype` signals
+not just a particular version of HTML, but more generally the [*HTML living
+standard*][living-standard].^[It is not expected that any
+new `doctype` version for HTML will ever be added again.] It's called a
+"living standard" because it changes
+all the time as features are added. The mechanism for these changes is
+simply browsers shipping new features, not any change to the "version" of HTML.
+In general, the web is an *unversioned platform*---new features are often added
+as  enhancements, but don't break existing ones.^[Features can be removed,
+but only if they stop being used by the vast majority of sites. This makes
+it very hard to remove web features compared with other platforms.]
 :::
+
+[living-standard]: https://html.spec.whatwg.org/
 
 [quirks-mode]: https://developer.mozilla.org/en-US/docs/Web/HTML/Quirks_Mode_and_Standards_Mode
 
