@@ -377,32 +377,7 @@ Browsers do use the absence of a document type declaration to
 [identify][quirks-mode] very old, pre-SGML versions of
 HTML,[^almost-standards-mode] but don't use the URL, so
 `<!doctype html>` is the best document type declaration for modern HTML.
-
-The `doctype` syntax is a form of versioning---declaring which version of HTML
-the web page is using. But in fact, the `html` value for `doctype` signals
-not just a particular version of HTML, but more generally the [*HTML living
-standard*][living-standard].^[It is not expected that any
-new `doctype` version for HTML will ever be added again.] It's called a
-"living standard" because it changes
-all the time as features are added. The mechanism for these changes is
-simply browsers shipping new features, not any change to the "version" of HTML.
-In general, the web is an *unversioned platform*---new features are often added
-as enhancements, but only so long as they don't break existing
-ones.^[Features can be removed, but only if they stop being used by the vast
-majority of sites. This makes it very hard to remove web features compared
-with other platforms.]
 :::
-
-[living-standard]: https://html.spec.whatwg.org/
-
-[quirks-mode]: https://developer.mozilla.org/en-US/docs/Web/HTML/Quirks_Mode_and_Standards_Mode
-
-[^almost-standards-mode]: There's also this crazy thing called "[almost
-    standards][limited-quirks]" or "limited quirks" mode, due to a
-    backwards-incompatible change in table cell vertical layout. Yes.
-    I don't need to make these up!
-
-[limited-quirks]: https://hsivonen.fi/doctype/
 
 Self-closing tags
 =================
@@ -621,13 +596,31 @@ class Browser:
 Run it---the browser should now use the parsed HTML tree.
 
 ::: {.further}
-Prior to the invention of CSS, some browsers supported web page
-styling using attributes like `bgcolor` and `vlink` (the
-color of visited links) and tags like `font`. These [are
-obsolete][html5-obsolete], but browsers still support some of them.
+The `doctype` syntax is a form of versioning---declaring which version of HTML
+the web page is using. But in fact, the `html` value for `doctype` signals
+not just a particular version of HTML, but more generally the [*HTML living
+standard*][living-standard].^[It is not expected that any
+new `doctype` version for HTML will ever be added again.] It's called a
+"living standard" because it changes
+all the time as features are added. The mechanism for these changes is
+simply browsers shipping new features, not any change to the "version" of HTML.
+In general, the web is an *un-versioned platform*---new features are often added
+as enhancements, but only so long as they don't break existing
+ones.^[Features can be removed, but only if they stop being used by the vast
+majority of sites. This makes it very hard to remove web features compared
+with other platforms.]
 :::
 
-[html5-obsolete]: https://html.spec.whatwg.org/multipage/obsolete.html#obsolete
+[living-standard]: https://html.spec.whatwg.org/
+
+[quirks-mode]: https://developer.mozilla.org/en-US/docs/Web/HTML/Quirks_Mode_and_Standards_Mode
+
+[^almost-standards-mode]: There's also this crazy thing called "[almost
+    standards][limited-quirks]" or "limited quirks" mode, due to a
+    backwards-incompatible change in table cell vertical layout. Yes.
+    I don't need to make these up!
+
+[limited-quirks]: https://hsivonen.fi/doctype/
 
 Handling author errors
 ======================
