@@ -10,7 +10,7 @@ import ssl
 import tkinter
 import tkinter.font
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
-from lab3 import FONTS, get_font
+from lab3 import get_font
 from lab4 import Text, Element, print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS, DrawRect, DocumentLayout
 from lab6 import CSSParser, TagSelector, DescendantSelector
@@ -163,7 +163,7 @@ class BlockLayout:
         self.children.append(new_line)
 
     def word(self, node, word):
-        font = self.get_font(node)
+        font = self.font(node)
         w = font.measure(word)
         if self.cursor_x + w > self.width:
             self.new_line()
