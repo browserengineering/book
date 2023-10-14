@@ -599,7 +599,7 @@ embedded in "Journey to the West"; you'll now be able to make them
 out.
 
 *Mouse wheel*: Add support for scrolling up when you hit the up arrow.
-Make sure you can't scroll past the top of the page.[^why-only-top]
+Make sure you can't scroll past the top of the page.
 Then bind the `<MouseWheel>` event, which triggers when you scroll
 with the mouse wheel.[^laptop-mousewheel] The associated event object
 has an `event.delta` value which tells you how far and in what
@@ -607,9 +607,6 @@ direction to scroll. Unfortunately, Mac and Windows give the
 `event.delta` objects opposite sign and different scales, and on
 Linux, scrolling instead uses the `<Button-4>` and `<Button-5>`
 events.[^more-mousewheel]
-
-[^why-only-top]: It's harder to stop scrolling past the bottom of the
-    page; we will implement this in [Chapter 5](layout.md).
 
 [^laptop-mousewheel]: It will also trigger with touchpad gestures,
     if you don't have a mouse.
@@ -638,6 +635,17 @@ the `<Configure>` event, which happens when the window is resized. The
 window's new width and height can be found in the `width` and `height`
 fields on the event object. Remember that when the window is resized,
 the line breaks must change, so you will need to call `layout` again.
+
+*Scrollbar*: Stop your browser from scrolling down past the last
+display list entry.[^not-quite-right] At the right edge of the screen,
+draw a blue, rectangular scrollbar. Make sure the size and position of
+the scrollbar reflects what part of the full document the browser can
+see. Hide the scrollbar if the whole document fits onscreen.
+
+[^not-quite-right]: This is not quite right in a real browser; the
+    browser needs to account for extra whitespace at the bottom of the
+    screen or the possibility of objects purposefully drawn offscreen.
+    In [Chapter 5](layout.md), we'll implement this correctly.
 
 *about:blank:* Currently, a malformed URL causes the browser to crash.
 It would be much better to have error recovery for that, and instead

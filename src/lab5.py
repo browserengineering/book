@@ -39,8 +39,8 @@ class BlockLayout:
     def layout(self):
         wbetools.record("layout_pre", self)
 
-        self.width = self.parent.width
         self.x = self.parent.x
+        self.width = self.parent.width
 
         if self.previous:
             self.y = self.previous.y + self.previous.height
@@ -79,13 +79,12 @@ class BlockLayout:
     def layout_mode(self):
         if isinstance(self.node, Text):
             return "inline"
+        elif any([isinstance(child, Element) and \
+                  child.tag in BLOCK_ELEMENTS
+                  for child in self.node.children]):
+            return "block"
         elif self.node.children:
-            if any([isinstance(child, Element) and \
-                    child.tag in BLOCK_ELEMENTS
-                    for child in self.node.children]):
-                return "block"
-            else:
-                return "inline"
+            return "inline"
         else:
             return "block"
 
@@ -145,7 +144,7 @@ class DocumentLayout:
         self.x = HSTEP
         self.y = VSTEP
         child.layout()
-        self.height = child.height + 2*VSTEP
+        self.height = child.height
         wbetools.record("layout_post", self)
 
     def paint(self, display_list):
@@ -214,7 +213,7 @@ class Browser:
             cmd.execute(self.scroll, self.canvas)
 
     def scrolldown(self, e):
-        max_y = max(self.document.height - HEIGHT, 0)
+        max_y = max(self.document.height + 2*VSTEP - HEIGHT, 0)
         self.scroll = min(self.scroll + SCROLL_STEP, max_y)
         self.draw()
 

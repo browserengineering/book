@@ -144,7 +144,7 @@ class DocumentLayout:
         self.x = device_px(HSTEP, self.zoom)
         self.y = device_px(VSTEP, self.zoom)
         child.layout()
-        self.height = child.height + 2 * device_px(VSTEP, self.zoom)
+        self.height = child.height
 
     def paint(self, display_list, dark_mode, scroll):
         cmds = []
@@ -1420,7 +1420,7 @@ class Frame:
             elt = elt.parent
 
     def clamp_scroll(self, scroll):
-        height = math.ceil(self.document.height)
+        height = math.ceil(self.document.height + 2*VSTEP)
         maxscroll = height - self.frame_height
         return max(0, min(scroll, maxscroll))
 
