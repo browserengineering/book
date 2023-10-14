@@ -28,21 +28,21 @@ class Tag:
 
 def lex(body):
     out = []
-    text = ""
+    buffer = ""
     in_tag = False
     for c in body:
         if c == "<":
             in_tag = True
-            if text: out.append(Text(text))
-            text = ""
+            if buffer: out.append(Text(buffer))
+            buffer = ""
         elif c == ">":
             in_tag = False
-            out.append(Tag(text))
-            text = ""
+            out.append(Tag(buffer))
+            buffer = ""
         else:
-            text += c
-    if not in_tag and text:
-        out.append(Text(text))
+            buffer += c
+    if not in_tag and buffer:
+        out.append(Text(buffer))
     return out
 
 FONTS = {}
@@ -111,18 +111,20 @@ class Layout:
         wbetools.record("initial_y", self.cursor_y, self.line);
         metrics = [font.metrics() for x, word, font in self.line]
         wbetools.record("metrics", metrics)
-        max_ascent = max([metric["ascent"] for metric in metrics])
+        max_ascent = max([font.metrics("ascent")
+            for x, word, font in self.line])
         baseline = self.cursor_y + 1.25 * max_ascent
         wbetools.record("max_ascent", max_ascent);
         for x, word, font in self.line:
             y = baseline - font.metrics("ascent")
             self.display_list.append((x, y, word, font))
             wbetools.record("aligned", self.display_list);
-        self.cursor_x = HSTEP
-        self.line = []
-        max_descent = max([metric["descent"] for metric in metrics])
+        max_descent = max([font.metrics("descent")
+            for x, word, font in self.line])
         wbetools.record("max_descent", max_descent);
         self.cursor_y = baseline + 1.25 * max_descent
+        self.cursor_x = HSTEP
+        self.line = []
         wbetools.record("final_y", self.cursor_y);
 
 @wbetools.patch(Browser)
