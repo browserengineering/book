@@ -129,8 +129,9 @@ class DrawImage(DrawCommand):
 def paint_tree(layout_object, display_list):
     cmds = layout_object.paint()
 
-    if layout_object.node.frame:
-        paint_tree(layout_object.node.frame.document)
+    if isinstance(layout_object, IframeLayout) and \
+        layout_object.node.frame:
+        paint_tree(layout_object.node.frame.document, cmds)
     else:
         for child in layout_object.children:
             paint_tree(child, cmds)
@@ -162,7 +163,7 @@ class DocumentLayout:
         return []
 
     def paint_effects(self, cmds):
-        if self.frame != self.tab.root_frame and self.frame.scroll != 0:
+        if self.frame != self.frame.tab.root_frame and self.frame.scroll != 0:
             rect = skia.Rect.MakeLTRB(
                 self.x, self.y,
                 self.x + self.width, self.y + self.height)
@@ -318,7 +319,14 @@ class BlockLayout:
         return cmds
  
     def paint_effects(self, cmds):
+        is_atomic = not isinstance(self.node, Text) and \
+            (self.node.tag == "input" or self.node.tag == "button")
+
         if not is_atomic:
+            rect = skia.Rect.MakeLTRB(
+                self.x, self.y, self.x + self.width,
+                self.y + self.height)
+
             cmds = paint_visual_effects(self.node, cmds, rect)
         return cmds
 
@@ -402,6 +410,9 @@ class InputLayout(EmbedLayout):
         return cmds
 
     def paint_effects(self, cmds):
+        rect = skia.Rect.MakeLTRB(
+            self.x, self.y, self.x + self.width,
+            self.y + self.height)
         cmds = paint_visual_effects(self.node, cmds, rect)
         paint_outline(self.node, cmds, rect, self.zoom)
         return cmds
@@ -623,6 +634,9 @@ class IframeLayout(EmbedLayout):
         return cmds
 
     def paint_effects(self, cmds):
+        rect = skia.Rect.MakeLTRB(
+            self.x, self.y,
+            self.x + self.width, self.y + self.height)
         diff = device_px(1, self.zoom)
         offset = (self.x + diff, self.y + diff)
         cmds = [Transform(offset, rect, self.node, cmds)]
