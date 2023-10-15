@@ -422,6 +422,11 @@ class TextLayout:
 
         self.height = linespace(self.font)
 
+    def self_rect(self):
+        return skia.Rect.MakeLTRB(
+            self.x, self.y, self.x + self.width,
+            self.y + self.height)
+
     def paint(self):
         cmds = []
         color = self.node.style["color"]

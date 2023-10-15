@@ -505,7 +505,7 @@ class BlockLayout:
                 cmds.append(DrawCursor(self, 0))
 
         if not self.is_atomic():
-            cmds = paint_visual_effects(self.node, cmds, self.rect())
+            cmds = paint_visual_effects(self.node, cmds, self.self_rect())
         return cmds
 
 def DrawCursor(elt, offset):
@@ -612,7 +612,7 @@ class LineLayout:
         for child in self.children:
             child_outline = parse_outline(child.node.parent.style["outline"].get())
             if child_outline:
-                outline_rect.join(child.rect())
+                outline_rect.join(child.self_rect())
                 outline_node = child.node.parent
 
         if outline_node:
@@ -710,7 +710,7 @@ class TextLayout:
     def paint_effects(self, cmds):
         return cmds
 
-    def rect(self):
+    def self_rect(self):
         return skia.Rect.MakeLTRB(
             self.x.get(), self.y.get(), self.x.get() + self.width.get(),
             self.y.get() + self.height.get())
@@ -796,7 +796,7 @@ class InputLayout(EmbedLayout):
         self.height.set(linespace(font))
         self.layout_after()
 
-    def rect(self):
+    def self_rect(self):
         return skia.Rect.MakeLTRB(
             self.x.get(), self.y.get(), self.x.get() + self.width.get(),
             self.y.get() + self.height.get())
@@ -809,7 +809,7 @@ class InputLayout(EmbedLayout):
             radius = device_px(
                 float(self.node.style["border-radius"].get()[:-2]),
                 self.zoom.get())
-            cmds.append(DrawRRect(self.rect(), radius, bgcolor))
+            cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
 
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")
@@ -831,8 +831,8 @@ class InputLayout(EmbedLayout):
         return cmds
 
     def paint_effects(self, cmds):
-        cmds = paint_visual_effects(self.node, cmds, self.rect())
-        paint_outline(self.node, cmds, self.rect(), self.zoom.get())
+        cmds = paint_visual_effects(self.node, cmds, self.self_rect())
+        paint_outline(self.node, cmds, self.self_rect(), self.zoom.get())
         return cmds
 
 @wbetools.patch(ImageLayout)
