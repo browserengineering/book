@@ -429,7 +429,6 @@ class Tab:
         self.document.layout()
         self.display_list = []
         paint_tree(self.document, self.display_list)
-        print(len(self.display_list))
 
     def raster(self, canvas):
         for cmd in self.display_list:
