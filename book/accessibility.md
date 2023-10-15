@@ -1066,8 +1066,8 @@ To draw an outline, we'll use `DrawOutline`. This will have to happen in
 ``` {.python}
 class InputLayout:
 	def paint_effects(self, cmds):
-        cmds = paint_visual_effects(self.node, cmds, rect)
-        paint_outline(self.node, cmds, rect, self.zoom)
+        cmds = paint_visual_effects(self.node, cmds, self.rect())
+        paint_outline(self.node, cmds, self.rect(), self.zoom)
         return cmds
 ```
 

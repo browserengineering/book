@@ -509,7 +509,7 @@ Note that Skia supports `RRect`s, or rounded rectangles, natively, so
 we can just draw one right to a canvas. Now we can draw these rounded
 rectangles for the background:
 
-``` {.python}
+``` {.python replace=is_atomic/self.is_atomic(),rect/self.rect()}
 class BlockLayout:
     def paint(self):
         if not is_atomic:
@@ -809,19 +809,24 @@ display list, we can use `SaveLayer` to add transparency to the whole element.
 I'm going to do this in a new `paint_effects` method, which will wrap `cmds`
 in a `SaveLayer`. The actual `SaveLayer` will be computed in a new
 global `paint_visual_effects` method (because other object types will need it
-also).
+also).^[As part of adding this method, I've factored out a `rect` and
+`is_atomic` method from `paint`, you'll need to update that method also to call
+these helpers.]
 
 ``` {.python}
 class BlockLayout:
-    def paint_effects(self, cmds):
-        is_atomic = not isinstance(self.node, Text) and \
+    def is_atomic(self):
+        return not isinstance(self.node, Text) and \
             (self.node.tag == "input" or self.node.tag == "button")
 
-        if not is_atomic:
-            rect = skia.Rect.MakeLTRB(
-                self.x, self.y,
-                self.x + self.width, self.y + self.height)
-            cmds = paint_visual_effects(self.node, cmds, rect)
+    def rect(self):
+        return skia.Rect.MakeLTRB(
+            self.x, self.y,
+            self.x + self.width, self.y + self.height)
+
+    def paint_effects(self, cmds):
+        if not self.is_atomic():
+            cmds = paint_visual_effects(self.node, cmds, self.rect())
         return cmds
 ```
 

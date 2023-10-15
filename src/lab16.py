@@ -119,8 +119,12 @@ def paint_visual_effects(node, cmds, rect):
     else:
         clip_radius = 0
     needs_clip = node.style['overflow'].get() == 'clip'
-    needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or needs_clip or opacity != 1.0
-    save_layer = SaveLayer(skia.Paint(BlendMode=blend_mode, Alphaf=opacity), node, [ClipRRect(rect, clip_radius, cmds, should_clip=needs_clip)], should_save=needs_blend_isolation)
+    needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
+        needs_clip or opacity != 1.0
+    save_layer = SaveLayer(
+        skia.Paint(BlendMode=blend_mode, Alphaf=opacity),
+        node, [ClipRRect(rect, clip_radius, cmds, should_clip=needs_clip)],
+        should_save=needs_blend_isolation)
     transform = Transform(translation, rect, node, [save_layer])
     node.save_layer = save_layer
     return [transform]
@@ -467,7 +471,7 @@ class BlockLayout:
         self.cursor_x += w + font(self.children, node.style, zoom).measureText(' ')
 
     def rect(self):
-        rect = skia.Rect.MakeLTRB(
+        return skia.Rect.MakeLTRB(
             self.x.get(), self.y.get(), self.x.get() + self.width.get(),
             self.y.get() + self.height.get())
 
@@ -500,7 +504,7 @@ class BlockLayout:
             else:
                 cmds.append(DrawCursor(self, 0))
 
-        if not self.is_atomic();
+        if not self.is_atomic():
             cmds = paint_visual_effects(self.node, cmds, self.rect())
         return cmds
 
