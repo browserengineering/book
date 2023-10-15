@@ -64,8 +64,8 @@ class LineLayout:
                            for word in self.children])
         self.height = 1.25 * (max_ascent + max_descent)
 
-    def paint(self, display_list):
-        pass
+    def paint(self):
+        return []
 
     def __repr__(self):
         return "LineLayout(x={}, y={}, width={}, height={})".format(
@@ -102,10 +102,12 @@ class TextLayout:
 
         self.height = self.font.metrics("linespace")
 
-    def paint(self, display_list):
+    def paint(self):
+        cmds = []
         color = self.node.style["color"]
-        display_list.append(
+        cmds.append(
             DrawText(self.x, self.y, self.word, self.font, color))
+        return cmds
     
     @wbetools.js_hide
     def __repr__(self):
@@ -172,13 +174,15 @@ class BlockLayout:
         self.previous_word = text
         self.cursor_x += w + font.measure(" ")
 
-    def paint(self, display_list):
+    def paint(self):
+        cmds = []
         bgcolor = self.node.style.get("background-color",
                                       "transparent")
         if bgcolor != "transparent":
             x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
-            display_list.append(rect)
+            cmds.append(rect)
+        return cmds
 
     def __repr__(self):
         return "BlockLayout[{}](x={}, y={}, width={}, height={})".format(

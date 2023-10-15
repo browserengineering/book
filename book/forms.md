@@ -341,7 +341,7 @@ class Tab:
         self.document = DocumentLayout(self.nodes)
         self.document.layout()
         self.display_list = []
-        self.document.paint(self.display_list)
+        paint_tree(self.document, self.display_list)
 ```
 
 For this code to work, you'll also need to change `nodes` and `rules`

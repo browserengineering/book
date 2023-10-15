@@ -112,13 +112,14 @@ class InputLayout:
 
         self.height = self.font.metrics("linespace")
 
-    def paint(self, display_list):
+    def paint(self):
+        cmds = []
         bgcolor = self.node.style.get("background-color",
                                       "transparent")
         if bgcolor != "transparent":
             x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
-            display_list.append(rect)
+            cmds.append(rect)
 
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")
@@ -131,13 +132,14 @@ class InputLayout:
                 text = ""
 
         color = self.node.style["color"]
-        display_list.append(
+        cmds.append(
             DrawText(self.x, self.y, text, self.font, color))
 
         if self.node.is_focused:
             cx = self.x + self.font.measure(text)
-            display_list.append(DrawLine(
+            cmds.append(DrawLine(
                 cx, self.y, cx, self.y + self.height, "black", 1))
+        return cmds
 
     def __repr__(self):
         if self.node.tag == "input":
@@ -187,7 +189,8 @@ class BlockLayout:
         font = self.get_font(node)
         self.cursor_x += w + font.measure(" ")
 
-    def paint(self, display_list):
+    def paint(self):
+        cmds = []
         bgcolor = self.node.style.get("background-color",
                                       "transparent")
 
@@ -198,7 +201,8 @@ class BlockLayout:
             if bgcolor != "transparent":
                 x2, y2 = self.x + self.width, self.y + self.height
                 rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
-                display_list.append(rect)
+                cmds.append(rect)
+        return cmds
 
     def __repr__(self):
         return "BlockLayout[{}](x={}, y={}, width={}, height={}, node={})".format(

@@ -110,15 +110,17 @@ class BlockLayout:
         max_descent = max([metric["descent"] for metric in metrics])
         self.cursor_y = baseline + 1.25 * max_descent
 
-    def paint(self, display_list):
+    def paint(self):
+        cmds = []
         if isinstance(self.node, Element) and self.node.tag == "pre":
             x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, "gray")
-            display_list.append(rect)
+            cmds.append(rect)
 
         if self.layout_mode() == "inline":
             for x, y, word, font in self.display_list:
-                display_list.append(DrawText(x, y, word, font))
+                cmds.append(DrawText(x, y, word, font))
+        return cmds
 
     @wbetools.js_hide
     def __repr__(self):
@@ -144,8 +146,8 @@ class DocumentLayout:
         self.height = child.height
         wbetools.record("layout_post", self)
 
-    def paint(self, display_list):
-        pass
+    def paint(self):
+        return []
 
     def __repr__(self):
         return "DocumentLayout()"
@@ -192,7 +194,7 @@ class DrawRect:
             self.top, self.left, self.bottom, self.right, self.color)
 
 def paint_tree(layout_object, display_list):
-    layout_object.paint(display_list)
+    display_list.extend(layout_object.paint())
 
     for child in layout_object.children:
         paint_tree(child, display_list)
