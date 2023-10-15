@@ -725,6 +725,34 @@ class InputLayout:
         return "InputLayout(x={}, y={}, width={}, height={} {})".format(
             self.x, self.y, self.width, self.height, extra)
 
+def paint_visual_effects(node, cmds, rect):
+    opacity = float(node.style.get("opacity", "1.0"))
+    blend_mode = parse_blend_mode(node.style.get("mix-blend-mode"))
+    translation = parse_transform(
+        node.style.get("transform", ""))
+
+    border_radius = float(node.style.get("border-radius", "0px")[:-2])
+    if node.style.get("overflow", "visible") == "clip":
+        clip_radius = border_radius
+    else:
+        clip_radius = 0
+
+    needs_clip = node.style.get("overflow", "visible") == "clip"
+    needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
+        needs_clip or opacity != 1.0
+
+    save_layer = \
+        SaveLayer(skia.Paint(BlendMode=blend_mode, Alphaf=opacity), node, [
+            ClipRRect(rect, clip_radius, cmds,
+                should_clip=needs_clip),
+        ], should_save=needs_blend_isolation)
+
+    transform = Transform(translation, rect, node, [save_layer])
+
+    node.save_layer = save_layer
+ 
+    return [transform]
+
 SETTIMEOUT_CODE = "__runSetTimeout(dukpy.handle)"
 XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
 
