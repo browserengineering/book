@@ -200,12 +200,11 @@ class ClipRRect:
             canvas.restore()
 
 def paint_tree(layout_object, display_list):
-    cmds = layout_object.paint(display_list)
+    cmds = layout_object.paint()
     for child in layout_object.children:
         paint_tree(child, cmds)
 
-#    cmds = layout_object.paint_effects(cmds)
-
+    cmds = layout_object.paint_effects(cmds)
     display_list.extend(cmds)
 
 @wbetools.patch(BlockLayout)
@@ -238,7 +237,7 @@ class BlockLayout:
         font = get_font(size, weight, style)
         self.cursor_x += w + font.measureText(" ")
 
-    def paint(self, display_list):
+    def paint(self):
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
@@ -297,8 +296,8 @@ class LineLayout:
                            for word in self.children])
         self.height = 1.25 * (max_ascent + max_descent)
 
-    def paint(self, display_list):
-        return display_list
+    def paint(self):
+        return []
     
     def paint_effects(self, display_list):
         return display_list
@@ -322,7 +321,7 @@ class TextLayout:
 
         self.height = linespace(self.font)
 
-    def paint(self, display_list):
+    def paint(self):
         cmds = []
         color = self.node.style["color"]
         cmds.append(
@@ -349,7 +348,7 @@ class InputLayout:
         else:
             self.x = self.parent.x
 
-    def paint(self, display_list):
+    def paint(self):
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
@@ -415,8 +414,8 @@ def paint_visual_effects(node, cmds, rect):
 
 @wbetools.patch(DocumentLayout)
 class DocumentLayout:
-    def paint(self, display_list):
-        return display_list
+    def paint(self):
+        return []
 
     def paint_effects(self, display_list):
         return display_list
@@ -631,7 +630,6 @@ class Browser:
         self.draw()
 
     def raster_tab(self):
-        print('raster_tab')
         active_tab = self.tabs[self.active_tab]
         tab_height = math.ceil(active_tab.document.height)
 
@@ -641,9 +639,7 @@ class Browser:
 
         canvas = self.tab_surface.getCanvas()
         canvas.clear(skia.ColorWHITE)
-        print('rastering')
         active_tab.raster(canvas)
-        print('raster_tab done')
 
     def raster_chrome(self):
         canvas = self.chrome_surface.getCanvas()
