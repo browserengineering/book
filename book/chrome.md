@@ -309,23 +309,24 @@ class TextLayout:
 ```
 
 So that's `layout` for `LineLayout` and `TextLayout`. All that's left
-is painting. For `LineLayout` we just recurse:
+is painting. For `LineLayout` there is nothing to paint:
 
 ``` {.python}
 class LineLayout:
-    def paint(self, display_list):
-        for child in self.children:
-            child.paint(display_list)
+    def paint(self):
+        return []
 ```
 
 And each `TextLayout` creates a single `DrawText` call:
 
 ``` {.python}
 class TextLayout:
-    def paint(self, display_list):
+    def paint(self):
+        cmds = []
         color = self.node.style["color"]
-        display_list.append(
+        cmds.append(
             DrawText(self.x, self.y, self.word, self.font, color))
+        return cmds
 ```
 
 So, oof, well, this was quite a bit of refactoring. Take a moment to
