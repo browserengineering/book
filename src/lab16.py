@@ -312,17 +312,16 @@ class DocumentLayout:
             for obj in tree_to_list(self, []):
                 assert not obj.layout_needed()
 
-    def paint(self, display_list, dark_mode, scroll):
-        cmds = []
-        self.children[0].paint(cmds)
-        if scroll != None and scroll != 0:
+    def paint(self):
+        return []
+
+    def paint_effects(self, cmds):
+        if self.frame != self.frame.tab.root_frame and self.frame.scroll != 0:
             rect = skia.Rect.MakeLTRB(
-                self.x.get(), self.y.get(),
-                self.x.get() + self.width.get(), self.y.get() + self.height.get())
-            cmds = [Transform((0, -scroll), rect, self.node, cmds)]
-
-        display_list.extend(cmds)
-
+                self.x, self.y,
+                self.x + self.width, self.y + self.height)
+            cmds = [Transform((0, - self.frame.scroll), rect, self.node, cmds)]
+        return cmds
 
 @wbetools.patch(BlockLayout)
 class BlockLayout:
@@ -467,7 +466,7 @@ class BlockLayout:
         zoom = self.zoom.read(notify=self.children)
         self.cursor_x += w + font(self.children, node.style, zoom).measureText(' ')
 
-    def paint(self, display_list):
+    def paint(self):
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
@@ -484,10 +483,9 @@ class BlockLayout:
                     float(self.node.style["border-radius"].get()[:-2]),
                     self.zoom.get())
                 cmds.append(DrawRRect(rect, radius, bgcolor))
+        return cmds
  
-        for child in self.children.get():
-            child.paint(cmds)
-
+    def paint_effects(self, cmds):
         if self.node.is_focused \
             and "contenteditable" in self.node.attributes:
             text_nodes = [
@@ -500,9 +498,15 @@ class BlockLayout:
             else:
                 cmds.append(DrawCursor(self, 0))
 
+        is_atomic = not isinstance(self.node, Text) and \
+            (self.node.tag == "input" or self.node.tag == "button")
+
         if not is_atomic:
+            rect = skia.Rect.MakeLTRB(
+                self.x, self.y, self.x + self.width,
+                self.y + self.height)
             cmds = paint_visual_effects(self.node, cmds, rect)
-        display_list.extend(cmds)
+        return cmds
 
 def DrawCursor(elt, offset):
     x = elt.x.get() + offset
@@ -599,10 +603,10 @@ class LineLayout:
 
         self.has_dirty_descendants = False
 
-    def paint(self, display_list):
-        for child in self.children:
-            child.paint(display_list)
+    def paint(self):
+        return []
 
+    def paint_effects(self, cmds):
         outline_rect = skia.Rect.MakeEmpty()
         outline_node = None
         for child in self.children:
@@ -612,7 +616,8 @@ class LineLayout:
                 outline_node = child.node.parent
 
         if outline_node:
-            paint_outline(outline_node, display_list, outline_rect, self.zoom.get())
+            paint_outline(outline_node, cmds, outline_rect, self.zoom.get())
+        return cmds
 
 @wbetools.patch(TextLayout)
 class TextLayout:
@@ -693,10 +698,17 @@ class TextLayout:
 
         self.has_dirty_descendants = False
 
-    def paint(self, display_list):
+    def paint(self):
+        cmds = []
         leading = self.height.get() / 1.25 * .25 / 2
         color = self.node.style['color'].get()
-        display_list.append(DrawText(self.x.get(), self.y.get() + leading, self.word, self.font.get(), color))
+        cmds.append(DrawText(
+            self.x.get(), self.y.get() + leading,
+            self.word, self.font.get(), color))
+        return cmds
+
+    def paint_effects(self, cmds):
+        return cmds
 
     def rect(self):
         return skia.Rect.MakeLTRB(
@@ -784,7 +796,7 @@ class InputLayout(EmbedLayout):
         self.height.set(linespace(font))
         self.layout_after()
 
-    def paint(self, display_list):
+    def paint(self):
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
@@ -815,9 +827,12 @@ class InputLayout(EmbedLayout):
         if self.node.is_focused and self.node.tag == "input":
             cmds.append(DrawCursor(self, self.font.get().measureText(text)))
 
+        return cmds
+
+    def paint_effects(self, cmds):
         cmds = paint_visual_effects(self.node, cmds, rect)
         paint_outline(self.node, cmds, rect, self.zoom.get())
-        display_list.extend(cmds)
+        return cmds
 
 @wbetools.patch(ImageLayout)
 class ImageLayout(EmbedLayout):
@@ -849,7 +864,7 @@ class ImageLayout(EmbedLayout):
         self.height.set(max(self.img_height, linespace(font)))
         self.layout_after()
 
-    def paint(self, display_list):
+    def paint(self):
         cmds = []
         rect = skia.Rect.MakeLTRB(
             self.x.get(),
@@ -858,7 +873,10 @@ class ImageLayout(EmbedLayout):
             self.y.get() + self.height.get())
         quality = self.node.style["image-rendering"].get()
         cmds.append(DrawImage(self.node.image, rect, quality))
-        display_list.extend(cmds)
+        return cmds
+
+    def paint_effects(self, cmds):
+        return cmds
 
 @wbetools.patch(IframeLayout)
 class IframeLayout(EmbedLayout):
@@ -888,22 +906,22 @@ class IframeLayout(EmbedLayout):
             self.node.frame.document.width.mark()
         self.layout_after()
 
-    def paint(self, display_list):
-        frame_cmds = []
+    def paint(self):
+        cmds = []
         rect = skia.Rect.MakeLTRB(self.x.get(), self.y.get(), self.x.get() + self.width.get(), self.y.get() + self.height.get())
         bgcolor = self.node.style["background-color"].get()
         if bgcolor != 'transparent':
             radius = device_px(float(self.node.style["border-radius"].get()[:-2]), self.zoom.get())
-            frame_cmds.append(DrawRRect(rect, radius, bgcolor))
-        if self.node.frame:
-            self.node.frame.paint(frame_cmds)
+            cmds.append(DrawRRect(rect, radius, bgcolor))
+
+    def paint_effects(self, cmds):
         diff = device_px(1, self.zoom.get())
         offset = (self.x.get() + diff, self.y.get() + diff)
-        cmds = [Transform(offset, rect, self.node, frame_cmds)]
+        cmds = [Transform(offset, rect, self.node, cmds)]
         inner_rect = skia.Rect.MakeLTRB(self.x.get() + diff, self.y.get() + diff, self.x.get() + self.width.get() - diff, self.y.get() + self.height.get() - diff)
         cmds = paint_visual_effects(self.node, cmds, inner_rect)
         paint_outline(self.node, cmds, rect, self.zoom.get())
-        display_list.extend(cmds)
+        return cmds
 
 def init_style(node):
     node.style = dict([
@@ -1012,6 +1030,19 @@ class JSContext:
         elt.attributes['style'] = s
         dirty_style(elt)
         frame.set_needs_render()
+
+def paint_tree(layout_object, display_list):
+    cmds = layout_object.paint()
+
+    if isinstance(layout_object, IframeLayout) and \
+        layout_object.node.frame:
+        paint_tree(layout_object.node.frame.document, cmds)
+    else:
+        for child in layout_object.children:
+            paint_tree(child, cmds)
+
+    cmds = layout_object.paint_effects(cmds)
+    display_list.extend(cmds)
 
 @wbetools.patch(Frame)
 class Frame:
