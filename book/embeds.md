@@ -1040,6 +1040,7 @@ Then painting of an `IframeLayout` is just drawing a rectangle and background:
 
 ``` {.python}
 class IframeLayout(EmbedLayout):
+    # ...
     def paint(self):
         cmds = []
 
