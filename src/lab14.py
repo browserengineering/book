@@ -508,6 +508,9 @@ class InputLayout:
         return cmds
 
     def paint_effects(self, cmds):
+        rect = skia.Rect.MakeLTRB(
+            self.x, self.y, self.x + self.width,
+            self.y + self.height)
         cmds = paint_visual_effects(self.node, cmds, rect)
         paint_outline(self.node, cmds, rect, self.zoom)
         return cmds 
