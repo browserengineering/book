@@ -28,7 +28,7 @@ from lab8 import Text, Element, INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, parse_color, parse_blend_mode, linespace
-from lab11 import paint_tree, paint_visual_effects
+from lab11 import paint_tree
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
 from lab12 import Task, REFRESH_RATE_SEC, clamp_scroll, Chrome
 
