@@ -38,8 +38,9 @@ class Element:
 
 def print_tree(node, indent=0):
     print(" " * indent, node)
-    for child in node.children:
-        print_tree(child, indent + 2)
+    if hasattr(node, "children"):
+        for child in node.children:
+            print_tree(child, indent + 2)
 
 class HTMLParser:
     def __init__(self, body):

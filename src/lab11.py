@@ -204,7 +204,7 @@ def paint_tree(layout_object, display_list):
     for child in layout_object.children:
         paint_tree(child, cmds)
 
-    cmds = layout_object.paint_effects(cmds)
+#    cmds = layout_object.paint_effects(cmds)
 
     display_list.extend(cmds)
 
@@ -383,7 +383,7 @@ class InputLayout:
 
         return cmds
 
-    def paint_effects(cmds):
+    def paint_effects(self, cmds):
         rect = skia.Rect.MakeLTRB(
             self.x, self.y, self.x + self.width,
             self.y + self.height)
@@ -429,6 +429,7 @@ class Tab:
         self.document.layout()
         self.display_list = []
         paint_tree(self.document, self.display_list)
+        print(len(self.display_list))
 
     def raster(self, canvas):
         for cmd in self.display_list:
@@ -631,6 +632,7 @@ class Browser:
         self.draw()
 
     def raster_tab(self):
+        print('raster_tab')
         active_tab = self.tabs[self.active_tab]
         tab_height = math.ceil(active_tab.document.height)
 
@@ -640,7 +642,9 @@ class Browser:
 
         canvas = self.tab_surface.getCanvas()
         canvas.clear(skia.ColorWHITE)
+        print('rastering')
         active_tab.raster(canvas)
+        print('raster_tab done')
 
     def raster_chrome(self):
         canvas = self.chrome_surface.getCanvas()
