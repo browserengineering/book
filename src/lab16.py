@@ -503,8 +503,8 @@ class BlockLayout:
 
         if not is_atomic:
             rect = skia.Rect.MakeLTRB(
-                self.x, self.y, self.x + self.width,
-                self.y + self.height)
+                self.x.get(), self.y.get(), self.x.get() + self.width.get(),
+                self.y.get() + self.height.get())
             cmds = paint_visual_effects(self.node, cmds, rect)
         return cmds
 
@@ -830,6 +830,10 @@ class InputLayout(EmbedLayout):
         return cmds
 
     def paint_effects(self, cmds):
+        rect = skia.Rect.MakeLTRB(
+            self.x.get(), self.y.get(), self.x.get() + self.width.get(),
+            self.y.get() + self.height.get())
+
         cmds = paint_visual_effects(self.node, cmds, rect)
         paint_outline(self.node, cmds, rect, self.zoom.get())
         return cmds
@@ -908,13 +912,21 @@ class IframeLayout(EmbedLayout):
 
     def paint(self):
         cmds = []
-        rect = skia.Rect.MakeLTRB(self.x.get(), self.y.get(), self.x.get() + self.width.get(), self.y.get() + self.height.get())
+        rect = skia.Rect.MakeLTRB(
+            self.x.get(), self.y.get(),
+            self.x.get() + self.width.get(),
+            self.y.get() + self.height.get())
         bgcolor = self.node.style["background-color"].get()
         if bgcolor != 'transparent':
             radius = device_px(float(self.node.style["border-radius"].get()[:-2]), self.zoom.get())
             cmds.append(DrawRRect(rect, radius, bgcolor))
+        return cmds
 
     def paint_effects(self, cmds):
+        rect = skia.Rect.MakeLTRB(
+            self.x.get(), self.y.get(),
+            self.x.get() + self.width.get(),
+            self.y.get() + self.height.get())
         diff = device_px(1, self.zoom.get())
         offset = (self.x.get() + diff, self.y.get() + diff)
         cmds = [Transform(offset, rect, self.node, cmds)]
@@ -1038,8 +1050,12 @@ def paint_tree(layout_object, display_list):
         layout_object.node.frame:
         paint_tree(layout_object.node.frame.document, cmds)
     else:
-        for child in layout_object.children:
-            paint_tree(child, cmds)
+        if isinstance(layout_object.children, ProtectedField):
+            for child in layout_object.children.get():
+                paint_tree(child, cmds)
+        else:
+            for child in layout_object.children:
+                paint_tree(child, cmds)
 
     cmds = layout_object.paint_effects(cmds)
     display_list.extend(cmds)
@@ -1321,6 +1337,26 @@ class Tab:
         self.root_frame.scroll_changed_in_frame = False
 
         self.browser.commit(self, commit_data)
+
+    def render(self):
+        self.browser.measure.time('render')
+
+        for id, frame in self.window_id_to_frame.items():
+            frame.render()
+
+        if self.needs_accessibility:
+            self.accessibility_tree = AccessibilityNode(self.root_frame.nodes)
+            self.accessibility_tree.build()
+            self.needs_accessibility = False
+            self.needs_paint = True
+
+        if self.needs_paint:
+            self.display_list = []
+            paint_tree(self.root_frame.document, self.display_list)
+            self.needs_paint = False
+
+        self.browser.measure.stop('render')
+
 
 if __name__ == "__main__":
     wbetools.parse_flags()
