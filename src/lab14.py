@@ -217,7 +217,7 @@ class BlockLayout:
         return not isinstance(self.node, Text) and \
             (self.node.tag == "input" or self.node.tag == "button")
 
-    def rect(self):
+    def self_rect(self):
         return skia.Rect.MakeLTRB(
             self.x, self.y,
             self.x + self.width, self.y + self.height)
@@ -235,12 +235,12 @@ class BlockLayout:
                 radius = device_px(
                     float(self.node.style.get("border-radius", "0px")[:-2]),
                         self.zoom)
-                cmds.append(DrawRRect(self.rect(), radius, bgcolor))
+                cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
         return cmds
 
     def paint_effects(self, cmds):
         if not self.is_atomic():
-            cmds = paint_visual_effects(self.node, cmds, self.rect())
+            cmds = paint_visual_effects(self.node, cmds, self.self_rect())
 
         return cmds
 
@@ -431,11 +431,6 @@ class TextLayout:
 
     def paint_effects(self, cmds):
         return cmds
-
-    def rect(self):
-        return skia.Rect.MakeLTRB(
-            self.x, self.y, self.x + self.width,
-            self.y + self.height)
     
     def __repr__(self):
         return ("TextLayout(x={}, y={}, width={}, height={}, " +
@@ -471,7 +466,7 @@ class InputLayout:
         else:
             self.x = self.parent.x
 
-    def rect(self):
+    def self_rect(self):
         return skia.Rect.MakeLTRB(
             self.x, self.y, self.x + self.width,
             self.y + self.height)
@@ -484,7 +479,7 @@ class InputLayout:
             radius = device_px(
                 float(self.node.style.get("border-radius", "0px")[:-2]),
                 self.zoom)
-            cmds.append(DrawRRect(self.rect(), radius, bgcolor))
+            cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
 
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")
@@ -507,8 +502,8 @@ class InputLayout:
         return cmds
 
     def paint_effects(self, cmds):
-        cmds = paint_visual_effects(self.node, cmds, self.rect())
-        paint_outline(self.node, cmds, self.rect(), self.zoom)
+        cmds = paint_visual_effects(self.node, cmds, self.self_rect())
+        paint_outline(self.node, cmds, self.self_rect(), self.zoom)
         return cmds 
 
     def __repr__(self):

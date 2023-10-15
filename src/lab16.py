@@ -470,7 +470,7 @@ class BlockLayout:
         zoom = self.zoom.read(notify=self.children)
         self.cursor_x += w + font(self.children, node.style, zoom).measureText(' ')
 
-    def rect(self):
+    def self_rect(self):
         return skia.Rect.MakeLTRB(
             self.x.get(), self.y.get(), self.x.get() + self.width.get(),
             self.y.get() + self.height.get())
@@ -488,7 +488,7 @@ class BlockLayout:
                 radius = device_px(
                     float(self.node.style["border-radius"].get()[:-2]),
                     self.zoom.get())
-                cmds.append(DrawRRect(self.rect(), radius, bgcolor))
+                cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
         return cmds
  
     def paint_effects(self, cmds):

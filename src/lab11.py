@@ -241,7 +241,7 @@ class BlockLayout:
         return not isinstance(self.node, Text) and \
             (self.node.tag == "input" or self.node.tag == "button")
 
-    def rect(self):
+    def self_rect(self):
         return skia.Rect.MakeLTRB(
             self.x, self.y,
             self.x + self.width, self.y + self.height)
@@ -256,13 +256,13 @@ class BlockLayout:
             if bgcolor != "transparent":
                 radius = float(
                     self.node.style.get("border-radius", "0px")[:-2])
-                cmds.append(DrawRRect(self.rect(), radius, bgcolor))
+                cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
 
         return cmds
 
     def paint_effects(self, cmds):
         if not self.is_atomic():
-            cmds = paint_visual_effects(self.node, cmds, self.rect())
+            cmds = paint_visual_effects(self.node, cmds, self.self_rect())
         return cmds
 
 @wbetools.patch(LineLayout)
@@ -344,7 +344,7 @@ class InputLayout:
         else:
             self.x = self.parent.x
 
-    def rect(self):
+    def self_rect(self):
         rect = skia.Rect.MakeLTRB(
             self.x, self.y, self.x + self.width,
             self.y + self.height)
@@ -356,7 +356,7 @@ class InputLayout:
                                  "transparent")
         if bgcolor != "transparent":
             radius = float(self.node.style.get("border-radius", "0px")[:-2])
-            cmds.append(DrawRRect(self.rect(), radius, bgcolor))
+            cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
 
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")
@@ -380,7 +380,7 @@ class InputLayout:
         return cmds
 
     def paint_effects(self, cmds):
-        return paint_visual_effects(self.node, cmds, self.rect())
+        return paint_visual_effects(self.node, cmds, self.self_rect())
 
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
