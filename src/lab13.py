@@ -28,6 +28,7 @@ from lab8 import Text, Element, INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, parse_color, parse_blend_mode, linespace
+from lab11 import paint_tree, paint_visual_effects
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
 from lab12 import Task, REFRESH_RATE_SEC, clamp_scroll, Chrome
 
@@ -495,7 +496,7 @@ class BlockLayout:
         font = get_font(size, weight, size)
         self.cursor_x += w + font.measureText(" ")
 
-    def paint(self, display_list):
+    def paint(self):
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
@@ -514,12 +515,18 @@ class BlockLayout:
                     self.node.style.get("border-radius", "0px")[:-2])
                 cmds.append(DrawRRect(rect, radius, bgcolor))
 
-        for child in self.children:
-            child.paint(cmds)
+        return cmds
+
+    def paint_effects(self, cmds):
+        is_atomic = not isinstance(self.node, Text) and \
+            (self.node.tag == "input" or self.node.tag == "button")
 
         if not is_atomic:
+            rect = skia.Rect.MakeLTRB(
+                self.x, self.y,
+                self.x + self.width, self.y + self.height)
             cmds = paint_visual_effects(self.node, cmds, rect)
-        display_list.extend(cmds)
+        return cmds
 
     def __repr__(self):
         return "BlockLayout[{}](x={}, y={}, width={}, height={}, node={})".format(
@@ -542,8 +549,11 @@ class DocumentLayout:
         child.layout()
         self.height = child.height
 
-    def paint(self, display_list):
-        self.children[0].paint(display_list)
+    def paint(self):
+        return []
+
+    def paint_effects(self, cmds):
+        return cmds
 
     def __repr__(self):
         return "DocumentLayout()"
@@ -584,9 +594,11 @@ class LineLayout:
                            for word in self.children])
         self.height = 1.25 * (max_ascent + max_descent)
 
-    def paint(self, display_list):
-        for child in self.children:
-            child.paint(display_list)
+    def paint(self):
+        return []
+
+    def paint_effects(self, cmds):
+        return cmds
 
     def __repr__(self):
         return "LineLayout(x={}, y={}, width={}, height={}, node={})".format(
@@ -622,10 +634,15 @@ class TextLayout:
 
         self.height = linespace(self.font)
 
-    def paint(self, display_list):
+    def paint(self):
+        cmds = []
         color = self.node.style["color"]
-        display_list.append(
+        cmds.append(
             DrawText(self.x, self.y, self.word, self.font, color))
+        return cmds
+
+    def paint_effects(self, cmds):
+        return cmds
     
     def __repr__(self):
         return ("TextLayout(x={}, y={}, width={}, height={}, " +
@@ -659,7 +676,7 @@ class InputLayout:
         else:
             self.x = self.parent.x
 
-    def paint(self, display_list):
+    def paint(self):
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
@@ -691,8 +708,14 @@ class InputLayout:
             cmds.append(DrawLine(
                 cx, self.y, cx, self.y + self.height, "black", 1))
 
-        cmds = paint_visual_effects(self.node, cmds, rect)
-        display_list.extend(cmds)
+        return cmds
+
+    def paint_effects(self, cmds):
+        rect = skia.Rect.MakeLTRB(
+            self.x, self.y, self.x + self.width,
+            self.y + self.height)
+
+        return paint_visual_effects(self.node, cmds, rect)
 
     def __repr__(self):
         if self.node.tag == "input":
@@ -701,34 +724,6 @@ class InputLayout:
             extra = "type=button text={}".format(self.node.children[0].text)
         return "InputLayout(x={}, y={}, width={}, height={} {})".format(
             self.x, self.y, self.width, self.height, extra)
-
-def paint_visual_effects(node, cmds, rect):
-    opacity = float(node.style.get("opacity", "1.0"))
-    blend_mode = parse_blend_mode(node.style.get("mix-blend-mode"))
-    translation = parse_transform(
-        node.style.get("transform", ""))
-
-    border_radius = float(node.style.get("border-radius", "0px")[:-2])
-    if node.style.get("overflow", "visible") == "clip":
-        clip_radius = border_radius
-    else:
-        clip_radius = 0
-
-    needs_clip = node.style.get("overflow", "visible") == "clip"
-    needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
-        needs_clip or opacity != 1.0
-
-    save_layer = \
-        SaveLayer(skia.Paint(BlendMode=blend_mode, Alphaf=opacity), node, [
-            ClipRRect(rect, clip_radius, cmds,
-                should_clip=needs_clip),
-        ], should_save=needs_blend_isolation)
-
-    transform = Transform(translation, rect, node, [save_layer])
-
-    node.save_layer = save_layer
-
-    return [transform]
 
 SETTIMEOUT_CODE = "__runSetTimeout(dukpy.handle)"
 XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
@@ -1225,7 +1220,7 @@ class Tab:
         
         if self.needs_paint:
             self.display_list = []
-            self.document.paint(self.display_list)
+            paint_tree(self.document, self.display_list)
             self.needs_paint = False
 
         self.browser.measure.stop('render')

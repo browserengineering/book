@@ -299,8 +299,8 @@ class LineLayout:
     def paint(self):
         return []
     
-    def paint_effects(self, display_list):
-        return display_list
+    def paint_effects(self, cmds):
+        return cmds
 
 @wbetools.patch(TextLayout)
 class TextLayout:
@@ -417,8 +417,8 @@ class DocumentLayout:
     def paint(self):
         return []
 
-    def paint_effects(self, display_list):
-        return display_list
+    def paint_effects(self, cmds):
+        return cmds
 
 @wbetools.patch(Tab)
 class Tab:

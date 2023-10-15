@@ -28,7 +28,7 @@ from lab9 import EVENT_DISPATCH_CODE
 from lab10 import COOKIE_JAR, JSContext, URL
 from lab11 import get_font, FONTS, DrawLine, DrawRect, DrawOutline, linespace, DrawText, SaveLayer, ClipRRect
 from lab11 import BlockLayout, LineLayout, TextLayout, InputLayout, Chrome
-from lab11 import paint_visual_effects, parse_blend_mode, parse_color, Tab, Browser
+from lab11 import Tab, Browser, paint_tree
 
 class MeasureTime:
 
@@ -277,7 +277,7 @@ class Tab:
         self.document = DocumentLayout(self.nodes)
         self.document.layout()
         self.display_list = []
-        self.document.paint(self.display_list)
+        paint_tree(self.document, self.display_list)
         self.needs_render = False
         self.browser.measure.stop('render')
 
