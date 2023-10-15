@@ -546,36 +546,35 @@ again as we go up the layout tree.
 
 I think it's most convenient to do that by adding a `paint`\index{paint}
 function to each layout object, which appends any of its own layout objects to
-the display list and then recursively paints the child layouts. A neat
-trick here is to pass the list itself as an argument, and have the
-recursive function append to that list. For `DocumentLayout`, which
-only has one child, the recursion looks like this:
+the display list. Then there is a separate function, `paint_tree`, that
+recursively calls `paint` on all layout objects.  A neat trick here is to pass
+the list itself as an argument, and have each call to `paint` append to that
+list:
+
+``` {.python}
+def paint_tree(layout_object, display_list):
+    layout_object.paint(display_list)
+
+    for child in layout_object.children:
+        paint_tree(child, display_list)
+```
+
+For `DocumentLayout`, there is
+nothing to paint:
 
 ``` {.python}
 class DocumentLayout:
     def paint(self, display_list):
-        self.children[0].paint(display_list)
+        pass
 ```
 
 You can now delete the line that computes a `DocumentLayout`'s
 `display_list` field.
 
-For a `BlockLayout` with multiple children, `paint` is called on each
-child:
-
-``` {.python}
-class BlockLayout:
-    def paint(self, display_list):
-        for child in self.children:
-            child.paint(display_list)
-```
-
-Again, delete the line that computes a `BlockLayout`'s `display_list`
-field by copying from child layout objects.
-
-Finally for a `BlockLayout` object with text inside, we need to copy
-over the `display_list` field that it computes during `recurse` and
-`flush`:
+For a `BlockLayout` object, we need to copy over the `display_list` field that
+it computes during `recurse` and `flush`:^[And again, delete the line that
+computes a `BlockLayout`'s `display_list` field by copying from child layout
+objects.]
 
 ``` {.python expected=False}
 class BlockLayout:
@@ -591,7 +590,7 @@ class Browser:
     def load(self, url):
         # ...
         self.display_list = []
-        self.document.paint(self.display_list)
+        paint_tree(self.document, self.display_list)
         self.draw()
 ```
 
@@ -645,7 +644,7 @@ class DrawRect:
 ```
 
 Now `BlockLayout` must add `DrawText` objects for each word it wants
-to draw:[^why-not-change]
+to draw, but only in inline mode:[^why-not-change]
 
 [^why-not-change]: Why not change the `display_list` field inside an
 `BlockLayout` to contain `DrawText` commands directly? I suppose you
@@ -655,9 +654,9 @@ commands in one place.
 ``` {.python}
 class BlockLayout:
     def paint(self, display_list):
-        for x, y, word, font in self.display_list:
-            display_list.append(DrawText(x, y, word, font))
-        # ...
+        if self.layout_mode() == "inline":
+            for x, y, word, font in self.display_list:
+                display_list.append(DrawText(x, y, word, font))
 ```
 
 But it can also add a `DrawRect` command to draw a background. Let's add

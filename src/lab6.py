@@ -13,7 +13,7 @@ from lab1 import URL
 from lab2 import WIDTH, HEIGHT
 from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
-from lab5 import BLOCK_ELEMENTS, DrawRect, DrawText
+from lab5 import BLOCK_ELEMENTS, DrawRect, DrawText, paint_tree
 from lab5 import BlockLayout, DocumentLayout, Browser
 import wbetools
 
@@ -245,9 +245,6 @@ class BlockLayout:
             display_list.append(DrawText(self.x + x, self.y + y,
                                          word, font, color))
 
-        for child in self.children:
-            child.paint(display_list)
-
     def __repr__(self):
         return "BlockLayout[{}](x={}, y={}, width={}, height={})".format(
             self.layout_mode(), self.x, self.y, self.width, self.height)
@@ -315,7 +312,7 @@ class Browser:
         self.document = DocumentLayout(self.nodes)
         self.document.layout()
         self.display_list = []
-        self.document.paint(self.display_list)
+        paint_tree(self.document, self.display_list)
         self.draw()
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ import urllib.parse
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
-from lab5 import BLOCK_ELEMENTS, DrawRect, DocumentLayout
+from lab5 import BLOCK_ELEMENTS, DrawRect, DocumentLayout, paint_tree
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import DrawText, URL, tree_to_list
@@ -200,9 +200,6 @@ class BlockLayout:
                 rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
                 display_list.append(rect)
 
-        for child in self.children:
-            child.paint(display_list)
-
     def __repr__(self):
         return "BlockLayout[{}](x={}, y={}, width={}, height={}, node={})".format(
             self.layout_mode(), self.x, self.y, self.width, self.height, self.node)
@@ -245,7 +242,7 @@ class Tab:
         self.document = DocumentLayout(self.nodes)
         self.document.layout()
         self.display_list = []
-        self.document.paint(self.display_list)
+        paint_tree(self.document, self.display_list)
 
     def draw(self, canvas, offset):
         for cmd in self.display_list:

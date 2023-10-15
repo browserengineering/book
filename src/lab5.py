@@ -120,9 +120,6 @@ class BlockLayout:
             for x, y, word, font in self.display_list:
                 display_list.append(DrawText(x, y, word, font))
 
-        for child in self.children:
-            child.paint(display_list)
-
     @wbetools.js_hide
     def __repr__(self):
         return "BlockLayout[{}](x={}, y={}, width={}, height={}, node={})".format(
@@ -148,7 +145,7 @@ class DocumentLayout:
         wbetools.record("layout_post", self)
 
     def paint(self, display_list):
-        self.children[0].paint(display_list)
+        pass
 
     def __repr__(self):
         return "DocumentLayout()"
@@ -194,6 +191,12 @@ class DrawRect:
         return "DrawRect(top={} left={} bottom={} right={} color={})".format(
             self.top, self.left, self.bottom, self.right, self.color)
 
+def paint_tree(layout_object, display_list):
+    layout_object.paint(display_list)
+
+    for child in layout_object.children:
+        paint_tree(child, display_list)
+
 @wbetools.patch(Browser)
 class Browser:
     def load(self, url):
@@ -202,7 +205,7 @@ class Browser:
         self.document = DocumentLayout(self.nodes)
         self.document.layout()
         self.display_list = []
-        self.document.paint(self.display_list)
+        paint_tree(self.document, self.display_list)
         self.draw()
 
     def draw(self):

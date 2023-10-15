@@ -199,6 +199,15 @@ class ClipRRect:
         if self.should_clip:
             canvas.restore()
 
+def paint_tree(layout_object, display_list):
+    cmds = layout_object.paint(display_list)
+    for child in layout_object.children:
+        paint_tree(child, cmds)
+
+    cmds = layout_object.paint_effects(cmds)
+
+    display_list.extend(cmds)
+
 @wbetools.patch(BlockLayout)
 class BlockLayout:
     def word(self, node, word):
@@ -248,12 +257,18 @@ class BlockLayout:
                     self.node.style.get("border-radius", "0px")[:-2])
                 cmds.append(DrawRRect(rect, radius, bgcolor))
 
-        for child in self.children:
-            child.paint(cmds)
+        return cmds
+
+    def paint_effects(self, cmds):
+        is_atomic = not isinstance(self.node, Text) and \
+            (self.node.tag == "input" or self.node.tag == "button")
 
         if not is_atomic:
+            rect = skia.Rect.MakeLTRB(
+                self.x, self.y,
+                self.x + self.width, self.y + self.height)
             cmds = paint_visual_effects(self.node, cmds, rect)
-        display_list.extend(cmds)
+        return cmds
 
 @wbetools.patch(LineLayout)
 class LineLayout:
@@ -282,6 +297,12 @@ class LineLayout:
                            for word in self.children])
         self.height = 1.25 * (max_ascent + max_descent)
 
+    def paint(self, display_list):
+        return display_list
+    
+    def paint_effects(self, display_list):
+        return display_list
+
 @wbetools.patch(TextLayout)
 class TextLayout:
     def layout(self):
@@ -300,6 +321,16 @@ class TextLayout:
             self.x = self.parent.x
 
         self.height = linespace(self.font)
+
+    def paint(self, display_list):
+        cmds = []
+        color = self.node.style["color"]
+        cmds.append(
+            DrawText(self.x, self.y, self.word, self.font, color))
+        return cmds
+
+    def paint_effects(self, cmds):
+        return cmds
 
 @wbetools.patch(InputLayout)
 class InputLayout:
@@ -350,8 +381,14 @@ class InputLayout:
             cmds.append(DrawLine(
                 cx, self.y, cx, self.y + self.height, "black", 1))
 
-        cmds = paint_visual_effects(self.node, cmds, rect)
-        display_list.extend(cmds)
+        return cmds
+
+    def paint_effects(cmds):
+        rect = skia.Rect.MakeLTRB(
+            self.x, self.y, self.x + self.width,
+            self.y + self.height)
+
+        return paint_visual_effects(self.node, cmds, rect)
 
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
@@ -376,6 +413,14 @@ def paint_visual_effects(node, cmds, rect):
         ], should_save=needs_blend_isolation),
     ]
 
+@wbetools.patch(DocumentLayout)
+class DocumentLayout:
+    def paint(self, display_list):
+        return display_list
+
+    def paint_effects(self, display_list):
+        return display_list
+
 @wbetools.patch(Tab)
 class Tab:
     def render(self):
@@ -383,7 +428,7 @@ class Tab:
         self.document = DocumentLayout(self.nodes)
         self.document.layout()
         self.display_list = []
-        self.document.paint(self.display_list)
+        paint_tree(self.document, self.display_list)
 
     def raster(self, canvas):
         for cmd in self.display_list:
