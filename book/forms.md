@@ -135,20 +135,22 @@ background:
 
 ``` {.python}
 class InputLayout:
-    def paint(self, display_list):
+    def paint(self):
+        cmds = []
         bgcolor = self.node.style.get("background-color",
                                       "transparent")
         if bgcolor != "transparent":
             x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
-            display_list.append(rect)
+            cmds.append(rect)
+        return cmds
 ```
 
 It then needs to get the input element's text contents:
 
 ``` {.python}
 class InputLayout:
-    def paint(self, display_list):
+    def paint(self):
         # ...
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")
@@ -159,6 +161,7 @@ class InputLayout:
             else:
                 print("Ignoring HTML contents inside button")
                 text = ""
+        # ...
 ```
 
 Note that `<button>` elements can in principle contain complex HTML,
@@ -171,10 +174,12 @@ Finally, we draw that text:
 
 ``` {.python}
 class InputLayout:
-    def paint(self, display_list):
+    def paint(self):
+        cmds = []
         color = self.node.style["color"]
-        display_list.append(
+        cmds.append(
             DrawText(self.x, self.y, text, self.font, color))
+        return cmds
 ```
 
 By this point in the book, you've seen many layout objects, so I'm
@@ -266,7 +271,7 @@ in this case:[^atomic-inline-input]
 ``` {.python}
 class BlockLayout:
     # ...
-    def paint(self, display_list):
+    def paint(self):
         # ...
         is_atomic = not isinstance(self.node, Text) and \
             (self.node.tag == "input" or self.node.tag == "button")
@@ -275,7 +280,7 @@ class BlockLayout:
             if bgcolor != "transparent":
                 x2, y2 = self.x + self.width, self.y + self.height
                 rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
-                display_list.append(rect)
+                cmds.append(rect)
 
 ```
 
@@ -504,11 +509,11 @@ an `input` element is focused:
 
 ``` {.python}
 class InputLayout:
-    def paint(self, display_list):
+    def paint(self):
         # ...
         if self.node.is_focused:
             cx = self.x + self.font.measure(text)
-            display_list.append(DrawLine(
+            cmds.append(DrawLine(
                 cx, self.y, cx, self.y + self.height, "black", 1))
 ```
 

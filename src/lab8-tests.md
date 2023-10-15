@@ -73,13 +73,9 @@ of a text input should be its `value` attribute:
     >>> form = browser.tabs[0].document.children[0].children[0].children[0]
     >>> text_input = form.children[0].children[0].children[1]
     >>> button = form.children[2].children[0].children[0]
-    >>> display_list = []
-    >>> text_input.paint(display_list)
-    >>> display_list
+    >>> text_input.paint()
     [DrawRect(top=20.25 left=85 bottom=32.25 right=285 color=lightblue), DrawText(text=1)]
-    >>> display_list = []
-    >>> button.paint(display_list)
-    >>> display_list
+    >>> button.paint()
     [DrawRect(top=50.25 left=13 bottom=62.25 right=213 color=orange), DrawText(text=Submit!)]
 
 Testing form submission
