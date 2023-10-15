@@ -242,13 +242,14 @@ element, the browser can consult it for styling information:
 
 ``` {.python}
 class BlockLayout:
-    def paint(self, display_list):
+    def paint(self):
+        # ...
         bgcolor = self.node.style.get("background-color",
                                       "transparent")
         if bgcolor != "transparent":
             x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
-            display_list.append(rect)
+            cmds.append(rect)
         # ...
 ```
 
@@ -916,10 +917,10 @@ def flush(self):
 That `display_list` is converted to drawing commands in `paint`:
 
 ``` {.python indent=4}
-def paint(self, display_list):
+def paint(self):
     # ...
     for x, y, word, font, color in self.display_list:
-        display_list.append(DrawText(self.x + x, self.y + y,
+        cmds.append(DrawText(self.x + x, self.y + y,
                                      word, font, color))
 ```
 
