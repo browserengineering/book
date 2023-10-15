@@ -472,7 +472,7 @@ class InputLayout:
         else:
             self.x = self.parent.x
 
-    def paint(self, display_list):
+    def paint(self):
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
@@ -505,10 +505,12 @@ class InputLayout:
             cx = self.x + self.font.measureText(text)
             cmds.append(DrawLine(cx, self.y, cx, self.y + self.height,
                                  "black", 1))
+        return cmds
 
+    def paint_effects(self, cmds):
         cmds = paint_visual_effects(self.node, cmds, rect)
         paint_outline(self.node, cmds, rect, self.zoom)
-        display_list.extend(cmds)
+        return cmds 
 
     def __repr__(self):
         return "InputLayout(x={}, y={}, width={}, height={})".format(
