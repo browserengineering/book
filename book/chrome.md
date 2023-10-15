@@ -313,20 +313,19 @@ is painting. For `LineLayout` there is nothing to paint:
 
 ``` {.python}
 class LineLayout:
-    def paint(self):
-        return []
+    def paint(self, display_list):
+        pass
+
 ```
 
 And each `TextLayout` creates a single `DrawText` call:
 
 ``` {.python}
 class TextLayout:
-    def paint(self):
-        cmds = []
+    def paint(self, display_list):
         color = self.node.style["color"]
-        cmds.append(
+        display_list.append(
             DrawText(self.x, self.y, self.word, self.font, color))
-        return cmds
 ```
 
 So, oof, well, this was quite a bit of refactoring. Take a moment to
