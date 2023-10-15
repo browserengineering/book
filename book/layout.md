@@ -553,7 +553,7 @@ list:
 
 ``` {.python}
 def paint_tree(layout_object, display_list):
-    layout_object.paint(display_list)
+    display_list.extend(layout_object.paint())
 
     for child in layout_object.children:
         paint_tree(child, display_list)
@@ -564,8 +564,8 @@ nothing to paint:
 
 ``` {.python}
 class DocumentLayout:
-    def paint(self, display_list):
-        pass
+    def paint(self):
+        return []
 ```
 
 You can now delete the line that computes a `DocumentLayout`'s
@@ -578,8 +578,8 @@ objects.]
 
 ``` {.python expected=False}
 class BlockLayout:
-    def paint(self, display_list):
-        display_list.extend(self.display_list)
+    def paint(self):
+        return self.display_list
 ```
 
 Now the browser can use `paint` to collect its own `display_list`
@@ -653,10 +653,12 @@ commands in one place.
 
 ``` {.python}
 class BlockLayout:
-    def paint(self, display_list):
+    def paint(self):
+        cmds = []
         if self.layout_mode() == "inline":
             for x, y, word, font in self.display_list:
-                display_list.append(DrawText(x, y, word, font))
+                cmds.append(DrawText(x, y, word, font))
+        return cmds
 ```
 
 But it can also add a `DrawRect` command to draw a background. Let's add
@@ -664,11 +666,12 @@ a gray background to `pre` tags (which are used for code examples):
 
 ``` {.python}
 class BlockLayout:
-    def paint(self, display_list):
+    def paint(self):
+        # ...
         if isinstance(self.node, Element) and self.node.tag == "pre":
             x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, "gray")
-            display_list.append(rect)
+            cmds.append(rect)
         # ...
 ```
 
