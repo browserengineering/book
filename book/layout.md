@@ -545,11 +545,9 @@ the way, we can stop copying the display list contents over and over
 again as we go up the layout tree.
 
 I think it's most convenient to do that by adding a `paint`\index{paint}
-function to each layout object, which appends any of its own layout objects to
-the display list. Then there is a separate function, `paint_tree`, that
-recursively calls `paint` on all layout objects.  A neat trick here is to pass
-the list itself as an argument, and have each call to `paint` append to that
-list:
+function to each layout object, whose return value is the display list entries
+for that object. Then there is a separate function, `paint_tree`, that
+recursively calls `paint` on all layout objects:
 
 ``` {.python}
 def paint_tree(layout_object, display_list):
@@ -582,7 +580,7 @@ class BlockLayout:
         return self.display_list
 ```
 
-Now the browser can use `paint` to collect its own `display_list`
+Now the browser can use `paint_tree` to collect its own `display_list`
 variable:
 
 ``` {.python}
@@ -675,10 +673,10 @@ class BlockLayout:
         # ...
 ```
 
-Make sure this code comes *before* the loop that adds `DrawText`
-objects and *before* the recursion into child layout objects: the
-background has to be drawn *below* and therefore *before* any
-contents.
+Make sure this code comes *before* the loop that adds `DrawText` objects: the
+background has to be drawn *below* that text. Note also that `paint_tree`
+calls `paint` before recursing into the subtree, so the subtree also paints
+on top of this background, as desired.
 
 With the display list filled out, we need to `draw`
 each graphics command. Let's add an `execute` method for this. On

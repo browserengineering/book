@@ -238,7 +238,7 @@ def style(node):
 
 Call `style` in the browser's `load` method, after parsing the HTML
 but before doing layout. With the `style` information stored on each
-element, the browser can consult it for styling information:
+element, the browser can consult it for styling information during paint:
 
 ``` {.python}
 class BlockLayout:

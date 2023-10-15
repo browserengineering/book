@@ -466,23 +466,25 @@ class BlockLayout:
         zoom = self.zoom.read(notify=self.children)
         self.cursor_x += w + font(self.children, node.style, zoom).measureText(' ')
 
-    def paint(self):
-        cmds = []
-
+    def rect(self):
         rect = skia.Rect.MakeLTRB(
             self.x.get(), self.y.get(), self.x.get() + self.width.get(),
             self.y.get() + self.height.get())
 
-        is_atomic = not isinstance(self.node, Text) and \
+    def is_atomic(self):
+        return not isinstance(self.node, Text) and \
             (self.node.tag == "input" or self.node.tag == "button")
 
-        if not is_atomic:
+    def paint(self):
+        cmds = []
+
+        if not self.is_atomic():
             bgcolor = self.node.style["background-color"].get()
             if bgcolor != "transparent":
                 radius = device_px(
                     float(self.node.style["border-radius"].get()[:-2]),
                     self.zoom.get())
-                cmds.append(DrawRRect(rect, radius, bgcolor))
+                cmds.append(DrawRRect(self.rect(), radius, bgcolor))
         return cmds
  
     def paint_effects(self, cmds):
@@ -498,14 +500,8 @@ class BlockLayout:
             else:
                 cmds.append(DrawCursor(self, 0))
 
-        is_atomic = not isinstance(self.node, Text) and \
-            (self.node.tag == "input" or self.node.tag == "button")
-
-        if not is_atomic:
-            rect = skia.Rect.MakeLTRB(
-                self.x.get(), self.y.get(), self.x.get() + self.width.get(),
-                self.y.get() + self.height.get())
-            cmds = paint_visual_effects(self.node, cmds, rect)
+        if not self.is_atomic();
+            cmds = paint_visual_effects(self.node, cmds, self.rect())
         return cmds
 
 def DrawCursor(elt, offset):
@@ -796,19 +792,20 @@ class InputLayout(EmbedLayout):
         self.height.set(linespace(font))
         self.layout_after()
 
-    def paint(self):
-        cmds = []
-
-        rect = skia.Rect.MakeLTRB(
+    def rect(self):
+        return skia.Rect.MakeLTRB(
             self.x.get(), self.y.get(), self.x.get() + self.width.get(),
             self.y.get() + self.height.get())
+
+    def paint(self):
+        cmds = []
 
         bgcolor = self.node.style["background-color"].get()
         if bgcolor != "transparent":
             radius = device_px(
                 float(self.node.style["border-radius"].get()[:-2]),
                 self.zoom.get())
-            cmds.append(DrawRRect(rect, radius, bgcolor))
+            cmds.append(DrawRRect(self.rect(), radius, bgcolor))
 
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")
@@ -830,12 +827,8 @@ class InputLayout(EmbedLayout):
         return cmds
 
     def paint_effects(self, cmds):
-        rect = skia.Rect.MakeLTRB(
-            self.x.get(), self.y.get(), self.x.get() + self.width.get(),
-            self.y.get() + self.height.get())
-
-        cmds = paint_visual_effects(self.node, cmds, rect)
-        paint_outline(self.node, cmds, rect, self.zoom.get())
+        cmds = paint_visual_effects(self.node, cmds, self.rect())
+        paint_outline(self.node, cmds, self.rect(), self.zoom.get())
         return cmds
 
 @wbetools.patch(ImageLayout)
