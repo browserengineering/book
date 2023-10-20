@@ -424,7 +424,7 @@ class Chrome:
 
     def click(self, x, y):
         if intersects(x, y, self.plus_bounds()):
-            self.browser.load(URL("https://browser.engineering/"))
+            self.browser.new_tab(URL("https://browser.engineering/"))
         elif intersects(x, y, self.backbutton_bounds()):
             self.browser.active_tab.go_back()
         elif intersects(x, y, self.addressbar_bounds()):
@@ -499,5 +499,5 @@ class Browser:
 
 if __name__ == "__main__":
     import sys
-    Browser().load(URL(sys.argv[1]))
+    Browser().new_tab(URL(sys.argv[1]))
     tkinter.mainloop()
