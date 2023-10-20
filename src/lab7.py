@@ -14,7 +14,7 @@ from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS, DrawRect, DocumentLayout
 from lab6 import CSSParser, TagSelector, DescendantSelector
-from lab6 import INHERITED_PROPERTIES, style, cascade_priority
+from lab6 import DEFAULT_STYLE_SHEET, INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import DrawText, URL, tree_to_list, BlockLayout
 import wbetools
 
@@ -156,7 +156,6 @@ class BlockLayout:
                 self.recurse(child)
 
     def new_line(self):
-        self.previous_word = None
         self.cursor_x = 0
         last_line = self.children[-1] if self.children else None
         new_line = LineLayout(self.node, self, last_line)
@@ -168,9 +167,9 @@ class BlockLayout:
         if self.cursor_x + w > self.width:
             self.new_line()
         line = self.children[-1]
-        text = TextLayout(node, word, line, self.previous_word)
+        previous_word = line[-1] if line else None
+        text = TextLayout(node, word, line, previous_word)
         line.children.append(text)
-        self.previous_word = text
         self.cursor_x += w + font.measure(" ")
 
     def paint(self, display_list):
@@ -237,9 +236,6 @@ class Tab:
         self.history = []
         self.tab_height = tab_height
 
-        with open("browser6.css") as f:
-            self.default_style_sheet = CSSParser(f.read()).parse()
-
     def load(self, url):
         body = url.request()
         self.scroll = 0
@@ -247,7 +243,7 @@ class Tab:
         self.history.append(url)
         self.nodes = HTMLParser(body).parse()
 
-        rules = self.default_style_sheet.copy()
+        rules = DEFAULT_STYLE_SHEET.copy()
         links = [node.attributes["href"]
                  for node in tree_to_list(self.nodes, [])
                  if isinstance(node, Element)
@@ -376,7 +372,7 @@ class Chrome:
                 tab_left + self.padding, tab_top,
                 name, self.font, "black"))
 
-            if i == self.browser.active_tab:
+            if tab == self.browser.active_tab:
                 cmds.append(DrawLine(
                     0, tab_bottom, tab_left, tab_bottom, "black", 1))
                 cmds.append(DrawLine(
@@ -414,7 +410,7 @@ class Chrome:
                 left_bar + w,
                 self.bottom - self.padding, "red", 1))
         else:
-            url = str(self.browser.tabs[self.browser.active_tab].url)
+            url = str(self.browser.active_tab.url)
             cmds.append(DrawText(
                 left_bar,
                 top_bar,
@@ -430,14 +426,14 @@ class Chrome:
         if intersects(x, y, self.plus_bounds()):
             self.browser.load(URL("https://browser.engineering/"))
         elif intersects(x, y, self.backbutton_bounds()):
-            self.browser.tabs[self.browser.active_tab].go_back()
+            self.browser.active_tab.go_back()
         elif intersects(x, y, self.addressbar_bounds()):
             self.browser.focus = "address bar"
             self.browser.address_bar = ""
         else:
             for i, tab in enumerate(self.browser.tabs):
                 if intersects(x, y, self.tab_bounds(i)):
-                    self.browser.active_tab = i
+                    self.browser.active_tab = tab
                     break
 
 class Browser:
@@ -463,7 +459,7 @@ class Browser:
         self.chrome = Chrome(self)
 
     def handle_down(self, e):
-        self.tabs[self.active_tab].scrolldown()
+        self.active_tab.scrolldown()
         self.draw()
 
     def handle_click(self, e):
@@ -471,7 +467,7 @@ class Browser:
         if e.y < self.chrome.bottom:
             self.chrome.click(e.x, e.y)
         else:
-            self.tabs[self.active_tab].click(
+            self.active_tab.click(
                 e.x, e.y - self.chrome.bottom)
         self.draw()
 
@@ -484,20 +480,20 @@ class Browser:
 
     def handle_enter(self, e):
         if self.focus == "address bar":
-            self.tabs[self.active_tab].load(URL(self.address_bar))
+            self.active_tab.load(URL(self.address_bar))
             self.focus = None
             self.draw()
 
-    def load(self, url):
+    def new_tab(self, url):
         new_tab = Tab(HEIGHT - self.chrome.bottom)
         new_tab.load(url)
-        self.active_tab = len(self.tabs)
+        self.active_tab = new_tab
         self.tabs.append(new_tab)
         self.draw()
 
     def draw(self):
         self.canvas.delete("all")
-        self.tabs[self.active_tab].draw(self.canvas, self.chrome.bottom)
+        self.active_tab.draw(self.canvas, self.chrome.bottom)
         for cmd in self.chrome.paint():
             cmd.execute(0, self.canvas)
 

@@ -24,8 +24,8 @@ headings have their sizes and positions recorded in the layout tree,
 formatted text (like links) does not. We need to fix that.
 
 The big idea is to introduce two new types of layout objects:
-`LineLayout` and `TextLayout`. `BlockLayout` will now have
-`LineLayout` children for each line of text, which themselves will
+`LineLayout` and `TextLayout`. A `BlockLayout` will now have a
+`LineLayout` child for each line of text, which itself will
 contain a `TextLayout` for each word in that line. These new classes
 can make the layout tree look different from the HTML tree. So to
 avoid surprises, let's look at a simple example:
@@ -59,8 +59,9 @@ The text in the `body` element wraps across two lines (because of the
             TextLayout ("multiple")
             TextLayout ("lines")
 
-Note how one `body` element corresponds to two `LineLayout`s, and how
-two text nodes turn into a total of ten `TextLayout`s!
+Note how one `body` element corresponds to a `BlockLayout` with two
+`LineLayout`s inside, and how two text nodes turn into a total of ten
+`TextLayout`s!
 
 Let's get started. Defining `LineLayout` is straightforward:
 
@@ -90,31 +91,34 @@ class TextLayout:
 Like the other layout modes, `LineLayout` and `TextLayout` will need
 their own `layout` and `paint` methods, but before we get to those we
 need to think about how the `LineLayout` and `TextLayout` objects will
-be created. That happens during word wrapping.
+be created. That has to happen during word wrapping.
 
-Let's review [how word wrapping works](text.md) right now.
-`BlockLayout` is responsible for word wrapping, inside its `text`
-method. That method updates a `line` field, which stores all the words
-in the current line. When it's time to go to the next line, it calls
-`flush`, which computes the location of the line and each word in it,
-and adds all the words to a `display_list` field, which stores all the
-words in the whole inline element.
-
-Inside the `text` method, this key line adds a word to the current
-line of text:
+Recall [how word wrapping happens](text.md) inside `BlockLayout`'s
+`word` method. That method updates a `line` field, which stores all
+the words in the current line:
 
 ``` {.python file=lab6 indent=12}
 self.line.append((self.cursor_x, word, font, color))
 ```
 
-We now want to create a `TextLayout` object and add it to a
-`LineLayout` object. The `LineLayout`s are children of the
-`BlockLayout`, so the current line can be found at the end of the
-`children` array:
+When it's time to go to the next line, `word` calls `flush`, which
+computes the location of the line and each word in it, and adds all
+the words to a `display_list` field, which stores all the words in the
+whole inline element. With `TextLayout` and `LineLayout`, a lot of
+this complexity goes away. The `LineLayout` can compute its own
+location in its `layout` method, and instead of a `display_list`
+field, each `TextLayout` can just `paint` itself like normal. So let's
+get started on this refactor.
+
+Let's start with adding a word to a line. Instead of a `line` field,
+we want to create `TextLayout` objects and add them to `LineLayout`
+objects. The `LineLayout`s are children of the `BlockLayout`, so the
+current line can be found at the end of the `children` array:
 
 ``` {.python indent=12}
 line = self.children[-1]
-text = TextLayout(node, word, line, self.previous_word)
+previous_word = line[-1] if line else None
+text = TextLayout(node, word, line, previous_word)
 line.children.append(text)
 self.previous_word = text
 ```
@@ -130,15 +134,15 @@ want to create a new `LineLayout` object. So let's use a different
 method for that:
 
 ``` {.python indent=8}
-if self.cursor_x + w > self.width:
-    self.new_line()
+def word(self, node, word):
+    if self.cursor_x + w > self.width:
+        self.new_line()
 ```
 
 This `new_line` method just creates a new line and resets some fields:
 
 ``` {.python indent=4}
 def new_line(self):
-    self.previous_word = None
     self.cursor_x = 0
     last_line = self.children[-1] if self.children else None
     new_line = LineLayout(self.node, self, last_line)
@@ -170,12 +174,6 @@ def layout(self):
     # ...
     self.height = sum([child.height for child in self.children])
 ```
-
-With the `display_list` gone, we can also remove the part of
-`paint`\index{paint} that handles it. Painting all the lines in a paragraph
-is now just automatically handled by recursing into the child layout objects.
-So by adding `LineLayout` and `TextLayout` we made `BlockLayout` quite a
-bit simpler and shared more code between block and inline layout modes.
 
 You might also be tempted to delete the `flush` method, since it's no
 longer called from anywhere. But keep it around for just a
@@ -222,59 +220,12 @@ class LineLayout:
         # ...
 ```
 
-Computing height, though, is different---this is where all that logic
-to compute maximum ascents, maximum descents, and so on from the old
-comes in. We'll want to pilfer the code from the old `flush` method.
-First, let's lay out each word:
+Computing height, though, is different---this is where computing
+maximum ascents, maximum descents, and so on comes in. Before we do
+that, let's look at laying out `TextLayout`s.
 
-``` {.python indent=8}
-# ...
-for word in self.children:
-    word.layout()
-```
-
-Next, we need to compute the line's baseline based on the maximum
-ascent and descent, using basically the same code as the old `flush`
-method:
-
-``` {.python indent=8}
-# ...
-max_ascent = max([word.font.metrics("ascent")
-                  for word in self.children])
-baseline = self.y + 1.25 * max_ascent
-for word in self.children:
-    word.y = baseline - word.font.metrics("ascent")
-max_descent = max([word.font.metrics("descent")
-                   for word in self.children])
-```
-
-Note that this code is reading from a `font` field on each word and
-writing to each word's `y` field.[^why-no-y] That means that inside
-`TextLayout`'s `layout` method, we need to compute `x`, `width`,
-and `height`, but also `font`, and not `y`. Remember that for later.
-
-[^why-no-y]: The `y` position could have been computed in
-`TextLayout`'s `layout` method---but then that layout method would
-have to come *after* the baseline computation, not *before*. Yet
-`font` must be computed *before* the baseline computation. A real
-browser might resolve this paradox with multi-phase layout.
-There are many considerations and optimizations of this kind that are
-needed to make text layout super fast.
-
-Finally, since each line is now a standalone layout object, it needs
-to have a height. We compute it from the maximum ascent and descent:
-
-``` {.python indent=8}
-# ...
-self.height = 1.25 * (max_ascent + max_descent)
-```
-
-Ok, so that's line layout. Now let's think about laying out each word.
-Recall that there's a few quirks here: we need to compute a `font`
-field for each `TextLayout`, but we do not need to compute a `y`
-field.
-
-We can compute `font` using the same font-construction code as in
+To lay out text we need font metrics, so let's start by getting the
+relevant font using the same font-construction code as in
 `BlockLayout`:
 
 ``` {.python}
@@ -296,7 +247,6 @@ class TextLayout:
     def layout(self):
         # ...
 
-        # Do not set self.y!!!
         self.width = self.font.measure(self.word)
 
         if self.previous:
@@ -306,6 +256,58 @@ class TextLayout:
             self.x = self.parent.x
 
         self.height = self.font.metrics("linespace")
+```
+
+There's no code here to compute the `y` position, however. The
+vertical position of one word depends on the other words in the same
+line, so we'll compute that `y` position inside `LineLayout`'s
+`layout` method.[^why-no-y]
+
+[^why-no-y]: The `y` position could have been computed in
+`TextLayout`'s `layout` method---but then that layout method would
+have to come *after* the baseline computation, not *before*. Yet
+`font` must be computed *before* the baseline computation. A real
+browser might resolve this paradox with multi-phase layout.
+There are many considerations and optimizations of this kind that are
+needed to make text layout super fast.
+
+That method will pilfer the code from the old `flush` method. First,
+let's lay out each word:
+
+``` {.python indent=8}
+class LineLayout:
+    def layout(self):
+        # ...
+        for word in self.children:
+            word.layout()
+```
+
+Next, we need to compute the line's baseline based on the maximum
+ascent and descent, using basically the same code as the old `flush`
+method:
+
+``` {.python indent=8}
+# ...
+max_ascent = max([word.font.metrics("ascent")
+                  for word in self.children])
+baseline = self.y + 1.25 * max_ascent
+for word in self.children:
+    word.y = baseline - word.font.metrics("ascent")
+max_descent = max([word.font.metrics("descent")
+                   for word in self.children])
+```
+
+Note that this code is reading from a `font` field on each word and
+writing to each word's `y` field. That means that inside
+`TextLayout`'s `layout` method, we need to compute `x`, `width`,
+and `height`, but also `font`, and not `y`. Remember that for later.
+
+Finally, since each line is now a standalone layout object, it needs
+to have a height. We compute it from the maximum ascent and descent:
+
+``` {.python indent=8}
+# ...
+self.height = 1.25 * (max_ascent + max_descent)
 ```
 
 So that's `layout` for `LineLayout` and `TextLayout`. All that's left
@@ -328,6 +330,13 @@ class TextLayout:
             DrawText(self.x, self.y, self.word, self.font, color))
 ```
 
+Now we don't need a `display_list` field in `BlockLayout`, and we can
+also remove the part of `BlockLayout`'s `paint`\index{paint} that
+handles it. Instead, `BlockLayout` can just recurse into its children
+and paint them. So by adding `LineLayout` and `TextLayout` we made
+`BlockLayout` quite a bit simpler and shared more code between block
+and inline layout modes.
+
 So, oof, well, this was quite a bit of refactoring. Take a moment to
 test everything---it should look exactly identical to how it did
 before we started this refactor. But while you can't see it, there's a
@@ -338,8 +347,8 @@ layout object and its own size and position.
 Actually, text rendering is [*way* more complex][rendering-hates] than
 this. [Letters][morx] can transform and overlap, and the user might
 want to color certain letters---or parts of letters---a different
-color. All of this is possible in HTML, and browsers implement support
-for it.
+color. All of this is possible in HTML, and browsers do implement
+support for it.
 :::
 
 [rendering-hates]: https://gankra.github.io/blah/text-hates-you/
@@ -348,8 +357,8 @@ for it.
 Click handling
 ==============
 
-Now that the browser knows where the links are, we start work on
-clicking them. In Tk, clicks work just like key presses: you bind an
+Now that we know where the links are, we can work on clicking them. In
+Tk, click handling works just like key press handling: you bind an
 event handler to a certain event. For click handling that event is
 `<Button-1>`, button number 1 being the left button on the mouse.[^1]
 
@@ -386,8 +395,20 @@ class Browser:
         y += self.scroll
 ```
 
-The next step is to figure out what links or other elements are at
-that location. To do that, search through the tree of layout objects:
+More generally, handling events like clicks involves *reversing* the
+usual rendering pipeline. Normally, rendering goes from elements to
+layout objects to page coordinates to screen coordinates; click
+handling goes backwards, starting with screen coordinates, then
+converting to page coordinates, and so on. The correspondence isn't
+perfectly reversed in practice^[Though see some exercises in this
+chapter on making it a closer match.] but it's a worthwhile analogy.
+
+So the next step is to go from page coordinates to a layout
+object:^[You could try to first find the paint command clicked on, and
+go from that to layout object, but in real browsers there are all
+sorts of reasons this won't work, starting with invisible objects that
+can nonetheless be clicked on. See the exercise on hit testing in the
+display list.]
 
 ``` {.python indent=8}
 # ...
@@ -396,16 +417,16 @@ objs = [obj for obj in tree_to_list(self.document, [])
         and obj.y <= y < obj.y + obj.height]
 ```
 
-Now, normally when you click on some text, you're also clicking on the
-paragraph it's in, and the section that that paragraph is in, and so
-on. We want the one that's "on top", which is the last object in the
-list:[^overlap]
+In principle there might be more than one layout object in this
+list.^[This is actually not possible in our browser at this point, but
+in real browsers there are all sorts of ways this could happen, like
+negative margins.] But remember that click handling is the reverse of
+painting. When we paint, we paint the tree from front to back, so when
+hit testing we should start at the last element:[^overlap]
 
-[^overlap]: In a real browser, sibling elements can also overlap each
-other, like a dialog that overlaps some text. Web pages can control
-which sibling is on top using the `z-index` property. So real browsers
-have to compute [stacking contexts][stack-ctx] to resolve what you
-actually clicked on.
+[^overlap]: Real browsers use the `z-index` property to control
+which sibling is on top. So real browsers have to compute [stacking
+contexts][stack-ctx] to resolve what you actually clicked on.
 
 [stack-ctx]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
 
@@ -444,8 +465,7 @@ elif elt.tag == "a" and "href" in elt.attributes:
     return self.load(url)
 ```
 
-Note that when a link has a relative URL, that URL is resolved
-relative to the current page, so store the current URL in `load`:
+Note that this `resolve` call requires storing the current page's URL:
 
 ``` {.python replace=Browser/Tab,self)/self%2c%20tab_height)}
 class Browser:
@@ -464,10 +484,9 @@ new web pages.
 ::: {.further}
 On mobile devices, a "click" happens over an area, not just at a
 single point. Since mobile "taps" are often pretty inaccurate, click
-should [use the area information][rect-based] for
-"hit testing".\index{hit testing} This can happen even with a
-[normal mouse click][hit-test] when the click is on a rotated or scaled
-element.
+should [use area, not point information][rect-based] for "hit
+testing".\index{hit testing} This can happen even with a [normal mouse
+click][hit-test] when the click is on a rotated or scaled element.
 :::
 
 [rect-based]: http://www.chromium.org/developers/design-documents/views-rect-based-targeting
@@ -488,47 +507,17 @@ Fundamentally, implementing tabbed browsing requires us to distinguish
 between the browser itself and tabs that show individual web pages.
 The canvas the browser draws to, for example, is shared by all web pages,
 but the layout tree and display list are specific to one page. We need to
-tease these two types of things apart.
+tease tabs and browsers apart.
 
 Here's the plan: the `Browser` class will store the window and canvas,
 plus a list of `Tab` objects, one per browser tab. Everything else
-goes into a new `Tab` class. Since the `Browser` stores the window
-and canvas, it handles all of the events, sometimes forwarding it to
-the active tab.
-
-Since the `Tab` class is responsible for layout, styling, and
-painting, the default style sheet moves to the `Tab` constructor:
-
-``` {.python replace=browser.css/browser6.css,self)/self%2c%20tab_height)}
-class Tab:
-    def __init__(self):
-        with open("browser.css") as f:
-            self.default_style_sheet = CSSParser(f.read()).parse()
-```
-
-The `load`, `scrolldown`, `click`, and `draw` methods also move to
+goes into a new `Tab` class. Since the `Browser` stores the window and
+canvas, it handles all events and forwards them to the active tab. The
+`load`, `scrolldown`, `click`, and `draw` methods, meanwhile, move to
 `Tab`, since that's now where all web-page-specific data lives.
 
-But since the `Browser` controls the canvas and handles events, it
-decides when rendering happens and which tab does the drawing. After
-all,[^unless-windows] you only want one tab drawing its contents at a
-time! So let's remove the `draw` calls from the `load` and
-`scrolldown` methods, and in `draw`, let's pass the canvas in as an
-argument:
-
-[^unless-windows]: Unless the browser implements multiple windows, of course.
-
-``` {.python replace=canvas/canvas%2c%20offset}
-class Tab:
-    def draw(self, canvas):
-        # ...
-```
-
-Let's also make `draw` not clear the screen. That should be the
-`Browser`'s job.
-
-Now let's turn to the `Browser` class. It has to store a list of tabs
-and an index into that list for the active tab:
+Let's start with the `Browser` class. It has to store a list of tabs
+and also which one is active:
 
 ``` {.python}
 class Browser:
@@ -538,9 +527,7 @@ class Browser:
         self.active_tab = None
 ```
 
-When it comes to user interaction, think of the `Browser` as "active"
-and the `Tab` as "passive". It's the job of the `Browser` is to call
-into the tabs as appropriate. So the `Browser` handles all events:
+Since the `Browser` owns the window, it handles all events:
 
 ``` {.python}
 class Browser:
@@ -555,19 +542,18 @@ handler methods just forward the event to the active tab:
 ``` {.python replace=e.y/e.y%20-%20self.chrome.bottom}
 class Browser:
     def handle_down(self, e):
-        self.tabs[self.active_tab].scrolldown()
+        self.active_tab.scrolldown()
         self.draw()
 
     def handle_click(self, e):
-        self.tabs[self.active_tab].click(
-            e.x, e.y)
+        self.active_tab.click(e.x, e.y)
         self.draw()
 ```
 
 You'll need to tweak the `Tab`'s `scrolldown` and `click` methods:
 
 - `scrolldown` now takes no arguments (instead of an event object)
-- `click` now take two coordinates (instead of an event object)
+- `click` now takes two coordinates (instead of an event object)
 
 Finally, the `Browser`'s `draw` call also calls into the active tab:
 
@@ -575,11 +561,26 @@ Finally, the `Browser`'s `draw` call also calls into the active tab:
 class Browser:
     def draw(self):
         self.canvas.delete("all")
-        self.tabs[self.active_tab].draw(self.canvas)
+        self.active_tab.draw(self.canvas)
 ```
 
-This only draws the active tab, which is how tabs are supposed to
-work.
+Note that clearing the screen is the `Browser`'s job, not the `Tab`'s.
+After that, we only draw the active tab, which is how tabs are
+supposed to work. `Tab`'s `draw` method needs to take the canvas in as
+an argument:
+
+``` {.python replace=canvas/canvas%2c%20offset}
+class Tab:
+    def draw(self, canvas):
+        # ...
+```
+
+Since the `Browser` controls the canvas and handles events, it decides
+when rendering happens and which tab does the drawing. So let's also
+remove the `draw` calls from the `load` and `scrolldown` methods. More
+generally, the `Browser` is "active" and the `Tab` is "passive": all
+user interacts start at the `Browser`, which then calls into the tabs
+as appropriate.
 
 We're basically done splitting `Tab` from `Browser`, and after a
 refactor like this we need to test things. To do that, we'll need to
@@ -587,10 +588,10 @@ create at least one tab, like this:
 
 ``` {.python replace=Tab()/Tab(HEIGHT%20-%20self.chrome.bottom)}
 class Browser:
-    def load(self, url):
+    def new_tab(self, url):
         new_tab = Tab()
         new_tab.load(url)
-        self.active_tab = len(self.tabs)
+        self.active_tab = new_tab
         self.tabs.append(new_tab)
         self.draw()
 ```
@@ -600,14 +601,22 @@ ones, and so on. Let's turn to that next.
 
 ::: {.further}
 Browser tabs first appeared in [SimulBrowse][simulbrowse], which was
-a kind of custom UI for the Internet Explorer engine. SimulBrowse
-(later renamed to NetCaptor) also had ad blocking and a private
-browsing mode. The [old advertisements][netcaptor-ad] are a great
-read!
+a kind of custom UI for the Internet Explorer engine.[^booklink]
+SimulBrowse (later renamed to NetCaptor) also had ad blocking and a
+private browsing mode. The [old advertisements][netcaptor-ad] are a
+great read!
 :::
 
 [simulbrowse]: https://en.wikipedia.org/wiki/NetCaptor
 [netcaptor-ad]: https://web.archive.org/web/20050701001923/http://www.netcaptor.com/
+[booklink]: Some people instead attribute tabbed browsing to Booklink's InternetWorks
+    browser, a browser obscure enough that it doesn't have a Wikipedia
+    page though you can see some screenshots [on Twitter][booklink-x].
+    However, its tabs were slightly different from the modern
+    conception, more like bookmarks than tabs. SimulBrowse instead
+    used the modern notion of tabs.
+[tabbed-dna]: https://ajstiles.wordpress.com/2005/02/11/tabbed_browser_/
+[booklink-x]: https://twitter.com/awesomekling/status/1694242398539264363
 
 Browser chrome
 ==============
@@ -625,30 +634,20 @@ so it has to happen at the browser level, not per-tab.
     browser.
 
 However, a browser's UI is quite complicated, so let's put that code in a new
-`Chrome` helper class. It will have a `paint` method to paint the browser
-chrome. The `paint` method constructs the display list for the browser chrome;
-I'm just constructing and using it directly, instead of storing it somewhere,
-because our browser will have pretty simple chrome, meaning `paint_chrome` will
-be fast. In a real browser, it might be saved and only updated when the chrome
-changes.
-
-``` {.python}
-class Chrome:
-    def __init__(self, browser):
-        self.browser = browser
-
-    def paint(self):
-        # ....
-```
+`Chrome` helper class:
 
 ``` {.python}
 class Browser:
     def __init__(self):
         ...
         self.chrome = Chrome(self)
+
+class Chrome:
+    def __init__(self, browser):
+        self.browser = browser
 ```
 
-The browser chrome generates a display list just like a tab. However, unlike
+The browser chrome generates a display list, just like a tab. However, unlike
 tabs, this display list will always be drawn at the top of the window and won't
 be scrolled:
 
