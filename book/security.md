@@ -42,7 +42,7 @@ browser from any other, and is sent with each web request so the
 server can distinguish which requests come from whom. In effect,
 a cookie is a decentralized, server-granted identity for your browser.
 
-Here's the technical details. An HTTP response can contain a
+Here are the technical details. An HTTP response can contain a
 `Set-Cookie` header. This header contains a key-value pair; for
 example, the following header sets the value of the `foo` cookie to
 `bar`:
@@ -362,11 +362,11 @@ well.[^multiple-resources]
 
 
 [^multiple-resources]: Moreover, since `request` can be called multiple
-    times on one page, to CSS and JavaScript, later requests transmit
-    cookies set by previous responses. For example our guest book sets
-    a cookie when the browser first requests the page and then
-    receives that cookie when our browser later requests the page's
-    CSS file.
+    times on one page---to load CSS and JavaScript---later requests
+    transmit cookies set by previous responses. For example our guest
+    book sets a cookie when the browser first requests the page and
+    then receives that cookie when our browser later requests the
+    page's CSS file.
 
 When the browser visits a page, it needs to send the cookie for that
 site:
