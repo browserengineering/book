@@ -1151,3 +1151,22 @@ be contained inside button instead of spilling out---this can make a
 button really tall. Think about edge cases, like a button that
 contains another button, an input area, or a link, and test real
 browsers to see what they do.
+
+*HTML chrome*: Browser chrome is quite complicated in real browsers,
+with tricky details such as font sizes, padding, outlines, shadows,
+icons and so on. This makes it tempting to try to reuse our layout
+engine for it. Implement this, using `<button>` elements for the new
+tab and back buttons, an `<input>` element for the address bar, and
+`<a>` elements for the tab names. It won't look exactly the same as
+the current chrome---outline will have to wait for [Chapter
+14](accessibility.md), for example---but if you adjust the default CSS
+you should be able to make it look passable.[^real-browser-reuse]
+
+[^real-browser-reuse]: Real browsers have in fact gone down this
+implementation path multiple times, building layout engines for the
+browser chrome that are heavily inspired by or reuse pieces of the
+main web layout engine. [Firefox had
+one](https://en.wikipedia.org/wiki/XUL), and [Chrome has
+one](https://www.chromium.org/developers/webui/). However, because
+it's so important for the browser chrome to be very fast and
+responsive to draw, such approaches have had mixed success.

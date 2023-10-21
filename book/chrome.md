@@ -1153,7 +1153,7 @@ some state to say whether you're currently typing into the address
 bar. Let's call the contents `address_bar` and the state `focus`:
 
 ``` {.python}
-class Browser:
+class Chrome:
     def __init__(self):
         # ...
         self.focus = None
@@ -1167,22 +1167,9 @@ should clear `focus`:
 class Chrome:
     def click(self, x, y):
         # ...
-        elif intersects(x, y, self.addressbar_bounds()):
-            self.browser.focus = "address bar"
-            self.browser.address_bar = ""
-```
-
-With this definition of the bounds:
-
-``` {.python}
-class Chrome:
-    def addressbar_bounds(self):
-        (backbutton_left, backbutton_top, backbutton_right,
-            backbutton_bottom) = \
-            self.backbutton_bounds()
-
-        return (backbutton_right + self.padding, self.addressbar_top,
-            WIDTH - 10, self.bottom - self.padding)
+        elif intersects(x, y, self.address_rect):
+            self.focus = "address bar"
+            self.address_bar = ""
 ```
 
 Note that clicking on the address bar also clears the address bar
@@ -1196,21 +1183,20 @@ the current URL or the currently-typed text:
 class Chrome:
     def paint(self):
         # ...
-        if self.browser.focus == "address bar":
+        if self.focus == "address bar":
             cmds.append(DrawText(
-                left_bar, top_bar,
-                self.browser.address_bar, self.font, "black"))
+                self.address_rect[0], self.address_rect[1],
+                self.address_bar, self.font, "black"))
         else:
-            url = str(self.browser.tabs[self.browser.active_tab].url)
+            url = str(self.browser.active_tab.url)
             cmds.append(DrawText(
-                left_bar,
-                top_bar,
+                self.address_rect[0], self.address_rect[1],
                 url, self.font, "black"))
 ```
 
 When the user is typing in the address bar, let's also draw a cursor.
 Making states (like focus) visible on the screen (like with the
-cursor) makes the software easier to use:
+cursor) makes software easier to use:
 
 ``` {.python}
 class Chrome:
@@ -1218,16 +1204,16 @@ class Chrome:
         # ...
         if self.browser.focus == "address bar":
             # ...
-            w = self.font.measure(self.browser.address_bar)
+            w = self.font.measure(self.address_bar)
             cmds.append(DrawLine(
-                left_bar + w, top_bar,
-                left_bar + w,
-                self.bottom - self.padding, "red", 1))
+                self.address_rect[0] + w, self.address_rect[1],
+                self.address_rect[0] + w, self.address_rect[3],
+                "red", 1))
 ```
 
 Next, when the address bar is focused, we need to support typing in a
 URL. In Tk, you can bind to `<Key>` to capture all key presses. The
-event object's `char` field contains the character the user typed:
+event object's `char` field contains the character the user typed.
 
 ``` {.python}
 class Browser:
@@ -1238,18 +1224,26 @@ class Browser:
     def handle_key(self, e):
         if len(e.char) == 0: return
         if not (0x20 <= ord(e.char) < 0x7f): return
-
-        if self.focus == "address bar":
-            self.address_bar += e.char
-            self.draw()
+        self.chrome.keypress(e.char)
+        self.draw()
 ```
 
 This `handle_key` handler starts with some conditions: `<Key>` fires
 for every key press, not just regular letters, so we want to ignore
 cases where no character is typed (a modifier key is pressed) or the
 character is outside the ASCII range (which can represent the arrow
-keys or function keys). After we modify `address_bar` we also need to
-call `draw()` so that the new letters actually show up.
+keys or function keys). For now let's have the `Browser` send all key
+presses to `Chrome` and then call `draw()` so that the new letters
+actually show up.
+
+The `Chrome` can then check `focus` and add on to `address_bar`:
+
+``` {.python}
+class Chrome:
+    def keypress(self, char):
+        if self.focus == "address bar":
+            self.address_bar += char
+```
 
 Finally, once the new URL is entered, we need to handle the "Enter"
 key, which Tk calls `<Return>`, and actually send the browser to the
@@ -1262,10 +1256,14 @@ class Browser:
         self.window.bind("<Return>", self.handle_enter)
 
     def handle_enter(self, e):
+        self.chrome.enter()
+        self.draw()
+
+class Chrome:
+    def enter(self):
         if self.focus == "address bar":
-            self.tabs[self.active_tab].load(URL(self.address_bar))
+            self.browser.active_tab.load(URL(self.address_bar))
             self.focus = None
-            self.draw()
 ```
 
 So there---after a long chapter, you can now unwind a bit by surfing
@@ -1322,7 +1320,12 @@ Exercises
 address bar. Honestly, do this exercise just for your sanity.
 
 *Middle-click*: Add support for middle-clicking on a link (`Button-2`)
-to open it in a new tab. You might need a mouse to test this easily.
+to open it in a new tab. You might want to use a mouse when testing.
+
+*Window title*: Browsers set their window title to the contents of the
+current tab's `<title>` element. Make your browser do the same. You
+can call the `title` method of your browser's `window` field to change
+the window title.
 
 *Forward*: Add a forward button, which should undo the back button. If
 the most recent navigation action wasn't a back button, the forward
@@ -1382,40 +1385,12 @@ windows and canvases and grouping tabs by their containing window.
 You'll also need some way to create a new window, perhaps with a
 keypress such as `Ctrl+N`.
 
-*Hit testing in layout*: The `click` method we implemented is on the `Tab`
-object. While it doesn't have a whole lot of logic in it, there is special
-logic for `Text` objects and `a` tags. Real browsers have many more special
-kinds of nodes, plus more complicated layout, so they tend to implement this
-logic directly on the layout tree.^[Real browsers call this logic *hit testing*,
-because it's used for more than just clicking. The name comes from thinking
-whether an arrow shot at that location would "hit" the object.] Implement
-`click` on the layout tree.
-
-*Hit testing on the display list*: Hit testing can be thought of as a "reversed"
-version of `paint`: `paint` turns elements into pixels,
-while hit testing turns pixels into elements. Plus, it looks
-at the elements front-to-back in paint order,
-as opposed to back-to-front. Building on this observation, we could build all
-of the necessary information for hit testing directly into the display list
-instead of the layout tree. Implement one of these.^[You might want to implement
-hit testing in this way in a browser because display lists are pure data
-structurs and therefore easier to optimize or execute in different
-threads.]
-
-*Reusing HTML*: Browser chrome is quite complicated in real browsers,
-with tricky details such as font sizes, padding, outlines,
-shadows, icons and so on. This makes it tempting to try to reuse our
-implementation of those features for web pages---imagine replacing the
-contents of `paint_chrome` with a call to paint some HTML instead that
-represents the UI of the browser chrome. Implement this, including support for
-the [`padding`][padding] CSS property (even if you can't implement the
-whole UI faithfully---outline will have to wait for [Chapter
-14](accessibility.md), for example).[^real-browser-reuse]
-
-[padding]: https://developer.mozilla.org/en-US/docs/Web/CSS/padding
-
-[^real-browser-reuse]: Real browsers have in fact gone down this implementation
-path multiple times. Firefox [has one](https://en.wikipedia.org/wiki/XUL),
-and [so does Chrome](https://www.chromium.org/developers/webui/). However,
-because it's so important for the browser chrome to be very fast and responsive
-to draw, such approaches have had mixed success.
+*Clicks via the display list*: At the moment, our browser converts
+a click location to page coordinates and then finds the layout object
+at those coordinates. But you could instead first look up the draw
+command at that location, and then go from the draw command to the
+layout object that generated it. Implement this. You'll need draw
+commands to know which layout object generated them.^[Real browsers
+don't currently do this, but it's an attractive possibility: display
+lists are pure data structures so access to them is easier to optimize
+or parallelize than the more complicated layout tree.]
