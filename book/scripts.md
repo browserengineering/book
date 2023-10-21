@@ -30,7 +30,7 @@ inside a larger C or C++ project.[^1]
 
 [^1]: For example, in a video game the high-speed graphics code is
     usually written in C or C++ , but the actual plot of the game is
-    usually written in a simpler language like JavaScript.
+    usually written in a higher-level language like JavaScript.
 
 Like other JavaScript engines, DukPy not only executes JavaScript
 code, but also allows JavaScript code to call *exported* Python
@@ -226,9 +226,11 @@ numbers, strings, and booleans, plus arrays and dictionaries thereof,
 but not with fancy objects.] and then passes that Python string to the
 `print` function we exported. Then `print` prints that string.
 
-Since we ultimately want JavaScript to call a `console.log` function,
+Since we ultimately want a [`console.log`][console-log] function,
 not a `call_python` function, we need to define a `console` object
 and then give it a `log` property. We can do that *in JavaScript*:
+
+[console-log]: https://developer.mozilla.org/en-US/docs/Web/API/console/log
 
 ``` {.javascript .example}
 console = { log: function(x) { call_python("log", x); } }
@@ -275,7 +277,7 @@ locks up and become completely unresponsive to the user. This is a
 consequence of JavaScript's single-threaded semantics and its task-based,
 [run-to-completion scheduling][rtc]. Some APIs like [Web
 Workers][webworkers] allow limited multithreading, but those threads
-largely don't have access to the DOM.
+don't have access to the DOM.
 :::
 
 [rtc]: https://en.wikipedia.org/wiki/Run_to_completion_scheduling
@@ -841,7 +843,7 @@ update to account for the new HTML, any added scripts or style sheets
 will not properly load, and removed style sheets will (incorrectly) still
 apply. I've left fixing that to an exercise.]
 
-Let's try this out this in our guest book. Say we want a 100-character
+Let's try this out in our guest book. Say we want a 100-character
 limit on guest book entries to prevent long, incoherent rants from
 making it in.
 
