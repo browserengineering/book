@@ -323,7 +323,7 @@ styling, layout, paint and draw phases. Together these are called
 
 ``` {.python}
 class Tab:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         # ...
         self.render()
 
