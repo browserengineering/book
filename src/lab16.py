@@ -1015,11 +1015,11 @@ class JSContext:
 
 @wbetools.patch(Frame)
 class Frame:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         self.zoom = 1
         self.scroll = 0
         self.scroll_changed_in_frame = True
-        headers, body = url.request(self.url, body)
+        headers, body = url.request(self.url, payload)
         body = body.decode("utf8")
         self.url = url
 

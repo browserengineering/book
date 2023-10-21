@@ -835,8 +835,8 @@ request to a page. Modify it like so:
 
 ``` {.python}
 class Tab:
-    def load(self, url, body=None):
-        headers, body = url.request(self.url, body)
+    def load(self, url, payload=None):
+        headers, body = url.request(self.url, payload)
         # ...
 ```
 
@@ -848,7 +848,7 @@ Later, the browser loads styles and scripts with more `request` calls:
 
 ``` {.python}
 class Tab:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         # ...
         for script in scripts:
             # ...
@@ -1067,7 +1067,7 @@ header when loading a page:[^more-complex]
 
 ``` {.python}
 class Tab:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         # ...
         self.allowed_origins = None
         if "content-security-policy" in headers:
@@ -1084,7 +1084,7 @@ CSS, because we now need to check whether those requests are allowed:
 
 ``` {.python}
 class Tab:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         # ...
         for script in scripts:
             script_url = url.resolve(script)
