@@ -754,6 +754,23 @@ So far so good---but ideally the length check wouldn't print to the
 console; it would add a warning to the web page itself. To do that,
 we'll need to not only read from the page but also modify it.
 
+::: {.further}
+JavaScript [first appeared in 1995][historyJS], as part of Netscape
+Navigator. Its name was chosen to indicate a similarity to the
+[Java][javaLang] language, and the syntax is Java-esque for that
+reason. However, under the surface JavaScript is a much more dynamic
+language than Java, as is appropriate given its role as a progressive
+enhancement mechanism for the web. For example, any method or property on any
+object (including built-in ones like `Element`) can be dynamically
+overridden at any time. This makes it possible to [polyfill] differences
+between browsers, adding features that look built-in to other
+JavaScript code.
+:::
+
+[javaLang]: https://en.wikipedia.org/wiki/Java_(programming_language)
+[historyJS]: https://auth0.com/blog/a-brief-history-of-javascript/
+[polyfill]: https://developer.mozilla.org/en-US/docs/Glossary/Polyfill
+
 Modifying the DOM
 =================
 
@@ -1083,21 +1100,29 @@ self-contained plug-ins that handled input and rendering on their own.
 [javaApplets]: https://en.wikipedia.org/wiki/Java_applet
 
 ::: {.further}
-JavaScript [first appeared in 1995][historyJS], as part of Netscape
-Navigator. Its name was chosen to indicate a similarity to the
-[Java][javaLang] language, and the syntax is Java-esque for that
-reason. However, under the surface JavaScript is a much more dynamic
-language than Java, as is appropriate given its role as a progressive
-enhancement mechanism for the web. For example, any method or property on any
-object (including built-in ones like `Element`) can be dynamically
-overridden at any time. This makes it possible to [polyfill] differences
-between browsers, adding features that look built-in to other
-JavaScript code.
+Search engines are constantly [crawling] the web and [indexing] all of the web
+pages they can find. In the early days, indexing was just a matter of loading
+the HTML, parsing it and extracting the information. But these days, a lot of
+[single-page app][spa] sites use JavaScript to
+["hydrate"][hydration][^why-hydrate] their site into its full contents.
+On such sites, before hydration happens, the information in the site is
+hidden inside of JavaScript data structures. For this reason, search
+engines need to not just parse HTML, but also run JavaScript (and load style
+sheets) during indexing. In other words, the indexing systems use browsers
+(such as for example [headless Chrome][headless])---one more place browsers
+appear in the web ecosystem.
+
+[spa]: https://en.wikipedia.org/wiki/Single-page_application
+[hydration]: https://en.wikipedia.org/wiki/Hydration_(web_development)
+[headless]: https://chromium.googlesource.com/chromium/src/+/lkgr/headless/README.md
+[indexing]: https://en.wikipedia.org/wiki/Search_engine_indexing
+
+[^why-hydrate]: This process is called "hydration" by analogy with how water
+is added to dehydrated food to make it edible again.
+
 :::
 
-[javaLang]: https://en.wikipedia.org/wiki/Java_(programming_language)
-[historyJS]: https://auth0.com/blog/a-brief-history-of-javascript/
-[polyfill]: https://developer.mozilla.org/en-US/docs/Glossary/Polyfill
+[crawling]: https://en.wikipedia.org/wiki/Web_crawler
 
 
 Summary

@@ -184,7 +184,7 @@ class BlockLayout:
         input = InputLayout(node, line, self.previous_word)
         line.children.append(input)
         self.previous_word = input
-        font = self.get_font(node)
+        font = self.font(node)
         self.cursor_x += w + font.measure(" ")
 
     def paint(self, display_list):
