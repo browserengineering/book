@@ -94,10 +94,12 @@ class URL:
             params = {}
             if ";" in cookie:
                 cookie, rest = cookie.split(";", 1)
-                for param_pair in rest.split(";"):
-                    if '=' in param_pair:
-                        name, value = param_pair.strip().split("=", 1)
-                        params[name.casefold()] = value.casefold()
+                for param in rest.split(";"):
+                    if '=' in param:
+                        param, value = param.strip().split("=", 1)
+                    else:
+                        value = "true"
+                    params[param.casefold()] = value.casefold()
             COOKIE_JAR[self.host] = (cookie, params)
     
         assert "transfer-encoding" not in response_headers
@@ -1178,11 +1180,11 @@ class Frame:
         return self.allowed_origins == None or \
             url.origin() in self.allowed_origins
 
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         self.zoom = 1
         self.scroll = 0
         self.scroll_changed_in_frame = True
-        headers, body = url.request(self.url, body)
+        headers, body = url.request(self.url, payload)
         body = body.decode("utf8")
         self.url = url
 
@@ -1466,11 +1468,11 @@ class Tab:
         self.window_id_to_frame = {}
         self.origin_to_js = {}
 
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         self.history.append(url)
         self.task_runner.clear_pending_tasks()
         self.root_frame = Frame(self, None, None)
-        self.root_frame.load(url, body)
+        self.root_frame.load(url, payload)
         self.root_frame.frame_width = WIDTH
         self.root_frame.frame_height = self.tab_height
 

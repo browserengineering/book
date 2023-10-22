@@ -10,7 +10,7 @@ book](forms.md), with the server generating new web pages for every
 user action. But in the early 2000s, JavaScript-enhanced web
 applications, which can update pages dynamically and respond
 immediately to user actions, took their place. Let's add support for
-this key web application technology to our toy browser.
+this key web technology to our toy browser.
 
 Installing DukPy
 ================
@@ -30,7 +30,7 @@ inside a larger C or C++ project.[^1]
 
 [^1]: For example, in a video game the high-speed graphics code is
     usually written in C or C++ , but the actual plot of the game is
-    usually written in a simpler language.
+    usually written in a higher-level language like JavaScript.
 
 Like other JavaScript engines, DukPy not only executes JavaScript
 code, but also allows JavaScript code to call *exported* Python
@@ -42,15 +42,15 @@ including on Windows, macOS, and Linux systems, you should be able to
 do this with:
 
 ``` {.example}
-pip3 install dukpy
+python3 -m pip install dukpy
 ```
 
 ::: {.installation}
-Depending on your computer, the `pip3` command might be called `pip`,
-or you might use `easy_install` instead. You may also need to install
-`pip3`. If you do your Python programming through an IDE, you may need
-to use your IDE's package installer. If nothing else works, you can
-build [from source](https://github.com/amol-/dukpy).
+If you have a really old version of Python, you might need to install
+the `pip` package first, possibly using a command line `easy_install`.
+If you do your Python programming through an IDE, you may need to use
+your IDE's package installer. If nothing else works, you can build
+[from source](https://github.com/amol-/dukpy).
 
 If you're following along in something other than Python, you might
 need to skip this chapter, though you could try binding directly to
@@ -66,17 +66,17 @@ dukpy.evaljs("2 + 2")
 
 If you get an error on the first line, you probably failed to install
 DukPy.[^2] If you get an error, or a segfault, on the second line,
-there's a chance that Duktape failed to compile, and maybe doesn't
-support your system. In that case you might need to skip this
-chapter.
+there's a chance that Duktape failed to compile, or maybe doesn't
+support your system, and you might need to debug further.
 
 [^2]: Or, on my Linux machine, I sometimes get errors due to file
     ownership. You may have to do some sleuthing.
 
 ::: {.quirk}
 Note to JavaScript experts: Dukpy does not implement newer syntax like
-`let` and `const` or arrow functions. You'll need to use old-school
-JavaScript from the turn of the century.
+`let` and `const` or arrow functions. In keeping with this book's
+aesthetics, you'll need to use old-school JavaScript from the turn of
+the century.
 :::
 
 
@@ -99,7 +99,7 @@ CSS. First, we need to find all of the scripts:
 
 ``` {.python replace=nodes/self.nodes}
 class Tab:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         # ...
         scripts = [node.attributes["src"] for node
                    in tree_to_list(nodes, [])
@@ -111,11 +111,11 @@ class Tab:
 
 Next we run all of the scripts:
 
-``` {.python expected=False}
-def load(self, url, body=None):
+``` {.python droplines=Script%20returned}
+def load(self, url, payload=None):
     # ...
     for script in scripts:
-        header, body = url.resolve(script).request()
+        body = url.resolve(script).request()
         print("Script returned: ", dukpy.evaljs(body))
     # ...
 ```
@@ -180,7 +180,7 @@ We create this new `JSContext` object while loading the page:
 
 ``` {.python replace=JSContext()/JSContext(self)}
 class Tab:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         # ...
         self.js = JSContext()
         for script in scripts:
@@ -202,13 +202,9 @@ the variable `x` is set in `a.js` but used in `b.js`. In real web
 browsers, that's important, since one script might define library
 functions that another script wants to call.
 
-To provide JavaScript access to the outside world---such as to the
-console output---we must export functions. The JavaScript function
-`console.log` corresponds to the Python `print` function. We leverage
-this correspondence using DukPy's `export_function`:[^5]
-
-[^5]: If you're using Python 2, you'll need to write
-    a little wrapper function around `print` instead.
+Now, to allow JavaScript to interact with the outside world, DukPy
+allows us to "export" functions to it. For example, we can export
+Python's `print` function like so:
 
 ``` {.python replace=__init__(self)/__init__(self%2c%20tab)}
 class JSContext:
@@ -225,14 +221,16 @@ call_python("log", "Hi from JS")
 ```
 
 When this JavaScript code runs, Dukpy converts the JavaScript string
-`"Hi from JS"` into a Python string,^[This conversion also works on
-numbers, string, and booleans, but not with fancy objects.] and then
-passes that Python string to the `print` function we exported. Then
-`print` prints that string.
+`"Hi from JS"` into a Python string,^[This conversion works for
+numbers, strings, and booleans, plus arrays and dictionaries thereof,
+but not with fancy objects.] and then passes that Python string to the
+`print` function we exported. Then `print` prints that string.
 
-Since we ultimately want JavaScript to call a `console.log` function,
+Since we ultimately want a [`console.log`][console-log] function,
 not a `call_python` function, we need to define a `console` object
 and then give it a `log` property. We can do that *in JavaScript*:
+
+[console-log]: https://developer.mozilla.org/en-US/docs/Web/API/console/log
 
 ``` {.javascript .example}
 console = { log: function(x) { call_python("log", x); } }
@@ -243,8 +241,7 @@ defines a variable called `console`, whose value is an object literal
 with the property `log`, whose value is a function that calls
 `call_python`.
 
-[^brush-up]: Now's a good time to [brush up][mdn-js]---this chapter
-    has a ton of JavaScript!
+[^brush-up]: Now's a good time to [brush up][mdn-js]!
 
 [mdn-js]: https://developer.mozilla.org/en-US/docs/Learn/JavaScript/First_steps/A_first_splash
 
@@ -254,11 +251,12 @@ and execute it when the `JSContext` is created, before we run any user
 code:
 
 ``` {.python replace=runtime/runtime9,__init__(self)/__init__(self%2c%20tab)}
+RUNTIME_JS = open("runtime.js").read()
+
 class JSContext:
     def __init__(self):
         # ...
-        with open("runtime.js") as f:
-            self.interp.evaljs(f.read())
+        self.interp.evaljs(RUNTIME_JS)
 ```
 
 Now you should be able to put `console.log("Hi from JS!")` into a
@@ -278,10 +276,8 @@ If a script runs for a long time, or has an infinite loop, our browser
 locks up and become completely unresponsive to the user. This is a
 consequence of JavaScript's single-threaded semantics and its task-based,
 [run-to-completion scheduling][rtc]. Some APIs like [Web
-Workers][webworkers], allow limited multithreading, but those threads
-largely don't have access to the DOM. [Chapter
-13](scheduling.md) has more to say about how browsers
-deal with slow user scripts.
+Workers][webworkers] allow limited multithreading, but those threads
+don't have access to the DOM.
 :::
 
 [rtc]: https://en.wikipedia.org/wiki/Run_to_completion_scheduling
@@ -304,7 +300,7 @@ You can implement that like this:
 
 ``` {.python}
 class Tab:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         for script in scripts:
             # ...
             try:
@@ -314,11 +310,10 @@ class Tab:
 ```
 
 But as you go through this chapter, you'll also run into another type
-of crash: crashes in the JavaScript runtime. We can't ignore those,
-because we want our runtime to work. Debugging these crashes is a
-bear: by default DukPy won't show a backtrace, and if the runtime code
-calls into a exported function that crashes it gets even more
-confusing.
+of crash: crashes in our own JavaScript runtime. We can't ignore
+those, because that's our code. Debugging these crashes is a bear: by
+default DukPy won't show a backtrace, and if the runtime code calls
+into a exported function that crashes it gets even more confusing.
 
 Here's a few tips to help with these crashes. First, if you get a
 crash inside some JavaScript function, wrap the body of the function
@@ -415,7 +410,7 @@ class JSContext:
 [^bad-selector]: If you pass `querySelectorAll` an invalid selector,
 the `selector` call will throw an error, and DukPy will convert that
 Python-side exception into a JavaScript-side exception in the web
-script we are running, which can catch it and do something else.
+script we are running, which can catch it.
 
 Next we need to find and return all matching elements. To do that, we
 need the `JSContext` to have access to the `Tab`, specifically to its
@@ -428,7 +423,7 @@ class JSContext:
         # ...
 
 class Tab:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         # ...
         self.js = JSContext(self)
         # ...
@@ -521,7 +516,7 @@ objects.[^nodelist] So let's define a `Node` object in our runtime
 that wraps a handle:[^10]
 
 [^nodelist]: In a real browser, `querySelectorAll` actually returns a
-    [`NodeList` object][nodelist-mdn], for kind-of abstruse reasons
+    [`NodeList` object][nodelist-mdn], for kind-of-abstruse reasons
     that aren't relevant here.
     
 [nodelist-mdn]: https://developer.mozilla.org/en-US/docs/Web/API/NodeList
@@ -623,7 +618,7 @@ Event handling
 ==============
 
 The browser executes JavaScript code as soon as it loads the web page,
-that code often wants to change the page *in response* to user
+but that code often wants to change the page *in response* to user
 actions.
 
 Here's how that works. Any time the user interacts with the page, the
@@ -718,14 +713,14 @@ class JSContext:
     def dispatch_event(self, type, elt):
         handle = self.node_to_handle.get(elt, -1)
         self.interp.evaljs(
-            EVENT_DISPATCH_CODE, type=type, handle=handle)
+            EVENT_DISPATCH_JS, type=type, handle=handle)
 ```
 
-Here the `EVENT_DISPATCH_CODE` constant is a string of JavaScript code that
+Here the `EVENT_DISPATCH_JS` constant is a string of JavaScript code that
 dispatches a new event:
 
 ``` {.python replace=dukpy.type/new%20Event(dukpy.type)}
-EVENT_DISPATCH_CODE = \
+EVENT_DISPATCH_JS = \
     "new Node(dukpy.handle).dispatchEvent(dukpy.type)"
 ```
 
@@ -758,6 +753,23 @@ that actually changed, as set up by `dispatchEvent`.
 So far so good---but ideally the length check wouldn't print to the
 console; it would add a warning to the web page itself. To do that,
 we'll need to not only read from the page but also modify it.
+
+::: {.further}
+JavaScript [first appeared in 1995][historyJS], as part of Netscape
+Navigator. Its name was chosen to indicate a similarity to the
+[Java][javaLang] language, and the syntax is Java-esque for that
+reason. However, under the surface JavaScript is a much more dynamic
+language than Java, as is appropriate given its role as a progressive
+enhancement mechanism for the web. For example, any method or property on any
+object (including built-in ones like `Element`) can be dynamically
+overridden at any time. This makes it possible to [polyfill] differences
+between browsers, adding features that look built-in to other
+JavaScript code.
+:::
+
+[javaLang]: https://en.wikipedia.org/wiki/Java_(programming_language)
+[historyJS]: https://auth0.com/blog/a-brief-history-of-javascript/
+[polyfill]: https://developer.mozilla.org/en-US/docs/Glossary/Polyfill
 
 Modifying the DOM
 =================
@@ -833,8 +845,8 @@ Whenever the page changes, we need to update its rendering by calling
 `render`:[^reflow]
 
 [^reflow]: Redoing layout for the whole page is often wasteful;
-    [Chapter 16](invalidation.md) explores more complicated algorithms to
-    speed this up.
+    [Chapter 16](invalidation.md) explores a more complicated
+    algorithm that speeds this up.
 
 ``` {.python}
 class JSContext:
@@ -848,17 +860,18 @@ update to account for the new HTML, any added scripts or style sheets
 will not properly load, and removed style sheets will (incorrectly) still
 apply. I've left fixing that to an exercise.]
 
-Let's try this out this in our guest book. To prevent long rants in my
-guest book, I want a 100-character limit on guest book entries.
+Let's try this out in our guest book. Say we want a 100-character
+limit on guest book entries to prevent long, incoherent rants from
+making it in.
 
-First, switch to the server codebase and add a `<label>` after the guest
-book form. Initially this label will be empty, but we'll write an
+First, switch to the server codebase and add a `<strong>` after the guest
+book form. Initially this element will be empty, but we'll write an
 error message into it if the paragraph gets too long.
 
 ``` {.python file=server}
 def show_comments():
     # ...
-    out += "<label></label>"
+    out += "<strong></strong>"
     # ...
 ```
 
@@ -887,12 +900,12 @@ We can then put our little input length checker into `comment.js`,
 with the `lengthCheck` function modified to use `innerHTML`:
 
 ``` {.javascript file=comment replace=value.length%20%3e%20100/!allow_submit}
-var label = document.querySelectorAll("label")[0];
+var strong = document.querySelectorAll("strong")[0];
 
 function lengthCheck() {
     var value = this.getAttribute("value");
     if (value.length > 100) {
-        label.innerHTML = "Comment too long!";
+        strong.innerHTML = "Comment too long!";
     }
 }
 
@@ -908,7 +921,7 @@ stand out more, so let's go ahead and add another URL to our web
 server, `/comment.css`, with the contents:
 
 ``` {.css file=comment}
-label { font-weight: bold; color: red; }
+strong { font-weight: bold; color: red; }
 ```
 
 Add a `link` to the guest book page so that this style sheet is loaded.
@@ -974,7 +987,7 @@ Node.prototype.dispatchEvent = function(evt) {
 In Python, we now need to create an `Event` to pass to `dispatchEvent`:
 
 ``` {.python}
-EVENT_DISPATCH_CODE = \
+EVENT_DISPATCH_JS = \
     "new Node(dukpy.handle).dispatchEvent(new Event(dukpy.type))"
 ```
 
@@ -988,7 +1001,7 @@ class JSContext:
     def dispatch_event(self, type, elt):
         # ...
         do_default = self.interp.evaljs(
-            EVENT_DISPATCH_CODE, type=type, handle=handle)
+            EVENT_DISPATCH_JS, type=type, handle=handle)
         return not do_default
 ```
 
@@ -1067,47 +1080,49 @@ def add_entry(params):
     return show_comments()
 ```
 
-A closing thought
-=================
+Note that we shouldn't---can't---rely on JavaScript being executed by
+the browser, because the browser is the user's agent, not ours.
+Ideally, web pages should be written so that they work correctly
+without JavaScript, but work better with it. This is called
+[progressive enhancement][progEnhancement], and it means we're not
+replicating in JavaScript what the browser can already do.
 
-Note that while our guest book is *enhanced* by JavaScript, it still
-uses HTML, CSS, form elements and all the other features we've built
-so far into our browser. This is in contrast to the recently-departed
-[Adobe Flash][flash], and before that [Java Applets][javaApplets],
-which were self-contained plug-ins that handled input and rendering
-with their own technologies.
+[progEnhancement]: https://en.wikipedia.org/wiki/Progressive_enhancement
 
-Because JavaScript builds on top of HTML and CSS, it allows web
-applications to go beyond what is built into the browser, similar in
-some ways to a [browser extension][browserExtension]. Ideally, web
-pages should be written so that they work correctly without
-JavaScript, but work better with it---this is the concept of
-[progressive enhancement][progEnhancement]. In addition to supporting
-more browsers, progressive enhancement saves you from needing to
-re-invent HTML and CSS---even now that you now know how.
+A closing thought: while our guest book now has a little bit of
+JavaScript code, it's still mostly HTML, CSS, form elements, other
+standard web features. In this way JavaScript extends the web instead
+of replacing it. This is in contrast to the recently-departed [Adobe
+Flash][flash], and before that [Java Applets][javaApplets], which were
+self-contained plug-ins that handled input and rendering on their own.
 
 [flash]: https://www.adobe.com/products/flashplayer/end-of-life.html
 [javaApplets]: https://en.wikipedia.org/wiki/Java_applet
 
-[browserExtension]: https://en.wikipedia.org/wiki/Browser_extension
-[progEnhancement]: https://en.wikipedia.org/wiki/Progressive_enhancement
-
 ::: {.further}
-JavaScript [first appeared in 1995][historyJS], as part of Netscape
-Navigator. Its name was chosen to indicate a similarity to the
-[Java][javaLang] language, and the syntax is Java-esque for that
-reason. However, under the surface JavaScript is a much more dynamic
-language than Java, as is appropriate given its role as a progressive
-enhancement mechanism for the web. For example, any method or property on any
-object (including built-in ones like `Element`) can be dynamically
-overridden at any time. This makes it possible to [polyfill] differences
-between browsers, adding features that look built-in to other
-JavaScript code.
+Search engines are constantly [crawling] the web and [indexing] all of the web
+pages they can find. In the early days, indexing was just a matter of loading
+the HTML, parsing it and extracting the information. But these days, a lot of
+[single-page app][spa] sites use JavaScript to
+["hydrate"][hydration][^why-hydrate] their site into its full contents.
+On such sites, before hydration happens, the information in the site is
+hidden inside of JavaScript data structures. For this reason, search
+engines need to not just parse HTML, but also run JavaScript (and load style
+sheets) during indexing. In other words, the indexing systems use browsers
+(such as for example [headless Chrome][headless])---one more place browsers
+appear in the web ecosystem.
+
+[spa]: https://en.wikipedia.org/wiki/Single-page_application
+[hydration]: https://en.wikipedia.org/wiki/Hydration_(web_development)
+[headless]: https://chromium.googlesource.com/chromium/src/+/lkgr/headless/README.md
+[indexing]: https://en.wikipedia.org/wiki/Search_engine_indexing
+
+[^why-hydrate]: This process is called "hydration" by analogy with how water
+is added to dehydrated food to make it edible again.
+
 :::
 
-[javaLang]: https://en.wikipedia.org/wiki/Java_(programming_language)
-[historyJS]: https://auth0.com/blog/a-brief-history-of-javascript/
-[polyfill]: https://developer.mozilla.org/en-US/docs/Glossary/Polyfill
+[crawling]: https://en.wikipedia.org/wiki/Web_crawler
 
 
 Summary
@@ -1177,7 +1192,7 @@ its subtree---back into an *detached* state. (It can then be
 *re-attached* elsewhere, with `appendChild` and `insertBefore`, or
 deleted.) Implement this method. It's more challenging to implement
 this one, because you'll need to also remove the subtree from the
-Python side, and delete any layout objects associated with it.
+Python side.
 
 [removeChild]: https://developer.mozilla.org/en-US/docs/Web/API/Node/removeChild
 
@@ -1204,17 +1219,6 @@ sure `preventDefault` still successfully prevents clicks on a link
 from actually following the link.
 
 [eventBubbling]: https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Building_blocks/Events#event_bubbling
-
-*Inline styling*: The `style` property of a JavaScript `Node` object
-contains a [`CSSStyleDeclaration`][cssstyle] object. Setting any
-property on this object should add or modify CSS properties from the
-element's inline style (as in its `style` attribute). CSS properties
-with dashes are replaced by camel-casing; the `background-color` CSS
-property is called `backgroundColor` in Javascript. Implement the
-`style` property.
-
-[cssstyle]: https://developer.mozilla.org/en-US/docs/Web/API/CSSStyleDeclaration
-[styleAttr]: https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/style
 
 *Serializing HTML*: Reading from [`innerHTML`][innerHTML] should
 return a string containing HTML source code. That source code should

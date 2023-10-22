@@ -93,7 +93,7 @@ call it `DocumentLayout`:
 
 [^or-none]: I don't want to just pass `None` for the parent, because
 the root layout object also computes its size and position
-differently, as we'll see later this chapter.
+differently, as we'll see later in this chapter.
 
 ``` {.python replace=%20Layout/%20BlockLayout dropline=display_list}
 class DocumentLayout:
@@ -115,8 +115,8 @@ their `layout` methods. This is a common pattern for constructing
 trees, and we'll be seeing it a lot throughout this book.
 
 Now when we construct a `DocumentLayout` object inside `load`, we'll
-be building a tree; a very short tree, more of a stump, but a tree
-nonetheless!
+be building a tree; a very short tree, more of a stump (just the "document"
+and the HTML element below it), but a tree nonetheless!
 
 By the way, since we now have `DocumentLayout`, let's rename `Layout`
 so it's less ambiguous. I like `BlockLayout` as a name, because we
@@ -314,7 +314,7 @@ property][mdn-display]. The oldest CSS layout modes, like `inline` and
 `block`, are set on the children instead of the parent, which leads to
 hiccups like [anonymous block boxes][anon-block]. Newer properties
 like `inline-block`, `flex`, and `grid` are set on the parent, which
-avoids allow this kind of error.
+avoids this kind of error.
 :::
 
 [mdn-display]: https://developer.mozilla.org/en-US/docs/Web/CSS/display
@@ -521,8 +521,7 @@ left and right, and `VSTEP` above and below. That's so the text won't
 run into the very edge of the window and get cut off.
 
 Anyway, with all of the sizes and positions now computed correctly,
-you should see the browser now correctly display all of the text on
-the page.
+our browser should display all of the text on the page in the right places.
 
 ::: {.further}
 Formally, computations on a tree like this can be described by an
@@ -595,7 +594,7 @@ class Browser:
         self.draw()
 ```
 
-Check it out: your browser is now using fancy tree-based layout! I
+Check it out: our browser is now using fancy tree-based layout! I
 recommend pausing to test and debug. Tree-based layout is powerful but
 complex, and we're about to add more features. Stable foundations make
 for comfortable houses.
@@ -647,7 +646,7 @@ class DrawRect:
 Now `BlockLayout` must add `DrawText` objects for each word it wants
 to draw:[^why-not-change]
 
-[^why-not-change]: Why not change the `display_list` field inside an
+[^why-not-change]: Why not change the `display_list` field inside a
 `BlockLayout` to contain `DrawText` commands directly? I suppose you
 could, but I think it's cleaner to create all of the draw
 commands in one place.
@@ -689,8 +688,7 @@ class DrawText:
             self.left, self.top - scroll,
             text=self.text,
             font=self.font,
-            anchor='nw',
-        )
+            anchor='nw')
 ```
 
 Note that `execute` takes the scroll amount as a parameter; this way,
@@ -704,12 +702,11 @@ class DrawRect:
             self.left, self.top - scroll,
             self.right, self.bottom - scroll,
             width=0,
-            fill=self.color,
-        )
+            fill=self.color)
 ```
 
 By default, `create_rectangle` draws a one-pixel black border, which
-for backgrounds we don't want, so make sure to pass `width = 0`:
+for backgrounds we don't want, so make sure to pass `width=0`.
 
 We still want to skip offscreen graphics commands, so let's add a
 `bottom` field to `DrawText` so we know when to skip those:
@@ -738,7 +735,7 @@ it. You should see each code snippet set off with a gray background.
 
 Here's one more cute benefit of tree-based layout. Thanks to
 tree-based layout we now record the height of the whole page. The
-browser can use that to avoid scrolling past the bottom of the page:
+browser can use that to avoid scrolling past the bottom:
 
 ``` {.python}
 def scrolldown(self, e):
@@ -773,7 +770,7 @@ styling provided by a library.
 Summary
 =======
 
-This chapter was a dramatic rewrite of your browser's layout engine:
+This chapter was a dramatic rewrite of our browser's layout engine:
 
 - Layout is now tree-based and produces a *layout tree*
 - Each node in the tree has one of two different *layout modes*

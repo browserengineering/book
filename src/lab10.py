@@ -70,10 +70,12 @@ class URL:
             params = {}
             if ";" in cookie:
                 cookie, rest = cookie.split(";", 1)
-                for param_pair in rest.split(";"):
-                    if '=' in param_pair:
-                        name, value = param_pair.strip().split("=", 1)
-                        params[name.casefold()] = value.casefold()
+                for param in rest.split(";"):
+                    if '=' in param:
+                        param, value = param.strip().split("=", 1)
+                    else:
+                        value = "true"
+                    params[param.casefold()] = value.casefold()
             COOKIE_JAR[self.host] = (cookie, params)
     
         assert "transfer-encoding" not in response_headers
@@ -124,8 +126,8 @@ class Tab:
         return self.allowed_origins == None or \
             url.origin() in self.allowed_origins
 
-    def load(self, url, body=None):
-        headers, body = url.request(self.url, body)
+    def load(self, url, payload=None):
+        headers, body = url.request(self.url, payload)
         self.scroll = 0
         self.url = url
         self.history.append(url)

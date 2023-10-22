@@ -236,7 +236,7 @@ zoom level when we navigate to a new page:
 
 ``` {.python}
 class Tab:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         self.zoom = 1
         # ...
 ```
@@ -925,7 +925,7 @@ longer exists. We need to make sure to clear focus in this case:
 
 ``` {.python}
 class Tab:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         self.focus = None
         # ...
 ```

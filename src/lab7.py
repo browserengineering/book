@@ -162,7 +162,7 @@ class BlockLayout:
         self.children.append(new_line)
 
     def word(self, node, word):
-        font = self.get_font(node)
+        font = self.font(node)
         w = font.measure(word)
         if self.cursor_x + w > self.width:
             self.new_line()

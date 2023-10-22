@@ -82,11 +82,11 @@ class JSContext:
 
 @wbetools.patch(Tab)
 class Tab:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         self.scroll = 0
         self.url = url
         self.history.append(url)
-        body = url.request(body)
+        body = url.request(payload)
         self.nodes = HTMLParser(body).parse()
 
         self.js = JSContext(self)

@@ -657,7 +657,7 @@ especially if they modify the page multiple times. Make this change in
 
 ``` {.python}
 class Tab:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         # ...
         self.set_needs_render()
 ```
@@ -1740,7 +1740,7 @@ browser thread's scroll offset of past the bottom of the page:
 
 ``` {.python}
 class Tab:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         self.scroll = 0
         self.scroll_changed_in_tab = True
 

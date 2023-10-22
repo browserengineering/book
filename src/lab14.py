@@ -929,13 +929,13 @@ class Tab:
     def script_run_wrapper(self, script, script_text):
         return Task(self.js.run, script, script_text)
 
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         self.focus_element(None)
         self.zoom = 1
         self.scroll = 0
         self.scroll_changed_in_tab = True
         self.task_runner.clear_pending_tasks()
-        headers, body = url.request(self.url, body)
+        headers, body = url.request(self.url, payload)
         self.url = url
         self.accessibility_tree = None
         self.history.append(url)
