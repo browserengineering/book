@@ -2126,6 +2126,17 @@ Exercises
 You'll have to define a new kind of interpolation that applies to all the
 color channels.
 
+*Inline styling*: Reading the `style` property of a JavaScript `Node` object
+should return a [`CSSStyleDeclaration`][cssstyle] object. Setting any
+property on this object should add or modify that CSS property via the
+element's `style` attribute. CSS properties with dashes are replaced
+by camel-casing; for example, the `background-color` CSS property is
+called `backgroundColor` in Javascript. Implement the `style`
+property.
+
+[cssstyle]: https://developer.mozilla.org/en-US/docs/Web/API/CSSStyleDeclaration
+[styleAttr]: https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/style
+
 *Easing functions*: Our browser only implements a linear interpolation between
 start and end values, but there are many other [easing functions][easing] 
 (in fact, the default one in real browsers is
