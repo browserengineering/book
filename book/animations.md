@@ -733,7 +733,7 @@ raster itself into. To start, it'll need to know how big a surface to
 allocate. That's just the union of the bounding boxes of all of its
 paint commands---the `rect` field:
 
-``` {.python}
+``` {.python expected=False}
 class CompositedLayer:
     # ...
     def composited_bounds(self):
@@ -1755,7 +1755,7 @@ Basically, when considering which composited layer a display item goes
 in, also check if it overlaps with an existing composited layer. If
 so, start a new `CompositedLayer` for this display item:
 
-``` {.python replace=layer.composited_bounds/layer.absolute_bounds,cmd.rect/absolute_bounds(cmd)}
+``` {.python replace=layer.composited_bounds/layer.absolute_bounds,cmd.rect/local_to_absolute(cmd%2c%20cmd.rect)}
 class Browser:
     def composite(self):
         # ...
@@ -1901,7 +1901,7 @@ use two helper methods that compute such bounds. The first maps a rect
 through a translation, and the second walks up the node tree, mapping through
 each translation found.
 
-``` {.python}
+``` {.python replace=translation)/translation%2c%20reversed%3dFalse)}
 def map_translation(rect, translation):
     if not translation:
         return rect
@@ -1956,11 +1956,11 @@ class Browser:
                     # ...
                 elif skia.Rect.Intersects(
                     layer.absolute_bounds(),
-                    absolute_bounds(cmd)):
+                    local_to_absolute(cmd, cmd.rect)):
                     # ...
 ```
 
-To implement `absolute_bounds`, we first need a new `map` method on
+To implement `local_to_absolute`, we first need a new `map` method on
 `Transform` that takes a rect in the coordinate space of the
 "contents" of the transform and outputs a rect in post-transform
 space. For example, if the transform was `translate(20px, 0px)` then
@@ -1989,8 +1989,7 @@ looks a lot like `absolute_bounds_for_obj`, except that it works on the
 display list and not the layout object tree:
 
 ``` {.python}
-def absolute_bounds(display_item):
-    rect = display_item.rect
+def local_to_absolute(display_item, rect):
     while display_item.parent:
         rect = display_item.parent.map(rect)
         display_item = display_item.parent
@@ -2004,7 +2003,7 @@ class CompositedLayer:
     def absolute_bounds(self):
         rect = skia.Rect.MakeEmpty()
         for item in self.display_items:
-            rect.join(absolute_bounds(item))
+            rect.join(local_to_absolute(item, item.rect))
         return rect
 ```
 
