@@ -554,7 +554,11 @@ class Browser:
                 self.raster_chrome()
             else:
                 self.focus = "content"
-            self.tabs[self.active_tab].click(e.x, e.y - self.chrome.bottom)
+            url = self.tabs[self.active_tab].url
+            self.tabs[self.active_tab].click(
+                e.x, e.y - self.chrome.bottom)
+            if self.tabs[self.active_tab] != url:
+                self.raster_chrome()
             self.raster_tab()
         self.draw()
 

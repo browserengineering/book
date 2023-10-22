@@ -18,7 +18,8 @@ A tree of nodes
 The HTML tree[^dom] has one node\index{node} for each open and close tag pair
 and for each span of text.[^1] So for our browser to use a tree, tokens need to
 evolve into nodes. That means adding a list of children and a parent
-pointer to each one. Here's the new `Text` class:
+pointer to each one. Here's the new `Text` class, representing text at the leaf
+of the tree:
 
 [^dom]: This is the tree that is usually called the
 DOM\index{DOM}\index{document} tree, for
@@ -55,7 +56,7 @@ text nodes never have children, for consistency.
 
 Constructing a tree of nodes from source code is called parsing. A
 parser builds a tree one element or text node at a time. But that
-means the parser needs to store an *incomplete* tree. For example,
+means the parser needs to store an *incomplete* tree as it goes. For example,
 suppose the parser has so far read this bit of HTML:
 
     <html><video></video><section><h1>This is my webpage
@@ -68,10 +69,10 @@ other nodes are unfinished: more children can be added to the
 `<html>`, `<section>`, and `<h1>` nodes, depending on what HTML comes
 next.
 
-Since the parser reads the HTML file from left to right, these
+Since the parser reads the HTML file from beginning to end, these
 unfinished tags are always in a certain part of the tree. The
 unfinished tags have always been *opened* but not yet closed; they are
-always *to the right* of the finished nodes; and they are always
+always *later in the source* than the finished nodes; and they are always
 *children of other unfinished tags*. To leverage these facts, let's
 represent an incomplete tree by storing a list of unfinished tags,
 ordered with parents before children. The first node in the list is
@@ -96,8 +97,8 @@ class HTMLParser:
 
 Before the parser starts, it hasn't seen any tags at all, so the
 `unfinished` list storing the tree starts empty. But as the parser
-reads tokens, that list fills up. Let's start that by renaming the
-`lex` function we have now, aspirationally, to `parse`:
+reads tokens, that list fills up. Let's start that by aspirationally
+renaming the `lex` function we have now to `parse`:
 
 ``` {.python}
 class HTMLParser:
@@ -239,11 +240,11 @@ works!
 
 ::: {.further}
 The ill-considered Javascript `document.write` method allows
-Javascript to modify the HTML source code while it's being parsed!
+JavaScript to modify the HTML source code while it's being parsed!
 This is actually a [bad idea][document-write-bad].
 An implementation of `document.write` must have the HTML parser stop to
-execute JavaScript, but that would be slow down requests for images,
-CSS, and JavaScript used later in the page. In fact, modern
+execute JavaScript, but that slows down requests for images,
+CSS, and JavaScript used later in the page. To solve this, modern
 browsers use [speculative][speculative-parsing] parsing to start
 loading additional resources even before parsing is done.
 :::
@@ -293,7 +294,7 @@ nodes = HTMLParser(body).parse()
 print_tree(nodes)
 ```
 
-Run it on this web page, and you'll see something like this:
+Run it on this web page, and you'll see something like this at the beginning:
 
 ``` {.example}
  <!doctype html>
@@ -303,9 +304,6 @@ Run it on this web page, and you'll see something like this:
      <head>
        '\n  '
        <meta charset="utf-8" />
-         '\n  '
-         <meta name="generator" content="pandoc" />
-           '\n  '
 ```
 
 Immediately a couple of things stand out. Let's start at the top, with
@@ -355,16 +353,9 @@ The first part of the parsed HTML tree for the `browser.engineering` home page n
 looks something like this:
 
 ``` {.example}
-<html lang="en-US" xml:lang="en-US">
+ <html lang="en-US" xml:lang="en-US">
    <head>
-     <meta charset="utf-8" />
-       <meta name="generator" content="pandoc" />
-         <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=yes" />
-           <meta name="author" content="Pavel Panchekha &amp; Chris Harrelson" />
-             <link rel="stylesheet" href="book.css" />
-               <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Vollkorn%7CLora&display=swap" />
-                 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Vollkorn:400i%7CLora:400i&display=swap" />
-                   <title>
+     <meta charset="utf-8" /="">
 ```
 
 Our next problem: why's everything so deeply indented? Why aren't
@@ -441,11 +432,11 @@ names, so I case-fold them.[^case-fold] Then, inside the loop, I
 split each attribute-value pair into a name and a value. The easiest
 case is an unquoted attribute, where an equal sign separates the two:
 
-[^case-fold]: Lower-casing text is the [wrong way][case-hard] to do
-    case-insensitive comparisons in languages like Cherokee. In HTML
-    specifically, tag names only use the ASCII characters so
-    lower-casing them would be sufficient, but I'm using Python's
-    `casefold` function because it's a good habit to get into.
+[^case-fold]: The `casefold` method works better than `lower`. Lower-casing text
+is the [wrong way][case-hard] to do case-insensitive comparisons in languages
+like Cherokee. In HTML specifically, tag names only use the ASCII characters so
+lower-casing them would be sufficient, but I'm using Python's `casefold`
+function because it's a good habit to get into.
     
 [case-hard]: https://www.b-list.org/weblog/2018/nov/26/case/
 
@@ -510,17 +501,16 @@ and try your parser again:
 <html>
    <head>
      <meta>
-     <meta>
-     <meta>
-     <meta>
      <link>
      <link>
      <link>
-     <title>
+     <link>
+     <link>
+     <meta>
 ```
 
 It's close! Yes, if you print the attributes, you'll see that
-attributes with whitespace (like `author` on the fourth `meta` tag)
+attributes with whitespace (like `author` on the fifth `meta` tag)
 are mis-parsed as multiple attributes, and the final slash on the
 self-closing tags is incorrectly treated as an extra attribute. A
 better parser would fix these issues. But let's instead leave our

@@ -1,6 +1,6 @@
 [{"code": "'href' in node.attributes", "type": "dict"},
  {"code": "self.host in COOKIE_JAR", "type": "dict"},
- {"code": "'=' in param_pair", "type": "str"},
+ {"code": "'=' in param", "type": "str"},
  {"code": "'set-cookie' in response_headers", "type": "dict"},
  {"code": "'content-security-policy' in headers", "type": "dict"},
  {"code": "';' in cookie", "type": "str"},

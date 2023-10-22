@@ -1607,6 +1607,25 @@ class Browser:
         self.draw()
 ```
 
+However, clicking on a web page can cause it to navigate to a new one,
+so we need to detect that and raster the browser chrome if the URL changed:
+
+``` {.python}
+class Browser:
+    def handle_click(self, e):
+        if e.y < self.chrome.bottom:
+            # ...
+        else:
+            # ...
+            url = self.tabs[self.active_tab].url
+            self.tabs[self.active_tab].click(
+                e.x, e.y - self.chrome.bottom)
+            if self.tabs[self.active_tab] != url:
+                self.raster_chrome()
+            self.raster_tab()
+```
+
+
 Notice how we don't redraw the chrome when only the tab changes, and
 vice versa. In `handle_down`, which scrolls the page, we don't need to
 call `raster_tab` at all, since scrolling doesn't change the page.
