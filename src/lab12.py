@@ -525,10 +525,9 @@ class Browser:
         def callback():
             self.lock.acquire(blocking=True)
             scroll = self.scroll
-            active_tab = self.tabs[self.active_tab]
             self.needs_animation_frame = False
             self.lock.release()
-            task = Task(active_tab.run_animation_frame, scroll)
+            task = Task(self.active_tab.run_animation_frame, scroll)
             active_tab.task_runner.schedule_task(task)
         self.lock.acquire(blocking=True)
         if self.needs_animation_frame and not self.animation_timer:
@@ -625,7 +624,7 @@ class Browser:
 
     def handle_quit(self):
         self.measure.finish()
-        self.tabs[self.active_tab].task_runner.set_needs_quit()
+        self.active_tab.task_runner.set_needs_quit()
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
 if __name__ == "__main__":
@@ -663,7 +662,7 @@ if __name__ == "__main__":
                     browser.handle_down()
             elif event.type == sdl2.SDL_TEXTINPUT:
                 browser.handle_key(event.text.text.decode('utf8'))
-        active_tab = browser.tabs[browser.active_tab]
+        active_tab = browser.active_tab
         if not wbetools.USE_BROWSER_THREAD:
             if active_tab.task_runner.needs_quit:
                 break
