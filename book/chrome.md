@@ -225,8 +225,7 @@ maximum ascents, maximum descents, and so on comes in. Before we do
 that, let's look at laying out `TextLayout`s.
 
 To lay out text we need font metrics, so let's start by getting the
-relevant font using the same font-construction code as in
-`BlockLayout`:
+relevant font using the same font-construction code as `BlockLayout`:
 
 ``` {.python}
 class TextLayout:
@@ -347,7 +346,7 @@ layout object and its own size and position.
 Actually, text rendering is [*way* more complex][rendering-hates] than
 this. [Letters][morx] can transform and overlap, and the user might
 want to color certain letters---or parts of letters---a different
-color. All of this is possible in HTML, and browsers do implement
+color. All of this is possible in HTML, and real browsers do implement
 support for it.
 :::
 
@@ -483,10 +482,11 @@ new web pages.
 
 ::: {.further}
 On mobile devices, a "click" happens over an area, not just at a
-single point. Since mobile "taps" are often pretty inaccurate, click
-should [use area, not point information][rect-based] for "hit
-testing".\index{hit testing} This can happen even with a [normal mouse
-click][hit-test] when the click is on a rotated or scaled element.
+single point. This is because mobile "taps" are often pretty
+inaccurate, click should [use area, not point information][rect-based]
+for "hit testing".\index{hit testing} This can happen even with a
+[normal mouse click][hit-test] when the click is on a rotated or
+scaled element.
 :::
 
 [rect-based]: http://www.chromium.org/developers/design-documents/views-rect-based-targeting
@@ -611,7 +611,7 @@ great read!
 [netcaptor-ad]: https://web.archive.org/web/20050701001923/http://www.netcaptor.com/
 [booklink]: Some people instead attribute tabbed browsing to Booklink's InternetWorks
     browser, a browser obscure enough that it doesn't have a Wikipedia
-    page though you can see some screenshots [on Twitter][booklink-x].
+    page, though you can see some screenshots [on Twitter][booklink-x].
     However, its tabs were slightly different from the modern
     conception, more like bookmarks than tabs. SimulBrowse instead
     used the modern notion of tabs.
@@ -724,7 +724,7 @@ letter X is typically as wide as the widest number.
 
 To actually draw the UI, we'll first have the browser chrome paint a
 display list, which the `Browser` will then draw to the screen. Let's
-first paint the new-tab button:
+start by first painting the new-tab button:
 
 ``` {.python}
 class Chrome:
@@ -929,9 +929,10 @@ class Browser:
 ```
 
 Note that we need to subtract out the the chrome size when clicking on
-tab contents. Inside `Chrome`, we need to figure out what the user
-clicked on. To make that easier, let's add a quick method to test
-whether a point intersects a rectangle:
+tab contents. As for clicks on the browser chrome, inside `Chrome` we
+need to figure out what the user clicked on. To make that easier,
+let's add a quick method to test whether a point intersects a
+rectangle:
 
 ``` {.python}
 def intersects(x, y, rect):
@@ -1236,7 +1237,7 @@ keys or function keys). For now let's have the `Browser` send all key
 presses to `Chrome` and then call `draw()` so that the new letters
 actually show up.
 
-The `Chrome` can then check `focus` and add on to `address_bar`:
+Then `Chrome` can check `focus` and add on to `address_bar`:
 
 ``` {.python}
 class Chrome:
