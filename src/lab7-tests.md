@@ -16,7 +16,7 @@ Testing LineLayout and TextLayout
     ...   "<div>This is a test<br>Also a test<br>And this too</div>"))
 
     >>> browser = lab7.Browser()
-    >>> browser.load(url)
+    >>> browser.new_tab(url)
     >>> browser.tabs
     [Tab(history=[URL(scheme=http, host=test, port=80, path='/0')])]
     >>> lab7.print_tree(browser.tabs[0].document.node)
@@ -60,7 +60,7 @@ Testing Tab
 
 The browser can have multiple tabs:
 
-    >>> browser.load(url2)
+    >>> browser.new_tab(url2)
     >>> browser.tabs #doctest: +NORMALIZE_WHITESPACE
     [Tab(history=[URL(scheme=http, host=test, port=80, path='/0')]),
      Tab(history=[URL(scheme=http, host=test, port=80, path='/1')])]
@@ -123,20 +123,20 @@ Testing Browser
 Clicking on a browser tab focuses it:
 
     >>> browser.active_tab
-    1
-    >>> (l, t, r, b) = browser.chrome.tab_bounds(0)
+    Tab(history=[URL(scheme=http, host=test, port=80, path='/1')])
+    >>> (l, t, r, b) = browser.chrome.tab_rect(0)
     >>> browser.handle_click(test.Event(l + 1, t + 1))
     >>> browser.active_tab
-    0
-    >>> (l, t, r, b) = browser.chrome.tab_bounds(1)
+    Tab(history=[URL(scheme=http, host=test, port=80, path='/0')])
+    >>> (l, t, r, b) = browser.chrome.tab_rect(1)
     >>> browser.handle_click(test.Event(l + 1, t + 1))
     >>> browser.active_tab
-    1
+    Tab(history=[URL(scheme=http, host=test, port=80, path='/1')])
 
 Clicking on the address bar focuses it:
 
     >>> browser.handle_click(test.Event(50, 51))
-    >>> browser.focus
+    >>> browser.chrome.focus
     'address bar'
 
 The back button works:
@@ -147,7 +147,7 @@ The back button works:
     >>> browser.tabs[1].history #doctest: +NORMALIZE_WHITESPACE
     [URL(scheme=http, host=test, port=80, path='/1'),
      URL(scheme=http, host=test, port=80, path='/0')]
-    >>> (l, t, r, b) = browser.chrome.backbutton_bounds()
+    >>> (l, t, r, b) = browser.chrome.back_rect
     >>> browser.handle_click(test.Event(l + 1, t + 1))
     >>> browser.tabs[1].history
     [URL(scheme=http, host=test, port=80, path='/1')]
@@ -155,9 +155,9 @@ The back button works:
 Pressing enter with text in the address bar works:
 
     >>> browser.handle_click(test.Event(50, 51))
-    >>> browser.focus
+    >>> browser.chrome.focus
     'address bar'
-    >>> browser.address_bar = "http://test/0"
+    >>> browser.chrome.address_bar = "http://test/0"
     >>> browser.handle_enter(test.Event(0, 0))
     >>> browser.tabs[1].history #doctest: +NORMALIZE_WHITESPACE
     [URL(scheme=http, host=test, port=80, path='/1'),

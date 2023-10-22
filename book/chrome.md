@@ -117,10 +117,9 @@ current line can be found at the end of the `children` array:
 
 ``` {.python indent=12}
 line = self.children[-1]
-previous_word = line[-1] if line else None
+previous_word = line.children[-1] if line.children else None
 text = TextLayout(node, word, line, previous_word)
 line.children.append(text)
-self.previous_word = text
 ```
 
 Note that I needed a new field here, `previous_word`, to keep track of
@@ -133,7 +132,7 @@ and clearing the `line` field. We don't want to do all that---we just
 want to create a new `LineLayout` object. So let's use a different
 method for that:
 
-``` {.python indent=8}
+``` {.python indent=4}
 def word(self, node, word):
     if self.cursor_x + w > self.width:
         self.new_line()
@@ -539,7 +538,7 @@ class Browser:
 Since these events need page-specific information to resolve, these
 handler methods just forward the event to the active tab:
 
-``` {.python replace=e.y/e.y%20-%20self.chrome.bottom}
+``` {.python replace=e.y/tab_y}
 class Browser:
     def handle_down(self, e):
         self.active_tab.scrolldown()
@@ -637,14 +636,15 @@ However, a browser's UI is quite complicated, so let's put that code in a new
 `Chrome` helper class:
 
 ``` {.python}
-class Browser:
-    def __init__(self):
-        ...
-        self.chrome = Chrome(self)
-
 class Chrome:
     def __init__(self, browser):
         self.browser = browser
+
+class Browser:
+    def __init__(self):
+        # ...
+        self.chrome = Chrome(self)
+
 ```
 
 So, let's design the browser chrome. Ultimately, I think it should
@@ -694,12 +694,12 @@ I'll add padding around the new-tab button:
 class Chrome:
     def __init__(self, browser):
         # ...
-        plus_width = self.font.measure("+")
+        plus_width = self.font.measure("+") + 2*self.padding
         self.newtab_rect = (
            self.padding, self.padding,
            self.padding + plus_width,
            self.padding + self.font_height
-       )
+        )
 ```
 
 Then the tabs will start `padding` past the end of the new-tab button.
@@ -735,7 +735,8 @@ class Chrome:
             self.newtab_rect[2], self.newtab_rect[3],
             "black", 1))
         cmds.append(DrawText(
-            self.newtab_rect[0], self.newtab_rect[1],
+            self.newtab_rect[0] + self.padding,
+            self.newtab_rect[1],
             "+", self.font, "black"))
 ```
 
@@ -795,7 +796,7 @@ class Chrome:
                     0, bounds[3], bounds[0], bounds[3],
                     "black", 1))
                 cmds.append(DrawLine(
-                    bounds[2], bounds[3], WIDTH, bounds[3]
+                    bounds[2], bounds[3], WIDTH, bounds[3],
                     "black", 1))
 ```
 
@@ -824,7 +825,7 @@ One final thing: we want to make sure that the browser chrome is
 always drawn on top of the page contents. To guarantee that, we can
 draw a white rectangle behind the chrome:
 
-``` {.python}
+``` {.python replace=tabbar/urlbar}
 class Chrome:
     def __init__(self, browser):
         # ...
@@ -923,8 +924,8 @@ class Browser:
         if e.y < self.chrome.bottom:
             self.chrome.click(e.x, e.y)
         else:
-            self.active_tab.click(
-                e.x, e.y - self.chrome.bottom)
+            tab_y = e.y - self.chrome.bottom
+            self.active_tab.click(e.x, tab_y)
         self.draw()
 ```
 
@@ -994,15 +995,16 @@ This "URL bar" will contain the back button and the address bar:
 class Chrome:
     def __init__(self, browser):
         # ...
-        back_width = self.font.measure("<")
+        back_width = self.font.measure("<") + 2*self.padding
         self.back_rect = (
-            self.padding, self.urlbar_top,
+            self.padding,
+            self.urlbar_top + self.padding,
             self.padding + back_width,
             self.urlbar_bottom - self.padding,
         )
 
         self.address_rect = (
-            self.back_rect[3] + self.padding,
+            self.back_rect[2] + self.padding,
             self.urlbar_top + self.padding,
             WIDTH - self.padding,
             self.urlbar_bottom - self.padding,
@@ -1020,23 +1022,25 @@ class Chrome:
             self.back_rect[2], self.back_rect[3],
             "black", 1))
         cmds.append(DrawText(
-            self.back_rect[0], self.back_rect[1],
+            self.back_rect[0] + self.padding,
+            self.back_rect[1],
             "<", self.font, "black"))
 ```
 
 The address bar needs to get the current tab's URL from the browser:
 
-``` {.python}
-
+``` {.python dropline=self.browser.active_tab.url}
+class Chrome:
     def paint(self):
         # ...
-        url = str(self.browser.active_tab.url)
         cmds.append(DrawOutline(
             self.address_rect[0], self.address_rect[1],
             self.address_rect[2], self.address_rect[3],
             "black", 1))
+        url = str(self.browser.active_tab.url)
         cmds.append(DrawText(
-            self.address_rect[0], self.address_rect[1],
+            self.address_rect[0] + self.padding,
+            self.address_rect[1],
             url, self.font, "black"))
 ```
 
@@ -1155,7 +1159,7 @@ bar. Let's call the contents `address_bar` and the state `focus`:
 
 ``` {.python}
 class Chrome:
-    def __init__(self):
+    def __init__(self, browser):
         # ...
         self.focus = None
         self.address_bar = ""
@@ -1167,6 +1171,7 @@ should clear `focus`:
 ``` {.python}
 class Chrome:
     def click(self, x, y):
+        self.focus = None
         # ...
         elif intersects(x, y, self.address_rect):
             self.focus = "address bar"
@@ -1186,12 +1191,14 @@ class Chrome:
         # ...
         if self.focus == "address bar":
             cmds.append(DrawText(
-                self.address_rect[0], self.address_rect[1],
+                self.address_rect[0] + self.padding,
+                self.address_rect[1],
                 self.address_bar, self.font, "black"))
         else:
             url = str(self.browser.active_tab.url)
             cmds.append(DrawText(
-                self.address_rect[0], self.address_rect[1],
+                self.address_rect[0] + self.padding,
+                self.address_rect[1],
                 url, self.font, "black"))
 ```
 
@@ -1203,12 +1210,14 @@ cursor) makes software easier to use:
 class Chrome:
     def paint(self):
         # ...
-        if self.browser.focus == "address bar":
+        if self.focus == "address bar":
             # ...
             w = self.font.measure(self.address_bar)
             cmds.append(DrawLine(
-                self.address_rect[0] + w, self.address_rect[1],
-                self.address_rect[0] + w, self.address_rect[3],
+                self.address_rect[0] + self.padding + w,
+                self.address_rect[1],
+                self.address_rect[0] + self.padding + w,
+                self.address_rect[3],
                 "red", 1))
 ```
 
@@ -1251,6 +1260,12 @@ key, which Tk calls `<Return>`, and actually send the browser to the
 new address:
 
 ``` {.python}
+class Chrome:
+    def enter(self):
+        if self.focus == "address bar":
+            self.browser.active_tab.load(URL(self.address_bar))
+            self.focus = None
+
 class Browser:
     def __init__(self):
         # ...
@@ -1259,12 +1274,6 @@ class Browser:
     def handle_enter(self, e):
         self.chrome.enter()
         self.draw()
-
-class Chrome:
-    def enter(self):
-        if self.focus == "address bar":
-            self.browser.active_tab.load(URL(self.address_bar))
-            self.focus = None
 ```
 
 So there---after a long chapter, you can now unwind a bit by surfing
