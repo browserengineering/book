@@ -754,6 +754,23 @@ So far so good---but ideally the length check wouldn't print to the
 console; it would add a warning to the web page itself. To do that,
 we'll need to not only read from the page but also modify it.
 
+::: {.further}
+JavaScript [first appeared in 1995][historyJS], as part of Netscape
+Navigator. Its name was chosen to indicate a similarity to the
+[Java][javaLang] language, and the syntax is Java-esque for that
+reason. However, under the surface JavaScript is a much more dynamic
+language than Java, as is appropriate given its role as a progressive
+enhancement mechanism for the web. For example, any method or property on any
+object (including built-in ones like `Element`) can be dynamically
+overridden at any time. This makes it possible to [polyfill] differences
+between browsers, adding features that look built-in to other
+JavaScript code.
+:::
+
+[javaLang]: https://en.wikipedia.org/wiki/Java_(programming_language)
+[historyJS]: https://auth0.com/blog/a-brief-history-of-javascript/
+[polyfill]: https://developer.mozilla.org/en-US/docs/Glossary/Polyfill
+
 Modifying the DOM
 =================
 
@@ -1072,7 +1089,6 @@ Ideally, web pages should be written so that they work correctly
 without JavaScript, but work better with it. This is called
 [progressive enhancement][progEnhancement], and it means we're not
 replicating in JavaScript what the browser can already do.
->>>>>>> 7f2cc29f5625c4c73e51fee69cdad02bbffb8909
 
 [progEnhancement]: https://en.wikipedia.org/wiki/Progressive_enhancement
 
@@ -1085,23 +1101,6 @@ self-contained plug-ins that handled input and rendering on their own.
 
 [flash]: https://www.adobe.com/products/flashplayer/end-of-life.html
 [javaApplets]: https://en.wikipedia.org/wiki/Java_applet
-
-::: {.further}
-JavaScript [first appeared in 1995][historyJS], as part of Netscape
-Navigator. Its name was chosen to indicate a similarity to the
-[Java][javaLang] language, and the syntax is Java-esque for that
-reason. However, under the surface JavaScript is a much more dynamic
-language than Java, as is appropriate given its role as a progressive
-enhancement mechanism for the web. For example, any method or property on any
-object (including built-in ones like `Element`) can be dynamically
-overridden at any time. This makes it possible to [polyfill] differences
-between browsers, adding features that look built-in to other
-JavaScript code.
-:::
-
-[javaLang]: https://en.wikipedia.org/wiki/Java_(programming_language)
-[historyJS]: https://auth0.com/blog/a-brief-history-of-javascript/
-[polyfill]: https://developer.mozilla.org/en-US/docs/Glossary/Polyfill
 
 ::: {.further}
 Search engines are constantly [crawling] the web and [indexing] all of the web
