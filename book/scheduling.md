@@ -1395,7 +1395,7 @@ class Browser:
     def schedule_animation_frame(self):
         def callback():
             # ...
-            task = Task(active_tab.run_animation_frame)
+            task = Task(self.active_tab.run_animation_frame)
             # ...
 ```
 
@@ -1699,10 +1699,9 @@ class Browser:
         def callback():
             self.lock.acquire(blocking=True)
             scroll = self.scroll
-            active_tab = self.tabs[self.active_tab]
             self.needs_animation_frame = False
-            task = Task(active_tab.run_animation_frame, scroll)
-            active_tab.task_runner.schedule_task(task)
+            task = Task(self.active_tab.run_animation_frame, scroll)
+            self.active_tab.task_runner.schedule_task(task)
             self.lock.release()
         # ...
 ```
