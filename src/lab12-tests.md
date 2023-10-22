@@ -34,7 +34,7 @@ Before load, there is no tab height or display list.
 
 Once the Tab has loaded, the browser should need raster and draw.
 
-    >>> browser.load(lab12.URL(test_url))
+    >>> browser.new_tab(lab12.URL(test_url))
     >>> browser.render()
     >>> browser.needs_raster_and_draw
     True
@@ -65,7 +65,7 @@ After performing raster and draw, the display list should be present.
 
 The initial sroll offset is 0.
 
-    >>> browser.tabs[browser.active_tab].scroll
+    >>> browser.active_tab.scroll
     0
 
 Scrolling down causes a draw but nothing else.
@@ -89,7 +89,7 @@ Testing TabWrapper
 
 	>>> lab12.TaskRunner = test.MockNoOpTaskRunner
     >>> browser = lab12.Browser()
-    >>> browser.load(lab12.URL(test_url))
+    >>> browser.new_tab(lab12.URL(test_url))
 
  The URL is not set until the load has committed.
 

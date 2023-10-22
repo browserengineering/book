@@ -22,8 +22,10 @@ from lab7 import DrawLine, DrawOutline, LineLayout, TextLayout
 from lab8 import URL, Element, Text, Browser, Tab
 from lab8 import BlockLayout, InputLayout, INPUT_WIDTH_PX
 
-EVENT_DISPATCH_CODE = \
+EVENT_DISPATCH_JS = \
     "new Node(dukpy.handle).dispatchEvent(new Event(dukpy.type))"
+
+RUNTIME_JS = open("runtime9.js").read()
 
 class JSContext:
     def __init__(self, tab):
@@ -37,7 +39,7 @@ class JSContext:
             self.getAttribute)
         self.interp.export_function("innerHTML_set", self.innerHTML_set)
         with open("runtime9.js") as f:
-            self.interp.evaljs(f.read())
+            self.interp.evaljs(RUNTIME_JS)
 
         self.node_to_handle = {}
         self.handle_to_node = {}
@@ -48,7 +50,7 @@ class JSContext:
     def dispatch_event(self, type, elt):
         handle = self.node_to_handle.get(elt, -1)
         do_default = self.interp.evaljs(
-            EVENT_DISPATCH_CODE, type=type, handle=handle)
+            EVENT_DISPATCH_JS, type=type, handle=handle)
         return not do_default
 
     def get_handle(self, elt):
@@ -175,5 +177,5 @@ class Tab:
 
 if __name__ == "__main__":
     import sys
-    Browser().load(URL(sys.argv[1]))
+    Browser().new_tab(URL(sys.argv[1]))
     tkinter.mainloop()

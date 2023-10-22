@@ -33,7 +33,7 @@ from lab6 import INHERITED_PROPERTIES
 from lab6 import tree_to_list
 from lab7 import intersects
 from lab8 import INPUT_WIDTH_PX
-from lab9 import EVENT_DISPATCH_CODE
+from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, parse_blend_mode, linespace
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
@@ -757,6 +757,8 @@ class CSSParser:
                     break
         return rules
 
+RUNTIME_JS = open("runtime13.js").read()
+
 @wbetools.patch(JSContext)
 class JSContext:
     def __init__(self, tab):
@@ -780,8 +782,7 @@ class JSContext:
             self.now)
         self.interp.export_function("requestAnimationFrame",
             self.requestAnimationFrame)
-        with open("runtime14.js") as f:
-            self.interp.evaljs(f.read())
+        self.interp.evaljs(RUNTIME_JS)
 
         self.node_to_handle = {}
         self.handle_to_node = {}
@@ -1237,71 +1238,76 @@ class Chrome:
             color = "black"
 
         cmds = []
+        cmds.append(DrawLine(
+            0, self.bottom, WIDTH,
+            self.bottom, color, 1))
 
-        (plus_left, plus_top, plus_right, plus_bottom) = self.plus_bounds()
         cmds.append(DrawOutline(
-            plus_left, plus_top, plus_right, plus_bottom, color, 1))
-        cmds.append(DrawText(
-            plus_left, plus_top, "+", self.font, color))
-
-        for i, tab in enumerate(self.browser.tabs):
-            name = "Tab {}".format(i)
-            (tab_left, tab_top, tab_right, tab_bottom) = self.tab_bounds(i)
-
-            cmds.append(DrawLine(
-                tab_left, 0,tab_left, tab_bottom, color, 1))
-            cmds.append(DrawLine(
-                tab_right, 0, tab_right, tab_bottom, color, 1))
-            cmds.append(DrawText(
-                tab_left + self.padding, tab_top,
-                name, self.font, color))
-            if i == self.browser.active_tab:
-                cmds.append(DrawLine(
-                    0, tab_bottom, tab_left, tab_bottom, color, 1))
-                cmds.append(DrawLine(
-                    tab_right, tab_bottom, WIDTH, tab_bottom, color, 1))
-
-        backbutton_width = self.font.measureText("<")
-        (backbutton_left, backbutton_top, backbutton_right, backbutton_bottom) = \
-            self.backbutton_bounds()
-        cmds.append(DrawOutline(
-            backbutton_left, backbutton_top,
-            backbutton_right, backbutton_bottom,
+            self.newtab_rect[0], self.newtab_rect[1],
+            self.newtab_rect[2], self.newtab_rect[3],
             color, 1))
         cmds.append(DrawText(
-            backbutton_left, backbutton_top + self.padding,
-            "<", self.font, color))
+            self.newtab_rect[0] + self.padding,
+            self.newtab_rect[1],
+            "+", self.font, color))
 
-        (addressbar_left, addressbar_top, \
-            addressbar_right, addressbar_bottom) = \
-            self.addressbar_bounds()
+        for i, tab in enumerate(self.browser.tabs):
+            bounds = self.tab_rect(i)
+            cmds.append(DrawLine(
+                bounds[0], 0, bounds[0], bounds[3],
+                color, 1))
+            cmds.append(DrawLine(
+                bounds[2], 0, bounds[2], bounds[3],
+                color, 1))
+            cmds.append(DrawText(
+                bounds[0] + self.padding, bounds[1] + self.padding,
+                "Tab {}".format(i), self.font, color))
+
+            if tab == self.browser.active_tab:
+                cmds.append(DrawLine(
+                    0, bounds[3], bounds[0], bounds[3],
+                    color, 1))
+                cmds.append(DrawLine(
+                    bounds[2], bounds[3], WIDTH, bounds[3],
+                    color, 1))
 
         cmds.append(DrawOutline(
-            addressbar_left, addressbar_top, addressbar_right,
-            addressbar_bottom, color, 1))
-        left_bar = addressbar_left + self.padding
-        top_bar = addressbar_top + self.padding
-        if self.browser.focus == "address bar":
+            self.back_rect[0], self.back_rect[1],
+            self.back_rect[2], self.back_rect[3],
+            color, 1))
+        cmds.append(DrawText(
+            self.back_rect[0] + self.padding,
+            self.back_rect[1],
+            "<", self.font, color))
+
+        cmds.append(DrawOutline(
+            self.address_rect[0], self.address_rect[1],
+            self.address_rect[2], self.address_rect[3],
+            color, 1))
+        if self.focus == "address bar":
             cmds.append(DrawText(
-                left_bar, top_bar,
-                self.browser.address_bar, self.font, color))
-            w = self.font.measureText(self.browser.address_bar)
+                self.address_rect[0] + self.padding,
+                self.address_rect[1],
+                self.address_bar, self.font, color))
+            w = self.font.measureText(self.address_bar)
             cmds.append(DrawLine(
-                left_bar + w, top_bar,
-                left_bar + w,
-                self.bottom - self.padding, "red", 1))
+                self.address_rect[0] + self.padding + w,
+                self.address_rect[1],
+                self.address_rect[0] + self.padding + w,
+                self.address_rect[3],
+                "red", 1))
         else:
-            url = str(self.browser.tabs[self.browser.active_tab].url)
+            url = str(self.browser.active_tab.url)
             cmds.append(DrawText(
-                left_bar,
-                top_bar,
+                self.address_rect[0] + self.padding,
+                self.address_rect[1],
                 url, self.font, color))
 
-        cmds.append(DrawLine(
-            0, self.bottom + self.padding, WIDTH,
-            self.bottom + self.padding, color, 1))
-
         return cmds
+
+    def focus_addressbar(self):
+        self.focus = "address bar"
+        self.address_bar = ""
 
 class Browser:
     def __init__(self):
@@ -1335,7 +1341,7 @@ class Browser:
 
             self.chrome_surface = skia.Surface.MakeRenderTarget(
                     self.skia_context, skia.Budgeted.kNo,
-                    skia.ImageInfo.MakeN32Premul(WIDTH, self.chrome.bottom))
+                    skia.ImageInfo.MakeN32Premul(WIDTH, math.ceil(self.chrome.bottom)))
             assert self.chrome_surface is not None
         else:
             self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
@@ -1346,7 +1352,7 @@ class Browser:
                 WIDTH, HEIGHT,
                 ct=skia.kRGBA_8888_ColorType,
                 at=skia.kUnpremul_AlphaType))
-            self.chrome_surface = skia.Surface(WIDTH, self.chrome.bottom)
+            self.chrome_surface = skia.Surface(WIDTH, math.ceil(self.chrome.bottom))
             self.skia_context = None
 
         self.tabs = []
@@ -1400,13 +1406,12 @@ class Browser:
 
     def render(self):
         assert not wbetools.USE_BROWSER_THREAD
-        tab = self.tabs[self.active_tab]
-        tab.task_runner.run_tasks()
-        tab.run_animation_frame(self.scroll)
+        self.active_tab.task_runner.run_tasks()
+        self.active_tab.run_animation_frame(self.scroll)
 
     def commit(self, tab, data):
         self.lock.acquire(blocking=True)
-        if tab == self.tabs[self.active_tab]:
+        if tab == self.active_tab:
             self.url = data.url
             if data.scroll != None:
                 self.scroll = data.scroll
@@ -1428,7 +1433,7 @@ class Browser:
 
     def set_needs_animation_frame(self, tab):
         self.lock.acquire(blocking=True)
-        if tab == self.tabs[self.active_tab]:
+        if tab == self.active_tab:
             self.needs_animation_frame = True
         self.lock.release()
 
@@ -1605,7 +1610,7 @@ class Browser:
         def callback():
             self.lock.acquire(blocking=True)
             scroll = self.scroll
-            active_tab = self.tabs[self.active_tab]
+            active_tab = self.active_tab
             self.needs_animation_frame = False
             self.lock.release()
             task = Task(active_tab.run_animation_frame, scroll)
@@ -1634,14 +1639,13 @@ class Browser:
 
     def handle_tab(self):
         self.focus = "content"
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.advance_tab)
-        active_tab.task_runner.schedule_task(task)
+        task = Task(self.active_tab.advance_tab)
+        self.active_tab.task_runner.schedule_task(task)
 
     def focus_addressbar(self):
         self.lock.acquire(blocking=True)
-        self.focus = "address bar"
-        self.address_bar = ""
+        self.focus = "chrome"
+        self.chrome.focus_addressbar()
         text = "Address bar focused"
         if self.accessibility_is_on:
             print(text)
@@ -1657,25 +1661,24 @@ class Browser:
         self.accessibility_tree = None
         self.composited_layers = []
 
-    def set_active_tab(self, index):
-        self.active_tab = index
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.set_needs_paint)
-        active_tab.task_runner.schedule_task(task)
+    def set_active_tab(self, tab):
+        self.active_tab = tab
+        task = Task(self.active_tab.set_needs_paint)
+        self.active_tab.task_runner.schedule_task(task)
 
         self.clear_data()
         self.needs_animation_frame = True
 
     def go_back(self):
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.go_back)
-        active_tab.task_runner.schedule_task(task)
+        task = Task(self.active_tab.go_back)
+        self.active_tab.task_runner.schedule_task(task)
         self.clear_data()
 
     def cycle_tabs(self):
         self.lock.acquire(blocking=True)
-        new_active_tab = (self.active_tab + 1) % len(self.tabs)
-        self.set_active_tab(new_active_tab)
+        active_ids = self.tabs.index(self.active_tab)
+        new_active_idx = (active_idx + 1) % len(self.tabs)
+        self.set_active_tab(self.tabs[new_active_idx])
         self.lock.release()
 
     def toggle_accessibility(self):
@@ -1721,9 +1724,8 @@ class Browser:
     def toggle_dark_mode(self):
         self.lock.acquire(blocking=True)
         self.dark_mode = not self.dark_mode
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.toggle_dark_mode)
-        active_tab.task_runner.schedule_task(task)
+        task = Task(self.active_tab.toggle_dark_mode)
+        self.active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
     def handle_click(self, e):
@@ -1736,9 +1738,9 @@ class Browser:
             if self.focus != "content":
                 self.set_needs_raster()
             self.focus = "content"
-            active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.click, e.x, e.y - self.chrome.bottom)
-            active_tab.task_runner.schedule_task(task)
+            tab_y = e.y - self.chrome.bottom
+            task = Task(self.active_tab.click, e.x, tab_y)
+            self.active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
     def handle_hover(self, event):
@@ -1751,56 +1753,49 @@ class Browser:
     def handle_key(self, char):
         self.lock.acquire(blocking=True)
         if not (0x20 <= ord(char) < 0x7f): return
-        if self.focus == "address bar":
-            self.address_bar += char
+        if self.focus == "chrome":
+            self.chrome.keypress(char)
             self.set_needs_raster()
         elif self.focus == "content":
-            active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.keypress, char)
-            active_tab.task_runner.schedule_task(task)
+            task = Task(self.active_tab.keypress, char)
+            self.active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
     def schedule_load(self, url, body=None):
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.load, url, body)
-        active_tab.task_runner.schedule_task(task)
+        task = Task(self.active_tab.load, url, body)
+        self.active_tab.task_runner.schedule_task(task)
 
     def handle_enter(self):
         self.lock.acquire(blocking=True)
-        if self.focus == "address bar":
-            self.schedule_load(URL(self.address_bar))
-            self.url = self.address_bar
-            self.focus = None
+        if self.focus == "chrome":
+            self.chrome.enter()
             self.set_needs_raster()
         elif self.focus == "content":
-            active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.enter)
-            active_tab.task_runner.schedule_task(task)
+            task = Task(self.active_tab.enter)
+            self.active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
     def increment_zoom(self, increment):
         self.lock.acquire(blocking=True)
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.zoom_by, increment)
-        active_tab.task_runner.schedule_task(task)
+        task = Task(self.active_tab.zoom_by, increment)
+        self.active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
     def reset_zoom(self):
         self.lock.acquire(blocking=True)
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.reset_zoom)
-        active_tab.task_runner.schedule_task(task)
+        task = Task(self.active_tab.reset_zoom)
+        self.active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
-    def load(self, url):
+    def new_tab(self, url):
         self.lock.acquire(blocking=True)
-        self.load_internal(url)
+        self.new_tab_internal(url)
         self.lock.release()
 
-    def load_internal(self, url):
+    def new_tab_internal(self, url):
         new_tab = Tab(self, HEIGHT -self.chrome.bottom)
         self.tabs.append(new_tab)
-        self.set_active_tab(len(self.tabs) - 1)
+        self.set_active_tab(new_tab)
         self.schedule_load(url)
 
     def raster_tab(self):
@@ -1861,7 +1856,7 @@ class Browser:
 
     def handle_quit(self):
         self.measure.finish()
-        self.tabs[self.active_tab].task_runner.set_needs_quit()
+        self.active_tab.task_runner.set_needs_quit()
         if wbetools.USE_GPU:
             sdl2.SDL_GL_DeleteContext(self.gl_context)
         sdl2.SDL_DestroyWindow(self.sdl_window)
@@ -1869,7 +1864,7 @@ class Browser:
 def main_func(url):
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
-    browser.load(url)
+    browser.new_tab(url)
 
     event = sdl2.SDL_Event()
     ctrl_down = False
@@ -1926,9 +1921,8 @@ def main_func(url):
                     ctrl_down = False
             elif event.type == sdl2.SDL_TEXTINPUT and not ctrl_down:
                 browser.handle_key(event.text.text.decode('utf8'))
-        active_tab = browser.tabs[browser.active_tab]
         if not wbetools.USE_BROWSER_THREAD:
-            if active_tab.task_runner.needs_quit:
+            if browser.active_tab.task_runner.needs_quit:
                 break
             if browser.needs_animation_frame:
                 browser.needs_animation_frame = False

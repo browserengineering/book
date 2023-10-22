@@ -111,7 +111,7 @@ class Tab:
 
 Next we run all of the scripts:
 
-``` {.python droplines=Script%20returned}
+``` {.python expected=False}
 def load(self, url, payload=None):
     # ...
     for script in scripts:

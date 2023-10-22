@@ -335,7 +335,8 @@ class Browser:
         # ...
         self.chrome_surface = skia.Surface.MakeRenderTarget(
                 self.skia_context, skia.Budgeted.kNo,
-                skia.ImageInfo.MakeN32Premul(WIDTH, self.chrome.bottom))
+                skia.ImageInfo.MakeN32Premul(
+                    WIDTH, math.ceil(self.chrome.bottom)))
         assert self.chrome_surface is not None
 ```
 
@@ -1432,7 +1433,7 @@ class Browser:
 
     def commit(self, tab, data):
         # ...
-        if tab == self.tabs[self.active_tab]:
+        if tab == self.active_tab:
             # ...
             self.composited_updates = data.composited_updates
             if not self.composited_updates:
@@ -2224,6 +2225,17 @@ will execute the paint commands instead.
 whether the time to raster the provided display items is low enough to not
 justify a GPU texture. This will be true for solid colors, but
 probably not complex shapes or text.
+
+*Hit testing*: Right now, when handling clicks, we convert each layout
+object's bounds to absolute coordinates (via
+`absolute_bounds_for_obj`) to compare to the click location. But we
+could instead convert the click location to local coordinates as we
+traverse the layout tree. Implement that instead. It'll probably be
+convenient to define a `hit_test` method on each layout object which
+takes in a click location, adjusts it for transforms, and recursively
+calls child `hit_test` methods.^[In real browsers hit testing is used
+for more than just clicking. The name comes from thinking whether an
+arrow shot at that location would "hit" the object.]
 
 *Atomic effects*: Our browser currently uses a simplistic algorithm for building
 the draw list which doesn't handle nested, composited visual effects

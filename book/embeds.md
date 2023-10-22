@@ -834,7 +834,7 @@ class Tab:
         if self.needs_accessibility:
             # ...
 
-        if self.pending_hover:
+        if self.needs_paint:
             # ...
 
         # ...
@@ -1258,9 +1258,8 @@ class Browser:
         self.lock.acquire(blocking=True)
         if self.root_frame_focused:
             # ...
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.scrolldown)
-        active_tab.task_runner.schedule_task(task)
+        task = Task(self.active_tab.scrolldown)
+        self.active_tab.task_runner.schedule_task(task)
         self.lock.release()
 ```
 
@@ -1346,7 +1345,7 @@ in the browser thread, which has limited information:
 
 We'll make a subclass of `AccessibilityNode` to store this information:
 
-``` {.python}
+``` {.python dropline=pass}
 class FrameAccessibilityNode(AccessibilityNode):
     pass
 ```
@@ -1610,8 +1609,7 @@ environment for each `Frame`:
 class JSContext:
     def add_window(self, frame):
         # ...
-        with open("runtime15.js") as f:
-            self.interp.evaljs(self.wrap(f.read(), frame.window_id))
+        self.interp.evaljs(self.wrap(RUNTIME_JS, frame.window_id))
 ```
 
 We'll need to call `wrap` any time we use `evaljs`, which also means
