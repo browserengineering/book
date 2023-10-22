@@ -69,13 +69,16 @@ class VisualEffect:
             if isinstance(child, VisualEffect)
         ])
 
-def map_translation(rect, translation):
+def map_translation(rect, translation, reversed=False):
     if not translation:
         return rect
     else:
         (x, y) = translation
         matrix = skia.Matrix()
-        matrix.setTranslate(x, y)
+        if reversed:
+            matrix.setTranslate(-x, -y)
+        else:
+            matrix.setTranslate(x, y)
         return matrix.mapRect(rect)
 
 class Transform(VisualEffect):
@@ -95,6 +98,9 @@ class Transform(VisualEffect):
 
     def map(self, rect):
         return map_translation(rect, self.translation)
+
+    def unmap(self, rect):
+        return map_translation(rect, self.translation, True)
 
     def clone(self, children):
         return Transform(self.translation, self.rect,
@@ -209,7 +215,6 @@ class DrawOutline(DrawCommand):
             self.rect.right(), self.color,
             self.thickness)
 
-
 class ClipRRect(VisualEffect):
     def __init__(self, rect, radius, children, should_clip=True):
         super().__init__(rect, children)
@@ -230,6 +235,9 @@ class ClipRRect(VisualEffect):
         bounds = self.rrect.rect()
         bounds.intersect(rect)
         return bounds
+
+    def unmap(self, rect):
+        return rect
 
     def clone(self, children):
         return ClipRRect(self.rect, self.radius, children, \
@@ -259,6 +267,9 @@ class SaveLayer(VisualEffect):
             canvas.restore()
 
     def map(self, rect):
+        return rect
+
+    def unmap(self, rect):
         return rect
 
     def clone(self, children):
@@ -988,11 +999,19 @@ def absolute_bounds_for_obj(obj):
         cur = cur.parent
     return rect
 
-def absolute_bounds(display_item):
-    rect = display_item.rect
+def local_to_absolute(display_item, rect):
     while display_item.parent:
         rect = display_item.parent.map(rect)
         display_item = display_item.parent
+    return rect
+
+def absolute_to_local(display_item, rect):
+    parent_chain = []
+    while display_item.parent:
+        parent_chain.append(display_item.parent)
+        display_item = display_item.parent
+    for parent in reversed(parent_chain):
+        parent.unmap(rect)
     return rect
 
 class CompositedLayer:
@@ -1013,14 +1032,15 @@ class CompositedLayer:
     def composited_bounds(self):
         rect = skia.Rect.MakeEmpty()
         for item in self.display_items:
-            rect.join(item.rect)
+            rect.join(absolute_to_local(
+                item, local_to_absolute(item, item.rect)))
         rect.outset(1, 1)
         return rect
 
     def absolute_bounds(self):
         rect = skia.Rect.MakeEmpty()
         for item in self.display_items:
-            rect.join(absolute_bounds(item))
+            rect.join(local_to_absolute(item, item.rect))
         return rect
 
     def raster(self):
@@ -1458,7 +1478,7 @@ class Browser:
                     break
                 elif skia.Rect.Intersects(
                     layer.absolute_bounds(),
-                    absolute_bounds(cmd)):
+                    local_to_absolute(cmd, cmd.rect)):
                     layer = CompositedLayer(self.skia_context, cmd)
                     self.composited_layers.append(layer)
                     did_break = True

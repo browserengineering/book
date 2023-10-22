@@ -39,7 +39,7 @@ from lab11 import FONTS, get_font, parse_blend_mode, linespace
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
 from lab12 import Task, REFRESH_RATE_SEC
 from lab13 import JSContext, diff_styles, clamp_scroll, add_parent_pointers
-from lab13 import absolute_bounds, absolute_bounds_for_obj
+from lab13 import local_to_absolute, absolute_bounds_for_obj
 from lab13 import NumericAnimation, TranslateAnimation
 from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
 from lab13 import CompositedLayer, paint_visual_effects
@@ -1469,7 +1469,7 @@ class Browser:
                     break
                 elif skia.Rect.Intersects(
                     layer.absolute_bounds(),
-                    absolute_bounds(cmd)):
+                    local_to_absolute(cmd, cmd.rect)):
                     layer = CompositedLayer(self.skia_context, cmd)
                     self.composited_layers.append(layer)
                     break
