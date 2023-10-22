@@ -528,7 +528,7 @@ class Browser:
             self.needs_animation_frame = False
             self.lock.release()
             task = Task(self.active_tab.run_animation_frame, scroll)
-            active_tab.task_runner.schedule_task(task)
+            self.active_tab.task_runner.schedule_task(task)
         self.lock.acquire(blocking=True)
         if self.needs_animation_frame and not self.animation_timer:
             if wbetools.USE_BROWSER_THREAD:
@@ -662,9 +662,8 @@ if __name__ == "__main__":
                     browser.handle_down()
             elif event.type == sdl2.SDL_TEXTINPUT:
                 browser.handle_key(event.text.text.decode('utf8'))
-        active_tab = browser.active_tab
         if not wbetools.USE_BROWSER_THREAD:
-            if active_tab.task_runner.needs_quit:
+            if browser.active_tab.task_runner.needs_quit:
                 break
             if browser.needs_animation_frame:
                 browser.needs_animation_frame = False
