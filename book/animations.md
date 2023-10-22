@@ -1432,7 +1432,7 @@ class Browser:
 
     def commit(self, tab, data):
         # ...
-        if tab == self.tabs[self.active_tab]:
+        if tab == self.active_tab:
             # ...
             self.composited_updates = data.composited_updates
             if not self.composited_updates:

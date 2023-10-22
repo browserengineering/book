@@ -23,7 +23,7 @@ Opacity can be applied.
     ... b"<div style=\"opacity:0.5\"><div>Text</div></div>)")
 
     >>> browser = lab11.Browser()
-    >>> browser.load(lab11.URL(size_and_opacity_url))
+    >>> browser.new_tab(lab11.URL(size_and_opacity_url))
     >>> browser.tab_surface.printTabCommands()
     clear(color=ffffffff)
     saveLayer(color=80000000, alpha=128)
@@ -43,7 +43,7 @@ So can `mix-blend-mode:multiply` and `mix-blend-mode: difference`.
     ... b"<div style=\"mix-blend-mode:difference\"><div>Diff</div></div>)")
 
     >>> browser = lab11.Browser()
-    >>> browser.load(lab11.URL(size_and_mix_blend_mode_url))
+    >>> browser.new_tab(lab11.URL(size_and_mix_blend_mode_url))
     >>> browser.tab_surface.printTabCommands()
     clear(color=ffffffff)
     saveLayer(color=ff000000, blend_mode=BlendMode.kMultiply)
@@ -72,7 +72,7 @@ div and its children so the clip only applies ot it, and one to
 make a canvas in which to draw the circular clip mask.
 
     >>> browser = lab11.Browser()
-    >>> browser.load(lab11.URL(size_and_rounded_clip_url))
+    >>> browser.new_tab(lab11.URL(size_and_rounded_clip_url))
     >>> browser.tab_surface.printTabCommands()
     clear(color=ffffffff)
     saveLayer(color=ff000000)
@@ -99,7 +99,7 @@ is implicit/an implementation detail of Skia, and a `clipRRect` call with a
 radius equal to the `20px` radius specified above.
 
     >>> browser = lab11.Browser()
-    >>> browser.load(lab11.URL(size_and_border_radius_url))
+    >>> browser.new_tab(lab11.URL(size_and_border_radius_url))
     >>> browser.tab_surface.printTabCommands()
     clear(color=ffffffff)
     drawRRect(bounds=Rect(13, 18, 787, 38), radius=Point(10, 10), color=ff0000ff)
