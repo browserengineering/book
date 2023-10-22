@@ -218,11 +218,11 @@ class Tab:
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
 
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         self.scroll = 0
         self.url = url
         self.history.append(url)
-        body = url.request(body)
+        body = url.request(payload)
         self.nodes = HTMLParser(body).parse()
 
         self.rules = self.default_style_sheet.copy()

@@ -91,9 +91,9 @@ For example, in `load`, you'll want to do something like this:
 
 ``` {.python replace=Tab/Frame}
 class Tab:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         # ...
-        headers, body = url.request(self.url, body)
+        headers, body = url.request(self.url, payload)
         body = body.decode("utf8")
         # ...
 ```
@@ -107,7 +107,7 @@ use the binary data directly.
 
 ``` {.python replace=Tab/Frame}
 class Tab:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         # ...
         images = [node
             for node in tree_to_list(self.nodes, [])
@@ -126,7 +126,7 @@ Once we've downloaded the image, we need to turn it into a Skia
 
 ``` {.python replace=Tab/Frame}
 class Tab:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         for img in images:
             # ...
             img.encoded_data = body
@@ -160,7 +160,7 @@ load a "broken image" placeholder (I used [this one][broken-image]):
 BROKEN_IMAGE = skia.Image.open("Broken_Image.png")
 
 class Tab:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         for img in images:
             try:
                 # ...
@@ -733,11 +733,11 @@ class Tab:
         # ...
         self.root_frame = None
 
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         self.history.append(url)
         # ...
         self.root_frame = Frame(self, None, None)
-        self.root_frame.load(url, body)
+        self.root_frame.load(url, payload)
 ```
 
 Note that the guts of `load` now lives in the `Frame`, because
@@ -746,7 +746,7 @@ the `Frame` owns the DOM tree. The `Frame` can *also* construct child
 
 ``` {.python}
 class Frame:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         # ...
         iframes = [node
                    for node in tree_to_list(self.nodes, [])
@@ -982,7 +982,7 @@ The root frame, of course, fills the whole window:
 
 ``` {.python}
 class Tab:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         # ...
         self.root_frame.frame_width = WIDTH
         self.root_frame.frame_height = self.tab_height
@@ -1500,7 +1500,7 @@ Each `Frame` will then ask the `Tab` for its JavaScript context:
 
 ``` {.python}
 class Frame:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         # ...
         self.js = self.tab.get_js(url.origin())
         # ...
@@ -1632,7 +1632,7 @@ And we'll pass that argument from the `load` method:
 
 ``` {.python}
 class Frame:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         for script in scripts:
             # ...
             task = Task(self.js.run, script_url, body,

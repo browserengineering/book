@@ -126,8 +126,8 @@ class Tab:
         return self.allowed_origins == None or \
             url.origin() in self.allowed_origins
 
-    def load(self, url, body=None):
-        headers, body = url.request(self.url, body)
+    def load(self, url, payload=None):
+        headers, body = url.request(self.url, payload)
         self.scroll = 0
         self.url = url
         self.history.append(url)

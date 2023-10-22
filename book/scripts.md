@@ -99,7 +99,7 @@ CSS. First, we need to find all of the scripts:
 
 ``` {.python replace=nodes/self.nodes}
 class Tab:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         # ...
         scripts = [node.attributes["src"] for node
                    in tree_to_list(nodes, [])
@@ -112,7 +112,7 @@ class Tab:
 Next we run all of the scripts:
 
 ``` {.python droplines=Script%20returned}
-def load(self, url, body=None):
+def load(self, url, payload=None):
     # ...
     for script in scripts:
         body = url.resolve(script).request()
@@ -180,7 +180,7 @@ We create this new `JSContext` object while loading the page:
 
 ``` {.python replace=JSContext()/JSContext(self)}
 class Tab:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         # ...
         self.js = JSContext()
         for script in scripts:
@@ -300,7 +300,7 @@ You can implement that like this:
 
 ``` {.python}
 class Tab:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         for script in scripts:
             # ...
             try:
@@ -423,7 +423,7 @@ class JSContext:
         # ...
 
 class Tab:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         # ...
         self.js = JSContext(self)
         # ...
