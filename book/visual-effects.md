@@ -81,7 +81,7 @@ if __name__ == "__main__":
     import sys
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
-    browser.load(URL(sys.argv[1]))
+    browser.new_tab(URL(sys.argv[1]))
     # ...
 ```
 
@@ -1500,7 +1500,8 @@ switching tabs.
 class Browser:
     def __init__(self):
         # ...
-        self.chrome_surface = skia.Surface(WIDTH, self.chrome.bottom)
+        self.chrome_surface = skia.Surface(
+            WIDTH, math.ceil(self.chrome.bottom))
         self.tab_surface = None
 ```
 

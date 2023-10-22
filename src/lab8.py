@@ -294,7 +294,7 @@ class Tab:
             name = urllib.parse.quote(name)
             value = urllib.parse.quote(value)
             body += "&" + name + "=" + value
-        body = body [1:]
+        body = body[1:]
 
         url = self.url.resolve(elt.attributes["action"])
         self.load(url, body)

@@ -33,7 +33,7 @@ from lab6 import INHERITED_PROPERTIES
 from lab6 import tree_to_list
 from lab7 import intersects
 from lab8 import INPUT_WIDTH_PX
-from lab9 import EVENT_DISPATCH_CODE
+from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, parse_blend_mode, linespace
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
@@ -757,6 +757,8 @@ class CSSParser:
                     break
         return rules
 
+RUNTIME_JS = open("runtime13.js").read()
+
 @wbetools.patch(JSContext)
 class JSContext:
     def __init__(self, tab):
@@ -780,8 +782,7 @@ class JSContext:
             self.now)
         self.interp.export_function("requestAnimationFrame",
             self.requestAnimationFrame)
-        with open("runtime14.js") as f:
-            self.interp.evaljs(f.read())
+        self.interp.evaljs(RUNTIME_JS)
 
         self.node_to_handle = {}
         self.handle_to_node = {}

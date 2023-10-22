@@ -1609,8 +1609,7 @@ environment for each `Frame`:
 class JSContext:
     def add_window(self, frame):
         # ...
-        with open("runtime15.js") as f:
-            self.interp.evaljs(self.wrap(f.read(), frame.window_id))
+        self.interp.evaljs(self.wrap(RUNTIME_JS, frame.window_id))
 ```
 
 We'll need to call `wrap` any time we use `evaljs`, which also means

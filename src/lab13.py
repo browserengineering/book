@@ -25,7 +25,7 @@ from lab6 import INHERITED_PROPERTIES, cascade_priority
 from lab6 import tree_to_list
 from lab7 import intersects
 from lab8 import Text, Element, INPUT_WIDTH_PX
-from lab9 import EVENT_DISPATCH_CODE
+from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, parse_color, parse_blend_mode, linespace
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
@@ -732,6 +732,7 @@ def paint_visual_effects(node, cmds, rect):
 
 SETTIMEOUT_CODE = "__runSetTimeout(dukpy.handle)"
 XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
+RUNTIME_JS = open("runtime13.js").read()
 
 class JSContext:
     def __init__(self, tab):
@@ -753,8 +754,7 @@ class JSContext:
             self.now)
         self.interp.export_function("requestAnimationFrame",
             self.requestAnimationFrame)
-        with open("runtime13.js") as f:
-            self.interp.evaljs(f.read())
+        self.interp.evaljs(RUNTIME_JS)
 
         self.node_to_handle = {}
         self.handle_to_node = {}
@@ -768,7 +768,7 @@ class JSContext:
     def dispatch_event(self, type, elt):
         handle = self.node_to_handle.get(elt, -1)
         do_default = self.interp.evaljs(
-            EVENT_DISPATCH_CODE, type=type, handle=handle)
+            EVENT_DISPATCH_JS, type=type, handle=handle)
         return not do_default
 
     def get_handle(self, elt):
@@ -1346,7 +1346,8 @@ class Browser:
 
             self.chrome_surface = skia.Surface.MakeRenderTarget(
                     self.skia_context, skia.Budgeted.kNo,
-                    skia.ImageInfo.MakeN32Premul(WIDTH, math.ceil(self.chrome.bottom)))
+                    skia.ImageInfo.MakeN32Premul(
+                        WIDTH, math.ceil(self.chrome.bottom)))
             assert self.chrome_surface is not None
         else:
             self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
