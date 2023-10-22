@@ -19,19 +19,19 @@ The browser should download JavaScript code mentioned in a `<script>` tag:
 
     >>> url2 = lab9.URL(test.socket.serve(""))
     >>> url = lab9.URL(test.socket.serve("<script src=" + str(url2) + "></script>"))
-    >>> lab9.Browser().load(url)
+    >>> lab9.Browser().new_tab(url)
     >>> test.socket.last_request(str(url2))
     b'GET /0 HTTP/1.0\r\nHost: test\r\n\r\n'
 
 If the script succeeds, the browser prints nothing:
 
     >>> test.socket.respond(str(url2), b"HTTP/1.0 200 OK\r\n\r\nvar x = 2; x + x")
-    >>> lab9.Browser().load(url)
+    >>> lab9.Browser().new_tab(url)
 
 If instead the script crashes, the browser prints an error message:
 
     >>> test.socket.respond(str(url2), b"HTTP/1.0 200 OK\r\n\r\nthrow Error('Oops');")
-    >>> lab9.Browser().load(url) #doctest: +ELLIPSIS
+    >>> lab9.Browser().new_tab(url) #doctest: +ELLIPSIS
     Script http://test/0 crashed Error: Oops
     ...
 
@@ -45,21 +45,21 @@ For the rest of these tests we're going to use `console.log` for most testing:
 
     >>> script = "console.log('Hello, world!')"
     >>> test.socket.respond(str(url2), b"HTTP/1.0 200 OK\r\n\r\n" + script.encode("utf8"))
-    >>> lab9.Browser().load(url)
+    >>> lab9.Browser().new_tab(url)
     Hello, world!
 
 Note that you can print other data structures as well:
 
     >>> script = "console.log([2, 3, 4])"
     >>> test.socket.respond(str(url2), b"HTTP/1.0 200 OK\r\n\r\n" + script.encode("utf8"))
-    >>> lab9.Browser().load(url)
+    >>> lab9.Browser().new_tab(url)
     [2, 3, 4]
 
 Let's test that variables work:
 
     >>> script = "var x = 'Hello!'; console.log(x)"
     >>> test.socket.respond(str(url2), b"HTTP/1.0 200 OK\r\n\r\n" + script.encode("utf8"))
-    >>> lab9.Browser().load(url)
+    >>> lab9.Browser().new_tab(url)
     Hello!
     
 Next let's try to do two scripts:
@@ -70,7 +70,7 @@ Next let's try to do two scripts:
     >>> test.socket.respond(str(url), b"HTTP/1.0 200 OK\r\n\r\n" + html_page.encode("utf8"))
     >>> test.socket.respond(str(url2), b"HTTP/1.0 200 OK\r\n\r\nvar x = 'Testing, testing';")
     >>> test.socket.respond(str(url3), b"HTTP/1.0 200 OK\r\n\r\nconsole.log(x);")
-    >>> lab9.Browser().load(url)
+    >>> lab9.Browser().new_tab(url)
     Testing, testing
 
 Testing querySelectorAll
@@ -86,7 +86,7 @@ matching nodes:
     ... </div>"""
     >>> test.socket.respond(str(url), b"HTTP/1.0 200 OK\r\n\r\n" + page.encode("utf8"))
     >>> b = lab9.Browser()
-    >>> b.load(url)
+    >>> b.new_tab(url)
     >>> js = b.tabs[0].js
     >>> js.run("document.querySelectorAll('div').length")
     1
@@ -214,7 +214,7 @@ link, a button, and an input area:
     ...   <button>Submit</button>
     ... </form>"""
     >>> test.socket.respond(str(url), b"HTTP/1.0 200 OK\r\n\r\n" + page.encode("utf8"))
-    >>> b.load(url)
+    >>> b.new_tab(url)
     >>> js = b.tabs[1].js
 
 Now we're going test five event handlers: clicking on the link, clicking on the

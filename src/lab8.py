@@ -181,9 +181,9 @@ class BlockLayout:
         if self.cursor_x + w > self.width:
             self.new_line()
         line = self.children[-1]
-        input = InputLayout(node, line, self.previous_word)
+        previous_word = line.children[-1] if line.children else None
+        input = InputLayout(node, line, previous_word)
         line.children.append(input)
-        self.previous_word = input
         font = self.get_font(node)
         self.cursor_x += w + font.measure(" ")
 
@@ -329,21 +329,22 @@ class Browser:
 
     def handle_click(self, e):
         if e.y < self.chrome.bottom:
-            self.focus = None
+            self.focus = "chrome"
             self.chrome.click(e.x, e.y)
         else:
             self.focus = "content"
-            self.tabs[self.active_tab].click(e.x, e.y - self.chrome.bottom)
+            tab_y = e.y - self.chrome.bottom
+            self.active_tab.click(e.x, tab_y)
         self.draw()
 
     def handle_key(self, e):
         if len(e.char) == 0: return
         if not (0x20 <= ord(e.char) < 0x7f): return
-        if self.focus == "address bar":
-            self.address_bar += e.char
+        if self.focus == "chrome":
+            self.chrome.keypress(e.char)
             self.draw()
         elif self.focus == "content":
-            self.tabs[self.active_tab].keypress(e.char)
+            self.active_tab.keypress(e.char)
             self.draw()
 
 if __name__ == "__main__":
