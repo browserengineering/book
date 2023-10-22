@@ -148,7 +148,7 @@ there:
 
     >>> url3 = "http://test.test/add"
     >>> test.socket.respond(url3, b"HTTP/1.0 200 OK\r\n\r\nAdded!", method="POST")
-    >>> tab.load(lab10.URL(url3), body="who=me")
+    >>> tab.load(lab10.URL(url3), payload="who=me")
     >>> test.socket.last_request(url3)
     b'POST /add HTTP/1.0\r\nHost: test.test\r\nCookie: bar=baz\r\nContent-Length: 6\r\n\r\nwho=me'
 
@@ -166,7 +166,7 @@ Finally, let's try a cross-site `POST` request and check that in this
 case the cookie is *not* sent:
 
     >>> tab.load(lab10.URL(url4))
-    >>> tab.load(lab10.URL(url3), body="who=me")
+    >>> tab.load(lab10.URL(url3), payload="who=me")
     >>> test.socket.last_request(url3)
     b'POST /add HTTP/1.0\r\nHost: test.test\r\nContent-Length: 6\r\n\r\nwho=me'
     
@@ -176,7 +176,7 @@ but the ports differ, the cookie should be sent:
     >>> tab.load(lab10.URL(url))
     >>> url5 = "http://test.test:8000/test"
     >>> test.socket.respond(url5, b"HTTP/1.0 200 OK\r\n\r\nHi!", method="POST")
-    >>> tab.load(lab10.URL(url5), body="who=me")
+    >>> tab.load(lab10.URL(url5), payload="who=me")
     >>> test.socket.last_request(url5)
     b'POST /test HTTP/1.0\r\nHost: test.test\r\nCookie: bar=baz\r\nContent-Length: 6\r\n\r\nwho=me'
 

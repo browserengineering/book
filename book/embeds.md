@@ -737,7 +737,7 @@ class Tab:
         self.history.append(url)
         # ...
         self.root_frame = Frame(self, None, None)
-        self.root_frame.load(url, body)
+        self.root_frame.load(url, payload)
 ```
 
 Note that the guts of `load` now lives in the `Frame`, because
