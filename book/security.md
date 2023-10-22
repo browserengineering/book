@@ -25,9 +25,9 @@ enough.
 Cookies
 =======
 
-With what we've implemented so far there's no way for a web server to
+With what we've implemented so far, there's no way for a web server to
 tell whether two HTTP requests come from the same user or from two
-different ones: our browser is effectively anonymous.[^fingerprinting]
+different ones; our browser is effectively anonymous.[^fingerprinting]
 That means it can't "log in" anywhere, since a logged-in user's
 requests would be indistinguishable from those of not-logged-in users.
 
@@ -38,10 +38,11 @@ requests would be indistinguishable from those of not-logged-in users.
 The web fixes this problem with cookies\index{cookie}. A cookie---the name is
 meaningless, ignore it---is a little bit of information stored by your
 browser on behalf of a web server. The cookie distinguishes your
-browser, and is sent with each web request so the server can
-distinguish which requests come from which user.
+browser from any other, and is sent with each web request so the
+server can distinguish which requests come from whom. In effect,
+a cookie is a decentralized, server-granted identity for your browser.
 
-Here's the technical details. In the HTTP response a server can send a
+Here are the technical details. An HTTP response can contain a
 `Set-Cookie` header. This header contains a key-value pair; for
 example, the following header sets the value of the `foo` cookie to
 `bar`:
@@ -58,18 +59,18 @@ Servers can also set multiple cookies and also set parameters like
 expiration dates, but this `Set-Cookie` / `Cookie` mechanism is the
 core principle.
 
-Servers use cookies to assign identities to their users. Let's use
-cookies to write a login system for our guest book. Each user will be
-identified by a long random number stored in the `token`
+Let's use cookies to write a login system for our guest book. Each
+user will be identified by a long random number stored in the `token`
 cookie.[^secure-random] The server will either extract a token from
 the `Cookie` header, or generate a new one for new visitors:
 
 [^secure-random]: This `random.random` call returns a decimal number
-    with 53 bits of randomness. That's not great; 256 bits is ideal.
-    And `random.random` is not a secure random number generator: by
-    observing enough tokens you can predict future values and use
-    those to hijack accounts. A real web application must use a
-    cryptographically secure random number generator for tokens.
+    with 53 bits of randomness. That's not great; 256 bits is
+    typically the goal. And `random.random` is not a secure random
+    number generator: by observing enough tokens you can predict
+    future values and use those to hijack accounts. A real web
+    application must use a cryptographically secure random number
+    generator for tokens.
 
 ``` {.python file=server}
 import random
@@ -124,9 +125,10 @@ def handle_connection(conx):
     # ...
 ```
 
-`SESSIONS` maps tokens to session data dictionaries. I'm passing that
-session data via `do_request` to individual pages like `show_comments`
-and `add_entry`:
+`SESSIONS` maps tokens to session data dictionaries. The `setdefault`
+method both gets a key from a dictionary and also sets a default value
+if the key isn't present. I'm passing that session data via
+`do_request` to individual pages like `show_comments` and `add_entry`:
 
 ``` {.python file=server}
 def do_request(session, method, url, headers, body):
@@ -164,24 +166,11 @@ I want users to log in before posting to the guest book. Minimally,
 that means:
 
 - Users will log in with a username and password.
-- The server will hard-code a set of valid logins.
+- The server will check if the login is valid.
 - Users have to be logged in to add guest book entries.
 - The server will display who added which guest book entry.
 
-Let's start coding. First, we'll need to store usernames in
-`ENTRIES`:[^hackers-movie]
-
-[^hackers-movie]: The pre-loaded comments reference 1995's *Hackers*.
-    [Hack the Planet!](https://xkcd.com/1337)
-
-``` {.python file=server}
-ENTRIES = [
-    ("No names. We are nameless!", "cerealkiller"),
-    ("HACK THE PLANET!!!", "crashoverride"),
-]
-```
-
-Each user will also have a password:
+Let's start coding. We'll hard-code two user/password pairs:
 
 ``` {.python file=server}
 LOGINS = {
@@ -190,53 +179,7 @@ LOGINS = {
 }
 ```
 
-When we print the guest book entries, we'll write who authored them:
-
-``` {.python file=server replace=+%20entry/+%20html.escape(entry),+%20who/+%20html.escape(who)}
-def show_comments(session):
-    # ...
-    for entry, who in ENTRIES:
-        out += "<p>" + entry + "\n"
-        out += "<i>by " + who + "</i></p>"
-    # ...
-```
-
-Now, let's handle logging in. We'll determine whether a user is logged
-in using the `user` key in the session data, and use that to show
-either the comment form or a login link:
-
-``` {.python file=server}
-def show_comments(session):
-    # ...
-    if "user" in session:
-        out += "<h1>Hello, " + session["user"] + "</h1>"
-        out += "<form action=add method=post>"
-        out +=   "<p><input name=guest></p>"
-        out +=   "<p><button>Sign the book!</button></p>"
-        out += "</form>"
-    else:
-        out += "<a href=/login>Sign in to write in the guest book</a>"
-    # ...
-```
-
-Likewise, `add_entry` must check that the user is logged in before
-posting comments:
-
-``` {.python file=server}
-def add_entry(session, params):
-    if "user" not in session: return
-    if 'guest' in params and len(params['guest']) <= 100:
-        ENTRIES.append((params['guest'], session["user"]))
-```
-
-Note that the username from the session is stored into `ENTRIES`.
-
-Since the session data (including the `user` key) is stored on the
-server, users can't modify it directly. That's good, because we only
-want to set the `user` key in the session data if users supply the
-right password in the login form.
-
-Let's build that login form. We'll need a handler for `/login`:
+Users will log in by going to `/login`:
 
 ``` {.python file=server}
 def do_request(session, method, url, headers, body):
@@ -246,13 +189,17 @@ def do_request(session, method, url, headers, body):
     # ...
 ```
 
-This URL shows a form with a username and a password
-field:[^password-input]
+This page shows a form with a username and a password
+field:[^password-input][^bad-form]
 
 [^password-input]: I've given the `password` input area the type
     `password`, which in a real browser will draw stars or dots
     instead of showing what you've entered, though our browser doesn't
     do that.
+    
+[^bad-form]: Do note that this is not particularly accessible HTML,
+    lacking for example `<label>` elements around the form labels. Not
+    that our browser supports that!
 
 ``` {.python file=server}
 def login_form(session):
@@ -306,6 +253,62 @@ def do_login(session, params):
         return "401 Unauthorized", out
 ```
 
+Note that the session data (including the `user` key) is stored on the
+server, so users can't modify it directly. That's good, because we only
+want to set the `user` key in the session data if users supply the
+right password in the login form.
+
+So now we can check if a user is logged in by checking the `session`
+data. Let's only show the comment form to logged in users:
+
+``` {.python file=server}
+def show_comments(session):
+    # ...
+    if "user" in session:
+        out += "<h1>Hello, " + session["user"] + "</h1>"
+        out += "<form action=add method=post>"
+        out +=   "<p><input name=guest></p>"
+        out +=   "<p><button>Sign the book!</button></p>"
+        out += "</form>"
+    else:
+        out += "<a href=/login>Sign in to write in the guest book</a>"
+    # ...
+```
+
+Likewise, `add_entry` must check that the user is logged in before
+posting comments:
+
+``` {.python file=server}
+def add_entry(session, params):
+    if "user" not in session: return
+    if 'guest' in params and len(params['guest']) <= 100:
+        ENTRIES.append((params['guest'], session["user"]))
+```
+
+Note that the username from the session is stored into
+`ENTRIES`:[^hackers-movie]
+
+[^hackers-movie]: The pre-loaded comments reference 1995's *Hackers*.
+    [Hack the Planet!](https://xkcd.com/1337)
+
+``` {.python file=server}
+ENTRIES = [
+    ("No names. We are nameless!", "cerealkiller"),
+    ("HACK THE PLANET!!!", "crashoverride"),
+]
+```
+
+When we print the guest book entries, we'll show who authored them:
+
+``` {.python file=server replace=+%20entry/+%20html.escape(entry),+%20who/+%20html.escape(who)}
+def show_comments(session):
+    # ...
+    for entry, who in ENTRIES:
+        out += "<p>" + entry + "\n"
+        out += "<i>by " + who + "</i></p>"
+    # ...
+```
+
 Try it out in a normal web browser. You should be able to go to the
 main guest book page, click the link to log in, log in with one of the
 username/password pairs above, and then be able to post entries.^[The
@@ -354,7 +357,16 @@ COOKIE_JAR = {}
 Since cookies are site-specific, our cookie jar will map sites to
 cookies. Note that the cookie jar is global, not limited to a
 particular tab. That means that if you're logged in to a website and
-you open a second tab, you're logged in on that tab as well.
+you open a second tab, you're logged in on that tab as
+well.[^multiple-resources]
+
+
+[^multiple-resources]: Moreover, since `request` can be called multiple
+    times on one page---to load CSS and JavaScript---later requests
+    transmit cookies set by previous responses. For example our guest
+    book sets a cookie when the browser first requests the page and
+    then receives that cookie when our browser later requests the
+    page's CSS file.
 
 When the browser visits a page, it needs to send the cookie for that
 site:
@@ -373,7 +385,8 @@ Symmetrically, the browser has to update the cookie jar when it sees a
 `Set-Cookie` header:[^multiple-set-cookies]
 
 [^multiple-set-cookies]: A server can actually send multiple
-    `Set-Cookie` headers to set multiple cookies in one request.
+    `Set-Cookie` headers to set multiple cookies in one request,
+    though our browser won't handle that correctly.
 
 ``` {.python replace=(self/(self%2c%20top_level_url,%3d%20cookie/%3d%20(cookie%2c%20params)}
 class URL:
@@ -388,19 +401,13 @@ class URL:
 You should now be able to use your toy browser to log in to the guest
 book and post to it. Moreover, you should be able to open the guest
 book in two browsers simultaneously---maybe your toy browser and a
-real browser as well---and log in and post as two different users.
-
-Note that `request` can be called multiple times to load a web page's
-HTML, CSS, and JavaScript resources. Later requests transmit cookies
-set by previous responses, so for example our guest book sets a cookie
-when the browser first requests the page and then receives that
-cookie when our browser later requests the page's CSS file.
+real browser as well---and log in and post as two different
+users.
 
 Now that our browser supports cookies and uses them for logins, we
 need to make sure cookie data is safe from malicious actors. After
-all: if someone stole your `token` cookie, they could copy it into
-their browser, and the server would think they are you. We need to
-prevent that.
+all: the cookie is the browser's identity, so if someone stole it, the
+server would think they are you. We need to prevent that.
 
 ::: {.further}
 At one point, an attempt was made to "clean up" the cookie
@@ -518,7 +525,7 @@ class JSContext:
 With `XMLHttpRequest`, a web page can make HTTP requests in response
 to user actions, making websites more interactive! This API, and newer
 analogs like [`fetch`][mdn-fetch], are how websites allow you to like a
-post, see hover previews, or submitting a form without reloading.
+post, see hover previews, or submit a form without reloading.
 
 [mdn-fetch]: https://developer.mozilla.org/en-US/docs/Web/API/fetch
 
@@ -677,20 +684,21 @@ submissions.[^google-search] So how do we defend against this attack?
     engines.
 
 To start with, there are things the server can do. The usual advice is
-to make sure that every POST request to `/add` comes from a form on
-our website. The way to do that is to embed a secret value, called a
-*nonce*, into the form, and to reject form submissions that don't come
-with the right secret value. You can only get a nonce from the server,
-and the nonce is tied to the user session,[^per-user] so the attacker
-could not embed it in their form.[^like-cookie]
+to give a unique identity to every form the server serves, and make
+sure that every POST request comes from one of them. The way to do
+that is to embed a secret value, called a *nonce*, into the form, and
+to reject form submissions that don't come with the right secret
+value.[^like-cookie] You can only get a nonce from the server, and the
+nonce is tied to the user session,[^per-user] so the attacker could
+not embed it in their form.
 
 [^per-user]: It's important that nonces are associated with the
     particular user. Otherwise, the attacker can generate a nonce for
     *themselves* and insert it into a form meant for the *user*.
 
-[^like-cookie]: A nonce is somewhat like a cookie, except that it's
-    stored inside the HTML instead of the browser cookie. Like a
-    cookie, it can be stolen with cross-site scripting.
+[^like-cookie]: Note the similarity to cookies, except that instead of
+    granting identity to browsers, we grant one to forms. Like a
+    cookie, a nonce can be stolen with cross-site scripting.
 
 To implement this fix, generate a nonce and save it in the user
 session when a form is requested:[^hidden]
@@ -792,9 +800,12 @@ def request(self, payload=None):
         params = {}
         if ";" in cookie:
             cookie, rest = cookie.split(";", 1)
-            for param_pair in rest.split(";"):
-                name, value = param_pair.strip().split("=", 1)
-                params[name.casefold()] = value.casefold()
+            for param in rest.split(";"):
+                if '=' in param:
+                    param, value = param.strip().split("=", 1)
+                else:
+                    value = "true"
+                params[param.casefold()] = value.casefold()
         COOKIE_JAR[self.host] = (cookie, params)
 ```
 
@@ -906,9 +917,11 @@ def handle_connection(conx):
         response += template.format(token)
 ```
 
-But don't remove the nonces we added earlier: `SameSite` provides a
-kind of "defense in depth", a fail-safe that makes sure that even if
-we forgot a nonce somewhere, we're still secure against CSRF attacks.
+`SameSite` provides a kind of "defense in depth", a fail-safe that
+makes sure that even if we forgot a nonce somewhere, we're still
+secure against CSRF attacks. But don't remove the nonces we added
+earlier! They're important for older browsers and are more flexible in
+cases like multiple domains.
 
 ::: {.further}
 The web was not initially designed around security, which has lead to
@@ -1031,8 +1044,21 @@ guest book used `Content-Security-Policy`, even if an attacker managed
 to get a `<script>` added to the page, the browser would refuse to
 load and run that script.
 
-Let's implement support for this header. First, we'll need to extract
-and parse the `Content-Security-Policy` header:[^more-complex]
+Let's implement support for this header. First, we'll need `request`
+to return the response headers:
+
+``` {.python}
+class URL:
+    def request(self, top_level_url, payload=None):
+        # ...
+        return response_headers, body
+```
+
+Make sure to update all existing uses of `request` to ignore the
+headers.
+
+Next, we'll need to extract and parse the `Content-Security-Policy`
+header when loading a page:[^more-complex]
 
 [^more-complex]: In real browsers `Content-Security-Policy` can also
     list scheme-generic URLs and other sources like `'self'`. And
@@ -1221,19 +1247,19 @@ implement the `HttpOnly` cookie parameter; cookies with this parameter
 *Cookie Expiration*: Add support for cookie expiration. Cookie
 expiration dates are set in the `Set-Cookie` header, and can be
 overwritten if the same cookie is set again with a later date. On the
-server side, save the same expiration dates in the `SESSIONS` variable
-and use it to delete old sessions to save memory.
+server side, save the expiration date in the `SESSIONS` variable and
+use it to delete old sessions to save memory.
 
 *CORS*: Web servers can [*opt in*][cors] to allowing cross-origin
 `XMLHttpRequest`s. The way it works is that on cross-origin HTTP
 requests, the browser makes the request and includes an `Origin`
 header with the origin of the requesting site; this request includes
-cookies for the target origin. Per the same-origin policy, the browser
-then throws away the response. But the server can send the
+cookies for the target origin. To satisfy the same-origin policy, the
+browser then throws away the response. But the server can send the
 `Access-Control-Allow-Origin` header, and if its value is either the
 requesting origin or the special `*` value, the browser returns the
-response to the script. All requests made by your browser will be what
-the CORS standard calls "simple requests".
+response to the script instead. All requests made by your browser will
+be what the CORS standard calls "simple requests".
 
 [cors]: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
 
