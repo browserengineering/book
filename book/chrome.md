@@ -24,8 +24,8 @@ headings have their sizes and positions recorded in the layout tree,
 formatted text (like links) does not. We need to fix that.
 
 The big idea is to introduce two new types of layout objects:
-`LineLayout` and `TextLayout`. `BlockLayout` will now have
-`LineLayout` children for each line of text, which themselves will
+`LineLayout` and `TextLayout`. A `BlockLayout` will now have a
+`LineLayout` child for each line of text, which itself will
 contain a `TextLayout` for each word in that line. These new classes
 can make the layout tree look different from the HTML tree. So to
 avoid surprises, let's look at a simple example:
@@ -59,8 +59,9 @@ The text in the `body` element wraps across two lines (because of the
             TextLayout ("multiple")
             TextLayout ("lines")
 
-Note how one `body` element corresponds to two `LineLayout`s, and how
-two text nodes turn into a total of ten `TextLayout`s!
+Note how one `body` element corresponds to a `BlockLayout` with two
+`LineLayout`s inside, and how two text nodes turn into a total of ten
+`TextLayout`s!
 
 Let's get started. Defining `LineLayout` is straightforward:
 
@@ -90,33 +91,35 @@ class TextLayout:
 Like the other layout modes, `LineLayout` and `TextLayout` will need
 their own `layout` and `paint` methods, but before we get to those we
 need to think about how the `LineLayout` and `TextLayout` objects will
-be created. That happens during word wrapping.
+be created. That has to happen during word wrapping.
 
-Let's review [how word wrapping works](text.md) right now.
-`BlockLayout` is responsible for word wrapping, inside its `text`
-method. That method updates a `line` field, which stores all the words
-in the current line. When it's time to go to the next line, it calls
-`flush`, which computes the location of the line and each word in it,
-and adds all the words to a `display_list` field, which stores all the
-words in the whole inline element.
-
-Inside the `text` method, this key line adds a word to the current
-line of text:
+Recall [how word wrapping happens](text.md) inside `BlockLayout`'s
+`word` method. That method updates a `line` field, which stores all
+the words in the current line:
 
 ``` {.python file=lab6 indent=12}
 self.line.append((self.cursor_x, word, font, color))
 ```
 
-We now want to create a `TextLayout` object and add it to a
-`LineLayout` object. The `LineLayout`s are children of the
-`BlockLayout`, so the current line can be found at the end of the
-`children` array:
+When it's time to go to the next line, `word` calls `flush`, which
+computes the location of the line and each word in it, and adds all
+the words to a `display_list` field, which stores all the words in the
+whole inline element. With `TextLayout` and `LineLayout`, a lot of
+this complexity goes away. The `LineLayout` can compute its own
+location in its `layout` method, and instead of a `display_list`
+field, each `TextLayout` can just `paint` itself like normal. So let's
+get started on this refactor.
+
+Let's start with adding a word to a line. Instead of a `line` field,
+we want to create `TextLayout` objects and add them to `LineLayout`
+objects. The `LineLayout`s are children of the `BlockLayout`, so the
+current line can be found at the end of the `children` array:
 
 ``` {.python indent=12}
 line = self.children[-1]
-text = TextLayout(node, word, line, self.previous_word)
+previous_word = line.children[-1] if line.children else None
+text = TextLayout(node, word, line, previous_word)
 line.children.append(text)
-self.previous_word = text
 ```
 
 Note that I needed a new field here, `previous_word`, to keep track of
@@ -129,16 +132,16 @@ and clearing the `line` field. We don't want to do all that---we just
 want to create a new `LineLayout` object. So let's use a different
 method for that:
 
-``` {.python indent=8}
-if self.cursor_x + w > self.width:
-    self.new_line()
+``` {.python indent=4}
+def word(self, node, word):
+    if self.cursor_x + w > self.width:
+        self.new_line()
 ```
 
 This `new_line` method just creates a new line and resets some fields:
 
 ``` {.python indent=4}
 def new_line(self):
-    self.previous_word = None
     self.cursor_x = 0
     last_line = self.children[-1] if self.children else None
     new_line = LineLayout(self.node, self, last_line)
@@ -170,12 +173,6 @@ def layout(self):
     # ...
     self.height = sum([child.height for child in self.children])
 ```
-
-With the `display_list` gone, we can also remove the part of
-`paint`\index{paint} that handles it. Painting all the lines in a paragraph
-is now just automatically handled by recursing into the child layout objects.
-So by adding `LineLayout` and `TextLayout` we made `BlockLayout` quite a
-bit simpler and shared more code between block and inline layout modes.
 
 You might also be tempted to delete the `flush` method, since it's no
 longer called from anywhere. But keep it around for just a
@@ -222,60 +219,12 @@ class LineLayout:
         # ...
 ```
 
-Computing height, though, is different---this is where all that logic
-to compute maximum ascents, maximum descents, and so on from the old
-comes in. We'll want to pilfer the code from the old `flush` method.
-First, let's lay out each word:
+Computing height, though, is different---this is where computing
+maximum ascents, maximum descents, and so on comes in. Before we do
+that, let's look at laying out `TextLayout`s.
 
-``` {.python indent=8}
-# ...
-for word in self.children:
-    word.layout()
-```
-
-Next, we need to compute the line's baseline based on the maximum
-ascent and descent, using basically the same code as the old `flush`
-method:
-
-``` {.python indent=8}
-# ...
-max_ascent = max([word.font.metrics("ascent")
-                  for word in self.children])
-baseline = self.y + 1.25 * max_ascent
-for word in self.children:
-    word.y = baseline - word.font.metrics("ascent")
-max_descent = max([word.font.metrics("descent")
-                   for word in self.children])
-```
-
-Note that this code is reading from a `font` field on each word and
-writing to each word's `y` field.[^why-no-y] That means that inside
-`TextLayout`'s `layout` method, we need to compute `x`, `width`,
-and `height`, but also `font`, and not `y`. Remember that for later.
-
-[^why-no-y]: The `y` position could have been computed in
-`TextLayout`'s `layout` method---but then that layout method would
-have to come *after* the baseline computation, not *before*. Yet
-`font` must be computed *before* the baseline computation. A real
-browser might resolve this paradox with multi-phase layout.
-There are many considerations and optimizations of this kind that are
-needed to make text layout super fast.
-
-Finally, since each line is now a standalone layout object, it needs
-to have a height. We compute it from the maximum ascent and descent:
-
-``` {.python indent=8}
-# ...
-self.height = 1.25 * (max_ascent + max_descent)
-```
-
-Ok, so that's line layout. Now let's think about laying out each word.
-Recall that there's a few quirks here: we need to compute a `font`
-field for each `TextLayout`, but we do not need to compute a `y`
-field.
-
-We can compute `font` using the same font-construction code as in
-`BlockLayout`:
+To lay out text we need font metrics, so let's start by getting the
+relevant font using the same font-construction code as `BlockLayout`:
 
 ``` {.python}
 class TextLayout:
@@ -296,7 +245,6 @@ class TextLayout:
     def layout(self):
         # ...
 
-        # Do not set self.y!!!
         self.width = self.font.measure(self.word)
 
         if self.previous:
@@ -306,6 +254,58 @@ class TextLayout:
             self.x = self.parent.x
 
         self.height = self.font.metrics("linespace")
+```
+
+There's no code here to compute the `y` position, however. The
+vertical position of one word depends on the other words in the same
+line, so we'll compute that `y` position inside `LineLayout`'s
+`layout` method.[^why-no-y]
+
+[^why-no-y]: The `y` position could have been computed in
+`TextLayout`'s `layout` method---but then that layout method would
+have to come *after* the baseline computation, not *before*. Yet
+`font` must be computed *before* the baseline computation. A real
+browser might resolve this paradox with multi-phase layout.
+There are many considerations and optimizations of this kind that are
+needed to make text layout super fast.
+
+That method will pilfer the code from the old `flush` method. First,
+let's lay out each word:
+
+``` {.python indent=8}
+class LineLayout:
+    def layout(self):
+        # ...
+        for word in self.children:
+            word.layout()
+```
+
+Next, we need to compute the line's baseline based on the maximum
+ascent and descent, using basically the same code as the old `flush`
+method:
+
+``` {.python indent=8}
+# ...
+max_ascent = max([word.font.metrics("ascent")
+                  for word in self.children])
+baseline = self.y + 1.25 * max_ascent
+for word in self.children:
+    word.y = baseline - word.font.metrics("ascent")
+max_descent = max([word.font.metrics("descent")
+                   for word in self.children])
+```
+
+Note that this code is reading from a `font` field on each word and
+writing to each word's `y` field. That means that inside
+`TextLayout`'s `layout` method, we need to compute `x`, `width`,
+and `height`, but also `font`, and not `y`. Remember that for later.
+
+Finally, since each line is now a standalone layout object, it needs
+to have a height. We compute it from the maximum ascent and descent:
+
+``` {.python indent=8}
+# ...
+self.height = 1.25 * (max_ascent + max_descent)
 ```
 
 So that's `layout` for `LineLayout` and `TextLayout`. All that's left
@@ -328,6 +328,13 @@ class TextLayout:
             DrawText(self.x, self.y, self.word, self.font, color))
 ```
 
+Now we don't need a `display_list` field in `BlockLayout`, and we can
+also remove the part of `BlockLayout`'s `paint`\index{paint} that
+handles it. Instead, `BlockLayout` can just recurse into its children
+and paint them. So by adding `LineLayout` and `TextLayout` we made
+`BlockLayout` quite a bit simpler and shared more code between block
+and inline layout modes.
+
 So, oof, well, this was quite a bit of refactoring. Take a moment to
 test everything---it should look exactly identical to how it did
 before we started this refactor. But while you can't see it, there's a
@@ -338,8 +345,8 @@ layout object and its own size and position.
 Actually, text rendering is [*way* more complex][rendering-hates] than
 this. [Letters][morx] can transform and overlap, and the user might
 want to color certain letters---or parts of letters---a different
-color. All of this is possible in HTML, and browsers implement support
-for it.
+color. All of this is possible in HTML, and real browsers do implement
+support for it.
 :::
 
 [rendering-hates]: https://gankra.github.io/blah/text-hates-you/
@@ -348,8 +355,8 @@ for it.
 Click handling
 ==============
 
-Now that the browser knows where the links are, we start work on
-clicking them. In Tk, clicks work just like key presses: you bind an
+Now that we know where the links are, we can work on clicking them. In
+Tk, click handling works just like key press handling: you bind an
 event handler to a certain event. For click handling that event is
 `<Button-1>`, button number 1 being the left button on the mouse.[^1]
 
@@ -386,8 +393,20 @@ class Browser:
         y += self.scroll
 ```
 
-The next step is to figure out what links or other elements are at
-that location. To do that, search through the tree of layout objects:
+More generally, handling events like clicks involves *reversing* the
+usual rendering pipeline. Normally, rendering goes from elements to
+layout objects to page coordinates to screen coordinates; click
+handling goes backwards, starting with screen coordinates, then
+converting to page coordinates, and so on. The correspondence isn't
+perfectly reversed in practice^[Though see some exercises in this
+chapter on making it a closer match.] but it's a worthwhile analogy.
+
+So the next step is to go from page coordinates to a layout
+object:^[You could try to first find the paint command clicked on, and
+go from that to layout object, but in real browsers there are all
+sorts of reasons this won't work, starting with invisible objects that
+can nonetheless be clicked on. See the exercise on hit testing in the
+display list.]
 
 ``` {.python indent=8}
 # ...
@@ -396,16 +415,16 @@ objs = [obj for obj in tree_to_list(self.document, [])
         and obj.y <= y < obj.y + obj.height]
 ```
 
-Now, normally when you click on some text, you're also clicking on the
-paragraph it's in, and the section that that paragraph is in, and so
-on. We want the one that's "on top", which is the last object in the
-list:[^overlap]
+In principle there might be more than one layout object in this
+list.^[This is actually not possible in our browser at this point, but
+in real browsers there are all sorts of ways this could happen, like
+negative margins.] But remember that click handling is the reverse of
+painting. When we paint, we paint the tree from front to back, so when
+hit testing we should start at the last element:[^overlap]
 
-[^overlap]: In a real browser, sibling elements can also overlap each
-other, like a dialog that overlaps some text. Web pages can control
-which sibling is on top using the `z-index` property. So real browsers
-have to compute [stacking contexts][stack-ctx] to resolve what you
-actually clicked on.
+[^overlap]: Real browsers use the `z-index` property to control
+which sibling is on top. So real browsers have to compute [stacking
+contexts][stack-ctx] to resolve what you actually clicked on.
 
 [stack-ctx]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
 
@@ -444,8 +463,7 @@ elif elt.tag == "a" and "href" in elt.attributes:
     return self.load(url)
 ```
 
-Note that when a link has a relative URL, that URL is resolved
-relative to the current page, so store the current URL in `load`:
+Note that this `resolve` call requires storing the current page's URL:
 
 ``` {.python replace=Browser/Tab,self)/self%2c%20tab_height)}
 class Browser:
@@ -463,11 +481,11 @@ new web pages.
 
 ::: {.further}
 On mobile devices, a "click" happens over an area, not just at a
-single point. Since mobile "taps" are often pretty inaccurate, click
-should [use the area information][rect-based] for
-"hit testing".\index{hit testing} This can happen even with a
-[normal mouse click][hit-test] when the click is on a rotated or scaled
-element.
+single point. This is because mobile "taps" are often pretty
+inaccurate, click should [use area, not point information][rect-based]
+for "hit testing".\index{hit testing} This can happen even with a
+[normal mouse click][hit-test] when the click is on a rotated or
+scaled element.
 :::
 
 [rect-based]: http://www.chromium.org/developers/design-documents/views-rect-based-targeting
@@ -488,47 +506,17 @@ Fundamentally, implementing tabbed browsing requires us to distinguish
 between the browser itself and tabs that show individual web pages.
 The canvas the browser draws to, for example, is shared by all web pages,
 but the layout tree and display list are specific to one page. We need to
-tease these two types of things apart.
+tease tabs and browsers apart.
 
 Here's the plan: the `Browser` class will store the window and canvas,
 plus a list of `Tab` objects, one per browser tab. Everything else
-goes into a new `Tab` class. Since the `Browser` stores the window
-and canvas, it handles all of the events, sometimes forwarding it to
-the active tab.
-
-Since the `Tab` class is responsible for layout, styling, and
-painting, the default style sheet moves to the `Tab` constructor:
-
-``` {.python replace=browser.css/browser6.css,self)/self%2c%20tab_height)}
-class Tab:
-    def __init__(self):
-        with open("browser.css") as f:
-            self.default_style_sheet = CSSParser(f.read()).parse()
-```
-
-The `load`, `scrolldown`, `click`, and `draw` methods also move to
+goes into a new `Tab` class. Since the `Browser` stores the window and
+canvas, it handles all events and forwards them to the active tab. The
+`load`, `scrolldown`, `click`, and `draw` methods, meanwhile, move to
 `Tab`, since that's now where all web-page-specific data lives.
 
-But since the `Browser` controls the canvas and handles events, it
-decides when rendering happens and which tab does the drawing. After
-all,[^unless-windows] you only want one tab drawing its contents at a
-time! So let's remove the `draw` calls from the `load` and
-`scrolldown` methods, and in `draw`, let's pass the canvas in as an
-argument:
-
-[^unless-windows]: Unless the browser implements multiple windows, of course.
-
-``` {.python replace=canvas/canvas%2c%20offset}
-class Tab:
-    def draw(self, canvas):
-        # ...
-```
-
-Let's also make `draw` not clear the screen. That should be the
-`Browser`'s job.
-
-Now let's turn to the `Browser` class. It has to store a list of tabs
-and an index into that list for the active tab:
+Let's start with the `Browser` class. It has to store a list of tabs
+and also which one is active:
 
 ``` {.python}
 class Browser:
@@ -538,9 +526,7 @@ class Browser:
         self.active_tab = None
 ```
 
-When it comes to user interaction, think of the `Browser` as "active"
-and the `Tab` as "passive". It's the job of the `Browser` is to call
-into the tabs as appropriate. So the `Browser` handles all events:
+Since the `Browser` owns the window, it handles all events:
 
 ``` {.python}
 class Browser:
@@ -552,22 +538,21 @@ class Browser:
 Since these events need page-specific information to resolve, these
 handler methods just forward the event to the active tab:
 
-``` {.python replace=e.y/e.y%20-%20self.chrome.bottom}
+``` {.python replace=e.y/tab_y}
 class Browser:
     def handle_down(self, e):
-        self.tabs[self.active_tab].scrolldown()
+        self.active_tab.scrolldown()
         self.draw()
 
     def handle_click(self, e):
-        self.tabs[self.active_tab].click(
-            e.x, e.y)
+        self.active_tab.click(e.x, e.y)
         self.draw()
 ```
 
 You'll need to tweak the `Tab`'s `scrolldown` and `click` methods:
 
 - `scrolldown` now takes no arguments (instead of an event object)
-- `click` now take two coordinates (instead of an event object)
+- `click` now takes two coordinates (instead of an event object)
 
 Finally, the `Browser`'s `draw` call also calls into the active tab:
 
@@ -575,11 +560,26 @@ Finally, the `Browser`'s `draw` call also calls into the active tab:
 class Browser:
     def draw(self):
         self.canvas.delete("all")
-        self.tabs[self.active_tab].draw(self.canvas)
+        self.active_tab.draw(self.canvas)
 ```
 
-This only draws the active tab, which is how tabs are supposed to
-work.
+Note that clearing the screen is the `Browser`'s job, not the `Tab`'s.
+After that, we only draw the active tab, which is how tabs are
+supposed to work. `Tab`'s `draw` method needs to take the canvas in as
+an argument:
+
+``` {.python replace=canvas/canvas%2c%20offset}
+class Tab:
+    def draw(self, canvas):
+        # ...
+```
+
+Since the `Browser` controls the canvas and handles events, it decides
+when rendering happens and which tab does the drawing. So let's also
+remove the `draw` calls from the `load` and `scrolldown` methods. More
+generally, the `Browser` is "active" and the `Tab` is "passive": all
+user interacts start at the `Browser`, which then calls into the tabs
+as appropriate.
 
 We're basically done splitting `Tab` from `Browser`, and after a
 refactor like this we need to test things. To do that, we'll need to
@@ -587,10 +587,10 @@ create at least one tab, like this:
 
 ``` {.python replace=Tab()/Tab(HEIGHT%20-%20self.chrome.bottom)}
 class Browser:
-    def load(self, url):
+    def new_tab(self, url):
         new_tab = Tab()
         new_tab.load(url)
-        self.active_tab = len(self.tabs)
+        self.active_tab = new_tab
         self.tabs.append(new_tab)
         self.draw()
 ```
@@ -600,14 +600,22 @@ ones, and so on. Let's turn to that next.
 
 ::: {.further}
 Browser tabs first appeared in [SimulBrowse][simulbrowse], which was
-a kind of custom UI for the Internet Explorer engine. SimulBrowse
-(later renamed to NetCaptor) also had ad blocking and a private
-browsing mode. The [old advertisements][netcaptor-ad] are a great
-read!
+a kind of custom UI for the Internet Explorer engine.[^booklink]
+SimulBrowse (later renamed to NetCaptor) also had ad blocking and a
+private browsing mode. The [old advertisements][netcaptor-ad] are a
+great read!
 :::
 
 [simulbrowse]: https://en.wikipedia.org/wiki/NetCaptor
 [netcaptor-ad]: https://web.archive.org/web/20050701001923/http://www.netcaptor.com/
+[booklink]: Some people instead attribute tabbed browsing to Booklink's InternetWorks
+    browser, a browser obscure enough that it doesn't have a Wikipedia
+    page, though you can see some screenshots [on Twitter][booklink-x].
+    However, its tabs were slightly different from the modern
+    conception, more like bookmarks than tabs. SimulBrowse instead
+    used the modern notion of tabs.
+[tabbed-dna]: https://ajstiles.wordpress.com/2005/02/11/tabbed_browser_/
+[booklink-x]: https://twitter.com/awesomekling/status/1694242398539264363
 
 Browser chrome
 ==============
@@ -625,132 +633,22 @@ so it has to happen at the browser level, not per-tab.
     browser.
 
 However, a browser's UI is quite complicated, so let's put that code in a new
-`Chrome` helper class. It will have a `paint` method to paint the browser
-chrome. The `paint` method constructs the display list for the browser chrome;
-I'm just constructing and using it directly, instead of storing it somewhere,
-because our browser will have pretty simple chrome, meaning `paint_chrome` will
-be fast. In a real browser, it might be saved and only updated when the chrome
-changes.
+`Chrome` helper class:
 
 ``` {.python}
 class Chrome:
     def __init__(self, browser):
         self.browser = browser
 
-    def paint(self):
-        # ....
-```
-
-``` {.python}
 class Browser:
     def __init__(self):
-        ...
+        # ...
         self.chrome = Chrome(self)
+
 ```
 
-The browser chrome generates a display list just like a tab. However, unlike
-tabs, this display list will always be drawn at the top of the window and won't
-be scrolled:
-
-``` {.python}
-class Browser:
-    def draw(self):
-        # ...
-        for cmd in self.chrome.paint():
-            cmd.execute(0, self.canvas)
-```
-
-First things first: we need to avoid drawing page contents to the part of the
-browser window where the browser chrome is. Browser chrome is at the top of the
-window, with tab contents below it. So we need to figure out how tall
-the browser chrome is, to know how much to shrink the available tab area.
-We don't know that yet without computing it as part of designing
-the UI of the browser chrome, but we do know it will determien the `tab_height`
-we can pass to each `Tab`:
-
-``` {.python}
-class Tab:
-    def __init__(self, tab_height):
-        ...
-        self.tab_height = tab_height
-```
-
-Each tab needs to make sure not to draw to those pixels. We need to pass an
-extra `offset` parameter to account for the (still to be determined) browser
-chrome height.
-
-``` {.python}
-class Tab:
-    def draw(self, canvas, offset):
-        for cmd in self.display_list:
-            if cmd.top > self.scroll + self.tab_height:
-                continue
-            if cmd.bottom < self.scroll: continue
-            cmd.execute(self.scroll - offset, canvas)
-```
-
-Now let's turn our attention to designing the UI.
-
-First, there are still sometimes going to be halves of letters that stick out
-into the browser chrome, but we can hide them by just drawing over
-them. Here I'm assuming we've already computed `self.bottom`
-(representing the bottom y coordinate of the browser chrome); that will
-come in a moment:
-
-``` {.python}
-class Chrome:
-    def paint(self):
-        cmds = []
-        cmds.append(
-            DrawRect(0, 0, WIDTH, self.bottom, "white"))
-        return cmds
-```
-
-You'll also need to adjust `scrolldown` to account for the height of
-the page content now being `tab_height`:
-
-``` {.python}
-class Tab:
-    def scrolldown(self):
-        max_y = max(
-            self.document.height + 2*VSTEP - self.tab_height, 0)
-        self.scroll = min(self.scroll + SCROLL_STEP, max_y)
-```
-
-To better separate the chrome from the page, let's also add a border:
-
-``` {.python}
-class Chrome:
-    def paint(self):
-        # ...
-        cmds.append(DrawLine(
-            0, self.bottom, WIDTH,
-            self.bottom, "black", 1))
-        # ...
-```
-
-The `DrawLine` command draws a line of a given color and thickness.
-It's defined like so:
-
-``` {.python}
-class DrawLine:
-    def __init__(self, x1, y1, x2, y2, color, thickness):
-        self.top = y1
-        self.left = x1
-        self.bottom = y2
-        self.right = x2
-        self.color = color
-        self.thickness = thickness
-
-    def execute(self, scroll, canvas):
-        canvas.create_line(
-            self.left, self.top - scroll,
-            self.right, self.bottom - scroll,
-            fill=self.color, width=self.thickness,
-        )
-```
-
-Now let's design the browser chrome. I think it should have the following:
+So, let's design the browser chrome. Ultimately, I think it should
+have two rows:
 
 * At the top, a list of tab names, separated by vertical lines, and a "`+`"
   button to add a new tab.
@@ -758,85 +656,91 @@ Now let's design the browser chrome. I think it should have the following:
 * Underneath, the URL of of the current web page, and a "`<`" button to
   represent the browser back-button.
 
-We'll need to reserve some space for all this at the top of the window. But how much?
-One way could be to pick some arbitrary browser chrome height, then try to
-squeeze the chrome into it (and making its font smaller as necessary). Another,
-better way, is to pick a font size that is easy enough to read, then compute
-the chrome height accordingly.
-
-For our design, the chrome's height should be the vertical
-height of those two lines plus some padding between and after them. For
-convenience, and to use them later for processing mouse clicks, I'll store
-these parameters on the `Chrome` object:^[I also chose `20px` as the
-font size. Depending on your computer, this may end up looking smaller,
-\index{device pixel ratio}
-because of the device pixel ratio of the screen.]
+A lot of this design involves text, so let's start by picking a font:
 
 ``` {.python}
 class Chrome:
     def __init__(self, browser):
         # ...
         self.font = get_font(20, "normal", "roman")
-        font_height = self.font.metrics("linespace")
-
-        self.padding = 5
-        self.tab_header_bottom = font_height + 2 * self.padding
-        self.addressbar_top = self.tab_header_bottom + self.padding
-        self.bottom = \
-            self.addressbar_top + font_height + \
-            2 * self.padding    
+        self.font_height = self.font.metrics("linespace")
 ```
 
-In addition, it's convenient to define some methods that return the bounds of
-the plus and each tab. Note how the size of each
-elements' bounds is as wide as the font says it is. That way, if we change our
-mind later, we can just change the font size, and everything else just draws
-correctly.^[Also, we chose "Tab 1" as the fixed size of a tab, but in real
-life many fonts draw different numbers (like "1" and "6") with different
-widths, and this approximation also doesn't work for two-digit tab numbers.
-Real browsers size their tabs to fit the [title], but we skipped that for
-simplicity.]
+Because different operating systems draw fonts differently, we'll need
+to adjust the exact design of the browser chrome based on font
+metrics. So we'll need the `font_height` later.^[I chose `20px` as the
+font size, but that might be too small on your device\index{device
+pixel ratio}. Feel free to adjust.]
 
-[title]: https://developer.mozilla.org/en-US/docs/Web/API/Document/title
+Using that font height, we can now determine where the tab bar starts
+and ends:
 
 ``` {.python}
 class Chrome:
-    def plus_bounds(self):
-        plus_width = self.font.measure("+")
-        return (self.padding, self.padding,
-            self.padding + plus_width,
-            self.tab_header_bottom - self.padding)
-
-    def tab_bounds(self, i):
-        tab_start_x = self.padding + self.font.measure("+") + \
-            self.padding
-
-        tab_width = self.padding + self.font.measure("Tab 1") + \
-            self.padding
-
-        return (tab_start_x + tab_width * i, self.padding,
-            tab_start_x + tab_width + tab_width * i,
-            self.tab_header_bottom)
+    def __init__(self, browser):
+        # ...
+        self.padding = 5
+        self.tabbar_top = 0
+        self.tabbar_bottom = self.font_height + 2*self.padding
 ```
 
-Now for drawing the actual UI, starting with the tab bar at the top of the
-browser window. Here's the plus icon:
+Note that I've added some padding so that text doesn't run into the
+edge of the window. Now, this tab row needs to contain a new-tab
+button and the tab names themselves.
+
+I'll add padding around the new-tab button:
+
+``` {.python}
+class Chrome:
+    def __init__(self, browser):
+        # ...
+        plus_width = self.font.measure("+") + 2*self.padding
+        self.newtab_rect = (
+           self.padding, self.padding,
+           self.padding + plus_width,
+           self.padding + self.font_height
+        )
+```
+
+Then the tabs will start `padding` past the end of the new-tab button.
+Because the number of tabs can change, I'm not going to store the
+location of each tab. Instead I'll just compute their bounds on the fly:
+
+``` {.python}
+class Chrome:
+    def tab_rect(self, i):
+        tabs_start = self.newtab_rect[3] + self.padding
+        tab_width = self.font.measure("Tab X") + 2*self.padding
+        return (
+            tabs_start + tab_width * i, self.tabbar_top,
+            tabs_start + tab_width * (i + 1), self.tabbar_bottom
+        )
+```
+
+Note that I measure the text "Tab X" and use that for all of the tab
+widths. This is not quite right---in many fonts, numbers like 8 are
+wider than numbers like 1---but it is close enough, and anyway, the
+letter X is typically as wide as the widest number.
+
+To actually draw the UI, we'll first have the browser chrome paint a
+display list, which the `Browser` will then draw to the screen. Let's
+start by first painting the new-tab button:
 
 ``` {.python}
 class Chrome:
     def paint(self):
-        # ...
-        (plus_left, plus_top, plus_right, plus_bottom) = \
-            self.plus_bounds()
+        cmds = []
         cmds.append(DrawOutline(
-            plus_left, plus_top, plus_right, plus_bottom, "black", 1))
+            self.newtab_rect[0], self.newtab_rect[1],
+            self.newtab_rect[2], self.newtab_rect[3],
+            "black", 1))
         cmds.append(DrawText(
-            plus_left, plus_top, "+", self.font, "black"))
-        # ...
+            self.newtab_rect[0] + self.padding,
+            self.newtab_rect[1],
+            "+", self.font, "black"))
 ```
 
-The `DrawOutline` command draws a rectangle's border instead of
-its inside. It's defined like this:
+The `DrawOutline` command draws a rectangular border:
 
 ``` {.python}
 class DrawOutline:
@@ -866,17 +770,16 @@ class Chrome:
     def paint(self):
         # ...
         for i, tab in enumerate(self.browser.tabs):
-            name = "Tab {}".format(i)
-            (tab_left, tab_top, tab_right, tab_bottom) = \
-                self.tab_bounds(i)
-
+            bounds = self.tab_rect(i)
             cmds.append(DrawLine(
-                tab_left, 0, tab_left, tab_bottom, "black", 1))
+                bounds[0], 0, bounds[0], bounds[3],
+                "black", 1))
             cmds.append(DrawLine(
-                tab_right, 0, tab_right, tab_bottom, "black", 1))
+                bounds[2], 0, bounds[2], bounds[3],
+                "black", 1))
             cmds.append(DrawText(
-                tab_left + self.padding, tab_top,
-                name, self.font, "black"))
+                bounds[0] + self.padding, bounds[1] + self.padding,
+                "Tab {}".format(i), self.font, "black"))
 ```
 
 Finally, to identify which tab is the active tab, we've got to make
@@ -888,19 +791,132 @@ class Chrome:
         # ...
         for i, tab in enumerate(self.browser.tabs):
             # ...
-            if i == self.browser.active_tab:
+            if tab == self.browser.active_tab:
                 cmds.append(DrawLine(
-                    0, tab_bottom, tab_left, tab_bottom, "black", 1))
+                    0, bounds[3], bounds[0], bounds[3],
+                    "black", 1))
                 cmds.append(DrawLine(
-                    tab_right, tab_bottom, WIDTH, tab_bottom,
+                    bounds[2], bounds[3], WIDTH, bounds[3],
                     "black", 1))
 ```
 
-The next step is clicking on tabs to switch between them. That has to
-happen in the `Browser` class, since it's the `Browser` that stores
-which tab is active. So let's go to the `handle_click` method and add
-a branch for clicking on the browser chrome, which will delegate to a new
-method on the `Chrome` object.
+The `DrawLine` command draws a line of a given color and thickness.
+It's defined like so:
+
+``` {.python}
+class DrawLine:
+    def __init__(self, x1, y1, x2, y2, color, thickness):
+        self.top = y1
+        self.left = x1
+        self.bottom = y2
+        self.right = x2
+        self.color = color
+        self.thickness = thickness
+
+    def execute(self, scroll, canvas):
+        canvas.create_line(
+            self.left, self.top - scroll,
+            self.right, self.bottom - scroll,
+            fill=self.color, width=self.thickness,
+        )
+```
+
+One final thing: we want to make sure that the browser chrome is
+always drawn on top of the page contents. To guarantee that, we can
+draw a white rectangle behind the chrome:
+
+``` {.python replace=tabbar/urlbar}
+class Chrome:
+    def __init__(self, browser):
+        # ...
+        self.bottom = self.tabbar_bottom
+
+    def paint(self):
+        cmds = []
+        cmds.append(DrawRect(
+            0, 0, WIDTH, self.bottom,
+            "white"))
+        cmds.append(DrawLine(
+            0, self.bottom, WIDTH,
+            self.bottom, "black", 1))
+```
+
+I also added a line at the bottom of the chrome to separate it from
+the page.
+
+Drawing this chrome display list is now straightforward:
+
+``` {.python}
+class Browser:
+    def draw(self):
+        # ...
+        for cmd in self.chrome.paint():
+            cmd.execute(0, self.canvas)
+```
+
+Note that this display list is always drawn at the top of the window,
+unlike the tab contents (which scroll). Make sure to draw the chrome
+*after* the main tab contents, so that the chrome ends up on top.
+
+However, we also have to make some adjustments to tab drawing to
+account for the fact that the browser chrome takes up some vertical
+space. Let's add a `tab_height` parameter to `Tab`s:
+
+``` {.python}
+class Tab:
+    def __init__(self, tab_height):
+        # ...
+        self.tab_height = tab_height
+```
+
+We can pass it in in `new_tab`:
+
+``` {.python}
+class Browser:
+    def new_tab(self, url):
+        new_tab = Tab(HEIGHT - self.chrome.bottom)
+        # ...
+```
+
+We can then adjust `scrolldown` to account for the height of the page
+content now being `tab_height`:
+
+``` {.python}
+class Tab:
+    def scrolldown(self):
+        max_y = max(
+            self.document.height + 2*VSTEP - self.tab_height, 0)
+        self.scroll = min(self.scroll + SCROLL_STEP, max_y)
+```
+
+Finally, in `Tab`'s `draw` method we need to shift the drawing
+commands down by the chrome height. I'll pass the chrome height in as
+an `offset` parameter:
+
+``` {.python}
+class Tab:
+    def draw(self, canvas, offset):
+        for cmd in self.display_list:
+            if cmd.top > self.scroll + self.tab_height:
+                continue
+            if cmd.bottom < self.scroll: continue
+            cmd.execute(self.scroll - offset, canvas)
+```
+
+The `Browser`'s final `draw` method now looks like this:
+
+``` {.python}
+class Browser:
+    def draw(self):
+        self.canvas.delete("all")
+        self.active_tab.draw(self.canvas, self.chrome.bottom)
+        for cmd in self.chrome.paint():
+            cmd.execute(0, self.canvas)
+```
+
+One more thing: clicking on tabs to switch between them. The `Browser`
+handles the click and now needs to delegate clicks on the browser
+chrome to the `Chrome` object:
 
 ``` {.python}
 class Browser:
@@ -908,26 +924,16 @@ class Browser:
         if e.y < self.chrome.bottom:
             self.chrome.click(e.x, e.y)
         else:
-            self.tabs[self.active_tab].click(
-                e.x, e.y - self.chrome.bottom)
+            tab_y = e.y - self.chrome.bottom
+            self.active_tab.click(e.x, tab_y)
         self.draw()
 ```
 
-``` {.python}
-class Chrome:
-    def click(self, x, y):
-        # ...
-```
-
-When the user clicks on the browser chrome (the `if` branch), the
-browser handles it directly, but if the click is on the page content
-(the `else` branch) it is still forwarded to the active tab,
-subtracting `self.chrome.bottom` to fix up the coordinates.
-
-If the `y` coordinate is as high as `self.chrome.bottom`, it's just a matter
-of comparing it against each of the bounds methods we've already defined. To
-that end, let's add a quick method to test whether a point intersects one
-of them:
+Note that we need to subtract out the the chrome size when clicking on
+tab contents. As for clicks on the browser chrome, inside `Chrome` we
+need to figure out what the user clicked on. To make that easier,
+let's add a quick method to test whether a point intersects a
+rectangle:
 
 ``` {.python}
 def intersects(x, y, rect):
@@ -935,18 +941,19 @@ def intersects(x, y, rect):
     return x >= left and x < right and y >= top and y < bottom
 ```
 
+We use this method to handle clicks inside `Chrome`:
+
 And then use it to choose between clicking to add a tab or select an open tab.
 
 ``` {.python}
 class Chrome:
     def click(self, x, y):
-        if intersects(x, y, self.plus_bounds()):
-            self.browser.load(URL("https://browser.engineering/"))
-        # ...
+        if intersects(x, y, self.newtab_rect):
+            self.browser.new_tab(URL("https://browser.engineering/"))
         else:
             for i, tab in enumerate(self.browser.tabs):
-                if intersects(x, y, self.tab_bounds(i)):
-                    self.browser.active_tab = i
+                if intersects(x, y, self.tab_rect(i)):
+                    self.browser.active_tab = tab
                     break
 ```
 
@@ -969,18 +976,71 @@ Navigation history
 
 Now that we are navigating between pages all the time, it's easy to
 get a little lost and forget what web page you're looking at. An
-address bar that shows the current URL would help a lot.
+address bar that shows the current URL would help a lot. Let's make
+room for it in the chrome:
+
+``` {.python}
+class Chrome:
+    def __init__(self, browser):
+        # ...
+        self.urlbar_top = self.tabbar_bottom
+        self.urlbar_bottom = self.urlbar_top + \
+            self.font_height + 2*self.padding
+        self.bottom = self.urlbar_bottom
+```
+
+This "URL bar" will contain the back button and the address bar:
+
+``` {.python}
+class Chrome:
+    def __init__(self, browser):
+        # ...
+        back_width = self.font.measure("<") + 2*self.padding
+        self.back_rect = (
+            self.padding,
+            self.urlbar_top + self.padding,
+            self.padding + back_width,
+            self.urlbar_bottom - self.padding,
+        )
+
+        self.address_rect = (
+            self.back_rect[2] + self.padding,
+            self.urlbar_top + self.padding,
+            WIDTH - self.padding,
+            self.urlbar_bottom - self.padding,
+        )
+```
+
+Painting the back button is straightforward:
 
 ``` {.python}
 class Chrome:
     def paint(self):
         # ...
-        left_bar = addressbar_left + self.padding
-        top_bar = addressbar_top + self.padding
-        url = str(self.browser.tabs[self.browser.active_tab].url)
+        cmds.append(DrawOutline(
+            self.back_rect[0], self.back_rect[1],
+            self.back_rect[2], self.back_rect[3],
+            "black", 1))
         cmds.append(DrawText(
-            left_bar,
-            top_bar,
+            self.back_rect[0] + self.padding,
+            self.back_rect[1],
+            "<", self.font, "black"))
+```
+
+The address bar needs to get the current tab's URL from the browser:
+
+``` {.python dropline=self.browser.active_tab.url}
+class Chrome:
+    def paint(self):
+        # ...
+        cmds.append(DrawOutline(
+            self.address_rect[0], self.address_rect[1],
+            self.address_rect[2], self.address_rect[3],
+            "black", 1))
+        url = str(self.browser.active_tab.url)
+        cmds.append(DrawText(
+            self.address_rect[0] + self.padding,
+            self.address_rect[1],
             url, self.font, "black"))
 ```
 
@@ -998,48 +1058,19 @@ class URL:
         return self.scheme + "://" + self.host + port_part + self.path
 ```
 
-I think the extra logic to hide port numbers makes the URLs more tidy.
+I think the extra logic to hide port numbers is worth it to make the
+URLs more tidy.
 
-To keep up appearances, the address bar needs a "back" button nearby.
-I'll start by drawing the back button itself:
-
-``` {.python}
-class Chrome:
-    def paint(self):
-        # ...
-        backbutton_width = self.font.measure("<")
-        (backbutton_left, backbutton_top, backbutton_right,
-            backbutton_bottom) = self.backbutton_bounds()
-        cmds.append(DrawOutline(
-            backbutton_left, backbutton_top,
-            backbutton_right, backbutton_bottom,
-            "black", 1))
-        cmds.append(DrawText(
-            backbutton_left, backbutton_top + self.padding,
-            "<", self.font, "black"))
-```
-
-And of course add the `backbutton_bounds` method:
-
-``` {.python}
-class Chrome:
-    def backbutton_bounds(self):
-        backbutton_width = self.font.measure("<")
-        return (self.padding, self.addressbar_top,
-            self.padding + backbutton_width,
-            self.bottom - self.padding)
-```
-
-So what happens when that button is clicked? Well, *that tab* goes
-back. Other tabs are not affected. So the `Browser` has to invoke some
-method on the current tab to go back:
+What should happen when the back button is clicked? Well, *that tab*
+should go back. Other tabs are not affected. So the `Browser` has to
+invoke some method on the current tab to go back:
 
 ``` {.python}
 class Chrome:
     def click(self, x, y):
         # ...
-        elif intersects(x, y, self.backbutton_bounds()):
-                self.browser.tabs[self.browser.active_tab].go_back()
+        elif intersects(x, y, self.back_rect):
+            self.browser.active_tab.go_back()
 ```
 
 For the active tab to "go back", it needs to store a "history" of
@@ -1127,8 +1158,8 @@ some state to say whether you're currently typing into the address
 bar. Let's call the contents `address_bar` and the state `focus`:
 
 ``` {.python}
-class Browser:
-    def __init__(self):
+class Chrome:
+    def __init__(self, browser):
         # ...
         self.focus = None
         self.address_bar = ""
@@ -1140,23 +1171,11 @@ should clear `focus`:
 ``` {.python}
 class Chrome:
     def click(self, x, y):
+        self.focus = None
         # ...
-        elif intersects(x, y, self.addressbar_bounds()):
-            self.browser.focus = "address bar"
-            self.browser.address_bar = ""
-```
-
-With this definition of the bounds:
-
-``` {.python}
-class Chrome:
-    def addressbar_bounds(self):
-        (backbutton_left, backbutton_top, backbutton_right,
-            backbutton_bottom) = \
-            self.backbutton_bounds()
-
-        return (backbutton_right + self.padding, self.addressbar_top,
-            WIDTH - 10, self.bottom - self.padding)
+        elif intersects(x, y, self.address_rect):
+            self.focus = "address bar"
+            self.address_bar = ""
 ```
 
 Note that clicking on the address bar also clears the address bar
@@ -1170,38 +1189,41 @@ the current URL or the currently-typed text:
 class Chrome:
     def paint(self):
         # ...
-        if self.browser.focus == "address bar":
+        if self.focus == "address bar":
             cmds.append(DrawText(
-                left_bar, top_bar,
-                self.browser.address_bar, self.font, "black"))
+                self.address_rect[0] + self.padding,
+                self.address_rect[1],
+                self.address_bar, self.font, "black"))
         else:
-            url = str(self.browser.tabs[self.browser.active_tab].url)
+            url = str(self.browser.active_tab.url)
             cmds.append(DrawText(
-                left_bar,
-                top_bar,
+                self.address_rect[0] + self.padding,
+                self.address_rect[1],
                 url, self.font, "black"))
 ```
 
 When the user is typing in the address bar, let's also draw a cursor.
 Making states (like focus) visible on the screen (like with the
-cursor) makes the software easier to use:
+cursor) makes software easier to use:
 
 ``` {.python}
 class Chrome:
     def paint(self):
         # ...
-        if self.browser.focus == "address bar":
+        if self.focus == "address bar":
             # ...
-            w = self.font.measure(self.browser.address_bar)
+            w = self.font.measure(self.address_bar)
             cmds.append(DrawLine(
-                left_bar + w, top_bar,
-                left_bar + w,
-                self.bottom - self.padding, "red", 1))
+                self.address_rect[0] + self.padding + w,
+                self.address_rect[1],
+                self.address_rect[0] + self.padding + w,
+                self.address_rect[3],
+                "red", 1))
 ```
 
 Next, when the address bar is focused, we need to support typing in a
 URL. In Tk, you can bind to `<Key>` to capture all key presses. The
-event object's `char` field contains the character the user typed:
+event object's `char` field contains the character the user typed.
 
 ``` {.python}
 class Browser:
@@ -1212,34 +1234,46 @@ class Browser:
     def handle_key(self, e):
         if len(e.char) == 0: return
         if not (0x20 <= ord(e.char) < 0x7f): return
-
-        if self.focus == "address bar":
-            self.address_bar += e.char
-            self.draw()
+        self.chrome.keypress(e.char)
+        self.draw()
 ```
 
 This `handle_key` handler starts with some conditions: `<Key>` fires
 for every key press, not just regular letters, so we want to ignore
 cases where no character is typed (a modifier key is pressed) or the
 character is outside the ASCII range (which can represent the arrow
-keys or function keys). After we modify `address_bar` we also need to
-call `draw()` so that the new letters actually show up.
+keys or function keys). For now let's have the `Browser` send all key
+presses to `Chrome` and then call `draw()` so that the new letters
+actually show up.
+
+Then `Chrome` can check `focus` and add on to `address_bar`:
+
+``` {.python}
+class Chrome:
+    def keypress(self, char):
+        if self.focus == "address bar":
+            self.address_bar += char
+```
 
 Finally, once the new URL is entered, we need to handle the "Enter"
 key, which Tk calls `<Return>`, and actually send the browser to the
 new address:
 
 ``` {.python}
+class Chrome:
+    def enter(self):
+        if self.focus == "address bar":
+            self.browser.active_tab.load(URL(self.address_bar))
+            self.focus = None
+
 class Browser:
     def __init__(self):
         # ...
         self.window.bind("<Return>", self.handle_enter)
 
     def handle_enter(self, e):
-        if self.focus == "address bar":
-            self.tabs[self.active_tab].load(URL(self.address_bar))
-            self.focus = None
-            self.draw()
+        self.chrome.enter()
+        self.draw()
 ```
 
 So there---after a long chapter, you can now unwind a bit by surfing
@@ -1296,7 +1330,12 @@ Exercises
 address bar. Honestly, do this exercise just for your sanity.
 
 *Middle-click*: Add support for middle-clicking on a link (`Button-2`)
-to open it in a new tab. You might need a mouse to test this easily.
+to open it in a new tab. You might want to use a mouse when testing.
+
+*Window title*: Browsers set their window title to the contents of the
+current tab's `<title>` element. Make your browser do the same. You
+can call the `title` method of your browser's `window` field to change
+the window title.
 
 *Forward*: Add a forward button, which should undo the back button. If
 the most recent navigation action wasn't a back button, the forward
@@ -1356,40 +1395,12 @@ windows and canvases and grouping tabs by their containing window.
 You'll also need some way to create a new window, perhaps with a
 keypress such as `Ctrl+N`.
 
-*Hit testing in layout*: The `click` method we implemented is on the `Tab`
-object. While it doesn't have a whole lot of logic in it, there is special
-logic for `Text` objects and `a` tags. Real browsers have many more special
-kinds of nodes, plus more complicated layout, so they tend to implement this
-logic directly on the layout tree.^[Real browsers call this logic *hit testing*,
-because it's used for more than just clicking. The name comes from thinking
-whether an arrow shot at that location would "hit" the object.] Implement
-`click` on the layout tree.
-
-*Hit testing on the display list*: Hit testing can be thought of as a "reversed"
-version of `paint`: `paint` turns elements into pixels,
-while hit testing turns pixels into elements. Plus, it looks
-at the elements front-to-back in paint order,
-as opposed to back-to-front. Building on this observation, we could build all
-of the necessary information for hit testing directly into the display list
-instead of the layout tree. Implement one of these.^[You might want to implement
-hit testing in this way in a browser because display lists are pure data
-structurs and therefore easier to optimize or execute in different
-threads.]
-
-*Reusing HTML*: Browser chrome is quite complicated in real browsers,
-with tricky details such as font sizes, padding, outlines,
-shadows, icons and so on. This makes it tempting to try to reuse our
-implementation of those features for web pages---imagine replacing the
-contents of `paint_chrome` with a call to paint some HTML instead that
-represents the UI of the browser chrome. Implement this, including support for
-the [`padding`][padding] CSS property (even if you can't implement the
-whole UI faithfully---outline will have to wait for [Chapter
-14](accessibility.md), for example).[^real-browser-reuse]
-
-[padding]: https://developer.mozilla.org/en-US/docs/Web/CSS/padding
-
-[^real-browser-reuse]: Real browsers have in fact gone down this implementation
-path multiple times. Firefox [has one](https://en.wikipedia.org/wiki/XUL),
-and [so does Chrome](https://www.chromium.org/developers/webui/). However,
-because it's so important for the browser chrome to be very fast and responsive
-to draw, such approaches have had mixed success.
+*Clicks via the display list*: At the moment, our browser converts
+a click location to page coordinates and then finds the layout object
+at those coordinates. But you could instead first look up the draw
+command at that location, and then go from the draw command to the
+layout object that generated it. Implement this. You'll need draw
+commands to know which layout object generated them.^[Real browsers
+don't currently do this, but it's an attractive possibility: display
+lists are pure data structures so access to them is easier to optimize
+or parallelize than the more complicated layout tree.]

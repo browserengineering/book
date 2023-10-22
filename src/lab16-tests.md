@@ -28,7 +28,7 @@ Here's a simple editable web page:
     ... <p contenteditable>Here is some content.</p>
     ... """))
     >>> browser = lab16.Browser()
-    >>> browser.load(url)
+    >>> browser.new_tab(url)
     >>> browser.render()
     >>> lab16.print_tree(browser.tabs[0].root_frame.nodes)
      <html>
@@ -79,7 +79,7 @@ Here's a simple test web page:
 First of all, we can load and render it:
 
     >>> browser = lab16.Browser()
-    >>> browser.load(url)
+    >>> browser.new_tab(url)
     >>> browser.render()
     >>> frame = browser.tabs[0].root_frame
     >>> lab16.print_tree(frame.document) # doctest: +ELLIPSIS
@@ -165,7 +165,7 @@ resizing is dramatic:
     ... <iframe width=50 src=""" + str(url2) + """ />
     ... """))
     >>> browser = lab16.Browser()
-    >>> browser.load(url1)
+    >>> browser.new_tab(url1)
     >>> browser.render()
     >>> frame1 = browser.tabs[0].root_frame
     >>> iframe = [

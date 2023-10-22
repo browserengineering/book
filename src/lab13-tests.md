@@ -33,7 +33,7 @@ Testing CSS transtions
     ... b"<div style=\"opacity:0.5\">Text</div>)")
 
     >>> browser = lab13.Browser()
-    >>> browser.load(lab13.URL(transitions_url))
+    >>> browser.new_tab(lab13.URL(transitions_url))
     >>> browser.render()
     >>> browser.composite_raster_and_draw()
 
@@ -59,7 +59,7 @@ Testing CSS transtions
              SaveLayer(<no-op>)
                ClipRRect(<no-op>)
                  DrawCompositedLayer()
-    >>> tab = browser.tabs[browser.active_tab]
+    >>> tab = browser.active_tab
     >>> div = tab.nodes.children[1].children[0]
 
 There is a transition defined for opacity, for a duration of 2 seconds. This is
@@ -109,10 +109,10 @@ Animations work:
     ... b"<div style=\"transform:translate(80px,90px)\">Text</div>)")
 
     >>> browser = lab13.Browser()
-    >>> browser.load(lab13.URL(transitions_url3))
+    >>> browser.new_tab(lab13.URL(transitions_url3))
     >>> browser.render()
     >>> browser.composite_raster_and_draw()
-    >>> tab = browser.tabs[browser.active_tab]
+    >>> tab = browser.active_tab
     >>> div = tab.nodes.children[1].children[0]
     >>> lab13.parse_transition(div.style.get("transition"))
     {'transform': 125.0}
@@ -137,14 +137,14 @@ Here's a page with a button translated via CSS:
     >>> test.socket.respond(success_url, b"HTTP/1.0 200 OK\r\n" +
     ... b"content-type: text/html\r\n\r\n")
     >>> browser = lab13.Browser()
-    >>> browser.load(lab13.URL(transitions_url4))
+    >>> browser.new_tab(lab13.URL(transitions_url4))
     >>> browser.render()
     
 Let's click it at (100, 120). Those numbers are an offset of (80, 90)
 plus an initial position of (13, 21) plus a little bit to make sure
 we're inside the button:
 
-    >>> tab = browser.tabs[browser.active_tab]
+    >>> tab = browser.active_tab
     >>> tab.click(100, 120)
     >>> tab.url
     URL(scheme=http, host=test.test, port=80, path='/success')
