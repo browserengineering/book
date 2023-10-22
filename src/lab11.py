@@ -537,7 +537,7 @@ class Browser:
             WIDTH, HEIGHT,
             ct=skia.kRGBA_8888_ColorType,
             at=skia.kUnpremul_AlphaType))
-        self.chrome_surface = skia.Surface(WIDTH, self.chrome.bottom)
+        self.chrome_surface = skia.Surface(WIDTH, math.ceil(self.chrome.bottom))
         self.tab_surface = None
 
         self.tabs = []
@@ -590,6 +590,10 @@ class Browser:
             self.raster_tab()
             self.raster_chrome()
             self.draw()
+
+    def handle_down(self):
+        self.active_tab.scrolldown()
+        self.draw()
 
     def new_tab(self, url):
         new_tab = Tab(HEIGHT - self.chrome.bottom)
@@ -661,7 +665,7 @@ if __name__ == "__main__":
     import sys
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
-    browser.load(URL(sys.argv[1]))
+    browser.new_tab(URL(sys.argv[1]))
 
     event = sdl2.SDL_Event()
     while True:

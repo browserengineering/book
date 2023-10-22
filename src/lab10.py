@@ -178,5 +178,5 @@ class Tab:
 
 if __name__ == "__main__":
     import sys
-    Browser().load(URL(sys.argv[1]))
+    Browser().new_tab(URL(sys.argv[1]))
     tkinter.mainloop()

@@ -448,7 +448,7 @@ class Browser:
             WIDTH, HEIGHT,
             ct=skia.kRGBA_8888_ColorType,
             at=skia.kUnpremul_AlphaType))
-        self.chrome_surface = skia.Surface(WIDTH, self.chrome.bottom)
+        self.chrome_surface = skia.Surface(WIDTH, math.ceil(self.chrome.bottom))
         self.tab_surface = None
 
         self.tabs = []
@@ -645,7 +645,7 @@ if __name__ == "__main__":
 
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
-    browser.load(URL(args.url))
+    browser.new_tab(URL(args.url))
     event = sdl2.SDL_Event()
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:

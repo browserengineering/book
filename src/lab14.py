@@ -1340,7 +1340,7 @@ class Browser:
 
             self.chrome_surface = skia.Surface.MakeRenderTarget(
                     self.skia_context, skia.Budgeted.kNo,
-                    skia.ImageInfo.MakeN32Premul(WIDTH, self.chrome.bottom))
+                    skia.ImageInfo.MakeN32Premul(WIDTH, math.ceil(self.chrome.bottom)))
             assert self.chrome_surface is not None
         else:
             self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
@@ -1351,7 +1351,7 @@ class Browser:
                 WIDTH, HEIGHT,
                 ct=skia.kRGBA_8888_ColorType,
                 at=skia.kUnpremul_AlphaType))
-            self.chrome_surface = skia.Surface(WIDTH, self.chrome.bottom)
+            self.chrome_surface = skia.Surface(WIDTH, math.ceil(self.chrome.bottom))
             self.skia_context = None
 
         self.tabs = []
@@ -1863,7 +1863,7 @@ class Browser:
 def main_func(url):
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
-    browser.load(url)
+    browser.new_tab(url)
 
     event = sdl2.SDL_Event()
     ctrl_down = False
