@@ -335,7 +335,8 @@ class Browser:
         # ...
         self.chrome_surface = skia.Surface.MakeRenderTarget(
                 self.skia_context, skia.Budgeted.kNo,
-                skia.ImageInfo.MakeN32Premul(WIDTH, self.chrome.bottom))
+                skia.ImageInfo.MakeN32Premul(
+                    WIDTH, math.ceil(self.chrome.bottom)))
         assert self.chrome_surface is not None
 ```
 

@@ -28,7 +28,7 @@ from lab6 import TagSelector, DescendantSelector
 from lab6 import tree_to_list, INHERITED_PROPERTIES
 from lab7 import intersects
 from lab8 import INPUT_WIDTH_PX
-from lab9 import EVENT_DISPATCH_CODE
+from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, linespace, parse_blend_mode
 from lab12 import MeasureTime, REFRESH_RATE_SEC
@@ -769,6 +769,7 @@ POST_MESSAGE_DISPATCH_CODE = \
 
 SETTIMEOUT_CODE = "window.__runSetTimeout(dukpy.handle)"
 XHR_ONLOAD_CODE = "window.__runXHROnload(dukpy.out, dukpy.handle)"
+RUNTIME_JS = open("runtime15.js").read()
 
 class JSContext:
     def __init__(self, tab, url_origin):
@@ -812,8 +813,7 @@ class JSContext:
             frame.window_id, frame.window_id)
         self.interp.evaljs(code)
 
-        with open("runtime15.js") as f:
-            self.interp.evaljs(self.wrap(f.read(), frame.window_id))
+        self.interp.evaljs(self.wrap(RUNTIME_JS, frame.window_id))
 
         self.interp.evaljs("WINDOWS[{}] = window_{};".format(
             frame.window_id, frame.window_id))

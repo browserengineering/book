@@ -24,7 +24,7 @@ from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import tree_to_list
 from lab7 import intersects
 from lab8 import Text, Element, INPUT_WIDTH_PX
-from lab9 import EVENT_DISPATCH_CODE
+from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, JSContext, URL
 from lab11 import get_font, FONTS, DrawLine, DrawRect, DrawOutline, linespace, DrawText, SaveLayer, ClipRRect
 from lab11 import BlockLayout, LineLayout, TextLayout, InputLayout, Chrome
@@ -86,6 +86,7 @@ class MeasureTime:
 
 SETTIMEOUT_CODE = "__runSetTimeout(dukpy.handle)"
 XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
+RUNTIME_JS = open("runtime13.js").read()
 
 @wbetools.patch(JSContext)
 class JSContext:
@@ -105,8 +106,7 @@ class JSContext:
             self.setTimeout)
         self.interp.export_function("requestAnimationFrame",
             self.requestAnimationFrame)
-        with open("runtime12.js") as f:
-            self.interp.evaljs(f.read())
+        self.interp.evaljs(RUNTIME_JS)
 
         self.node_to_handle = {}
         self.handle_to_node = {}

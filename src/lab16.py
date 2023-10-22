@@ -23,7 +23,7 @@ from lab14 import Text, Element
 from lab6 import TagSelector, DescendantSelector
 from lab6 import tree_to_list, INHERITED_PROPERTIES
 from lab8 import INPUT_WIDTH_PX
-from lab9 import EVENT_DISPATCH_CODE
+from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR
 from lab11 import FONTS, get_font, linespace, parse_blend_mode
 from lab12 import MeasureTime, REFRESH_RATE_SEC

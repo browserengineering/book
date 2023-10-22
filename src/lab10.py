@@ -20,7 +20,7 @@ from lab6 import DrawText, tree_to_list
 from lab7 import DrawLine, DrawOutline, LineLayout, TextLayout
 from lab8 import URL, Browser, Text, Element
 from lab8 import BlockLayout, InputLayout, INPUT_WIDTH_PX
-from lab9 import EVENT_DISPATCH_CODE, JSContext, Tab
+from lab9 import EVENT_DISPATCH_JS, JSContext, Tab
 import wbetools
 
 @wbetools.patch(URL)

@@ -22,7 +22,7 @@ from lab7 import DrawLine, DrawOutline, LineLayout, TextLayout, intersects
 from lab7 import Chrome
 from lab8 import Text, Element, BlockLayout, InputLayout, INPUT_WIDTH_PX
 from lab8 import Browser
-from lab9 import EVENT_DISPATCH_CODE
+from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL, JSContext, Tab
 import wbetools
 
@@ -537,7 +537,8 @@ class Browser:
             WIDTH, HEIGHT,
             ct=skia.kRGBA_8888_ColorType,
             at=skia.kUnpremul_AlphaType))
-        self.chrome_surface = skia.Surface(WIDTH, math.ceil(self.chrome.bottom))
+        self.chrome_surface = skia.Surface(
+            WIDTH, math.ceil(self.chrome.bottom))
         self.tab_surface = None
 
         self.tabs = []
