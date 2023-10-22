@@ -1080,9 +1080,6 @@ def add_entry(params):
     return show_comments()
 ```
 
-[crawling]: https://en.wikipedia.org/wiki/Web_crawler
-[indexing]: https://en.wikipedia.org/wiki/Search_engine_indexing
-
 Note that we shouldn't---can't---rely on JavaScript being executed by
 the browser, because the browser is the user's agent, not ours.
 Ideally, web pages should be written so that they work correctly
@@ -1118,11 +1115,14 @@ appear in the web ecosystem.
 [spa]: https://en.wikipedia.org/wiki/Single-page_application
 [hydration]: https://en.wikipedia.org/wiki/Hydration_(web_development)
 [headless]: https://chromium.googlesource.com/chromium/src/+/lkgr/headless/README.md
+[indexing]: https://en.wikipedia.org/wiki/Search_engine_indexing
 
 [^why-hydrate]: This process is called "hydration" by analogy with how water
 is added to dehydrated food to make it edible again.
 
 :::
+
+[crawling]: https://en.wikipedia.org/wiki/Web_crawler
 
 
 Summary

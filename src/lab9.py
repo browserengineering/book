@@ -12,6 +12,7 @@ import tkinter.font
 import urllib.parse
 import dukpy
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
+from lab3 import FONTS
 from lab4 import print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS, DrawRect, DocumentLayout
 from lab6 import CSSParser, TagSelector, DescendantSelector
