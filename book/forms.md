@@ -174,7 +174,7 @@ case.[^exercises] Finally, we draw that text:
 ``` {.python}
 class InputLayout:
     def paint(self):
-        cmds = []
+        # ...
         color = self.node.style["color"]
         cmds.append(
             DrawText(self.x, self.y, text, self.font, color))
@@ -510,6 +510,7 @@ class InputLayout:
             cx = self.x + self.font.measure(text)
             cmds.append(DrawLine(
                 cx, self.y, cx, self.y + self.height, "black", 1))
+        # ...
 ```
 
 Now you can click on a text entry, type into it, and modify its value.

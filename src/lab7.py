@@ -103,11 +103,8 @@ class TextLayout:
         self.height = self.font.metrics("linespace")
 
     def paint(self):
-        cmds = []
         color = self.node.style["color"]
-        cmds.append(
-            DrawText(self.x, self.y, self.word, self.font, color))
-        return cmds
+        return [DrawText(self.x, self.y, self.word, self.font, color)]
     
     @wbetools.js_hide
     def __repr__(self):

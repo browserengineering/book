@@ -323,11 +323,8 @@ And each `TextLayout` creates a single `DrawText` call:
 ``` {.python}
 class TextLayout:
     def paint(self):
-        cmds = []
         color = self.node.style["color"]
-        cmds.append(
-            DrawText(self.x, self.y, self.word, self.font, color))
-        return cmds
+        return [DrawText(self.x, self.y, self.word, self.font, color)]
 ```
 
 Now we don't need a `display_list` field in `BlockLayout`, and we can
