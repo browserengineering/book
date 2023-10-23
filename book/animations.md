@@ -2023,7 +2023,7 @@ each display item:
 
 [^clipping-notes]: This is very important, because otherwise some
 composited layers can end up huge despite not drawing much to the screen.
-A good example of this optimization making a huge difference is loading the
+A good example of this optimization making a big difference is loading the
 browser from [Chapter 15](embeds.md) for the `browser.engineering` homepage,
 where otherwise we would end up with an enormous composited layer for an
 iframe.
