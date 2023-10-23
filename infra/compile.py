@@ -181,6 +181,8 @@ LIBRARY_METHODS = [
     "Intersects",
     "join",
     "makeOffset",
+    "x",
+    "y",
 
     # skia.RRect
     "MakeRectXY",
