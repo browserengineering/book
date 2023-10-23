@@ -24,7 +24,7 @@ from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import tree_to_list
 from lab7 import intersects
 from lab8 import Text, Element, INPUT_WIDTH_PX
-from lab9 import EVENT_DISPATCH_CODE
+from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, JSContext, URL
 from lab11 import get_font, FONTS, DrawLine, DrawRect, DrawOutline, linespace, DrawText, SaveLayer, ClipRRect
 from lab11 import BlockLayout, LineLayout, TextLayout, InputLayout, Chrome
@@ -86,6 +86,7 @@ class MeasureTime:
 
 SETTIMEOUT_CODE = "__runSetTimeout(dukpy.handle)"
 XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
+RUNTIME_JS = open("runtime13.js").read()
 
 @wbetools.patch(JSContext)
 class JSContext:
@@ -105,8 +106,7 @@ class JSContext:
             self.setTimeout)
         self.interp.export_function("requestAnimationFrame",
             self.requestAnimationFrame)
-        with open("runtime12.js") as f:
-            self.interp.evaljs(f.read())
+        self.interp.evaljs(RUNTIME_JS)
 
         self.node_to_handle = {}
         self.handle_to_node = {}
@@ -189,11 +189,11 @@ class Tab:
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
 
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         self.scroll = 0
         self.scroll_changed_in_tab = True
         self.task_runner.clear_pending_tasks()
-        headers, body = url.request(self.url, body)
+        headers, body = url.request(self.url, payload)
         self.url = url
         self.history.append(url)
 
@@ -418,20 +418,19 @@ REFRESH_RATE_SEC = 0.016 # 16ms
 @wbetools.patch(Chrome)
 class Chrome:
     def click(self, x, y):
-        if intersects(x, y, self.plus_bounds()):
-            self.browser.load_internal(URL("https://browser.engineering/"))
-        elif intersects(x, y, self.backbutton_bounds()):
-            active_tab = self.browser.tabs[self.browser.active_tab]
-            task = Task(active_tab.go_back)
-            active_tab.task_runner.schedule_task(task)
-        elif intersects(x, y, self.addressbar_bounds()):
+        if intersects(x, y, self.newtab_rect):
+            self.browser.new_tab_internal(URL("https://browser.engineering/"))
+        elif intersects(x, y, self.back_rect):
+            task = Task(self.active_tab.go_back)
+            self.browser.active_tab.task_runner.schedule_task(task)
+        elif intersects(x, y, self.address_rect):
             self.browser.focus = "address bar"
             self.browser.raddress_bar = ""
         else:
             for i, tab in enumerate(self.browser.tabs):
-                if intersects(x, y, self.tab_bounds(i)):
-                    self.browser.set_active_tab(i)
-                    active_tab = self.browser.tabs[self.browser.active_tab]
+                if intersects(x, y, self.tab_rect(i)):
+                    self.browser.set_active_tab(tab)
+                    active_tab = self.browser.active_tab
                     task = Task(active_tab.set_needs_render)
                     active_tab.task_runner.schedule_task(task)
                     break
@@ -449,7 +448,7 @@ class Browser:
             WIDTH, HEIGHT,
             ct=skia.kRGBA_8888_ColorType,
             at=skia.kUnpremul_AlphaType))
-        self.chrome_surface = skia.Surface(WIDTH, self.chrome.bottom)
+        self.chrome_surface = skia.Surface(WIDTH, math.ceil(self.chrome.bottom))
         self.tab_surface = None
 
         self.tabs = []
@@ -484,13 +483,12 @@ class Browser:
 
     def render(self):
         assert not wbetools.USE_BROWSER_THREAD
-        tab = self.tabs[self.active_tab]
-        tab.task_runner.run_tasks()
-        tab.run_animation_frame(self.scroll)
+        self.active_tab.task_runner.run_tasks()
+        self.active_tab.run_animation_frame(self.scroll)
 
     def commit(self, tab, data):
         self.lock.acquire(blocking=True)
-        if tab == self.tabs[self.active_tab]:
+        if tab == self.active_tab:
             self.url = data.url
             if data.scroll != None:
                 self.scroll = data.scroll
@@ -503,7 +501,7 @@ class Browser:
 
     def set_needs_animation_frame(self, tab):
         self.lock.acquire(blocking=True)
-        if tab == self.tabs[self.active_tab]:
+        if tab == self.active_tab:
             self.needs_animation_frame = True
         self.lock.release()
 
@@ -527,11 +525,10 @@ class Browser:
         def callback():
             self.lock.acquire(blocking=True)
             scroll = self.scroll
-            active_tab = self.tabs[self.active_tab]
             self.needs_animation_frame = False
             self.lock.release()
-            task = Task(active_tab.run_animation_frame, scroll)
-            active_tab.task_runner.schedule_task(task)
+            task = Task(self.active_tab.run_animation_frame, scroll)
+            self.active_tab.task_runner.schedule_task(task)
         self.lock.acquire(blocking=True)
         if self.needs_animation_frame and not self.animation_timer:
             if wbetools.USE_BROWSER_THREAD:
@@ -554,8 +551,8 @@ class Browser:
         self.needs_animation_frame = True
         self.lock.release()
 
-    def set_active_tab(self, index):
-        self.active_tab = index
+    def set_active_tab(self, tab):
+        self.active_tab = tab
         self.scroll = 0
         self.url = None
         self.needs_animation_frame = True
@@ -572,9 +569,9 @@ class Browser:
                 self.set_needs_raster_and_draw()
             else:
                 self.focus = "content"
-            active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.click, e.x, e.y - self.chrome.bottom)
-            active_tab.task_runner.schedule_task(task)
+            tab_y = e.y - self.chrome.bottom
+            task = Task(self.active_tab.click, e.x, tab_y)
+            self.active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
     def handle_key(self, char):
@@ -584,16 +581,14 @@ class Browser:
             self.address_bar += char
             self.set_needs_raster_and_draw()
         elif self.focus == "content":
-            active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.keypress, char)
-            active_tab.task_runner.schedule_task(task)
+            task = Task(self.active_tab.keypress, char)
+            self.active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
     def schedule_load(self, url, body=None):
-        active_tab = self.tabs[self.active_tab]
-        active_tab.task_runner.clear_pending_tasks()
-        task = Task(active_tab.load, url, body)
-        active_tab.task_runner.schedule_task(task)
+        self.active_tab.task_runner.clear_pending_tasks()
+        task = Task(self.active_tab.load, url, body)
+        self.active_tab.task_runner.schedule_task(task)
 
     def handle_enter(self):
         self.lock.acquire(blocking=True)
@@ -604,15 +599,15 @@ class Browser:
             self.set_needs_raster_and_draw()
         self.lock.release()
 
-    def load(self, url):
+    def new_tab(self, url):
         self.lock.acquire(blocking=True)
-        self.load_internal(url)
+        self.new_tab_internal(url)
         self.lock.release()
 
-    def load_internal(self, url):
+    def new_tab_internal(self, url):
         new_tab = Tab(self, HEIGHT - self.chrome.bottom)
-        self.set_active_tab(len(self.tabs))
         self.tabs.append(new_tab)
+        self.set_active_tab(new_tab)
         self.schedule_load(url)
 
     def raster_tab(self):
@@ -629,7 +624,7 @@ class Browser:
 
     def handle_quit(self):
         self.measure.finish()
-        self.tabs[self.active_tab].task_runner.set_needs_quit()
+        self.active_tab.task_runner.set_needs_quit()
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
 if __name__ == "__main__":
@@ -649,7 +644,7 @@ if __name__ == "__main__":
 
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
-    browser.load(URL(args.url))
+    browser.new_tab(URL(args.url))
     event = sdl2.SDL_Event()
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
@@ -667,9 +662,8 @@ if __name__ == "__main__":
                     browser.handle_down()
             elif event.type == sdl2.SDL_TEXTINPUT:
                 browser.handle_key(event.text.text.decode('utf8'))
-        active_tab = browser.tabs[browser.active_tab]
         if not wbetools.USE_BROWSER_THREAD:
-            if active_tab.task_runner.needs_quit:
+            if browser.active_tab.task_runner.needs_quit:
                 break
             if browser.needs_animation_frame:
                 browser.needs_animation_frame = False

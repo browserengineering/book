@@ -28,7 +28,7 @@ from lab6 import TagSelector, DescendantSelector
 from lab6 import tree_to_list, INHERITED_PROPERTIES
 from lab7 import intersects
 from lab8 import INPUT_WIDTH_PX
-from lab9 import EVENT_DISPATCH_CODE
+from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, linespace, parse_blend_mode
 from lab12 import MeasureTime, REFRESH_RATE_SEC
@@ -44,7 +44,7 @@ from lab14 import parse_color, DrawRRect, \
     parse_outline, paint_outline, \
     device_px, cascade_priority, style, \
     is_focusable, get_tabindex, speak_text, \
-    CSSParser, DrawOutline, main_func, Browser, Chrome
+    CSSParser, DrawOutline, main_func, Browser, Chrome, Tab
 
 @wbetools.patch(URL)
 class URL:
@@ -94,10 +94,12 @@ class URL:
             params = {}
             if ";" in cookie:
                 cookie, rest = cookie.split(";", 1)
-                for param_pair in rest.split(";"):
-                    if '=' in param_pair:
-                        name, value = param_pair.strip().split("=", 1)
-                        params[name.casefold()] = value.casefold()
+                for param in rest.split(";"):
+                    if '=' in param:
+                        param, value = param.strip().split("=", 1)
+                    else:
+                        value = "true"
+                    params[param.casefold()] = value.casefold()
             COOKIE_JAR[self.host] = (cookie, params)
     
         assert "transfer-encoding" not in response_headers
@@ -795,6 +797,7 @@ POST_MESSAGE_DISPATCH_CODE = \
 
 SETTIMEOUT_CODE = "window.__runSetTimeout(dukpy.handle)"
 XHR_ONLOAD_CODE = "window.__runXHROnload(dukpy.out, dukpy.handle)"
+RUNTIME_JS = open("runtime15.js").read()
 
 class JSContext:
     def __init__(self, tab, url_origin):
@@ -838,8 +841,7 @@ class JSContext:
             frame.window_id, frame.window_id)
         self.interp.evaljs(code)
 
-        with open("runtime15.js") as f:
-            self.interp.evaljs(self.wrap(f.read(), frame.window_id))
+        self.interp.evaljs(self.wrap(RUNTIME_JS, frame.window_id))
 
         self.interp.evaljs("WINDOWS[{}] = window_{};".format(
             frame.window_id, frame.window_id))
@@ -1206,11 +1208,11 @@ class Frame:
         return self.allowed_origins == None or \
             url.origin() in self.allowed_origins
 
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         self.zoom = 1
         self.scroll = 0
         self.scroll_changed_in_frame = True
-        headers, body = url.request(self.url, body)
+        headers, body = url.request(self.url, payload)
         body = body.decode("utf8")
         self.url = url
 
@@ -1311,10 +1313,8 @@ class Frame:
         if self.needs_layout:
             self.document = DocumentLayout(self.nodes, self)
             self.document.layout(self.frame_width, self.tab.zoom)
-            if self.tab.accessibility_is_on:
-                self.tab.needs_accessibility = True
-            else:
-                self.needs_paint = True
+            self.tab.needs_accessibility = True
+            self.needs_paint = True
             self.needs_layout = False
 
         clamped_scroll = self.clamp_scroll(self.scroll)
@@ -1460,7 +1460,7 @@ class CommitData:
         self.accessibility_tree = accessibility_tree
         self.focus = focus
 
-
+@wbetools.patch(Tab)
 class Tab:
     def __init__(self, browser, tab_height):
         self.url = ""
@@ -1492,11 +1492,11 @@ class Tab:
         self.window_id_to_frame = {}
         self.origin_to_js = {}
 
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         self.history.append(url)
         self.task_runner.clear_pending_tasks()
         self.root_frame = Frame(self, None, None)
-        self.root_frame.load(url, body)
+        self.root_frame.load(url, payload)
         self.root_frame.frame_width = WIDTH
         self.root_frame.frame_height = self.tab_height
 
@@ -1639,10 +1639,6 @@ class Tab:
             back = self.history.pop()
             self.load(back)
 
-    def toggle_accessibility(self):
-        self.accessibility_is_on = not self.accessibility_is_on
-        self.set_needs_accessibility()
-
     def toggle_dark_mode(self):
         self.dark_mode = not self.dark_mode
         self.set_needs_render_all_frames()
@@ -1651,100 +1647,6 @@ class Tab:
         frame = self.window_id_to_frame[target_window_id]
         frame.js.dispatch_post_message(
             message, target_window_id)
-
-@wbetools.patch(Chrome)
-class Chrome:
-    def paint(self):
-        if self.browser.dark_mode:
-            color = "white"
-        else:
-            color = "black"
-
-        cmds = []
-
-        (plus_left, plus_top, plus_right, plus_bottom) = self.plus_bounds()
-        cmds.append(DrawOutline(
-            plus_left, plus_top, plus_right, plus_bottom, color, 1))
-        cmds.append(DrawText(
-            plus_left, plus_top, "+", self.font, color))
-
-        for i, tab in enumerate(self.browser.tabs):
-            name = "Tab {}".format(i)
-            (tab_left, tab_top, tab_right, tab_bottom) = self.tab_bounds(i)
-
-            cmds.append(DrawLine(
-                tab_left, 0,tab_left, tab_bottom, color, 1))
-            cmds.append(DrawLine(
-                tab_right, 0, tab_right, tab_bottom, color, 1))
-            cmds.append(DrawText(
-                tab_left + self.padding, tab_top,
-                name, self.font, color))
-            if i == self.browser.active_tab:
-                cmds.append(DrawLine(
-                    0, tab_bottom, tab_left, tab_bottom, color, 1))
-                cmds.append(DrawLine(
-                    tab_right, tab_bottom, WIDTH, tab_bottom, color, 1))
-
-        backbutton_width = self.font.measureText("<")
-        (backbutton_left, backbutton_top, backbutton_right, backbutton_bottom) = \
-            self.backbutton_bounds()
-        cmds.append(DrawOutline(
-            backbutton_left, backbutton_top,
-            backbutton_right, backbutton_bottom,
-            color, 1))
-        cmds.append(DrawText(
-            backbutton_left, backbutton_top + self.padding,
-            "<", self.font, color))
-
-        (addressbar_left, addressbar_top, \
-            addressbar_right, addressbar_bottom) = \
-            self.addressbar_bounds()
-
-        cmds.append(DrawOutline(
-            addressbar_left, addressbar_top, addressbar_right,
-            addressbar_bottom, color, 1))
-        left_bar = addressbar_left + self.padding
-        top_bar = addressbar_top + self.padding
-        if self.browser.focus == "address bar":
-            cmds.append(DrawText(
-                left_bar, top_bar,
-                self.browser.address_bar, self.font, color))
-            w = self.font.measureText(self.browser.address_bar)
-            cmds.append(DrawLine(
-                left_bar + w, top_bar,
-                left_bar + w,
-                self.bottom - self.padding, "red", 1))
-        else:
-            url = ""
-            if self.browser.tabs[self.browser.active_tab].root_frame:
-                url = str(self.browser.tabs[
-                    self.browser.active_tab].root_frame.url)
-            cmds.append(DrawText(
-                left_bar,
-                top_bar,
-                url, self.font, color))
-
-        cmds.append(DrawLine(
-            0, self.bottom + self.padding, WIDTH,
-            self.bottom + self.padding, color, 1))
-
-        return cmds
-
-    def click(self, x, y):
-        if intersects(x, y, self.plus_bounds()):
-            self.browser.load_internal(URL("https://browser.engineering/"))
-        elif intersects(x, y, self.backbutton_bounds()):
-            active_tab = self.browser.tabs[self.browser.active_tab]
-            task = Task(active_tab.go_back)
-            active_tab.task_runner.schedule_task(task)
-        elif intersects(x, y, self.addressbar_bounds()):
-            self.browser.focus = "address bar"
-            self.browser.address_bar = ""
-        else:
-            for i in range(0, len(self.browser.tabs)):
-                if intersects(x, y, self.tab_bounds(i)):
-                    self.browser.set_active_tab(i)
-                    break
 
 @wbetools.patch(Browser)
 class Browser:
@@ -1779,7 +1681,7 @@ class Browser:
 
             self.chrome_surface = skia.Surface.MakeRenderTarget(
                     self.skia_context, skia.Budgeted.kNo,
-                    skia.ImageInfo.MakeN32Premul(WIDTH, self.chrome.bottom))
+                    skia.ImageInfo.MakeN32Premul(WIDTH, math.ceil(self.chrome.bottom)))
             assert self.chrome_surface is not None
         else:
             self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
@@ -1790,7 +1692,7 @@ class Browser:
                 WIDTH, HEIGHT,
                 ct=skia.kRGBA_8888_ColorType,
                 at=skia.kUnpremul_AlphaType))
-            self.chrome_surface = skia.Surface(WIDTH, self.chrome.bottom)
+            self.chrome_surface = skia.Surface(WIDTH, math.ceil(self.chrome.bottom))
             self.skia_context = None
 
         self.tabs = []
@@ -1843,15 +1745,9 @@ class Browser:
         self.active_alerts = []
         self.spoken_alerts = []
 
-    def render(self):
-        assert not wbetools.USE_BROWSER_THREAD
-        tab = self.tabs[self.active_tab]
-        tab.task_runner.run_tasks()
-        tab.run_animation_frame(self.scroll)
-
     def commit(self, tab, data):
         self.lock.acquire(blocking=True)
-        if tab == self.tabs[self.active_tab]:
+        if tab == self.active_tab:
             self.url = data.url
             if data.scroll != None:
                 self.scroll = data.scroll
@@ -1871,191 +1767,6 @@ class Browser:
                 self.set_needs_draw()
         self.lock.release()
 
-    def set_needs_animation_frame(self, tab):
-        self.lock.acquire(blocking=True)
-        if tab == self.tabs[self.active_tab]:
-            self.needs_animation_frame = True
-        self.lock.release()
-
-    def set_needs_raster(self):
-        self.needs_raster = True
-        self.needs_draw = True
-
-    def set_needs_composite(self):
-        self.needs_composite = True
-        self.needs_raster = True
-        self.needs_draw = True
-
-    def set_needs_accessibility(self):
-        if not self.accessibility_is_on:
-            return
-        self.needs_accessibility = True
-        self.needs_draw = True
-
-    def set_needs_draw(self):
-        self.needs_draw = True
-
-    def composite(self):
-        self.composited_layers = []
-        add_parent_pointers(self.active_tab_display_list)
-        all_commands = []
-        for cmd in self.active_tab_display_list:
-            all_commands = \
-                tree_to_list(cmd, all_commands)
-
-        non_composited_commands = [cmd
-            for cmd in all_commands
-            if isinstance(cmd, DrawCommand) or not cmd.needs_compositing
-            if not cmd.parent or cmd.parent.needs_compositing
-        ]
-        for cmd in non_composited_commands:
-            for layer in reversed(self.composited_layers):
-                if layer.can_merge(cmd):
-                    layer.add(cmd)
-                    break
-                elif skia.Rect.Intersects(
-                    layer.absolute_bounds(),
-                    absolute_bounds(cmd)):
-                    layer = CompositedLayer(self.skia_context, cmd)
-                    self.composited_layers.append(layer)
-                    break
-            else:
-                layer = CompositedLayer(self.skia_context, cmd)
-                self.composited_layers.append(layer)
-
-        self.active_tab_height = 0
-        for layer in self.composited_layers:
-            self.active_tab_height = \
-                max(self.active_tab_height,
-                    layer.absolute_bounds().bottom())
-
-    def clone_latest(self, visual_effect, current_effect):
-        node = visual_effect.node
-        if not node in self.composited_updates:
-            return visual_effect.clone(current_effect)
-        save_layer = self.composited_updates[node]
-        if type(visual_effect) is SaveLayer:
-            return save_layer.clone(current_effect)
-        return visual_effect.clone(current_effect)
-
-    def paint_draw_list(self):
-        self.draw_list = []
-        for composited_layer in self.composited_layers:
-            current_effect = \
-                DrawCompositedLayer(composited_layer)
-            if not composited_layer.display_items: continue
-            parent = composited_layer.display_items[0].parent
-            while parent:
-                current_effect = \
-                    self.clone_latest(parent, [current_effect])
-                parent = parent.parent
-            self.draw_list.append(current_effect)
-
-        if self.pending_hover:
-            (x, y) = self.pending_hover
-            y += self.scroll
-            a11y_node = self.accessibility_tree.hit_test(x, y)
-            if a11y_node:
-                if not self.hovered_a11y_node or \
-                    a11y_node.node != self.hovered_a11y_node.node:
-                    self.needs_speak_hovered_node = True
-                self.hovered_a11y_node = a11y_node
-        self.pending_hover = None
-
-        if self.hovered_a11y_node:
-            self.draw_list.append(DrawOutline(
-                self.hovered_a11y_node.absolute_bounds(),
-                "white" if self.dark_mode else "black", 2))
-
-    def update_accessibility(self):
-        if not self.accessibility_tree: return
-
-        if not self.has_spoken_document:
-            self.speak_document()
-            self.has_spoken_document = True
-
-        self.active_alerts = [
-            node for node in tree_to_list(self.accessibility_tree, [])
-            if node.role == "alert"
-        ]
-
-        for alert in self.active_alerts:
-            if alert not in self.spoken_alerts:
-                self.speak_node(alert, "New alert")
-                self.spoken_alerts.append(alert)
-
-        new_spoken_alerts = []
-        for old_node in self.spoken_alerts:
-            new_nodes = [
-                node for node in \
-                    tree_to_list(self.accessibility_tree, [])
-                if node.node == old_node.node
-                and node.role == "alert"
-            ]
-            if new_nodes:
-                new_spoken_alerts.append(new_nodes[0])
-        self.spoken_alerts = new_spoken_alerts
-
-        if self.tab_focus and \
-            self.tab_focus != self.last_tab_focus:
-            nodes = [node for node in \
-                tree_to_list(self.accessibility_tree, [])
-                        if node.node == self.tab_focus]
-            if nodes:
-                self.focus_a11y_node = nodes[0]
-                self.speak_node(
-                    self.focus_a11y_node, "element focused ")
-            self.last_tab_focus = self.tab_focus
-
-        if self.needs_speak_hovered_node:
-            self.speak_node(self.hovered_a11y_node, "Hit test ")
-        self.needs_speak_hovered_node = False
-
-    def composite_raster_and_draw(self):
-        self.lock.acquire(blocking=True)
-        if not self.needs_composite and \
-            len(self.composited_updates) == 0 \
-            and not self.needs_raster and not self.needs_draw:
-            self.lock.release()
-            return
-        self.measure.time('raster/draw')
-        start_time = time.time()
-        if self.needs_composite:
-            self.composite()
-        if self.needs_raster:
-            self.raster_chrome()
-            self.raster_tab()
-        if self.needs_draw:
-            self.paint_draw_list()
-            self.draw()
-
-        self.measure.stop('raster/draw')
-
-        if self.needs_accessibility:
-            self.update_accessibility()
-
-        self.needs_composite = False
-        self.needs_raster = False
-        self.needs_draw = False
-        self.lock.release()
-
-    def schedule_animation_frame(self):
-        def callback():
-            self.lock.acquire(blocking=True)
-            scroll = self.scroll
-            active_tab = self.tabs[self.active_tab]
-            self.needs_animation_frame = False
-            self.lock.release()
-            task = Task(active_tab.run_animation_frame, scroll)
-            active_tab.task_runner.schedule_task(task)
-        self.lock.acquire(blocking=True)
-        if self.needs_animation_frame and not self.animation_timer:
-            if wbetools.USE_BROWSER_THREAD:
-                self.animation_timer = \
-                    threading.Timer(REFRESH_RATE_SEC, callback)
-                self.animation_timer.start()
-        self.lock.release()
-
     def clamp_scroll(self, scroll):
         height = self.active_tab_height
         maxscroll = height - (HEIGHT - self.chrome.bottom)
@@ -2073,234 +1784,10 @@ class Browser:
             self.needs_animation_frame = True
             self.lock.release()
             return
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.scrolldown)
-        active_tab.task_runner.schedule_task(task)
+        task = Task(self.active_tab.scrolldown)
+        self.active_tab.task_runner.schedule_task(task)
         self.needs_animation_frame = True
         self.lock.release()        
-
-    def handle_tab(self):
-        self.focus = "content"
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.advance_tab)
-        active_tab.task_runner.schedule_task(task)
-        pass
-
-    def focus_addressbar(self):
-        self.lock.acquire(blocking=True)
-        self.focus = "address bar"
-        self.address_bar = ""
-        text = "Address bar focused"
-        if self.accessibility_is_on:
-            print(text)
-            if not self.muted:
-                speak_text(text)
-        self.set_needs_raster()
-        self.lock.release()
-
-    def clear_data(self):
-        self.scroll = 0
-        self.url = None
-        self.display_list = []
-        self.composited_layers = []
-
-    def set_active_tab(self, index):
-        self.active_tab = index
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.set_needs_paint)
-        active_tab.task_runner.schedule_task(task)
-
-        self.clear_data()
-        self.needs_animation_frame = True
-
-    def go_back(self):
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.go_back)
-        active_tab.task_runner.schedule_task(task)
-        self.clear_data()
-
-    def cycle_tabs(self):
-        new_active_tab = (self.active_tab + 1) % len(self.tabs)
-        self.set_active_tab(new_active_tab)
-
-    def toggle_accessibility(self):
-        self.accessibility_is_on = not self.accessibility_is_on
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.toggle_accessibility)
-        active_tab.task_runner.schedule_task(task)
-
-    def speak_node(self, node, text):
-        text += node.text
-        if text and node.children and \
-            node.children[0].role == "StaticText":
-            text += " " + \
-            node.children[0].text
-
-        if text:
-            if not self.is_muted():
-                speak_text(text)
-            else:
-                print(text)
-
-    def speak_document(self):
-        text = "Here are the document contents: "
-        tree_list = tree_to_list(self.accessibility_tree, [])
-        for accessibility_node in tree_list:
-            new_text = accessibility_node.text
-            if new_text:
-                text += "\n"  + new_text
-
-        if not self.is_muted():
-            speak_text(text)
-        else:
-            print(text)
-
-    def toggle_mute(self):
-        self.muted = not self.muted
-
-    def is_muted(self):
-        muted = self.muted
-        return muted
-
-    def toggle_dark_mode(self):
-        self.dark_mode = not self.dark_mode
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.toggle_dark_mode)
-        active_tab.task_runner.schedule_task(task)
-
-    def handle_click(self, e):
-        self.lock.acquire(blocking=True)
-        if e.y < self.chrome.bottom:
-            self.focus = None
-            self.chrome.click(e.x, e.y)
-            self.set_needs_raster()
-        else:
-            self.focus = "content"
-            active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.click, e.x, e.y - self.chrome.bottom)
-            active_tab.task_runner.schedule_task(task)
-        self.lock.release()
-
-    def handle_hover(self, event):
-        if not self.accessibility_is_on or \
-            not self.accessibility_tree:
-            return
-        self.pending_hover = (event.x, event.y - self.chrome.bottom)
-        self.set_needs_accessibility()
-
-    def handle_key(self, char):
-        self.lock.acquire(blocking=True)
-        if not (0x20 <= ord(char) < 0x7f): return
-        if self.focus == "address bar":
-            self.address_bar += char
-            self.set_needs_raster()
-        elif self.focus == "content":
-            active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.keypress, char)
-            active_tab.task_runner.schedule_task(task)
-        self.lock.release()
-
-    def schedule_load(self, url, body=None):
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.load, url, body)
-        active_tab.task_runner.schedule_task(task)
-
-    def handle_enter(self):
-        self.lock.acquire(blocking=True)
-        if self.focus == "address bar":
-            self.schedule_load(URL(self.address_bar))
-            self.url = self.address_bar
-            self.focus = None
-            self.set_needs_raster()
-        elif self.focus == "content":
-            active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.enter)
-            active_tab.task_runner.schedule_task(task)
-        self.lock.release()
-
-    def increment_zoom(self, increment):
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.zoom_by, increment)
-        active_tab.task_runner.schedule_task(task)
-
-    def reset_zoom(self):
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.reset_zoom)
-        active_tab.task_runner.schedule_task(task)
-
-    def load(self, url):
-        self.lock.acquire(blocking=True)
-        self.load_internal(url)
-        self.lock.release()
-
-    def load_internal(self, url):
-        new_tab = Tab(self, HEIGHT - self.chrome.bottom)
-        self.tabs.append(new_tab)
-        self.set_active_tab(len(self.tabs) - 1)
-        self.schedule_load(url)
-
-    def raster_tab(self):
-        for composited_layer in self.composited_layers:
-            composited_layer.raster()
-
-    def raster_chrome(self):
-        canvas = self.chrome_surface.getCanvas()
-        if self.dark_mode:
-            background_color = skia.ColorBLACK
-        else:
-            background_color = skia.ColorWHITE
-        canvas.clear(background_color)
-    
-        for cmd in self.chrome.paint():
-            cmd.execute(canvas)
-
-    def draw(self):
-        canvas = self.root_surface.getCanvas()
-        if self.dark_mode:
-            canvas.clear(skia.ColorBLACK)
-        else:
-            canvas.clear(skia.ColorWHITE)
-
-        canvas.save()
-        canvas.translate(0, self.chrome.bottom - self.scroll)
-        for item in self.draw_list:
-            item.execute(canvas)
-        canvas.restore()
-
-        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, self.chrome.bottom)
-        canvas.save()
-        canvas.clipRect(chrome_rect)
-        self.chrome_surface.draw(canvas, 0, 0)
-        canvas.restore()
-
-        if wbetools.USE_GPU:
-            self.root_surface.flushAndSubmit()
-            sdl2.SDL_GL_SwapWindow(self.sdl_window)
-        else:
-            # This makes an image interface to the Skia surface, but
-            # doesn't actually copy anything yet.
-            skia_image = self.root_surface.makeImageSnapshot()
-            skia_bytes = skia_image.tobytes()
-
-            depth = 32 # Bits per pixel
-            pitch = 4 * WIDTH # Bytes per row
-            sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
-                skia_bytes, WIDTH, HEIGHT, depth, pitch,
-                self.RED_MASK, self.GREEN_MASK,
-                self.BLUE_MASK, self.ALPHA_MASK)
-
-            rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
-            window_surface = sdl2.SDL_GetWindowSurface(self.sdl_window)
-            # SDL_BlitSurface is what actually does the copy.
-            sdl2.SDL_BlitSurface(sdl_surface, rect, window_surface, rect)
-            sdl2.SDL_UpdateWindowSurface(self.sdl_window)
-
-    def handle_quit(self):
-        self.measure.finish()
-        self.tabs[self.active_tab].task_runner.set_needs_quit()
-        if wbetools.USE_GPU:
-            sdl2.SDL_GL_DeleteContext(self.gl_context)
-        sdl2.SDL_DestroyWindow(self.sdl_window)
 
 if __name__ == "__main__":
     wbetools.parse_flags()

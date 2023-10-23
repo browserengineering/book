@@ -7,7 +7,7 @@ next: scripts
 
 So far, our browser has seen the web as read only---but when you post
 on Facebook, fill out a survey, or search Google, you're sending
-information *to* servers as well as receiving information from them.
+information *to* servers as well as receiving information *from* them.
 In this chapter, we'll start to transform our browser into a platform
 for web applications by building out support for HTML forms, the
 simplest way for a browser to send information to a server.
@@ -165,12 +165,11 @@ class InputLayout:
 ```
 
 Note that `<button>` elements can in principle contain complex HTML,
-not just a text node. I'm having the browser print a warning and skip
-the text in that case.[^exercises]
+not just a text node. That's too complicated for this chapter, so I'm
+having the browser print a warning and skip the text in that
+case.[^exercises] Finally, we draw that text:
 
 [^exercises]: There's an [exercise](#exercises) on this.
-
-Finally, we draw that text:
 
 ``` {.python}
 class InputLayout:
@@ -184,7 +183,7 @@ class InputLayout:
 
 By this point in the book, you've seen many layout objects, so I'm
 glossing over these changes. The point is that new layout objects are
-one standard way to extend the browser.
+one common way to extend the browser.
 
 We now need to create some `InputLayout`s, which we can do in
 `BlockLayout`:
@@ -204,18 +203,10 @@ class BlockLayout:
                     self.recurse(child)
 ```
 
-Note that I don't recurse into `button` elements, because the `button`
-element draws its own contents.[^but-exercise] Since `input` elements
-are self-closing, they never have children.
-
-[^but-exercise]: Though you'll need to do this differently for one of
-    the exercises below.
-
 Finally, this new `input` method is similar to the `text` method, creating a new
 layout object and adding it to the current line:^[It's so similar in fact that
-they only differ in the `w` variable definition, and the need to loop over
-words. I'll resist the temptation to refactor this code until we get to
-[Chapter 15](embeds.md).]
+they only differ in how they compute `w`. I'll resist the temptation
+to refactor this code until we get to [Chapter 15](embeds.md).]
 
 ``` {.python}
 class BlockLayout:
@@ -224,10 +215,10 @@ class BlockLayout:
         if self.cursor_x + w > self.width:
             self.new_line()
         line = self.children[-1]
-        input = InputLayout(node, line, self.previous_word)
+        previous_word = line.children[-1] if line.children else None
+        input = InputLayout(node, line, previous_word)
         line.children.append(input)
-        self.previous_word = input
-        font = self.get_font(node)
+        font = self.font(node)
         self.cursor_x += w + font.measure(" ")
 ```
 
@@ -261,12 +252,12 @@ class BlockLayout:
             return "block"
 ```
 
-The second problem is that, again due to having block siblings, sometimes an
-`InputLayout` will end up wrapped in a `BlockLayout` that refers to the
-`<input>` or `<button>` node. But both `BlockLayout` and `InputLayout` have a
-`paint` method, which means we're painting the node twice. We can fix that
-with some simple logic to skip painting them via `BlockLayout`
-in this case:[^atomic-inline-input]
+The second problem is that, again due to having block siblings,
+sometimes an `<input>` or `<button>` element will create a
+`BlockLayout` (which will then create an `InputLayout` inside). In
+this case we don't want to paint the background twice, so let's add
+some simple logic to skip painting it in `BlockLayout` in this
+case:[^atomic-inline-input]
 
 ``` {.python}
 class BlockLayout:
@@ -284,11 +275,11 @@ class BlockLayout:
 
 ```
 
-[^atomic-inline-input]: See also the footnote earlier about how atomic inlines
-are often special in these kinds of ways. It's worth noting that there are
-various other ways that our browser does not fully implement all the
-complexities of inline painting---one example is that it does not correctly
-paint nested inlines with different background colors.
+[^atomic-inline-input]: Atomic inlines are often special in these
+kinds of ways. It's worth noting that there are various other ways
+that our browser does not fully implement all the complexities of
+inline painting---one example is that it does not correctly paint
+nested inlines with different background colors.
 
 With these changes the browser should now draw `input` and `button`
 elements as blue and orange rectangles.
@@ -337,7 +328,7 @@ styling, layout, paint and draw phases. Together these are called
 
 ``` {.python}
 class Tab:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         # ...
         self.render()
 
@@ -420,7 +411,7 @@ page, not the browser interface:
 class Browser:
     def handle_click(self, e):
         if e.y < self.chrome.bottom:
-            self.focus = None
+            self.focus = "chrome"
             # ...
         else:
             self.focus = "content"
@@ -440,8 +431,11 @@ bar or calls the active tab's `keypress` method:
 class Browser:
     def handle_key(self, e):
         # ...
+        if self.focus == "chrome":
+            self.chrome.keypress(e.char)
+            self.draw()
         elif self.focus == "content":
-            self.tabs[self.active_tab].keypress(e.char)
+            self.active_tab.keypress(e.char)
             self.draw()
 ```
 
@@ -466,7 +460,8 @@ into one another with `iframe`s,[^iframes] the focus tree can be
 arbitrarily deep.
 
 [^iframes]: The `iframe` element allows you to embed one web page into
-    another as a little window.
+    another as a little window. We'll talk about this more in [Chapter
+    15](embeds.md).
 
 So now we have user input working with `input` elements. Before we
 move on, there is one last tweak that we need to make: drawing the
@@ -504,8 +499,8 @@ Note that we have to un-focus[^blur] the currently-focused element,
 lest it keep drawing its cursor. Anyway, now we can draw a cursor if
 an `input` element is focused:
 
-[^blur]: Un-focusing is called "blurring", which can get a bit
-    confusing.
+[^blur]: Un-focusing is called "blurring", which is funny but can
+    sometimes lead to confusion.
 
 ``` {.python}
 class InputLayout:
@@ -521,12 +516,12 @@ Now you can click on a text entry, type into it, and modify its value.
 The next step is submitting the now-filled-out form.
 
 ::: {.further}
-The code that draws the text cursor here is kind of clunky---you could
-imagine each layout object knowing if it's focused and then being
-responsible for drawing the cursor. That's the more traditional
-approach in GUI frameworks, but Chrome for example keeps track of a global
-[focused element][focused-element] to make sure the cursor can be
-[globally styled][frame-caret].
+This approach to drawing the text cursor---having the `InputLayout`
+draw it---allows visual effects to apply to the cursor, as we'll
+see in [Chapter 11](visual-effects.md). But not every browser does it
+this way. Chrome, for example, keeps track of a global [focused
+element][focused-element] to make sure the cursor can be [globally
+styled][frame-caret].
 :::
 
 [focused-element]: https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/core/dom/document.h;l=881;drc=80def040657db16e79f59e7e3b27857014c0f58d
@@ -590,12 +585,15 @@ class Tab:
             name = input.attributes["name"]
             value = input.attributes.get("value", "")
             body += "&" + name + "=" + value
-        body = body [1:]
+        body = body[1:]
 ```
 
-Now, any time you see something like this, you've got to ask: what if
-the name or the value has an equal sign or an ampersand in it? So in
-fact, "percent encoding" replaces all special characters with a
+Here `body` initially has an extra `&` tacked on to the front, which
+is removed on the last line.
+
+Now, any time you see special syntax like this, you've got to ask:
+what if the name or the value has an equal sign or an ampersand in it?
+So in fact, "percent encoding" replaces all special characters with a
 percent sign followed by those characters' hex codes. For example, a
 space becomes `%20` and a period becomes `%2e`. Python provides a
 percent-encoding function as `quote` in the `urllib.parse`
@@ -627,12 +625,12 @@ def submit_form(self, elt):
     self.load(url, body)
 ```
 
-The new `body` argument to `load` is then passed through to `request`:
+The new `payload` argument to `load` is then passed through to `request`:
 
 ``` {.python indent=4}
-def load(self, url, body=None):
+def load(self, url, payload=None):
     # ...
-    body = url.request(body)
+    body = url.request(payload)
     # ...
 ```
 
@@ -674,12 +672,16 @@ class URL:
         # ...
 ```
 
-[^unicode]: Because characters from many languages are encoded as
-    multiple bytes.
+[^unicode]: Because characters from many languages take up multiple
+    bytes.
 
 So that's how the `POST` request gets sent. Then the server responds
 with an HTML page and the browser will render it in the totally normal
-way. That's basically it for forms!
+way.[^or-redirect] That's basically it for forms!
+
+[^or-redirect]: Actually, because browsers treat going "back" to a
+    `POST`-requested page specially (see the [exercises](#exercises)),
+    it's common to respond to a `POST` request with a redirect.
 
 ::: {.further}
 While most form submissions use the form encoding described here,
@@ -749,8 +751,8 @@ CONNECT and TRACE. In 2010 the [PATCH method][patch-req] was
 standardized in [RFC 5789][rfc5789]. New methods were intended as a
 standard extension mechanism for HTTP, and some protocols were built
 this way (like [WebDav][webdav]'s PROPFIND, MOVE, and LOCK methods),
-but this did not become an enduring way to extend the web, and HTTP
-2.0 and 3.0 did not add any new methods.
+but this did not become an enduring way to extend the web itself, and
+HTTP 2.0 and 3.0 did not add any new methods.
 :::
 
 [put-req]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/PUT
@@ -950,10 +952,11 @@ your browser to `http://localhost:8000/`, where `localhost` is what
 your computer calls itself and `8000` is the port we chose earlier.
 You should see one guest book entry.
 
-It's probably better to use a real web browser, instead of this book's
-toy browser, to debug this web server. That way you don't have to
-worry about browser bugs while you work on server bugs. But this
-server does support both real and toy browsers.
+By the way, while you're debugging this toy web server, it's probably
+better to use a real web browser, instead of this book's toy browser,
+to interact with it. That way you don't have to worry about browser
+bugs while you work on server bugs. But this server does support both
+real and toy browsers.
 
 We'll use forms to let visitors write in the guest book:
 
@@ -1053,9 +1056,9 @@ With this chapter we're starting to transform our browser into an
 application platform. We've added:
 
 - Layout objects for input areas and buttons.
-- Code to click on buttons and type into input areas.
+- Clicking on buttons and typing into input areas.
 - Hierarchical focus handling.
-- Code to submit forms and send them to a server.
+- Form submission with HTTP POST.
 
 Plus, our browser now has a little web server friend. That's going to
 be handy as we add more interactive features to the browser.
@@ -1103,16 +1106,6 @@ inside the address bar, two cursors will appear on the screen. To fix
 this, add a `blur` method to each `Tab` which unfocuses anything that
 is focused, and call it before changing focus.
 
-*Tab*: In most browsers, the `<Tab>` key (on your keyboard) moves
-focus from one input field to the next. Implement this behavior in
-your browser. The "tab order" of input elements should be the same as
-the order of `<input>` elements on the page.[^tabindex]
-
-[^tabindex]: The [`tabindex`][tabindex] property lets a web page
-    change this tab order, but its behavior is pretty weird.
-
-[tabindex]: https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/tabindex
-
 *Check boxes*: In HTML, `input` elements have a `type` attribute. When
 set to `checkbox`, the `input` element looks like a checkbox; it's
 checked if the `checked` attribute is set, and unchecked
@@ -1156,3 +1149,22 @@ be contained inside button instead of spilling out---this can make a
 button really tall. Think about edge cases, like a button that
 contains another button, an input area, or a link, and test real
 browsers to see what they do.
+
+*HTML chrome*: Browser chrome is quite complicated in real browsers,
+with tricky details such as font sizes, padding, outlines, shadows,
+icons and so on. This makes it tempting to try to reuse our layout
+engine for it. Implement this, using `<button>` elements for the new
+tab and back buttons, an `<input>` element for the address bar, and
+`<a>` elements for the tab names. It won't look exactly the same as
+the current chrome---outline will have to wait for [Chapter
+14](accessibility.md), for example---but if you adjust the default CSS
+you should be able to make it look passable.[^real-browser-reuse]
+
+[^real-browser-reuse]: Real browsers have in fact gone down this
+implementation path multiple times, building layout engines for the
+browser chrome that are heavily inspired by or reuse pieces of the
+main web layout engine. [Firefox had
+one](https://en.wikipedia.org/wiki/XUL), and [Chrome has
+one](https://www.chromium.org/developers/webui/). However, because
+it's so important for the browser chrome to be very fast and
+responsive to draw, such approaches have had mixed success.

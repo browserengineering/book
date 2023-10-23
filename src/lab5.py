@@ -166,8 +166,7 @@ class DrawText:
             self.left, self.top - scroll,
             text=self.text,
             font=self.font,
-            anchor='nw',
-        )
+            anchor='nw')
 
     def __repr__(self):
         return "DrawText(top={} left={} bottom={} text={} font={})".format(
@@ -186,8 +185,7 @@ class DrawRect:
             self.left, self.top - scroll,
             self.right, self.bottom - scroll,
             width=0,
-            fill=self.color,
-        )
+            fill=self.color)
 
     def __repr__(self):
         return "DrawRect(top={} left={} bottom={} right={} color={})".format(

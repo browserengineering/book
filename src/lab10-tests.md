@@ -17,7 +17,7 @@ in the cookie jar:
     >>> browser = lab10.Browser()
     >>> url = 'http://test.test/login'
     >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\nSet-Cookie: foo=bar\r\n\r\n")
-    >>> browser.load(lab10.URL(url))
+    >>> browser.new_tab(lab10.URL(url))
     >>> lab10.COOKIE_JAR["test.test"]
     ('foo=bar', {})
     
@@ -26,7 +26,7 @@ requests:
 
     >>> url2 = 'http://test.test/'
     >>> test.socket.respond(url2, b"HTTP/1.0 200 OK\r\n\r\n\r\n")
-    >>> browser.load(lab10.URL(url2))
+    >>> browser.new_tab(lab10.URL(url2))
     >>> test.socket.last_request(url2)
     b'GET / HTTP/1.0\r\nHost: test.test\r\nCookie: foo=bar\r\n\r\n'
 
@@ -34,7 +34,7 @@ Unrelated sites should not be sent the cookie:
 
     >>> url3 = 'http://other.site/'
     >>> test.socket.respond(url3, b"HTTP/1.0 200 OK\r\n\r\n\r\n")
-    >>> browser.load(lab10.URL(url3))
+    >>> browser.new_tab(lab10.URL(url3))
     >>> test.socket.last_request(url3)
     b'GET / HTTP/1.0\r\nHost: other.site\r\n\r\n'
     
@@ -46,7 +46,7 @@ Cookie values can be updated:
     >>> lab10.COOKIE_JAR["test.test"]
     ('foo=bar', {})
     >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\nSet-Cookie: foo=baz\r\n\r\n")
-    >>> browser.load(lab10.URL(url))
+    >>> browser.new_tab(lab10.URL(url))
     >>> lab10.COOKIE_JAR["test.test"]
     ('foo=baz', {})
 
@@ -54,7 +54,7 @@ The trailing slash is also optional:
 
     >>> url_no_slash = 'http://test.test'
     >>> test.socket.respond(url_no_slash + '/', b"HTTP/1.0 200 OK\r\n\r\n\r\n")
-    >>> browser.load(lab10.URL(url_no_slash))
+    >>> browser.new_tab(lab10.URL(url_no_slash))
     >>> test.socket.last_request(url_no_slash + '/')
     b'GET / HTTP/1.0\r\nHost: test.test\r\nCookie: foo=baz\r\n\r\n'
 
@@ -78,7 +78,7 @@ Now let's test a simple same-site request:
     >>> url2 = "http://about.blank/hello"
     >>> test.socket.respond(url2, b"HTTP/1.0 200 OK\r\n\r\nHello!")
     >>> browser = lab10.Browser()
-    >>> browser.load(lab10.URL(url))
+    >>> browser.new_tab(lab10.URL(url))
     >>> tab = browser.tabs[0]
     >>> tab.js.run(xhrjs(url2))
     Hello!
@@ -148,7 +148,7 @@ there:
 
     >>> url3 = "http://test.test/add"
     >>> test.socket.respond(url3, b"HTTP/1.0 200 OK\r\n\r\nAdded!", method="POST")
-    >>> tab.load(lab10.URL(url3), body="who=me")
+    >>> tab.load(lab10.URL(url3), payload="who=me")
     >>> test.socket.last_request(url3)
     b'POST /add HTTP/1.0\r\nHost: test.test\r\nCookie: bar=baz\r\nContent-Length: 6\r\n\r\nwho=me'
 
@@ -166,7 +166,7 @@ Finally, let's try a cross-site `POST` request and check that in this
 case the cookie is *not* sent:
 
     >>> tab.load(lab10.URL(url4))
-    >>> tab.load(lab10.URL(url3), body="who=me")
+    >>> tab.load(lab10.URL(url3), payload="who=me")
     >>> test.socket.last_request(url3)
     b'POST /add HTTP/1.0\r\nHost: test.test\r\nContent-Length: 6\r\n\r\nwho=me'
     
@@ -176,7 +176,7 @@ but the ports differ, the cookie should be sent:
     >>> tab.load(lab10.URL(url))
     >>> url5 = "http://test.test:8000/test"
     >>> test.socket.respond(url5, b"HTTP/1.0 200 OK\r\n\r\nHi!", method="POST")
-    >>> tab.load(lab10.URL(url5), body="who=me")
+    >>> tab.load(lab10.URL(url5), payload="who=me")
     >>> test.socket.last_request(url5)
     b'POST /test HTTP/1.0\r\nHost: test.test\r\nCookie: bar=baz\r\nContent-Length: 6\r\n\r\nwho=me'
 
@@ -213,7 +213,7 @@ Now with all of these URLs set up, let's load the page without CSP and
 check that all of these requests were made:
 
     >>> browser = lab10.Browser()
-    >>> browser.load(lab10.URL(url))
+    >>> browser.new_tab(lab10.URL(url))
     >>> [test.socket.made_request(url + "css"),
     ...  test.socket.made_request(url + "js")]
     [True, True]
@@ -232,7 +232,7 @@ Now let's reload the page, but with CSP enabled for `test.test` and
     ... b"Content-Security-Policy: default-src http://test.test http://library.test\r\n\r\n" + \
     ... body.encode("utf8"))
     >>> browser = lab10.Browser()
-    >>> browser.load(lab10.URL(url))
+    >>> browser.new_tab(lab10.URL(url))
     Blocked script http://other.test/js due to CSP
     Blocked style http://other.test/css due to CSP
 
@@ -259,7 +259,7 @@ JavaScript!
     >>> url = "http://weird.test/"
     >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n" + \
     ... b"Content-Security-Policy: default-src\r\n\r\n")
-    >>> browser.load(lab10.URL(url))
+    >>> browser.new_tab(lab10.URL(url))
     >>> tab = browser.tabs[-1]
     >>> tab.js.run("""
     ... x = new XMLHttpRequest()

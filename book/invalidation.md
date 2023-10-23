@@ -292,7 +292,7 @@ time.[^side-effects] That's wasteful; let's create the
 
 ``` {.python}
 class Frame:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         # ...
         self.document = DocumentLayout(self.nodes, self)
         self.set_needs_render()

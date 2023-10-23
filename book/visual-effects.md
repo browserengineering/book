@@ -81,7 +81,7 @@ if __name__ == "__main__":
     import sys
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
-    browser.load(URL(sys.argv[1]))
+    browser.new_tab(URL(sys.argv[1]))
     # ...
 ```
 
@@ -1506,7 +1506,8 @@ switching tabs.
 class Browser:
     def __init__(self):
         # ...
-        self.chrome_surface = skia.Surface(WIDTH, self.chrome.bottom)
+        self.chrome_surface = skia.Surface(
+            WIDTH, math.ceil(self.chrome.bottom))
         self.tab_surface = None
 ```
 
@@ -1554,8 +1555,7 @@ import math
 
 class Browser:
     def raster_tab(self):
-        active_tab = self.tabs[self.active_tab]
-        tab_height = math.ceil(active_tab.document.height)
+        tab_height = math.ceil(self.active_tab.document.height)
 
         if not self.tab_surface or \
                 tab_height != self.tab_surface.height():
@@ -1581,7 +1581,7 @@ class Browser:
         # ...
         
         tab_rect = skia.Rect.MakeLTRB(0, self.chrome.bottom, WIDTH, HEIGHT)
-        tab_offset = self.chrome.bottom - self.tabs[self.active_tab].scroll
+        tab_offset = self.chrome.bottom - self.active_tab.scroll
         canvas.save()
         canvas.clipRect(tab_rect)
         canvas.translate(0, tab_offset)
@@ -1612,6 +1612,25 @@ class Browser:
             self.raster_tab()
         self.draw()
 ```
+
+However, clicking on a web page can cause it to navigate to a new one,
+so we need to detect that and raster the browser chrome if the URL changed:
+
+``` {.python}
+class Browser:
+    def handle_click(self, e):
+        if e.y < self.chrome.bottom:
+            # ...
+        else:
+            # ...
+            url = self.active_tab.url
+            tab_y = e.y - self.chrome.bottom
+            self.active_tab.click(e.x, tab_y)
+            if self.active_tab.url != url:
+                self.raster_chrome()
+            self.raster_tab()
+```
+
 
 Notice how we don't redraw the chrome when only the tab changes, and
 vice versa. In `handle_down`, which scrolls the page, we don't need to

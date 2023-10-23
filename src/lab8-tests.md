@@ -36,7 +36,7 @@ Testing InputLayout
     ... b"  <p><button>Submit!</button></p>" +
     ... b"</form>"))
     >>> browser = lab8.Browser()
-    >>> browser.load(url2)
+    >>> browser.new_tab(url2)
     >>> lab8.print_tree(browser.tabs[0].document.node)
      <html>
        <body>
@@ -124,7 +124,7 @@ Testing layout_mode
     ... b"<input>" +
     ... b"<div></div>"))
     >>> browser = lab8.Browser()
-    >>> browser.load(block_inline_url)
+    >>> browser.new_tab(block_inline_url)
     >>> lab8.print_tree(browser.tabs[0].document.node)
      <html>
        <body>
@@ -156,7 +156,7 @@ If a `<button>` contains rich markup inside of it, it should print nothing:
     ... b"<button><b>Rich markup</b></button>" +
     ... b"</form>"))
     >>> browser = lab8.Browser()
-    >>> browser.load(url3)
+    >>> browser.new_tab(url3)
     Ignoring HTML contents inside button
     >>> browser.tabs[0].display_list
     [DrawRect(top=20.25 left=13 bottom=32.25 right=213 color=orange), DrawText(text=)]

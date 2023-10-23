@@ -20,7 +20,7 @@ from lab6 import DrawText, tree_to_list
 from lab7 import DrawLine, DrawOutline, LineLayout, TextLayout
 from lab8 import URL, Browser, Text, Element
 from lab8 import BlockLayout, InputLayout, INPUT_WIDTH_PX
-from lab9 import EVENT_DISPATCH_CODE, JSContext, Tab
+from lab9 import EVENT_DISPATCH_JS, JSContext, Tab
 import wbetools
 
 @wbetools.patch(URL)
@@ -70,10 +70,12 @@ class URL:
             params = {}
             if ";" in cookie:
                 cookie, rest = cookie.split(";", 1)
-                for param_pair in rest.split(";"):
-                    if '=' in param_pair:
-                        name, value = param_pair.strip().split("=", 1)
-                        params[name.casefold()] = value.casefold()
+                for param in rest.split(";"):
+                    if '=' in param:
+                        param, value = param.strip().split("=", 1)
+                    else:
+                        value = "true"
+                    params[param.casefold()] = value.casefold()
             COOKIE_JAR[self.host] = (cookie, params)
     
         assert "transfer-encoding" not in response_headers
@@ -124,8 +126,8 @@ class Tab:
         return self.allowed_origins == None or \
             url.origin() in self.allowed_origins
 
-    def load(self, url, body=None):
-        headers, body = url.request(self.url, body)
+    def load(self, url, payload=None):
+        headers, body = url.request(self.url, payload)
         self.scroll = 0
         self.url = url
         self.history.append(url)
@@ -178,5 +180,5 @@ class Tab:
 
 if __name__ == "__main__":
     import sys
-    Browser().load(URL(sys.argv[1]))
+    Browser().new_tab(URL(sys.argv[1]))
     tkinter.mainloop()

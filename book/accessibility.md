@@ -195,14 +195,12 @@ The `Browser` code just delegates to the `Tab`, via a main thread task:
 class Browser:
 	# ...
     def increment_zoom(self, increment):
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.zoom_by, increment)
-        active_tab.task_runner.schedule_task(task)
+        task = Task(self.active_tab.zoom_by, increment)
+        self.active_tab.task_runner.schedule_task(task)
 
     def reset_zoom(self):
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.reset_zoom)
-        active_tab.task_runner.schedule_task(task)
+        task = Task(self.active_tab.reset_zoom)
+        self.active_tab.task_runner.schedule_task(task)
 ```
 
 Finally, the `Tab` responds to these commands by adjusting a new
@@ -238,7 +236,7 @@ zoom level when we navigate to a new page:
 
 ``` {.python}
 class Tab:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         self.zoom = 1
         # ...
 ```
@@ -496,9 +494,8 @@ class Browser:
     # ...
     def toggle_dark_mode(self):
         # ...
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.toggle_dark_mode)
-        active_tab.task_runner.schedule_task(task)
+        task = Task(self.active_tab.toggle_dark_mode)
+        self.active_tab.task_runner.schedule_task(task)
 ```
 
 And in `Tab`:
@@ -751,17 +748,24 @@ Here the `focus_addressbar` and `cycle_tabs` methods are new, but
 their contents are just copied from `handle_click`:
 
 ``` {.python}
+class Chrome:
+    def focus_addressbar(self):
+        self.focus = "address bar"
+        self.address_bar = ""
+
 class Browser:
     def focus_addressbar(self):
         self.lock.acquire(blocking=True)
-        self.focus = "address bar"
-        self.address_bar = ""
+        self.chrome.focus_addressbar()
         self.set_needs_raster()
         self.lock.release()
 
     def cycle_tabs(self):
-        new_active_tab = (self.active_tab + 1) % len(self.tabs)
-        self.set_active_tab(new_active_tab)
+        self.lock.acquire(blocking=True)
+        active_ids = self.tabs.index(self.active_tab)
+        new_active_idx = (active_idx + 1) % len(self.tabs)
+        self.set_active_tab(self.tabs[new_active_idx])
+        self.lock.release()
 ```
 
 Now any clicks in the browser chrome can be replaced with keyboard
@@ -798,16 +802,14 @@ backwards in focus order.]
 class Browser:
     def handle_tab(self):
         self.focus = "content"
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.advance_tab)
-        active_tab.task_runner.schedule_task(task)
+        task = Task(self.active_tab.advance_tab)
+        self.active_tab.task_runner.schedule_task(task)
 
     def handle_enter(self):
     	# ...
         elif self.focus == "content":
-            active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.enter)
-            active_tab.task_runner.schedule_task(task)
+            task = Task(self.active_tab.enter)
+            self.active_tab.task_runner.schedule_task(task)
         # ...
 ```
 
@@ -923,7 +925,7 @@ longer exists. We need to make sure to clear focus in this case:
 
 ``` {.python}
 class Tab:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         self.focus = None
         # ...
 ```

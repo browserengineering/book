@@ -657,7 +657,7 @@ especially if they modify the page multiple times. Make this change in
 
 ``` {.python}
 class Tab:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         # ...
         self.set_needs_render()
 ```
@@ -743,7 +743,7 @@ constructed:
 
 ``` {.python}
 class Browser:
-    def load(self, url):
+    def new_tab(self, url):
         new_tab = Tab(self, HEIGHT - self.chrome.bottom)
         # ...
 ```
@@ -931,7 +931,7 @@ class Tab:
 
 class Browser:
     def set_needs_animation_frame(self, tab):
-        if tab == self.tabs[self.active_tab]:
+        if tab == self.active_tab:
             self.needs_animation_frame = True
 ```
 
@@ -1274,16 +1274,15 @@ example, here is loading:
 ``` {.python}
 class Browser:
     def schedule_load(self, url, body=None):
-        active_tab = self.tabs[self.active_tab]
-        task = Task(active_tab.load, url, body)
-        active_tab.task_runner.schedule_task(task)
+        task = Task(self.active_tab.load, url, body)
+        self.active_tab.task_runner.schedule_task(task)
 
     def handle_enter(self):
         if self.focus == "address bar":
             self.schedule_load(URL(self.address_bar))
             # ...
 
-    def load(self, url):
+    def new_tab(self, url):
         # ...
         self.schedule_load(url)
 ```
@@ -1302,9 +1301,9 @@ class Browser:
              # ...
         else:
             # ...
-            active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.click, e.x, e.y - self.chrome.bottom)
-            active_tab.task_runner.schedule_task(task)
+            tab_y = e.y - self.chrome.bottom
+            task = Task(self.active_tab.click, e.x, tab_y)
+            self.active_tab.task_runner.schedule_task(task)
 ```
 
 The same logic holds for `keypress`:
@@ -1316,9 +1315,8 @@ class Browser:
         if self.focus == "address bar":
             # ...
         elif self.focus == "content":
-            active_tab = self.tabs[self.active_tab]
-            task = Task(active_tab.keypress, char)
-            active_tab.task_runner.schedule_task(task)
+            task = Task(self.active_tab.keypress, char)
+            self.active_tab.task_runner.schedule_task(task)
 ```
 
 Do the same with any other calls from the `Browser` to the `Tab`.
@@ -1397,7 +1395,7 @@ class Browser:
     def schedule_animation_frame(self):
         def callback():
             # ...
-            task = Task(active_tab.run_animation_frame)
+            task = Task(self.active_tab.run_animation_frame)
             # ...
 ```
 
@@ -1420,7 +1418,7 @@ class Browser:
 
     def commit(self, tab, data):
         self.lock.acquire(blocking=True)
-        if tab == self.tabs[self.active_tab]:
+        if tab == self.active_tab:
             self.url = data.url
             self.scroll = data.scroll
             self.active_tab_height = data.height
@@ -1679,8 +1677,8 @@ Move tab switching (in `load` and `handle_click`) to a new method
 
 ``` {.python}
 class Browser:
-    def set_active_tab(self, index):
-        self.active_tab = index
+    def set_active_tab(self, tab):
+        self.active_tab = tab
         self.scroll = 0
         self.url = None
         self.needs_animation_frame = True
@@ -1701,10 +1699,9 @@ class Browser:
         def callback():
             self.lock.acquire(blocking=True)
             scroll = self.scroll
-            active_tab = self.tabs[self.active_tab]
             self.needs_animation_frame = False
-            task = Task(active_tab.run_animation_frame, scroll)
-            active_tab.task_runner.schedule_task(task)
+            task = Task(self.active_tab.run_animation_frame, scroll)
+            self.active_tab.task_runner.schedule_task(task)
             self.lock.release()
         # ...
 ```
@@ -1742,7 +1739,7 @@ browser thread's scroll offset of past the bottom of the page:
 
 ``` {.python}
 class Tab:
-    def load(self, url, body=None):
+    def load(self, url, payload=None):
         self.scroll = 0
         self.scroll_changed_in_tab = True
 
@@ -1778,7 +1775,7 @@ The browser thread can ignore the scroll offset in this case:
 ``` {.python}
 class Browser:
     def commit(self, tab, data):
-        if tab == self.tabs[self.active_tab]:
+        if tab == self.active_tab:
             # ...
             if data.scroll != None:
                 self.scroll = data.scroll

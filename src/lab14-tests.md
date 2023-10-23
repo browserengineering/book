@@ -44,7 +44,7 @@ An outline causes a `DrawOutline` with the given width and color:
     ... b'<div>test</div>')
 
     >>> browser = lab14.Browser()
-    >>> browser.load(lab14.URL(outline_url))
+    >>> browser.new_tab(lab14.URL(outline_url))
     >>> browser.render()
     >>> browser.tabs[0].advance_tab()
     >>> browser.render()
@@ -62,7 +62,7 @@ Focus
     ... b'<input><a href="/dest">Link</a>')
 
     >>> browser = lab14.Browser()
-    >>> browser.load(lab14.URL(focus_url))
+    >>> browser.new_tab(lab14.URL(focus_url))
     >>> browser.render()
 
 On load, nothing is focused:
@@ -104,7 +104,7 @@ Tabindex changes the order:
     ... b'<input tabindex=2><a tabindex=1 href="/dest">Link</a>')
 
     >>> browser = lab14.Browser()
-    >>> browser.load(lab14.URL(focus_url))
+    >>> browser.new_tab(lab14.URL(focus_url))
     >>> browser.render()
 
 This time the `a` element is focused first:
@@ -137,7 +137,7 @@ are:
     ... b'<div>Not focusable</div><div tabindex=1>Is focusable</div>')
 
     >>> browser = lab14.Browser()
-    >>> browser.load(lab14.URL(focus_tabindex_url))
+    >>> browser.new_tab(lab14.URL(focus_tabindex_url))
     >>> browser.render()
 
 The first `div` is not focusable.
@@ -164,7 +164,7 @@ The accessibility tree is automatically created.
     ... b'<input><a href="/dest">Link</a>')
 
     >>> browser = lab14.Browser()
-    >>> browser.load(lab14.URL(focus_url))
+    >>> browser.new_tab(lab14.URL(focus_url))
     >>> browser.toggle_accessibility()
 
 Rendering will read out the accessibility instructions:
@@ -197,7 +197,7 @@ The browser supports light and dark mode rendering.
 The tab contents are light:
 
     >>> browser = lab14.Browser()
-    >>> browser.load(lab14.URL(focus_url))
+    >>> browser.new_tab(lab14.URL(focus_url))
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
      DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=lightblue)
