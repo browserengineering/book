@@ -2010,6 +2010,66 @@ class CompositedLayer:
 The blue square should now be underneath the green square, so overlap
 testing is now complete.[^not-really]
 
+However, this now makes `absolute_bounds`'s size a bit different than
+`composited_bounds`, in situations where there are clips in the visual effect
+path to the root. Let's fix that by also applying those clips to
+`composited_bounds`, so that we can properly minimize the amount of raster
+happening in each `CompositedLayer`.[^clipping-notes] We'll do it by first
+computing the absolute bounds for each item, then mapping them back to local
+space, which will have the effect of computing the "clipped local rect" for
+each display item:
+
+[^clipping-notes]: This is very important, because otherwise some
+composited layers can end up huge despite not drawing much to the screen.
+A good example of this optimization making a huge difference is loading the
+browser from [Chapter 15](embeds.md) for the `browser.engineering` homepage,
+where otherwise we would end up with an enormous composited layer for an
+iframe.
+]
+
+``` {.python}
+class CompositedLayer:
+    def composited_bounds(self):
+        rect = skia.Rect.MakeEmpty()
+        for item in self.display_items:
+            rect.join(absolute_to_local(
+                item, local_to_absolute(item, item.rect)))
+        rect.outset(1, 1)
+        return rect
+```
+
+This requires implementing `absolute_to_local`:
+
+``` {.python}
+def absolute_to_local(display_item, rect):
+    parent_chain = []
+    while display_item.parent:
+        parent_chain.append(display_item.parent)
+        display_item = display_item.parent
+    for parent in reversed(parent_chain):
+        parent.unmap(rect)
+    return rect
+```
+
+Which in turn relies on `unmap`. For `SaveLayer` and `ClipRRect` these should
+be no-ops, but for `Transform` it's just the inverse translation:
+
+
+``` {.python}
+def map_translation(rect, translation, reversed=False):
+    # ...
+    else:
+        # ...
+        if reversed:
+            matrix.setTranslate(-x, -y)
+        else:
+            matrix.setTranslate(x, y)
+
+class Transform(VisualEffect):
+    def unmap(self, rect):
+        return map_translation(rect, self.translation, True)
+```
+
 And while we're here, let's also make transforms animatable via a new
 `TranslateAnimation` class:
 
