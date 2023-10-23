@@ -731,7 +731,6 @@ start by first painting the new-tab button:
 ``` {.python}
 class Chrome:
     def paint(self):
-        cmds = []
         cmds.append(DrawOutline(
             self.newtab_rect[0], self.newtab_rect[1],
             self.newtab_rect[2], self.newtab_rect[3],
