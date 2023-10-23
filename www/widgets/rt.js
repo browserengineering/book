@@ -671,6 +671,12 @@ class skia {
                     rect.right() + x,
                     rect.bottom() + y);
             };
+            rect.x = () => {
+                return rect.left();
+            };
+            rect.y = () => {
+                return rect.top();
+            };
         },
 
         MakeLTRB: (left, top, right, bottom) => {
