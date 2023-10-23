@@ -1974,8 +1974,10 @@ class Transform(VisualEffect):
 
 class ClipRRect(VisualEffect):
     def map(self, rect):
-        bounds = self.rrect.rect()
-        bounds.intersect(rect)
+        bounds = skia.Rect.MakeXYWH(
+            rect.x(), rect.y(),
+            rect.width(), rect.height())
+        bounds.intersect(self.rrect.rect())
         return bounds
 
 class SaveLayer(VisualEffect):
@@ -2047,7 +2049,7 @@ def absolute_to_local(display_item, rect):
         parent_chain.append(display_item.parent)
         display_item = display_item.parent
     for parent in reversed(parent_chain):
-        parent.unmap(rect)
+        rect = parent.unmap(rect)
     return rect
 ```
 
