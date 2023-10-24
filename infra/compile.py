@@ -977,7 +977,7 @@ def compile_module(tree, patches):
 
     imports_str = "import {{ {} }} from \"./{}.js\";"
 
-    rt_imports_arr = [ 'breakpoint', 'comparator', 'filesystem', 'asyncfilter', 'pysplit', 'pyrsplit', 'truthy', 'patch_class' ]
+    rt_imports_arr = [ 'breakpoint', 'comparator', 'asyncfilter', 'pysplit', 'pyrsplit', 'truthy', 'patch_class' ]
     rt_imports_arr += set([ mod.split(".")[0] for mod in RT_IMPORTS])
     rt_imports = imports_str.format(", ".join(sorted(rt_imports_arr)), "rt")
 
@@ -1010,13 +1010,19 @@ if __name__ == "__main__":
     tree = asttools.parse(args.python.read(), args.python.name)
     load_outline(asttools.inline(tree))
     tree, patches = asttools.resolve_patches_and_return_them(tree)
-    js = compile_module(tree, patches)
+    module_js = compile_module(tree, patches)
+
+    js = 'import { filesystem } from "./rt.js";\n'
 
     for fn in FILES:
         path = os.path.join(os.path.dirname(args.python.name), fn)
         with open(path) as f:
-            js += "\nfilesystem.register(" + repr(fn) + ", " + json.dumps(f.read()) + ");\n"
-            
+            js += "\nfilesystem.register(" + repr(fn) + ", " + \
+            json.dumps(f.read()) + ");\n"
+    js += "\n"
+
+    js += module_js
+
     args.javascript.write(js)
 
     issues = 0

@@ -24,7 +24,7 @@ widget.run(async function() {
     constants.WIDTH = window.innerWidth;
     let url = "https://localhost:8000/";
     let b = await (new Browser()).init();
-    await b.load(await (new URL().init(url)))
+    await b.new_tab(await (new URL().init(url)))
 });
 widget.next();
 </script>
