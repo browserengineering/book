@@ -228,23 +228,16 @@ only because they are the only elements with special painting
 behavior within an inline context. These are also two examples of
 [atomic inlines](https://www.w3.org/TR/CSS2/visuren.html#inline-boxes).]
 
-We can fix that with this change to `layout_mode`:
+We can fix that with this change to `layout_mode` to add a second condition
+for returning "inline":
 
 ``` {.python}
 class BlockLayout:
     def layout_mode(self):
-        if isinstance(self.node, Text):
+        # ...
+        elif self.node.children or self.node.tag == "input":
             return "inline"
-        elif self.node.children:
-            for child in self.node.children:
-                if isinstance(child, Text): continue
-                if child.tag in BLOCK_ELEMENTS:
-                    return "block"
-            return "inline"
-        elif self.node.tag == "input":
-            return "inline"
-        else:
-            return "block"
+        # ...
 ```
 
 The second problem is that, again due to having block siblings,
