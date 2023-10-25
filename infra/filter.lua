@@ -2,6 +2,7 @@
 
 local config = nil
 local chapters = nil
+local mode = nil
 
 local main = nil
 
@@ -9,6 +10,7 @@ function LoadMeta(meta)
   if not meta.mode then meta.mode = "book" end
   config = meta.modes[meta.mode]
   chapters = meta.chapters
+  mode = meta.mode
   if not config then error("Invalid mode " .. meta.mode) end
 
   meta.rel = config.rel
@@ -51,12 +53,16 @@ function DisableLinks(el)
 end
 
 function Note(el)
-  -- Footnotes become margin notes
-  note = pandoc.Span(el.content[1].content)
-  note.classes = { "note" }
-  wrapper = pandoc.Span { note }
-  wrapper.classes = { "note-container" }
-  return wrapper
+  if mode == "book" then
+    -- Footnotes become margin notes
+    note = pandoc.Span(el.content[1].content)
+    note.classes = { "note" }
+    wrapper = pandoc.Span { note }
+    wrapper.classes = { "note-container" }
+    return wrapper
+  else
+    return el
+  end
 end
 
 function Div(el)
