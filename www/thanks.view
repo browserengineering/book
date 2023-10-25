@@ -52,6 +52,8 @@ advice on how to implement JavaScript global namespaces in Chapter 15.
 <p>Credit to Fredrik Lundh for the hack that makes `get_font` fast.
 </p>
 
+<p>Thanks to Steven Bingler for clarifications about `SameSite`.<p/>
+
 <p>
 Finally, we thank all <em>readers</em> of Web Browser Engineering, for
 whom we wrote the book.
