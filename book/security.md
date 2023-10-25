@@ -888,8 +888,8 @@ URL have the same host name:[^schemeful]
     ignore subdomains, so that `www.foo.com` and `login.foo.com` are
     considered the "same site". If cookies were invented today, they'd
     probably be specific to URL origins (in fact, there is [an effort
-    to do that][origin-bound-cookies]), much like CSP policies, but
-    alas historical contingencies and backwards compatibility force
+    to do just that][origin-bound-cookies]), much like CSP policies,
+    but alas historical contingencies and backwards compatibility force
     rules that are more complex but easier to deploy.
 
 [origin-bound-cookies]: https://github.com/sbingler/Origin-Bound-Cookies
