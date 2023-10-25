@@ -233,18 +233,9 @@ We can fix that with this change to `layout_mode`:
 ``` {.python}
 class BlockLayout:
     def layout_mode(self):
-        if isinstance(self.node, Text):
+        # ...
+        elif self.node.children or self.node.tag == "input":
             return "inline"
-        elif self.node.children:
-            for child in self.node.children:
-                if isinstance(child, Text): continue
-                if child.tag in BLOCK_ELEMENTS:
-                    return "block"
-            return "inline"
-        elif self.node.tag == "input":
-            return "inline"
-        else:
-            return "block"
 ```
 
 The second problem is that, again due to having block siblings,
