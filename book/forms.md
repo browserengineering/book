@@ -228,7 +228,8 @@ only because they are the only elements with special painting
 behavior within an inline context. These are also two examples of
 [atomic inlines](https://www.w3.org/TR/CSS2/visuren.html#inline-boxes).]
 
-We can fix that with this change to `layout_mode` to add a second condition:
+We can fix that with this change to `layout_mode` to add a second condition
+for returning "inline":
 
 ``` {.python}
 class BlockLayout:
