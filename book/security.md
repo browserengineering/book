@@ -398,9 +398,9 @@ class URL:
         # ...
 ```
 
-You should now be able to use your toy browser to log in to the guest
+You should now be able to use your browser to log in to the guest
 book and post to it. Moreover, you should be able to open the guest
-book in two browsers simultaneously---maybe your toy browser and a
+book in two browsers simultaneously---maybe your browser and a
 real browser as well---and log in and post as two different
 users.
 

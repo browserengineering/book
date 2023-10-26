@@ -5,11 +5,11 @@ prev: graphics
 next: html
 ...
 
-In the last chapter, your web browser created a graphical window and
+In the last chapter, our browser created a graphical window and
 drew a grid of characters to it. That's OK for Chinese, but English
 text features characters of different widths grouped into words that
 you can't break across lines.[^1] In this chapter, we'll add those
-capabilities. You'll be able to read this page in your browser!
+capabilities. You'll even be able to read this page!
 
 [^1]: There are lots of languages in the world, and lots of
     typographic conventions. A real web browser supports every
@@ -800,7 +800,7 @@ Font caching
 
 Now that you've implemented styled text, you've probably
 noticed---unless you're on macOS[^macos-cache]---that on a large web
-page like this chapter your browser has slowed significantly from the
+page like this chapter our browser has slowed significantly from the
 [last chapter](graphics.md). That's because text layout, and
 specifically the part where you measure each word, is quite
 slow.[^profile]
@@ -892,7 +892,7 @@ grid. Now it does standard English text layout:
 - Text can be bold or italic
 - Text of different sizes can be mixed
 
-You can now use your browser to read an essay, a blog post, or even a
+You can now use our browser to read an essay, a blog post, or even a
 book!
 
 ::: {.signup}

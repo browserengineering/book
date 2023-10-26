@@ -46,7 +46,7 @@ embedded in a font that modifies it to better match the discrete pixel
 grid. Text rendering of course affects Skia, but it also affects
 layout, determining the size and position of content on the screen.
 
-And more broadly, graphics in general is pretty complex! Our toy
+And more broadly, graphics in general is pretty complex! Our
 browser uses Skia, which is the real rasterization engine of Chromium
 and some other browsers. But we didn't really talk at all about how
 Skia actually works, and it turns out to be pretty complex. It not
@@ -152,7 +152,7 @@ Browser UIs and Developer tools
 
 A real browser has a *much* more complex and powerful "browser
 UI"---meaning the chrome around the web page, where you can enter
-URLs, see tabs, and so on---than our toy browser. In fact, a large
+URLs, see tabs, and so on---than our browser. In fact, a large
 fraction of a real browser team works just on this, and not on the
 "web platform" itself. The multi-process nature of a modern browser
 also makes it difficult to interact with synchronous OS APIs, as we

@@ -1146,7 +1146,7 @@ adopting a multi-threaded architecture.
 
 ::: {.further}
 
-Our toy browser spends a lot of time copying pixels. That's why
+Our browser spends a lot of time copying pixels. That's why
 [optimizing surfaces][optimize-surfaces] is important! It'll be faster
 by at least 30% if you've done the *interest region* exercise from
 [Chapter 11](visual-effects.md#exercises); making `tab_surface`

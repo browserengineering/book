@@ -5,7 +5,7 @@ prev: text
 next: layout
 ...
 
-So far, your web browser sees web pages as a stream of open tags,
+So far, our browser sees web pages as a stream of open tags,
 close tags, and text. But HTML is actually a tree, and though the tree
 structure hasn't been important yet, it will be central to later
 features like CSS, JavaScript, and visual effects. So this chapter
@@ -311,7 +311,7 @@ the `<!doctype html>` tag.
 
 This special tag, called a [doctype][html5-doctype], is always the
 very first thing in an HTML document. But it's not really an element
-at all, nor is it supposed to have a close tag. Our toy browser won't
+at all, nor is it supposed to have a close tag. Our browser won't
 be using the doctype for anything, so it's best to throw it
 away:[^quirks-mode]
 
@@ -514,7 +514,7 @@ attributes with whitespace (like `author` on the fifth `meta` tag)
 are mis-parsed as multiple attributes, and the final slash on the
 self-closing tags is incorrectly treated as an extra attribute. A
 better parser would fix these issues. But let's instead leave our
-parser as is---these issues aren't going to be a problem for the toy
+parser as is---these issues aren't going to be a problem for the
 browser we're building---and move on to integrating it with our
 browser.
 

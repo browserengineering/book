@@ -17,7 +17,6 @@ industry programmers and even to researchers. This book dissipates
 that mystery by systematically explaining all major components of a
 modern web browser.
 
-
 Reading this book
 =================
 
@@ -28,15 +27,23 @@ years' programming experience. Part 4 of this book covers advanced
 topics; those chapters are longer and have more code. The final
 browser weighs in at about 3000 lines.
 
-Your web browser will "work" at every step of the way, and every
-chapter will build upon the last.[^jrwilcox-idea] That way, you will
+Your browser[^yours-ours] will "work" at every step of the way, and
+every chapter will build upon the last.[^jrwilcox-idea] That way, you will
 also practice growing and improving complex software. If you feel
 particularly interested in some component, please do flesh it out,
 complete the exercises, and add missing features. We've tried to
 arrange it so that this doesn't make later chapters more difficult.
 
-[^jrwilcox-idea]: This idea is from [J.R. Wilcox][jrw], inspired in turn by
-    [S. Zdancewic][sz]'s course on compilers.
+[^yours-ours]: This book assumes that you will be building a web browser along
+the way while reading it. However, it does present nearly
+all the code---inlined into the book--for a working browser for every
+chapter. So most of the time, the book uses the term "our browser",
+which refers to the conceptual browser we (you and us, the
+authors) have built so far. In cases where the book is referring specifically
+to the implementation you have built, the book says "your browser".
+
+[^jrwilcox-idea]: This idea is from [J.R. Wilcox][jrw], inspired in
+turn by [S. Zdancewic][sz]'s course on compilers.
 
 The code in this book [uses Python
 3](blog/why-python.md),\index{Python} and we recommend you follow
@@ -50,6 +57,7 @@ and JavaScript evaluation (the text uses DukPy).
 [^py3-cmd]: This is for clarity. On some operating systems, `python`
 means Python 3, but on others that means Python 2. Check which version
 you have!
+
 [sz]: https://www.cis.upenn.edu/~stevez/
 
 This book's browser is irreverent toward standards: it handles only a

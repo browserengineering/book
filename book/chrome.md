@@ -5,7 +5,7 @@ prev: styles
 next: forms
 ...
 
-Our toy browser is still missing the key insight of
+Our browser is still missing the key insight of
 *hypertext*\index{hypertext}: documents linked together by
 hyperlinks\index{hyperlink}. It lets us watch the
 waves, but not surf the web. So in this chapter, we'll implement
@@ -497,7 +497,7 @@ Multiple pages
 If you're anything like me, the next thing you tried after clicking on
 links is middle-clicking them to open in a new tab. Every browser now
 has tabbed browsing, and honestly it's a little embarrassing that our
-little toy browser doesn't.[^ffx]
+browser doesn't.[^ffx]
 
 [^ffx]: Back in the day, browser tabs were the feature that would
     convince friends and relatives to switch from IE 6 to Firefox.
