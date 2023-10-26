@@ -1564,7 +1564,7 @@ class Browser:
     def handle_click(self, e):
         self.lock.acquire(blocking=True)
         if e.y < self.chrome.bottom:
-            self.focus = None
+            self.focus = "chrome"
             self.chrome.click(e.x, e.y)
             self.set_needs_raster()
         else:
@@ -1579,8 +1579,8 @@ class Browser:
     def handle_key(self, char):
         self.lock.acquire(blocking=True)
         if not (0x20 <= ord(char) < 0x7f): return
-        if self.focus == "address bar":
-            self.address_bar += char
+        if self.focus == "chrome":
+            self.chrome.keypress(char)
             self.set_needs_raster()
         elif self.focus == "content":
             task = Task(self.active_tab.keypress, char)
@@ -1593,12 +1593,9 @@ class Browser:
 
     def handle_enter(self):
         self.lock.acquire(blocking=True)
-        if self.focus == "address bar":
-            self.schedule_load(URL(self.address_bar))
-            self.url = self.address_bar
-            self.focus = None
+        if self.focus == "chrome":
+            self.chrome.enter()
             self.set_needs_raster()
-            self.needs_animation_frame = True
         self.lock.release()
 
     def new_tab(self, url):

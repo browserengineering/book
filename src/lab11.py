@@ -524,6 +524,12 @@ class Chrome:
                     break
             self.browser.raster_tab()
 
+    def enter(self):
+        if self.focus == "address bar":
+            self.browser.active_tab.load(URL(self.address_bar))
+            self.focus = None
+            self.browser.focus = None
+
 @wbetools.patch(Browser)
 class Browser:
     def __init__(self):
@@ -544,7 +550,6 @@ class Browser:
         self.tabs = []
         self.active_tab = None
         self.focus = None
-        self.address_bar = ""
 
         if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
             self.RED_MASK = 0xff000000

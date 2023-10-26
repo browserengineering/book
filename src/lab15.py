@@ -760,15 +760,15 @@ class HTMLParser:
 
 INTERNAL_ACCESSIBILITY_HOVER = "-internal-accessibility-hover"
 
-EVENT_DISPATCH_CODE = \
+EVENT_DISPATCH_JS = \
     "new window.Node(dukpy.handle)" + \
     ".dispatchEvent(new window.Event(dukpy.type))"
 
-POST_MESSAGE_DISPATCH_CODE = \
+POST_MESSAGE_DISPATCH_JS = \
     "window.dispatchEvent(new window.MessageEvent(dukpy.data))"
 
-SETTIMEOUT_CODE = "window.__runSetTimeout(dukpy.handle)"
-XHR_ONLOAD_CODE = "window.__runXHROnload(dukpy.out, dukpy.handle)"
+SETTIMEOUT_JS = "window.__runSetTimeout(dukpy.handle)"
+XHR_ONLOAD_JS = "window.__runXHROnload(dukpy.out, dukpy.handle)"
 RUNTIME_JS = open("runtime15.js").read()
 
 class JSContext:
@@ -830,7 +830,7 @@ class JSContext:
 
     def dispatch_event(self, type, elt, window_id):
         handle = self.node_to_handle.get(elt, -1)
-        code = self.wrap(EVENT_DISPATCH_CODE, window_id)
+        code = self.wrap(EVENT_DISPATCH_JS, window_id)
         do_default = self.interp.evaljs(code,
             type=type, handle=handle)
         return not do_default
@@ -873,7 +873,7 @@ class JSContext:
 
     def dispatch_post_message(self, message, window_id):
         self.interp.evaljs(
-            self.wrap(POST_MESSAGE_DISPATCH_CODE, window_id),
+            self.wrap(POST_MESSAGE_DISPATCH_JS, window_id),
             data=message)
 
     def postMessage(self, target_window_id, message, origin):
@@ -902,7 +902,7 @@ class JSContext:
 
     def dispatch_settimeout(self, handle, window_id):
         self.interp.evaljs(
-            self.wrap(SETTIMEOUT_CODE, window_id), handle=handle)
+            self.wrap(SETTIMEOUT_JS, window_id), handle=handle)
 
     def setTimeout(self, handle, time, window_id):
         def run_callback():
@@ -911,7 +911,7 @@ class JSContext:
         threading.Timer(time / 1000.0, run_callback).start()
 
     def dispatch_xhr_onload(self, out, handle, window_id):
-        code = self.wrap(XHR_ONLOAD_CODE, window_id)
+        code = self.wrap(XHR_ONLOAD_JS, window_id)
         do_default = self.interp.evaljs(code, out=out, handle=handle)
 
     def XMLHttpRequest_send(

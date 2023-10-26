@@ -796,7 +796,7 @@ class JSContext:
     def dispatch_event(self, type, elt):
         handle = self.node_to_handle.get(elt, -1)
         do_default = self.interp.evaljs(
-            EVENT_DISPATCH_CODE, type=type, handle=handle)
+            EVENT_DISPATCH_JS, type=type, handle=handle)
         return not do_default
 
     def get_handle(self, elt):
@@ -1731,7 +1731,7 @@ class Browser:
     def handle_click(self, e):
         self.lock.acquire(blocking=True)
         if e.y < self.chrome.bottom:
-            self.focus = None
+            self.focus = "chrome"
             self.chrome.click(e.x, e.y)
             self.set_needs_raster()
         else:

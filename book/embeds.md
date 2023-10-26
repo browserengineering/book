@@ -1541,11 +1541,11 @@ If you miss one, you'll get errors like this:
     	eval src/pyduktape.c:1 preventsyield
 
 Then you'll need to go find where you forgot to put `window.` in front
-of `Node`. You'll also need to modify `EVENT_DISPATCH_CODE` to prefix
+of `Node`. You'll also need to modify `EVENT_DISPATCH_JS` to prefix
 classes with `window`:
 
 ``` {.python}
-EVENT_DISPATCH_CODE = \
+EVENT_DISPATCH_JS = \
     "new window.Node(dukpy.handle)" + \
     ".dispatchEvent(new window.Event(dukpy.type))"
 ```
@@ -1645,7 +1645,7 @@ an event, we'll need the `window_id`:
 class JSContext:
     def dispatch_event(self, type, elt, window_id):
         # ...
-        code = self.wrap(EVENT_DISPATCH_CODE, window_id)
+        code = self.wrap(EVENT_DISPATCH_JS, window_id)
         do_default = self.interp.evaljs(code,
             type=type, handle=handle)
 ```
@@ -1949,13 +1949,13 @@ Which then calls into the JavaScript `dispatchEvent` method we just
 wrote:
 
 ``` {.python}
-POST_MESSAGE_DISPATCH_CODE = \
+POST_MESSAGE_DISPATCH_JS = \
     "window.dispatchEvent(new window.MessageEvent(dukpy.data))"
 
 class JSContext:
     def dispatch_post_message(self, message, window_id):
         self.interp.evaljs(
-            self.wrap(POST_MESSAGE_DISPATCH_CODE, window_id),
+            self.wrap(POST_MESSAGE_DISPATCH_JS, window_id),
             data=message)
 ```
 

@@ -715,12 +715,12 @@ class Browser:
             self.set_needs_raster_and_draw()
 
     def handle_key(self, char):
-        if self.focus == "address bar":
+        if self.focus == "chrome":
             # ...
             self.set_needs_raster_and_draw()
 
     def handle_enter(self):
-        if self.focus == "address bar":
+        if self.focus == "chrome":
             # ...
             self.set_needs_raster_and_draw()
 ```
@@ -1277,14 +1277,16 @@ class Browser:
         task = Task(self.active_tab.load, url, body)
         self.active_tab.task_runner.schedule_task(task)
 
-    def handle_enter(self):
-        if self.focus == "address bar":
-            self.schedule_load(URL(self.address_bar))
-            # ...
-
     def new_tab(self, url):
         # ...
         self.schedule_load(url)
+```
+
+``` {.python}
+class Chrome:
+    def enter(self):
+        if self.focus == "address bar":
+            self.browser.schedule_load(URL(self.address_bar))
 ```
 
 Event handlers are mostly similar, except that we need to be careful
@@ -1312,7 +1314,7 @@ The same logic holds for `keypress`:
 class Browser:
     def handle_key(self, char):
         if not (0x20 <= ord(char) < 0x7f): return
-        if self.focus == "address bar":
+        if self.focus == "chrome":
             # ...
         elif self.focus == "content":
             task = Task(self.active_tab.keypress, char)
