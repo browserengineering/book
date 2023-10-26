@@ -2237,6 +2237,18 @@ calls child `hit_test` methods.^[In real browsers hit testing is used
 for more than just clicking. The name comes from thinking whether an
 arrow shot at that location would "hit" the object.]
 
+*Z-index*: Right now, elements later in the HTML document are drawn
+"on top" of earlier ones. The `z-index` CSS property changes that
+order: an element with the larger `z-index` draws on top (with ties
+broken by the current order, and with the default `z-index` being 0).
+For `z-index` to have any effect, the element's `position` property
+must be set to something other than `static` (the default). Add
+support for `z-index`. For an extra challenge, add support for [nested
+elements][stacking-context] with `z-index` properties.
+
+[stacking-context]:  https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
+
+
 *Atomic effects*: Our browser currently uses a simplistic algorithm for building
 the draw list which doesn't handle nested, composited visual effects
 correctly, especially when there are overlapping elements on the page(this was

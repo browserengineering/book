@@ -17,13 +17,15 @@ Installing Skia and SDL
 =======================
 
 Before we get any further, we'll need to upgrade our graphics system.
-While Tkinter is great for basic shapes and handling input, it lacks
+While Tkinter is great for basic shapes and input handling, it lacks
 built-in support for many visual effects.[^tkinter-before-gpu]
 Implementing all details of the web's many visual effects is fun, but
 it's outside the scope of this book, so we need a new graphics library.
 Let's use [Skia][skia],\index{Skia} the library that Chromium uses.
 Unlike Tkinter, Skia doesn't handle inputs or create graphical windows,
-so we'll pair it with the [SDL][sdl] GUI library.\index{SDL}
+so we'll pair it with the [SDL][sdl] GUI library.\index{SDL} Beyond
+new capabilities, switching to Skia will give me an opportunity to
+show you how graphics work at a lower level.
 
 [skia]: https://skia.org
 [sdl]: https://www.libsdl.org/
@@ -34,19 +36,19 @@ graphics cards and GPUs became widespread.
 
 Start by installing [Skia][skia-python] and [SDL][sdl-python]:
 
-    pip3 install skia-python pysdl2 pysdl2-dll
+    python3 -m pip install skia-python pysdl2 pysdl2-dll
 
 [skia-python]: https://kyamagu.github.io/skia-python/
 [sdl-python]: https://pypi.org/project/PySDL2/
 
 ::: {.install}
-As elsewhere in this book, you may need to use `pip`, `easy_install`,
-or `python3 -m pip` instead of `pip3` as your installer, or use your
-IDE's package installer. If you're on Linux, you'll need to install
-additional dependencies, like OpenGL and fontconfig. Also, you may not be
-able to install `pysdl2-dll`; if so, you'll need to find SDL in your system
-package manager instead. Consult the  [`skia-python`][skia-python] and
-[`pysdl2`][sdl-python] web pages for more details.
+As elsewhere in this book, you may need install the `pip` package
+first, or use your IDE's package installer. If you're on Linux, you'll
+need to install additional dependencies, like OpenGL and fontconfig.
+Also, you may not be able to install `pysdl2-dll`; if so, you'll need
+to find SDL in your system package manager instead. Consult the
+[`skia-python`][skia-python] and [`pysdl2`][sdl-python] web pages for
+more details.
 :::
 
 Once installed, remove the `tkinter` imports from browser and replace
@@ -58,9 +60,9 @@ import sdl2
 import skia
 ```
 
-If any of these imports fail, you probably need to check that Skia and
-SDL were installed correctly. Note that the `ctypes` module comes
-standard in Python; it is used to convert between Python and C types.
+The `ctypes` module is a standard part of Python; we'll use it to
+convert between Python and C types. If any of these imports fail,
+check that Skia and SDL were installed correctly.
 
 ::: {.further}
 The [`<canvas>`][canvas]\index{canvas} HTML element provides a JavaScript
@@ -201,8 +203,12 @@ class Browser:
         sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 ```
 
-Next, SDL doesn't have a `mainloop` or `bind` method; we have to
-implement it ourselves:
+So that's that: we're now creating a window and copying pixels to it.
+But if you run your browser now, you'll find that it exits
+immediately.
+
+That's because SDL doesn't have a `mainloop` or `bind` method; we have
+to implement it ourselves:
 
 ``` {.python}
 if __name__ == "__main__":
@@ -247,10 +253,14 @@ if __name__ == "__main__":
                 browser.handle_key(event.text.text.decode('utf8'))
 ```
 
-I've changed the signatures of the various event handler methods;
-you'll need to make analogous changes in `Browser` where they are
-defined. This loop replaces all of the `bind` calls in the `Browser`
-constructor, which you can now remove.
+This loop replaces all of the `bind` calls in the `Browser`
+constructor, which you can now remove. I've changed the signatures of
+the various event handler methods. For example, the `handle_click`
+method is now passed a `MouseButtonEvent` object, which thankfully
+contains `x` and `y` coordinates, while the `handle_enter` and
+`handle_down` methods aren't passed any argument at all, because we
+don't use that argument anyway. You'll need to change the `Browser`
+methods' signatures to match.
 
 ::: {.further}
 SDL is most popular for making games. Their site lists [a selection of
@@ -274,15 +284,17 @@ documentation for more on the Skia API.
 def parse_color(color):
     if color == "white":
         return skia.ColorWHITE
-    elif color == "lightblue":
-        return skia.ColorSetARGB(0xFF, 0xAD, 0xD8, 0xE6)
-    # ...
+    elif color == "red":
+        return skia.ColorRED
     else:
         return skia.ColorBLACK
 ```
 
-You can add more "elif" blocks to support any other color names you
-use; modern browsers support [quite a lot][css-colors].
+You can add "elif" blocks to support any other color names you use;
+modern browsers support [quite a lot][css-colors]. If you'd like to
+use a color Skia doesn't pre-define, you can use the `skia.Color`
+constructor, which takes red, green, and blue parameters from 0 to
+255.
 
 [css-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/color_value
 
@@ -299,7 +311,19 @@ class DrawLine:
         canvas.drawPath(path, paint)
 ```
 
-To draw text, you use `drawString`:
+Note the steps involved here. We first create a `Path` object, and
+then call `drawPath` to actually draw this path to the canvas. This
+`drawPath` call takes a second argument, `paint`, which defines how to
+actually perform this drawing. We specify the color, but we also need
+to specify that we want to draw a line *along* the path, instead of
+filling in the interior of the path, which is the default. To do that
+we set the style to "stroke", a standard term referring to drawing
+along the border of some shape.[^opposite-fill]
+
+[^opposite-fill]: The opposite is "fill", meaning filling in the
+    interior of the shape.
+
+We do something similar to draw text using `drawString`:
 
 ``` {.python replace=%2c%20scroll/,%20-%20scroll/}
 class DrawText:
@@ -311,8 +335,17 @@ class DrawText:
             self.font, paint)
 ```
 
-Finally, for drawing rectangles you use `drawRect`. Filling in the
-rectangle is the default:
+Note again that we create a `Paint` object identifying the color, the
+fact that we want anti-aliased text.[^anti-alias] We don't specify the
+"style" because we want to fill the interior of the text, the default.
+
+[^anti-alias]: "Anti-alias"ing just means drawing some
+    semi-transparent pixels to better approximate the shape of the
+    text. This is important when drawing shapes with fine details,
+    like text, but is less important when drawing large shapes like
+    rectangles and lines.
+
+Finally, for drawing rectangles you use `drawRect`:
 
 ``` {.python replace=%2c%20scroll/,rect.makeOffset(0%2c%20-scroll)/rect}
 class DrawRect:
@@ -333,34 +366,9 @@ class DrawRect:
         # ...
 ```
 
-To draw just the outline, set the `Style` parameter of the `Paint` to
-`Stroke_Style`. Here "stroke" is a standard term referring to drawing
-along the border of some shape; the opposite is "fill", meaning
-filling in the interior of the shape:
-
-``` {.python replace=%2c%20scroll/,rect.makeOffset(0%2c%20-scroll)/rect}
-class DrawOutline:
-    def execute(self, canvas):
-        paint = skia.Paint()
-        paint.setStyle(skia.Paint.kStroke_Style)
-        paint.setStrokeWidth(self.thickness)
-        paint.setColor(parse_color(self.color))
-        canvas.drawRect(self.rect.makeOffset(0, -scroll), paint)
-```
-
-If you look at the details of these helper methods, you'll see that
-they all use a Skia `Paint` object to describe a shape's borders and
-colors. We'll be seeing a lot more features of `Paint` in this chapter.
-
 While we're here, let's also add a `rect` field to the other drawing
 commands, replacing its `top`, `left`, `bottom`, and `right`
-fields:[^move-plus]
-
-[^move-plus]: You'll probably need some font changes in the browser
-    UI, because Skia draws fonts a bit differently from Tkinter. I had
-    to adjust the *y* position of the plus sign and less than signs to
-    keep them centered in their boxes. Feel free to adjust to make
-    everything look good on your system.
+fields:
 
 ``` {.python}
 class DrawText:
@@ -373,6 +381,20 @@ class DrawLine:
     def __init__(self, x1, y1, x2, y2, color, thickness):
         # ...
         self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
+```
+
+
+Finally, to draw an outline, we do the same as in `DrawRect` but now
+set the style to "stroke" instead:
+
+``` {.python replace=%2c%20scroll/,rect.makeOffset(0%2c%20-scroll)/rect}
+class DrawOutline:
+    def execute(self, canvas):
+        paint = skia.Paint()
+        paint.setStyle(skia.Paint.kStroke_Style)
+        paint.setStrokeWidth(self.thickness)
+        paint.setColor(parse_color(self.color))
+        canvas.drawRect(self.rect.makeOffset(0, -scroll), paint)
 ```
 
 Since we're replacing Tkinter with Skia, we are also replacing
@@ -405,7 +427,7 @@ def get_font(size, weight, style):
 Our browser also needs font metrics and measurements. In Skia, these
 are provided by the `measureText` and `getMetrics` methods. Let's
 start with `measureText` replacing all calls to `measure`. For
-example, in the `render` method for a `Tab`, we must do:
+example, in the `paint` method in `InputLayout`, we must do:
 
 ``` {.python}
 class InputLayout:
@@ -415,7 +437,8 @@ class InputLayout:
             # ...
 ```
 
-There are also `measure` calls in `DrawText`, in the `draw` method on
+There are `measure` calls in several other layout objects (both in
+`paint` and `layout`), in `DrawText`, in the `draw` method on
 `Browser`, in the `text` method in `BlockLayout`, and in the `layout`
 method in `TextLayout`. Update all of them to use `measureText`.
 
@@ -471,8 +494,7 @@ What Skia gives us
 ==================
 
 Let's reward ourselves for the big refactor with a simple feature that
-Skia enables: rounded corners of a rectangle via the `border-radius`
-CSS property, like this:
+Skia enables: rounded corners via the `border-radius` CSS property:
 
     <div style="border-radius: 10px; background: lightblue">
         This is some example text.
@@ -1149,21 +1171,19 @@ large enough that the border radius is obvious.
 </div>
 
 Observe that the letters near the corner are cut off to maintain a
-sharp rounded edge. (Uhh... actually, at the time of this writing,
-Safari does not support `overflow: clip`, so if you're using Safari
-you won't see this effect.[^hidden]) That's clipping; without the
-`overflow: clip` property these letters would instead be fully drawn,
-like we saw earlier in this chapter.
+sharp rounded edge.[^hidden] That's clipping; without the `overflow:
+clip` property these letters would instead be fully drawn, like we saw
+earlier in this chapter.
 
-[^hidden]: The similar `overflow: hidden` is supported by all
-browsers. However, in this case, `overflow: hidden` will also increase
-the height of `div` until the rounded corners no longer clip out the
-text. This is because `overflow:hidden` has different rules for sizing
-boxes, having to do with the possibility of the child content being
-scrolled---`hidden` means "clipped, but might be scrolled by
-JavaScript". If the blue box had not been taller, than it would have
-been impossible to see the text, which is really bad if it's intended
-that there should be a way to scroll it on-screen.
+[^hidden]: The `overflow: hidden` propertyis somewhat similar, but in
+this case it will increase the height of `div` until the rounded
+corners no longer clip out the text. This is because `overflow:hidden`
+has different rules for sizing boxes, having to do with the
+possibility of the child content being scrolled---`hidden` means
+"clipped, but might be scrolled by JavaScript". If the blue box had
+not been taller, than it would have been impossible to see the text,
+which is really bad if it's intended that there should be a way to
+scroll it on-screen.
 
 Counterintuitively, we'll implement clipping using blending modes.
 We'll make a new surface (the mask), draw a rounded rectangle into it,
@@ -1362,9 +1382,12 @@ dynamically draw only the parts of operations that intersect it. It's
 basically the optimization we implemented for scrolling
 [in Chapter 2](graphics.md#faster-rendering).[^no-other-shapes]
 
-[^shader-rounded]: Typically in a browser this means code in GPU
-shaders. GPU programs are out of scope for this book, but if you're
-curious there are many online resources describing ways to do this.
+[^shader-rounded]: At a high level, this is achieved by having the GPU
+*shaders*---the code---for various drawing commands check for clipping
+when they draw. In effect, the clip region is stored implicitly, in
+the code and state of the canvas, instead of explicitly in a surface.
+GPU programs are out of scope for this book, but if you're curious
+there are many online resources with more information.
 
 [^no-other-shapes]: This kind of code is complex for Skia to implement,
 so it only makes sense to do it for common patterns, like rounded
@@ -1376,7 +1399,7 @@ once we're done with clipping. That uses the `save` and `restore`
 methods---you call `save` before calling `clipRRect`, and `restore`
 after finishing drawing the commands that should be clipped:
 
-``` {.example}
+``` {.python.example}
 # Draw commands that should not be clipped.
 canvas.save()
 canvas.clipRRect(rounded_rect)
@@ -1385,10 +1408,12 @@ canvas.restore()
 # Draw commands that should not be clipped.
 ```
 
-If you've noticed that `restore` is used for both saving state and
-pushing surfaces, that's because Skia has a combined stack of surfaces
-and canvas states. Unlike `saveLayer`, however, `save` never creates a
-new surface.
+You might notice the similarity between `save`/`restore` and the
+`saveLayer`/`restore` operations created by `SaveLayer`. That's
+because Skia has a combined stack of surfaces and canvas states.
+Unlike `saveLayer`, however, `save` never creates a new surface;
+it just changes the canvas state to change how commands are executed,
+in this case to clip those commands to a rounded rectangle.
 
 Let's wrap this pattern into a `ClipRRect` drawing command, which like
 `SaveLayer` takes a list of subcommands and a `should_clip` parameter
@@ -1607,8 +1632,13 @@ class Browser:
         self.draw()
 ```
 
+Notice how we don't redraw the chrome when only the tab changes, and
+vice versa. Likewise, in `handle_down`, we don't need to call
+`raster_tab` at all, since scrolling doesn't change the page.
+
 However, clicking on a web page can cause it to navigate to a new one,
-so we need to detect that and raster the browser chrome if the URL changed:
+so we do need to detect that and raster the browser chrome if the URL
+changed:
 
 ``` {.python}
 class Browser:
@@ -1624,11 +1654,6 @@ class Browser:
                 self.raster_chrome()
             self.raster_tab()
 ```
-
-
-Notice how we don't redraw the chrome when only the tab changes, and
-vice versa. In `handle_down`, which scrolls the page, we don't need to
-call `raster_tab` at all, since scrolling doesn't change the page.
 
 We also have some related changes in `Tab`. First, we no longer need
 to pass around the scroll offset to the `execute` methods, or account
@@ -1669,9 +1694,9 @@ that can be done without raster. They also allow scrolling arbitrary
 HTML elements via [`overflow: scroll`][overflow-prop] in CSS. Basic
 scrolling for DOM elements is very similar to what we've just
 implemented. But implementing it in its full generality, and with
-excellent performance, is *extremely* challenging. Scrolling is
-probably the single most complicated feature in a browser rendering
-engine. The corner cases and subtleties involved are almost endless.
+excellent performance, is *extremely* challenging. Scrolling may well
+be the single most complicated feature in a browser rendering engine.
+The corner cases and subtleties involved are almost endless.
 :::
 
 [transform-link]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform
@@ -1712,22 +1737,12 @@ will need to open that page in a new tab.
 Exercises
 =========
 
-*CSS transforms*: Add support for the [transform][transform-css] CSS
-property, specifically the `translate` and `rotate` transforms.[^3d]
-Skia has built-in support for these via canvas state.
-
-[transform-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform
-
-[^3d]: There is a lot more complexity to 3D transforms
-having to do with the definition of 3D spaces, flatting, backfaces, and plane
-intersections.
-
 *Filters*: The `filter` CSS property allows specifying various kinds
 of more [complex effects][filter-css], such as grayscale or blur.
-These are fun to implement, and a number of them have built-in support
-in Skia. Implement, for example, the `blur` filter. Think carefully
-about when filters occur, relative to other effects like transparency,
-clipping, and blending.
+These are fun to implement, and some, like `blur`, have built-in
+support in Skia. Implement `blur`. Think carefully about when blurring
+occurs, relative to other effects like transparency, clipping, and
+blending.
 
 [filter-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter
 
@@ -1739,37 +1754,13 @@ browser it currently does. Modify the `click` method to take border
 radii into account.
 
 *Interest region*: Our browser now draws the whole web page to a
-single surface, and then shows parts of that surface as the user
-scrolls. That means a very long web page (like this one!) can create a
-large surface, thereby using a lot of memory. Modify the browser so
-that the height of that surface is limited, say to `4 * HEIGHT` pixels.
-The (limited) region of the page drawn to this surface is called the
-interest region; you'll need to track what part of the interest region
-is being shown on the screen, and re-raster the interest region when
-the user attempts to scroll outside of it.
-
-One way to do this is to filter out all display list items that don't intersect
-the interest rect. Another, easier way is to take advantage of Skia's internal
-optimizations: if you call `save` and `clipRect` on a Skia canvas and then some
-draw operations, Skia will automatically avoid display item raster work outside
-of the clipping rectangle before the next `restore`.
-
-*Z-index*: Right now, elements later in the HTML document are drawn
-"on top" of earlier ones. The `z-index` CSS property changes that
-order: an element with the larger `z-index` draws on top (with ties
-broken by the current order, and with the default `z-index` being 0).
-For `z-index` to have any effect, the element's `position` property
-must be set to something other than `static` (the default). Add
-support for `z-index`. One thing you'll run into is that with our
-browser's minimal layout features, you might not be able to *create*
-any overlapping elements to test this feature! However, lots of
-exercises throughout the book allow you to create overlapping
-elements, including `transform` and `width`/`height`. For an extra
-challenge, add support for [nested elements][stacking-context] with
-`z-index` properties.
-
-[stacking-context]:  https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
-
+single surface, which means a very long web page (like this one!)
+creates a large surface, thereby using a lot of memory. Instead, only
+draw an "interest region" of limited height, say `4 * HEIGHT` pixels.
+You'll need to keep track of where the interest region is on the page,
+draw the correct part of it to the screen, and re-raster the interest
+region when the user attempts to scroll outside of it. Use Skia's
+`clipRect` operation to avoid drawing outside the interest region.
 
 *Overflow scrolling*: An element with the `overflow` property set to
 `scroll` and a fixed pixel `height` is scrollable. (You'll want to
