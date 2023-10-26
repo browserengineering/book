@@ -28,7 +28,7 @@ a few frames' delay is distracting. But editing changes the HTML tree
 and therefore the layout tree. Rebuilding the layout tree from
 scratch, which our browser currently does, can drop multiple frames on
 complex pages. Try, for example, loading [this
-chapter](invalidation.md) in our toy browser and typing into this
+chapter](invalidation.md) in our browser and typing into this
 input box:
 
 <input style="width:100%"/>
@@ -62,7 +62,7 @@ invalidation. To begin with, we need to make elements with a
 [^other-values]: Actually, in real browsers, `contenteditable` can be
     set to `true` or `false`, and `false` is useful in case you want
     to have a non-editable element inside an editable one. But I'm
-    not going to implement that in our toy browser.
+    not going to implement that in our browser.
 
 ``` {.python}
 def is_focusable(node):
@@ -146,7 +146,7 @@ class InputLayout(EmbedLayout):
             cmds.append(DrawCursor(self, self.font.measureText(text)))
 ```
 
-You can now edit the examples on this page in your toy browser---but
+You can now edit the examples on this page in your browser---but
 each key stroke will take hundreds of milliseconds, making for a
 frustrating editing experience. So let's work on speeding that up.
 
@@ -242,8 +242,6 @@ interesting applications and gives users a better, more responsive
 experience. The declarative web makes it possible for the invalidation
 algorithms to be written once and then automatically benefit everyone.
 :::
-
-
 
 Idempotence
 ===========
@@ -2605,7 +2603,7 @@ But to obtain maximum performance, the kind you would need for a real
  browser, there's an additional benefit. All these fancy
 `ProtectedFields` add a lot of overhead, mostly because they take up
 more memory and require more function calls. In fact, this chapter
-likely made your toy browser quite a bit slower on an *initial* page
+likely made your browser quite a bit slower on an *initial* page
 load.^[For me, it's about twice as slow.] Some of that can be improved
 by skipping `assert`s,[^python-skip-asserts] but it's definitely not
 ideal.

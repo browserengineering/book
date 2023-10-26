@@ -77,7 +77,7 @@ it started and extracts the substring it moved through.
     property names (which use letters and the dash), numbers (which
     use the minus sign, numbers, periods), units (the percent sign),
     and colors (which use the hash sign). Real CSS values have a more
-    complex syntax but this is enough for our toy browser.
+    complex syntax but this is enough for our browser.
 
 Parsing functions can fail. The `word` function we just wrote raises
 an exception if `i` hasn't advanced though at least one
@@ -678,7 +678,7 @@ allows more specific rules to override more general ones, so that you
 can have a browser style sheet, a site-wide style sheet, and maybe a
 special style sheet for a specific web page, all co-existing.
 
-Since our browser only has tag selectors, our cascade order just
+Since our browser only has tag selectors, cascade order just
 counts them:
 
 ``` {.python}
@@ -693,7 +693,7 @@ class DescendantSelector:
         self.priority = ancestor.priority + descendant.priority
 ```
 
-Then our cascade order for rules is just those priorities:
+Then cascade order for rules is just those priorities:
 
 ``` {.python}
 def cascade_priority(rule):

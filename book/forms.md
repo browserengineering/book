@@ -61,7 +61,7 @@ does everything it normally does.
 Implementing forms requires extending many parts of the browser, from
 implementing HTTP `POST` through new layout objects that draw `input`
 elements to handling buttons clicks. That makes it a great starting
-point for transforming our toy browser into an application platform,
+point for transforming our browser into an application platform,
 our goal for these next few chapters. Let's get started implementing
 it all!
 
@@ -940,8 +940,8 @@ your browser to `http://localhost:8000/`, where `localhost` is what
 your computer calls itself and `8000` is the port we chose earlier.
 You should see one guest book entry.
 
-By the way, while you're debugging this toy web server, it's probably
-better to use a real web browser, instead of this book's toy browser,
+By the way, while you're debugging this web server, it's probably
+better to use a real web browser, instead of this book's browser,
 to interact with it. That way you don't have to worry about browser
 bugs while you work on server bugs. But this server does support both
 real and toy browsers.

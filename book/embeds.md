@@ -5,7 +5,7 @@ prev: accessibility
 next: invalidation
 ...
 
-While our toy browser can render complex styles, visual effects, and
+While our browser can render complex styles, visual effects, and
 animations, all of those apply basically just to text. Yet web pages
 contain a variety of non-text *embedded content*, from images to other
 web pages. Support for embedded content has powerful implications for
@@ -664,7 +664,7 @@ handling three significant differences:
 * Iframes can *share a rendering event loop*.[^iframe-event-loop] In
   real browsers, [cross-origin] iframes are often "site isolated",
   meaning that the iframe has its own CPU process for [security
-  reasons][site-isolation]. In our toy browser we'll just make all
+  reasons][site-isolation]. In our browser we'll just make all
   iframes (even nested ones---yes, iframes can include iframes!) use
   the same rendering event loop.
 
@@ -1986,8 +1986,6 @@ popular [browser extensions][extensions] are probably ad blockers.
 [extensions]: https://en.wikipedia.org/wiki/Browser_extension
 [io]: https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API
 
-
-
 Isolation and timing
 ====================
 
@@ -2212,7 +2210,7 @@ parameter to [`postMessage`][postmessage]. This parameter is a string
 which indicates the frame origins that are allowed to receive the
 message.
 
-*Multi-frame focus*: in our toy browser, pressing `Tab` cycles through
+*Multi-frame focus*: in our browser, pressing `Tab` cycles through
 the elements in the focused frame. But means it's impossible to access
 focusable elements in other frames via the keyboard alone. Fix it to move
 between frames after iterating through all focusable elements in one
