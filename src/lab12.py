@@ -421,11 +421,11 @@ class Chrome:
         if intersects(x, y, self.newtab_rect):
             self.browser.new_tab_internal(URL("https://browser.engineering/"))
         elif intersects(x, y, self.back_rect):
-            task = Task(self.active_tab.go_back)
+            task = Task(self.browser.active_tab.go_back)
             self.browser.active_tab.task_runner.schedule_task(task)
         elif intersects(x, y, self.address_rect):
-            self.browser.focus = "address bar"
-            self.browser.raddress_bar = ""
+            self.focus = "address bar"
+            self.address_bar = ""
         else:
             for i, tab in enumerate(self.browser.tabs):
                 if intersects(x, y, self.tab_rect(i)):
@@ -434,6 +434,12 @@ class Chrome:
                     task = Task(active_tab.set_needs_render)
                     active_tab.task_runner.schedule_task(task)
                     break
+
+    def enter(self):
+        if self.focus == "address bar":
+            self.browser.schedule_load(URL(self.address_bar))
+            self.focus = None
+            self.browser.focus = None
 
 @wbetools.patch(Browser)
 class Browser:
@@ -560,7 +566,7 @@ class Browser:
     def handle_click(self, e):
         self.lock.acquire(blocking=True)
         if e.y < self.chrome.bottom:
-            self.focus = None
+            self.focus = "chrome"
             self.chrome.click(e.x, e.y)
             self.set_needs_raster_and_draw()
         else:
@@ -577,8 +583,8 @@ class Browser:
     def handle_key(self, char):
         self.lock.acquire(blocking=True)
         if not (0x20 <= ord(char) < 0x7f): return
-        if self.focus == "address bar":
-            self.address_bar += char
+        if self.focus == "chrome":
+            self.chrome.keypress(char)
             self.set_needs_raster_and_draw()
         elif self.focus == "content":
             task = Task(self.active_tab.keypress, char)
@@ -592,10 +598,8 @@ class Browser:
 
     def handle_enter(self):
         self.lock.acquire(blocking=True)
-        if self.focus == "address bar":
-            self.schedule_load(URL(self.address_bar))
-            self.url = self.address_bar
-            self.focus = None
+        if self.focus == "chrome":
+            self.chrome.enter()
             self.set_needs_raster_and_draw()
         self.lock.release()
 
