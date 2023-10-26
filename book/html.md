@@ -5,7 +5,7 @@ prev: text
 next: layout
 ...
 
-So far, our web browser sees web pages as a stream of open tags,
+So far, our browser sees web pages as a stream of open tags,
 close tags, and text. But HTML is actually a tree, and though the tree
 structure hasn't been important yet, it will be central to later
 features like CSS, JavaScript, and visual effects. So this chapter

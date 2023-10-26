@@ -27,7 +27,7 @@ years' programming experience. Part 4 of this book covers advanced
 topics; those chapters are longer and have more code. The final
 browser weighs in at about 3000 lines.
 
-Your web browser[^yours-ours] will "work" at every step of the way, and
+Your browser[^yours-ours] will "work" at every step of the way, and
 every chapter will build upon the last.[^jrwilcox-idea] That way, you will
 also practice growing and improving complex software. If you feel
 particularly interested in some component, please do flesh it out,

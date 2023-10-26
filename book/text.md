@@ -5,7 +5,7 @@ prev: graphics
 next: html
 ...
 
-In the last chapter, our web browser created a graphical window and
+In the last chapter, our browser created a graphical window and
 drew a grid of characters to it. That's OK for Chinese, but English
 text features characters of different widths grouped into words that
 you can't break across lines.[^1] In this chapter, we'll add those
