@@ -309,23 +309,22 @@ self.height = 1.25 * (max_ascent + max_descent)
 ```
 
 So that's `layout` for `LineLayout` and `TextLayout`. All that's left
-is painting. For `LineLayout` we just recurse:
+is painting. For `LineLayout` there is nothing to paint:
 
 ``` {.python}
 class LineLayout:
-    def paint(self, display_list):
-        for child in self.children:
-            child.paint(display_list)
+    def paint(self):
+        return []
+
 ```
 
 And each `TextLayout` creates a single `DrawText` call:
 
 ``` {.python}
 class TextLayout:
-    def paint(self, display_list):
+    def paint(self):
         color = self.node.style["color"]
-        display_list.append(
-            DrawText(self.x, self.y, self.word, self.font, color))
+        return [DrawText(self.x, self.y, self.word, self.font, color)]
 ```
 
 Now we don't need a `display_list` field in `BlockLayout`, and we can
@@ -729,7 +728,6 @@ start by first painting the new-tab button:
 ``` {.python}
 class Chrome:
     def paint(self):
-        cmds = []
         cmds.append(DrawOutline(
             self.newtab_rect[0], self.newtab_rect[1],
             self.newtab_rect[2], self.newtab_rect[3],

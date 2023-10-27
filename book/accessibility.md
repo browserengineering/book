@@ -1062,20 +1062,15 @@ class Tab:
             node.is_focused = True
 ```
 
-To draw an outline, we'll use `DrawOutline`:
+To draw an outline, we'll use `DrawOutline`. This will have to happen in
+`paint_effects`, because it paints on top of the painted subtree.
 
 ``` {.python}
 class InputLayout:
-	def paint(self, display_list):
-		# ...
-        if self.node.is_focused and self.node.tag == "input":
-            cx = self.x + self.font.measureText(text)
-            cmds.append(DrawLine(cx, self.y, cx, self.y + self.height,
-                                 "black", 1))
-
-        cmds = paint_visual_effects(self.node, cmds, rect)
-        paint_outline(self.node, cmds, rect, self.zoom)
-        display_list.extend(cmds)
+	def paint_effects(self, cmds):
+        cmds = paint_visual_effects(self.node, cmds, self.self_rect())
+        paint_outline(self.node, cmds, self.self_rect(), self.zoom)
+        return cmds
 ```
 
 I also changed the cursor drawing to only happen if the node is
@@ -1089,21 +1084,22 @@ code. Moreover, those `TextLayout`s could be split across several
 lines, so we might want to draw more than one focus ring. To work
 around this, let's draw the focus ring in `LineLayout`. Each
 `LineLayout` finds all of its child `TextLayout`s that are focused,
-and draws a rectangle around them all:
+and draws a rectangle around them all. This will need to happen in
+`paint_effects` because it paints on top of the painted subtree.
 
 ``` {.python replace=child.node.parent.is_focused/parse_outline(outline_str)}
 class LineLayout:
-    def paint(self, display_list):
-        # ...
+    def paint_effects(self, cmds):
         outline_rect = skia.Rect.MakeEmpty()
         outline_node = None
         for child in self.children:
             if child.node.parent.is_focused:
-                outline_rect.join(child.rect())
+                outline_rect.join(child.self_rect())
                 outline_node = child.node.parent
         if outline_node:
             paint_outline(
-                outline_node, display_list, outline_rect, self.zoom)
+                outline_node, cmds, outline_rect, self.zoom)
+        return cmds
 ```
 
 You should also add a `paint_outline` call to `BlockLayout`, since
@@ -1357,11 +1353,12 @@ to the browser style sheet above:
 
 ``` {.python}
 class LineLayout:
-    def paint(self, display_list):
+    def paint_effects(self, cmds):
+        # ...
         for child in self.children:
             outline_str = child.node.parent.style.get("outline")
             if parse_outline(outline_str):
-                outline_rect.join(child.rect())
+                outline_rect.join(child.self_rect())
                 outline_node = child.node.parent
 ```
 

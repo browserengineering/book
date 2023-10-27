@@ -28,6 +28,7 @@ from lab8 import Text, Element, INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, parse_color, parse_blend_mode, linespace
+from lab11 import paint_tree
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
 from lab12 import Task, REFRESH_RATE_SEC, clamp_scroll, Chrome
 
@@ -495,7 +496,16 @@ class BlockLayout:
         font = get_font(size, weight, size)
         self.cursor_x += w + font.measureText(" ")
 
-    def paint(self, display_list):
+    def is_atomic(self):
+        return not isinstance(self.node, Text) and \
+            (self.node.tag == "input" or self.node.tag == "button")
+
+    def self_rect(self):
+        return skia.Rect.MakeLTRB(
+            self.x, self.y,
+            self.x + self.width, self.y + self.height)
+
+    def paint(self):
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
@@ -505,21 +515,18 @@ class BlockLayout:
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         
-        is_atomic = not isinstance(self.node, Text) and \
-            (self.node.tag == "input" or self.node.tag == "button")
-
-        if not is_atomic:
+        if not self.is_atomic():
             if bgcolor != "transparent":
                 radius = float(
                     self.node.style.get("border-radius", "0px")[:-2])
-                cmds.append(DrawRRect(rect, radius, bgcolor))
+                cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
 
-        for child in self.children:
-            child.paint(cmds)
+        return cmds
 
-        if not is_atomic:
-            cmds = paint_visual_effects(self.node, cmds, rect)
-        display_list.extend(cmds)
+    def paint_effects(self, cmds):
+        if not self.is_atomic():
+            cmds = paint_visual_effects(self.node, cmds, self.self_rect())
+        return cmds
 
     def __repr__(self):
         return "BlockLayout[{}](x={}, y={}, width={}, height={}, node={})".format(
@@ -542,8 +549,11 @@ class DocumentLayout:
         child.layout()
         self.height = child.height
 
-    def paint(self, display_list):
-        self.children[0].paint(display_list)
+    def paint(self):
+        return []
+
+    def paint_effects(self, cmds):
+        return cmds
 
     def __repr__(self):
         return "DocumentLayout()"
@@ -584,9 +594,11 @@ class LineLayout:
                            for word in self.children])
         self.height = 1.25 * (max_ascent + max_descent)
 
-    def paint(self, display_list):
-        for child in self.children:
-            child.paint(display_list)
+    def paint(self):
+        return []
+
+    def paint_effects(self, cmds):
+        return cmds
 
     def __repr__(self):
         return "LineLayout(x={}, y={}, width={}, height={}, node={})".format(
@@ -622,10 +634,15 @@ class TextLayout:
 
         self.height = linespace(self.font)
 
-    def paint(self, display_list):
+    def paint(self):
+        cmds = []
         color = self.node.style["color"]
-        display_list.append(
+        cmds.append(
             DrawText(self.x, self.y, self.word, self.font, color))
+        return cmds
+
+    def paint_effects(self, cmds):
+        return cmds
     
     def __repr__(self):
         return ("TextLayout(x={}, y={}, width={}, height={}, " +
@@ -659,18 +676,19 @@ class InputLayout:
         else:
             self.x = self.parent.x
 
-    def paint(self, display_list):
-        cmds = []
-
-        rect = skia.Rect.MakeLTRB(
+    def self_rect(self):
+        return skia.Rect.MakeLTRB(
             self.x, self.y, self.x + self.width,
             self.y + self.height)
+
+    def paint(self):
+        cmds = []
 
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         if bgcolor != "transparent":
             radius = float(self.node.style.get("border-radius", "0px")[:-2])
-            cmds.append(DrawRRect(rect, radius, bgcolor))
+            cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
 
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")
@@ -691,8 +709,10 @@ class InputLayout:
             cmds.append(DrawLine(
                 cx, self.y, cx, self.y + self.height, "black", 1))
 
-        cmds = paint_visual_effects(self.node, cmds, rect)
-        display_list.extend(cmds)
+        return cmds
+
+    def paint_effects(self, cmds):
+        return paint_visual_effects(self.node, cmds, self.self_rect())
 
     def __repr__(self):
         if self.node.tag == "input":
@@ -727,7 +747,7 @@ def paint_visual_effects(node, cmds, rect):
     transform = Transform(translation, rect, node, [save_layer])
 
     node.save_layer = save_layer
-
+ 
     return [transform]
 
 SETTIMEOUT_CODE = "__runSetTimeout(dukpy.handle)"
@@ -1225,7 +1245,7 @@ class Tab:
         
         if self.needs_paint:
             self.display_list = []
-            self.document.paint(self.display_list)
+            paint_tree(self.document, self.display_list)
             self.needs_paint = False
 
         self.browser.measure.stop('render')

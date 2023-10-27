@@ -199,6 +199,14 @@ class ClipRRect:
         if self.should_clip:
             canvas.restore()
 
+def paint_tree(layout_object, display_list):
+    cmds = layout_object.paint()
+    for child in layout_object.children:
+        paint_tree(child, cmds)
+
+    cmds = layout_object.paint_effects(cmds)
+    display_list.extend(cmds)
+
 @wbetools.patch(BlockLayout)
 class BlockLayout:
     def word(self, node, word):
@@ -229,31 +237,33 @@ class BlockLayout:
         font = get_font(size, weight, style)
         self.cursor_x += w + font.measureText(" ")
 
-    def paint(self, display_list):
-        cmds = []
+    def is_atomic(self):
+        return not isinstance(self.node, Text) and \
+            (self.node.tag == "input" or self.node.tag == "button")
 
-        rect = skia.Rect.MakeLTRB(
+    def self_rect(self):
+        return skia.Rect.MakeLTRB(
             self.x, self.y,
             self.x + self.width, self.y + self.height)
+
+    def paint(self):
+        cmds = []
 
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         
-        is_atomic = not isinstance(self.node, Text) and \
-            (self.node.tag == "input" or self.node.tag == "button")
-
-        if not is_atomic:
+        if not self.is_atomic():
             if bgcolor != "transparent":
                 radius = float(
                     self.node.style.get("border-radius", "0px")[:-2])
-                cmds.append(DrawRRect(rect, radius, bgcolor))
+                cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
 
-        for child in self.children:
-            child.paint(cmds)
+        return cmds
 
-        if not is_atomic:
-            cmds = paint_visual_effects(self.node, cmds, rect)
-        display_list.extend(cmds)
+    def paint_effects(self, cmds):
+        if not self.is_atomic():
+            cmds = paint_visual_effects(self.node, cmds, self.self_rect())
+        return cmds
 
 @wbetools.patch(LineLayout)
 class LineLayout:
@@ -282,6 +292,12 @@ class LineLayout:
                            for word in self.children])
         self.height = 1.25 * (max_ascent + max_descent)
 
+    def paint(self):
+        return []
+    
+    def paint_effects(self, cmds):
+        return cmds
+
 @wbetools.patch(TextLayout)
 class TextLayout:
     def layout(self):
@@ -301,6 +317,16 @@ class TextLayout:
 
         self.height = linespace(self.font)
 
+    def paint(self):
+        cmds = []
+        color = self.node.style["color"]
+        cmds.append(
+            DrawText(self.x, self.y, self.word, self.font, color))
+        return cmds
+
+    def paint_effects(self, cmds):
+        return cmds
+
 @wbetools.patch(InputLayout)
 class InputLayout:
     def layout(self):
@@ -318,18 +344,19 @@ class InputLayout:
         else:
             self.x = self.parent.x
 
-    def paint(self, display_list):
-        cmds = []
-
+    def self_rect(self):
         rect = skia.Rect.MakeLTRB(
             self.x, self.y, self.x + self.width,
             self.y + self.height)
+
+    def paint(self):
+        cmds = []
 
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         if bgcolor != "transparent":
             radius = float(self.node.style.get("border-radius", "0px")[:-2])
-            cmds.append(DrawRRect(rect, radius, bgcolor))
+            cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
 
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")
@@ -350,8 +377,10 @@ class InputLayout:
             cmds.append(DrawLine(
                 cx, self.y, cx, self.y + self.height, "black", 1))
 
-        cmds = paint_visual_effects(self.node, cmds, rect)
-        display_list.extend(cmds)
+        return cmds
+
+    def paint_effects(self, cmds):
+        return paint_visual_effects(self.node, cmds, self.self_rect())
 
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
@@ -376,6 +405,14 @@ def paint_visual_effects(node, cmds, rect):
         ], should_save=needs_blend_isolation),
     ]
 
+@wbetools.patch(DocumentLayout)
+class DocumentLayout:
+    def paint(self):
+        return []
+
+    def paint_effects(self, cmds):
+        return cmds
+
 @wbetools.patch(Tab)
 class Tab:
     def render(self):
@@ -383,7 +420,7 @@ class Tab:
         self.document = DocumentLayout(self.nodes)
         self.document.layout()
         self.display_list = []
-        self.document.paint(self.display_list)
+        paint_tree(self.document, self.display_list)
 
     def raster(self, canvas):
         for cmd in self.display_list:

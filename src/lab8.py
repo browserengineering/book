@@ -13,7 +13,7 @@ import urllib.parse
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
-from lab5 import BLOCK_ELEMENTS, DrawRect, DocumentLayout
+from lab5 import BLOCK_ELEMENTS, DrawRect, DocumentLayout, paint_tree
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import DrawText, URL, tree_to_list
@@ -112,13 +112,14 @@ class InputLayout:
 
         self.height = self.font.metrics("linespace")
 
-    def paint(self, display_list):
+    def paint(self):
+        cmds = []
         bgcolor = self.node.style.get("background-color",
                                       "transparent")
         if bgcolor != "transparent":
             x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
-            display_list.append(rect)
+            cmds.append(rect)
 
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")
@@ -131,13 +132,14 @@ class InputLayout:
                 text = ""
 
         color = self.node.style["color"]
-        display_list.append(
+        cmds.append(
             DrawText(self.x, self.y, text, self.font, color))
 
         if self.node.is_focused:
             cx = self.x + self.font.measure(text)
-            display_list.append(DrawLine(
+            cmds.append(DrawLine(
                 cx, self.y, cx, self.y + self.height, "black", 1))
+        return cmds
 
     def __repr__(self):
         if self.node.tag == "input":
@@ -185,7 +187,8 @@ class BlockLayout:
         font = self.font(node)
         self.cursor_x += w + font.measure(" ")
 
-    def paint(self, display_list):
+    def paint(self):
+        cmds = []
         bgcolor = self.node.style.get("background-color",
                                       "transparent")
 
@@ -196,10 +199,8 @@ class BlockLayout:
             if bgcolor != "transparent":
                 x2, y2 = self.x + self.width, self.y + self.height
                 rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
-                display_list.append(rect)
-
-        for child in self.children:
-            child.paint(display_list)
+                cmds.append(rect)
+        return cmds
 
     def __repr__(self):
         return "BlockLayout[{}](x={}, y={}, width={}, height={}, node={})".format(
@@ -243,7 +244,7 @@ class Tab:
         self.document = DocumentLayout(self.nodes)
         self.document.layout()
         self.display_list = []
-        self.document.paint(self.display_list)
+        paint_tree(self.document, self.display_list)
 
     def draw(self, canvas, offset):
         for cmd in self.display_list:

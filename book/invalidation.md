@@ -113,7 +113,7 @@ will go. Let's do that in `BlockLayout`:
 
 ``` {.python replace=.width/.width.get()}
 class BlockLayout:
-    def paint(self, display_list):
+    def paint(self):
         # ...
         if self.node.is_focused \
             and "contenteditable" in self.node.attributes:
@@ -141,7 +141,7 @@ We might as well also use this wrapper in `InputLayout`:
 
 ``` {.python replace=self.font/self.font.get()}
 class InputLayout(EmbedLayout):
-    def paint(self, display_list):
+    def paint(self):
         if self.node.is_focused and self.node.tag == "input":
             cmds.append(DrawCursor(self, self.font.measureText(text)))
 ```
@@ -2400,13 +2400,13 @@ not the layout object has a previous sibling:
 ``` {.python}
 class BlockLayout:
     def __init__(self, node, parent, previous, frame):
-    # ...
-    if self.previous:
-        y_dependencies = [self.previous.y, self.previous.height]
-    else:
-        y_dependencies = [self.parent.y]
-    self.y = ProtectedField(self, "y", self.parent, y_dependencies)
-    # ...
+        # ...
+        if self.previous:
+            y_dependencies = [self.previous.y, self.previous.height]
+        else:
+            y_dependencies = [self.parent.y]
+        self.y = ProtectedField(self, "y", self.parent, y_dependencies)
+        # ...
 ```
 
 We can't freeze `height` for `BlockLayout`, for the same reason as

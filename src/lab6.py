@@ -13,7 +13,7 @@ from lab1 import URL
 from lab2 import WIDTH, HEIGHT
 from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
-from lab5 import BLOCK_ELEMENTS, DrawRect, DrawText
+from lab5 import BLOCK_ELEMENTS, DrawRect, DrawText, paint_tree
 from lab5 import BlockLayout, DocumentLayout, Browser
 import wbetools
 
@@ -233,20 +233,19 @@ class BlockLayout:
         max_descent = max([metric["descent"] for metric in metrics])
         self.cursor_y = baseline + 1.25 * max_descent
 
-    def paint(self, display_list):
+    def paint(self):
+        cmds = []
         bgcolor = self.node.style.get("background-color",
                                       "transparent")
         if bgcolor != "transparent":
             x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
-            display_list.append(rect)
+            cmds.append(rect)
 
         for x, y, word, font, color in self.display_list:
-            display_list.append(DrawText(self.x + x, self.y + y,
+            cmds.append(DrawText(self.x + x, self.y + y,
                                          word, font, color))
-
-        for child in self.children:
-            child.paint(display_list)
+        return cmds
 
     def __repr__(self):
         return "BlockLayout[{}](x={}, y={}, width={}, height={})".format(
@@ -315,7 +314,7 @@ class Browser:
         self.document = DocumentLayout(self.nodes)
         self.document.layout()
         self.display_list = []
-        self.document.paint(self.display_list)
+        paint_tree(self.document, self.display_list)
         self.draw()
 
 if __name__ == "__main__":

@@ -35,7 +35,7 @@ from lab7 import intersects
 from lab8 import INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL
-from lab11 import FONTS, get_font, parse_blend_mode, linespace
+from lab11 import FONTS, get_font, parse_blend_mode, linespace, paint_tree
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
 from lab12 import Task, REFRESH_RATE_SEC
 from lab13 import JSContext, diff_styles, clamp_scroll, add_parent_pointers
@@ -213,32 +213,36 @@ class BlockLayout:
         font = get_font(size, weight, size)
         self.cursor_x += w + font.measureText(" ")
 
-    def paint(self, display_list):
-        cmds = []
+    def is_atomic(self):
+        return not isinstance(self.node, Text) and \
+            (self.node.tag == "input" or self.node.tag == "button")
 
-        rect = skia.Rect.MakeLTRB(
-            self.x, self.y, self.x + self.width,
-            self.y + self.height)
+    def self_rect(self):
+        return skia.Rect.MakeLTRB(
+            self.x, self.y,
+            self.x + self.width, self.y + self.height)
+
+    def paint(self):
+        cmds = []
 
         is_atomic = not isinstance(self.node, Text) and \
             (self.node.tag == "input" or self.node.tag == "button")
 
-        if not is_atomic:
+        if not self.is_atomic():
             bgcolor = self.node.style.get("background-color",
                                      "transparent")
             if bgcolor != "transparent":
                 radius = device_px(
                     float(self.node.style.get("border-radius", "0px")[:-2]),
                         self.zoom)
-                cmds.append(DrawRRect(rect, radius, bgcolor))
- 
-        for child in self.children:
-            child.paint(cmds)
+                cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
+        return cmds
 
-        if not is_atomic:
-            cmds = paint_visual_effects(self.node, cmds, rect)
+    def paint_effects(self, cmds):
+        if not self.is_atomic():
+            cmds = paint_visual_effects(self.node, cmds, self.self_rect())
 
-        display_list.extend(cmds)
+        return cmds
 
     def __repr__(self):
         return "BlockLayout[{}](x={}, y={}, width={}, height={}, node={})".format(
@@ -281,21 +285,23 @@ class LineLayout:
                            for word in self.children])
         self.height = 1.25 * (max_ascent + max_descent)
 
-    def paint(self, display_list):
-        for child in self.children:
-            child.paint(display_list)
+    def paint(self):
+        return []
 
+    def paint_effects(self, cmds):
         outline_rect = skia.Rect.MakeEmpty()
         outline_node = None
         for child in self.children:
             outline_str = child.node.parent.style.get("outline")
             if parse_outline(outline_str):
-                outline_rect.join(child.rect())
+                outline_rect.join(child.self_rect())
                 outline_node = child.node.parent
 
         if outline_node:
             paint_outline(
-                outline_node, display_list, outline_rect, self.zoom)
+                outline_node, cmds, outline_rect, self.zoom)
+
+        return cmds
 
     def role(self):
         return "none"
@@ -376,8 +382,11 @@ class DocumentLayout:
         child.layout()
         self.height = child.height
 
-    def paint(self, display_list):
-        self.children[0].paint(display_list)
+    def paint(self):
+        return []
+
+    def paint_effects(self, cmds):
+        return cmds
 
     def __repr__(self):
         return "DocumentLayout()"
@@ -413,15 +422,20 @@ class TextLayout:
 
         self.height = linespace(self.font)
 
-    def paint(self, display_list):
-        color = self.node.style["color"]
-        display_list.append(
-            DrawText(self.x, self.y, self.word, self.font, color))
-
-    def rect(self):
+    def self_rect(self):
         return skia.Rect.MakeLTRB(
             self.x, self.y, self.x + self.width,
             self.y + self.height)
+
+    def paint(self):
+        cmds = []
+        color = self.node.style["color"]
+        cmds.append(
+            DrawText(self.x, self.y, self.word, self.font, color))
+        return cmds
+
+    def paint_effects(self, cmds):
+        return cmds
     
     def __repr__(self):
         return ("TextLayout(x={}, y={}, width={}, height={}, " +
@@ -457,20 +471,20 @@ class InputLayout:
         else:
             self.x = self.parent.x
 
-    def paint(self, display_list):
-        cmds = []
-
-        rect = skia.Rect.MakeLTRB(
+    def self_rect(self):
+        return skia.Rect.MakeLTRB(
             self.x, self.y, self.x + self.width,
             self.y + self.height)
 
+    def paint(self):
+        cmds = []
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         if bgcolor != "transparent":
             radius = device_px(
                 float(self.node.style.get("border-radius", "0px")[:-2]),
                 self.zoom)
-            cmds.append(DrawRRect(rect, radius, bgcolor))
+            cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
 
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")
@@ -490,10 +504,12 @@ class InputLayout:
             cx = self.x + self.font.measureText(text)
             cmds.append(DrawLine(cx, self.y, cx, self.y + self.height,
                                  "black", 1))
+        return cmds
 
-        cmds = paint_visual_effects(self.node, cmds, rect)
-        paint_outline(self.node, cmds, rect, self.zoom)
-        display_list.extend(cmds)
+    def paint_effects(self, cmds):
+        cmds = paint_visual_effects(self.node, cmds, self.self_rect())
+        paint_outline(self.node, cmds, self.self_rect(), self.zoom)
+        return cmds 
 
     def __repr__(self):
         return "InputLayout(x={}, y={}, width={}, height={})".format(
@@ -1081,7 +1097,7 @@ class Tab:
 
         if self.needs_paint:
             self.display_list = []
-            self.document.paint(self.display_list)
+            paint_tree(self.document, self.display_list)
             self.needs_paint = False
 
         self.browser.measure.stop('render')
