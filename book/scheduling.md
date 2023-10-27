@@ -540,10 +540,15 @@ to render the page, and as you may recall from [Chapter
 exactly as fast as the display hardware can refresh. On most
 computers, this is 60 times per second, or 16ms per frame.
 
-Let's establish our ideal refresh rate as 60 frames per second:
+Let's establish 16ms our ideal refresh rate:[^why-16ms]
+
+[^why-16ms]: Of course, 60 times per second is actually 16.66666...
+    milliseconds. But it's a toy browser, and having a more exact
+    value also makes tests easier to write.
+
 
 ``` {.python}
-REFRESH_RATE_SEC = 1.0 / 60.0 # Roughly 16ms
+REFRESH_RATE_SEC = .016
 ```
 
 Now, drawing a frame\index{rendering pipeline} is split between the

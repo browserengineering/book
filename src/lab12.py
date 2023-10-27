@@ -408,7 +408,7 @@ class TaskRunner:
     def handle_quit(self):
         pass
 
-REFRESH_RATE_SEC = 0.016 # 16ms
+REFRESH_RATE_SEC = .016
 
 def clamp_scroll(scroll, document_height, tab_height):
     return max(0, min(
