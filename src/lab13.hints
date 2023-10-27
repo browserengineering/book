@@ -32,5 +32,6 @@
  {"code": "node in self.composited_updates", "type": "list"},
  {"code": "old_transitions", "type": "dict"},
  {"code": "child.tag in BLOCK_ELEMENTS", "type": "list"},
- {"code": "rect.outset(1, 1)", "js": "rect.outset(1, 1)"}
+ {"code": "rect.outset(1, 1)", "js": "rect.outset(1, 1)"},
+ {"code": "id(node)", "js": "node"}
 ]
