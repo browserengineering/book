@@ -164,10 +164,6 @@ class JSContext:
     def requestAnimationFrame(self):
         self.tab.browser.set_needs_animation_frame(self.tab)
 
-def clamp_scroll(scroll, document_height, tab_height):
-    return max(0, min(
-        scroll, document_height - tab_height))
-
 @wbetools.patch(Tab)
 class Tab:
     def __init__(self, browser, tab_height):
@@ -317,7 +313,6 @@ class Task:
     def __init__(self, task_code, *args):
         self.task_code = task_code
         self.args = args
-        self.__name__ = "task"
 
     def run(self):
         self.task_code(*self.args)
@@ -415,31 +410,9 @@ class TaskRunner:
 
 REFRESH_RATE_SEC = 0.016 # 16ms
 
-@wbetools.patch(Chrome)
-class Chrome:
-    def click(self, x, y):
-        if intersects(x, y, self.newtab_rect):
-            self.browser.new_tab_internal(URL("https://browser.engineering/"))
-        elif intersects(x, y, self.back_rect):
-            task = Task(self.browser.active_tab.go_back)
-            self.browser.active_tab.task_runner.schedule_task(task)
-        elif intersects(x, y, self.address_rect):
-            self.focus = "address bar"
-            self.address_bar = ""
-        else:
-            for i, tab in enumerate(self.browser.tabs):
-                if intersects(x, y, self.tab_rect(i)):
-                    self.browser.set_active_tab(tab)
-                    active_tab = self.browser.active_tab
-                    task = Task(active_tab.set_needs_render)
-                    active_tab.task_runner.schedule_task(task)
-                    break
-
-    def enter(self):
-        if self.focus == "address bar":
-            self.browser.schedule_load(URL(self.address_bar))
-            self.focus = None
-            self.browser.focus = None
+def clamp_scroll(scroll, document_height, tab_height):
+    return max(0, min(
+        scroll, document_height - tab_height))
 
 @wbetools.patch(Browser)
 class Browser:
@@ -628,8 +601,35 @@ class Browser:
 
     def handle_quit(self):
         self.measure.finish()
-        self.active_tab.task_runner.set_needs_quit()
+        for tab in self.tabs:
+            tab.task_runner.set_needs_quit()
         sdl2.SDL_DestroyWindow(self.sdl_window)
+
+@wbetools.patch(Chrome)
+class Chrome:
+    def click(self, x, y):
+        if intersects(x, y, self.newtab_rect):
+            self.browser.new_tab_internal(URL("https://browser.engineering/"))
+        elif intersects(x, y, self.back_rect):
+            task = Task(self.browser.active_tab.go_back)
+            self.browser.active_tab.task_runner.schedule_task(task)
+        elif intersects(x, y, self.address_rect):
+            self.focus = "address bar"
+            self.address_bar = ""
+        else:
+            for i, tab in enumerate(self.browser.tabs):
+                if intersects(x, y, self.tab_rect(i)):
+                    self.browser.set_active_tab(tab)
+                    active_tab = self.browser.active_tab
+                    task = Task(active_tab.set_needs_render)
+                    active_tab.task_runner.schedule_task(task)
+                    break
+
+    def enter(self):
+        if self.focus == "address bar":
+            self.browser.schedule_load(URL(self.address_bar))
+            self.focus = None
+            self.browser.focus = None
 
 if __name__ == "__main__":
     import sys
