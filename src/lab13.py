@@ -59,11 +59,11 @@ class DrawCommand:
 
 class VisualEffect:
     def __init__(self, rect, children, node=None):
-        self.rect = rect.makeOffset(0.0, 0.0)
         self.children = children
+        self.rect = rect.makeOffset(0.0, 0.0)
         for child in self.children:
             self.rect.join(child.rect)
-        self.node = node
+        self.node = id(node)
         self.needs_compositing = any([
             child.needs_compositing for child in self.children
             if isinstance(child, VisualEffect)
@@ -723,11 +723,9 @@ def paint_visual_effects(node, cmds, rect):
             ClipRRect(rect, clip_radius, cmds,
                 should_clip=needs_clip),
         ], should_save=needs_blend_isolation)
-
-    transform = Transform(translation, rect, node, [save_layer])
-
     node.save_layer = save_layer
 
+    transform = Transform(translation, rect, node, [save_layer])
     return [transform]
 
 SETTIMEOUT_CODE = "__runSetTimeout(dukpy.handle)"
@@ -1197,7 +1195,7 @@ class Tab:
         composited_updates = {}
         if not needs_composite:
             for node in self.composited_updates:
-                composited_updates[node] = node.save_layer
+                composited_updates[id(node)] = node.save_layer
         self.composited_updates = []
 
         commit_data = CommitData(
@@ -1446,8 +1444,8 @@ class Browser:
                 tree_to_list(cmd, all_commands)
         non_composited_commands = [cmd
             for cmd in all_commands
-            if isinstance(cmd, DrawCommand) or not cmd.needs_compositing
-            if not cmd.parent or cmd.parent.needs_compositing
+            if (isinstance(cmd, DrawCommand) or not cmd.needs_compositing)
+            and (not cmd.parent or cmd.parent.needs_compositing)
         ]
         for cmd in non_composited_commands:
             did_break = False
@@ -1456,9 +1454,8 @@ class Browser:
                     layer.add(cmd)
                     did_break = True
                     break
-                elif skia.Rect.Intersects(
-                    layer.absolute_bounds(),
-                    absolute_bounds(cmd)):
+                elif layer.absolute_bounds().intersects(
+                        absolute_bounds(cmd)):
                     layer = CompositedLayer(self.skia_context, cmd)
                     self.composited_layers.append(layer)
                     did_break = True

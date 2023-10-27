@@ -2688,6 +2688,16 @@ handle invalidation properly.
 animations of `opacity` or `transform` shouldn't trigger layout, while
 animations of other properties should.
 
+*Width animations*: Implement the CSS `width` and `height` properties;
+when `width` is set to some number of pixels on an element, the
+element should be that many pixels wide, regardless of how its width
+would normally be computed; the same goes for `height`. Make them
+animatable; you'll need a variant of `NumericAnimation` that parses
+and produces pixel values (the "px" suffix in the string). Check that
+animating width in your browser changes line breaks. [This
+example](examples/example13-width-transition.html) should work once
+you've implemented width animations.
+
 *Transferring children*: Implement the [`replaceChildren` DOM
 method][replacechildren-mdn] when called with multiple arguments. Here
 the arguments are elements from elsewhere in the
