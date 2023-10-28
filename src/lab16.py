@@ -22,7 +22,6 @@ from lab5 import BLOCK_ELEMENTS
 from lab14 import Text, Element
 from lab6 import TagSelector, DescendantSelector
 from lab6 import tree_to_list, INHERITED_PROPERTIES
-from lab7 import Rect
 from lab8 import INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR
@@ -83,8 +82,7 @@ def paint_outline(node, cmds, rect, zoom):
     outline = parse_outline(node.style["outline"].get())
     if not outline: return
     thickness, color = outline
-    cmds.append(DrawOutline(Rect(
-        rect.left(), rect.top(), rect.right(), rect.bottom()),
+    cmds.append(DrawOutline(rect,
         color, device_px(thickness, zoom)))
 
 @wbetools.patch(font)

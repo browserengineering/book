@@ -105,8 +105,7 @@ def paint_outline(node, cmds, rect, zoom):
     outline = parse_outline(node.style.get("outline"))
     if not outline: return
     thickness, color = outline
-    cmds.append(DrawOutline(Rect(
-        rect.left(), rect.top(), rect.right(), rect.bottom()),
+    cmds.append(DrawOutline(rect,
         color, device_px(thickness, zoom)))
 
 class BlockLayout:
