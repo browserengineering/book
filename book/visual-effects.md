@@ -335,7 +335,7 @@ class DrawRect:
 
 Speaking of rects, let's now get rid of the old `Rect` class that was
 introduced in [Chapter 7](chrome.md) in favor of `skia.Rect`. Everywhere
-that a `Rect` was constructed, instead put `skia.rect.MakeLTRB`, and
+that a `Rect` was constructed, instead put `skia.Rect.MakeLTRB`, and
 everywhere that the sides of the rectangle (e.g. `left`) where checked,
 replace them with the corresponding function on a Skia `Rect` (e.g. `left()`).
 
