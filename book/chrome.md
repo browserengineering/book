@@ -934,7 +934,7 @@ class Browser:
 Note that we need to subtract out the the chrome size when clicking on
 tab contents. As for clicks on the browser chrome, inside `Chrome` we
 need to figure out what the user clicked on. To make that easier,
-let's add a quick method to test whether a point is cotained in a
+let's add a quick method to test whether a point is contained in a
 `Rect`:
 
 ``` {.python}
