@@ -206,18 +206,15 @@ class DrawLine:
             self.color, self.thickness)
 
 class DrawOutline:
-    def __init__(self, x1, y1, x2, y2, color, thickness):
-        self.top = y1
-        self.left = x1
-        self.bottom = y2
-        self.right = x2
+    def __init__(self, rect, color, thickness):
+        self.rect = rect
         self.color = color
         self.thickness = thickness
 
     def execute(self, scroll, canvas):
         canvas.create_rectangle(
-            self.left, self.top - scroll,
-            self.right, self.bottom - scroll,
+            self.rect.left, self.rect.top - scroll,
+            self.rect.right, self.rect.bottom - scroll,
             width=self.thickness,
             outline=self.color,
         )
@@ -296,9 +293,16 @@ class Tab:
     def __repr__(self):
         return "Tab(history={})".format(self.history)
 
-def intersects(x, y, rect):
-    (left, top, right, bottom) = rect
-    return x >= left and x < right and y >= top and y < bottom
+class Rect:
+    def __init__(self, left, top, right, bottom):
+        self.left = left
+        self.top = top
+        self.right = right
+        self.bottom = bottom
+
+    def intersects(self, x, y):
+        return x >= self.left and x < self.right \
+            and y >= self.top and y < self.bottom
 
 class Chrome:
     def __init__(self, browser):
@@ -314,40 +318,36 @@ class Chrome:
         self.tabbar_bottom = self.font_height + 2*self.padding
 
         plus_width = self.font.measure("+") + 2*self.padding
-        self.newtab_rect = (
+        self.newtab_rect = Rect(
            self.padding, self.padding,
            self.padding + plus_width,
-           self.padding + self.font_height
-        )
+           self.padding + self.font_height)
 
         self.urlbar_top = self.tabbar_bottom
         self.urlbar_bottom = self.urlbar_top + \
             self.font_height + 2*self.padding
 
         back_width = self.font.measure("<") + 2*self.padding
-        self.back_rect = (
+        self.back_rect = Rect(
             self.padding,
             self.urlbar_top + self.padding,
             self.padding + back_width,
-            self.urlbar_bottom - self.padding,
-        )
+            self.urlbar_bottom - self.padding)
 
-        self.address_rect = (
-            self.back_rect[2] + self.padding,
+        self.address_rect = Rect(
+            self.back_rect.top + self.padding,
             self.urlbar_top + self.padding,
             WIDTH - self.padding,
-            self.urlbar_bottom - self.padding,
-        )
+            self.urlbar_bottom - self.padding)
 
         self.bottom = self.urlbar_bottom
 
     def tab_rect(self, i):
-        tabs_start = self.newtab_rect[3] + self.padding
+        tabs_start = self.newtab_rect.right + self.padding
         tab_width = self.font.measure("Tab X") + 2*self.padding
-        return (
+        return Rect(
             tabs_start + tab_width * i, self.tabbar_top,
-            tabs_start + tab_width * (i + 1), self.tabbar_bottom
-        )
+            tabs_start + tab_width * (i + 1), self.tabbar_bottom)
 
     def paint(self):
         cmds = []
@@ -358,81 +358,72 @@ class Chrome:
             0, self.bottom, WIDTH,
             self.bottom, "black", 1))
 
-        cmds.append(DrawOutline(
-            self.newtab_rect[0], self.newtab_rect[1],
-            self.newtab_rect[2], self.newtab_rect[3],
-            "black", 1))
+        cmds.append(DrawOutline(self.newtab_rect, "black", 1))
         cmds.append(DrawText(
-            self.newtab_rect[0] + self.padding,
-            self.newtab_rect[1],
+            self.newtab_rect.left + self.padding,
+            self.newtab_rect.top,
             "+", self.font, "black"))
 
         for i, tab in enumerate(self.browser.tabs):
             bounds = self.tab_rect(i)
             cmds.append(DrawLine(
-                bounds[0], 0, bounds[0], bounds[3],
+                bounds.left, 0, bounds.left, bounds.bottom,
                 "black", 1))
             cmds.append(DrawLine(
-                bounds[2], 0, bounds[2], bounds[3],
+                bounds.right, 0, bounds.right, bounds.bottom,
                 "black", 1))
             cmds.append(DrawText(
-                bounds[0] + self.padding, bounds[1] + self.padding,
+                bounds.left + self.padding, bounds.top + self.padding,
                 "Tab {}".format(i), self.font, "black"))
 
             if tab == self.browser.active_tab:
                 cmds.append(DrawLine(
-                    0, bounds[3], bounds[0], bounds[3],
+                    0, bounds.bottom, bounds.left, bounds.bottom,
                     "black", 1))
                 cmds.append(DrawLine(
-                    bounds[2], bounds[3], WIDTH, bounds[3],
+                    bounds.right, bounds.bottom, WIDTH, bounds.bottom,
                     "black", 1))
 
-        cmds.append(DrawOutline(
-            self.back_rect[0], self.back_rect[1],
-            self.back_rect[2], self.back_rect[3],
-            "black", 1))
+        cmds.append(DrawOutline(self.back_rect, "black", 1))
         cmds.append(DrawText(
-            self.back_rect[0] + self.padding,
-            self.back_rect[1],
+            self.back_rect.left + self.padding,
+            self.back_rect.top,
             "<", self.font, "black"))
 
-        cmds.append(DrawOutline(
-            self.address_rect[0], self.address_rect[1],
-            self.address_rect[2], self.address_rect[3],
-            "black", 1))
+        cmds.append(DrawOutline(self.address_rect, "black", 1))
         if self.focus == "address bar":
             cmds.append(DrawText(
-                self.address_rect[0] + self.padding,
-                self.address_rect[1],
+                self.address_rect.left + self.padding,
+                self.address_rect.top,
                 self.address_bar, self.font, "black"))
             w = self.font.measure(self.address_bar)
             cmds.append(DrawLine(
-                self.address_rect[0] + self.padding + w,
-                self.address_rect[1],
-                self.address_rect[0] + self.padding + w,
-                self.address_rect[3],
+                self.address_rect.left + self.padding + w,
+                self.address_rect.top,
+                self.address_rect.left + self.padding + w,
+                self.address_rect.bottom,
                 "red", 1))
         else:
             url = str(self.browser.active_tab.url)
             cmds.append(DrawText(
-                self.address_rect[0] + self.padding,
-                self.address_rect[1],
+                self.address_rect.left + self.padding,
+                self.address_rect.top,
                 url, self.font, "black"))
 
         return cmds
 
     def click(self, x, y):
         self.focus = None
-        if intersects(x, y, self.newtab_rect):
+        if self.newtab_rect.intersects(x, y):
             self.browser.new_tab(URL("https://browser.engineering/"))
-        elif intersects(x, y, self.back_rect):
+        elif self.back_rect.intersects(x, y):
             self.browser.active_tab.go_back()
-        elif intersects(x, y, self.address_rect):
+        elif self.address_rect.intersects(x, y):
             self.focus = "address bar"
             self.address_bar = ""
         else:
             for i, tab in enumerate(self.browser.tabs):
-                if intersects(x, y, self.tab_rect(i)):
+                if self.tab_rect(i).intersects(x, y):
                     self.browser.active_tab = tab
                     break
 
