@@ -333,6 +333,12 @@ class DrawRect:
         # ...
 ```
 
+Speaking of rects, let's now get rid of the old `Rect` class that was
+introduced in [Chapter 7](chrome.md) in favor of `skia.Rect`. Everywhere
+that a `Rect` was constructed, instead put `skia.rect.MakeLTRB`, and
+everywhere that the sides of the rectangle (e.g. `left`) where checked,
+replace them with the corresponding function on a Skia `Rect` (e.g. `left()`).
+
 To draw just the outline, set the `Style` parameter of the `Paint` to
 `Stroke_Style`. Here "stroke" is a standard term referring to drawing
 along the border of some shape; the opposite is "fill", meaning
@@ -416,7 +422,7 @@ class InputLayout:
 ```
 
 There are also `measure` calls in `DrawText`, in the `draw` method on
-`Browser`, in the `text` method in `BlockLayout`, and in the `layout`
+`Chrome`, in the `text` method in `BlockLayout`, and in the `layout`
 method in `TextLayout`. Update all of them to use `measureText`.
 
 Also, in the `layout` method of `LineLayout` and in `DrawText` we make
@@ -826,7 +832,8 @@ class BlockLayout:
 
     def paint_effects(self, cmds):
         if not self.is_atomic():
-            cmds = paint_visual_effects(self.node, cmds, self.self_rect())
+            cmds = paint_visual_effects(
+                self.node, cmds, self.self_rect())
         return cmds
 ```
 
@@ -1472,7 +1479,7 @@ Browser compositing
 Optimizing away surfaces is great when they're not needed, but
 sometimes having more surfaces allows faster scrolling and
 animations. (In this section we'll optimize scrolling; animations
-will have to wait for [Chapter 13](animations.md).)
+will have to wait for [Chapter 13](animations.md)).
 
 So far, any time anything changed in the browser chrome or the web
 page itself, we had to clear the canvas and re-raster everything on it
@@ -1580,7 +1587,8 @@ class Browser:
     def draw(self):
         # ...
         
-        tab_rect = skia.Rect.MakeLTRB(0, self.chrome.bottom, WIDTH, HEIGHT)
+        tab_rect = skia.Rect.MakeLTRB(
+            0, self.chrome.bottom, WIDTH, HEIGHT)
         tab_offset = self.chrome.bottom - self.active_tab.scroll
         canvas.save()
         canvas.clipRect(tab_rect)
@@ -1588,7 +1596,8 @@ class Browser:
         self.tab_surface.draw(canvas, 0, 0)
         canvas.restore()
 
-        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, self.chrome.bottom)
+        chrome_rect = skia.Rect.MakeLTRB(
+            0, 0, WIDTH, self.chrome.bottom)
         canvas.save()
         canvas.clipRect(chrome_rect)
         self.chrome_surface.draw(canvas, 0, 0)

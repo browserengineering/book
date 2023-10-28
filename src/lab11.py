@@ -258,7 +258,8 @@ class BlockLayout:
 
     def paint_effects(self, cmds):
         if not self.is_atomic():
-            cmds = paint_visual_effects(self.node, cmds, self.self_rect())
+            cmds = paint_visual_effects(
+                self.node, cmds, self.self_rect())
         return cmds
 
 @wbetools.patch(LineLayout)
@@ -652,7 +653,8 @@ class Browser:
         canvas = self.root_surface.getCanvas()
         canvas.clear(skia.ColorWHITE)
         
-        tab_rect = skia.Rect.MakeLTRB(0, self.chrome.bottom, WIDTH, HEIGHT)
+        tab_rect = skia.Rect.MakeLTRB(
+            0, self.chrome.bottom, WIDTH, HEIGHT)
         tab_offset = self.chrome.bottom - self.active_tab.scroll
         canvas.save()
         canvas.clipRect(tab_rect)
@@ -660,7 +662,8 @@ class Browser:
         self.tab_surface.draw(canvas, 0, 0)
         canvas.restore()
 
-        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, self.chrome.bottom)
+        chrome_rect = skia.Rect.MakeLTRB(
+            0, 0, WIDTH, self.chrome.bottom)
         canvas.save()
         canvas.clipRect(chrome_rect)
         self.chrome_surface.draw(canvas, 0, 0)
