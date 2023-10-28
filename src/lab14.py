@@ -31,6 +31,7 @@ from lab5 import BLOCK_ELEMENTS
 from lab6 import TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES
 from lab6 import tree_to_list
+from lab7 import Rect
 from lab8 import INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL
@@ -105,9 +106,8 @@ def paint_outline(node, cmds, rect, zoom):
     outline = parse_outline(node.style.get("outline"))
     if not outline: return
     thickness, color = outline
-    cmds.append(DrawOutline(
-        rect.left(), rect.top(),
-        rect.right(), rect.bottom(),
+    cmds.append(DrawOutline(Rect(
+        rect.left(), rect.top(), rect.right(), rect.bottom()),
         color, device_px(thickness, zoom)))
 
 class BlockLayout:
