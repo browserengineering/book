@@ -171,6 +171,7 @@ LIBRARY_METHODS = [
     "left",
     "top",
     "bottom",
+    "right",
     "width",
     "height",
     "isEmpty",
@@ -181,6 +182,7 @@ LIBRARY_METHODS = [
     "Intersects",
     "join",
     "makeOffset",
+    "contains",
 
     # skia.RRect
     "MakeRectXY",

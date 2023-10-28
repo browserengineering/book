@@ -189,8 +189,7 @@ class DrawRect(DrawCommand):
 
 class DrawOutline(DrawCommand):
     def __init__(self, rect, color, thickness):
-        super().__init__(skia.Rect.MakeLTRB(
-            rect.left, rect.top, rect.right, rect.bottom))
+        super().__init__(rect)
         self.color = color
         self.thickness = thickness
 

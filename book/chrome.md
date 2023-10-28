@@ -934,12 +934,12 @@ class Browser:
 Note that we need to subtract out the the chrome size when clicking on
 tab contents. As for clicks on the browser chrome, inside `Chrome` we
 need to figure out what the user clicked on. To make that easier,
-let's add a quick method to test whether a point intersects a
+let's add a quick method to test whether a point is cotained in a
 `Rect`:
 
 ``` {.python}
 class Rect:
-    def intersects(self, x, y):
+    def containsPoint(self, x, y):
         return x >= self.left and x < self.right \
             and y >= self.top and y < self.bottom
 ```
@@ -951,11 +951,11 @@ And then use it to choose between clicking to add a tab or select an open tab.
 ``` {.python}
 class Chrome:
     def click(self, x, y):
-        if self.newtab_rect.intersects(x, y):
+        if self.newtab_rect.containsPoint(x, y):
             self.browser.new_tab(URL("https://browser.engineering/"))
         else:
             for i, tab in enumerate(self.browser.tabs):
-                if self.tab_rect(i).intersects(x, y):
+                if self.tab_rect(i).containsPoint(x, y):
                     self.browser.active_tab = tab
                     break
 ```
@@ -1064,7 +1064,7 @@ invoke some method on the current tab to go back:
 class Chrome:
     def click(self, x, y):
         # ...
-        elif self.back_rect.intersects(x, y):
+        elif self.back_rect.containsPoint(x, y):
             self.browser.active_tab.go_back()
 ```
 
@@ -1168,7 +1168,7 @@ class Chrome:
     def click(self, x, y):
         self.focus = None
         # ...
-        elif self.address_rect.intersects(x, y):
+        elif self.address_rect.containsPoint(x, y):
             self.focus = "address bar"
             self.address_bar = ""
 ```

@@ -300,7 +300,7 @@ class Rect:
         self.right = right
         self.bottom = bottom
 
-    def contains(self, x, y):
+    def containsPoint(self, x, y):
         return x >= self.left and x < self.right \
             and y >= self.top and y < self.bottom
 
@@ -414,16 +414,16 @@ class Chrome:
 
     def click(self, x, y):
         self.focus = None
-        if self.newtab_rect.contains(x, y):
+        if self.newtab_rect.containsPoint(x, y):
             self.browser.new_tab(URL("https://browser.engineering/"))
-        elif self.back_rect.contains(x, y):
+        elif self.back_rect.containsPoint(x, y):
             self.browser.active_tab.go_back()
-        elif self.address_rect.contains(x, y):
+        elif self.address_rect.containsPoint(x, y):
             self.focus = "address bar"
             self.address_bar = ""
         else:
             for i, tab in enumerate(self.browser.tabs):
-                if self.tab_rect(i).contains(x, y):
+                if self.tab_rect(i).containsPoint(x, y):
                     self.browser.active_tab = tab
                     break
 
