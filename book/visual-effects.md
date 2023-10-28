@@ -942,7 +942,7 @@ this:[^simple-alpha]
 (https://www.w3.org/TR/SVG11/masking.html#SimpleAlphaBlending). Note that that
 page refers to *premultiplied* alpha colors, but Skia's API generally does not
 use premultiplied representations, and the code below doesn't either. (Skia
-does represent colors internally in a premulitplied form, however.)
+does represent colors internally in a premultiplied form, however.)
 
 
 ``` {.python file=examples}
