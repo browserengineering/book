@@ -213,34 +213,29 @@ class BlockLayout:
         font = get_font(size, weight, size)
         self.cursor_x += w + font.measureText(" ")
 
-    def is_atomic(self):
-        return not isinstance(self.node, Text) and \
-            (self.node.tag == "input" or self.node.tag == "button")
-
     def self_rect(self):
         return skia.Rect.MakeLTRB(
             self.x, self.y,
             self.x + self.width, self.y + self.height)
 
+    def should_paint(self):
+        return isinstance(self.node, Text) or \
+            (self.node.tag != "input" and self.node.tag != "button")        
+
     def paint(self):
         cmds = []
 
-        is_atomic = not isinstance(self.node, Text) and \
-            (self.node.tag == "input" or self.node.tag == "button")
-
-        if not self.is_atomic():
-            bgcolor = self.node.style.get("background-color",
-                                     "transparent")
-            if bgcolor != "transparent":
-                radius = device_px(
-                    float(self.node.style.get("border-radius", "0px")[:-2]),
-                        self.zoom)
-                cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
+        bgcolor = self.node.style.get("background-color",
+                                 "transparent")
+        if bgcolor != "transparent":
+            radius = device_px(
+                float(self.node.style.get("border-radius", "0px")[:-2]),
+                    self.zoom)
+            cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
         return cmds
 
     def paint_effects(self, cmds):
-        if not self.is_atomic():
-            cmds = paint_visual_effects(self.node, cmds, self.self_rect())
+        cmds = paint_visual_effects(self.node, cmds, self.self_rect())
 
         return cmds
 
@@ -284,6 +279,9 @@ class LineLayout:
         max_descent = max([word.font.getMetrics().fDescent
                            for word in self.children])
         self.height = 1.25 * (max_ascent + max_descent)
+
+    def should_paint(self):
+        return True
 
     def paint(self):
         return []
@@ -382,6 +380,9 @@ class DocumentLayout:
         child.layout()
         self.height = child.height
 
+    def should_paint(self):
+        return True
+
     def paint(self):
         return []
 
@@ -426,6 +427,9 @@ class TextLayout:
         return skia.Rect.MakeLTRB(
             self.x, self.y, self.x + self.width,
             self.y + self.height)
+
+    def should_paint(self):
+        return True
 
     def paint(self):
         cmds = []

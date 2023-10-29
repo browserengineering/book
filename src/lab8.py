@@ -13,7 +13,7 @@ import urllib.parse
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
-from lab5 import BLOCK_ELEMENTS, DrawRect, DocumentLayout, paint_tree
+from lab5 import BLOCK_ELEMENTS, DrawRect, DocumentLayout
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import DrawText, URL, tree_to_list
@@ -112,6 +112,9 @@ class InputLayout:
 
         self.height = self.font.metrics("linespace")
 
+    def should_paint(self):
+        return True
+
     def paint(self):
         cmds = []
         bgcolor = self.node.style.get("background-color",
@@ -148,6 +151,21 @@ class InputLayout:
             extra = "type=button text={}".format(self.node.children[0].text)
         return "InputLayout(x={}, y={}, width={}, height={}, {})".format(
             self.x, self.y, self.width, self.height, extra)
+
+@wbetools.patch(DocumentLayout)
+class DocumentLayout:
+    def should_paint(self):
+        return True
+
+@wbetools.patch(LineLayout)
+class LineLayout:
+    def should_paint(self):
+        return True
+
+@wbetools.patch(TextLayout)
+class TextLayout:
+    def should_paint(self):
+        return True
 
 @wbetools.patch(BlockLayout)
 class BlockLayout:
@@ -187,24 +205,30 @@ class BlockLayout:
         font = self.font(node)
         self.cursor_x += w + font.measure(" ")
 
+    def should_paint(self):
+        return isinstance(self.node, Text) or \
+            (self.node.tag != "input" and self.node.tag != "button")        
+
     def paint(self):
         cmds = []
         bgcolor = self.node.style.get("background-color",
                                       "transparent")
-
-        is_atomic = not isinstance(self.node, Text) and \
-            (self.node.tag == "input" or self.node.tag == "button")
-
-        if not is_atomic:
-            if bgcolor != "transparent":
-                x2, y2 = self.x + self.width, self.y + self.height
-                rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
-                cmds.append(rect)
+        if bgcolor != "transparent":
+            x2, y2 = self.x + self.width, self.y + self.height
+            rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
+            cmds.append(rect)
         return cmds
 
     def __repr__(self):
         return "BlockLayout[{}](x={}, y={}, width={}, height={}, node={})".format(
             self.layout_mode(), self.x, self.y, self.width, self.height, self.node)
+
+def paint_tree(layout_object, display_list):
+    if layout_object.should_paint():
+        display_list.extend(layout_object.paint())
+
+    for child in layout_object.children:
+        paint_tree(child, display_list)
 
 @wbetools.patch(Tab)
 class Tab:

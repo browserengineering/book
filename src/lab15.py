@@ -161,6 +161,9 @@ class DocumentLayout:
         child.layout()
         self.height = child.height
 
+    def should_paint(self):
+        return True
+
     def paint(self):
         return []
 
@@ -299,31 +302,30 @@ class BlockLayout:
             w = IFRAME_WIDTH_PX + device_px(2, self.zoom)
         self.add_inline_child(node, w, IframeLayout, self.frame)
 
-    def is_atomic(self):
-        return not isinstance(self.node, Text) and \
-            (self.node.tag == "input" or self.node.tag == "button")
-
     def self_rect(self):
         return skia.Rect.MakeLTRB(
             self.x, self.y,
             self.x + self.width, self.y + self.height)
 
+    def should_paint(self):
+        return isinstance(self.node, Text) or \
+            (self.node.tag != "input" and self.node.tag != "button" \
+             and self.node.tag != "img" and self.node.tag != "iframe")        
+
     def paint(self):
         cmds = []
-        if not self.is_atomic():
-            bgcolor = self.node.style.get(
-                "background-color", "transparent")
-            if bgcolor != "transparent":
-                radius = device_px(
-                    float(self.node.style.get(
-                        "border-radius", "0px")[:-2]),
-                    self.zoom)
-                cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
+        bgcolor = self.node.style.get(
+            "background-color", "transparent")
+        if bgcolor != "transparent":
+            radius = device_px(
+                float(self.node.style.get(
+                    "border-radius", "0px")[:-2]),
+                self.zoom)
+            cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
         return cmds
 
     def paint_effects(self, cmds):
-        if not self.is_atomic():
-            cmds = paint_visual_effects(self.node, cmds, self.self_rect())
+        cmds = paint_visual_effects(self.node, cmds, self.self_rect())
         return cmds
 
     def __repr__(self):
@@ -359,6 +361,9 @@ class EmbedLayout:
                 self.previous.x + space + self.previous.width
         else:
             self.x = self.parent.x
+
+    def should_paint(self):
+        return True
 
 class InputLayout(EmbedLayout):
     def __init__(self, node, parent, previous, frame):
@@ -452,6 +457,9 @@ class LineLayout:
                            for child in self.children])
         self.height = max_ascent + max_descent
 
+    def should_paint(self):
+        return True
+
     def paint(self):
         return []
 
@@ -508,6 +516,9 @@ class TextLayout:
             self.x = self.parent.x
 
         self.height = linespace(self.font)
+
+    def should_paint(self):
+        return True
 
     def paint(self):
         cmds = []

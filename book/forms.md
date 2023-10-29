@@ -250,29 +250,27 @@ sometimes an `<input>` or `<button>` element will create a
 `BlockLayout` (which will then create an `InputLayout` inside). In
 this case we don't want to paint the background twice, so let's add
 some simple logic to skip painting it in `BlockLayout` in this
-case:[^atomic-inline-input]
+case, via a new `should_paint` method:[^atomic-inline-input]
 
 ``` {.python}
 class BlockLayout:
     # ...
-    def paint(self):
-        # ...
-        is_atomic = not isinstance(self.node, Text) and \
-            (self.node.tag == "input" or self.node.tag == "button")
-
-        if not is_atomic:
-            if bgcolor != "transparent":
-                x2, y2 = self.x + self.width, self.y + self.height
-                rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
-                cmds.append(rect)
-
+    def should_paint(self):
+        return isinstance(self.node, Text) or \
+            (self.node.tag != "input" and self.node.tag != "button")
 ```
 
-[^atomic-inline-input]: Atomic inlines are often special in these
-kinds of ways. It's worth noting that there are various other ways
-that our browser does not fully implement all the complexities of
-inline painting---one example is that it does not correctly paint
-nested inlines with different background colors.
+``` {.python}
+def paint_tree(layout_object, display_list):
+    if layout_object.should_paint():
+        display_list.extend(layout_object.paint())
+    # ...
+```
+
+[^atomic-inline-input]: It's worth noting that there are various other ways that
+our browser does not fully implement all the complexities of inline
+painting---one example is that it does not correctly paint nested inlines with
+different background colors.
 
 With these changes the browser should now draw `input` and `button`
 elements as blue and orange rectangles.

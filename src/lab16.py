@@ -33,14 +33,16 @@ from lab13 import absolute_bounds, absolute_bounds_for_obj
 from lab13 import NumericAnimation, TranslateAnimation
 from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
 from lab13 import CompositedLayer, paint_visual_effects
-from lab13 import DrawCommand, DrawText, DrawCompositedLayer, DrawOutline, DrawLine, DrawRRect
+from lab13 import DrawCommand, DrawText, DrawCompositedLayer, DrawOutline, \
+    DrawLine, DrawRRect
 from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform
 from lab14 import parse_color, parse_outline, DrawRRect, \
     paint_outline, \
     device_px, cascade_priority, \
     is_focusable, get_tabindex, speak_text, \
     CSSParser, main_func, DrawOutline
-from lab15 import URL, HTMLParser, AttributeParser, DrawImage, DocumentLayout, BlockLayout, \
+from lab15 import URL, HTMLParser, AttributeParser, DrawImage, \
+    DocumentLayout, BlockLayout, \
     EmbedLayout, InputLayout, LineLayout, TextLayout, ImageLayout, \
     IframeLayout, JSContext, style, AccessibilityNode, Frame, Tab, \
     CommitData, Browser, BROKEN_IMAGE, font, \
