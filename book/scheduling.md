@@ -351,6 +351,7 @@ class Tab:
         if self.js:
             self.js.discarded = True
         self.js = JSContext(self)
+        # ...
 ```
 
 ::: {.further}
