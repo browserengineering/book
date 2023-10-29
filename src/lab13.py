@@ -232,9 +232,7 @@ class ClipRRect(VisualEffect):
             canvas.restore()
 
     def map(self, rect):
-        bounds = skia.Rect.MakeXYWH(
-            rect.x(), rect.y(),
-            rect.width(), rect.height())
+        bounds = rect.makeOffset(0.0, 0.0)
         bounds.intersect(self.rrect.rect())
         return bounds
 
