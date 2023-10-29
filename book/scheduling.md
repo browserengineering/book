@@ -1,4 +1,4 @@
-p---
+---
 title: Scheduling Tasks and Threads
 chapter: 12
 prev: visual-effects
