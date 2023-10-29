@@ -338,7 +338,7 @@ introduced in [Chapter 7](chrome.md) in favor of `skia.Rect`. Everywhere
 that a `Rect` was constructed, instead put `skia.Rect.MakeLTRB`, and
 everywhere that the sides of the rectangle (e.g. `left`) where checked,
 replace them with the corresponding function on a Skia `Rect` (e.g. `left()`).
-And replace calls to `containsPoint` with `contains`.
+Also replace calls to `containsPoint` with Skia's `contains`.
 
 To draw just the outline, set the `Style` parameter of the `Paint` to
 `Stroke_Style`. Here "stroke" is a standard term referring to drawing
