@@ -1480,7 +1480,7 @@ Browser compositing
 Optimizing away surfaces is great when they're not needed, but
 sometimes having more surfaces allows faster scrolling and
 animations. (In this section we'll optimize scrolling; animations
-will have to wait for [Chapter 13](animations.md)).
+will have to wait for [Chapter 13](animations.md).)
 
 So far, any time anything changed in the browser chrome or the web
 page itself, we had to clear the canvas and re-raster everything on it
