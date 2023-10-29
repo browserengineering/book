@@ -669,7 +669,7 @@ contents need to be blended together into the parent.[^stacking-context-disc]
 and not something required by any specific web API. However, the web does
 define the concept of a [*stacking context*][stacking-context], which is
 related. A stacking context is technically a mechanism to define groups and
-ordering during paint, and stacking contexts need not come with a surface
+ordering during paint, and stacking contexts need not correspond to a surface
 (e.g. ones created via [`z-index`][z-index] do not). However, for ease of
 implementation, all visual effects in CSS that generally require surfaces to
 implement are specified to go hand-in-hand with a stacking context, so the tree
