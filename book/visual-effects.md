@@ -453,13 +453,13 @@ def linespace(font):
 
 ```
 
-You should now be able to run the browser again. It should look and
-behave just as it did in previous chapters, and it'll probably feel
-faster, because Skia and SDL are faster than Tkinter. This is one
-advantage of Skia: since it is also used by the Chromium browser, we
-know it has fast, built-in support for all of the shapes we might
-need. And if the transition felt easy---well, that's one of the benefits to
-abstracting over the drawing backend using a display list!\index{display list}
+You should now be able to run the browser again. It should look and behave just
+as it did in previous chapters, and it might feel faster on complex pages,
+because Skia and SDL are in general faster than Tkinter. This is one advantage
+of Skia: since it is also used by the Chromium browser, we know it has fast,
+built-in support for all of the shapes we might need. And if the transition
+felt easy---well, that's one of the benefits to abstracting over the drawing
+backend using a display list!\index{display list}
 
 ::: {.further}
 [Font rasterization](https://en.wikipedia.org/wiki/Font_rasterization)
@@ -522,7 +522,8 @@ class BlockLayout:
         if not is_atomic:
             if bgcolor != "transparent":
                 radius = float(
-                    self.node.style.get("border-radius", "0px")[:-2])
+                    self.node.style.get(
+                        "border-radius", "0px")[:-2])
                 cmds.append(DrawRRect(rect, radius, bgcolor))
 ```
 
@@ -653,7 +654,8 @@ is gray while the background is yellow-orange. That's due to blending:
 the text and the background are both partially transparent and let
 through some of the underlying white:
 
-<div style="opacity: 0.5; background: orange; color: black; font-size: 50px; padding: 15px; text-align: center;flex:1;">Text</div>
+<div style="opacity: 0.5; background: orange; color: black; font-size: 50px;
+    padding: 15px; text-align: center;flex:1;">Text</div>
 
 But importantly, the text isn't orange-gray: even though the text is
 partially transparent, none of the orange shines through. That's
@@ -663,14 +665,25 @@ overwrite the orange background. Only *then* is this black-and-orange
 image blended with the white background. Doing the operations in a
 different order would lead to dark-orange or black text.
 
-To handle this properly, browsers apply blending not to individual
-shapes but to a tree of [*stacking contexts*][stacking-context].
-Conceptually, each stacking context is drawn onto its own surface, and
-then blended into its parent stacking context. Rastering a web page
-requires a bottom-up traversal of the tree of stacking contexts: to
-raster a stacking context you first need to raster its contents,
-including its child stacking contexts, and then the whole contents
-need to be blended together into the parent.
+To handle this properly, browsers apply blending not to individual shapes but to
+a tree of surfaces. Conceptually, each surface is drawn individually,
+and then blended into its parent surface. Rastering a web page requires a
+bottom-up traversal of the tree: to raster a surface you first need to raster
+its contents, including its child stacking contexts, and then the whole
+contents need to be blended together into the parent.[^stacking-context-disc]
+
+[^stacking-context-disc]: This tree of surfaces is an implementation strategy
+and not something required by any specific web API. However, the web does
+define the concept of a [*stacking context*][stacking-context], which is
+related. A stacking context is technically a mechanism to define groups and
+ordering during paint, and stacking contexts need not correspond to a surface
+(e.g. ones created via [`z-index`][z-index] do not). However, for ease of
+implementation, all visual effects in CSS that generally require surfaces to
+implement are specified to go hand-in-hand with a stacking context, so the tree
+of stacking contexts is very related to the tree of surfaces.
+
+[stacking-context]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
+[z-index]: https://developer.mozilla.org/en-US/docs/Web/CSS/z-index
 
 To match this use pattern, in Skia, surfaces form a stack. You can
 push a new surface on the stack, raster things to it, and then pop it
@@ -678,9 +691,7 @@ off by blending it with surface below. When traversing the tree of
 stacking contexts, you push a new surface onto the stack every time
 you recurse into a new stacking context, and pop-and-blend every time
 you return from a child stacking context to its parent.
-
-[stacking-context]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
-
+ 
 In real browsers, stacking contexts are formed by HTML elements with
 certain styles, up to any descendants that themselves have such
 styles. The full definition is actually quite complicated, so in this
@@ -939,7 +950,9 @@ this:[^simple-alpha]
 [^simple-alpha]: The formula for this code can be found
 [here](https://www.w3.org/TR/SVG11/masking.html#SimpleAlphaBlending).
 Note that that page refers to *premultiplied* alpha colors, but Skia's API
-does not use premultiplied representations, and the code below doesn't either.
+generally does not use premultiplied representations, and the code below
+doesn't either. (Skia does represent colors internally in a premultiplied form,
+however.)
 
 
 ``` {.python file=examples}
@@ -1144,8 +1157,12 @@ property][mdn-mask] lets you instead specify a image URL for the mask.
 Usually, `overflow: clip` is used with properties like `height` or
 `rotate` which can make an element's children poke outside their
 parent. Our browser doesn't support these, but there is one edge case
-where `overflow: clip` is relevant: rounded corners. Consider this
+where `overflow: clip` is relevant: rounded corners.^[Technically,
+clipping is also relevant for our browser with single words that are longer
+than the browser window's width. [Here][longword] is an example.] Consider this
 example:
+
+[longword]: examples/example11-longword.html
 
 ``` {.html .example}
 <div 
@@ -1162,22 +1179,9 @@ This test text exists here to ensure that the "div" element is
 large enough that the border radius is obvious.
 </div>
 
-Observe that the letters near the corner are cut off to maintain a
-sharp rounded edge. (Uhh... actually, at the time of this writing,
-Safari does not support `overflow: clip`, so if you're using Safari
-you won't see this effect.[^hidden]) That's clipping; without the
-`overflow: clip` property these letters would instead be fully drawn,
-like we saw earlier in this chapter.
-
-[^hidden]: The similar `overflow: hidden` is supported by all
-browsers. However, in this case, `overflow: hidden` will also increase
-the height of `div` until the rounded corners no longer clip out the
-text. This is because `overflow:hidden` has different rules for sizing
-boxes, having to do with the possibility of the child content being
-scrolled---`hidden` means "clipped, but might be scrolled by
-JavaScript". If the blue box had not been taller, than it would have
-been impossible to see the text, which is really bad if it's intended
-that there should be a way to scroll it on-screen.
+Observe that the letters near the corner are cut off to maintain a sharp rounded
+edge. That's clipping; without the `overflow: clip` property these letters
+would instead be fully drawn, like we saw earlier in this chapter.
 
 Counterintuitively, we'll implement clipping using blending modes.
 We'll make a new surface (the mask), draw a rounded rectangle into it,
@@ -1785,7 +1789,6 @@ challenge, add support for [nested elements][stacking-context] with
 `z-index` properties.
 
 [stacking-context]:  https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
-
 
 *Overflow scrolling*: An element with the `overflow` property set to
 `scroll` and a fixed pixel `height` is scrollable. (You'll want to
