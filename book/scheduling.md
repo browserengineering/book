@@ -330,7 +330,7 @@ held while the task is running.
 
 The `setTimeout` code is now thread-safe, but still has yet another bug: if we
 navigate from one page to another, `setTimeout` callbacks still pending on the
-previous page eshouldn't do anything. That is easily fixed by adding a
+previous page might still try to execute. That is easily prevented by adding a
 `discarded` field on `JSContext` and setting it when loading a new page:
 
 ``` {.python}
