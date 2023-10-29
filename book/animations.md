@@ -2031,7 +2031,6 @@ A good example of this optimization making a big difference is loading the
 browser from [Chapter 15](embeds.md) for the `browser.engineering` homepage,
 where otherwise we would end up with an enormous composited layer for an
 iframe.
-]
 
 ``` {.python}
 class CompositedLayer:
