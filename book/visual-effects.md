@@ -42,7 +42,7 @@ Start by installing [Skia][skia-python] and [SDL][sdl-python]:
 [sdl-python]: https://pypi.org/project/PySDL2/
 
 ::: {.install}
-As elsewhere in this book, you may need install the `pip` package
+As elsewhere in this book, you may need to install the `pip` package
 first, or use your IDE's package installer. If you're on Linux, you'll
 need to install additional dependencies, like OpenGL and fontconfig.
 Also, you may not be able to install `pysdl2-dll`; if so, you'll need
@@ -1175,7 +1175,7 @@ sharp rounded edge.[^hidden] That's clipping; without the `overflow:
 clip` property these letters would instead be fully drawn, like we saw
 earlier in this chapter.
 
-[^hidden]: The `overflow: hidden` propertyis somewhat similar, but in
+[^hidden]: The `overflow: hidden` property is somewhat similar, but in
 this case it will increase the height of `div` until the rounded
 corners no longer clip out the text. This is because `overflow:hidden`
 has different rules for sizing boxes, having to do with the
