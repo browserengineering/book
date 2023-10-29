@@ -67,7 +67,7 @@ function XMLHttpRequest() {
 }
 
 XMLHttpRequest.prototype.open = function(method, url, is_async) {
-    this.is_async = is_async
+    this.is_async = is_async;
     this.method = method;
     this.url = url;
 }
