@@ -129,11 +129,11 @@ class JSContext:
         self.tab.set_needs_render()
 
     def dispatch_settimeout(self, handle):
+        if self.discarded: return
         self.interp.evaljs(SETTIMEOUT_CODE, handle=handle)
 
     def setTimeout(self, handle, time):
         def run_callback():
-            if self.discarded: return
             task = Task(self.dispatch_settimeout, handle)
             self.tab.task_runner.schedule_task(task)
         threading.Timer(time / 1000.0, run_callback).start()
@@ -153,7 +153,6 @@ class JSContext:
                 "Cross-origin XHR request not allowed")
 
         def run_load():
-            if self.discarded: return
             headers, response = full_url.request(self.tab.url, body)
             task = Task(self.dispatch_xhr_onload, response, handle)
             self.tab.task_runner.schedule_task(task)
@@ -206,8 +205,7 @@ class Tab:
 
         self.nodes = HTMLParser(body).parse()
 
-        if self.js:
-            self.js.discarded = True
+        if self.js: self.js.discarded = True
         self.js = JSContext(self)
         scripts = [node.attributes["src"] for node
                    in tree_to_list(self.nodes, [])

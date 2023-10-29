@@ -338,6 +338,10 @@ class JSContext:
     def __init__(self, tab):
         # ...
         self.discarded = False
+
+    def dispatch_settimeout(self, handle):
+        if self.discarded: return
+        self.interp.evaljs(SETTIMEOUT_CODE, handle=handle)
 ```
 
 ``` {.python}
