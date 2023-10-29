@@ -139,7 +139,7 @@ page loads.
 JavaScript uses a task-based [event loop][js-eventloop] even
 [outside][nodejs-eventloop] of the browser. For example, JavaScript
 uses message passing, handles input and output via
-[asynchronous][async-js] APIs, and has a run-to-completion semantics.
+[asynchronous][async-js] APIs, and has run-to-completion semantics.
 Of course, this programming model grew out of early browser
 implementations, and is now another important reason to
 architect a browser using tasks.
@@ -765,9 +765,10 @@ should have acceptable performance again.
 ::: {.further}
 This scheduled, task-based approach to rendering is necessary for
 running complex interactive applications, but it still took until 
-the 2010s for all modern browsers to adopt it. That's because it
+the 2010s for all modern browsers to adopt it, well after such web
+applications became widespread. That's because it
 typically required extensive refactors of vast browser codebases.
-Chromium, for example, [only recently][renderingng] fully adopted this
+Chromium, for example, [only recently][renderingng] finished adopting this
 model, though of course work (always) remains to be done.
 :::
 
@@ -950,7 +951,7 @@ if our browser consistently runs slower than 60 frames per second, we
 won't end up with an ever-growing queue of rendering tasks.
 
 ::: {.further}
-Before `requestAnimationFrame` API, developers used a self-scheduling
+Before the `requestAnimationFrame` API, developers used a self-scheduling
 timer instead, via `setTimeout`. This did run animations at a
 (roughly) fixed cadence, but because it didn't line up with the
 browser's rendering loop, events would sometimes be handled between the callback and
@@ -1901,8 +1902,13 @@ compositor thread will make scrolling janky unless you do even more work to
 avoid that somehow.
 
 [^servo]: Some browser do use multiple threads *within* style and
-    layout, but those steps still don't happen concurrently with, say,
-    JavaScript execution.
+    layout; the [Servo] research browser was the pioneer here,
+    attempting a fully parallel style, layout, and paint phase. Some of
+    Servo's code is now part of Firefox. Still, even if style or
+    another phase uses threads internally, those steps still don't
+    happen concurrently with, say, JavaScript execution.
+    
+[Servo]: https://en.wikipedia.org/wiki/Servo_(software)
 
 [^nothing-later]: There is no JavaScript API that allows reading back
     state from anything later in the rendering pipeline than layout,
@@ -1960,7 +1966,7 @@ of modern browsers. The main points to remember are:
   like running JavaScript, handling user input, and rendering the page.
 - The goal is to consistently generate frames to the screen at a 60Hz
   cadence, which means a 16ms budget to draw each animation frame.
-- The browser has two main threads.
+- The browser has two key threads involved in rendering.
 - The main thread runs JavaScript and the special rendering task.
 - The browser thread draws the display list to the screen,
   handles/dispatches input events, and performs scrolling.
@@ -2009,7 +2015,7 @@ get the name of the Python function run by the task.
 animation frame exactly 16ms after the previous one completes. This
 actually leads to a slower animation frame rate cadence than 16ms. Fix
 this in our browser by using the absolute time to schedule animation
-frames, instead of a fixed delay between frames. You will need to
+frames, instead of a fixed delay between frames. You will likely need to
 choose a slower cadence than 16ms so that the frames don't overlap.
 
 *Scheduling*: As more types of complex tasks end up on the event
@@ -2017,7 +2023,7 @@ queue, there comes a greater need to carefully schedule them to ensure
 the rendering cadence is as close to 16ms as possible, and also to
 avoid task starvation. Implement a task scheduler with a priority
 system that balances these two needs: prioritize rendering tasks and
-input handling, and deprioritize tasks that ultimately come from
+input handling, and deprioritize (but don't completely starve) tasks that ultimately come from
 JavaScript APIs like `setTimeout`. Test it out on a web page that
 taxes the system with a lot of `setTimeout`-based tasks.
 
