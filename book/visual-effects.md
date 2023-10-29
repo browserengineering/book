@@ -515,7 +515,8 @@ class BlockLayout:
         if not is_atomic:
             if bgcolor != "transparent":
                 radius = float(
-                    self.node.style.get("border-radius", "0px")[:-2])
+                    self.node.style.get(
+                        "border-radius", "0px")[:-2])
                 cmds.append(DrawRRect(rect, radius, bgcolor))
 ```
 
@@ -938,11 +939,12 @@ called "simple alpha compositing"\index{compositing} or *source-over*
 compositing. In Python, the code to implement it looks like
 this:[^simple-alpha]
 
-[^simple-alpha]: The formula for this code can be found[here]
-(https://www.w3.org/TR/SVG11/masking.html#SimpleAlphaBlending). Note that that
-page refers to *premultiplied* alpha colors, but Skia's API generally does not
-use premultiplied representations, and the code below doesn't either. (Skia
-does represent colors internally in a premultiplied form, however.)
+[^simple-alpha]: The formula for this code can be found
+[here](https://www.w3.org/TR/SVG11/masking.html#SimpleAlphaBlending).
+Note that that page refers to *premultiplied* alpha colors, but Skia's API
+generally does not use premultiplied representations, and the code below
+doesn't either. (Skia does represent colors internally in a premultiplied form,
+however.)
 
 
 ``` {.python file=examples}
@@ -1147,7 +1149,9 @@ property][mdn-mask] lets you instead specify a image URL for the mask.
 Usually, `overflow: clip` is used with properties like `height` or
 `rotate` which can make an element's children poke outside their
 parent. Our browser doesn't support these, but there is one edge case
-where `overflow: clip` is relevant: rounded corners. Consider this
+where `overflow: clip` is relevant: rounded corners.^[Technically,
+clipping is also relevant for our browser with single words that are longer
+than the browser window's width.] Consider this
 example:
 
 ``` {.html .example}
@@ -1165,22 +1169,9 @@ This test text exists here to ensure that the "div" element is
 large enough that the border radius is obvious.
 </div>
 
-Observe that the letters near the corner are cut off to maintain a
-sharp rounded edge. (Uhh... actually, at the time of this writing,
-Safari does not support `overflow: clip`, so if you're using Safari
-you won't see this effect.[^hidden]) That's clipping; without the
-`overflow: clip` property these letters would instead be fully drawn,
-like we saw earlier in this chapter.
-
-[^hidden]: The similar `overflow: hidden` is supported by all
-browsers. However, in this case, `overflow: hidden` will also increase
-the height of `div` until the rounded corners no longer clip out the
-text. This is because `overflow:hidden` has different rules for sizing
-boxes, having to do with the possibility of the child content being
-scrolled---`hidden` means "clipped, but might be scrolled by
-JavaScript". If the blue box had not been taller, than it would have
-been impossible to see the text, which is really bad if it's intended
-that there should be a way to scroll it on-screen.
+Observe that the letters near the corner are cut off to maintain a sharp rounded
+edge. That's clipping; without the `overflow: clip` property these letters
+would instead be fully drawn, like we saw earlier in this chapter.
 
 Counterintuitively, we'll implement clipping using blending modes.
 We'll make a new surface (the mask), draw a rounded rectangle into it,
@@ -1786,7 +1777,6 @@ challenge, add support for [nested elements][stacking-context] with
 `z-index` properties.
 
 [stacking-context]:  https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
-
 
 *Overflow scrolling*: An element with the `overflow` property set to
 `scroll` and a fixed pixel `height` is scrollable. (You'll want to
