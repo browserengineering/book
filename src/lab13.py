@@ -23,7 +23,6 @@ from lab5 import BLOCK_ELEMENTS
 from lab6 import TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, cascade_priority
 from lab6 import tree_to_list
-from lab7 import intersects
 from lab8 import Text, Element, INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL
@@ -189,8 +188,8 @@ class DrawRect(DrawCommand):
             self.right, self.color)
 
 class DrawOutline(DrawCommand):
-    def __init__(self, x1, y1, x2, y2, color, thickness):
-        super().__init__(skia.Rect.MakeLTRB(x1, y1, x2, y2))
+    def __init__(self, rect, color, thickness):
+        super().__init__(rect)
         self.color = color
         self.thickness = thickness
 
@@ -209,7 +208,6 @@ class DrawOutline(DrawCommand):
             self.rect.top(), self.rect.left(), self.rect.bottom(),
             self.rect.right(), self.color,
             self.thickness)
-
 
 class ClipRRect(VisualEffect):
     def __init__(self, rect, radius, children, should_clip=True):

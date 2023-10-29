@@ -671,6 +671,9 @@ class skia {
                     rect.right() + x,
                     rect.bottom() + y);
             };
+            rect.contains = (x, y) => {
+                return rect.contains(x, y);
+            };
         },
 
         MakeLTRB: (left, top, right, bottom) => {
