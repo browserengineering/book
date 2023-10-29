@@ -1033,7 +1033,17 @@ def paint_tree(layout_object, display_list):
 
     cmds = layout_object.paint_effects(cmds)
     display_list.extend(cmds)
+```
 
+Speaking of `paint_tree`, we also need to include iframes and iamges in
+the list of cases causing anonymous block boxes:
+
+``` {.python}
+class BlockLayout:
+    return isinstance(self.node, Text) or \
+        (self.node.tag != "input" and self.node.tag != "button" \
+         and self.node.tag != "img" and self.node.tag != "iframe")        
+    
 ```
 
 Then painting of an `IframeLayout` is just drawing a rectangle and background:
