@@ -55,7 +55,7 @@ latex/book.tex: latex/book-skeleton.tex latex-chapters
 	cat $(patsubst %,latex/%-chapter.tex,$(CHAPTERS)) > latex/book-contents.tex
 	sed '/---Contents---/r latex/book-contents.tex' latex/book-skeleton.tex > latex/book.tex
 	rm latex/book-contents.tex
-	sed -i.bak '/---Contents---/d' latex/book.tex
+	sed -i '/---Contents---/d' latex/book.tex
 
 latex/book.pdf: latex/book.tex
 	(cd latex && pdflatex book.tex)
