@@ -39,7 +39,7 @@ Promise.all([ckLoaded, loadFont]).then(([CanvasKit, robotoData]) => {
         let url = "https://localhost:8000/";
         let b = await (new Browser()).init();
         init_window(b);
-        await b.load(await (new URL().init(url)));
+        await b.new_tab(await (new URL().init(url)));
     });
     widget.next();
   });

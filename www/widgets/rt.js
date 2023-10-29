@@ -676,6 +676,8 @@ class skia {
             };
             rect.y = () => {
                 return rect.top();
+            rect.contains = (x, y) => {
+                return rect.contains(x, y);
             };
         },
 

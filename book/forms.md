@@ -61,7 +61,7 @@ does everything it normally does.
 Implementing forms requires extending many parts of the browser, from
 implementing HTTP `POST` through new layout objects that draw `input`
 elements to handling buttons clicks. That makes it a great starting
-point for transforming our toy browser into an application platform,
+point for transforming our browser into an application platform,
 our goal for these next few chapters. Let's get started implementing
 it all!
 
@@ -135,20 +135,22 @@ background:
 
 ``` {.python}
 class InputLayout:
-    def paint(self, display_list):
+    def paint(self):
+        cmds = []
         bgcolor = self.node.style.get("background-color",
                                       "transparent")
         if bgcolor != "transparent":
             x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
-            display_list.append(rect)
+            cmds.append(rect)
+        return cmds
 ```
 
 It then needs to get the input element's text contents:
 
 ``` {.python}
 class InputLayout:
-    def paint(self, display_list):
+    def paint(self):
         # ...
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")
@@ -159,6 +161,7 @@ class InputLayout:
             else:
                 print("Ignoring HTML contents inside button")
                 text = ""
+        # ...
 ```
 
 Note that `<button>` elements can in principle contain complex HTML,
@@ -170,10 +173,12 @@ case.[^exercises] Finally, we draw that text:
 
 ``` {.python}
 class InputLayout:
-    def paint(self, display_list):
+    def paint(self):
+        # ...
         color = self.node.style["color"]
-        display_list.append(
+        cmds.append(
             DrawText(self.x, self.y, text, self.font, color))
+        return cmds
 ```
 
 By this point in the book, you've seen many layout objects, so I'm
@@ -228,23 +233,16 @@ only because they are the only elements with special painting
 behavior within an inline context. These are also two examples of
 [atomic inlines](https://www.w3.org/TR/CSS2/visuren.html#inline-boxes).]
 
-We can fix that with this change to `layout_mode`:
+We can fix that with this change to `layout_mode` to add a second condition
+for returning "inline":
 
 ``` {.python}
 class BlockLayout:
     def layout_mode(self):
-        if isinstance(self.node, Text):
+        # ...
+        elif self.node.children or self.node.tag == "input":
             return "inline"
-        elif self.node.children:
-            for child in self.node.children:
-                if isinstance(child, Text): continue
-                if child.tag in BLOCK_ELEMENTS:
-                    return "block"
-            return "inline"
-        elif self.node.tag == "input":
-            return "inline"
-        else:
-            return "block"
+        # ...
 ```
 
 The second problem is that, again due to having block siblings,
@@ -257,7 +255,7 @@ case:[^atomic-inline-input]
 ``` {.python}
 class BlockLayout:
     # ...
-    def paint(self, display_list):
+    def paint(self):
         # ...
         is_atomic = not isinstance(self.node, Text) and \
             (self.node.tag == "input" or self.node.tag == "button")
@@ -266,7 +264,7 @@ class BlockLayout:
             if bgcolor != "transparent":
                 x2, y2 = self.x + self.width, self.y + self.height
                 rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
-                display_list.append(rect)
+                cmds.append(rect)
 
 ```
 
@@ -332,7 +330,7 @@ class Tab:
         self.document = DocumentLayout(self.nodes)
         self.document.layout()
         self.display_list = []
-        self.document.paint(self.display_list)
+        paint_tree(self.document, self.display_list)
 ```
 
 For this code to work, you'll also need to change `nodes` and `rules`
@@ -499,12 +497,13 @@ an `input` element is focused:
 
 ``` {.python}
 class InputLayout:
-    def paint(self, display_list):
+    def paint(self):
         # ...
         if self.node.is_focused:
             cx = self.x + self.font.measure(text)
-            display_list.append(DrawLine(
+            cmds.append(DrawLine(
                 cx, self.y, cx, self.y + self.height, "black", 1))
+        # ...
 ```
 
 Now you can click on a text entry, type into it, and modify its value.
@@ -947,8 +946,8 @@ your browser to `http://localhost:8000/`, where `localhost` is what
 your computer calls itself and `8000` is the port we chose earlier.
 You should see one guest book entry.
 
-By the way, while you're debugging this toy web server, it's probably
-better to use a real web browser, instead of this book's toy browser,
+By the way, while you're debugging this web server, it's probably
+better to use a real web browser, instead of this book's browser,
 to interact with it. That way you don't have to worry about browser
 bugs while you work on server bugs. But this server does support both
 real and toy browsers.

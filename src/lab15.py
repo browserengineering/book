@@ -26,7 +26,6 @@ from lab5 import BLOCK_ELEMENTS
 from lab14 import Text, Element
 from lab6 import TagSelector, DescendantSelector
 from lab6 import tree_to_list, INHERITED_PROPERTIES
-from lab7 import intersects
 from lab8 import INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL
@@ -128,6 +127,19 @@ class DrawImage(DrawCommand):
         return "DrawImage(rect={})".format(
             self.rect)
 
+def paint_tree(layout_object, display_list):
+    cmds = layout_object.paint()
+
+    if isinstance(layout_object, IframeLayout) and \
+        layout_object.node.frame:
+        paint_tree(layout_object.node.frame.document, cmds)
+    else:
+        for child in layout_object.children:
+            paint_tree(child, cmds)
+
+    cmds = layout_object.paint_effects(cmds)
+    display_list.extend(cmds)
+
 class DocumentLayout:
     def __init__(self, node, frame):
         self.node = node
@@ -148,16 +160,16 @@ class DocumentLayout:
         child.layout()
         self.height = child.height
 
-    def paint(self, display_list, dark_mode, scroll):
-        cmds = []
-        self.children[0].paint(cmds)
-        if scroll != None and scroll != 0:
+    def paint(self):
+        return []
+
+    def paint_effects(self, cmds):
+        if self.frame != self.frame.tab.root_frame and self.frame.scroll != 0:
             rect = skia.Rect.MakeLTRB(
                 self.x, self.y,
                 self.x + self.width, self.y + self.height)
-            cmds = [Transform((0, -scroll), rect, self.node, cmds)]
-
-        display_list.extend(cmds)
+            cmds = [Transform((0, - self.frame.scroll), rect, self.node, cmds)]
+        return cmds
 
     def __repr__(self):
         return "DocumentLayout()"
@@ -286,17 +298,18 @@ class BlockLayout:
             w = IFRAME_WIDTH_PX + device_px(2, self.zoom)
         self.add_inline_child(node, w, IframeLayout, self.frame)
 
-    def paint(self, display_list):
-        cmds = []
-
-        rect = skia.Rect.MakeLTRB(
-            self.x, self.y, self.x + self.width,
-            self.y + self.height)
-
-        is_atomic = not isinstance(self.node, Text) and \
+    def is_atomic(self):
+        return not isinstance(self.node, Text) and \
             (self.node.tag == "input" or self.node.tag == "button")
 
-        if not is_atomic:
+    def self_rect(self):
+        return skia.Rect.MakeLTRB(
+            self.x, self.y,
+            self.x + self.width, self.y + self.height)
+
+    def paint(self):
+        cmds = []
+        if not self.is_atomic():
             bgcolor = self.node.style.get(
                 "background-color", "transparent")
             if bgcolor != "transparent":
@@ -304,14 +317,13 @@ class BlockLayout:
                     float(self.node.style.get(
                         "border-radius", "0px")[:-2]),
                     self.zoom)
-                cmds.append(DrawRRect(rect, radius, bgcolor))
- 
-        for child in self.children:
-            child.paint(cmds)
+                cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
+        return cmds
 
-        if not is_atomic:
-            cmds = paint_visual_effects(self.node, cmds, rect)
-        display_list.extend(cmds)
+    def paint_effects(self, cmds):
+        if not self.is_atomic():
+            cmds = paint_visual_effects(self.node, cmds, self.self_rect())
+        return cmds
 
     def __repr__(self):
         return "BlockLayout(x={}, y={}, width={}, height={}, node={})".format(
@@ -357,12 +369,13 @@ class InputLayout(EmbedLayout):
         self.width = device_px(INPUT_WIDTH_PX, self.zoom)
         self.height = linespace(self.font)
 
-    def paint(self, display_list):
-        cmds = []
-
-        rect = skia.Rect.MakeLTRB(
+    def self_rect(self):
+        return skia.Rect.MakeLTRB(
             self.x, self.y, self.x + self.width,
             self.y + self.height)
+
+    def paint(self):
+        cmds = []
 
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
@@ -370,7 +383,7 @@ class InputLayout(EmbedLayout):
             radius = device_px(
                 float(self.node.style.get("border-radius", "0px")[:-2]),
                 self.zoom)
-            cmds.append(DrawRRect(rect, radius, bgcolor))
+            cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
 
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")
@@ -390,9 +403,12 @@ class InputLayout(EmbedLayout):
             cx = self.x + self.font.measureText(text)
             cmds.append(DrawLine(cx, self.y, cx, self.y + self.height, color, 1))
 
-        cmds = paint_visual_effects(self.node, cmds, rect)
-        paint_outline(self.node, cmds, rect, self.zoom)
-        display_list.extend(cmds)
+        return cmds
+
+    def paint_effects(self, cmds):
+        cmds = paint_visual_effects(self.node, cmds, self.self_rect())
+        paint_outline(self.node, cmds, self.self_rect(), self.zoom)
+        return cmds
 
     def __repr__(self):
         return "InputLayout(x={}, y={}, width={}, height={})".format(
@@ -435,10 +451,10 @@ class LineLayout:
                            for child in self.children])
         self.height = max_ascent + max_descent
 
-    def paint(self, display_list):
-        for child in self.children:
-            child.paint(display_list)
+    def paint(self):
+        return []
 
+    def paint_effects(self, cmds):
         outline_rect = skia.Rect.MakeEmpty()
         outline_node = None
         for child in self.children:
@@ -448,7 +464,8 @@ class LineLayout:
                 outline_node = child.node.parent
 
         if outline_node:
-            paint_outline(outline_node, display_list, outline_rect, self.zoom)
+            paint_outline(outline_node, cmds, outline_rect, self.zoom)
+        return cmds
 
     def role(self):
         return "none"
@@ -491,10 +508,15 @@ class TextLayout:
 
         self.height = linespace(self.font)
 
-    def paint(self, display_list):
+    def paint(self):
+        cmds = []
         color = self.node.style["color"]
-        display_list.append(
+        cmds.append(
             DrawText(self.x, self.y, self.word, self.font, color))
+        return cmds
+
+    def paint_effects(self, cmds):
+        return cmds
 
     def rect(self):
         return skia.Rect.MakeLTRB(
@@ -543,14 +565,17 @@ class ImageLayout(EmbedLayout):
 
         self.height = max(self.img_height, linespace(self.font))
 
-    def paint(self, display_list):
+    def paint(self):
         cmds = []
         rect = skia.Rect.MakeLTRB(
             self.x, self.y + self.height - self.img_height,
             self.x + self.width, self.y + self.height)
         quality = self.node.style.get("image-rendering", "auto")
         cmds.append(DrawImage(self.node.image, rect, quality))
-        display_list.extend(cmds)
+        return cmds
+
+    def paint_effects(self, cmds):
+        return cmds
 
     def __repr__(self):
         return ("ImageLayout(src={}, x={}, y={}, width={}," +
@@ -586,8 +611,8 @@ class IframeLayout(EmbedLayout):
             self.node.frame.frame_width = \
                 self.width - device_px(2, self.zoom)
 
-    def paint(self, display_list):
-        frame_cmds = []
+    def paint(self):
+        cmds = []
 
         rect = skia.Rect.MakeLTRB(
             self.x, self.y,
@@ -598,20 +623,22 @@ class IframeLayout(EmbedLayout):
             radius = device_px(float(
                 self.node.style.get("border-radius", "0px")[:-2]),
                 self.zoom)
-            frame_cmds.append(DrawRRect(rect, radius, bgcolor))
+            cmds.append(DrawRRect(rect, radius, bgcolor))
+        return cmds
 
-        if self.node.frame:
-            self.node.frame.paint(frame_cmds)
-
+    def paint_effects(self, cmds):
+        rect = skia.Rect.MakeLTRB(
+            self.x, self.y,
+            self.x + self.width, self.y + self.height)
         diff = device_px(1, self.zoom)
         offset = (self.x + diff, self.y + diff)
-        cmds = [Transform(offset, rect, self.node, frame_cmds)]
+        cmds = [Transform(offset, rect, self.node, cmds)]
         inner_rect = skia.Rect.MakeLTRB(
             self.x + diff, self.y + diff,
             self.x + self.width - diff, self.y + self.height - diff)
         cmds = paint_visual_effects(self.node, cmds, inner_rect)
         paint_outline(self.node, cmds, rect, self.zoom)
-        display_list.extend(cmds)
+        return cmds
 
     def __repr__(self):
         return "IframeLayout(src={}, x={}, y={}, width={}, height={})".format(
@@ -760,15 +787,15 @@ class HTMLParser:
 
 INTERNAL_ACCESSIBILITY_HOVER = "-internal-accessibility-hover"
 
-EVENT_DISPATCH_CODE = \
+EVENT_DISPATCH_JS = \
     "new window.Node(dukpy.handle)" + \
     ".dispatchEvent(new window.Event(dukpy.type))"
 
-POST_MESSAGE_DISPATCH_CODE = \
+POST_MESSAGE_DISPATCH_JS = \
     "window.dispatchEvent(new window.MessageEvent(dukpy.data))"
 
-SETTIMEOUT_CODE = "window.__runSetTimeout(dukpy.handle)"
-XHR_ONLOAD_CODE = "window.__runXHROnload(dukpy.out, dukpy.handle)"
+SETTIMEOUT_JS = "window.__runSetTimeout(dukpy.handle)"
+XHR_ONLOAD_JS = "window.__runXHROnload(dukpy.out, dukpy.handle)"
 RUNTIME_JS = open("runtime15.js").read()
 
 class JSContext:
@@ -830,7 +857,7 @@ class JSContext:
 
     def dispatch_event(self, type, elt, window_id):
         handle = self.node_to_handle.get(elt, -1)
-        code = self.wrap(EVENT_DISPATCH_CODE, window_id)
+        code = self.wrap(EVENT_DISPATCH_JS, window_id)
         do_default = self.interp.evaljs(code,
             type=type, handle=handle)
         return not do_default
@@ -873,7 +900,7 @@ class JSContext:
 
     def dispatch_post_message(self, message, window_id):
         self.interp.evaljs(
-            self.wrap(POST_MESSAGE_DISPATCH_CODE, window_id),
+            self.wrap(POST_MESSAGE_DISPATCH_JS, window_id),
             data=message)
 
     def postMessage(self, target_window_id, message, origin):
@@ -902,7 +929,7 @@ class JSContext:
 
     def dispatch_settimeout(self, handle, window_id):
         self.interp.evaljs(
-            self.wrap(SETTIMEOUT_CODE, window_id), handle=handle)
+            self.wrap(SETTIMEOUT_JS, window_id), handle=handle)
 
     def setTimeout(self, handle, time, window_id):
         def run_callback():
@@ -911,7 +938,7 @@ class JSContext:
         threading.Timer(time / 1000.0, run_callback).start()
 
     def dispatch_xhr_onload(self, out, handle, window_id):
-        code = self.wrap(XHR_ONLOAD_CODE, window_id)
+        code = self.wrap(XHR_ONLOAD_JS, window_id)
         do_default = self.interp.evaljs(code, out=out, handle=handle)
 
     def XMLHttpRequest_send(
@@ -1294,10 +1321,6 @@ class Frame:
             self.scroll_changed_in_frame = True
         self.scroll = clamped_scroll
 
-    def paint(self, display_list):
-        self.document.paint(display_list, self.tab.dark_mode,
-            self.scroll if self != self.tab.root_frame else None)
-
     def advance_tab(self):
         focusable_nodes = [node
             for node in tree_to_list(self.nodes, [])
@@ -1569,7 +1592,7 @@ class Tab:
 
         if self.needs_paint:
             self.display_list = []
-            self.root_frame.paint(self.display_list)
+            paint_tree(self.root_frame.document, self.display_list)
             self.needs_paint = False
 
         self.browser.measure.stop('render')

@@ -398,9 +398,9 @@ class URL:
         # ...
 ```
 
-You should now be able to use your toy browser to log in to the guest
+You should now be able to use your browser to log in to the guest
 book and post to it. Moreover, you should be able to open the guest
-book in two browsers simultaneously---maybe your toy browser and a
+book in two browsers simultaneously---maybe your browser and a
 real browser as well---and log in and post as two different
 users.
 
@@ -887,9 +887,12 @@ URL have the same host name:[^schemeful]
     URL and the top-level URL have the same scheme and some browsers
     ignore subdomains, so that `www.foo.com` and `login.foo.com` are
     considered the "same site". If cookies were invented today, they'd
-    probably be specific to URL origins, much like CSP policies, but
-    alas historical contingencies and backwards compatibility force
+    probably be specific to URL origins (in fact, there is [an effort
+    to do just that][origin-bound-cookies]), much like CSP policies,
+    but alas historical contingencies and backwards compatibility force
     rules that are more complex but easier to deploy.
+
+[origin-bound-cookies]: https://github.com/sbingler/Origin-Bound-Cookies
 
 ``` {.python indent=4}
 def request(self, top_level_url, payload=None):
@@ -929,6 +932,14 @@ some [awkward patches][patches] after the fact. These patches may be
 ugly, but a dedication to backwards compatibility is a strength of the
 web, and at least newer APIs can be designed around more consistent
 policies.
+
+To this end, while there is a full specification for `SameSite`, it is still the
+case that real browsers support different subsets of the feature or different
+defaults. For example, Chrome defaults to `Lax`, but Firefox and Safari do not.
+Likewise, Chrome uses the scheme (`https` or `http`) as part of the definition
+of a "site",^[This is called "schemeful same-site".] but other browsers may not.
+The main reason for this situation is the need to maintain backward
+compatibility with existing websites.
 :::
 
 [patches]: https://jakearchibald.com/2021/cors/

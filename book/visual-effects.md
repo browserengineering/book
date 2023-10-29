@@ -333,6 +333,13 @@ class DrawRect:
         # ...
 ```
 
+Speaking of rects, let's now get rid of the old `Rect` class that was
+introduced in [Chapter 7](chrome.md) in favor of `skia.Rect`. Everywhere
+that a `Rect` was constructed, instead put `skia.Rect.MakeLTRB`, and
+everywhere that the sides of the rectangle (e.g. `left`) where checked,
+replace them with the corresponding function on a Skia `Rect` (e.g. `left()`).
+Also replace calls to `containsPoint` with Skia's `contains`.
+
 To draw just the outline, set the `Style` parameter of the `Paint` to
 `Stroke_Style`. Here "stroke" is a standard term referring to drawing
 along the border of some shape; the opposite is "fill", meaning
@@ -409,14 +416,14 @@ example, in the `render` method for a `Tab`, we must do:
 
 ``` {.python}
 class InputLayout:
-    def paint(self, display_list):
+    def paint(self):
         if self.node.is_focused:
             cx = self.x + self.font.measureText(text)
             # ...
 ```
 
 There are also `measure` calls in `DrawText`, in the `draw` method on
-`Browser`, in the `text` method in `BlockLayout`, and in the `layout`
+`Chrome`, in the `text` method in `BlockLayout`, and in the `layout`
 method in `TextLayout`. Update all of them to use `measureText`.
 
 Also, in the `layout` method of `LineLayout` and in `DrawText` we make
@@ -509,14 +516,14 @@ Note that Skia supports `RRect`s, or rounded rectangles, natively, so
 we can just draw one right to a canvas. Now we can draw these rounded
 rectangles for the background:
 
-``` {.python replace=display_list./cmds.}
+``` {.python replace=is_atomic/self.is_atomic(),rect/self.self_rect()}
 class BlockLayout:
-    def paint(self, display_list):
+    def paint(self):
         if not is_atomic:
             if bgcolor != "transparent":
                 radius = float(
                     self.node.style.get("border-radius", "0px")[:-2])
-                display_list.append(DrawRRect(rect, radius, bgcolor))
+                cmds.append(DrawRRect(rect, radius, bgcolor))
 ```
 
 Similar changes should be made to `InputLayout`.
@@ -803,39 +810,46 @@ class SaveLayer:
         canvas.restore()
 ```
 
-Now let's look at how we can add this to our existing `paint` method
-for `BlockLayout`s. Right now, this method draws a background and then
-recurses into its children, adding each drawing command straight to
-the global display list. Let's instead add those drawing commands to a
-temporary list first:
+Now let's look at how we can add this to our existing `paint` method for
+`BlockLayout`s. Now, _before_ we add its `cmds` command list to the overall
+display list, we can use `SaveLayer` to add transparency to the whole element.
+I'm going to do this in a new `paint_effects` method, which will wrap `cmds`
+in a `SaveLayer`. The actual `SaveLayer` will be computed in a new
+global `paint_visual_effects` method (because other object types will need it
+also).^[As part of adding this method, I've factored out a `self_rect` and
+`is_atomic` method from `paint`, you'll need to update that method also to call
+these helpers.]
 
 ``` {.python}
 class BlockLayout:
-    def paint(self, display_list):
-        cmds = []
-        # ...
-        if bgcolor != "transparent":
-            # ...
-            cmds.append(DrawRRect(rect, radius, bgcolor))
+    def is_atomic(self):
+        return not isinstance(self.node, Text) and \
+            (self.node.tag == "input" or self.node.tag == "button")
 
-        for child in self.children:
-            child.paint(cmds)
-        # ...        
-        display_list.extend(cmds)
+    def self_rect(self):
+        return skia.Rect.MakeLTRB(
+            self.x, self.y,
+            self.x + self.width, self.y + self.height)
+
+    def paint_effects(self, cmds):
+        if not self.is_atomic():
+            cmds = paint_visual_effects(
+                self.node, cmds, self.self_rect())
+        return cmds
 ```
 
-Now, _before_ we add our temporary command list to the overall display
-list, we can use `SaveLayer` to add transparency to the whole element.
-I'm going to do this in a new `paint_visual_effects` method, because
-we'll want to make the same changes to all of our other layout
-objects:
+A change is now needed in `paint_tree` to call this method, but only *after*
+recursing into children. That's because these visual effects apply to the
+entire subtree's display list, not just the current object.
 
 ``` {.python}
-class BlockLayout:
-    def paint(self, display_list):
-        # ...
-        cmds = paint_visual_effects(self.node, cmds, rect)
-        display_list.extend(cmds)
+def paint_tree(layout_object, display_list):
+    cmds = layout_object.paint()
+    for child in layout_object.children:
+        paint_tree(child, cmds)
+
+    cmds = layout_object.paint_effects(cmds)
+    display_list.extend(cmds)
 ```
 
 Inside `paint_visual_effects`, we'll parse the opacity value and
@@ -1574,7 +1588,8 @@ class Browser:
     def draw(self):
         # ...
         
-        tab_rect = skia.Rect.MakeLTRB(0, self.chrome.bottom, WIDTH, HEIGHT)
+        tab_rect = skia.Rect.MakeLTRB(
+            0, self.chrome.bottom, WIDTH, HEIGHT)
         tab_offset = self.chrome.bottom - self.active_tab.scroll
         canvas.save()
         canvas.clipRect(tab_rect)
@@ -1582,7 +1597,8 @@ class Browser:
         self.tab_surface.draw(canvas, 0, 0)
         canvas.restore()
 
-        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, self.chrome.bottom)
+        chrome_rect = skia.Rect.MakeLTRB(
+            0, 0, WIDTH, self.chrome.bottom)
         canvas.save()
         canvas.clipRect(chrome_rect)
         self.chrome_surface.draw(canvas, 0, 0)

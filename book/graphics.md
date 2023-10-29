@@ -7,7 +7,7 @@ next: text
 
 A web browser doesn't just download a web page; it also has to show
 that page to the user. In the 21^st^ century, that means a graphical
-application. So in this chapter we'll equip the toy browser with a
+application. So in this chapter we'll equip our browser with a
 graphical user interface.[^1]
 
 [^1]: There are some obscure text-based browsers: I used `w3m` as my
@@ -118,7 +118,7 @@ between zooming and scrolling that's usually absent on desktop.
 Drawing to the window
 =====================
 
-Our toy browser will draw the web page text to a *canvas*,\index{canvas} a
+Our browser will draw the web page text to a *canvas*,\index{canvas} a
 rectangular Tk widget that you can draw circles, lines, and text
 on:[^canvas]
 
@@ -212,7 +212,7 @@ features, because I want to teach you how to implement them.
 Laying out text
 ===============
 
-Let's draw a simple web page on this canvas. So far, the toy browser
+Let's draw a simple web page on this canvas. So far, our browser
 steps through the web page source code character by character and
 prints the text (but not the tags) to the console window. Now we want
 to draw the characters on the canvas instead.
@@ -523,7 +523,7 @@ pixels on the screen are always correct).
     operating system and default font.
 
 Real browsers have a lot of quite tricky optimizations for this, but
-for our toy browser let's limit ourselves to a simple improvement:
+for our browser let's limit ourselves to a simple improvement:
 skip drawing characters that are offscreen:
 
 ``` {.python}
@@ -617,7 +617,7 @@ events.[^more-mousewheel]
 
 [tk-mousewheel]: https://wiki.tcl-lang.org/page/mousewheel
 
-*Emoji*: Add support for emoji to our browser. Emoji are
+*Emoji*: Add support for emoji to your browser. Emoji are
 characters, and you can call `create_text` to draw them, but the
 results aren't very good. Instead, head to [the OpenMoji
 project](https://openmoji.org), download the emoji for ["grinning
