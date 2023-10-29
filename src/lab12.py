@@ -704,17 +704,17 @@ class Browser:
 @wbetools.patch(Chrome)
 class Chrome:
     def click(self, x, y):
-        if intersects(x, y, self.newtab_rect):
+        if self.newtab_rect.contains(x, y):
             self.browser.new_tab_internal(URL("https://browser.engineering/"))
-        elif intersects(x, y, self.back_rect):
+        elif self.back_rect.contains(x, y):
             task = Task(self.browser.active_tab.go_back)
             self.browser.active_tab.task_runner.schedule_task(task)
-        elif intersects(x, y, self.address_rect):
+        elif self.address_rect.contains(x, y):
             self.focus = "address bar"
             self.address_bar = ""
         else:
             for i, tab in enumerate(self.browser.tabs):
-                if intersects(x, y, self.tab_rect(i)):
+                if self.tab_rect(i).contains(x, y):
                     self.browser.set_active_tab(tab)
                     active_tab = self.browser.active_tab
                     task = Task(active_tab.set_needs_render)

@@ -1,4 +1,4 @@
----
+p---
 title: Scheduling Tasks and Threads
 chapter: 12
 prev: visual-effects
@@ -348,8 +348,7 @@ class JSContext:
 class Tab:
     def load(self, url, payload=None):
         # ...
-        if self.js:
-            self.js.discarded = True
+        if self.js: self.js.discarded = True
         self.js = JSContext(self)
         # ...
 ```
@@ -458,7 +457,6 @@ class JSContext:
         self, method, url, body, isasync, handle):
         # ...
         def run_load():
-            if self.discarded: return
             headers, response = full_url.request(self.tab.url, body)
             task = Task(self.dispatch_xhr_onload, response, handle)
             self.tab.task_runner.schedule_task(task)
@@ -1303,6 +1301,7 @@ example, here is loading:
 ``` {.python}
 class Browser:
     def schedule_load(self, url, body=None):
+        self.active_tab.task_runner.clear_pending_tasks()
         task = Task(self.active_tab.load, url, body)
         self.active_tab.task_runner.schedule_task(task)
 
