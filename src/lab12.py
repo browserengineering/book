@@ -90,6 +90,7 @@ RUNTIME_JS = open("runtime13.js").read()
 class JSContext:
     def __init__(self, tab):
         self.tab = tab
+        self.discarded = False
 
         self.interp = dukpy.JSInterpreter()
         self.interp.export_function("log", print)
@@ -126,6 +127,7 @@ class JSContext:
         self.tab.set_needs_render()
 
     def dispatch_settimeout(self, handle):
+        if self.discarded: return
         self.interp.evaljs(SETTIMEOUT_CODE, handle=handle)
 
     def setTimeout(self, handle, time):
@@ -135,6 +137,7 @@ class JSContext:
         threading.Timer(time / 1000.0, run_callback).start()
 
     def dispatch_xhr_onload(self, out, handle):
+        if self.discarded: return
         do_default = self.interp.evaljs(
             XHR_ONLOAD_CODE, out=out, handle=handle)
 
@@ -162,10 +165,6 @@ class JSContext:
     def requestAnimationFrame(self):
         self.tab.browser.set_needs_animation_frame(self.tab)
 
-def clamp_scroll(scroll, document_height, tab_height):
-    return max(0, min(
-        scroll, document_height - tab_height))
-
 @wbetools.patch(Tab)
 class Tab:
     def __init__(self, browser, tab_height):
@@ -177,6 +176,7 @@ class Tab:
         self.scroll_changed_in_tab = False
         self.needs_raf_callbacks = False
         self.needs_render = False
+        self.js = None
         self.browser = browser
         if wbetools.USE_BROWSER_THREAD:
             self.task_runner = TaskRunner(self)
@@ -203,6 +203,7 @@ class Tab:
 
         self.nodes = HTMLParser(body).parse()
 
+        if self.js: self.js.discarded = True
         self.js = JSContext(self)
         scripts = [node.attributes["src"] for node
                    in tree_to_list(self.nodes, [])
@@ -315,7 +316,6 @@ class Task:
     def __init__(self, task_code, *args):
         self.task_code = task_code
         self.args = args
-        self.__name__ = "task"
 
     def run(self):
         self.task_code(*self.args)
@@ -411,7 +411,11 @@ class TaskRunner:
     def handle_quit(self):
         pass
 
-REFRESH_RATE_SEC = 0.016 # 16ms
+REFRESH_RATE_SEC = .016
+
+def clamp_scroll(scroll, document_height, tab_height):
+    return max(0, min(
+        scroll, document_height - tab_height))
 
 @wbetools.patch(Chrome)
 class Chrome:
@@ -438,9 +442,7 @@ class Chrome:
             self.browser.schedule_load(URL(self.address_bar))
             self.focus = None
             self.browser.focus = None
-
-@wbetools.patch(Chrome)
-class Chrome:
+    
     def tab_rect(self, i):
         tabs_start = self.newtab_rect.right() + self.padding
         tab_width = self.font.measureText("Tab X") + 2*self.padding
@@ -695,8 +697,35 @@ class Browser:
 
     def handle_quit(self):
         self.measure.finish()
-        self.active_tab.task_runner.set_needs_quit()
+        for tab in self.tabs:
+            tab.task_runner.set_needs_quit()
         sdl2.SDL_DestroyWindow(self.sdl_window)
+
+@wbetools.patch(Chrome)
+class Chrome:
+    def click(self, x, y):
+        if intersects(x, y, self.newtab_rect):
+            self.browser.new_tab_internal(URL("https://browser.engineering/"))
+        elif intersects(x, y, self.back_rect):
+            task = Task(self.browser.active_tab.go_back)
+            self.browser.active_tab.task_runner.schedule_task(task)
+        elif intersects(x, y, self.address_rect):
+            self.focus = "address bar"
+            self.address_bar = ""
+        else:
+            for i, tab in enumerate(self.browser.tabs):
+                if intersects(x, y, self.tab_rect(i)):
+                    self.browser.set_active_tab(tab)
+                    active_tab = self.browser.active_tab
+                    task = Task(active_tab.set_needs_render)
+                    active_tab.task_runner.schedule_task(task)
+                    break
+
+    def enter(self):
+        if self.focus == "address bar":
+            self.browser.schedule_load(URL(self.address_bar))
+            self.focus = None
+            self.browser.focus = None
 
 if __name__ == "__main__":
     import sys
