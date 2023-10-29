@@ -2010,9 +2010,15 @@ class CompositedLayer:
 The blue square should now be underneath the green square, so overlap
 testing is now complete.[^not-really]
 
-However, this now makes `absolute_bounds`'s size a bit different than
-`composited_bounds`, in situations where there are clips in the visual effect
-path to the root. Let's fix that by also applying those clips to
+There's one more situation worth thinking about, though. Suppose we have
+a huge composited layer, containing a lot of text, except that most of that
+layer is clipped out by a `ClipRRect` somewhere above it. Then the
+`absolute_bounds` consider the clip operations and the `composited_bounds`
+don't, meaning that we'll make a much larger composited layer than necessary
+and waste a lot of time raster pixels that the user will never see. This situation
+actually happens a lot when scrollable elements are drawn to the screen. 
+
+Let's fix that by also applying those clips to
 `composited_bounds`, so that we can properly minimize the amount of raster
 happening in each `CompositedLayer`.[^clipping-notes] We'll do it by first
 computing the absolute bounds for each item, then mapping them back to local
