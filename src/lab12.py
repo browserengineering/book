@@ -92,6 +92,7 @@ RUNTIME_JS = open("runtime13.js").read()
 class JSContext:
     def __init__(self, tab):
         self.tab = tab
+        self.discarded = False
 
         self.interp = dukpy.JSInterpreter()
         self.interp.export_function("log", print)
@@ -132,11 +133,13 @@ class JSContext:
 
     def setTimeout(self, handle, time):
         def run_callback():
+            if self.discarded: return
             task = Task(self.dispatch_settimeout, handle)
             self.tab.task_runner.schedule_task(task)
         threading.Timer(time / 1000.0, run_callback).start()
 
     def dispatch_xhr_onload(self, out, handle):
+        if self.discarded: return
         do_default = self.interp.evaljs(
             XHR_ONLOAD_CODE, out=out, handle=handle)
 
@@ -150,6 +153,7 @@ class JSContext:
                 "Cross-origin XHR request not allowed")
 
         def run_load():
+            if self.discarded: return
             headers, response = full_url.request(self.tab.url, body)
             task = Task(self.dispatch_xhr_onload, response, handle)
             self.tab.task_runner.schedule_task(task)
@@ -175,6 +179,7 @@ class Tab:
         self.scroll_changed_in_tab = False
         self.needs_raf_callbacks = False
         self.needs_render = False
+        self.js = None
         self.browser = browser
         if wbetools.USE_BROWSER_THREAD:
             self.task_runner = TaskRunner(self)
@@ -201,6 +206,8 @@ class Tab:
 
         self.nodes = HTMLParser(body).parse()
 
+        if self.js:
+            self.js.discarded = True
         self.js = JSContext(self)
         scripts = [node.attributes["src"] for node
                    in tree_to_list(self.nodes, [])

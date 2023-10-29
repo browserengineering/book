@@ -236,18 +236,7 @@ all run independently and communicate only via special message-passing APIs.
 
 [workers]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API
 
-Let's implement that:[^later-bug]
-
-[^later-bug]: This code has a *very* subtle bug, wherein a page might
-    create a `setTimeout`, and then have that timer trigger later, when
-    a user is visiting another web page. In our browser, that would
-    allow one page to run JavaScript that modifies a different
-    page---a huge security vulnerability! I *think* you can avoid this
-    by resetting `self.js.tab` when you navigate to a new page, but
-    ideally you'd do something more careful, like keeping track of all
-    the child threads spawned by a `JSContext` and ending all of them
-    before navigating. As our browser gets more complex, our bugs, and
-    their associated fixes, get more complex too!
+Let's implement that:
 
 ``` {.python}
 SETTIMEOUT_CODE = "__runSetTimeout(dukpy.handle)"
@@ -338,6 +327,27 @@ above, for example, releases the lock before running the `task`.
 That's because after the task has been removed from the queue, it
 can't be accessed by another thread, so the lock does not need to be
 held while the task is running.
+
+The `setTimeout` code is now thread-safe, but still has yet another bug: if we
+navigate from one page to another, `setTimeout` callbacks still pending on the
+previous page eshouldn't do anything. That is easily fixed by adding a
+`discarded` field on `JSContext` and setting it when loading a new page:
+
+``` {.python}
+class JSContext:
+    def __init__(self, tab):
+        # ...
+        self.discarded = False
+```
+
+``` {.python}
+class Tab:
+    def load(self, url, payload=None):
+        # ...
+        if self.js:
+            self.js.discarded = True
+        self.js = JSContext(self)
+```
 
 ::: {.further}
 Unfortunately, Python currently has a [global interpreter lock][gil]
@@ -443,6 +453,7 @@ class JSContext:
         self, method, url, body, isasync, handle):
         # ...
         def run_load():
+            if self.discarded: return
             headers, response = full_url.request(self.tab.url, body)
             task = Task(self.dispatch_xhr_onload, response, handle)
             self.tab.task_runner.schedule_task(task)
@@ -478,6 +489,7 @@ XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
 
 class JSContext:
     def dispatch_xhr_onload(self, out, handle):
+        if self.discarded: return
         do_default = self.interp.evaljs(
             XHR_ONLOAD_CODE, out=out, handle=handle)
 ```
