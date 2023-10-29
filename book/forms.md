@@ -267,12 +267,12 @@ def paint_tree(layout_object, display_list):
     # ...
 ```
 
-[^atomic-inline-input]: Recall (see Chapter 5) that we only get into this
-situation due to the presence of anonymous block boxes. Also, it's worth noting
-that there are various other ways that our browser does not fully implement all
-the complexities of inline painting---one example is that it does not correctly
-paint nested inlines with different background colors. Inline layout and paint
-are very complicated in real browsers.
+[^atomic-inline-input]: Recall (see [Chapter 5](layout.md#block-layout)) that we
+only get into this situation due to the presence of anonymous block boxes.
+Also, it's worth noting that there are various other ways that our browser does
+not fully implement all the complexities of inline painting---one example is
+that it does not correctly paint nested inlines with different background
+colors. Inline layout and paint are very complicated in real browsers.
 
 With these changes the browser should now draw `input` and `button`
 elements as blue and orange rectangles.

@@ -1043,7 +1043,7 @@ class BlockLayout:
     return isinstance(self.node, Text) or \
         (self.node.tag != "input" and self.node.tag != "button" \
          and self.node.tag != "img" and self.node.tag != "iframe")        
-    
+
 ```
 
 Then painting of an `IframeLayout` is just drawing a rectangle and background:
