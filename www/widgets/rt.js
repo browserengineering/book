@@ -671,6 +671,11 @@ class skia {
                     rect.right() + x,
                     rect.bottom() + y);
             };
+            rect.x = () => {
+                return rect.left();
+            };
+            rect.y = () => {
+                return rect.top();
             rect.contains = (x, y) => {
                 return rect.contains(x, y);
             };
