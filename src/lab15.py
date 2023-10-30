@@ -1477,6 +1477,7 @@ class Tab:
         self.accessibility_tree = None
         self.has_spoken_document = False
         self.accessibility_focus = None
+        self.loaded = False
 
         self.browser = browser
         if wbetools.USE_BROWSER_THREAD:

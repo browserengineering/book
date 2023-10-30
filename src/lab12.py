@@ -178,6 +178,7 @@ class Tab:
         self.needs_render = False
         self.js = None
         self.browser = browser
+        self.loaded = False
         if wbetools.USE_BROWSER_THREAD:
             self.task_runner = TaskRunner(self)
         else:
@@ -188,6 +189,7 @@ class Tab:
             self.default_style_sheet = CSSParser(f.read()).parse()
 
     def load(self, url, payload=None):
+        self.loaded = False
         self.scroll = 0
         self.scroll_changed_in_tab = True
         self.task_runner.clear_pending_tasks()
@@ -238,6 +240,7 @@ class Tab:
                 continue
             self.rules.extend(CSSParser(body).parse())
         self.set_needs_render()
+        self.loaded = True
 
     def set_needs_render(self):
         self.needs_render = True
@@ -559,7 +562,8 @@ class Browser:
     def render(self):
         assert not wbetools.USE_BROWSER_THREAD
         self.active_tab.task_runner.run_tasks()
-        self.active_tab.run_animation_frame(self.scroll)
+        if self.active_tab.loaded:
+            self.active_tab.run_animation_frame(self.scroll)
 
     def commit(self, tab, data):
         self.lock.acquire(blocking=True)
