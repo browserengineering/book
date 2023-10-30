@@ -29,7 +29,7 @@ from lab11 import FONTS, get_font, linespace, parse_blend_mode
 from lab12 import MeasureTime, REFRESH_RATE_SEC
 from lab12 import Task, TaskRunner, SingleThreadedTaskRunner
 from lab13 import diff_styles, parse_transition, add_parent_pointers
-from lab13 import absolute_bounds, absolute_bounds_for_obj
+from lab13 import local_to_absolute, absolute_bounds_for_obj
 from lab13 import NumericAnimation, TranslateAnimation
 from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
 from lab13 import CompositedLayer, paint_visual_effects
@@ -82,9 +82,7 @@ def paint_outline(node, cmds, rect, zoom):
     outline = parse_outline(node.style["outline"].get())
     if not outline: return
     thickness, color = outline
-    cmds.append(DrawOutline(
-        rect.left(), rect.top(),
-        rect.right(), rect.bottom(),
+    cmds.append(DrawOutline(rect,
         color, device_px(thickness, zoom)))
 
 @wbetools.patch(font)
