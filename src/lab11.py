@@ -251,8 +251,10 @@ class BlockLayout:
         if not self.is_atomic():
             if bgcolor != "transparent":
                 radius = float(
-                    self.node.style.get("border-radius", "0px")[:-2])
-                cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
+                    self.node.style.get(
+                        "border-radius", "0px")[:-2])
+                cmds.append(DrawRRect(
+                    self.self_rect(), radius, bgcolor))
 
         return cmds
 
