@@ -1493,12 +1493,14 @@ class Tab:
         self.origin_to_js = {}
 
     def load(self, url, payload=None):
+        self.loaded = False
         self.history.append(url)
         self.task_runner.clear_pending_tasks()
         self.root_frame = Frame(self, None, None)
         self.root_frame.load(url, payload)
         self.root_frame.frame_width = WIDTH
         self.root_frame.frame_height = self.tab_height
+        self.loaded = True
 
     def get_js(self, origin):
         if wbetools.FORCE_CROSS_ORIGIN_IFRAMES:
