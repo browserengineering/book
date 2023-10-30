@@ -523,7 +523,8 @@ class BlockLayout:
             radius = float(
                 self.node.style.get(
                     "border-radius", "0px")[:-2])
-            cmds.append(DrawRRect(rect, radius, bgcolor))
+            cmds.append(DrawRRect(
+                rect, radius, bgcolor))
 ```
 
 Similar changes should be made to `InputLayout`.
