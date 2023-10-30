@@ -31,7 +31,6 @@ from lab5 import BLOCK_ELEMENTS
 from lab6 import TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES
 from lab6 import tree_to_list
-from lab7 import intersects
 from lab8 import INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL
@@ -39,7 +38,7 @@ from lab11 import FONTS, get_font, parse_blend_mode, linespace, paint_tree
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
 from lab12 import Task, REFRESH_RATE_SEC
 from lab13 import JSContext, diff_styles, clamp_scroll, add_parent_pointers
-from lab13 import absolute_bounds, absolute_bounds_for_obj
+from lab13 import local_to_absolute, absolute_bounds_for_obj
 from lab13 import NumericAnimation, TranslateAnimation
 from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
 from lab13 import CompositedLayer, paint_visual_effects
@@ -106,10 +105,7 @@ def paint_outline(node, cmds, rect, zoom):
     outline = parse_outline(node.style.get("outline"))
     if not outline: return
     thickness, color = outline
-    cmds.append(DrawOutline(
-        rect.left(), rect.top(),
-        rect.right(), rect.bottom(),
-        color, device_px(thickness, zoom)))
+    cmds.append(DrawOutline(rect, color, device_px(thickness, zoom)))
 
 class BlockLayout:
     def __init__(self, node, parent, previous):
@@ -1265,65 +1261,56 @@ class Chrome:
             0, self.bottom, WIDTH,
             self.bottom, color, 1))
 
-        cmds.append(DrawOutline(
-            self.newtab_rect[0], self.newtab_rect[1],
-            self.newtab_rect[2], self.newtab_rect[3],
-            color, 1))
+        cmds.append(DrawOutline(self.newtab_rect, color, 1))
         cmds.append(DrawText(
-            self.newtab_rect[0] + self.padding,
-            self.newtab_rect[1],
+            self.newtab_rect.left() + self.padding,
+            self.newtab_rect.top(),
             "+", self.font, color))
 
         for i, tab in enumerate(self.browser.tabs):
             bounds = self.tab_rect(i)
             cmds.append(DrawLine(
-                bounds[0], 0, bounds[0], bounds[3],
+                bounds.left(), 0, bounds.left(), bounds.bottom(),
                 color, 1))
             cmds.append(DrawLine(
-                bounds[2], 0, bounds[2], bounds[3],
+                bounds.right(), 0, bounds.right(), bounds.bottom(),
                 color, 1))
             cmds.append(DrawText(
-                bounds[0] + self.padding, bounds[1] + self.padding,
+                bounds.left() + self.padding, bounds.top() + self.padding,
                 "Tab {}".format(i), self.font, color))
 
             if tab == self.browser.active_tab:
                 cmds.append(DrawLine(
-                    0, bounds[3], bounds[0], bounds[3],
+                    0, bounds.bottom(), bounds.left(), bounds.bottom(),
                     color, 1))
                 cmds.append(DrawLine(
-                    bounds[2], bounds[3], WIDTH, bounds[3],
+                    bounds.right(), bounds.bottom(), WIDTH, bounds.bottom(),
                     color, 1))
 
-        cmds.append(DrawOutline(
-            self.back_rect[0], self.back_rect[1],
-            self.back_rect[2], self.back_rect[3],
-            color, 1))
+        cmds.append(DrawOutline(self.back_rect, color, 1))
         cmds.append(DrawText(
-            self.back_rect[0] + self.padding,
-            self.back_rect[1],
+            self.back_rect.left() + self.padding,
+            self.back_rect.top(),
             "<", self.font, color))
 
-        cmds.append(DrawOutline(
-            self.address_rect[0], self.address_rect[1],
-            self.address_rect[2], self.address_rect[3],
-            color, 1))
+        cmds.append(DrawOutline(self.address_rect, color, 1))
         if self.focus == "address bar":
             cmds.append(DrawText(
-                self.address_rect[0] + self.padding,
-                self.address_rect[1],
+                self.address_rect.left() + self.padding,
+                self.address_rect.top(),
                 self.address_bar, self.font, color))
             w = self.font.measureText(self.address_bar)
             cmds.append(DrawLine(
-                self.address_rect[0] + self.padding + w,
-                self.address_rect[1],
-                self.address_rect[0] + self.padding + w,
-                self.address_rect[3],
+                self.address_rect.left() + self.padding + w,
+                self.address_rect.top(),
+                self.address_rect.left() + self.padding + w,
+                self.address_rect.bottom(),
                 "red", 1))
         else:
-            url = str(self.browser.active_tab.url)
+            url = str(self.browser.url if self.browser.url else "")
             cmds.append(DrawText(
-                self.address_rect[0] + self.padding,
-                self.address_rect[1],
+                self.address_rect.left() + self.padding,
+                self.address_rect.top(),
                 url, self.font, color))
 
         return cmds
@@ -1497,7 +1484,7 @@ class Browser:
                     break
                 elif skia.Rect.Intersects(
                     layer.absolute_bounds(),
-                    absolute_bounds(cmd)):
+                    local_to_absolute(cmd, cmd.rect)):
                     layer = CompositedLayer(self.skia_context, cmd)
                     self.composited_layers.append(layer)
                     break

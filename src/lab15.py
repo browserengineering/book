@@ -26,7 +26,6 @@ from lab5 import BLOCK_ELEMENTS
 from lab14 import Text, Element
 from lab6 import TagSelector, DescendantSelector
 from lab6 import tree_to_list, INHERITED_PROPERTIES
-from lab7 import intersects
 from lab8 import INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL
@@ -34,7 +33,7 @@ from lab11 import FONTS, get_font, linespace, parse_blend_mode
 from lab12 import MeasureTime, REFRESH_RATE_SEC
 from lab12 import Task, TaskRunner, SingleThreadedTaskRunner
 from lab13 import diff_styles, parse_transition, add_parent_pointers
-from lab13 import absolute_bounds, absolute_bounds_for_obj
+from lab13 import local_to_absolute, absolute_bounds_for_obj
 from lab13 import NumericAnimation, TranslateAnimation
 from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
 from lab13 import CompositedLayer, paint_visual_effects
@@ -1658,82 +1657,6 @@ class Tab:
         frame = self.window_id_to_frame[target_window_id]
         frame.js.dispatch_post_message(
             message, target_window_id)
-
-@wbetools.patch(Chrome)
-class Chrome:
-    def paint(self):
-        if self.browser.dark_mode:
-            color = "white"
-        else:
-            color = "black"
-
-        cmds = []
-        cmds.append(DrawLine(
-            0, self.bottom, WIDTH,
-            self.bottom, color, 1))
-
-        cmds.append(DrawOutline(
-            self.newtab_rect[0], self.newtab_rect[1],
-            self.newtab_rect[2], self.newtab_rect[3],
-            color, 1))
-        cmds.append(DrawText(
-            self.newtab_rect[0] + self.padding,
-            self.newtab_rect[1],
-            "+", self.font, color))
-
-        for i, tab in enumerate(self.browser.tabs):
-            bounds = self.tab_rect(i)
-            cmds.append(DrawLine(
-                bounds[0], 0, bounds[0], bounds[3],
-                color, 1))
-            cmds.append(DrawLine(
-                bounds[2], 0, bounds[2], bounds[3],
-                color, 1))
-            cmds.append(DrawText(
-                bounds[0] + self.padding, bounds[1] + self.padding,
-                "Tab {}".format(i), self.font, color))
-
-            if tab == self.browser.active_tab:
-                cmds.append(DrawLine(
-                    0, bounds[3], bounds[0], bounds[3],
-                    color, 1))
-                cmds.append(DrawLine(
-                    bounds[2], bounds[3], WIDTH, bounds[3],
-                    color, 1))
-
-        cmds.append(DrawOutline(
-            self.back_rect[0], self.back_rect[1],
-            self.back_rect[2], self.back_rect[3],
-            color, 1))
-        cmds.append(DrawText(
-            self.back_rect[0] + self.padding,
-            self.back_rect[1],
-            "<", self.font, color))
-
-        cmds.append(DrawOutline(
-            self.address_rect[0], self.address_rect[1],
-            self.address_rect[2], self.address_rect[3],
-            color, 1))
-        if self.focus == "address bar":
-            cmds.append(DrawText(
-                self.address_rect[0] + self.padding,
-                self.address_rect[1],
-                self.address_bar, self.font, color))
-            w = self.font.measureText(self.address_bar)
-            cmds.append(DrawLine(
-                self.address_rect[0] + self.padding + w,
-                self.address_rect[1],
-                self.address_rect[0] + self.padding + w,
-                self.address_rect[3],
-                "red", 1))
-        else:
-            url = str(self.browser.active_tab.root_frame.url)
-            cmds.append(DrawText(
-                self.address_rect[0] + self.padding,
-                self.address_rect[1],
-                url, self.font, color))
-
-        return cmds 
 
 @wbetools.patch(Browser)
 class Browser:

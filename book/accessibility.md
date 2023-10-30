@@ -1043,10 +1043,7 @@ element:
 ``` {.python replace=node.is_focused/outline,%22black%22/color,1/device_px(thickness%2c%20zoom)}
 def paint_outline(node, cmds, rect, zoom):
     if not node.is_focused: return
-    cmds.append(DrawOutline(
-        rect.left(), rect.top(),
-        rect.right(), rect.bottom(),
-        "black", 1))
+    cmds.append(DrawOutline(rect, "black", 1))
 ```
 
 We'll set this flag in a new `focus_element` method that we'll now use
@@ -1318,10 +1315,7 @@ def paint_outline(node, cmds, rect, zoom):
     outline = parse_outline(node.style.get("outline"))
     if not outline: return
     thickness, color = outline
-    cmds.append(DrawOutline(
-        rect.left(), rect.top(),
-        rect.right(), rect.bottom(),
-        color, device_px(thickness, zoom)))
+    cmds.append(DrawOutline(rect, color, device_px(thickness, zoom)))
 ```
 
 The default two-pixel black outline can now be moved into the browser

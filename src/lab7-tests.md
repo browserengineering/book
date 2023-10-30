@@ -124,12 +124,12 @@ Clicking on a browser tab focuses it:
 
     >>> browser.active_tab
     Tab(history=[URL(scheme=http, host=test, port=80, path='/1')])
-    >>> (l, t, r, b) = browser.chrome.tab_rect(0)
-    >>> browser.handle_click(test.Event(l + 1, t + 1))
+    >>> rect = browser.chrome.tab_rect(0)
+    >>> browser.handle_click(test.Event(rect.left + 1, rect.top + 1))
     >>> browser.active_tab
     Tab(history=[URL(scheme=http, host=test, port=80, path='/0')])
-    >>> (l, t, r, b) = browser.chrome.tab_rect(1)
-    >>> browser.handle_click(test.Event(l + 1, t + 1))
+    >>> rect = browser.chrome.tab_rect(1)
+    >>> browser.handle_click(test.Event(rect.left + 1, rect.top + 1))
     >>> browser.active_tab
     Tab(history=[URL(scheme=http, host=test, port=80, path='/1')])
 
@@ -147,8 +147,8 @@ The back button works:
     >>> browser.tabs[1].history #doctest: +NORMALIZE_WHITESPACE
     [URL(scheme=http, host=test, port=80, path='/1'),
      URL(scheme=http, host=test, port=80, path='/0')]
-    >>> (l, t, r, b) = browser.chrome.back_rect
-    >>> browser.handle_click(test.Event(l + 1, t + 1))
+    >>> rect = browser.chrome.back_rect
+    >>> browser.handle_click(test.Event(rect.left + 1, rect.top + 1))
     >>> browser.tabs[1].history
     [URL(scheme=http, host=test, port=80, path='/1')]
 

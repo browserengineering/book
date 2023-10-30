@@ -22,7 +22,6 @@ from lab5 import BLOCK_ELEMENTS
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import tree_to_list
-from lab7 import intersects
 from lab8 import Text, Element, INPUT_WIDTH_PX, DocumentLayout
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, JSContext, URL
@@ -32,7 +31,6 @@ from lab11 import BlockLayout, LineLayout, TextLayout, InputLayout, Chrome
 from lab11 import Tab, Browser, paint_tree
 
 class MeasureTime:
-
     def __init__(self):
         if not wbetools.OUTPUT_TRACE: return
         self.lock = threading.Lock()
@@ -93,6 +91,7 @@ RUNTIME_JS = open("runtime13.js").read()
 class JSContext:
     def __init__(self, tab):
         self.tab = tab
+        self.discarded = False
 
         self.interp = dukpy.JSInterpreter()
         self.interp.export_function("log", print)
@@ -129,6 +128,7 @@ class JSContext:
         self.tab.set_needs_render()
 
     def dispatch_settimeout(self, handle):
+        if self.discarded: return
         self.interp.evaljs(SETTIMEOUT_CODE, handle=handle)
 
     def setTimeout(self, handle, time):
@@ -138,6 +138,7 @@ class JSContext:
         threading.Timer(time / 1000.0, run_callback).start()
 
     def dispatch_xhr_onload(self, out, handle):
+        if self.discarded: return
         do_default = self.interp.evaljs(
             XHR_ONLOAD_CODE, out=out, handle=handle)
 
@@ -176,6 +177,7 @@ class Tab:
         self.scroll_changed_in_tab = False
         self.needs_raf_callbacks = False
         self.needs_render = False
+        self.js = None
         self.browser = browser
         if wbetools.USE_BROWSER_THREAD:
             self.task_runner = TaskRunner(self)
@@ -202,6 +204,7 @@ class Tab:
 
         self.nodes = HTMLParser(body).parse()
 
+        if self.js: self.js.discarded = True
         self.js = JSContext(self)
         scripts = [node.attributes["src"] for node
                    in tree_to_list(self.nodes, [])
@@ -415,6 +418,99 @@ def clamp_scroll(scroll, document_height, tab_height):
     return max(0, min(
         scroll, document_height - tab_height))
 
+@wbetools.patch(Chrome)
+class Chrome:
+    def click(self, x, y):
+        if self.newtab_rect.contains(x, y):
+            self.browser.new_tab_internal(URL("https://browser.engineering/"))
+        elif self.back_rect.contains(x, y):
+            task = Task(self.browser.active_tab.go_back)
+            self.browser.active_tab.task_runner.schedule_task(task)
+        elif self.address_rect.contains(x, y):
+            self.focus = "address bar"
+            self.address_bar = ""
+        else:
+            for i, tab in enumerate(self.browser.tabs):
+                if self.tab_rect(i).contains(x, y):
+                    self.browser.set_active_tab(tab)
+                    active_tab = self.browser.active_tab
+                    task = Task(active_tab.set_needs_render)
+                    active_tab.task_runner.schedule_task(task)
+                    break
+
+    def enter(self):
+        if self.focus == "address bar":
+            self.browser.schedule_load(URL(self.address_bar))
+            self.focus = None
+            self.browser.focus = None
+    
+    def tab_rect(self, i):
+        tabs_start = self.newtab_rect.right() + self.padding
+        tab_width = self.font.measureText("Tab X") + 2*self.padding
+        return skia.Rect.MakeLTRB(
+            tabs_start + tab_width * i, self.tabbar_top,
+            tabs_start + tab_width * (i + 1), self.tabbar_bottom)
+
+    def paint(self):
+        cmds = []
+        cmds.append(DrawLine(
+            0, self.bottom, WIDTH,
+            self.bottom, "black", 1))
+
+        cmds.append(DrawOutline(self.newtab_rect, "black", 1))
+        cmds.append(DrawText(
+            self.newtab_rect.left() + self.padding,
+            self.newtab_rect.top(),
+            "+", self.font, "black"))
+
+        for i, tab in enumerate(self.browser.tabs):
+            bounds = self.tab_rect(i)
+            cmds.append(DrawLine(
+                bounds.left(), 0, bounds.left(), bounds.bottom(),
+                "black", 1))
+            cmds.append(DrawLine(
+                bounds.right(), 0, bounds.right(), bounds.bottom(),
+                "black", 1))
+            cmds.append(DrawText(
+                bounds.left() + self.padding, bounds.top() + self.padding,
+                "Tab {}".format(i), self.font, "black"))
+
+            if tab == self.browser.active_tab:
+                cmds.append(DrawLine(
+                    0, bounds.bottom(), bounds.left(), bounds.bottom(),
+                    "black", 1))
+                cmds.append(DrawLine(
+                    bounds.right(), bounds.bottom(), WIDTH, bounds.bottom(),
+                    "black", 1))
+
+        cmds.append(DrawOutline(self.back_rect, "black", 1))
+        cmds.append(DrawText(
+            self.back_rect.left() + self.padding,
+            self.back_rect.top(),
+            "<", self.font, "black"))
+
+        cmds.append(DrawOutline(self.address_rect, "black", 1))
+        if self.focus == "address bar":
+            cmds.append(DrawText(
+                self.address_rect.left() + self.padding,
+                self.address_rect.top(),
+                self.address_bar, self.font, "black"))
+            w = self.font.measureText(self.address_bar)
+            cmds.append(DrawLine(
+                self.address_rect.left() + self.padding + w,
+                self.address_rect.top(),
+                self.address_rect.left() + self.padding + w,
+                self.address_rect.bottom(),
+                "red", 1))
+        else:
+            url = str(self.browser.url if self.browser.url else "")
+            cmds.append(DrawText(
+                self.address_rect.left() + self.padding,
+                self.address_rect.top(),
+                url, self.font, "black"))
+
+        return cmds
+
 @wbetools.patch(Browser)
 class Browser:
     def __init__(self):
@@ -609,17 +705,17 @@ class Browser:
 @wbetools.patch(Chrome)
 class Chrome:
     def click(self, x, y):
-        if intersects(x, y, self.newtab_rect):
+        if self.newtab_rect.contains(x, y):
             self.browser.new_tab_internal(URL("https://browser.engineering/"))
-        elif intersects(x, y, self.back_rect):
+        elif self.back_rect.contains(x, y):
             task = Task(self.browser.active_tab.go_back)
             self.browser.active_tab.task_runner.schedule_task(task)
-        elif intersects(x, y, self.address_rect):
+        elif self.address_rect.contains(x, y):
             self.focus = "address bar"
             self.address_bar = ""
         else:
             for i, tab in enumerate(self.browser.tabs):
-                if intersects(x, y, self.tab_rect(i)):
+                if self.tab_rect(i).contains(x, y):
                     self.browser.set_active_tab(tab)
                     active_tab = self.browser.active_tab
                     task = Task(active_tab.set_needs_render)
