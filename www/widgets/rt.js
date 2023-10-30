@@ -94,7 +94,6 @@ class socket {
             } else {
                 console.assert(false, "Unknown socket makefile mode");
             }
-
             if (this.is_proxy_socket) return this;
 
             let [line1] = this.input.split("\r\n", 1);
@@ -671,13 +670,9 @@ class skia {
                     rect.right() + x,
                     rect.bottom() + y);
             };
-            rect.x = () => {
-                return rect.left();
-            };
-            rect.y = () => {
-                return rect.top();
             rect.contains = (x, y) => {
-                return rect.contains(x, y);
+                let other = skia.Rect.MakeXYWH(x, y, 1, 1);
+                return rect.intersects(other);
             };
         },
 
