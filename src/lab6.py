@@ -314,6 +314,7 @@ class Browser:
         self.document = DocumentLayout(self.nodes)
         self.document.layout()
         self.display_list = []
+        paint_tree(self.document, self.display_list)
         self.draw()
 
 if __name__ == "__main__":
