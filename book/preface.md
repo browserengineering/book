@@ -118,6 +118,14 @@ you can enable with `Ctrl-E` (or `Cmd-E` on a Mac). The full source
 code is also available [on GitHub][github], though we prefer to
 receive comments through the built-in tools.
 
+In addition, as with all software, the code associated with the book inevitably
+has bugs. We've done our best to test it, but there are certainly still bugs
+in there that we haven't found yet, and we may accidentally introduce some
+over time as we fix other issues. You should read this book as a software
+engineer, and when the code simply doesn't make sense to you, it could very
+well be that there is a bug in the book and not in your mind! (And of course,
+please do report these bugs so we can fix them!)
+
 [github]: https://github.com/browserengineering/book
 
 :::
