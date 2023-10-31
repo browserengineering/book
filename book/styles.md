@@ -565,9 +565,8 @@ pages that appear at multiple URLs.
 ``` {.python}
 def tree_to_list(tree, list):
     list.append(tree)
-    if hasattr(child, "children"):
-        for child in tree.children:
-            tree_to_list(child, list)
+    for child in tree.children:
+        tree_to_list(child, list)
     return list
 ```
 
