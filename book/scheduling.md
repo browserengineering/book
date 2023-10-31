@@ -601,22 +601,14 @@ class Browser:
         threading.Timer(REFRESH_RATE_SEC, callback).start()
 ```
 
-Note how every time a frame is scheduled, we set up a timer to
-schedule the next one. We can kick off the process when we start the
-Browser:
-
-``` {.python}
-if __name__ == "__main__":
-    # ...
-    browser = Browser()
-    # ...
-```
-
-In the top-level loop, after running a task on the active tab the browser
-will need to raster-and-draw, in case that task was a rendering task:
+Note how every time a frame is scheduled, we set up a timer to schedule the next
+one. We can kick off the process when we start the browser. In the top-level
+loop, after running a task on the active tab the browser will need to
+raster-and-draw, in case that task was a rendering task:
 
 ``` {.python expected=False}
 if __name__ == "__main__":
+    browser = Browser()
     while True:
         # ...
         browser.active_tab.task_runner.run()
@@ -678,8 +670,8 @@ One advantage of this flag is that we can now set `needs_render` when
 the HTML has changed instead of calling `render` directly. The
 `render` will still happen, but later. This makes scripts faster,
 especially if they modify the page multiple times. Make this change in
-`innerHTML_set`, `load`, `click`, and `keypress`. For example, in
-`load`, do this:
+`innerHTML_set`, `load`, `click`, and `keypress` when changing the DOM.
+For example, in `load`, do this:
 
 ``` {.python}
 class Tab:
@@ -698,6 +690,9 @@ class JSContext:
 ```
 
 There are more calls to `render`; you should find and fix all of them.
+However, there is one call to `render` at the beginning of `click` that
+should remain, because it's necessary to make sure that layout is up-to-date
+before finding which layout object is under the click.
 
 Another problem with our implementation is that the browser is now
 doing `raster_and_draw` every time the active tab runs a task.
