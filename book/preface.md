@@ -119,12 +119,13 @@ code is also available [on GitHub][github], though we prefer to
 receive comments through the built-in tools.
 
 In addition, as with all software, the code associated with the book inevitably
-has bugs. We've done our best to test it, but there are certainly still bugs
-in there that we haven't found yet, and we may accidentally introduce some
-over time as we fix other issues. You should read this book as a software
-engineer, and when the code simply doesn't make sense to you, it could very
-well be that there is a bug in the book and not in your mind! (And of course,
-please do report these bugs so we can fix them!)
+has bugs. In fact, you should *expect* it to have bugs, because it's so complex
+and is thousands of lines long! We have fixed a huge number of bugs found along
+the way, and have done our best to test (for example, every chapter has
+unittests), but there are certainly still bugs in there that we haven't found
+yet. You should read this book with the critical eye of a software engineer,
+and when the code simply doesn't make sense to you, it could very well be that
+there is a bug in the book and not in your mind!
 
 [github]: https://github.com/browserengineering/book
 
