@@ -1335,6 +1335,7 @@ class Frame:
 
         if idx < len(focusable_nodes):
             self.focus_element(focusable_nodes[idx])
+            self.tab.browser.focus_content()
         else:
             self.focus_element(None)
             self.tab.browser.focus_addressbar()

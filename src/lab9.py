@@ -171,6 +171,7 @@ class Tab:
 
     def keypress(self, char):
         if self.focus:
+            print('keypress')
             if self.js.dispatch_event("keydown", self.focus): return
             self.focus.attributes["value"] += char
             self.render()

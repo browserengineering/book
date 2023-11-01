@@ -1210,6 +1210,7 @@ class Tab:
 
         if idx < len(focusable_nodes):
             self.focus_element(focusable_nodes[idx])
+            self.browser.focus_content()
         else:
             self.focus_element(None)
             self.browser.focus_addressbar()
@@ -1646,12 +1647,19 @@ class Browser:
 
     def handle_tab(self):
         self.focus = "content"
+        self.chrome.focus = "none"
         task = Task(self.active_tab.advance_tab)
         self.active_tab.task_runner.schedule_task(task)
 
+    def focus_content(self):
+        self.lock.acquire(blocking=True)
+        self.chrome.focus = None
+        self.focus = "content"
+        self.lock.release()
+
     def focus_addressbar(self):
         self.lock.acquire(blocking=True)
-        self.focus = "chrome"
+        self.focus = None
         self.chrome.focus_addressbar()
         text = "Address bar focused"
         if self.accessibility_is_on:
@@ -1738,13 +1746,14 @@ class Browser:
     def handle_click(self, e):
         self.lock.acquire(blocking=True)
         if e.y < self.chrome.bottom:
-            self.focus = "chrome"
+            self.focus = None
             self.chrome.click(e.x, e.y)
             self.set_needs_raster()
         else:
             if self.focus != "content":
                 self.set_needs_raster()
             self.focus = "content"
+            self.chrome.focus = None
             tab_y = e.y - self.chrome.bottom
             task = Task(self.active_tab.click, e.x, tab_y)
             self.active_tab.task_runner.schedule_task(task)
@@ -1760,7 +1769,7 @@ class Browser:
     def handle_key(self, char):
         self.lock.acquire(blocking=True)
         if not (0x20 <= ord(char) < 0x7f): return
-        if self.focus == "chrome":
+        if self.chrome.focus:
             self.chrome.keypress(char)
             self.set_needs_raster()
         elif self.focus == "content":
@@ -1774,7 +1783,7 @@ class Browser:
 
     def handle_enter(self):
         self.lock.acquire(blocking=True)
-        if self.focus == "chrome":
+        if self.chrome.focus:
             self.chrome.enter()
             self.set_needs_raster()
         elif self.focus == "content":

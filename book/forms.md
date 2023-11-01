@@ -398,33 +398,35 @@ remember that in its own `focus` field!
 
 In other words, when you click on the web page, the `Browser` updates
 its `focus` field to remember that the user is interacting with the
-page, not the browser interface:
+page, not the browser chrome:
 
 ``` {.python}
 class Browser:
     def handle_click(self, e):
         if e.y < self.chrome.bottom:
-            self.focus = "chrome"
+            self.focus = None
             # ...
         else:
             self.focus = "content"
+            self.chrome.focus = None
             # ...
         self.draw()
 ```
 
-The `if` branch that corresponds to clicks in the browser interface
-unsets `focus` by default, but some existing code in that branch will
-set `focus` to `"address bar"` if the user actually clicked in the
-address bar.
+The `if` branch that corresponds to clicks in the browser chrome
+unsets `focus`, but some existing code in that branch will
+set the `Chrome` `focus` to `"address bar"` if the user actually clicked
+in the address bar.
 
 When a key press happens, the `Browser` sends it either to the address
-bar or calls the active tab's `keypress` method:
+bar or calls the active tab's `keypress` method (or neither, if nothing is
+focused):
 
 ``` {.python}
 class Browser:
     def handle_key(self, e):
         # ...
-        if self.focus == "chrome":
+        if self.chrome.focus:
             self.chrome.keypress(e.char)
             self.draw()
         elif self.focus == "content":
