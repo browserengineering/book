@@ -741,12 +741,12 @@ class Browser:
             self.set_needs_raster_and_draw()
 
     def handle_key(self, char):
-        if self.focus == "chrome":
+        if self.chrome.focus:
             # ...
             self.set_needs_raster_and_draw()
 
     def handle_enter(self):
-        if self.focus == "chrome":
+        if self.chrome.focus:
             # ...
             self.set_needs_raster_and_draw()
 ```
@@ -1340,7 +1340,7 @@ The same logic holds for `keypress`:
 class Browser:
     def handle_key(self, char):
         if not (0x20 <= ord(char) < 0x7f): return
-        if self.focus == "chrome":
+        if self.chrome.focus:
             # ...
         elif self.focus == "content":
             task = Task(self.active_tab.keypress, char)
