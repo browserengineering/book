@@ -268,8 +268,7 @@ class DrawText:
             text=self.text,
             font=self.font,
             anchor='nw',
-            fill=self.color,
-        )
+            fill=self.color)
 
     def __repr__(self):
         return "DrawText(text={})".format(self.text)

@@ -936,8 +936,7 @@ class DrawText:
     def execute(self, scroll, canvas):
         canvas.create_text(
             # ...
-            fill=self.color,
-        )
+            fill=self.color)
 ```
 
 Phew! That was a lot of coordinated changes, so test everything and
