@@ -1106,7 +1106,7 @@ more properties by writing new animation types.
 
 ``` {.python}
 ANIMATED_PROPERTIES = {
-    "opacity": NumericAnimation,
+    "opacity": NumericAnimation
 }
 ```
 
