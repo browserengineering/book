@@ -652,6 +652,7 @@ class Browser:
         else:
             if self.focus != "content":
                 self.focus = "content"
+                self.chrome.focus = None
                 self.set_needs_raster_and_draw()
             self.chrome.focus = None
             tab_y = e.y - self.chrome.bottom

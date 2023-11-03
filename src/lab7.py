@@ -197,8 +197,7 @@ class DrawLine:
         canvas.create_line(
             self.left, self.top - scroll,
             self.right, self.bottom - scroll,
-            fill=self.color, width=self.thickness,
-        )
+            fill=self.color, width=self.thickness)
 
     def __repr__(self):
         return "DrawLine({}, {}, {}, {}, color={}, thickness={})".format(
@@ -216,8 +215,7 @@ class DrawOutline:
             self.rect.left, self.rect.top - scroll,
             self.rect.right, self.rect.bottom - scroll,
             width=self.thickness,
-            outline=self.color,
-        )
+            outline=self.color)
 
     def __repr__(self):
         return "DrawOutline({}, {}, {}, {}, color={}, thickness={})".format(

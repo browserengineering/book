@@ -122,10 +122,6 @@ text = TextLayout(node, word, line, previous_word)
 line.children.append(text)
 ```
 
-Note that I needed a new field here, `previous_word`, to keep track of
-the previous word in the current line. So we'll need to initialize it
-later.
-
 Now let's think about what happens when we reach the end of the line.
 The current code calls `flush`, which does stuff like positioning text
 and clearing the `line` field. We don't want to do all that---we just
@@ -398,7 +394,8 @@ layout objects to page coordinates to screen coordinates; click
 handling goes backwards, starting with screen coordinates, then
 converting to page coordinates, and so on. The correspondence isn't
 perfectly reversed in practice^[Though see some exercises in this
-chapter on making it a closer match.] but it's a worthwhile analogy.
+chapter and future ones on making it a closer match.] but it's a
+worthwhile analogy.
 
 So the next step is to go from page coordinates to a layout
 object:^[You could try to first find the paint command clicked on, and
@@ -436,7 +433,9 @@ elt = objs[-1].node
 This `elt` node is the most specific node that was clicked. With a
 link, that's usually going to be a text node. But since we want to
 know the actual URL the user clicked on, we need to climb back up the
-HTML tree to find the link element:
+HTML tree to find the link element:^[I wrote this in a kind of curious
+way so it's easy to add other types of clickable things---like text boxes
+and buttons---in the [next chapter](forms.md).]
 
 ``` {.python indent=8}
 # ...
@@ -448,9 +447,6 @@ while elt:
     elt = elt.parent
 ```
 
-I wrote this in a kind of curious way so it's easy to add other types
-of clickable things---like text boxes and buttons---in the [next
-chapter](forms.md).
 
 Once we find the link element itself, we need to extract the URL and
 load it:
@@ -481,7 +477,7 @@ new web pages.
 ::: {.further}
 On mobile devices, a "click" happens over an area, not just at a
 single point. This is because mobile "taps" are often pretty
-inaccurate, click should [use area, not point information][rect-based]
+inaccurate, so clicks should [use area, not point information][rect-based]
 for "hit testing".\index{hit testing} This can happen even with a
 [normal mouse click][hit-test] when the click is on a rotated or
 scaled element.
@@ -577,7 +573,7 @@ Since the `Browser` controls the canvas and handles events, it decides
 when rendering happens and which tab does the drawing. So let's also
 remove the `draw` calls from the `load` and `scrolldown` methods. More
 generally, the `Browser` is "active" and the `Tab` is "passive": all
-user interacts start at the `Browser`, which then calls into the tabs
+user interactions start at the `Browser`, which then calls into the tabs
 as appropriate.
 
 We're basically done splitting `Tab` from `Browser`, and after a
@@ -607,12 +603,14 @@ great read!
 
 [simulbrowse]: https://en.wikipedia.org/wiki/NetCaptor
 [netcaptor-ad]: https://web.archive.org/web/20050701001923/http://www.netcaptor.com/
-[booklink]: Some people instead attribute tabbed browsing to Booklink's InternetWorks
-    browser, a browser obscure enough that it doesn't have a Wikipedia
-    page, though you can see some screenshots [on Twitter][booklink-x].
-    However, its tabs were slightly different from the modern
-    conception, more like bookmarks than tabs. SimulBrowse instead
-    used the modern notion of tabs.
+
+[^booklink]: Some people instead attribute tabbed browsing to Booklink's
+InternetWorks browser, a browser obscure enough that it doesn't have a
+Wikipedia page, though you can see some screenshots
+[on Twitter][booklink-x]. However, its tabs were slightly different from
+the modern conception, more like bookmarks than tabs. SimulBrowse instead
+used the modern notion of tabs.
+
 [tabbed-dna]: https://ajstiles.wordpress.com/2005/02/11/tabbed_browser_/
 [booklink-x]: https://twitter.com/awesomekling/status/1694242398539264363
 
@@ -668,7 +666,7 @@ class Chrome:
 Because different operating systems draw fonts differently, we'll need
 to adjust the exact design of the browser chrome based on font
 metrics. So we'll need the `font_height` later.^[I chose `20px` as the
-font size, but that might be too small on your device\index{device
+font size, but that might be too large on your device\index{device
 pixel ratio}. Feel free to adjust.]
 
 Using that font height, we can now determine where the tab bar starts
@@ -683,6 +681,9 @@ class Chrome:
         self.tabbar_bottom = self.font_height + 2*self.padding
 ```
 
+Note that I've added some padding so that text doesn't run into the
+edge of the window.
+
 We will store rectangles representing the size of various elements in the
 browser chrome. For that, a new `Rect` class will be convenient:
 
@@ -695,8 +696,7 @@ class Rect:
         self.bottom = bottom
 ```
 
-Note that I've added some padding so that text doesn't run into the
-edge of the window. Now, this tab row needs to contain a new-tab
+Now, this tab row needs to contain a new-tab
 button and the tab names themselves.
 
 I'll add padding around the new-tab button:
@@ -759,8 +759,7 @@ class DrawOutline:
             self.rect.left, self.rect.top - scroll,
             self.rect.right, self.rect.bottom - scroll,
             width=self.thickness,
-            outline=self.color,
-        )
+            outline=self.color)
 ```
 
 Next up is drawing the tabs. Python's `enumerate` function lets you iterate over
@@ -819,8 +818,7 @@ class DrawLine:
         canvas.create_line(
             self.left, self.top - scroll,
             self.right, self.bottom - scroll,
-            fill=self.color, width=self.thickness,
-        )
+            fill=self.color, width=self.thickness)
 ```
 
 One final thing: we want to make sure that the browser chrome is
@@ -968,7 +966,7 @@ independently, and switch tabs by clicking on them.
 Google Chrome 1.0 was accompanied by a [comic book][chrome-comic] to
 pitch its features. There's a whole [chapter][chrome-comic-tabs] about
 its design ideas and user interface features, many of which stuck
-around. Even this book's browser has tabs on top, for example!
+around. Even this book's browser has tabs on top, for example.
 :::
 
 [chrome-comic]: https://www.google.com/googlebooks/chrome/
@@ -1115,7 +1113,7 @@ it should.
 So we've now got a pretty good web browser for reading this very book:
 you can click links, browse around, and even have multiple chapters
 open simultaneously for cross-referencing things. But it's a little
-hard to visit *any other website*...
+hard to visit a website not linked to from the current one.
 
 ::: {.further}
 A browser's navigation history can contain sensitive information about
