@@ -689,10 +689,22 @@ class JSContext:
         self.tab.set_needs_render()
 ```
 
-There are more calls to `render`; you should find and fix all of them.
-However, there is one call to `render` at the beginning of `click` that
-should remain, because it's necessary to make sure that layout is up-to-date
-before finding which layout object is under the click.
+There are more calls to `render`; you should find and fix all of them...except
+`click`. Here's why:
+
+Now we don't immediately render when something changes. That means that the
+layout tree (and style) could be out of date when a method is called. Normally,
+this isn't a problem, but in one important case it is: click handling. That's
+because we need to read the layout tree to figure out what object was clicked
+on, which means the layout tree needs to be up to date. Add a call to render at
+the top of click:
+
+``` {.python}
+class Tab:
+    def click(self, x, y):
+        self.render()
+        # ...
+```
 
 Another problem with our implementation is that the browser is now
 doing `raster_and_draw` every time the active tab runs a task.
