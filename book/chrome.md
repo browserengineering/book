@@ -807,17 +807,14 @@ It's defined like so:
 ``` {.python}
 class DrawLine:
     def __init__(self, x1, y1, x2, y2, color, thickness):
-        self.top = y1
-        self.left = x1
-        self.bottom = y2
-        self.right = x2
+        self.rect = Rect(x1, y1, x2, y2)
         self.color = color
         self.thickness = thickness
 
     def execute(self, scroll, canvas):
         canvas.create_line(
-            self.left, self.top - scroll,
-            self.right, self.bottom - scroll,
+            self.rect.left, self.rect.top - scroll,
+            self.rect.right, self.rect.bottom - scroll,
             fill=self.color, width=self.thickness)
 ```
 
@@ -913,9 +910,9 @@ an `offset` parameter:
 class Tab:
     def draw(self, canvas, offset):
         for cmd in self.display_list:
-            if cmd.top > self.scroll + self.tab_height:
+            if cmd.rect.top > self.scroll + self.tab_height:
                 continue
-            if cmd.bottom < self.scroll: continue
+            if cmd.rect.bottom < self.scroll: continue
             cmd.execute(self.scroll - offset, canvas)
 ```
 

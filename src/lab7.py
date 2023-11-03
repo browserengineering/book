@@ -188,15 +188,15 @@ class BlockLayout:
             self.layout_mode(), self.x, self.y, self.width, self.height)
 
 class DrawLine:
-    def __init__(self, rect, color, thickness):
-        self.rect = rect
+    def __init__(self, x1, y1, x2, y2, color, thickness):
+        self.rect = Rect(x1, y1, x2, y2)
         self.color = color
         self.thickness = thickness
 
     def execute(self, scroll, canvas):
         canvas.create_line(
-            self.left, self.top - scroll,
-            self.right, self.bottom - scroll,
+            self.rect.left, self.rect.top - scroll,
+            self.rect.right, self.rect.bottom - scroll,
             fill=self.color, width=self.thickness)
 
     def __repr__(self):
@@ -229,18 +229,18 @@ class DrawText:
             x1 + font.measure(text), y1 + font.metrics("linespace"))
         self.text = text
         self.font = font
+        self.color = color
 
     def execute(self, scroll, canvas):
         canvas.create_text(
-            self.left, self.top - scroll,
+            self.rect.left, self.rect.top - scroll,
             text=self.text,
             font=self.font,
-            anchor='nw')
+            anchor='nw',
+            fill=self.color)
 
     def __repr__(self):
-        return "DrawText(top={} left={} bottom={} text={} font={})".format(
-            self.rect.top, self.rect.left, self.rect.bottom,
-            self.rect.text, self.font)
+        return "DrawText(text={})".format(self.text)
 
 class Tab:
     def __init__(self, tab_height):
@@ -277,9 +277,9 @@ class Tab:
 
     def draw(self, canvas, offset):
         for cmd in self.display_list:
-            if cmd.top > self.scroll + self.tab_height:
+            if cmd.rect.top > self.scroll + self.tab_height:
                 continue
-            if cmd.bottom < self.scroll: continue
+            if cmd.rect.bottom < self.scroll: continue
             cmd.execute(self.scroll - offset, canvas)
 
     def scrolldown(self):
@@ -336,7 +336,7 @@ class DrawRect:
 
     def __repr__(self):
         return "DrawRect(top={} left={} bottom={} right={} color={})".format(
-            self.rect.top, self.rect.left, rect.self.bottom,
+            self.rect.top, self.rect.left, self.rect.bottom,
             self.rect.right, self.color)
 
 class Chrome:
