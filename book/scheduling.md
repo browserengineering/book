@@ -692,7 +692,7 @@ class JSContext:
 There are more calls to `render`; you should find and fix all of them...
 Except, let's take a closer look at `click`.
 
-Now we don't immediately render when something changes. That means that the
+We now don't immediately render when something changes. That means that the
 layout tree (and style) could be out of date when a method is called. Normally,
 this isn't a problem, but in one important case it is: click handling. That's
 because we need to read the layout tree to figure out what object was clicked
