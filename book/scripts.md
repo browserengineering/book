@@ -33,7 +33,7 @@ inside a larger C or C++ project.[^1]
     usually written in a higher-level language like JavaScript.
 
 Like other JavaScript engines, DukPy not only executes JavaScript
-code, but also allows JavaScript code to call *exported* Python
+code, but also allows it to call *exported* Python
 functions. We'll be using this feature to allow JavaScript code to
 modify the web page it's running on.
 
@@ -173,7 +173,7 @@ class JSContext:
 ```
 
 DukPy's `JSInterpreter` object stores the values of all the JavaScript
-variables and lets us run multiple JavaScript snippets and share
+variables, and lets us run multiple JavaScript snippets and share
 variable values and other state between them.
 
 We create this new `JSContext` object while loading the page:
@@ -597,10 +597,10 @@ types into an input box, but that requires running JavaScript on every
 key press. Let's implement that next.
 
 ::: {.further}
-`Node` objects in JavaScript correspond to `Element` nodes in the
+`Node` objects in the DOM correspond to `Element` nodes in the
 browser. They thus have JavaScript object *properties* as well as HTML
 *attributes*. They're easy to confuse, and to make matters worse,
-many JavaScript object properties [*reflect*][reflection]
+many DOM object properties [*reflect*][reflection]
 attribute values automatically. For example, the `id` property on
 `Node` objects gives read-write access to the [`id` attribute][idAttr]
 of the underlying `Element`. This is very convenient, and avoids
