@@ -122,16 +122,6 @@ text = TextLayout(node, word, line, previous_word)
 line.children.append(text)
 ```
 
-Note that I needed a new parameter here, `previous_word`, to keep track of
-the previous word in the current line. So we'll need to initialize it:
-
-``` {.python}
-class TextLayout:
-    def __init__(self, node, word, parent, previous):
-        # ...
-        self.previous = previous
-```
-
 Now let's think about what happens when we reach the end of the line.
 The current code calls `flush`, which does stuff like positioning text
 and clearing the `line` field. We don't want to do all that---we just
