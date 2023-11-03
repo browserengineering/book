@@ -250,29 +250,29 @@ sometimes an `<input>` or `<button>` element will create a
 `BlockLayout` (which will then create an `InputLayout` inside). In
 this case we don't want to paint the background twice, so let's add
 some simple logic to skip painting it in `BlockLayout` in this
-case:[^atomic-inline-input]
+case, via a new `should_paint` method:[^atomic-inline-input]
 
 ``` {.python}
 class BlockLayout:
     # ...
-    def paint(self):
-        # ...
-        is_atomic = not isinstance(self.node, Text) and \
-            (self.node.tag == "input" or self.node.tag == "button")
-
-        if not is_atomic:
-            if bgcolor != "transparent":
-                x2, y2 = self.x + self.width, self.y + self.height
-                rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
-                cmds.append(rect)
-
+    def should_paint(self):
+        return isinstance(self.node, Text) or \
+            (self.node.tag != "input" and self.node.tag != "button")
 ```
 
-[^atomic-inline-input]: Atomic inlines are often special in these
-kinds of ways. It's worth noting that there are various other ways
-that our browser does not fully implement all the complexities of
-inline painting---one example is that it does not correctly paint
-nested inlines with different background colors.
+``` {.python}
+def paint_tree(layout_object, display_list):
+    if layout_object.should_paint():
+        display_list.extend(layout_object.paint())
+    # ...
+```
+
+[^atomic-inline-input]: Recall (see [Chapter 5](layout.md#block-layout)) that we
+only get into this situation due to the presence of anonymous block boxes.
+Also, it's worth noting that there are various other ways that our browser does
+not fully implement all the complexities of inline painting---one example is
+that it does not correctly paint nested inlines with different background
+colors. Inline layout and paint are very complicated in real browsers.
 
 With these changes the browser should now draw `input` and `button`
 elements as blue and orange rectangles.
@@ -398,33 +398,34 @@ remember that in its own `focus` field!
 
 In other words, when you click on the web page, the `Browser` updates
 its `focus` field to remember that the user is interacting with the
-page, not the browser interface:
+page, not the browser chrome:
 
 ``` {.python}
 class Browser:
     def handle_click(self, e):
         if e.y < self.chrome.bottom:
-            self.focus = "chrome"
+            self.focus = None
             # ...
         else:
             self.focus = "content"
+            self.chrome.focus = None
             # ...
         self.draw()
 ```
 
-The `if` branch that corresponds to clicks in the browser interface
-unsets `focus` by default, but some existing code in that branch will
-set `focus` to `"address bar"` if the user actually clicked in the
-address bar.
+The `if` branch that corresponds to clicks in the browser chrome
+unsets `focus`, meaning focus is no longer on the page contents,
+and key presses will thus be sent to the `Chrome`.
 
 When a key press happens, the `Browser` sends it either to the address
-bar or calls the active tab's `keypress` method:
+bar or calls the active tab's `keypress` method (or neither, if nothing is
+focused):
 
 ``` {.python}
 class Browser:
     def handle_key(self, e):
         # ...
-        if self.focus == "chrome":
+        if self.chrome.focus:
             self.chrome.keypress(e.char)
             self.draw()
         elif self.focus == "content":
@@ -781,8 +782,7 @@ import socket
 s = socket.socket(
     family=socket.AF_INET,
     type=socket.SOCK_STREAM,
-    proto=socket.IPPROTO_TCP,
-)
+    proto=socket.IPPROTO_TCP)
 s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 ```
 
@@ -1049,10 +1049,10 @@ Summary
 With this chapter we're starting to transform our browser into an
 application platform. We've added:
 
-- Layout objects for input areas and buttons.
-- Clicking on buttons and typing into input areas.
-- Hierarchical focus handling.
-- Form submission with HTTP POST.
+- Layout objects for input areas and buttons
+- Clicking on buttons and typing into input areas
+- Hierarchical focus handling
+- Form submission with HTTP POST
 
 Plus, our browser now has a little web server friend. That's going to
 be handy as we add more interactive features to the browser.

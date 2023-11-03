@@ -18,14 +18,15 @@ import wbetools
 
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab4 import print_tree, HTMLParser
-from lab5 import BLOCK_ELEMENTS, DocumentLayout
+from lab5 import BLOCK_ELEMENTS
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import tree_to_list
-from lab8 import Text, Element, INPUT_WIDTH_PX
+from lab8 import Text, Element, INPUT_WIDTH_PX, DocumentLayout
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, JSContext, URL
-from lab11 import get_font, FONTS, DrawLine, DrawRect, DrawOutline, linespace, DrawText, SaveLayer, ClipRRect
+from lab11 import get_font, FONTS, DrawLine, DrawRect, DrawOutline
+from lab11 import linespace, DrawText, SaveLayer, ClipRRect
 from lab11 import BlockLayout, LineLayout, TextLayout, InputLayout, Chrome
 from lab11 import Tab, Browser, paint_tree
 
@@ -315,6 +316,11 @@ class Tab:
                     elt = elt.parent
             elt = elt.parent
 
+    def keypress(self, char):
+        if self.focus:
+            self.focus.attributes["value"] += char
+            self.set_needs_render()
+
 class Task:
     def __init__(self, task_code, *args):
         self.task_code = task_code
@@ -333,6 +339,7 @@ class SingleThreadedTaskRunner:
 
     def schedule_task(self, callback):
         self.tasks.append(callback)
+        self.tab.browser.needs_animation_frame = True
 
     def run_tasks(self):
         while self.tasks:
@@ -639,15 +646,14 @@ class Browser:
     def handle_click(self, e):
         self.lock.acquire(blocking=True)
         if e.y < self.chrome.bottom:
-            self.focus = "chrome"
+            self.focus = None
             self.chrome.click(e.x, e.y)
             self.set_needs_raster_and_draw()
         else:
             if self.focus != "content":
                 self.focus = "content"
                 self.set_needs_raster_and_draw()
-            else:
-                self.focus = "content"
+            self.chrome.focus = None
             tab_y = e.y - self.chrome.bottom
             task = Task(self.active_tab.click, e.x, tab_y)
             self.active_tab.task_runner.schedule_task(task)
@@ -656,7 +662,7 @@ class Browser:
     def handle_key(self, char):
         self.lock.acquire(blocking=True)
         if not (0x20 <= ord(char) < 0x7f): return
-        if self.focus == "chrome":
+        if self.chrome.focus:
             self.chrome.keypress(char)
             self.set_needs_raster_and_draw()
         elif self.focus == "content":
@@ -671,7 +677,7 @@ class Browser:
 
     def handle_enter(self):
         self.lock.acquire(blocking=True)
-        if self.focus == "chrome":
+        if self.chrome.focus:
             self.chrome.enter()
             self.set_needs_raster_and_draw()
         self.lock.release()
