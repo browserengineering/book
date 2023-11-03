@@ -414,9 +414,8 @@ class Browser:
 ```
 
 The `if` branch that corresponds to clicks in the browser chrome
-unsets `focus`, but some existing code in that branch will
-set the `Chrome` `focus` to `"address bar"` if the user actually clicked
-in the address bar.
+unsets `focus`, meaning focus is no longer on the page contents,
+and key presses will thus be sent to the `Chrome`.
 
 When a key press happens, the `Browser` sends it either to the address
 bar or calls the active tab's `keypress` method (or neither, if nothing is
