@@ -1400,11 +1400,11 @@ class CommitData:
 When running an animation frame, the `Tab` should construct one of
 these objects and pass it to `commit`. To keep `render` from getting
 too confusing, let's put this in a new `run_animation_frame` method,
-and move `__runRAFHandlers` there too.^[I'm not just adding all this
-to `render`, because `render` is just about updating style, layout and paint
-when needed. That's why it is called from the beginning `click` instead of
-`run_animation_frame`. The latter also has script callbacks and also commits
-to the browser, which don't make sense to have happen from `click`.]
+and move `__runRAFHandlers` there too.^[The `render` method is just about
+updating style, layout and paint when needed; it's called for every frame,
+but it's also called from `click`, and in real browsers from many other places too.
+Meanwhile, `run_animation_frame` is only called for frames, and therefore
+it, not `render`, runs RAF handlers and calls `commit`.]
 
 ``` {.python replace=self.scroll%2c/scroll%2c,(self)/(self%2c%20scroll)}
 class Tab:
