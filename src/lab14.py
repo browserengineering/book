@@ -1217,9 +1217,9 @@ class Tab:
         self.set_needs_render()
 
     def zoom_by(self, increment):
-        if increment > 0:
+        if increment == 1:
             self.zoom *= 1.1
-        else:
+        elif increment == -1:
             self.zoom *= 1/1.1
         self.set_needs_render()
 
@@ -1531,10 +1531,7 @@ class Browser:
 
         if self.hovered_a11y_node:
             self.draw_list.append(DrawOutline(
-                self.hovered_a11y_node.bounds.fLeft,
-                self.hovered_a11y_node.bounds.fTop,
-                self.hovered_a11y_node.bounds.fRight,
-                self.hovered_a11y_node.bounds.fBottom,
+                self.hovered_a11y_node.bounds,
                 "white" if self.dark_mode else "black", 2))
 
     def update_accessibility(self):

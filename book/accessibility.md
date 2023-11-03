@@ -834,7 +834,7 @@ Let's start with the `advance_tab` method. Each time it's called, the
 browser should advance focus to the next focusable thing. This will
 first require a definition of which elements are focusable:
 
-``` {.python replace=)]/)}
+``` {.python}
 def is_focusable(node):
     return node.tag in ["input", "button", "a"]
 

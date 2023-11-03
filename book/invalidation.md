@@ -391,7 +391,7 @@ idempotent. I found:[^exercises]
   array of some `LineLayout` child.
 - In `word` and `input`, `BlockLayout` will call `get_font`, as will
   the `TextLayout` and `InputLayout` methods.
-- Basically every layout method calls `device_px`.
+- Basically every layout method calls `dpx`.
 
 The `new_line` and `add_inline_child` methods are only called through
 `layout`, which resets the `children` array, so they don't break
@@ -977,7 +977,7 @@ class DocumentLayout:
 
     def layout(self, width, zoom):
         # ...
-        self.width.set(width - 2 * device_px(HSTEP, zoom))
+        self.width.set(width - 2 * dpx(HSTEP, zoom))
         # ...
 ```
 
@@ -1273,7 +1273,7 @@ class InputLayout(EmbedLayout):
     def layout(self):
         # ...
         zoom = self.zoom.read(notify=self.width)
-        self.width.set(device_px(INPUT_WIDTH_PX, zoom))
+        self.width.set(dpx(INPUT_WIDTH_PX, zoom))
         # ...
 ```
 
@@ -1337,8 +1337,8 @@ class DocumentLayout:
 
     def layout(self, width, zoom):
         # ...
-        self.x.set(device_px(HSTEP, zoom))
-        self.y.set(device_px(VSTEP, zoom))
+        self.x.set(dpx(HSTEP, zoom))
+        self.y.set(dpx(VSTEP, zoom))
         # ...
 ```
 
@@ -1584,9 +1584,9 @@ class IframeLayout(EmbedLayout):
         # ...
         zoom = self.zoom.read(notify=self.height)
         if height_attr:
-            self.height.set(device_px(int(height_attr) + 2, zoom))
+            self.height.set(dpx(int(height_attr) + 2, zoom))
         else:
-            self.height.set(device_px(IFRAME_HEIGHT_PX + 2, zoom))
+            self.height.set(dpx(IFRAME_HEIGHT_PX + 2, zoom))
         # ...
 ```
 
@@ -2245,7 +2245,7 @@ def font(notify, css_style, zoom):
         size = float(css_style['font-size'].read(notify)[:-2])
     except ValueError:
         size = 16
-    font_size = device_px(size, zoom)
+    font_size = dpx(size, zoom)
     return get_font(font_size, weight, style)
 ```
 
