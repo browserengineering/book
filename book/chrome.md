@@ -857,6 +857,8 @@ class BlockLayout:
 
 ```
 
+Do the same for `DrawText` and `DrawLine`.
+
 Drawing this chrome display list is now straightforward:
 
 ``` {.python}
