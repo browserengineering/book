@@ -352,7 +352,7 @@ class Browser:
 
     def handle_click(self, e):
         if e.y < self.chrome.bottom:
-            self.focus = "chrome"
+            self.focus = None
             self.chrome.click(e.x, e.y)
         else:
             self.focus = "content"
@@ -364,7 +364,7 @@ class Browser:
     def handle_key(self, e):
         if len(e.char) == 0: return
         if not (0x20 <= ord(e.char) < 0x7f): return
-        if self.focus == "chrome":
+        if self.chrome.focus:
             self.chrome.keypress(e.char)
             self.draw()
         elif self.focus == "content":

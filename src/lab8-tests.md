@@ -167,7 +167,6 @@ Testing focus
     Clicking on the address bar focuses it
     >>> browser.handle_click(test.Event(51, 51))
     >>> browser.focus
-    'chrome'
     >>> browser.chrome.focus
     'address bar'
 
@@ -181,7 +180,6 @@ Testing focus
     >>> rect = browser.chrome.back_rect
     >>> browser.handle_click(test.Event(rect.left + 1, rect.top + 1))
     >>> browser.focus
-    'chrome'
     >>> browser.chrome.focus
 
     >>> browser.handle_click(test.Event(200, 200))

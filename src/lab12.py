@@ -316,6 +316,11 @@ class Tab:
                     elt = elt.parent
             elt = elt.parent
 
+    def keypress(self, char):
+        if self.focus:
+            self.focus.attributes["value"] += char
+            self.set_needs_render()
+
 class Task:
     def __init__(self, task_code, *args):
         self.task_code = task_code
@@ -334,6 +339,7 @@ class SingleThreadedTaskRunner:
 
     def schedule_task(self, callback):
         self.tasks.append(callback)
+        self.tab.browser.needs_animation_frame = True
 
     def run_tasks(self):
         while self.tasks:
@@ -640,7 +646,7 @@ class Browser:
     def handle_click(self, e):
         self.lock.acquire(blocking=True)
         if e.y < self.chrome.bottom:
-            self.focus = "chrome"
+            self.focus = None
             self.chrome.click(e.x, e.y)
             self.set_needs_raster_and_draw()
         else:
@@ -648,8 +654,7 @@ class Browser:
                 self.focus = "content"
                 self.chrome.focus = None
                 self.set_needs_raster_and_draw()
-            else:
-                self.focus = "content"
+            self.chrome.focus = None
             tab_y = e.y - self.chrome.bottom
             task = Task(self.active_tab.click, e.x, tab_y)
             self.active_tab.task_runner.schedule_task(task)
@@ -658,7 +663,7 @@ class Browser:
     def handle_key(self, char):
         self.lock.acquire(blocking=True)
         if not (0x20 <= ord(char) < 0x7f): return
-        if self.focus == "chrome":
+        if self.chrome.focus:
             self.chrome.keypress(char)
             self.set_needs_raster_and_draw()
         elif self.focus == "content":
@@ -673,7 +678,7 @@ class Browser:
 
     def handle_enter(self):
         self.lock.acquire(blocking=True)
-        if self.focus == "chrome":
+        if self.chrome.focus:
             self.chrome.enter()
             self.set_needs_raster_and_draw()
         self.lock.release()

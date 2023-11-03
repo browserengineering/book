@@ -1614,7 +1614,7 @@ class Browser:
     def handle_click(self, e):
         self.lock.acquire(blocking=True)
         if e.y < self.chrome.bottom:
-            self.focus = "chrome"
+            self.focus = None
             self.chrome.click(e.x, e.y)
             self.set_needs_raster()
         else:
@@ -1630,7 +1630,7 @@ class Browser:
     def handle_key(self, char):
         self.lock.acquire(blocking=True)
         if not (0x20 <= ord(char) < 0x7f): return
-        if self.focus == "chrome":
+        if self.chrome.focus:
             self.chrome.keypress(char)
             self.set_needs_raster()
         elif self.focus == "content":
@@ -1644,7 +1644,7 @@ class Browser:
 
     def handle_enter(self):
         self.lock.acquire(blocking=True)
-        if self.focus == "chrome":
+        if self.chrome.focus:
             self.chrome.enter()
             self.set_needs_raster()
         self.lock.release()
