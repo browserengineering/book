@@ -1494,18 +1494,6 @@ them support threaded opacity, transform and filter animations; some support
 certain kinds of clip animations as well. Adding threaded animations to our
 browser is left as an exercise at the end of this chapter.
 
-But it's super easy to thread scroll at this point, with only one line of code
-changed: replace the dirty bit for compositing and raster with just
-`set_needs_draw` when handing a scroll:
-
-``` {.python}
-class Browser:
-    # ...
-    def handle_down(self):
-        # ...
-        self.set_needs_draw() 
-```
-
 It's common to hear people use "composited" and "threaded" as synonyms, however.
 That's because in most browsers, compositing is a *prerequisite* for threading.
 The reason is that if you're going to animate efficiently, you usually need to
@@ -2075,37 +2063,6 @@ class Transform(VisualEffect):
         return map_translation(rect, self.translation, True)
 ```
 
-And while we're here, let's also make transforms animatable via a new
-`TranslateAnimation` class:
-
-``` {.python}
-class TranslateAnimation:
-    def __init__(self, old_value, new_value, num_frames):
-        (self.old_x, self.old_y) = parse_transform(old_value)
-        (new_x, new_y) = parse_transform(new_value)
-        self.num_frames = num_frames
-
-        self.frame_count = 1
-        self.change_per_frame_x = \
-            (new_x - self.old_x) / num_frames
-        self.change_per_frame_y = \
-            (new_y - self.old_y) / num_frames
-
-    def animate(self):
-        self.frame_count += 1
-        if self.frame_count >= self.num_frames: return
-        new_x = self.old_x + \
-            self.change_per_frame_x * self.frame_count
-        new_y = self.old_y + \
-            self.change_per_frame_y * self.frame_count
-        return "translate({}px,{}px)".format(new_x, new_y)
-
-ANIMATED_PROPERTIES = {
-    # ...
-    "transform": TranslateAnimation,
-}
-```
-
 And with that, we now have completed the story of a pretty high-performance
 implementation of composited animations.
 
@@ -2150,7 +2107,6 @@ practice, it can be very difficulty to implement this situation correctly
 without just giving up and compositing the scroller.
 
 :::
-
 
 Summary
 =======
@@ -2210,11 +2166,12 @@ function, and one or two others.
 
  [easing]: https://developer.mozilla.org/en-US/docs/Web/CSS/easing-function
 
-*Composited transform animations*: Our browser supports transform animations,
- but they are not composited (i.e., they cause raster on every frame).
- Implement composited animations for `transform`. It just requires edits to the
- code to handle transform in all the same places as `opacity`. The
- transform animation [example][tr-example] should then become noticeably faster.
+*Composited & threaded transform and scroll animations*: Our browser supports
+transfoms and scrolling, but they are not fully composited or threaded,
+and transform animations are not supported. Implement these. (Hint: for
+transforms, it just requires following the same pattern as for `opacity`;
+for scrolling, it requires setting fewer dirty bits in `handle_down`.)
+[This transform animation][tr-example] should now work.
 
  [tr-example]: examples/example13-transform-transition.html
 
