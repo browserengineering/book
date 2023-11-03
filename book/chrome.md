@@ -1291,10 +1291,10 @@ Summary
 
 It's been a lot of work just to handle links! We had to:
 
-- Give each word an explicit size and position;
-- Determine which piece of text a user clicked on;
-- Split per-page from browser-wide information;
-- Draw a tab bar, an address bar, and a back button;
+- Give each word an explicit size and position
+- Determine which piece of text a user clicked on
+- Split per-page from browser-wide information
+- Draw a tab bar, an address bar, and a back button
 - And even implement text editing!
 
 Now just imagine all the features you can add to your browser!

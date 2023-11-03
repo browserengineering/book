@@ -1023,11 +1023,11 @@ This chapter implemented a rudimentary but complete styling engine,
 including downloading, parsing, matching, sorting, and applying CSS
 files. That means we:
 
-- Wrote a CSS parser;
-- Added support for both `style` attributes and `link`ed CSS files;
-- Implemented cascading and inheritance;
-- Refactored `BlockLayout` to move the font properties to CSS;
-- Moved most tag-specific reasoning to a browser style sheet.
+- Wrote a CSS parser
+- Added support for both `style` attributes and `link`ed CSS files
+- Implemented cascading and inheritance
+- Refactored `BlockLayout` to move the font properties to CSS
+- Moved most tag-specific reasoning to a browser style sheet
 
 Our styling engine is also relatively easy to extend with properties
 and selectors.

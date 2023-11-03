@@ -1049,10 +1049,10 @@ Summary
 With this chapter we're starting to transform our browser into an
 application platform. We've added:
 
-- Layout objects for input areas and buttons.
-- Clicking on buttons and typing into input areas.
-- Hierarchical focus handling.
-- Form submission with HTTP POST.
+- Layout objects for input areas and buttons
+- Clicking on buttons and typing into input areas
+- Hierarchical focus handling
+- Form submission with HTTP POST
 
 Plus, our browser now has a little web server friend. That's going to
 be handy as we add more interactive features to the browser.
