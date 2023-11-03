@@ -286,6 +286,8 @@ def parse_color(color):
         return skia.ColorWHITE
     elif color == "red":
         return skia.ColorRED
+    elif color == "lightblue":
+        return skia.ColorSetARGB(0xFF, 0xAD, 0xD8, 0xE6)
     else:
         return skia.ColorBLACK
 ```
