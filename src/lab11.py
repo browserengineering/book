@@ -538,7 +538,6 @@ class Chrome:
             self.browser.active_tab.go_back()
         elif self.address_rect.contains(x, y):
             self.focus = "address bar"
-            print('set focus')
             self.address_bar = ""
         else:
             for i, tab in enumerate(self.browser.tabs):
