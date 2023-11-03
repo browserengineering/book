@@ -741,15 +741,26 @@ class Browser:
             self.set_needs_raster_and_draw()
 
     def handle_key(self, char):
-        if self.chrome.focus:
+        if self.chrome.keypress(char):
             # ...
             self.set_needs_raster_and_draw()
 
     def handle_enter(self):
-        if self.chrome.focus:
+        if self.chrome.enter():
             # ...
             self.set_needs_raster_and_draw()
 ```
+
+Here I need a small change to make `enter` return whether something was done:
+
+``` {.python}
+class Chrome:
+    def enter(self):
+        if self.focus == "address bar":
+            self.browser.schedule_load(URL(self.address_bar))
+            self.focus = None
+            self.browser.focus = None
+
 
 And the `Tab` should also set this bit after running `render`:
 
@@ -1340,7 +1351,7 @@ The same logic holds for `keypress`:
 class Browser:
     def handle_key(self, char):
         if not (0x20 <= ord(char) < 0x7f): return
-        if self.chrome.focus:
+        if self.chrome.keypress(char):
             # ...
         elif self.focus == "content":
             task = Task(self.active_tab.keypress, char)

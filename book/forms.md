@@ -396,9 +396,15 @@ handled by the `Browser`. So how does the `Browser` even know when
 keyboard events should be sent to the `Tab`? The `Browser` has to
 remember that in its own `focus` field!
 
-In other words, when you click on the web page, the `Browser` updates
-its `focus` field to remember that the user is interacting with the
-page, not the browser chrome:
+In other words, when you click on the web page, the `Browser` updates its
+`focus` field to remember that the user is interacting with the page, not the
+browser chrome. And if so, it should unfocus ("blur") the browser chrome:
+
+``` {.python}
+class Chrome:
+    def blur(self):
+        self.focus = None
+```
 
 ``` {.python}
 class Browser:
@@ -408,10 +414,12 @@ class Browser:
             # ...
         else:
             self.focus = "content"
-            self.chrome.focus = None
+            self.chrome.blur()
             # ...
         self.draw()
 ```
+
+
 
 The `if` branch that corresponds to clicks in the browser chrome
 unsets `focus`, meaning focus is no longer on the page contents,
@@ -425,12 +433,22 @@ focused):
 class Browser:
     def handle_key(self, e):
         # ...
-        if self.chrome.focus:
-            self.chrome.keypress(e.char)
+        if self.chrome.keypress(e.char):
             self.draw()
         elif self.focus == "content":
             self.active_tab.keypress(e.char)
             self.draw()
+```
+
+Here I've changed `keypress` to return true if the browser chrome consumed the
+key:
+
+``` {.python}
+class Chrome:
+    def keypress(self, char):
+        if self.focus == "address bar":
+            self.address_bar += char
+        return self.focus == "address bar"
 ```
 
 That `keypress` method then uses the tab's `focus` field to put the
