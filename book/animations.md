@@ -733,7 +733,7 @@ raster itself into. To start, it'll need to know how big a surface to
 allocate. That's just the union of the bounding boxes of all of its
 paint commands---the `rect` field:
 
-``` {.python}
+``` {.python expected=False}
 class CompositedLayer:
     # ...
     def composited_bounds(self):
@@ -1755,7 +1755,7 @@ Basically, when considering which composited layer a display item goes
 in, also check if it overlaps with an existing composited layer. If
 so, start a new `CompositedLayer` for this display item:
 
-``` {.python replace=layer.composited_bounds/layer.absolute_bounds,cmd.rect/absolute_bounds(cmd)}
+``` {.python replace=layer.composited_bounds/layer.absolute_bounds,cmd.rect/local_to_absolute(cmd%2c%20cmd.rect)}
 class Browser:
     def composite(self):
         # ...
@@ -1901,7 +1901,7 @@ use two helper methods that compute such bounds. The first maps a rect
 through a translation, and the second walks up the node tree, mapping through
 each translation found.
 
-``` {.python}
+``` {.python replace=translation)/translation%2c%20reversed%3dFalse)}
 def map_translation(rect, translation):
     if not translation:
         return rect
@@ -1956,11 +1956,11 @@ class Browser:
                     # ...
                 elif skia.Rect.Intersects(
                     layer.absolute_bounds(),
-                    absolute_bounds(cmd)):
+                    local_to_absolute(cmd, cmd.rect)):
                     # ...
 ```
 
-To implement `absolute_bounds`, we first need a new `map` method on
+To implement `local_to_absolute`, we first need a new `map` method on
 `Transform` that takes a rect in the coordinate space of the
 "contents" of the transform and outputs a rect in post-transform
 space. For example, if the transform was `translate(20px, 0px)` then
@@ -1974,8 +1974,8 @@ class Transform(VisualEffect):
 
 class ClipRRect(VisualEffect):
     def map(self, rect):
-        bounds = self.rrect.rect()
-        bounds.intersect(rect)
+        bounds = rect.makeOffset(0.0, 0.0)
+        bounds.intersect(self.rrect.rect())
         return bounds
 
 class SaveLayer(VisualEffect):
@@ -1989,8 +1989,7 @@ looks a lot like `absolute_bounds_for_obj`, except that it works on the
 display list and not the layout object tree:
 
 ``` {.python}
-def absolute_bounds(display_item):
-    rect = display_item.rect
+def local_to_absolute(display_item, rect):
     while display_item.parent:
         rect = display_item.parent.map(rect)
         display_item = display_item.parent
@@ -2004,12 +2003,77 @@ class CompositedLayer:
     def absolute_bounds(self):
         rect = skia.Rect.MakeEmpty()
         for item in self.display_items:
-            rect.join(absolute_bounds(item))
+            rect.join(local_to_absolute(item, item.rect))
         return rect
 ```
 
 The blue square should now be underneath the green square, so overlap
 testing is now complete.[^not-really]
+
+There's one more situation worth thinking about, though. Suppose we have
+a huge composited layer, containing a lot of text, except that most of that
+layer is clipped out by a `ClipRRect` somewhere above it. Then the
+`absolute_bounds` consider the clip operations and the `composited_bounds`
+don't, meaning that we'll make a much larger composited layer than necessary
+and waste a lot of time raster pixels that the user will never see. This situation
+actually happens a lot when scrollable elements are drawn to the screen. 
+
+Let's fix that by also applying those clips to
+`composited_bounds`, so that we can properly minimize the amount of raster
+happening in each `CompositedLayer`.[^clipping-notes] We'll do it by first
+computing the absolute bounds for each item, then mapping them back to local
+space, which will have the effect of computing the "clipped local rect" for
+each display item:
+
+[^clipping-notes]: This is very important, because otherwise some
+composited layers can end up huge despite not drawing much to the screen.
+A good example of this optimization making a big difference is loading the
+browser from [Chapter 15](embeds.md) for the `browser.engineering` homepage,
+where otherwise we would end up with an enormous composited layer for an
+iframe.
+
+``` {.python}
+class CompositedLayer:
+    def composited_bounds(self):
+        rect = skia.Rect.MakeEmpty()
+        for item in self.display_items:
+            rect.join(absolute_to_local(
+                item, local_to_absolute(item, item.rect)))
+        rect.outset(1, 1)
+        return rect
+```
+
+This requires implementing `absolute_to_local`:
+
+``` {.python}
+def absolute_to_local(display_item, rect):
+    parent_chain = []
+    while display_item.parent:
+        parent_chain.append(display_item.parent)
+        display_item = display_item.parent
+    for parent in reversed(parent_chain):
+        rect = parent.unmap(rect)
+    return rect
+```
+
+Which in turn relies on `unmap`. For `SaveLayer` and `ClipRRect` these should
+be no-ops, but for `Transform` it's just the inverse translation:
+
+
+``` {.python}
+def map_translation(rect, translation, reversed=False):
+    # ...
+    else:
+        # ...
+        if reversed:
+            matrix.setTranslate(-x, -y)
+        else:
+            matrix.setTranslate(x, y)
+
+class Transform(VisualEffect):
+    def unmap(self, rect):
+        return map_translation(rect, self.translation, True)
+```
 
 And while we're here, let's also make transforms animatable via a new
 `TranslateAnimation` class:

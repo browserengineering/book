@@ -368,6 +368,32 @@ class DrawRect:
         # ...
 ```
 
+Speaking of rects, let's now get rid of the old `Rect` class that was
+introduced in [Chapter 7](chrome.md) in favor of `skia.Rect`. Everywhere
+that a `Rect` was constructed, instead put `skia.Rect.MakeLTRB`, and
+everywhere that the sides of the rectangle (e.g. `left`) where checked,
+replace them with the corresponding function on a Skia `Rect` (e.g. `left()`).
+Also replace calls to `containsPoint` with Skia's `contains`.
+
+To draw just the outline, set the `Style` parameter of the `Paint` to
+`Stroke_Style`. Here "stroke" is a standard term referring to drawing
+along the border of some shape; the opposite is "fill", meaning
+filling in the interior of the shape:
+
+``` {.python replace=%2c%20scroll/,rect.makeOffset(0%2c%20-scroll)/rect}
+class DrawOutline:
+    def execute(self, canvas):
+        paint = skia.Paint()
+        paint.setStyle(skia.Paint.kStroke_Style)
+        paint.setStrokeWidth(self.thickness)
+        paint.setColor(parse_color(self.color))
+        canvas.drawRect(self.rect.makeOffset(0, -scroll), paint)
+```
+
+If you look at the details of these helper methods, you'll see that
+they all use a Skia `Paint` object to describe a shape's borders and
+colors. We'll be seeing a lot more features of `Paint` in this chapter.
+
 While we're here, let's also add a `rect` field to the other drawing
 commands, replacing its `top`, `left`, `bottom`, and `right`
 fields:
@@ -433,7 +459,7 @@ example, in the `paint` method in `InputLayout`, we must do:
 
 ``` {.python}
 class InputLayout:
-    def paint(self, display_list):
+    def paint(self):
         if self.node.is_focused:
             cx = self.x + self.font.measureText(text)
             # ...
@@ -441,7 +467,7 @@ class InputLayout:
 
 There are `measure` calls in several other layout objects (both in
 `paint` and `layout`), in `DrawText`, in the `draw` method on
-`Browser`, in the `text` method in `BlockLayout`, and in the `layout`
+`Chrome`, in the `text` method in `BlockLayout`, and in the `layout`
 method in `TextLayout`. Update all of them to use `measureText`.
 
 Also, in the `layout` method of `LineLayout` and in `DrawText` we make
@@ -471,13 +497,13 @@ def linespace(font):
 
 ```
 
-You should now be able to run the browser again. It should look and
-behave just as it did in previous chapters, and it'll probably feel
-faster, because Skia and SDL are faster than Tkinter. This is one
-advantage of Skia: since it is also used by the Chromium browser, we
-know it has fast, built-in support for all of the shapes we might
-need. And if the transition felt easy---well, that's one of the benefits to
-abstracting over the drawing backend using a display list!\index{display list}
+You should now be able to run the browser again. It should look and behave just
+as it did in previous chapters, and it might feel faster on complex pages,
+because Skia and SDL are in general faster than Tkinter. This is one advantage
+of Skia: since it is also used by the Chromium browser, we know it has fast,
+built-in support for all of the shapes we might need. And if the transition
+felt easy---well, that's one of the benefits to abstracting over the drawing
+backend using a display list!\index{display list}
 
 ::: {.further}
 [Font rasterization](https://en.wikipedia.org/wiki/Font_rasterization)
@@ -533,14 +559,15 @@ Note that Skia supports `RRect`s, or rounded rectangles, natively, so
 we can just draw one right to a canvas. Now we can draw these rounded
 rectangles for the background:
 
-``` {.python replace=display_list./cmds.}
+``` {.python replace=is_atomic/self.is_atomic(),rect/self.self_rect()}
 class BlockLayout:
-    def paint(self, display_list):
+    def paint(self):
         if not is_atomic:
             if bgcolor != "transparent":
                 radius = float(
-                    self.node.style.get("border-radius", "0px")[:-2])
-                display_list.append(DrawRRect(rect, radius, bgcolor))
+                    self.node.style.get(
+                        "border-radius", "0px")[:-2])
+                cmds.append(DrawRRect(rect, radius, bgcolor))
 ```
 
 Similar changes should be made to `InputLayout`.
@@ -670,7 +697,8 @@ is gray while the background is yellow-orange. That's due to blending:
 the text and the background are both partially transparent and let
 through some of the underlying white:
 
-<div style="opacity: 0.5; background: orange; color: black; font-size: 50px; padding: 15px; text-align: center;flex:1;">Text</div>
+<div style="opacity: 0.5; background: orange; color: black; font-size: 50px;
+    padding: 15px; text-align: center;flex:1;">Text</div>
 
 But importantly, the text isn't orange-gray: even though the text is
 partially transparent, none of the orange shines through. That's
@@ -680,14 +708,25 @@ overwrite the orange background. Only *then* is this black-and-orange
 image blended with the white background. Doing the operations in a
 different order would lead to dark-orange or black text.
 
-To handle this properly, browsers apply blending not to individual
-shapes but to a tree of [*stacking contexts*][stacking-context].
-Conceptually, each stacking context is drawn onto its own surface, and
-then blended into its parent stacking context. Rastering a web page
-requires a bottom-up traversal of the tree of stacking contexts: to
-raster a stacking context you first need to raster its contents,
-including its child stacking contexts, and then the whole contents
-need to be blended together into the parent.
+To handle this properly, browsers apply blending not to individual shapes but to
+a tree of surfaces. Conceptually, each surface is drawn individually,
+and then blended into its parent surface. Rastering a web page requires a
+bottom-up traversal of the tree: to raster a surface you first need to raster
+its contents, including its child stacking contexts, and then the whole
+contents need to be blended together into the parent.[^stacking-context-disc]
+
+[^stacking-context-disc]: This tree of surfaces is an implementation strategy
+and not something required by any specific web API. However, the web does
+define the concept of a [*stacking context*][stacking-context], which is
+related. A stacking context is technically a mechanism to define groups and
+ordering during paint, and stacking contexts need not correspond to a surface
+(e.g. ones created via [`z-index`][z-index] do not). However, for ease of
+implementation, all visual effects in CSS that generally require surfaces to
+implement are specified to go hand-in-hand with a stacking context, so the tree
+of stacking contexts is very related to the tree of surfaces.
+
+[stacking-context]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
+[z-index]: https://developer.mozilla.org/en-US/docs/Web/CSS/z-index
 
 To match this use pattern, in Skia, surfaces form a stack. You can
 push a new surface on the stack, raster things to it, and then pop it
@@ -695,9 +734,7 @@ off by blending it with surface below. When traversing the tree of
 stacking contexts, you push a new surface onto the stack every time
 you recurse into a new stacking context, and pop-and-blend every time
 you return from a child stacking context to its parent.
-
-[stacking-context]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
-
+ 
 In real browsers, stacking contexts are formed by HTML elements with
 certain styles, up to any descendants that themselves have such
 styles. The full definition is actually quite complicated, so in this
@@ -827,39 +864,46 @@ class SaveLayer:
         canvas.restore()
 ```
 
-Now let's look at how we can add this to our existing `paint` method
-for `BlockLayout`s. Right now, this method draws a background and then
-recurses into its children, adding each drawing command straight to
-the global display list. Let's instead add those drawing commands to a
-temporary list first:
+Now let's look at how we can add this to our existing `paint` method for
+`BlockLayout`s. Now, _before_ we add its `cmds` command list to the overall
+display list, we can use `SaveLayer` to add transparency to the whole element.
+I'm going to do this in a new `paint_effects` method, which will wrap `cmds`
+in a `SaveLayer`. The actual `SaveLayer` will be computed in a new
+global `paint_visual_effects` method (because other object types will need it
+also).^[As part of adding this method, I've factored out a `self_rect` and
+`is_atomic` method from `paint`, you'll need to update that method also to call
+these helpers.]
 
 ``` {.python}
 class BlockLayout:
-    def paint(self, display_list):
-        cmds = []
-        # ...
-        if bgcolor != "transparent":
-            # ...
-            cmds.append(DrawRRect(rect, radius, bgcolor))
+    def is_atomic(self):
+        return not isinstance(self.node, Text) and \
+            (self.node.tag == "input" or self.node.tag == "button")
 
-        for child in self.children:
-            child.paint(cmds)
-        # ...        
-        display_list.extend(cmds)
+    def self_rect(self):
+        return skia.Rect.MakeLTRB(
+            self.x, self.y,
+            self.x + self.width, self.y + self.height)
+
+    def paint_effects(self, cmds):
+        if not self.is_atomic():
+            cmds = paint_visual_effects(
+                self.node, cmds, self.self_rect())
+        return cmds
 ```
 
-Now, _before_ we add our temporary command list to the overall display
-list, we can use `SaveLayer` to add transparency to the whole element.
-I'm going to do this in a new `paint_visual_effects` method, because
-we'll want to make the same changes to all of our other layout
-objects:
+A change is now needed in `paint_tree` to call this method, but only *after*
+recursing into children. That's because these visual effects apply to the
+entire subtree's display list, not just the current object.
 
 ``` {.python}
-class BlockLayout:
-    def paint(self, display_list):
-        # ...
-        cmds = paint_visual_effects(self.node, cmds, rect)
-        display_list.extend(cmds)
+def paint_tree(layout_object, display_list):
+    cmds = layout_object.paint()
+    for child in layout_object.children:
+        paint_tree(child, cmds)
+
+    cmds = layout_object.paint_effects(cmds)
+    display_list.extend(cmds)
 ```
 
 Inside `paint_visual_effects`, we'll parse the opacity value and
@@ -949,7 +993,9 @@ this:[^simple-alpha]
 [^simple-alpha]: The formula for this code can be found
 [here](https://www.w3.org/TR/SVG11/masking.html#SimpleAlphaBlending).
 Note that that page refers to *premultiplied* alpha colors, but Skia's API
-does not use premultiplied representations, and the code below doesn't either.
+generally does not use premultiplied representations, and the code below
+doesn't either. (Skia does represent colors internally in a premultiplied form,
+however.)
 
 
 ``` {.python file=examples}
@@ -1154,8 +1200,12 @@ property][mdn-mask] lets you instead specify a image URL for the mask.
 Usually, `overflow: clip` is used with properties like `height` or
 `rotate` which can make an element's children poke outside their
 parent. Our browser doesn't support these, but there is one edge case
-where `overflow: clip` is relevant: rounded corners. Consider this
+where `overflow: clip` is relevant: rounded corners.^[Technically,
+clipping is also relevant for our browser with single words that are longer
+than the browser window's width. [Here][longword] is an example.] Consider this
 example:
+
+[longword]: examples/example11-longword.html
 
 ``` {.html .example}
 <div 
@@ -1172,20 +1222,9 @@ This test text exists here to ensure that the "div" element is
 large enough that the border radius is obvious.
 </div>
 
-Observe that the letters near the corner are cut off to maintain a
-sharp rounded edge.[^hidden] That's clipping; without the `overflow:
-clip` property these letters would instead be fully drawn, like we saw
-earlier in this chapter.
-
-[^hidden]: The `overflow: hidden` property is somewhat similar, but in
-this case it will increase the height of `div` until the rounded
-corners no longer clip out the text. This is because `overflow:hidden`
-has different rules for sizing boxes, having to do with the
-possibility of the child content being scrolled---`hidden` means
-"clipped, but might be scrolled by JavaScript". If the blue box had
-not been taller, than it would have been impossible to see the text,
-which is really bad if it's intended that there should be a way to
-scroll it on-screen.
+Observe that the letters near the corner are cut off to maintain a sharp rounded
+edge. That's clipping; without the `overflow: clip` property these letters
+would instead be fully drawn, like we saw earlier in this chapter.
 
 Counterintuitively, we'll implement clipping using blending modes.
 We'll make a new surface (the mask), draw a rounded rectangle into it,
@@ -1601,7 +1640,8 @@ class Browser:
     def draw(self):
         # ...
         
-        tab_rect = skia.Rect.MakeLTRB(0, self.chrome.bottom, WIDTH, HEIGHT)
+        tab_rect = skia.Rect.MakeLTRB(
+            0, self.chrome.bottom, WIDTH, HEIGHT)
         tab_offset = self.chrome.bottom - self.active_tab.scroll
         canvas.save()
         canvas.clipRect(tab_rect)
@@ -1609,7 +1649,8 @@ class Browser:
         self.tab_surface.draw(canvas, 0, 0)
         canvas.restore()
 
-        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, self.chrome.bottom)
+        chrome_rect = skia.Rect.MakeLTRB(
+            0, 0, WIDTH, self.chrome.bottom)
         canvas.save()
         canvas.clipRect(chrome_rect)
         self.chrome_surface.draw(canvas, 0, 0)

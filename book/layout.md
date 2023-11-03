@@ -544,45 +544,42 @@ the way, we can stop copying the display list contents over and over
 again as we go up the layout tree.
 
 I think it's most convenient to do that by adding a `paint`\index{paint}
-function to each layout object, which appends any of its own layout objects to
-the display list and then recursively paints the child layouts. A neat
-trick here is to pass the list itself as an argument, and have the
-recursive function append to that list. For `DocumentLayout`, which
-only has one child, the recursion looks like this:
+function to each layout object, whose return value is the display list entries
+for that object. Then there is a separate function, `paint_tree`, that
+recursively calls `paint` on all layout objects:
+
+``` {.python}
+def paint_tree(layout_object, display_list):
+    display_list.extend(layout_object.paint())
+
+    for child in layout_object.children:
+        paint_tree(child, display_list)
+```
+
+For `DocumentLayout`, there is
+nothing to paint:
 
 ``` {.python}
 class DocumentLayout:
-    def paint(self, display_list):
-        self.children[0].paint(display_list)
+    def paint(self):
+        return []
 ```
 
 You can now delete the line that computes a `DocumentLayout`'s
 `display_list` field.
 
-For a `BlockLayout` with multiple children, `paint` is called on each
-child:
-
-``` {.python}
-class BlockLayout:
-    def paint(self, display_list):
-        for child in self.children:
-            child.paint(display_list)
-```
-
-Again, delete the line that computes a `BlockLayout`'s `display_list`
-field by copying from child layout objects.
-
-Finally for a `BlockLayout` object with text inside, we need to copy
-over the `display_list` field that it computes during `recurse` and
-`flush`:
+For a `BlockLayout` object, we need to copy over the `display_list` field that
+it computes during `recurse` and `flush`:^[And again, delete the line that
+computes a `BlockLayout`'s `display_list` field by copying from child layout
+objects.]
 
 ``` {.python expected=False}
 class BlockLayout:
-    def paint(self, display_list):
-        display_list.extend(self.display_list)
+    def paint(self):
+        return self.display_list
 ```
 
-Now the browser can use `paint` to collect its own `display_list`
+Now the browser can use `paint_tree` to collect its own `display_list`
 variable:
 
 ``` {.python}
@@ -590,7 +587,7 @@ class Browser:
     def load(self, url):
         # ...
         self.display_list = []
-        self.document.paint(self.display_list)
+        paint_tree(self.document, self.display_list)
         self.draw()
 ```
 
@@ -644,7 +641,7 @@ class DrawRect:
 ```
 
 Now `BlockLayout` must add `DrawText` objects for each word it wants
-to draw:[^why-not-change]
+to draw, but only in inline mode:[^why-not-change]
 
 [^why-not-change]: Why not change the `display_list` field inside a
 `BlockLayout` to contain `DrawText` commands directly? I suppose you
@@ -653,10 +650,12 @@ commands in one place.
 
 ``` {.python}
 class BlockLayout:
-    def paint(self, display_list):
-        for x, y, word, font in self.display_list:
-            display_list.append(DrawText(x, y, word, font))
-        # ...
+    def paint(self):
+        cmds = []
+        if self.layout_mode() == "inline":
+            for x, y, word, font in self.display_list:
+                cmds.append(DrawText(x, y, word, font))
+        return cmds
 ```
 
 But it can also add a `DrawRect` command to draw a background. Let's add
@@ -664,18 +663,19 @@ a gray background to `pre` tags (which are used for code examples):
 
 ``` {.python}
 class BlockLayout:
-    def paint(self, display_list):
+    def paint(self):
+        # ...
         if isinstance(self.node, Element) and self.node.tag == "pre":
             x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, "gray")
-            display_list.append(rect)
+            cmds.append(rect)
         # ...
 ```
 
-Make sure this code comes *before* the loop that adds `DrawText`
-objects and *before* the recursion into child layout objects: the
-background has to be drawn *below* and therefore *before* any
-contents.
+Make sure this code comes *before* the loop that adds `DrawText` objects: the
+background has to be drawn *below* that text. Note also that `paint_tree`
+calls `paint` before recursing into the subtree, so the subtree also paints
+on top of this background, as desired.
 
 With the display list filled out, we need to `draw`
 each graphics command. Let's add an `execute` method for this. On

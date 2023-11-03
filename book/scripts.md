@@ -10,7 +10,7 @@ book](forms.md), with the server generating new web pages for every
 user action. But in the early 2000s, JavaScript-enhanced web
 applications, which can update pages dynamically and respond
 immediately to user actions, took their place. Let's add support for
-this key web technology to our toy browser.
+this key web technology to our browser.
 
 Installing DukPy
 ================
@@ -144,7 +144,7 @@ That's your browser running its first bit of JavaScript!
 Actually, real browsers run JavaScript code as soon as the browser
 *parses* the `<script>` tag, not after the whole page is parsed. Or,
 at least, that is the default; there are [many options][scriptElement].
-What our toy browser does is what a real browser does when the
+What our browser does is what a real browser does when the
 [`defer`][deferAttr] attribute is set. The default behavior is [much
 trickier][speculative] to implement efficiently.
 :::

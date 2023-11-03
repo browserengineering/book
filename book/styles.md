@@ -77,7 +77,7 @@ it started and extracts the substring it moved through.
     property names (which use letters and the dash), numbers (which
     use the minus sign, numbers, periods), units (the percent sign),
     and colors (which use the hash sign). Real CSS values have a more
-    complex syntax but this is enough for our toy browser.
+    complex syntax but this is enough for our browser.
 
 Parsing functions can fail. The `word` function we just wrote raises
 an exception if `i` hasn't advanced though at least one
@@ -238,17 +238,18 @@ def style(node):
 
 Call `style` in the browser's `load` method, after parsing the HTML
 but before doing layout. With the `style` information stored on each
-element, the browser can consult it for styling information:
+element, the browser can consult it for styling information during paint:
 
 ``` {.python}
 class BlockLayout:
-    def paint(self, display_list):
+    def paint(self):
+        # ...
         bgcolor = self.node.style.get("background-color",
                                       "transparent")
         if bgcolor != "transparent":
             x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
-            display_list.append(rect)
+            cmds.append(rect)
         # ...
 ```
 
@@ -678,7 +679,7 @@ allows more specific rules to override more general ones, so that you
 can have a browser style sheet, a site-wide style sheet, and maybe a
 special style sheet for a specific web page, all co-existing.
 
-Since our browser only has tag selectors, our cascade order just
+Since our browser only has tag selectors, cascade order just
 counts them:
 
 ``` {.python}
@@ -693,7 +694,7 @@ class DescendantSelector:
         self.priority = ancestor.priority + descendant.priority
 ```
 
-Then our cascade order for rules is just those priorities:
+Then cascade order for rules is just those priorities:
 
 ``` {.python}
 def cascade_priority(rule):
@@ -916,10 +917,10 @@ def flush(self):
 That `display_list` is converted to drawing commands in `paint`:
 
 ``` {.python indent=4}
-def paint(self, display_list):
+def paint(self):
     # ...
     for x, y, word, font, color in self.display_list:
-        display_list.append(DrawText(self.x + x, self.y + y,
+        cmds.append(DrawText(self.x + x, self.y + y,
                                      word, font, color))
 ```
 

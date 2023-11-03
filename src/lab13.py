@@ -23,11 +23,11 @@ from lab5 import BLOCK_ELEMENTS
 from lab6 import TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, cascade_priority
 from lab6 import tree_to_list
-from lab7 import intersects
 from lab8 import Text, Element, INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, parse_color, parse_blend_mode, linespace
+from lab11 import paint_tree
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
 from lab12 import Task, REFRESH_RATE_SEC, clamp_scroll, Chrome
 
@@ -69,13 +69,16 @@ class VisualEffect:
             if isinstance(child, VisualEffect)
         ])
 
-def map_translation(rect, translation):
+def map_translation(rect, translation, reversed=False):
     if not translation:
         return rect
     else:
         (x, y) = translation
         matrix = skia.Matrix()
-        matrix.setTranslate(x, y)
+        if reversed:
+            matrix.setTranslate(-x, -y)
+        else:
+            matrix.setTranslate(x, y)
         return matrix.mapRect(rect)
 
 class Transform(VisualEffect):
@@ -95,6 +98,9 @@ class Transform(VisualEffect):
 
     def map(self, rect):
         return map_translation(rect, self.translation)
+
+    def unmap(self, rect):
+        return map_translation(rect, self.translation, True)
 
     def clone(self, children):
         return Transform(self.translation, self.rect,
@@ -188,8 +194,8 @@ class DrawRect(DrawCommand):
             self.right, self.color)
 
 class DrawOutline(DrawCommand):
-    def __init__(self, x1, y1, x2, y2, color, thickness):
-        super().__init__(skia.Rect.MakeLTRB(x1, y1, x2, y2))
+    def __init__(self, rect, color, thickness):
+        super().__init__(rect)
         self.color = color
         self.thickness = thickness
 
@@ -209,7 +215,6 @@ class DrawOutline(DrawCommand):
             self.rect.right(), self.color,
             self.thickness)
 
-
 class ClipRRect(VisualEffect):
     def __init__(self, rect, radius, children, should_clip=True):
         super().__init__(rect, children)
@@ -227,9 +232,12 @@ class ClipRRect(VisualEffect):
             canvas.restore()
 
     def map(self, rect):
-        bounds = self.rrect.rect()
-        bounds.intersect(rect)
+        bounds = rect.makeOffset(0.0, 0.0)
+        bounds.intersect(self.rrect.rect())
         return bounds
+
+    def unmap(self, rect):
+        return rect
 
     def clone(self, children):
         return ClipRRect(self.rect, self.radius, children, \
@@ -259,6 +267,9 @@ class SaveLayer(VisualEffect):
             canvas.restore()
 
     def map(self, rect):
+        return rect
+
+    def unmap(self, rect):
         return rect
 
     def clone(self, children):
@@ -495,7 +506,16 @@ class BlockLayout:
         font = get_font(size, weight, size)
         self.cursor_x += w + font.measureText(" ")
 
-    def paint(self, display_list):
+    def is_atomic(self):
+        return not isinstance(self.node, Text) and \
+            (self.node.tag == "input" or self.node.tag == "button")
+
+    def self_rect(self):
+        return skia.Rect.MakeLTRB(
+            self.x, self.y,
+            self.x + self.width, self.y + self.height)
+
+    def paint(self):
         cmds = []
 
         rect = skia.Rect.MakeLTRB(
@@ -505,21 +525,18 @@ class BlockLayout:
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         
-        is_atomic = not isinstance(self.node, Text) and \
-            (self.node.tag == "input" or self.node.tag == "button")
-
-        if not is_atomic:
+        if not self.is_atomic():
             if bgcolor != "transparent":
                 radius = float(
                     self.node.style.get("border-radius", "0px")[:-2])
-                cmds.append(DrawRRect(rect, radius, bgcolor))
+                cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
 
-        for child in self.children:
-            child.paint(cmds)
+        return cmds
 
-        if not is_atomic:
-            cmds = paint_visual_effects(self.node, cmds, rect)
-        display_list.extend(cmds)
+    def paint_effects(self, cmds):
+        if not self.is_atomic():
+            cmds = paint_visual_effects(self.node, cmds, self.self_rect())
+        return cmds
 
     def __repr__(self):
         return "BlockLayout[{}](x={}, y={}, width={}, height={}, node={})".format(
@@ -542,8 +559,11 @@ class DocumentLayout:
         child.layout()
         self.height = child.height
 
-    def paint(self, display_list):
-        self.children[0].paint(display_list)
+    def paint(self):
+        return []
+
+    def paint_effects(self, cmds):
+        return cmds
 
     def __repr__(self):
         return "DocumentLayout()"
@@ -584,9 +604,11 @@ class LineLayout:
                            for word in self.children])
         self.height = 1.25 * (max_ascent + max_descent)
 
-    def paint(self, display_list):
-        for child in self.children:
-            child.paint(display_list)
+    def paint(self):
+        return []
+
+    def paint_effects(self, cmds):
+        return cmds
 
     def __repr__(self):
         return "LineLayout(x={}, y={}, width={}, height={}, node={})".format(
@@ -622,10 +644,15 @@ class TextLayout:
 
         self.height = linespace(self.font)
 
-    def paint(self, display_list):
+    def paint(self):
+        cmds = []
         color = self.node.style["color"]
-        display_list.append(
+        cmds.append(
             DrawText(self.x, self.y, self.word, self.font, color))
+        return cmds
+
+    def paint_effects(self, cmds):
+        return cmds
     
     def __repr__(self):
         return ("TextLayout(x={}, y={}, width={}, height={}, " +
@@ -659,18 +686,19 @@ class InputLayout:
         else:
             self.x = self.parent.x
 
-    def paint(self, display_list):
-        cmds = []
-
-        rect = skia.Rect.MakeLTRB(
+    def self_rect(self):
+        return skia.Rect.MakeLTRB(
             self.x, self.y, self.x + self.width,
             self.y + self.height)
+
+    def paint(self):
+        cmds = []
 
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         if bgcolor != "transparent":
             radius = float(self.node.style.get("border-radius", "0px")[:-2])
-            cmds.append(DrawRRect(rect, radius, bgcolor))
+            cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
 
         if self.node.tag == "input":
             text = self.node.attributes.get("value", "")
@@ -691,8 +719,10 @@ class InputLayout:
             cmds.append(DrawLine(
                 cx, self.y, cx, self.y + self.height, "black", 1))
 
-        cmds = paint_visual_effects(self.node, cmds, rect)
-        display_list.extend(cmds)
+        return cmds
+
+    def paint_effects(self, cmds):
+        return paint_visual_effects(self.node, cmds, self.self_rect())
 
     def __repr__(self):
         if self.node.tag == "input":
@@ -727,7 +757,7 @@ def paint_visual_effects(node, cmds, rect):
     transform = Transform(translation, rect, node, [save_layer])
 
     node.save_layer = save_layer
-
+ 
     return [transform]
 
 SETTIMEOUT_CODE = "__runSetTimeout(dukpy.handle)"
@@ -988,11 +1018,19 @@ def absolute_bounds_for_obj(obj):
         cur = cur.parent
     return rect
 
-def absolute_bounds(display_item):
-    rect = display_item.rect
+def local_to_absolute(display_item, rect):
     while display_item.parent:
         rect = display_item.parent.map(rect)
         display_item = display_item.parent
+    return rect
+
+def absolute_to_local(display_item, rect):
+    parent_chain = []
+    while display_item.parent:
+        parent_chain.append(display_item.parent)
+        display_item = display_item.parent
+    for parent in reversed(parent_chain):
+        rect = parent.unmap(rect)
     return rect
 
 class CompositedLayer:
@@ -1013,14 +1051,15 @@ class CompositedLayer:
     def composited_bounds(self):
         rect = skia.Rect.MakeEmpty()
         for item in self.display_items:
-            rect.join(item.rect)
+            rect.join(absolute_to_local(
+                item, local_to_absolute(item, item.rect)))
         rect.outset(1, 1)
         return rect
 
     def absolute_bounds(self):
         rect = skia.Rect.MakeEmpty()
         for item in self.display_items:
-            rect.join(absolute_bounds(item))
+            rect.join(local_to_absolute(item, item.rect))
         return rect
 
     def raster(self):
@@ -1075,6 +1114,7 @@ class Tab:
         self.needs_layout = False
         self.needs_paint = False
         self.browser = browser
+        self.loaded = False
         if wbetools.USE_BROWSER_THREAD:
             self.task_runner = TaskRunner(self)
         else:
@@ -1094,6 +1134,7 @@ class Tab:
         return Task(self.js.run, script, script_text)
 
     def load(self, url, payload=None):
+        self.loaded = False
         self.scroll = 0
         self.scroll_changed_in_tab = True
         self.task_runner.clear_pending_tasks()
@@ -1143,6 +1184,7 @@ class Tab:
                 continue
             self.rules.extend(CSSParser(body).parse())
         self.set_needs_render()
+        self.loaded = True
 
     def set_needs_render(self):
         self.needs_style = True
@@ -1225,7 +1267,7 @@ class Tab:
         
         if self.needs_paint:
             self.display_list = []
-            self.document.paint(self.display_list)
+            paint_tree(self.document, self.display_list)
             self.needs_paint = False
 
         self.browser.measure.stop('render')
@@ -1399,7 +1441,8 @@ class Browser:
     def render(self):
         assert not wbetools.USE_BROWSER_THREAD
         self.active_tab.task_runner.run_tasks()
-        self.active_tab.run_animation_frame(self.scroll)
+        if self.active_tab.loaded:
+            self.active_tab.run_animation_frame(self.scroll)
 
     def commit(self, tab, data):
         self.lock.acquire(blocking=True)
@@ -1458,7 +1501,7 @@ class Browser:
                     break
                 elif skia.Rect.Intersects(
                     layer.absolute_bounds(),
-                    absolute_bounds(cmd)):
+                    local_to_absolute(cmd, cmd.rect)):
                     layer = CompositedLayer(self.skia_context, cmd)
                     self.composited_layers.append(layer)
                     did_break = True
@@ -1564,7 +1607,7 @@ class Browser:
     def handle_click(self, e):
         self.lock.acquire(blocking=True)
         if e.y < self.chrome.bottom:
-            self.focus = None
+            self.focus = "chrome"
             self.chrome.click(e.x, e.y)
             self.set_needs_raster()
         else:
@@ -1579,8 +1622,8 @@ class Browser:
     def handle_key(self, char):
         self.lock.acquire(blocking=True)
         if not (0x20 <= ord(char) < 0x7f): return
-        if self.focus == "address bar":
-            self.address_bar += char
+        if self.focus == "chrome":
+            self.chrome.keypress(char)
             self.set_needs_raster()
         elif self.focus == "content":
             task = Task(self.active_tab.keypress, char)
@@ -1593,12 +1636,9 @@ class Browser:
 
     def handle_enter(self):
         self.lock.acquire(blocking=True)
-        if self.focus == "address bar":
-            self.schedule_load(URL(self.address_bar))
-            self.url = self.address_bar
-            self.focus = None
+        if self.focus == "chrome":
+            self.chrome.enter()
             self.set_needs_raster()
-            self.needs_animation_frame = True
         self.lock.release()
 
     def new_tab(self, url):
