@@ -1332,9 +1332,12 @@ the window title.
 
 *Forward*: Add a forward button, which should undo the back button. If
 the most recent navigation action wasn't a back button, the forward
-button shouldn't do anything. Draw it in gray in that case, so the
-user isn't stuck wondering why it doesn't work. Also draw the back
-button in gray if there's nowhere to go back to.
+button shouldn't do anything.^[To accomplish this, you'll need to keep
+around history items when clicking the back button, and store an index
+into it for the current page, instead of removing them entirely from the
+array.] Draw it in gray in that case, so the user isn't stuck wondering
+why it doesn't work. Also draw the back button in gray if there's nowhere
+to go back to.
 
 *Fragments*: URLs can contain a *fragment*, which comes at the end of
 a URL and is separated from the path by a hash sign `#`. When the
