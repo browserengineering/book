@@ -1752,6 +1752,7 @@ class Browser:
             if self.focus != "content":
                 self.set_needs_raster()
             self.focus = "content"
+            self.chrome.focus = None
             tab_y = e.y - self.chrome.bottom
             task = Task(self.active_tab.click, e.x, tab_y)
             self.active_tab.task_runner.schedule_task(task)

@@ -356,6 +356,7 @@ class Browser:
             self.chrome.click(e.x, e.y)
         else:
             self.focus = "content"
+            self.chrome.focus = None
             tab_y = e.y - self.chrome.bottom
             self.active_tab.click(e.x, tab_y)
         self.draw()

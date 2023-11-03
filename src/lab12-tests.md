@@ -80,6 +80,8 @@ Scrolling down causes a draw but nothing else.
     >>> browser.handle_click(Event(51, 51))
     >>> browser.focus
     'chrome'
+    >>> browser.chrome.focus
+    'address bar'
     >>> browser.handle_key('c')
     >>> browser.needs_raster_and_draw
     True

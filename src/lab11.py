@@ -592,6 +592,7 @@ class Browser:
         else:
             if self.focus != "content":
                 self.focus = "content"
+                self.chrome.focus = None
                 self.raster_chrome()
             url = self.active_tab.url
             tab_y = e.y - self.chrome.bottom
