@@ -1509,7 +1509,6 @@ hard to achieve with current GPU technology, because some GPUs are faster
 than others. So browsers are slowly evolving to a hybrid of direct rendering
 and compositing instead.
 
-
 While all modern browsers have threaded animations, it's interesting to note
 that, as of the time of writing this section, Chromium and WebKit both perform
 the `compositing` step on the main thread, whereas our browser does it on the
@@ -2064,7 +2063,8 @@ class Transform(VisualEffect):
 ```
 
 And with that, we now have completed the story of a pretty high-performance
-implementation of composited animations.
+implementation of composited animations. [This example][overlap-example]
+should now paint with the green element on top of the blue one.
 
 [^not-really]: Actually, even the current code is not correct now that we have
 transforms. Since a transform animation moves content around, overlap depends
@@ -2171,7 +2171,8 @@ transfoms and scrolling, but they are not fully composited or threaded,
 and transform animations are not supported. Implement these. (Hint: for
 transforms, it just requires following the same pattern as for `opacity`;
 for scrolling, it requires setting fewer dirty bits in `handle_down`.)
-[This transform animation][tr-example] should now work.
+[This simultaneous transform and opacity animation][tr-example] should now work,
+without any raster, and scrolling on that page should not raster either.
 
  [tr-example]: examples/example13-transform-transition.html
 
