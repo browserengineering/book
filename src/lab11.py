@@ -14,14 +14,14 @@ import ssl
 import urllib.parse
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab4 import print_tree, HTMLParser
-from lab5 import BLOCK_ELEMENTS, DrawRect, DocumentLayout
+from lab5 import BLOCK_ELEMENTS, DrawRect
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import DrawText, tree_to_list
-from lab7 import DrawLine, DrawOutline, LineLayout, TextLayout
+from lab7 import DrawLine, DrawOutline
 from lab7 import Chrome
 from lab8 import Text, Element, BlockLayout, InputLayout, INPUT_WIDTH_PX
-from lab8 import Browser
+from lab8 import Browser, LineLayout, TextLayout, DocumentLayout
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL, JSContext, Tab
 import wbetools
@@ -196,11 +196,13 @@ class ClipRRect:
             canvas.restore()
 
 def paint_tree(layout_object, display_list):
-    cmds = layout_object.paint()
+    if layout_object.should_paint():
+        cmds = layout_object.paint()
     for child in layout_object.children:
         paint_tree(child, cmds)
 
-    cmds = layout_object.paint_effects(cmds)
+    if layout_object.should_paint():
+        cmds = layout_object.paint_effects(cmds)
     display_list.extend(cmds)
 
 @wbetools.patch(BlockLayout)
@@ -233,10 +235,6 @@ class BlockLayout:
         font = get_font(size, weight, style)
         self.cursor_x += w + font.measureText(" ")
 
-    def is_atomic(self):
-        return not isinstance(self.node, Text) and \
-            (self.node.tag == "input" or self.node.tag == "button")
-
     def self_rect(self):
         return skia.Rect.MakeLTRB(
             self.x, self.y,
@@ -248,20 +246,18 @@ class BlockLayout:
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         
-        if not self.is_atomic():
-            if bgcolor != "transparent":
-                radius = float(
-                    self.node.style.get(
-                        "border-radius", "0px")[:-2])
-                cmds.append(DrawRRect(
-                    self.self_rect(), radius, bgcolor))
+        if bgcolor != "transparent":
+            radius = float(
+                self.node.style.get(
+                    "border-radius", "0px")[:-2])
+            cmds.append(DrawRRect(
+                self.self_rect(), radius, bgcolor))
 
         return cmds
 
     def paint_effects(self, cmds):
-        if not self.is_atomic():
-            cmds = paint_visual_effects(
-                self.node, cmds, self.self_rect())
+        cmds = paint_visual_effects(
+            self.node, cmds, self.self_rect())
         return cmds
 
 @wbetools.patch(LineLayout)
@@ -347,6 +343,9 @@ class InputLayout:
         rect = skia.Rect.MakeLTRB(
             self.x, self.y, self.x + self.width,
             self.y + self.height)
+
+    def should_paint(self):
+        return True
 
     def paint(self):
         cmds = []

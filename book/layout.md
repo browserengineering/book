@@ -232,10 +232,11 @@ BLOCK_ELEMENTS = [
 
 Our `layout_mode` method has to handle one tricky case, where a node
 contains both block children like a `<p>` element but also text
-children like a text node or a `<b>` element. It's probably best to think of this as a kind
-of error on the part of the web developer. And just like with implicit
-tags in [Chapter 4](html.md), we need a repair mechanism to make sense
-of the situation; I've chosen to use block mode in this case.[^anon-block]
+children like a text node or a `<b>` element. It's probably best to think
+of this as a kind of error on the part of the web developer. And just like
+with implicit tags in [Chapter 4](html.md), we need a repair mechanism to
+make sense of the situation; I've chosen to use block mode in this
+case.[^anon-block]
 
 [^anon-block]: In real browsers, that repair mechanism is called
 "[anonymous block boxes][anon-block]" and is more complex than what's

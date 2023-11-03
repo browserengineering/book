@@ -506,9 +506,9 @@ class BlockLayout:
         font = get_font(size, weight, size)
         self.cursor_x += w + font.measureText(" ")
 
-    def is_atomic(self):
-        return not isinstance(self.node, Text) and \
-            (self.node.tag == "input" or self.node.tag == "button")
+    def should_paint(self):
+        return isinstance(self.node, Text) or \
+            (self.node.tag != "input" and self.node.tag != "button")        
 
     def self_rect(self):
         return skia.Rect.MakeLTRB(
@@ -525,17 +525,15 @@ class BlockLayout:
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         
-        if not self.is_atomic():
-            if bgcolor != "transparent":
-                radius = float(
-                    self.node.style.get("border-radius", "0px")[:-2])
-                cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
+        if bgcolor != "transparent":
+            radius = float(
+                self.node.style.get("border-radius", "0px")[:-2])
+            cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
 
         return cmds
 
     def paint_effects(self, cmds):
-        if not self.is_atomic():
-            cmds = paint_visual_effects(self.node, cmds, self.self_rect())
+        cmds = paint_visual_effects(self.node, cmds, self.self_rect())
         return cmds
 
     def __repr__(self):
@@ -558,6 +556,9 @@ class DocumentLayout:
         self.y = VSTEP
         child.layout()
         self.height = child.height
+
+    def should_paint(self):
+        return True
 
     def paint(self):
         return []
@@ -604,6 +605,9 @@ class LineLayout:
                            for word in self.children])
         self.height = 1.25 * (max_ascent + max_descent)
 
+    def should_paint(self):
+        return True
+
     def paint(self):
         return []
 
@@ -643,6 +647,9 @@ class TextLayout:
             self.x = self.parent.x
 
         self.height = linespace(self.font)
+
+    def should_paint(self):
+        return True
 
     def paint(self):
         cmds = []
