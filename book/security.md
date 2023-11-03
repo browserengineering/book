@@ -950,7 +950,8 @@ Cross-site scripting
 Now other websites can't misuse our browser's cookies to read or write
 private data. This seems secure! But what about *our own* website?
 With cookies accessible from JavaScript, any scripts run on our browser
-could, in principle, read the cookie value. This might seem benign---doesn't our browser only run `comment.js`? But in fact...
+could, in principle, read the cookie value. This might seem
+benign---doesn't our browser only run `comment.js`? But in fact...
 
 A web service needs to defend itself from being *misused*. Consider
 the code in our guest book that outputs guest book entries:
