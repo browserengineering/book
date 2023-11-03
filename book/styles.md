@@ -54,7 +54,7 @@ def whitespace(self):
 ```
 
 Whitespace is meaningless, so there's no parsed data to return.
-But when we parse property names, we'll want to return property them:
+But when we parse property names, we'll want to return them:
 
 ``` {.python indent=4}
 def word(self):
@@ -285,7 +285,7 @@ apply to.[^media-queries] The combination of the two is called a
     environments (like only on mobile or only in landscape mode).
     Media queries are super-important for building sites that work
     across many devices, like reading this book on a phone. We'll meet
-    them in [Chapter 14](accessibility.md)
+    them in [Chapter 14](accessibility.md).
 
 ``` {.css .example}
 selector { property-1: value-1; property-2: value-2; }
@@ -297,8 +297,9 @@ elements on the page match each selector; and then copy those property
 values to the elements' `style` fields.
 
 ::: {.further}
-Actually, before CSS, you'd style pages with custom elements like
-[`font`][font-elt] and [`center`][center-elt]. This was easy to
+Actually, before CSS, you'd style pages with custom *presentational tags* like
+[`font`][font-elt] and [`center`][center-elt] (not to mention the
+`<b>` and `<i>` tags we'll encounter later in this chapter). This was easy to
 implement but made it hard to keep pages consistent. There
 were also properties on `<body>` like [`text` and `vlink`][body-attrs]
 that could consistently set text colors, mainly for links.
@@ -571,7 +572,7 @@ def tree_to_list(tree, list):
 
 I've written this helper to work on both HTML and layout trees, for
 later. We can use `tree_to_list` with a Python list
-comprehension[^crazy] to grab the URL of each linked style sheet:
+comprehension to grab the URL of each linked style sheet:[^crazy]
 
 [^crazy]: It's kind of crazy, honestly, that Python lets you write
     things like this---crazy, but very convenient!
@@ -646,8 +647,8 @@ can also hide bugs in your code, so if something's not right try
 removing it temporarily.
 
 ::: {.further}
-Each browser has its own browser style sheet ([Chromium][blink-css],
-[Safari][webkit-css], [Firefox][gecko-css]). [Reset
+Each browser engine has its own browser style sheet ([Chromium][blink-css],
+[WebKit][webkit-css], [Gecko][gecko-css]). [Reset
 style sheets][mdn-reset] are often used to overcome any differences.
 This works because web page style sheets take precedence over the
 browser style sheet, just like in our browser, though real browsers
@@ -1022,11 +1023,11 @@ This chapter implemented a rudimentary but complete styling engine,
 including downloading, parsing, matching, sorting, and applying CSS
 files. That means we:
 
-- Wrote a CSS parser;
-- Added support for both `style` attributes and `link`ed CSS files;
-- Implemented cascading and inheritance;
-- Refactored `BlockLayout` to move the font properties to CSS;
-- Moved most tag-specific reasoning to a browser style sheet.
+- Wrote a CSS parser
+- Added support for both `style` attributes and `link`ed CSS files
+- Implemented cascading and inheritance
+- Refactored `BlockLayout` to move the font properties to CSS
+- Moved most tag-specific reasoning to a browser style sheet
 
 Our styling engine is also relatively easy to extend with properties
 and selectors.
