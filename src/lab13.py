@@ -698,6 +698,9 @@ class InputLayout:
             self.x, self.y, self.x + self.width,
             self.y + self.height)
 
+    def should_paint(self):
+        return True
+
     def paint(self):
         cmds = []
 
