@@ -105,7 +105,7 @@ def paint_outline(node, cmds, rect, zoom):
     outline = parse_outline(node.style.get("outline"))
     if not outline: return
     thickness, color = outline
-    cmds.append(DrawOutline(rect, color, device_px(thickness, zoom)))
+    cmds.append(DrawOutline(rect, color, dpx(thickness, zoom)))
 
 class BlockLayout:
     def __init__(self, node, parent, previous):
@@ -182,7 +182,7 @@ class BlockLayout:
     def word(self, node, word):
         weight = node.style["font-weight"]
         style = node.style["font-style"]
-        size = device_px(float(node.style["font-size"][:-2]),
+        size = dpx(float(node.style["font-size"][:-2]),
             self.zoom)
         font = get_font(size, weight, size)
         w = font.measureText(word)
@@ -195,7 +195,7 @@ class BlockLayout:
         self.cursor_x += w + font.measureText(" ")
 
     def input(self, node):
-        w = device_px(INPUT_WIDTH_PX, self.zoom)
+        w = dpx(INPUT_WIDTH_PX, self.zoom)
         if self.cursor_x + w > self.width:
             self.new_line()
         line = self.children[-1]
@@ -204,7 +204,7 @@ class BlockLayout:
         self.previous_word = input
         weight = node.style["font-weight"]
         style = node.style["font-style"]
-        size = device_px(float(node.style["font-size"][:-2]),
+        size = dpx(float(node.style["font-size"][:-2]),
             self.zoom)
         font = get_font(size, weight, size)
         self.cursor_x += w + font.measureText(" ")
@@ -224,7 +224,7 @@ class BlockLayout:
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         if bgcolor != "transparent":
-            radius = device_px(
+            radius = dpx(
                 float(self.node.style.get("border-radius", "0px")[:-2]),
                     self.zoom)
             cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
@@ -304,11 +304,12 @@ class LineLayout:
         return "LineLayout(x={}, y={}, width={}, height={}, node={})".format(
             self.x, self.y, self.width, self.height, self.node)
 
-def device_px(css_px, zoom):
+def dpx(css_px, zoom):
     return css_px * zoom
 
 def get_tabindex(node):
-    return int(node.attributes.get("tabindex", "9999999"))
+    tabindex = int(node.attributes.get("tabindex", "9999999"))
+    return 9999999 if tabindex == 0 else tabindex
 
 def cascade_priority(rule):
     media, selector, body = rule
@@ -370,9 +371,9 @@ class DocumentLayout:
         child = BlockLayout(self.node, self, None)
         self.children.append(child)
 
-        self.width = WIDTH - 2 * device_px(HSTEP, self.zoom)
-        self.x = device_px(HSTEP, self.zoom)
-        self.y = device_px(VSTEP, self.zoom)
+        self.width = WIDTH - 2 * dpx(HSTEP, self.zoom)
+        self.x = dpx(HSTEP, self.zoom)
+        self.y = dpx(VSTEP, self.zoom)
         child.layout()
         self.height = child.height
 
@@ -404,7 +405,7 @@ class TextLayout:
         self.zoom = self.parent.zoom
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
-        size = device_px(
+        size = dpx(
             float(self.node.style["font-size"][:-2]), self.zoom)
         self.font = get_font(size, weight, style)
 
@@ -458,11 +459,11 @@ class InputLayout:
         self.zoom = self.parent.zoom
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
-        size = device_px(float(self.node.style["font-size"][:-2]),
+        size = dpx(float(self.node.style["font-size"][:-2]),
             self.zoom)
         self.font = get_font(size, weight, style)
 
-        self.width = device_px(INPUT_WIDTH_PX, self.zoom)
+        self.width = dpx(INPUT_WIDTH_PX, self.zoom)
         self.height = linespace(self.font)
 
         if self.previous:
@@ -484,7 +485,7 @@ class InputLayout:
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         if bgcolor != "transparent":
-            radius = device_px(
+            radius = dpx(
                 float(self.node.style.get("border-radius", "0px")[:-2]),
                 self.zoom)
             cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
@@ -519,7 +520,7 @@ class InputLayout:
             self.x, self.y, self.width, self.height)
 
 def is_focusable(node):
-    if get_tabindex(node) <= 0:
+    if get_tabindex(node) < 0:
         return False
     elif "tabindex" in node.attributes:
         return True
@@ -598,15 +599,9 @@ class AccessibilityNode:
             for grandchild_node in child_node.children:
                 self.build_internal(grandchild_node)
 
-    def intersects(self, x, y):
-        if self.bounds:
-            return skia.Rect.Intersects(self.bounds,
-                skia.Rect.MakeXYWH(x, y, 1, 1))
-        return False
-
     def hit_test(self, x, y):
         nodes = [node for node in tree_to_list(self, [])
-            if node.intersects(x, y)]
+            if node.bounds and node.bounds.contains(x, y)]
         if nodes:
             return nodes[-1]
 
@@ -736,7 +731,8 @@ class CSSParser:
         assert self.word() == "media"
         self.whitespace()
         self.literal("(")
-        (prop, val) = self.pair(")")
+        self.whitespace()
+        prop, val = self.pair(")")
         self.whitespace()
         self.literal(")")
         return prop, val
@@ -1167,7 +1163,6 @@ class Tab:
             elif is_focusable(elt):
                 self.focus_element(elt)
                 self.activate_element(elt)
-                self.set_needs_render()
                 return
             elt = elt.parent
 
@@ -1206,8 +1201,7 @@ class Tab:
     def advance_tab(self):
         focusable_nodes = [node
             for node in tree_to_list(self.nodes, [])
-            if isinstance(node, Element) and is_focusable(node)                          
-            and get_tabindex(node) >= 0]
+            if isinstance(node, Element) and is_focusable(node)]
         focusable_nodes.sort(key=get_tabindex)
 
         if self.focus in focusable_nodes:
@@ -1912,7 +1906,7 @@ def main_func(url):
                     elif event.key.keysym.sym == sdl2.SDLK_m:
                         browser.toggle_mute()
                     elif event.key.keysym.sym == sdl2.SDLK_t:
-                        browser.load("https://browser.engineering/")
+                        browser.new_tab("https://browser.engineering/")
                     elif event.key.keysym.sym == sdl2.SDLK_TAB:
                         browser.cycle_tabs()
                     elif event.key.keysym.sym == sdl2.SDLK_q:

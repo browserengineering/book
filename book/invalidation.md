@@ -2734,6 +2734,19 @@ the layout tree as possible.
 
 [insertbefore-mdn]: https://developer.mozilla.org/en-US/docs/Web/API/Node/insertBefore
 
+*`:hover` pseudo-class*: There is a `:hover` pseudo-class that
+identifies elements the mouse is [hovering over][hover-pseudo].
+Implement it by sending mouse hover events to the active `Tab` and hit
+testing to find out which element is hovered. Try to avoid [forcing a
+layout][forced-layout-hit-test] in this hit test; one way to do that
+is to store a `pending_hover` on the `Tab` and run the hit test
+after `layout` during `render`, and then perform *another* render to
+invalidate the hovered element's style.
+
+[forced-layout-hit-test]: https://browser.engineering/scheduling.html#threaded-style-and-layout
+
+[hover-pseudo]: https://developer.mozilla.org/en-US/docs/Web/CSS/:hover
+
 *Optimizing away `ProtectedField`*: as mentioned in the last section
 of the chapter, creating all these objects is way too expensive for
 a real browser. See if you can find a way to avoid creating the
