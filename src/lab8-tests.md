@@ -160,3 +160,29 @@ If a `<button>` contains rich markup inside of it, it should print nothing:
     Ignoring HTML contents inside button
     >>> browser.tabs[0].display_list
     [DrawRect(top=20.25 left=13 bottom=32.25 right=213 color=orange), DrawText(text=)]
+
+Testing focus
+=============
+
+    Clicking on the address bar focuses it
+    >>> browser.handle_click(test.Event(51, 51))
+    >>> browser.focus
+    >>> browser.chrome.focus
+    'address bar'
+
+    Clicking back on the content area unfocuses it
+    >>> browser.handle_click(test.Event(200, 200))
+    >>> browser.focus
+    'content'
+    >>> browser.chrome.focus
+
+    Clicking on the back button 
+    >>> rect = browser.chrome.back_rect
+    >>> browser.handle_click(test.Event(rect.left + 1, rect.top + 1))
+    >>> browser.focus
+    >>> browser.chrome.focus
+
+    >>> browser.handle_click(test.Event(200, 200))
+    >>> browser.focus
+    'content'
+    >>> browser.chrome.focus
