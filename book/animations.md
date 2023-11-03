@@ -1787,7 +1787,7 @@ avoid slowing down transform animations.
 [^overlap-example]: It's not possible to create the overlapping
 squares example of this section without some way of moving an
 element around. Real browsers have many methods for this, such as
-[position].
+[position]. We'll add a different way later in the chapter.
 
 [position]: https://developer.mozilla.org/en-US/docs/Web/CSS/position
 
@@ -2063,8 +2063,8 @@ class Transform(VisualEffect):
 ```
 
 And with that, we now have completed the story of a pretty high-performance
-implementation of composited animations. [This example][overlap-example]
-should now paint with the green element on top of the blue one.
+implementation of composited animations.You should now be able to render [this example][overlap-example] correctly.
+
 
 [^not-really]: Actually, even the current code is not correct now that we have
 transforms. Since a transform animation moves content around, overlap depends
@@ -2074,16 +2074,7 @@ out overlapping and remains so throughout, but if it didn't, our browser would
 not correctly notice when overlap starts happening during the animation. I've
 left solving this to an exercise.
 
-You should now be able to create this animation:^[In this example, I added in a
-simultaneous opacity animation to demonstrate that our browser supports it. In
-addition, transforms are compatible with composited animations, but it's not
-implemented in our browser. Doing so is a lot like numeric animations, so I've
-left implementing it to an exercise.]
-
-<iframe src="examples/example13-transform-transition.html" style="width:350px;height:450px">
-</iframe>
-(click [here](examples/example13-transform-transition.html) to load the example in
-your browser)
+[overlap-example]: examples/example13-transform-overlap.html
 
 ::: {.further}
 
@@ -2168,11 +2159,11 @@ function, and one or two others.
 
 *Composited & threaded transform and scroll animations*: Our browser supports
 transfoms and scrolling, but they are not fully composited or threaded,
-and transform animations are not supported. Implement these. (Hint: for
-transforms, it just requires following the same pattern as for `opacity`;
-for scrolling, it requires setting fewer dirty bits in `handle_down`.)
-[This simultaneous transform and opacity animation][tr-example] should now work,
-without any raster, and scrolling on that page should not raster either.
+and transform transition animations are not supported. Implement these.
+(Hint: for transforms, it just requires following the same pattern as for
+`opacity`; for scrolling, it requires setting fewer dirty bits in
+`handle_down`.) [This simultaneous transform and opacity animation][tr-example] should now work, without any raster, and scrolling on that page should not
+raster either.
 
  [tr-example]: examples/example13-transform-transition.html
 
