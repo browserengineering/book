@@ -340,7 +340,7 @@ class InputLayout:
             self.x = self.parent.x
 
     def self_rect(self):
-        rect = skia.Rect.MakeLTRB(
+        return skia.Rect.MakeLTRB(
             self.x, self.y, self.x + self.width,
             self.y + self.height)
 
@@ -586,12 +586,13 @@ class Browser:
 
     def handle_click(self, e):
         if e.y < self.chrome.bottom:
-            self.focus = "chrome"
+            self.focus = None
             self.chrome.click(e.x, e.y)
             self.raster_chrome()
         else:
             if self.focus != "content":
                 self.focus = "content"
+                self.chrome.focus = None
                 self.raster_chrome()
             url = self.active_tab.url
             tab_y = e.y - self.chrome.bottom
@@ -603,7 +604,7 @@ class Browser:
 
     def handle_key(self, char):
         if not (0x20 <= ord(char) < 0x7f): return
-        if self.focus == "chrome":
+        if self.chrome.focus:
             self.chrome.keypress(char)
             self.raster_chrome()
             self.draw()
@@ -613,7 +614,7 @@ class Browser:
             self.draw()
 
     def handle_enter(self):
-        if self.focus == "chrome":
+        if self.chrome.focus:
             self.chrome.enter()
             self.raster_tab()
             self.raster_chrome()
