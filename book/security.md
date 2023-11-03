@@ -531,7 +531,7 @@ post, see hover previews, or submit a form without reloading.
 
 ::: {.further}
 `XMLHttpRequest` objects have [`setRequestHeader`][xhr-srh] and
-[`getResponseHeader`][xhr-grh] method to control HTTP headers.
+[`getResponseHeader`][xhr-grh] methods to control HTTP headers.
 However, this could allow a script to interfere with the cookie
 mechanism or with other security measures, so some
 [request][bad-req-headers] and [response][bad-resp-headers] headers
@@ -949,9 +949,9 @@ Cross-site scripting
 
 Now other websites can't misuse our browser's cookies to read or write
 private data. This seems secure! But what about *our own* website?
-With cookies accessible from JavaScript, any scripts run on our server
+With cookies accessible from JavaScript, any scripts run on our browser
 could, in principle, read the cookie value. This might seem
-benign---doesn't our server only run `comment.js`? But in fact...
+benign---doesn't our browser only run `comment.js`? But in fact...
 
 A web service needs to defend itself from being *misused*. Consider
 the code in our guest book that outputs guest book entries:
@@ -1193,7 +1193,7 @@ ensuring it was not misused. That involved:
 - Mitigating cross-site request forgery with nonces and with
   `SameSite` cookies
 - Mitigating cross-site scripting with escaping and with
-  `Content-Security-Policy`.
+  `Content-Security-Policy`
 
 We've also seen the more general lesson that every increase in the
 capabilities of a web browser also leads to an increase in its
