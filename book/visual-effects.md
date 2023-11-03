@@ -367,18 +367,9 @@ class DrawRect:
         canvas.drawRect(self.rect.makeOffset(0, -scroll), paint)
 ```
 
-Here the `rect` field is a Skia `Rect` object, which you can construct
-using `MakeLTRB` (for "make left-top-right-bottom") or `MakeXYWH` (for
-"make *x*-*y*-width-height"):
-
-``` {.python}
-class DrawRect:
-    def __init__(self, x1, y1, x2, y2, color):
-        self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
-        # ...
-```
-
-Speaking of rects, let's now get rid of the old `Rect` class that was
+Here the `rect` field needs to become a Skia `Rect` object, which you can
+construct using `MakeLTRB` (for "make left-top-right-bottom") or `MakeXYWH`
+(for "make *x*-*y*-width-height"). Get rid of the old `Rect` class that was
 introduced in [Chapter 7](chrome.md) in favor of `skia.Rect`. Everywhere
 that a `Rect` was constructed, instead put `skia.Rect.MakeLTRB`, and
 everywhere that the sides of the rectangle (e.g. `left`) where checked,
