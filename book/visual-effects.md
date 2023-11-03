@@ -560,7 +560,7 @@ Note that Skia supports `RRect`s, or rounded rectangles, natively, so
 we can just draw one right to a canvas. Now we can draw these rounded
 rectangles for the background:
 
-``` {.python replace=is_atomic/self.is_atomic(),rect/self.self_rect()}
+``` {.python replace=is_atomic/self.is_atomic()}
 class BlockLayout:
     def paint(self):
         if bgcolor != "transparent":
@@ -568,7 +568,7 @@ class BlockLayout:
                 self.node.style.get(
                     "border-radius", "0px")[:-2])
             cmds.append(DrawRRect(
-                rect, radius, bgcolor))
+                self.self_rect(), radius, bgcolor))
 ```
 
 Similar changes should be made to `InputLayout`.
@@ -871,17 +871,10 @@ display list, we can use `SaveLayer` to add transparency to the whole element.
 I'm going to do this in a new `paint_effects` method, which will wrap `cmds`
 in a `SaveLayer`. The actual `SaveLayer` will be computed in a new
 global `paint_visual_effects` method (because other object types will need it
-also).^[As part of adding this method, I've factored out a `self_rect` method
-from `paint`, you'll need to update that method also to call
-these helpers.]
+also).
 
 ``` {.python}
 class BlockLayout:
-    def self_rect(self):
-        return skia.Rect.MakeLTRB(
-            self.x, self.y,
-            self.x + self.width, self.y + self.height)
-
     def paint_effects(self, cmds):
         cmds = paint_visual_effects(
             self.node, cmds, self.self_rect())
