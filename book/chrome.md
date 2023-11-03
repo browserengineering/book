@@ -834,7 +834,7 @@ class Chrome:
     def paint(self):
         cmds = []
         cmds.append(DrawRect(
-            0, 0, WIDTH, self.bottom,
+            Rect(0, 0, WIDTH, self.bottom),
             "white"))
         cmds.append(DrawLine(
             0, self.bottom, WIDTH,
@@ -842,7 +842,23 @@ class Chrome:
 ```
 
 I also added a line at the bottom of the chrome to separate it from
-the page.
+the page. Note how I also changed `DrawRect` to pass a `Rect` instead of the
+four corners; this requires a change to `BlockLayout`:
+
+``` {.python}
+class BlockLayout:
+    def self_rect(self):
+        return Rect(self.x, self.y,
+            self.x + self.width, self.y + self.height)
+
+    def paint(self):
+        # ...
+        if bgcolor != "transparent":
+            rect = DrawRect(self.self_rect(), bgcolor)
+            cmds.append(rect)
+        return cmds
+
+```
 
 Drawing this chrome display list is now straightforward:
 
