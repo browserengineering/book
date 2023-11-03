@@ -110,7 +110,7 @@ class DrawRect:
 
     def __repr__(self):
         return "DrawRect(top={} left={} bottom={} right={} color={})".format(
-            self.rect.top(), self.rect.left(), rect.self.bottom(),
+            self.rect.top(), self.rect.left(), self.rect.bottom(),
             self.rect.right(), self.color)
 
 @wbetools.patch(DrawText)
