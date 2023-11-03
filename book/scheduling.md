@@ -760,7 +760,7 @@ class Chrome:
             self.browser.schedule_load(URL(self.address_bar))
             self.focus = None
             self.browser.focus = None
-
+```
 
 And the `Tab` should also set this bit after running `render`:
 
