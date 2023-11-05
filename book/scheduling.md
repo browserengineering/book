@@ -601,22 +601,14 @@ class Browser:
         threading.Timer(REFRESH_RATE_SEC, callback).start()
 ```
 
-Note how every time a frame is scheduled, we set up a timer to
-schedule the next one. We can kick off the process when we start the
-Browser:
-
-``` {.python}
-if __name__ == "__main__":
-    # ...
-    browser = Browser()
-    # ...
-```
-
-In the top-level loop, after running a task on the active tab the browser
-will need to raster-and-draw, in case that task was a rendering task:
+Note how every time a frame is scheduled, we set up a timer to schedule the next
+one. We can kick off the process when we start the browser. In the top-level
+loop, after running a task on the active tab the browser will need to
+raster-and-draw, in case that task was a rendering task:
 
 ``` {.python expected=False}
 if __name__ == "__main__":
+    browser = Browser()
     while True:
         # ...
         browser.active_tab.task_runner.run()
@@ -678,8 +670,8 @@ One advantage of this flag is that we can now set `needs_render` when
 the HTML has changed instead of calling `render` directly. The
 `render` will still happen, but later. This makes scripts faster,
 especially if they modify the page multiple times. Make this change in
-`innerHTML_set`, `load`, `click`, and `keypress`. For example, in
-`load`, do this:
+`innerHTML_set`, `load`, `click`, and `keypress` when changing the DOM.
+For example, in `load`, do this:
 
 ``` {.python}
 class Tab:
@@ -697,7 +689,22 @@ class JSContext:
         self.tab.set_needs_render()
 ```
 
-There are more calls to `render`; you should find and fix all of them.
+There are more calls to `render`; you should find and fix all of them...
+Except, let's take a closer look at `click`.
+
+We now don't immediately render when something changes. That means that the
+layout tree (and style) could be out of date when a method is called. Normally,
+this isn't a problem, but in one important case it is: click handling. That's
+because we need to read the layout tree to figure out what object was clicked
+on, which means the layout tree needs to be up to date. Add a call to render at
+the top of click:
+
+``` {.python}
+class Tab:
+    def click(self, x, y):
+        self.render()
+        # ...
+```
 
 Another problem with our implementation is that the browser is now
 doing `raster_and_draw` every time the active tab runs a task.
@@ -1153,8 +1160,8 @@ through our 16ms budget. So, what can we do?
 
 Our browser spends a lot of time copying pixels. That's why
 [optimizing surfaces][optimize-surfaces] is important! It'll be faster
-by at least 30% if you've done the *interest region* exercise from
-[Chapter 11](visual-effects.md#exercises); making `tab_surface`
+if you've completed the *interest region* exercise from
+[Chapter 11](visual-effects.md#exercises), because making `tab_surface`
 smaller also helps a lot. Modern browsers go a step further and
 perform raster and draw [on the GPU][skia-gpu], where a lot more
 parallelism is available. Even so, on complex pages raster and draw
@@ -1404,7 +1411,11 @@ class CommitData:
 When running an animation frame, the `Tab` should construct one of
 these objects and pass it to `commit`. To keep `render` from getting
 too confusing, let's put this in a new `run_animation_frame` method,
-and move `__runRAFHandlers` there too:
+and move `__runRAFHandlers` there too.^[The `render` method is just about
+updating style, layout and paint when needed; it's called for every frame,
+but it's also called from `click`, and in real browsers from many other places too.
+Meanwhile, `run_animation_frame` is only called for frames, and therefore
+it, not `render`, runs RAF handlers and calls `commit`.]
 
 ``` {.python replace=self.scroll%2c/scroll%2c,(self)/(self%2c%20scroll)}
 class Tab:

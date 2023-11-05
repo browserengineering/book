@@ -13,12 +13,12 @@ import urllib.parse
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
-from lab5 import BLOCK_ELEMENTS, DrawRect, DocumentLayout
+from lab5 import BLOCK_ELEMENTS, DocumentLayout
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import DrawText, URL, tree_to_list
 from lab7 import DrawLine, DrawOutline, BlockLayout, LineLayout, TextLayout
-from lab7 import Tab, Browser, Chrome
+from lab7 import Tab, Browser, Chrome, DrawRect, Rect
 
 @wbetools.patch(Element)
 class Element:
@@ -115,13 +115,16 @@ class InputLayout:
     def should_paint(self):
         return True
 
+    def self_rect(self):
+        return Rect(self.x, self.y,
+            self.x + self.width, self.y + self.height)
+
     def paint(self):
         cmds = []
         bgcolor = self.node.style.get("background-color",
                                       "transparent")
         if bgcolor != "transparent":
-            x2, y2 = self.x + self.width, self.y + self.height
-            rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
+            rect = DrawRect(self.self_rect(), bgcolor)
             cmds.append(rect)
 
         if self.node.tag == "input":
@@ -214,9 +217,8 @@ class BlockLayout:
         bgcolor = self.node.style.get("background-color",
                                       "transparent")
         if bgcolor != "transparent":
-            x2, y2 = self.x + self.width, self.y + self.height
-            rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
-            cmds.append(rect)
+            draw_rect = DrawRect(self.self_rect(), bgcolor)
+            cmds.append(draw_rect)
         return cmds
 
     def __repr__(self):
@@ -272,8 +274,8 @@ class Tab:
 
     def draw(self, canvas, offset):
         for cmd in self.display_list:
-            if cmd.top > self.scroll + self.tab_height: continue
-            if cmd.bottom < self.scroll: continue
+            if cmd.rect.top > self.scroll + self.tab_height: continue
+            if cmd.rect.bottom < self.scroll: continue
             cmd.execute(self.scroll - offset, canvas)
 
     def click(self, x, y):
