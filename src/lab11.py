@@ -14,12 +14,11 @@ import ssl
 import urllib.parse
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab4 import print_tree, HTMLParser
-from lab5 import BLOCK_ELEMENTS, DrawRect
+from lab5 import BLOCK_ELEMENTS
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import DrawText, tree_to_list
-from lab7 import DrawLine, DrawOutline
-from lab7 import Chrome
+from lab7 import DrawLine, DrawOutline, DrawRect, Chrome
 from lab8 import Text, Element, BlockLayout, InputLayout, INPUT_WIDTH_PX
 from lab8 import Browser, LineLayout, TextLayout, DocumentLayout
 from lab9 import EVENT_DISPATCH_JS
@@ -100,18 +99,19 @@ class SaveLayer:
 
 @wbetools.patch(DrawRect)
 class DrawRect:
-    def __init__(self, x1, y1, x2, y2, color):
-        self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
-        self.top = y1
-        self.left = x1
-        self.bottom = y2
-        self.right = x2
+    def __init__(self, rect, color):
+        self.rect = rect
         self.color = color
 
     def execute(self, canvas):
         paint = skia.Paint()
         paint.setColor(parse_color(self.color))
         canvas.drawRect(self.rect, paint)
+
+    def __repr__(self):
+        return "DrawRect(top={} left={} bottom={} right={} color={})".format(
+            self.rect.top(), self.rect.left(), self.rect.bottom(),
+            self.rect.right(), self.color)
 
 @wbetools.patch(DrawText)
 class DrawText:

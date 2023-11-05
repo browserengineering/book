@@ -807,17 +807,14 @@ It's defined like so:
 ``` {.python}
 class DrawLine:
     def __init__(self, x1, y1, x2, y2, color, thickness):
-        self.top = y1
-        self.left = x1
-        self.bottom = y2
-        self.right = x2
+        self.rect = Rect(x1, y1, x2, y2)
         self.color = color
         self.thickness = thickness
 
     def execute(self, scroll, canvas):
         canvas.create_line(
-            self.left, self.top - scroll,
-            self.right, self.bottom - scroll,
+            self.rect.left, self.rect.top - scroll,
+            self.rect.right, self.rect.bottom - scroll,
             fill=self.color, width=self.thickness)
 ```
 
@@ -834,7 +831,7 @@ class Chrome:
     def paint(self):
         cmds = []
         cmds.append(DrawRect(
-            0, 0, WIDTH, self.bottom,
+            Rect(0, 0, WIDTH, self.bottom),
             "white"))
         cmds.append(DrawLine(
             0, self.bottom, WIDTH,
@@ -842,7 +839,25 @@ class Chrome:
 ```
 
 I also added a line at the bottom of the chrome to separate it from
-the page.
+the page. Note how I also changed `DrawRect` to pass a `Rect` instead of the
+four corners; this requires a change to `BlockLayout`:
+
+``` {.python}
+class BlockLayout:
+    def self_rect(self):
+        return Rect(self.x, self.y,
+            self.x + self.width, self.y + self.height)
+
+    def paint(self):
+        # ...
+        if bgcolor != "transparent":
+            rect = DrawRect(self.self_rect(), bgcolor)
+            cmds.append(rect)
+        return cmds
+
+```
+
+Do the same for `DrawText` and `DrawLine`.
 
 Drawing this chrome display list is now straightforward:
 
@@ -897,9 +912,9 @@ an `offset` parameter:
 class Tab:
     def draw(self, canvas, offset):
         for cmd in self.display_list:
-            if cmd.top > self.scroll + self.tab_height:
+            if cmd.rect.top > self.scroll + self.tab_height:
                 continue
-            if cmd.bottom < self.scroll: continue
+            if cmd.rect.bottom < self.scroll: continue
             cmd.execute(self.scroll - offset, canvas)
 ```
 

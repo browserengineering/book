@@ -13,11 +13,11 @@ import dukpy
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
 from lab4 import print_tree, HTMLParser
-from lab5 import BLOCK_ELEMENTS, DrawRect
+from lab5 import BLOCK_ELEMENTS
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import DrawText, tree_to_list
-from lab7 import DrawLine, DrawOutline
+from lab7 import DrawLine, DrawOutline, DrawRect
 from lab8 import URL, Browser, Text, Element
 from lab8 import BlockLayout, InputLayout, INPUT_WIDTH_PX
 from lab8 import DocumentLayout, LineLayout, TextLayout

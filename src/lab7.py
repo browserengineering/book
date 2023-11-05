@@ -12,7 +12,7 @@ import tkinter.font
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
-from lab5 import BLOCK_ELEMENTS, DrawRect, DocumentLayout, paint_tree
+from lab5 import BLOCK_ELEMENTS, DocumentLayout, paint_tree
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import DEFAULT_STYLE_SHEET, INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import DrawText, URL, tree_to_list, BlockLayout
@@ -170,13 +170,16 @@ class BlockLayout:
         line.children.append(text)
         self.cursor_x += w + font.measure(" ")
 
+    def self_rect(self):
+        return Rect(self.x, self.y,
+            self.x + self.width, self.y + self.height)
+
     def paint(self):
         cmds = []
         bgcolor = self.node.style.get("background-color",
                                       "transparent")
         if bgcolor != "transparent":
-            x2, y2 = self.x + self.width, self.y + self.height
-            rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
+            rect = DrawRect(self.self_rect(), bgcolor)
             cmds.append(rect)
         return cmds
 
@@ -186,22 +189,19 @@ class BlockLayout:
 
 class DrawLine:
     def __init__(self, x1, y1, x2, y2, color, thickness):
-        self.top = y1
-        self.left = x1
-        self.bottom = y2
-        self.right = x2
+        self.rect = Rect(x1, y1, x2, y2)
         self.color = color
         self.thickness = thickness
 
     def execute(self, scroll, canvas):
         canvas.create_line(
-            self.left, self.top - scroll,
-            self.right, self.bottom - scroll,
+            self.rect.left, self.rect.top - scroll,
+            self.rect.right, self.rect.bottom - scroll,
             fill=self.color, width=self.thickness)
 
     def __repr__(self):
         return "DrawLine({}, {}, {}, {}, color={}, thickness={})".format(
-            self.left, self.top, self.right, self.bottom,
+            self.rect.left, self.rect.top, self.rect.right, self.rect.bottom,
             self.color, self.thickness)
 
 class DrawOutline:
@@ -221,6 +221,26 @@ class DrawOutline:
         return "DrawOutline({}, {}, {}, {}, color={}, thickness={})".format(
             self.left, self.top, self.right, self.bottom,
             self.color, self.thickness)
+
+@wbetools.patch(DrawText)
+class DrawText:
+    def __init__(self, x1, y1, text, font, color):
+        self.rect = Rect(x1, y1,
+            x1 + font.measure(text), y1 + font.metrics("linespace"))
+        self.text = text
+        self.font = font
+        self.color = color
+
+    def execute(self, scroll, canvas):
+        canvas.create_text(
+            self.rect.left, self.rect.top - scroll,
+            text=self.text,
+            font=self.font,
+            anchor='nw',
+            fill=self.color)
+
+    def __repr__(self):
+        return "DrawText(text={})".format(self.text)
 
 class Tab:
     def __init__(self, tab_height):
@@ -257,9 +277,9 @@ class Tab:
 
     def draw(self, canvas, offset):
         for cmd in self.display_list:
-            if cmd.top > self.scroll + self.tab_height:
+            if cmd.rect.top > self.scroll + self.tab_height:
                 continue
-            if cmd.bottom < self.scroll: continue
+            if cmd.rect.bottom < self.scroll: continue
             cmd.execute(self.scroll - offset, canvas)
 
     def scrolldown(self):
@@ -301,6 +321,23 @@ class Rect:
     def containsPoint(self, x, y):
         return x >= self.left and x < self.right \
             and y >= self.top and y < self.bottom
+
+class DrawRect:
+    def __init__(self, rect, color):
+        self.rect = rect
+        self.color = color
+
+    def execute(self, scroll, canvas):
+        canvas.create_rectangle(
+            self.rect.left, self.rect.top - scroll,
+            self.rect.right, self.rect.bottom - scroll,
+            width=0,
+            fill=self.color)
+
+    def __repr__(self):
+        return "DrawRect(top={} left={} bottom={} right={} color={})".format(
+            self.rect.top, self.rect.left, self.rect.bottom,
+            self.rect.right, self.color)
 
 class Chrome:
     def __init__(self, browser):
@@ -350,7 +387,7 @@ class Chrome:
     def paint(self):
         cmds = []
         cmds.append(DrawRect(
-            0, 0, WIDTH, self.bottom,
+            Rect(0, 0, WIDTH, self.bottom),
             "white"))
         cmds.append(DrawLine(
             0, self.bottom, WIDTH,
