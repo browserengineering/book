@@ -18,6 +18,15 @@ This file contains tests for Chapter 14 (Accessibility).
     >>> wbetools.USE_BROWSER_THREAD = False
     >>> wbetools.USE_GPU = False
 
+`@media` rules
+==============
+
+`@media` rules should be parsed, and whitespace in them should be
+handled correctly:
+
+    >>> lab14.CSSParser("@media ( prefers-color-scheme : light ) { x { } }").parse()
+    [('light', TagSelector(tag=x, priority=1), {})]
+
 Outlines
 ========
 
@@ -134,7 +143,7 @@ are:
     >>> focus_tabindex_url = 'http://test.test/focus-tabindex'
     >>> test.socket.respond(focus_tabindex_url, b"HTTP/1.0 200 OK\r\n" +
     ... b"content-type: text/html\r\n\r\n" +
-    ... b'<div>Not focusable</div><div tabindex=1>Is focusable</div>')
+    ... b'<div>Not focusable</div><div tabindex=0>Is focusable</div>')
 
     >>> browser = lab14.Browser()
     >>> browser.new_tab(lab14.URL(focus_tabindex_url))

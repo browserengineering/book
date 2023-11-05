@@ -1329,6 +1329,7 @@ class CSSParser:
         # ...
         val = self.until_char(until)
         # ...
+        return prop.casefold(), val.strip()
 ```
 
 Inside a CSS rule body, a property value continues until a semicolon
