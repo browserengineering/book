@@ -764,9 +764,10 @@ Here I need a small change to make `enter` return whether something was done:
 class Chrome:
     def enter(self):
         if self.focus == "address bar":
-            self.browser.schedule_load(URL(self.address_bar))
+            self.browser.active_tab.load(URL(self.address_bar))
             self.focus = None
-            self.browser.focus = None
+            return True
+        return False
 ```
 
 And the `Tab` should also set this bit after running `render`:
