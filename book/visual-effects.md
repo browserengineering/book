@@ -7,25 +7,27 @@ next: scheduling
 
 Right now our browser can only draw colored rectangles and
 text---pretty boring! Real browsers support all kinds of *visual
-effects*\index{visual effect} that change how pixels and colors blend together.
-Let's implement these effects using the Skia graphics library, and also see
-a bit of how Skia is implemented under the hood. That'll also allow us
-to use surfaces for *browser compositing*\index{compositing} to accelerate
-scrolling.
+effects*\index{visual effect} that change how pixels and colors blend
+together. To implement those effects, and also make our browser
+faster, we'll need control over *surfaces*\index{surface}, the key
+low-level feature behind fast scrolling, visual effects, animations,
+and many other browser features. To get that control, we'll also
+switch to using the Skia graphics library and even take a peek under
+its hood.
 
 Installing Skia and SDL
 =======================
 
-Before we get any further, we'll need to upgrade our graphics system.
-While Tkinter is great for basic shapes and input handling, it lacks
-built-in support for many visual effects.[^tkinter-before-gpu]
-Implementing all details of the web's many visual effects is fun, but
+While Tkinter is great for basic shapes and input handling, it doesn't
+give us control over surfaces[^tkinter-before-gpu] and lacks
+implementations of most visual effects.
+Implementing them ourselves would be fun, but
 it's outside the scope of this book, so we need a new graphics library.
 Let's use [Skia][skia],\index{Skia} the library that Chromium uses.
 Unlike Tkinter, Skia doesn't handle inputs or create graphical windows,
 so we'll pair it with the [SDL][sdl] GUI library.\index{SDL} Beyond
-new capabilities, switching to Skia will give me an opportunity to
-show you how graphics work at a lower level.
+new capabilities, switching to Skia will allow us to control graphics
+and rasterization at a lower level.
 
 [skia]: https://skia.org
 [sdl]: https://www.libsdl.org/
@@ -75,6 +77,8 @@ to [WebAssembly][webassembly] to do the same.
 SDL creates the window
 ======================
 
+The first big task is to switch to using SDL to create the window and
+handle events.
 The main loop of the browser first needs some boilerplate to get SDL
 started:
 
@@ -88,8 +92,7 @@ if __name__ == "__main__":
 ```
 
 Next, we need to create an SDL window, instead of a Tkinter window,
-inside the Browser, and set up Skia to draw to it. Here's the SDL
-incantation to create a window:
+inside the Browser. Here's the SDL incantation:
 
 ``` {.python}
 class Browser:
@@ -99,8 +102,11 @@ class Browser:
             WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
 ```
 
-To set up Skia to draw to this window, we also need to create a
-*surface*\index{surface} for it:[^surface]
+When we create this SDL window, we're asking SDL to allocate a
+*surface*, a chunk of memory representing the pixels on the
+screen.[^surface] On today's large screens, surfaces take up a lot of
+memory and drawing to them can take a lot of time, so managing
+surfaces is going to be a big focus of this chapter.
 
 [^surface]: In Skia and SDL, a *surface* is a representation of a
 graphics buffer into which you can draw *pixels* (bits representing
@@ -112,6 +118,7 @@ Skia and SDL surfaces for simplicity, but in a highly optimized
 browser, minimizing the number of surfaces is important for good
 performance.
 
+Let's also create a surface for Skia to draw to:
 
 ``` {.python}
 class Browser:
@@ -123,13 +130,33 @@ class Browser:
                 at=skia.kUnpremul_AlphaType))
 ```
 
-Typically, we'll draw\index{draw} to the Skia surface, and then once
-we're done with it we'll copy it to the SDL surface to display on the screen.
-This will be a little hairy, because we are moving data between two
-low-level libraries, but really it's just copying pixels from one
-place to another.
+Note the `ct` argument, meaning "color type", which indicates that
+each pixel of this surface should be represented as *r*ed, *g*reen,
+*b*lue, and *a*lpha values, each of which should take up 8 bits. In
+other words, pixels are basically defined like so:
 
-First, get the sequence of bytes representing the Skia surface:
+``` {.python file=examples}
+class Pixel:
+    def __init__(self, r, g, b, a):
+        self.r = r
+        self.g = g
+        self.b = b
+        self.a = a
+```
+
+Note that this `Pixel` code is an illustrative example, not something
+our browser has to define. It's standing in for somewhat more complex
+code within Skia itself.
+
+Now there's an SDL surface for the window contents and a Skia surface
+that we can draw to. We'll raster\index{raster} to the Skia surface,
+and then once we're done we'll copy it to the SDL surface to
+display on the screen.
+
+This is a little hairy, because we are moving data between two
+low-level libraries, but really it's just copying pixels from one
+place to another. First, get the sequence of bytes representing the
+Skia surface:
 
 ``` {.python}
 class Browser:
@@ -143,8 +170,7 @@ class Browser:
 ```
 
 Next, we need to copy the data to an SDL surface. This requires
-telling SDL what order the pixels are stored in (which we specified to
-be `RGBA_8888` when constructing the surface) and on your computer's
+telling SDL what order the pixels are stored in and on your computer's
 [endianness][wiki-endianness]:
 
 [wiki-endianness]: https://en.wikipedia.org/wiki/Endianness
@@ -165,8 +191,7 @@ class Browser:
 ```
 
 The `CreateRGBSurfaceFrom` method then wraps the data in an SDL surface
-(this SDL surface does not copy the bytes):
-[^use-after-free]
+(without copying the bytes):[^use-after-free]
 
 [^use-after-free]: Note that since Skia and SDL are C++ libraries, they are not
 always consistent with Python's garbage collection system. So the link between
@@ -267,15 +292,19 @@ SDL is most popular for making games. Their site lists [a selection of
 books](https://wiki.libsdl.org/Books) about game programming in SDL.
 :::
 
-Skia provides the canvas
-========================
+Rasterizing with Skia
+=====================
 
-\index{canvas}Now our browser is creating an SDL window and can draw to it
-via Skia. But most of the browser codebase is still using Tkinter drawing
-commands, which we now need to replace. Skia is a bit more verbose
-than Tkinter, so let's abstract over some details with helper
-functions.[^skia-docs] First, a helper function to convert colors to
-Skia colors:
+\index{canvas}Now our browser has an SDL surface, a Skia surface, and
+can copy between them. Now we want to draw text, rectangles, and so on
+to that Skia surface. This step---coloring in the pixels of a surface
+to draw shapes on it---is called "rasterization"\index{raster} and is
+one important task of a graphics library.
+
+We'll need our browser's drawing commands to invoke Skia, not Tk
+methods. Skia is a bit more verbose than Tkinter, so let's abstract
+over some details with helper functions.[^skia-docs] First, a helper
+function to convert colors to Skia colors:
 
 [^skia-docs]: Consult the [Skia][skia] and [skia-python][skia-python]
 documentation for more on the Skia API.
@@ -301,6 +330,9 @@ def parse_color(color):
     else:
         return skia.ColorBLACK
 ```
+
+Note that the `Color` constructor takes alpha, red, green, and blue
+values, closely matching (except for the order) our `Pixel` definition.
 
 You can add "elif" blocks to support any other color names you use;
 modern browsers support [quite a lot][css-colors]. If you'd like to
