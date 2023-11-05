@@ -1018,24 +1018,22 @@ class Frame:
 ```
 
 Most of the layout tree's `paint` methods don't need to change, but to
-paint an `IframeLayout`, we'll need to paint the child frame:
+paint an `IframeLayout`, we'll need to paint the child frame in `paint_tree`:
 
 ``` {.python}
-class IframeLayout(EmbedLayout):
-    def paint(self):
-        cmds = []
+def paint_tree(layout_object, display_list):
+    cmds = layout_object.paint()
 
-        rect = skia.Rect.MakeLTRB(
-            self.x, self.y,
-            self.x + self.width, self.y + self.height)
-        bgcolor = self.node.style.get("background-color",
-                                 "transparent")
-        if bgcolor != "transparent":
-            radius = dpx(float(
-                self.node.style.get("border-radius", "0px")[:-2]),
-                self.zoom)
-            cmds.append(DrawRRect(rect, radius, bgcolor))
-        return cmds
+    if isinstance(layout_object, IframeLayout) and \
+        layout_object.node.frame:
+        paint_tree(layout_object.node.frame.document, cmds)
+    else:
+        for child in layout_object.children:
+            paint_tree(child, cmds)
+
+    cmds = layout_object.paint_effects(cmds)
+    display_list.extend(cmds)
+
 ```
 
 Note the last line, where we recursively paint the child frame. 

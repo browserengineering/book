@@ -334,7 +334,8 @@ class Chrome:
     def keypress(self, char):
         if self.focus == "address bar":
             self.address_bar += char
-        return self.focus == "address bar"
+            return True
+        return False
 
     def blur(self):
         self.focus = None
