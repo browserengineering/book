@@ -1432,7 +1432,7 @@ once we're done with clipping. That uses the `save` and `restore`
 methods---you call `save` before calling `clipRRect`, and `restore`
 after finishing drawing the commands that should be clipped:
 
-``` {.python.example}
+``` {.python .example}
 # Draw commands that should not be clipped.
 canvas.save()
 canvas.clipRRect(rounded_rect)
