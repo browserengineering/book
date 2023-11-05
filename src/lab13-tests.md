@@ -118,11 +118,6 @@ Animations work:
     {'transform': 125.0}
     >>> div.animations
     {}
-    >>> div.attributes["style"] = "transform:translate(0px,0px)"
-    >>> tab.set_needs_render()
-    >>> tab.run_animation_frame(0)
-    >>> div.animations
-    {'transform': TranslateAnimation(old_value=(80.0,90.0), change_per_frame=(-0.64,-0.72), num_frames=125.0)}
 
 A particular challenge is handling clicks on transformed content.
 Here's a page with a button translated via CSS:

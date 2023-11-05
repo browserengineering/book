@@ -936,41 +936,8 @@ class NumericAnimation:
             change_per_frame=self.change_per_frame,
             num_frames=self.num_frames)
 
-class TranslateAnimation:
-    def __init__(self, old_value, new_value, num_frames):
-        (self.old_x, self.old_y) = parse_transform(old_value)
-        (new_x, new_y) = parse_transform(new_value)
-        self.num_frames = num_frames
-
-        self.frame_count = 1
-        self.change_per_frame_x = \
-            (new_x - self.old_x) / num_frames
-        self.change_per_frame_y = \
-            (new_y - self.old_y) / num_frames
-
-    def __repr__(self):
-        return ("TranslateAnimation(" + \
-            "old_value=({old_x},{old_y}), " + \
-            "change_per_frame=({change_x},{change_y}), " + \
-            "num_frames={num_frames})").format(
-            old_x=self.old_x,
-            old_y = self.old_y,
-            change_x=self.change_per_frame_x,
-            change_y=self.change_per_frame_y,
-            num_frames=self.num_frames)
-
-    def animate(self):
-        self.frame_count += 1
-        if self.frame_count >= self.num_frames: return
-        new_x = self.old_x + \
-            self.change_per_frame_x * self.frame_count
-        new_y = self.old_y + \
-            self.change_per_frame_y * self.frame_count
-        return "translate({}px,{}px)".format(new_x, new_y)
-
 ANIMATED_PROPERTIES = {
-    "opacity": NumericAnimation,
-    "transform": TranslateAnimation,
+    "opacity": NumericAnimation
 }
     
 def style(node, rules, tab):
