@@ -84,9 +84,10 @@ effectively, but are transformative for those who need them.
     
 [^for-now]: Perhaps software assistants will become more widespread as
 technology improves, mediating between the user and web pages, and
-will one day no longer primarily be an accessibility technology.
-Password managers and form autofill agents are already somewhat like
-this.
+will one day no longer primarily be a screen-reader accessibility
+technology. Password managers and form autofill agents are already
+somewhat like this, and in many cases use the same browser APIs as
+screen readers.
 
 Accessibility covers the whole spectrum, from minor accommodations to
 advanced accessibility tools.[^moral]
@@ -182,13 +183,16 @@ while the `Ctrl` key is held:
             elif event.type == sdl2.SDL_KEYDOWN:
                 if ctrl_down:
                      if event.key.keysym.sym == sdl2.SDLK_EQUALS:
-                         browser.increment_zoom(1)
+                         browser.increment_zoom(True)
                      elif event.key.keysym.sym == sdl2.SDLK_MINUS:
-                         browser.increment_zoom(-1)
+                         browser.increment_zoom(False)
                      elif event.key.keysym.sym == sdl2.SDLK_0:
                          browser.reset_zoom()
                 # ...
 ```
+
+Here the argument to `increment_zoom` is whether we should increment
+(`True`) or decrement (`False`).
 
 The `Browser` code just delegates to the `Tab`, via a main thread task:
 
@@ -220,9 +224,9 @@ class Tab:
 
 	# ...
     def zoom_by(self, increment):
-        if increment == 1:
+        if increment:
             self.zoom *= 1.1
-        elif increment == -1:
+        else:
             self.zoom *= 1/1.1
         self.set_needs_render()
 
@@ -912,7 +916,7 @@ the text entry; in most browsers, it submits the containing form
 instead. That quirk is a workaround for our browser [not
 implementing][clear-input] the `Backspace` key.
 
-[clear-input]: forms.html#interacting-with-widgets
+[clear-input]: forms.md#interacting-with-widgets
 
 The `click` method can now be rewritten to call `activate_element`
 directly:
@@ -944,8 +948,9 @@ class Tab:
 
 I've called `activate_element` to create an empty `value` attribute.
 
-Similarly, in `InputLayout` we need to only draw the cursor for
-`input` elements, even if a `button` element is focused:
+Similarly, `InputLayout` used to draw a cursor for any focused
+element. Now that `button` elements can be focused, it needs to be
+more careful:
 
 ``` {.python}
 class InputLayout:
@@ -1141,10 +1146,10 @@ users can make any element focusable with
 
 [^wrong-for-nested]: This code does not correctly handle the case of
     of text inside an inline element inside another inline element,
-    with the outside one focused. You could fix this by walk from the
-    `child` to the `LineLayout`'s `node`, checking the `is_focused`
-    field along the way. I'm skipping that in the interest of
-    expediency.
+    with the outside one focused. You could fix this by walking from
+    the `child` to the `LineLayout`'s `node`, checking the
+    `is_focused` field along the way. I'm skipping that in the
+    interest of expediency.
 
 Now when you `Tab` through a page, you should see the focused element
 highlighted with a black outline. And if a link happens to cross
@@ -1443,7 +1448,7 @@ looking at the screen (such as driving), or for devices with no
 screen.] screen reader software is typically used instead. The name
 kind of explains it all: this software reads the text on the screen
 out loud, so that users know what it says without having to see it.
-So: what should a screenreader say?
+So: what should a screen reader say?
 
 There are basically two big challenges we must overcome.
 
@@ -2355,11 +2360,11 @@ This chapter introduces accessibility---features to ensure *all* users can
 access and interact with websites---then shows how to solve several of
 the most common accessibility problems in browsers. The key takeaways are:
 
-- The semantic and declarative nature of HTML make accessibility
+- The semantic and declarative nature of HTML makes accessibility
   features natural extensions.
 - Accessibility features often serve multiple needs, and almost
   everyone benefits from these features in one way or another.
-- The accessibility tree is similar to the display list and drive's
+- The accessibility tree is similar to the display list and drives
   the browser's interaction with screen readers and other assistive
   technologies.
 - New features like dark mode, keyboard navigation, and outlines need
@@ -2423,10 +2428,11 @@ can be viewed as a kind of accessibility.
 
 *Mixed inlines*: Make the focus ring work correctly on nested inline
 elements. For example in `<a>a <b>bold</b> link</a>`, the focus ring
-should cover all three words when the user is focused on the link.
+should cover all three words together when the user is focused on the
+link, and with multiple rectangles if the inline crosses lines.
 However, if the user focuses on a block-level element, such as in
 `<div tabindex=2>many<br>lines</div>`, there shouldn't be a focus ring
-around each line.
+around each line, but instead the block as a whole.
 
 *Threaded accessibility*: The accessibility code currently speaks text
 on the browser thread, and blocks the browser thread while it speaks.

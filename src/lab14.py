@@ -1217,9 +1217,9 @@ class Tab:
         self.set_needs_render()
 
     def zoom_by(self, increment):
-        if increment == 1:
+        if increment:
             self.zoom *= 1.1
-        elif increment == -1:
+        else:
             self.zoom *= 1/1.1
         self.set_needs_render()
 
@@ -1887,9 +1887,9 @@ def main_func(url):
             elif event.type == sdl2.SDL_KEYDOWN:
                 if ctrl_down:
                     if event.key.keysym.sym == sdl2.SDLK_EQUALS:
-                        browser.increment_zoom(1)
+                        browser.increment_zoom(True)
                     elif event.key.keysym.sym == sdl2.SDLK_MINUS:
-                        browser.increment_zoom(-1)
+                        browser.increment_zoom(False)
                     elif event.key.keysym.sym == sdl2.SDLK_0:
                         browser.reset_zoom()
                     elif event.key.keysym.sym == sdl2.SDLK_LEFT:
