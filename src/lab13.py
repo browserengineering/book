@@ -698,6 +698,9 @@ class InputLayout:
             self.x, self.y, self.x + self.width,
             self.y + self.height)
 
+    def should_paint(self):
+        return True
+
     def paint(self):
         cmds = []
 
@@ -1588,7 +1591,7 @@ class Browser:
             if self.focus != "content":
                 self.set_needs_raster()
             self.focus = "content"
-            self.chrome.focus = None
+            self.chrome.blur()
             tab_y = e.y - self.chrome.bottom
             task = Task(self.active_tab.click, e.x, tab_y)
             self.active_tab.task_runner.schedule_task(task)
@@ -1597,8 +1600,7 @@ class Browser:
     def handle_key(self, char):
         self.lock.acquire(blocking=True)
         if not (0x20 <= ord(char) < 0x7f): return
-        if self.chrome.focus:
-            self.chrome.keypress(char)
+        if self.chrome.keypress(char):
             self.set_needs_raster()
         elif self.focus == "content":
             task = Task(self.active_tab.keypress, char)
@@ -1611,8 +1613,7 @@ class Browser:
 
     def handle_enter(self):
         self.lock.acquire(blocking=True)
-        if self.chrome.focus:
-            self.chrome.enter()
+        if self.chrome.enter():
             self.set_needs_raster()
         self.lock.release()
 

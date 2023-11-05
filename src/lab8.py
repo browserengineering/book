@@ -329,6 +329,16 @@ class Tab:
             self.focus.attributes["value"] += char
             self.render()
 
+@wbetools.patch(Chrome)
+class Chrome:
+    def keypress(self, char):
+        if self.focus == "address bar":
+            self.address_bar += char
+        return self.focus == "address bar"
+
+    def blur(self):
+        self.focus = None
+
 @wbetools.patch(Browser)
 class Browser:
     def __init__(self):
@@ -358,7 +368,7 @@ class Browser:
             self.chrome.click(e.x, e.y)
         else:
             self.focus = "content"
-            self.chrome.focus = None
+            self.chrome.blur()
             tab_y = e.y - self.chrome.bottom
             self.active_tab.click(e.x, tab_y)
         self.draw()
@@ -366,8 +376,7 @@ class Browser:
     def handle_key(self, e):
         if len(e.char) == 0: return
         if not (0x20 <= ord(e.char) < 0x7f): return
-        if self.chrome.focus:
-            self.chrome.keypress(e.char)
+        if self.chrome.keypress(e.char):
             self.draw()
         elif self.focus == "content":
             self.active_tab.keypress(e.char)
