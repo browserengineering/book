@@ -37,13 +37,15 @@ from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, parse_blend_mode, linespace, paint_tree
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
 from lab12 import Task, REFRESH_RATE_SEC
-from lab13 import JSContext, diff_styles, clamp_scroll, add_parent_pointers
+from lab13 import JSContext, diff_styles, add_parent_pointers
 from lab13 import local_to_absolute, absolute_bounds_for_obj
 from lab13 import NumericAnimation
 from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
 from lab13 import CompositedLayer, paint_visual_effects
-from lab13 import DrawCommand, DrawText, DrawCompositedLayer, DrawOutline, DrawLine, DrawRRect
-from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform, Chrome
+from lab13 import DrawCommand, DrawText, DrawCompositedLayer, DrawOutline, \
+    DrawLine, DrawRRect
+from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform, Chrome, \
+    Tab, Browser
 
 @wbetools.patch(Element)
 class Element:
@@ -905,6 +907,7 @@ class CommitData:
         self.accessibility_tree = accessibility_tree
         self.focus = focus
 
+@wbetools.patch(Tab)
 class Tab:
     def __init__(self, browser, tab_height):
         self.history = []
@@ -1040,8 +1043,7 @@ class Tab:
         self.render()
 
         document_height = math.ceil(self.document.height + 2*VSTEP)
-        clamped_scroll = clamp_scroll(
-            self.scroll, document_height, self.tab_height)
+        clamped_scroll = self.clamp_scroll(self.scroll)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
         self.scroll = clamped_scroll
@@ -1142,8 +1144,7 @@ class Tab:
 
         document_height = math.ceil(self.document.height + 2*VSTEP)
         new_scroll = obj.y - SCROLL_STEP
-        self.scroll = clamp_scroll(
-            new_scroll, document_height, self.tab_height)
+        self.scroll = self.clamp_scroll(new_scroll)
         self.scroll_changed_in_tab = True
 
     def click(self, x, y):
@@ -1317,6 +1318,7 @@ class Chrome:
         self.focus = "address bar"
         self.address_bar = ""
 
+@wbetools.patch(Browser)
 class Browser:
     def __init__(self):
         self.chrome = Chrome(self)
@@ -1634,11 +1636,7 @@ class Browser:
         if not self.active_tab_height:
             self.lock.release()
             return
-        scroll = clamp_scroll(
-            self.scroll + SCROLL_STEP,
-            self.active_tab_height,
-            HEIGHT - self.chrome.bottom)
-        self.scroll = scroll
+        self.scroll = self.clamp_scroll(self.scroll + SCROLL_STEP)
         self.set_needs_draw()
         self.needs_animation_frame = True
         self.lock.release()

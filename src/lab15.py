@@ -1781,11 +1781,6 @@ class Browser:
                 self.set_needs_draw()
         self.lock.release()
 
-    def clamp_scroll(self, scroll):
-        height = self.active_tab_height
-        maxscroll = height - (HEIGHT - self.chrome.bottom)
-        return max(0, min(scroll, maxscroll))
-
     def handle_down(self):
         self.lock.acquire(blocking=True)
         if self.root_frame_focused:

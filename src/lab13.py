@@ -29,7 +29,7 @@ from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, parse_color, parse_blend_mode, linespace
 from lab11 import paint_tree
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
-from lab12 import Task, REFRESH_RATE_SEC, clamp_scroll, Chrome
+from lab12 import Tab, Browser, Task, REFRESH_RATE_SEC, Chrome
 
 @wbetools.patch(Text)
 class Text:
@@ -1078,6 +1078,7 @@ def raster(display_list, canvas):
     for cmd in display_list:
         cmd.execute(canvas)
 
+@wbetools.patch(Tab)
 class Tab:
     def __init__(self, browser, tab_height):
         self.history = []
@@ -1201,8 +1202,7 @@ class Tab:
         self.render()
 
         document_height = math.ceil(self.document.height + 2*VSTEP)
-        clamped_scroll = clamp_scroll(
-            self.scroll, document_height, self.tab_height)
+        clamped_scroll = self.clamp_scroll(self.scroll)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
         if clamped_scroll != self.scroll:
@@ -1332,6 +1332,7 @@ def add_parent_pointers(nodes, parent=None):
         node.parent = parent
         add_parent_pointers(node.children, node)
 
+@wbetools.patch(Browser)
 class Browser:
     def __init__(self):
         self.chrome = Chrome(self)
@@ -1561,11 +1562,7 @@ class Browser:
         if not self.active_tab_height:
             self.lock.release()
             return
-        scroll = clamp_scroll(
-            self.scroll + SCROLL_STEP,
-            self.active_tab_height,
-            HEIGHT - self.chrome.bottom)
-        self.scroll = scroll
+        self.scroll = self.clamp_scroll(self.scroll + SCROLL_STEP)
         self.set_needs_draw()
         self.needs_animation_frame = True
         self.lock.release()

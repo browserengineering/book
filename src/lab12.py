@@ -247,6 +247,11 @@ class Tab:
         self.needs_render = True
         self.browser.set_needs_animation_frame(self)
 
+    def clamp_scroll(self, scroll):
+        height = math.ceil(self.document.height + 2*VSTEP)
+        maxscroll = height - self.tab_height
+        return max(0, min(scroll, maxscroll))
+
     def run_animation_frame(self, scroll):
         if not self.scroll_changed_in_tab:
             self.scroll = scroll
@@ -255,8 +260,7 @@ class Tab:
         self.render()
 
         document_height = math.ceil(self.document.height + 2*VSTEP)
-        clamped_scroll = clamp_scroll(
-            self.scroll, document_height, self.tab_height)
+        clamped_scroll = self.clamp_scroll(self.scroll)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
         if clamped_scroll != self.scroll:
@@ -422,10 +426,6 @@ class TaskRunner:
         pass
 
 REFRESH_RATE_SEC = .016
-
-def clamp_scroll(scroll, document_height, tab_height):
-    return max(0, min(
-        scroll, document_height - tab_height))
 
 @wbetools.patch(Chrome)
 class Chrome:
@@ -630,16 +630,18 @@ class Browser:
                 self.animation_timer.start()
         self.lock.release()
 
+    def clamp_scroll(self, scroll):
+        height = self.active_tab_height
+        maxscroll = height - (HEIGHT - self.chrome.bottom)
+        return max(0, min(scroll, maxscroll))
+
     def handle_down(self):
         self.lock.acquire(blocking=True)
         if not self.active_tab_height:
             self.lock.release()
             return
-        scroll = clamp_scroll(
-            self.scroll + SCROLL_STEP,
-            self.active_tab_height,
-            HEIGHT - self.chrome.bottom)
-        self.scroll = scroll
+        self.scroll = self.clamp_scroll(
+            self.scroll + SCROLL_STEP)
         self.set_needs_raster_and_draw()
         self.needs_animation_frame = True
         self.lock.release()
