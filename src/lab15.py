@@ -41,7 +41,7 @@ from lab13 import DrawCommand, DrawText, DrawCompositedLayer, DrawOutline, DrawL
 from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform
 from lab14 import parse_color, DrawRRect, \
     parse_outline, paint_outline, \
-    device_px, cascade_priority, style, \
+    dpx, cascade_priority, style, \
     is_focusable, get_tabindex, speak_text, \
     CSSParser, DrawOutline, main_func, Browser, Chrome, Tab
 
@@ -154,9 +154,9 @@ class DocumentLayout:
         child = BlockLayout(self.node, self, None, self.frame)
         self.children.append(child)
 
-        self.width = width - 2 * device_px(HSTEP, self.zoom)
-        self.x = device_px(HSTEP, self.zoom)
-        self.y = device_px(VSTEP, self.zoom)
+        self.width = width - 2 * dpx(HSTEP, self.zoom)
+        self.x = dpx(HSTEP, self.zoom)
+        self.y = dpx(VSTEP, self.zoom)
         child.layout()
         self.height = child.height
 
@@ -184,7 +184,7 @@ def font(style, zoom):
         size = float(style["font-size"][:-2])
     except ValueError:
         size = 16
-    font_size = device_px(size, zoom)
+    font_size = dpx(size, zoom)
     return get_font(font_size, weight, variant)
 
 class BlockLayout:
@@ -283,22 +283,22 @@ class BlockLayout:
         self.add_inline_child(node, w, TextLayout, self.frame, word)
 
     def input(self, node):
-        w = device_px(INPUT_WIDTH_PX, self.zoom)
+        w = dpx(INPUT_WIDTH_PX, self.zoom)
         self.add_inline_child(node, w, InputLayout, self.frame) 
 
     def image(self, node):
         if "width" in node.attributes:
-            w = device_px(int(node.attributes["width"]), self.zoom)
+            w = dpx(int(node.attributes["width"]), self.zoom)
         else:
-            w = device_px(node.image.width(), self.zoom)
+            w = dpx(node.image.width(), self.zoom)
         self.add_inline_child(node, w, ImageLayout, self.frame)
 
     def iframe(self, node):
         if "width" in self.node.attributes:
-            w = device_px(int(self.node.attributes["width"]),
+            w = dpx(int(self.node.attributes["width"]),
                 self.zoom)
         else:
-            w = IFRAME_WIDTH_PX + device_px(2, self.zoom)
+            w = IFRAME_WIDTH_PX + dpx(2, self.zoom)
         self.add_inline_child(node, w, IframeLayout, self.frame)
 
     def self_rect(self):
@@ -316,7 +316,7 @@ class BlockLayout:
         bgcolor = self.node.style.get(
             "background-color", "transparent")
         if bgcolor != "transparent":
-            radius = device_px(
+            radius = dpx(
                 float(self.node.style.get(
                     "border-radius", "0px")[:-2]),
                 self.zoom)
@@ -371,7 +371,7 @@ class InputLayout(EmbedLayout):
     def layout(self):
         super().layout()
 
-        self.width = device_px(INPUT_WIDTH_PX, self.zoom)
+        self.width = dpx(INPUT_WIDTH_PX, self.zoom)
         self.height = linespace(self.font)
 
     def self_rect(self):
@@ -385,7 +385,7 @@ class InputLayout(EmbedLayout):
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         if bgcolor != "transparent":
-            radius = device_px(
+            radius = dpx(
                 float(self.node.style.get("border-radius", "0px")[:-2]),
                 self.zoom)
             cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
@@ -562,17 +562,17 @@ class ImageLayout(EmbedLayout):
         aspect_ratio = image_width / image_height
 
         if width_attr and height_attr:
-            self.width = device_px(int(width_attr), self.zoom)
-            self.img_height = device_px(int(height_attr), self.zoom)
+            self.width = dpx(int(width_attr), self.zoom)
+            self.img_height = dpx(int(height_attr), self.zoom)
         elif width_attr:
-            self.width = device_px(int(width_attr), self.zoom)
+            self.width = dpx(int(width_attr), self.zoom)
             self.img_height = self.width / aspect_ratio
         elif height_attr:
-            self.img_height = device_px(int(height_attr), self.zoom)
+            self.img_height = dpx(int(height_attr), self.zoom)
             self.width = self.img_height * aspect_ratio
         else:
-            self.width = device_px(image_width, self.zoom)
-            self.img_height = device_px(image_height, self.zoom)
+            self.width = dpx(image_width, self.zoom)
+            self.img_height = dpx(image_height, self.zoom)
 
         self.height = max(self.img_height, linespace(self.font))
 
@@ -607,20 +607,20 @@ class IframeLayout(EmbedLayout):
         height_attr = self.node.attributes.get("height")
 
         if width_attr:
-            self.width = device_px(int(width_attr) + 2, self.zoom)
+            self.width = dpx(int(width_attr) + 2, self.zoom)
         else:
-            self.width = device_px(IFRAME_WIDTH_PX + 2, self.zoom)
+            self.width = dpx(IFRAME_WIDTH_PX + 2, self.zoom)
 
         if height_attr:
-            self.height = device_px(int(height_attr) + 2, self.zoom)
+            self.height = dpx(int(height_attr) + 2, self.zoom)
         else:
-            self.height = device_px(IFRAME_HEIGHT_PX + 2, self.zoom)
+            self.height = dpx(IFRAME_HEIGHT_PX + 2, self.zoom)
 
         if self.node.frame:
             self.node.frame.frame_height = \
-                self.height - device_px(2, self.zoom)
+                self.height - dpx(2, self.zoom)
             self.node.frame.frame_width = \
-                self.width - device_px(2, self.zoom)
+                self.width - dpx(2, self.zoom)
 
     def paint(self):
         cmds = []
@@ -631,7 +631,7 @@ class IframeLayout(EmbedLayout):
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         if bgcolor != "transparent":
-            radius = device_px(float(
+            radius = dpx(float(
                 self.node.style.get("border-radius", "0px")[:-2]),
                 self.zoom)
             cmds.append(DrawRRect(rect, radius, bgcolor))
@@ -641,7 +641,7 @@ class IframeLayout(EmbedLayout):
         rect = skia.Rect.MakeLTRB(
             self.x, self.y,
             self.x + self.width, self.y + self.height)
-        diff = device_px(1, self.zoom)
+        diff = dpx(1, self.zoom)
         offset = (self.x + diff, self.y + diff)
         cmds = [Transform(offset, rect, self.node, cmds)]
         inner_rect = skia.Rect.MakeLTRB(

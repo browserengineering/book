@@ -391,7 +391,7 @@ idempotent. I found:[^exercises]
   array of some `LineLayout` child.
 - In `word` and `input`, `BlockLayout` will call `get_font`, as will
   the `TextLayout` and `InputLayout` methods.
-- Basically every layout method calls `device_px`.
+- Basically every layout method calls `dpx`.
 
 The `new_line` and `add_inline_child` methods are only called through
 `layout`, which resets the `children` array, so they don't break
@@ -977,7 +977,7 @@ class DocumentLayout:
 
     def layout(self, width, zoom):
         # ...
-        self.width.set(width - 2 * device_px(HSTEP, zoom))
+        self.width.set(width - 2 * dpx(HSTEP, zoom))
         # ...
 ```
 
@@ -1273,7 +1273,7 @@ class InputLayout(EmbedLayout):
     def layout(self):
         # ...
         zoom = self.zoom.read(notify=self.width)
-        self.width.set(device_px(INPUT_WIDTH_PX, zoom))
+        self.width.set(dpx(INPUT_WIDTH_PX, zoom))
         # ...
 ```
 
@@ -1337,8 +1337,8 @@ class DocumentLayout:
 
     def layout(self, width, zoom):
         # ...
-        self.x.set(device_px(HSTEP, zoom))
-        self.y.set(device_px(VSTEP, zoom))
+        self.x.set(dpx(HSTEP, zoom))
+        self.y.set(dpx(VSTEP, zoom))
         # ...
 ```
 
@@ -1584,9 +1584,9 @@ class IframeLayout(EmbedLayout):
         # ...
         zoom = self.zoom.read(notify=self.height)
         if height_attr:
-            self.height.set(device_px(int(height_attr) + 2, zoom))
+            self.height.set(dpx(int(height_attr) + 2, zoom))
         else:
-            self.height.set(device_px(IFRAME_HEIGHT_PX + 2, zoom))
+            self.height.set(dpx(IFRAME_HEIGHT_PX + 2, zoom))
         # ...
 ```
 
@@ -2245,7 +2245,7 @@ def font(notify, css_style, zoom):
         size = float(css_style['font-size'].read(notify)[:-2])
     except ValueError:
         size = 16
-    font_size = device_px(size, zoom)
+    font_size = dpx(size, zoom)
     return get_font(font_size, weight, style)
 ```
 
@@ -2733,6 +2733,19 @@ on all block-mode `BlockLayout`s and then avoid rebuilding as much of
 the layout tree as possible.
 
 [insertbefore-mdn]: https://developer.mozilla.org/en-US/docs/Web/API/Node/insertBefore
+
+*`:hover` pseudo-class*: There is a `:hover` pseudo-class that
+identifies elements the mouse is [hovering over][hover-pseudo].
+Implement it by sending mouse hover events to the active `Tab` and hit
+testing to find out which element is hovered. Try to avoid [forcing a
+layout][forced-layout-hit-test] in this hit test; one way to do that
+is to store a `pending_hover` on the `Tab` and run the hit test
+after `layout` during `render`, and then perform *another* render to
+invalidate the hovered element's style.
+
+[forced-layout-hit-test]: https://browser.engineering/scheduling.html#threaded-style-and-layout
+
+[hover-pseudo]: https://developer.mozilla.org/en-US/docs/Web/CSS/:hover
 
 *Optimizing away `ProtectedField`*: as mentioned in the last section
 of the chapter, creating all these objects is way too expensive for

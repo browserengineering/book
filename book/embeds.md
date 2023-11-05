@@ -355,7 +355,7 @@ definition of `paint`:
 class InputLayout(EmbedLayout):
     def layout(self):
         # ...
-        self.width = device_px(INPUT_WIDTH_PX, self.zoom)
+        self.width = dpx(INPUT_WIDTH_PX, self.zoom)
         self.height = linespace(self.font)
 
     def paint(self):
@@ -371,8 +371,8 @@ class ImageLayout(EmbedLayout):
         super().__init__(node, parent, previous)
     def layout(self):
         super().layout()
-        self.width = device_px(self.node.image.width(), self.zoom)
-        self.img_height = device_px(self.node.image.height(), self.zoom)
+        self.width = dpx(self.node.image.width(), self.zoom)
+        self.img_height = dpx(self.node.image.height(), self.zoom)
         self.height = max(self.img_height, linespace(self.font))
 ```
 
@@ -424,7 +424,7 @@ def font(style, zoom):
     weight = style["font-weight"]
     variant = style["font-style"]
     size = float(style["font-size"][:-2])
-    font_size = device_px(size, zoom)
+    font_size = dpx(size, zoom)
     return get_font(font_size, weight, variant)
 ```
 
@@ -458,7 +458,7 @@ class BlockLayout:
         self.add_inline_child(node, w, TextLayout, word)
 
     def input(self, node):
-        w = device_px(INPUT_WIDTH_PX, self.zoom)
+        w = dpx(INPUT_WIDTH_PX, self.zoom)
         self.add_inline_child(node, w, InputLayout) 
 ```
 
@@ -472,7 +472,7 @@ class BlockLayout:
                 self.image(node)
     
     def image(self, node):
-        w = device_px(node.image.width(), self.zoom)
+        w = dpx(node.image.width(), self.zoom)
         self.add_inline_child(node, w, ImageLayout)
 ```
 
@@ -544,9 +544,9 @@ just read from them when laying out the element, both in `image`:
 class BlockLayout:
     def image(self, node):
         if "width" in node.attributes:
-            w = device_px(int(node.attributes["width"]), self.zoom)
+            w = dpx(int(node.attributes["width"]), self.zoom)
         else:
-            w = device_px(node.image.width(), self.zoom)
+            w = dpx(node.image.width(), self.zoom)
         # ...
 ```
 
@@ -562,11 +562,11 @@ class ImageLayout(EmbedLayout):
         image_height = self.node.image.height()
 
         if width_attr and height_attr:
-            self.width = device_px(int(width_attr), self.zoom)
-            self.img_height = device_px(int(height_attr), self.zoom)
+            self.width = dpx(int(width_attr), self.zoom)
+            self.img_height = dpx(int(height_attr), self.zoom)
         else:
-            self.width = device_px(image_width, self.zoom)
-            self.img_height = device_px(image_height, self.zoom)
+            self.width = dpx(image_width, self.zoom)
+            self.img_height = dpx(image_height, self.zoom)
         # ...
 ```
 
@@ -596,10 +596,10 @@ class ImageLayout(EmbedLayout):
         if width_attr and height_attr:
             # ...
         elif width_attr:
-            self.width = device_px(int(width_attr), self.zoom)
+            self.width = dpx(int(width_attr), self.zoom)
             self.img_height = self.width / aspect_ratio
         elif height_attr:
-            self.img_height = device_px(int(height_attr), self.zoom)
+            self.img_height = dpx(int(height_attr), self.zoom)
             self.width = self.img_height * aspect_ratio
         else:
             # ...
@@ -901,10 +901,10 @@ class BlockLayout:
     # ...
     def iframe(self, node):
         if "width" in self.node.attributes:
-            w = device_px(int(self.node.attributes["width"]),
+            w = dpx(int(self.node.attributes["width"]),
             self.zoom)
         else:
-            w = IFRAME_WIDTH_PX + device_px(2, self.zoom)
+            w = IFRAME_WIDTH_PX + dpx(2, self.zoom)
         self.add_inline_child(node, w, IframeLayout, self.frame)
 ```
 
@@ -919,14 +919,14 @@ class IframeLayout(EmbedLayout):
     def layout(self):
         # ...
         if width_attr:
-            self.width = device_px(int(width_attr) + 2, self.zoom)
+            self.width = dpx(int(width_attr) + 2, self.zoom)
         else:
-            self.width = device_px(IFRAME_WIDTH_PX + 2, self.zoom)
+            self.width = dpx(IFRAME_WIDTH_PX + 2, self.zoom)
 
         if height_attr:
-            self.height = device_px(int(height_attr) + 2, self.zoom)
+            self.height = dpx(int(height_attr) + 2, self.zoom)
         else:
-            self.height = device_px(IFRAME_HEIGHT_PX + 2, self.zoom)
+            self.height = dpx(IFRAME_HEIGHT_PX + 2, self.zoom)
 ```
 
 Note that if the `width` isn't specified, it uses a [default
@@ -970,9 +970,9 @@ class IframeLayout(EmbedLayout):
         # ...
         if self.node.frame:
             self.node.frame.frame_height = \
-                self.height - device_px(2, self.zoom)
+                self.height - dpx(2, self.zoom)
             self.node.frame.frame_width = \
-                self.width - device_px(2, self.zoom)
+                self.width - dpx(2, self.zoom)
 ```
 
 The conditional is only there to handle the (unusual) case of an
@@ -1013,7 +1013,7 @@ We'll then have the `Frame` call the layout tree's `paint` method:
 
 ``` {.python expected=False}
 class Frame:
-    def paint(self, display_list):
+    def paint(self):
         self.document.paint(display_list)
 ```
 
@@ -1021,37 +1021,6 @@ Most of the layout tree's `paint` methods don't need to change, but to
 paint an `IframeLayout`, we'll need to paint the child frame:
 
 ``` {.python}
-def paint_tree(layout_object, display_list):
-    cmds = layout_object.paint()
-
-    if isinstance(layout_object, IframeLayout) and \
-        layout_object.node.frame:
-        paint_tree(layout_object.node.frame.document, cmds)
-    else:
-        for child in layout_object.children:
-            paint_tree(child, cmds)
-
-    cmds = layout_object.paint_effects(cmds)
-    display_list.extend(cmds)
-```
-
-Speaking of `paint_tree`, we also need to include iframes and iamges in
-the list of cases causing anonymous block boxes:
-
-``` {.python}
-class BlockLayout:
-    return isinstance(self.node, Text) or \
-        (self.node.tag != "input" and self.node.tag != "button" \
-         and self.node.tag != "img" and self.node.tag != "iframe")        
-
-```
-
-Then painting of an `IframeLayout` is just drawing a rectangle and background:
-
-::: {.todo}
-No idea why the expecation doesn't pass.
-:::
-``` {.python expected=False}
 class IframeLayout(EmbedLayout):
     def paint(self):
         cmds = []
@@ -1062,7 +1031,7 @@ class IframeLayout(EmbedLayout):
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
         if bgcolor != "transparent":
-            radius = device_px(float(
+            radius = dpx(float(
                 self.node.style.get("border-radius", "0px")[:-2]),
                 self.zoom)
             cmds.append(DrawRRect(rect, radius, bgcolor))
@@ -1073,23 +1042,19 @@ Note the last line, where we recursively paint the child frame.
 
 Before putting those commands in the display list, though, we need to
 add a border, clip content outside of it, and transform the coordinate
-system. This applies to the painted output of the child frame, and so happens
-in `paint_effects`:
+system:
 
 ``` {.python}
 class IframeLayout(EmbedLayout):
     def paint_effects(self, cmds):
-        rect = skia.Rect.MakeLTRB(
-            self.x, self.y,
-            self.x + self.width, self.y + self.height)
-        diff = device_px(1, self.zoom)
+        # ...
+
+        diff = dpx(1, self.zoom)
         offset = (self.x + diff, self.y + diff)
         cmds = [Transform(offset, rect, self.node, cmds)]
         inner_rect = skia.Rect.MakeLTRB(
             self.x + diff, self.y + diff,
             self.x + self.width - diff, self.y + self.height - diff)
-        cmds = paint_visual_effects(self.node, cmds, inner_rect)
-        paint_outline(self.node, cmds, rect, self.zoom)
         return cmds
 ```
 
