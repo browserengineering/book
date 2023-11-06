@@ -548,7 +548,7 @@ class Browser:
         self.focus = None
         self.address_bar = ""
         self.lock = threading.Lock()
-        self.url = None
+        self.active_tab_url = None
         self.active_tab_scroll = 0
 
         self.measure = MeasureTime()
@@ -582,7 +582,7 @@ class Browser:
     def commit(self, tab, data):
         self.lock.acquire(blocking=True)
         if tab == self.active_tab:
-            self.url = data.url
+            self.active_tab_url = data.url
             if data.scroll != None:
                 self.active_tab_scroll = data.scroll
             self.active_tab_height = data.height
@@ -649,7 +649,7 @@ class Browser:
     def set_active_tab(self, tab):
         self.active_tab = tab
         self.active_tab_scroll = 0
-        self.url = None
+        self.active_tab_url = None
         self.needs_animation_frame = True
 
     def handle_click(self, e):
@@ -721,6 +721,67 @@ class Browser:
 
 @wbetools.patch(Chrome)
 class Chrome:
+    def paint(self):
+        cmds = []
+        cmds.append(DrawLine(
+            0, self.bottom, WIDTH,
+            self.bottom, "black", 1))
+
+        cmds.append(DrawOutline(self.newtab_rect, "black", 1))
+        cmds.append(DrawText(
+            self.newtab_rect.left() + self.padding,
+            self.newtab_rect.top(),
+            "+", self.font, "black"))
+
+        for i, tab in enumerate(self.browser.tabs):
+            bounds = self.tab_rect(i)
+            cmds.append(DrawLine(
+                bounds.left(), 0, bounds.left(), bounds.bottom(),
+                "black", 1))
+            cmds.append(DrawLine(
+                bounds.right(), 0, bounds.right(), bounds.bottom(),
+                "black", 1))
+            cmds.append(DrawText(
+                bounds.left() + self.padding, bounds.top() + self.padding,
+                "Tab {}".format(i), self.font, "black"))
+
+            if tab == self.browser.active_tab:
+                cmds.append(DrawLine(
+                    0, bounds.bottom(), bounds.left(), bounds.bottom(),
+                    "black", 1))
+                cmds.append(DrawLine(
+                    bounds.right(), bounds.bottom(), WIDTH, bounds.bottom(),
+                    "black", 1))
+
+        cmds.append(DrawOutline(self.back_rect, "black", 1))
+        cmds.append(DrawText(
+            self.back_rect.left() + self.padding,
+            self.back_rect.top(),
+            "<", self.font, "black"))
+
+        cmds.append(DrawOutline(self.address_rect, "black", 1))
+        if self.focus == "address bar":
+            cmds.append(DrawText(
+                self.address_rect.left() + self.padding,
+                self.address_rect.top(),
+                self.address_bar, self.font, "black"))
+            w = self.font.measureText(self.address_bar)
+            cmds.append(DrawLine(
+                self.address_rect.left() + self.padding + w,
+                self.address_rect.top(),
+                self.address_rect.left() + self.padding + w,
+                self.address_rect.bottom(),
+                "red", 1))
+        else:
+            url = str(self.browser.active_tab_url if \
+                self.browser.active_tab_url else "")
+            cmds.append(DrawText(
+                self.address_rect.left() + self.padding,
+                self.address_rect.top(),
+                url, self.font, "black"))
+
+        return cmds
+
     def click(self, x, y):
         if self.newtab_rect.contains(x, y):
             self.browser.new_tab_internal(URL("https://browser.engineering/"))

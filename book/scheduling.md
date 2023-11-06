@@ -1452,15 +1452,15 @@ it was sent and call `set_needs_raster_and_draw` as needed. Because this call
 will come from another thread, we'll need to acquire a lock. Another important
 step is to not clear the `animation_timer` object until *after* the next
 commit occurs. Otherwise multiple rendering tasks could be queued at the same
-time. Finally, rename `scroll` to `active_tab_scroll` to make more clear what
-it means.
+time. Finally, rename `scroll` to `active_tab_scroll` and `url` to
+`active_tab_url` to make more clear whatt they mean.
 
 ``` {.python}
 class Browser:
     def __init__(self):
         self.lock = threading.Lock()
 
-        self.url = None
+        self.active_tab_url = None
         self.active_tab_scroll = 0
         self.active_tab_height = 0
         self.active_tab_display_list = None
@@ -1468,7 +1468,7 @@ class Browser:
     def commit(self, tab, data):
         self.lock.acquire(blocking=True)
         if tab == self.active_tab:
-            self.url = data.url
+            self.active_tab_url = data.url
             self.active_tab_scroll = data.scroll
             self.active_tab_height = data.height
             if data.display_list:
@@ -1739,7 +1739,7 @@ class Browser:
     def set_active_tab(self, tab):
         self.active_tab = tab
         self.active_tab_scroll = 0
-        self.url = None
+        self.active_tab_url = None
         self.needs_animation_frame = True
 ```
 

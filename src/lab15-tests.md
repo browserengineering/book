@@ -176,7 +176,7 @@ Iframes can be sized too:
 
 Now let's test scrolling of the root frame:
 
-    >>> browser.scractive_tab_scroll > 0
+    >>> browser.active_tab_scroll > 0
     False
     >>> browser.handle_down()
     >>> browser.active_tab_scroll > 0

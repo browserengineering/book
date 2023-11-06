@@ -1386,7 +1386,7 @@ class Browser:
         self.focus = None
         self.address_bar = ""
         self.lock = threading.Lock()
-        self.url = None
+        self.active_tab_url = None
         self.active_tab_scroll = 0
 
         self.measure = MeasureTime()
@@ -1425,7 +1425,7 @@ class Browser:
     def commit(self, tab, data):
         self.lock.acquire(blocking=True)
         if tab == self.active_tab:
-            self.url = data.url
+            self.active_tab_url = data.url
             if data.scroll != None:
                 self.active_tab_scroll = data.scroll
             self.active_tab_height = data.height
@@ -1570,7 +1570,7 @@ class Browser:
 
     def clear_data(self):
         self.active_tab_scroll = 0
-        self.url = None
+        self.active_tab_url = None
         self.display_list = []
         self.composited_layers = []
 
