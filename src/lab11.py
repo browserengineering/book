@@ -634,7 +634,8 @@ class Browser:
         self.draw()
 
     def raster_tab(self):
-        tab_height = math.ceil(self.active_tab.document.height + 2*VSTEP)
+        tab_height = math.ceil(
+            self.active_tab.document.height + 2*VSTEP)
 
         if not self.tab_surface or \
                 tab_height != self.tab_surface.height():
