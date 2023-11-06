@@ -84,6 +84,7 @@ def map_translation(rect, translation, reversed=False):
 class Transform(VisualEffect):
     def __init__(self, translation, rect, node, children):
         super().__init__(rect, children, node)
+        self.self_rect = rect
         self.translation = translation
 
     def execute(self, canvas):
@@ -103,7 +104,7 @@ class Transform(VisualEffect):
         return map_translation(rect, self.translation, True)
 
     def clone(self, children):
-        return Transform(self.translation, self.rect,
+        return Transform(self.translation, self.self_rect,
             self.node, children)
 
     def __repr__(self):
@@ -240,7 +241,7 @@ class ClipRRect(VisualEffect):
         return rect
 
     def clone(self, children):
-        return ClipRRect(self.rect, self.radius, children, \
+        return ClipRRect(self.rrect.rect(), self.radius, children, \
             self.should_clip)
 
     def __repr__(self):
