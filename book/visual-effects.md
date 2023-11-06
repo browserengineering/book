@@ -556,7 +556,7 @@ high-density enough to retire these techniques.
 Browser compositing
 ===================
 
-So far, Skia and SDL have just made our browser more complex, but the
+Skia and SDL have just made our browser more complex, but the
 low-level control offered by these libraries is important because it
 allows us to optimize commonly-used operations like scrolling.
 
@@ -600,8 +600,8 @@ We'll also need to split the browser's `draw` method into three parts:
 
 - `draw` will composite the chrome and tab surfaces and copy the
   result from Skia to SDL;[^why-two-steps]
-- `raster_tab` will draw the page to the `tab_surface`; and
-- `raster_chrome` will draw the browser chrome to the `chrome_surface`.
+- `raster_tab` will raster the page to the `tab_surface`; and
+- `raster_chrome` will raster the browser chrome to the `chrome_surface`.
 
 [^why-two-steps]: It might seem wasteful to copy from the chrome and
     tab surface to an intermediate Skia surface, instead of directly
@@ -643,7 +643,8 @@ import math
 
 class Browser:
     def raster_tab(self):
-        tab_height = math.ceil(self.active_tab.document.height + 2*VSTEP)
+        tab_height = math.ceil(
+            self.active_tab.document.height + 2*VSTEP)
 
         if not self.tab_surface or \
                 tab_height != self.tab_surface.height():
@@ -658,10 +659,10 @@ to the right) of their parents---but our browser doesn't support any
 features like that. Note that we need to recreate the tab surface if
 the page's height changes.
 
-Next, we need new code in `draw` to copy from the chrome and tab
-surfaces to the root surface. Moreover, we need to translate the
-`tab_surface` down by `chrome_bottom` and up by `scroll`, and clips it to
-only the area of the window that doesn't overlap the browser chrome:
+Next, `draw` should copy from the chrome and tab surfaces to the root
+surface. Moreover, we need to translate the `tab_surface` down by
+`chrome_bottom` and up by `scroll`, and clips it to only the area of
+the window that doesn't overlap the browser chrome:
 
 ``` {.python}
 class Browser:
@@ -687,11 +688,9 @@ class Browser:
         # ...
 ```
 
-Note the `draw` calls: we are drawing the `tab_surface` and
+Note the `draw` calls: these copy the `tab_surface` and
 `chrome_surface` to the `canvas`, which is bound to `root_surface`.
-Also note the `clipRect` and `translate` calls, which make sure we
-draw the correct portion of the tab surface, clipping out anything
-outside the page area.
+The `clipRect` and `translate` make sure we copy the right parts.
 
 Finally, everywhere in `Browser` that we call `draw`, we now need to
 call either `raster_tab` or `raster_chrome` first. For example, in
