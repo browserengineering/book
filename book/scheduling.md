@@ -1452,7 +1452,8 @@ it was sent and call `set_needs_raster_and_draw` as needed. Because this call
 will come from another thread, we'll need to acquire a lock. Another important
 step is to not clear the `animation_timer` object until *after* the next
 commit occurs. Otherwise multiple rendering tasks could be queued at the same
-time.
+time. Finally, rename `scroll` to `active_tab_scroll` to make more clear what
+it means.
 
 ``` {.python}
 class Browser:
@@ -1460,7 +1461,7 @@ class Browser:
         self.lock = threading.Lock()
 
         self.url = None
-        self.scroll = 0
+        self.active_tab_scroll = 0
         self.active_tab_height = 0
         self.active_tab_display_list = None
 
@@ -1468,7 +1469,7 @@ class Browser:
         self.lock.acquire(blocking=True)
         if tab == self.active_tab:
             self.url = data.url
-            self.scroll = data.scroll
+            self.active_tab_scroll = data.scroll
             self.active_tab_height = data.height
             if data.display_list:
                 self.active_tab_display_list = data.display_list
@@ -1700,7 +1701,7 @@ variable on the `Browser`, and update it when the user scrolls:
 class Browser:
     def __init__(self):
         # ...
-        self.scroll = 0
+        self.active_tab_scroll = 0
 
     def clamp_scroll(self, scroll):
         height = self.active_tab_height
@@ -1712,8 +1713,8 @@ class Browser:
         if not self.active_tab_height:
             self.lock.release()
             return
-        self.scroll = self.clamp_scroll(
-            self.scroll + SCROLL_STEP)
+        self.active_tab_scroll = self.clamp_scroll(
+            self.active_tab_scroll + SCROLL_STEP)
         self.set_needs_raster_and_draw()
         self.needs_animation_frame = True
         self.lock.release()
@@ -1737,7 +1738,7 @@ Move tab switching (in `load` and `handle_click`) to a new method
 class Browser:
     def set_active_tab(self, tab):
         self.active_tab = tab
-        self.scroll = 0
+        self.active_tab_scroll = 0
         self.url = None
         self.needs_animation_frame = True
 ```
@@ -1756,7 +1757,7 @@ class Browser:
         # ...
         def callback():
             self.lock.acquire(blocking=True)
-            scroll = self.scroll
+            scroll = self.active_tab_scroll
             self.needs_animation_frame = False
             task = Task(self.active_tab.run_animation_frame, scroll)
             self.active_tab.task_runner.schedule_task(task)
@@ -1840,7 +1841,7 @@ class Browser:
         if tab == self.active_tab:
             # ...
             if data.scroll != None:
-                self.scroll = data.scroll
+                self.active_tab_scroll = data.scroll
 ```
 
 That's it! If you try the counting demo now, you'll be able to scroll

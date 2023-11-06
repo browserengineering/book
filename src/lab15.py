@@ -1715,7 +1715,7 @@ class Browser:
         self.address_bar = ""
         self.lock = threading.Lock()
         self.url = None
-        self.scroll = 0
+        self.active_tab_scroll = 0
 
         self.measure = MeasureTime()
 
@@ -1764,7 +1764,7 @@ class Browser:
         if tab == self.active_tab:
             self.url = data.url
             if data.scroll != None:
-                self.scroll = data.scroll
+                self.active_tab_scroll = data.scroll
             self.root_frame_focused = data.root_frame_focused
             self.active_tab_height = data.height
             if data.display_list:
@@ -1787,8 +1787,8 @@ class Browser:
             if not self.active_tab_height:
                 self.lock.release()
                 return
-            self.scroll = \
-                self.clamp_scroll(self.scroll + SCROLL_STEP)
+            self.active_tab_scroll = \
+                self.clamp_scroll(self.active_tab_scroll + SCROLL_STEP)
             self.set_needs_draw()
             self.needs_animation_frame = True
             self.lock.release()

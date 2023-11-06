@@ -2239,7 +2239,7 @@ class Browser:
         # ...
         if self.pending_hover:
             (x, y) = self.pending_hover
-            y += self.scroll
+            y += self.active_tab_scroll
             a11y_node = self.accessibility_tree.hit_test(x, y)
 ```
 

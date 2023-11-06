@@ -95,14 +95,14 @@ Testing TabWrapper
 
     >>> browser.url == None
     True
-    >>> browser.scroll == 0
+    >>> browser.active_tab_scroll == 0
     True
 
     >>> commit_data = lab12.CommitData("test-url", 1, 24, [3])
     >>> browser.commit(browser.tabs[0], commit_data)
     >>> browser.url
     'test-url'
-    >>> browser.scroll
+    >>> browser.active_tab_scroll
     1
     >>> browser.active_tab_height
     24

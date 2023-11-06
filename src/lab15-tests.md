@@ -176,10 +176,10 @@ Iframes can be sized too:
 
 Now let's test scrolling of the root frame:
 
-    >>> browser.scroll > 0
+    >>> browser.scractive_tab_scroll > 0
     False
     >>> browser.handle_down()
-    >>> browser.scroll > 0
+    >>> browser.active_tab_scroll > 0
     True
 
 Clicking the sub-frame focuses it:
@@ -204,7 +204,7 @@ And now scrolling affects just the child frame:
     0
     >>> browser.handle_down()
     >>> browser.render()
-    >>> browser.scroll > 0
+    >>> browser.active_tab_scroll > 0
     False
     >>> browser.tabs[0].root_frame.nodes.children[0].children[67].frame.scroll
     22.0

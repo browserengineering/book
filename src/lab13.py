@@ -1387,7 +1387,7 @@ class Browser:
         self.address_bar = ""
         self.lock = threading.Lock()
         self.url = None
-        self.scroll = 0
+        self.active_tab_scroll = 0
 
         self.measure = MeasureTime()
 
@@ -1420,14 +1420,14 @@ class Browser:
         assert not wbetools.USE_BROWSER_THREAD
         self.active_tab.task_runner.run_tasks()
         if self.active_tab.loaded:
-            self.active_tab.run_animation_frame(self.scroll)
+            self.active_tab.run_animation_frame(self.active_tab_scroll)
 
     def commit(self, tab, data):
         self.lock.acquire(blocking=True)
         if tab == self.active_tab:
             self.url = data.url
             if data.scroll != None:
-                self.scroll = data.scroll
+                self.active_tab_scroll = data.scroll
             self.active_tab_height = data.height
             if data.display_list:
                 self.active_tab_display_list = data.display_list
@@ -1543,7 +1543,7 @@ class Browser:
     def schedule_animation_frame(self):
         def callback():
             self.lock.acquire(blocking=True)
-            scroll = self.scroll
+            scroll = self.active_tab_scroll
             active_tab = self.active_tab
             self.needs_animation_frame = False
             self.lock.release()
@@ -1562,13 +1562,14 @@ class Browser:
         if not self.active_tab_height:
             self.lock.release()
             return
-        self.scroll = self.clamp_scroll(self.scroll + SCROLL_STEP)
+        self.active_tab_scroll = self.clamp_scroll(
+            self.active_tab_scroll + SCROLL_STEP)
         self.set_needs_draw()
         self.needs_animation_frame = True
         self.lock.release()
 
     def clear_data(self):
-        self.scroll = 0
+        self.active_tab_scroll = 0
         self.url = None
         self.display_list = []
         self.composited_layers = []
@@ -1641,7 +1642,8 @@ class Browser:
         canvas.clear(skia.ColorWHITE)
 
         canvas.save()
-        canvas.translate(0, self.chrome.bottom - self.scroll)
+        canvas.translate(
+            0, self.chrome.bottom - self.active_tab_scroll)
         for item in self.draw_list:
             item.execute(canvas)
         canvas.restore()
