@@ -130,10 +130,17 @@ class Browser:
                 at=skia.kUnpremul_AlphaType))
 ```
 
-Note the `ct` argument, meaning "color type", which indicates that
-each pixel of this surface should be represented as *r*ed, *g*reen,
-*b*lue, and *a*lpha values, each of which should take up 8 bits. In
-other words, pixels are basically defined like so:
+A surface[^or-texture] is a 2D array of pixels, where each pixel is
+thought of as a tiny square of some solid color. Note the `ct`
+argument, meaning "color type", which indicates that each pixel of
+this surface should be represented as *r*ed, *g*reen, *b*lue, and
+*a*lpha values, each of which should take up 8 bits. In other words,
+pixels are basically defined like so:
+
+[^or-texture]: Sometimes they are called *bitmaps* or *textures* as
+well, but these words connote specific CPU or GPU technologies for
+implementing surfaces.
+
 
 ``` {.python file=examples}
 class Pixel:
@@ -147,6 +154,34 @@ class Pixel:
 Note that this `Pixel` code is an illustrative example, not something
 our browser has to define. It's standing in for somewhat more complex
 code within Skia itself.
+
+If you'll permit me a short digression here: what exactly do "red",
+"green", and "blue" mean here? Formally, they are defined by the [sRGB
+color space][srgb], meant to represent the colors of common computer
+screens.[^lcd-design] Combinations of those three basic colors form a
+_gamut_ of possible colors that the screen can display.[^other-spaces]
+
+[^lcd-design]: Actually, some screens contain [pixels besides red,
+    green, and blue][lcd-design], including white, cyan, or yellow.
+    Moreover, different screens can use slightly different reds,
+    greens, or blues; professional color designers typically have to
+    [calibrate their screen][calibrate] to display colors accurately.
+    For the rest of us, the software still communicates with the
+    display in terms of standard red, green, and blue colors, and the
+    display hardware converts to whatever pixels it uses.
+
+[^other-spaces]: The sRGB color space dates back to [CRT
+    displays][CRT]. New technologies like LCD, LED, and OLED can
+    display more colors, so CSS now includes [syntax][color-spec] for
+    expressing these new colors. All color spaces have a limited gamut
+    of expressible colors.
+    
+[lcd-design]: https://geometrian.com/programming/reference/subpixelzoo/index.php
+[calibrate]: https://en.wikipedia.org/wiki/Color_calibration
+[srgb]: https://en.wikipedia.org/wiki/SRGB
+[CRT]: https://en.wikipedia.org/wiki/Cathode-ray_tube
+[color-spec]: https://drafts.csswg.org/css-color-4/
+
 
 Now there's an SDL surface for the window contents and a Skia surface
 that we can draw to. We'll raster\index{raster} to the Skia surface,
@@ -295,11 +330,11 @@ books](https://wiki.libsdl.org/Books) about game programming in SDL.
 Rasterizing with Skia
 =====================
 
-\index{canvas}Now our browser has an SDL surface, a Skia surface, and
-can copy between them. Now we want to draw text, rectangles, and so on
-to that Skia surface. This step---coloring in the pixels of a surface
-to draw shapes on it---is called "rasterization"\index{raster} and is
-one important task of a graphics library.
+Now our browser has an SDL surface, a Skia surface, and can copy
+between them. Now we want to draw text, rectangles, and so on to that
+Skia surface. This step---coloring in the pixels of a surface to draw
+shapes on it---is called "rasterization"\index{raster} and is one
+important task of a graphics library.
 
 We'll need our browser's drawing commands to invoke Skia, not Tk
 methods. Skia is a bit more verbose than Tkinter, so let's abstract
@@ -609,7 +644,7 @@ We'll also need to split the browser's `draw` method into three parts:
     of tricky low-level code. In [Chapter 13](animations.md) we'll
     avoid this copy in a different, better way.
 
-Let's start by doing the split:
+Let's start by doing the split:\index{canvas}
 
 ``` {.python}
 class Browser:
@@ -775,6 +810,7 @@ The corner cases and subtleties involved are almost endless.
 [transform-link]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform
 [overflow-prop]: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow
 
+
 What Skia gives us
 ==================
 
@@ -851,56 +887,9 @@ few lines of Python.
 [rtr-book]: https://www.realtimerendering.com/
 [classic]: https://en.wikipedia.org/wiki/Computer_Graphics:_Principles_and_Practice
 
+
 Pixels, color, and raster
 =========================
-
-Skia, like the Tkinter canvas we've been using until now, is a
-_rasterization_\index{raster} library: it converts shapes like rectangles and
-text into pixels. Before we move on to Skia's advanced features, let's talk
-about how rasterization works at a deeper level. This will help to understand
-how exactly those features work.
-
-You probably already know that computer screens are a 2D array of
-pixels. Each pixel contains red, green and blue lights,[^lcd-design]
-or _color channels_, that can shine with an intensity between 0 (off)
-and 1 (fully on). By mixing red, green, and blue, which is formally
-known as the [sRGB color space][srgb], any color in that space's
-_gamut_ can be made.[^other-spaces] In a rasterization library, a 2D
-array of pixels like this is called a *surface*.[^or-texture] Since
-modern devices have lots of pixels, surfaces require a lot of memory,
-and we'll typically want to create as few as possible.
-
-[^or-texture]: Sometimes they are called *bitmaps* or *textures* as
-well, but these words connote specific CPU or GPU technologies for
-implementing surfaces.
-
-[^lcd-design]: Actually, some screens contain [pixels besides red,
-    green, and blue][lcd-design], including white, cyan, or yellow.
-    Moreover, different screens can use slightly different reds,
-    greens, or blues; professional color designers typically have to
-    [calibrate their screen][calibrate] to display colors accurately.
-    For the rest of us, the software still communicates with the
-    display in terms of standard red, green, and blue colors, and the
-    display hardware converts to whatever pixels it uses.
-    
-[lcd-design]: https://geometrian.com/programming/reference/subpixelzoo/index.php
-[calibrate]: https://en.wikipedia.org/wiki/Color_calibration
-[srgb]: https://en.wikipedia.org/wiki/SRGB
-[CRT]: https://en.wikipedia.org/wiki/Cathode-ray_tube
-[color-spec]: https://drafts.csswg.org/css-color-4/
-
-[^other-spaces]: The sRGB color space dates back to [CRT
-displays][CRT]. New technologies like LCD, LED, and OLED can display
-more colors, so CSS now includes [syntax][color-spec] for expressing
-these new colors. All color spaces have a limited gamut of expressible
-colors.
-
-The job of a rasterization library is to determine the red, green, and
-blue intensity of each pixel on the screen, based on the
-shapes---lines, rectangles, text---that the application wants to
-display. The interface for drawing shapes onto a surface is called a
-*canvas*; both Tkinter and Skia had canvas APIs. In Skia, each surface
-has an associated canvas that draws to that surface.
 
 ::: {.further}
 Screens use red, green, and blue color channels to match the three
