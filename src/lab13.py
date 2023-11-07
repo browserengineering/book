@@ -1280,12 +1280,6 @@ class Browser:
         self.composited_layers = []
         self.draw_list = []
 
-    def render(self):
-        assert not wbetools.USE_BROWSER_THREAD
-        self.active_tab.task_runner.run_tasks()
-        if self.active_tab.loaded:
-            self.active_tab.run_animation_frame(self.active_tab_scroll)
-
     def commit(self, tab, data):
         self.lock.acquire(blocking=True)
         if tab == self.active_tab:
@@ -1302,12 +1296,6 @@ class Browser:
                 self.set_needs_composite()
             else:
                 self.set_needs_draw()
-        self.lock.release()
-
-    def set_needs_animation_frame(self, tab):
-        self.lock.acquire(blocking=True)
-        if tab == self.active_tab:
-            self.needs_animation_frame = True
         self.lock.release()
 
     def set_needs_raster(self):
@@ -1404,23 +1392,6 @@ class Browser:
         self.needs_draw = False
         self.lock.release()
 
-    def schedule_animation_frame(self):
-        def callback():
-            self.lock.acquire(blocking=True)
-            scroll = self.active_tab_scroll
-            active_tab = self.active_tab
-            self.needs_animation_frame = False
-            self.lock.release()
-            task = Task(active_tab.run_animation_frame, scroll)
-            active_tab.task_runner.schedule_task(task)
-        self.lock.acquire(blocking=True)
-        if self.needs_animation_frame and not self.animation_timer:
-            if wbetools.USE_BROWSER_THREAD:
-                self.animation_timer = \
-                    threading.Timer(REFRESH_RATE_SEC, callback)
-                self.animation_timer.start()
-        self.lock.release()
-
     def handle_down(self):
         self.lock.acquire(blocking=True)
         if not self.active_tab_height:
@@ -1469,26 +1440,11 @@ class Browser:
             self.active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
-    def schedule_load(self, url, body=None):
-        task = Task(self.active_tab.load, url, body)
-        self.active_tab.task_runner.schedule_task(task)
-
     def handle_enter(self):
         self.lock.acquire(blocking=True)
         if self.chrome.enter():
             self.set_needs_raster()
         self.lock.release()
-
-    def new_tab(self, url):
-        self.lock.acquire(blocking=True)
-        self.new_tab_internal(url)
-        self.lock.release()
-
-    def new_tab_internal(self, url):
-        new_tab = Tab(self, HEIGHT - self.chrome.bottom)
-        self.set_active_tab(new_tab)
-        self.tabs.append(new_tab)
-        self.schedule_load(url)
 
     def raster_tab(self):
         for composited_layer in self.composited_layers:

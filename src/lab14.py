@@ -1775,6 +1775,7 @@ class Browser:
         self.lock.release()
 
     def schedule_load(self, url, body=None):
+        self.active_tab.task_runner.clear_pending_tasks()
         task = Task(self.active_tab.load, url, body)
         self.active_tab.task_runner.schedule_task(task)
 
