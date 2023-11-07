@@ -683,9 +683,19 @@ class SaveLayer(VisualEffect):
             self.should_save)
 ```
 
-The other visual effect, `ClipRRect`, should do something similar. We
-won't be cloning paint commands, since they're all going to be inside
-a composited layer, so we don't need to implement `clone` for them.
+The other visual effect, `ClipRRect`, should do something similar (note
+how we are using `rrect.rect()`, since the first parameter needs to be the
+actual cliping rect):
+
+``` {.python}
+class ClipRRect(VisualEffect):
+    def clone(self, children):
+        return ClipRRect(self.rrect.rect(), self.radius, children, \
+            self.should_clip)
+```
+
+We won't be cloning paint commands, since they're all going to be inside a
+composited layer, so we don't need to implement `clone` for them.
 
 We can now build the draw display list. For each composited layer,
 create a `DrawCompositedLayer` command (which we'll define in just a
@@ -1857,6 +1867,7 @@ Skia canvas `translate` method:
 class Transform(VisualEffect):
     def __init__(self, translation, rect, node, children):
         super().__init__(rect, children, node)
+        self.self_rect = rect
         self.translation = translation
 
     def execute(self, canvas):
@@ -1870,7 +1881,7 @@ class Transform(VisualEffect):
             canvas.restore()
 
     def clone(self, children):
-        return Transform(self.translation, self.rect,
+        return Transform(self.translation, self.self_rect,
             self.node, children)
 
     def __repr__(self):

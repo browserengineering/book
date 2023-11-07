@@ -7,25 +7,27 @@ next: scheduling
 
 Right now our browser can only draw colored rectangles and
 text---pretty boring! Real browsers support all kinds of *visual
-effects*\index{visual effect} that change how pixels and colors blend together.
-Let's implement these effects using the Skia graphics library, and also see
-a bit of how Skia is implemented under the hood. That'll also allow us
-to use surfaces for *browser compositing*\index{compositing} to accelerate
-scrolling.
+effects*\index{visual effect} that change how pixels and colors blend
+together. To implement those effects, and also make our browser
+faster, we'll need control over *surfaces*\index{surface}, the key
+low-level feature behind fast scrolling, visual effects, animations,
+and many other browser features. To get that control, we'll also
+switch to using the Skia graphics library and even take a peek under
+its hood.
 
 Installing Skia and SDL
 =======================
 
-Before we get any further, we'll need to upgrade our graphics system.
-While Tkinter is great for basic shapes and input handling, it lacks
-built-in support for many visual effects.[^tkinter-before-gpu]
-Implementing all details of the web's many visual effects is fun, but
+While Tkinter is great for basic shapes and input handling, it doesn't
+give us control over surfaces[^tkinter-before-gpu] and lacks
+implementations of most visual effects.
+Implementing them ourselves would be fun, but
 it's outside the scope of this book, so we need a new graphics library.
 Let's use [Skia][skia],\index{Skia} the library that Chromium uses.
 Unlike Tkinter, Skia doesn't handle inputs or create graphical windows,
 so we'll pair it with the [SDL][sdl] GUI library.\index{SDL} Beyond
-new capabilities, switching to Skia will give me an opportunity to
-show you how graphics work at a lower level.
+new capabilities, switching to Skia will allow us to control graphics
+and rasterization at a lower level.
 
 [skia]: https://skia.org
 [sdl]: https://www.libsdl.org/
@@ -75,6 +77,8 @@ to [WebAssembly][webassembly] to do the same.
 SDL creates the window
 ======================
 
+The first big task is to switch to using SDL to create the window and
+handle events.
 The main loop of the browser first needs some boilerplate to get SDL
 started:
 
@@ -88,8 +92,7 @@ if __name__ == "__main__":
 ```
 
 Next, we need to create an SDL window, instead of a Tkinter window,
-inside the Browser, and set up Skia to draw to it. Here's the SDL
-incantation to create a window:
+inside the Browser. Here's the SDL incantation:
 
 ``` {.python}
 class Browser:
@@ -99,8 +102,11 @@ class Browser:
             WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
 ```
 
-To set up Skia to draw to this window, we also need to create a
-*surface*\index{surface} for it:[^surface]
+When we create this SDL window, we're asking SDL to allocate a
+*surface*, a chunk of memory representing the pixels on the
+screen.[^surface] On today's large screens, surfaces take up a lot of
+memory and drawing to them can take a lot of time, so managing
+surfaces is going to be a big focus of this chapter.
 
 [^surface]: In Skia and SDL, a *surface* is a representation of a
 graphics buffer into which you can draw *pixels* (bits representing
@@ -112,6 +118,7 @@ Skia and SDL surfaces for simplicity, but in a highly optimized
 browser, minimizing the number of surfaces is important for good
 performance.
 
+Let's also create a surface for Skia to draw to:
 
 ``` {.python}
 class Browser:
@@ -123,13 +130,33 @@ class Browser:
                 at=skia.kUnpremul_AlphaType))
 ```
 
-Typically, we'll draw\index{draw} to the Skia surface, and then once
-we're done with it we'll copy it to the SDL surface to display on the screen.
-This will be a little hairy, because we are moving data between two
-low-level libraries, but really it's just copying pixels from one
-place to another.
+Note the `ct` argument, meaning "color type", which indicates that
+each pixel of this surface should be represented as *r*ed, *g*reen,
+*b*lue, and *a*lpha values, each of which should take up 8 bits. In
+other words, pixels are basically defined like so:
 
-First, get the sequence of bytes representing the Skia surface:
+``` {.python file=examples}
+class Pixel:
+    def __init__(self, r, g, b, a):
+        self.r = r
+        self.g = g
+        self.b = b
+        self.a = a
+```
+
+Note that this `Pixel` code is an illustrative example, not something
+our browser has to define. It's standing in for somewhat more complex
+code within Skia itself.
+
+Now there's an SDL surface for the window contents and a Skia surface
+that we can draw to. We'll raster\index{raster} to the Skia surface,
+and then once we're done we'll copy it to the SDL surface to
+display on the screen.
+
+This is a little hairy, because we are moving data between two
+low-level libraries, but really it's just copying pixels from one
+place to another. First, get the sequence of bytes representing the
+Skia surface:
 
 ``` {.python}
 class Browser:
@@ -143,8 +170,7 @@ class Browser:
 ```
 
 Next, we need to copy the data to an SDL surface. This requires
-telling SDL what order the pixels are stored in (which we specified to
-be `RGBA_8888` when constructing the surface) and on your computer's
+telling SDL what order the pixels are stored in and on your computer's
 [endianness][wiki-endianness]:
 
 [wiki-endianness]: https://en.wikipedia.org/wiki/Endianness
@@ -165,8 +191,7 @@ class Browser:
 ```
 
 The `CreateRGBSurfaceFrom` method then wraps the data in an SDL surface
-(this SDL surface does not copy the bytes):
-[^use-after-free]
+(without copying the bytes):[^use-after-free]
 
 [^use-after-free]: Note that since Skia and SDL are C++ libraries, they are not
 always consistent with Python's garbage collection system. So the link between
@@ -267,15 +292,19 @@ SDL is most popular for making games. Their site lists [a selection of
 books](https://wiki.libsdl.org/Books) about game programming in SDL.
 :::
 
-Skia provides the canvas
-========================
+Rasterizing with Skia
+=====================
 
-\index{canvas}Now our browser is creating an SDL window and can draw to it
-via Skia. But most of the browser codebase is still using Tkinter drawing
-commands, which we now need to replace. Skia is a bit more verbose
-than Tkinter, so let's abstract over some details with helper
-functions.[^skia-docs] First, a helper function to convert colors to
-Skia colors:
+\index{canvas}Now our browser has an SDL surface, a Skia surface, and
+can copy between them. Now we want to draw text, rectangles, and so on
+to that Skia surface. This step---coloring in the pixels of a surface
+to draw shapes on it---is called "rasterization"\index{raster} and is
+one important task of a graphics library.
+
+We'll need our browser's drawing commands to invoke Skia, not Tk
+methods. Skia is a bit more verbose than Tkinter, so let's abstract
+over some details with helper functions.[^skia-docs] First, a helper
+function to convert colors to Skia colors:
 
 [^skia-docs]: Consult the [Skia][skia] and [skia-python][skia-python]
 documentation for more on the Skia API.
@@ -301,6 +330,9 @@ def parse_color(color):
     else:
         return skia.ColorBLACK
 ```
+
+Note that the `Color` constructor takes alpha, red, green, and blue
+values, closely matching (except for the order) our `Pixel` definition.
 
 You can add "elif" blocks to support any other color names you use;
 modern browsers support [quite a lot][css-colors]. If you'd like to
@@ -519,11 +551,235 @@ high-density enough to retire these techniques.
 
 [font-hinting]: https://en.wikipedia.org/wiki/Font_hinting
 
+
+
+Browser compositing
+===================
+
+Skia and SDL have just made our browser more complex, but the
+low-level control offered by these libraries is important because it
+allows us to optimize commonly-used operations like scrolling.
+
+So far, any time the user scrolled a web page, we had to clear
+the canvas and re-raster everything on it from scratch. This is
+inefficient---we're drawing the same pixels, just in a different
+place. When the context is complex or the screen is large,
+rastering too often produces a visible slowdown and drains laptop and mobile
+batteries. Real browsers optimize scrolling
+using a technique I'll call *browser compositing*:
+drawing the whole web page to a hidden surface, and only copying the
+relevant pixels to the window itself.
+
+To implement this, we'll need two new Skia surfaces:
+a surface for browser chrome and a surface
+for the current `Tab`'s contents. We'll only need to
+re-raster the `Tab` surface if page contents change, but not when
+(say) the user types into the address bar. And we can scroll the `Tab`
+without any raster at all---we just copy a different part of the
+current `Tab` surface to the screen. Let's call those surfaces
+`chrome_surface` and `tab_surface`:[^multiple-tabs]
+
+[^multiple-tabs]: We could even use a different surface for each `Tab`,
+but real browsers don't do this, since each surface uses up a lot of
+memory, and typically users don't notice the small raster delay when
+switching tabs.
+
+``` {.python}
+class Browser:
+    def __init__(self):
+        # ...
+        self.chrome_surface = skia.Surface(
+            WIDTH, math.ceil(self.chrome.bottom))
+        self.tab_surface = None
+```
+
+I'm not explicitly creating `tab_surface` right away, because we need
+to lay out the page contents to know how tall the surface needs to be.
+
+We'll also need to split the browser's `draw` method into three parts:
+
+- `draw` will composite the chrome and tab surfaces and copy the
+  result from Skia to SDL;[^why-two-steps]
+- `raster_tab` will raster the page to the `tab_surface`; and
+- `raster_chrome` will raster the browser chrome to the `chrome_surface`.
+
+[^why-two-steps]: It might seem wasteful to copy from the chrome and
+    tab surface to an intermediate Skia surface, instead of directly
+    to the SDL surface. It is, but skipping that copy requires a lot
+    of tricky low-level code. In [Chapter 13](animations.md) we'll
+    avoid this copy in a different, better way.
+
+Let's start by doing the split:
+
+``` {.python}
+class Browser:
+    def raster_tab(self):
+        canvas = self.tab_surface.getCanvas()
+        canvas.clear(skia.ColorWHITE)
+        # ...
+
+    def raster_chrome(self):
+        canvas = self.chrome_surface.getCanvas()
+        canvas.clear(skia.ColorWHITE)
+        # ...
+
+    def draw(self):
+        canvas = self.root_surface.getCanvas()
+        canvas.clear(skia.ColorWHITE)
+        # ...
+```
+
+Since we didn't create the `tab_surface` on startup, we need to create
+it at the top of `raster_tab`:[^really-big-surface]
+
+[^really-big-surface]: For a very big web page, the `tab_surface` can
+be much larger than the size of the SDL window, and therefore take up
+a very large amount of memory. We'll ignore that, but a real browser
+would only paint and raster surface content up to a certain distance
+from the visible region, and re-paint/raster as the user scrolls.
+
+``` {.python}
+import math
+
+class Browser:
+    def raster_tab(self):
+        tab_height = math.ceil(
+            self.active_tab.document.height + 2*VSTEP)
+
+        if not self.tab_surface or \
+                tab_height != self.tab_surface.height():
+            self.tab_surface = skia.Surface(WIDTH, tab_height)
+
+        # ...
+```
+
+The way we compute the page bounds here, based on the layout tree's
+height, would be incorrect if page elements could stick out below (or
+to the right) of their parents---but our browser doesn't support any
+features like that. Note that we need to recreate the tab surface if
+the page's height changes.
+
+Next, `draw` should copy from the chrome and tab surfaces to the root
+surface. Moreover, we need to translate the `tab_surface` down by
+`chrome_bottom` and up by `scroll`, and clips it to only the area of
+the window that doesn't overlap the browser chrome:
+
+``` {.python}
+class Browser:
+    def draw(self):
+        # ...
+        
+        tab_rect = skia.Rect.MakeLTRB(
+            0, self.chrome.bottom, WIDTH, HEIGHT)
+        tab_offset = self.chrome.bottom - self.active_tab.scroll
+        canvas.save()
+        canvas.clipRect(tab_rect)
+        canvas.translate(0, tab_offset)
+        self.tab_surface.draw(canvas, 0, 0)
+        canvas.restore()
+
+        chrome_rect = skia.Rect.MakeLTRB(
+            0, 0, WIDTH, self.chrome.bottom)
+        canvas.save()
+        canvas.clipRect(chrome_rect)
+        self.chrome_surface.draw(canvas, 0, 0)
+        canvas.restore()
+
+        # ...
+```
+
+Note the `draw` calls: these copy the `tab_surface` and
+`chrome_surface` to the `canvas`, which is bound to `root_surface`.
+The `clipRect` and `translate` make sure we copy the right parts.
+
+Finally, everywhere in `Browser` that we call `draw`, we now need to
+call either `raster_tab` or `raster_chrome` first. For example, in
+`handle_click`, we do this:
+
+``` {.python}
+class Browser:
+    def handle_click(self, e):
+        if e.y < self.chrome.bottom:
+            # ...
+            self.raster_chrome()
+        else:
+            # ...
+            self.raster_tab()
+        self.draw()
+```
+
+Notice how we don't redraw the chrome when only the tab changes, and
+vice versa. Likewise, in `handle_down`, we don't need to call
+`raster_tab` at all, since scrolling doesn't change the page.
+
+However, clicking on a web page can cause it to navigate to a new one,
+so we do need to detect that and raster the browser chrome if the URL
+changed:
+
+``` {.python}
+class Browser:
+    def handle_click(self, e):
+        if e.y < self.chrome.bottom:
+            # ...
+        else:
+            # ...
+            url = self.active_tab.url
+            tab_y = e.y - self.chrome.bottom
+            self.active_tab.click(e.x, tab_y)
+            if self.active_tab.url != url:
+                self.raster_chrome()
+            self.raster_tab()
+```
+
+We also have some related changes in `Tab`. First, we no longer need
+to pass around the scroll offset to the `execute` methods, or account
+for `chrome_bottom`, because we always draw the whole tab to the tab
+surface:
+
+``` {.python}
+class Tab:
+    def raster(self, canvas):
+        for cmd in self.display_list:
+            cmd.execute(canvas)
+```
+
+Likewise, we can remove the `scroll` parameter from each drawing
+command's `execute` method:
+
+``` {.python}
+class DrawRect:
+    def execute(self, canvas):
+        paint = skia.Paint()
+        paint.setColor(parse_color(self.color))
+        canvas.drawRect(self.rect, paint)
+```
+
+Our browser now uses composited scrolling, making scrolling faster and
+smoother, all because we are now using a mix of intermediate surfaces
+to store already-rastered content and avoid re-rastering unless the
+content has actually changed.
+
+::: {.further}
+Real browsers allocate new surfaces for various different situations,
+such as implementing accelerated overflow scrolling and animations of
+certain CSS properties such as [transform][transform-link] and opacity
+that can be done without raster. They also allow scrolling arbitrary
+HTML elements via [`overflow: scroll`][overflow-prop] in CSS. Basic
+scrolling for DOM elements is very similar to what we've just
+implemented. But implementing it in its full generality, and with
+excellent performance, is *extremely* challenging. Scrolling may well
+be the single most complicated feature in a browser rendering engine.
+The corner cases and subtleties involved are almost endless.
+:::
+
+[transform-link]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform
+[overflow-prop]: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow
+
 What Skia gives us
 ==================
 
-Let's reward ourselves for the big refactor with a simple feature that
-Skia enables: rounded corners via the `border-radius` CSS property:
+Skia not only gives us low-level control but also new features. For
+example, let's implement rounded corners via the `border-radius` CSS property:
 
     <div style="border-radius: 10px; background: lightblue">
         This is some example text.
@@ -1517,225 +1773,6 @@ can be stored on the GPU.
 :::
 
 [^near]: For example, tiles that just scrolled off-screen.
-
-Browser compositing
-===================
-
-Optimizing away surfaces is great when they're not needed, but
-sometimes having more surfaces allows faster scrolling and
-animations. (In this section we'll optimize scrolling; animations
-will have to wait for [Chapter 13](animations.md).)
-
-So far, any time anything changed in the browser chrome or the web
-page itself, we had to clear the canvas and re-raster everything on it
-from scratch. This is inefficient---ideally, things should be
-re-rastered only if they actually change. When the context is complex
-or the screen is large, rastering too often produces a visible
-slowdown, and laptop and mobile batteries are drained unnecessarily.
-Real browsers optimize these situations by using a technique I'll call
-*browser compositing*. The idea is to create a tree of explicitly
-cached surfaces for different pieces of content. Whenever something
-changes, we'll re-raster only the surface where that content appears.
-Then these surfaces are blended (or "composited") together to form the
-final image that the user sees.
-
-Let's implement this, with a surface for browser chrome and a surface
-for the current `Tab`'s contents. This way, we'll only need to
-re-raster the `Tab` surface if page contents change, but not when
-(say) the user types into the address bar. This technique also allows
-us to scroll the `Tab` without any raster at all---we can just
-translate the page contents surface when drawing it.
-
-To start with, we'll need two new surfaces on `Browser`,
-`chrome_surface` and `tab_surface`:[^multiple-tabs]
-
-[^multiple-tabs]: We could even use a different surface for each `Tab`,
-but real browsers don't do this, since each surface uses up a lot of
-memory, and typically users don't notice the small raster delay when
-switching tabs.
-
-``` {.python}
-class Browser:
-    def __init__(self):
-        # ...
-        self.chrome_surface = skia.Surface(
-            WIDTH, math.ceil(self.chrome.bottom))
-        self.tab_surface = None
-```
-
-I'm not explicitly creating `tab_surface` right away, because we need
-to lay out the page contents to know how tall the surface needs to be.
-
-We'll also need to split the browser's `draw` method into three parts:
-
-- `draw` will composite the chrome and tab surfaces and copy the
-  result from Skia to SDL;
-- `raster_tab` will draw the page to the `tab_surface`; and
-- `raster_chrome` will draw the browser chrome to the `chrome_surface`.
-
-Let's start by doing the split:
-
-``` {.python}
-class Browser:
-    def raster_tab(self):
-        canvas = self.tab_surface.getCanvas()
-        canvas.clear(skia.ColorWHITE)
-        # ...
-
-    def raster_chrome(self):
-        canvas = self.chrome_surface.getCanvas()
-        canvas.clear(skia.ColorWHITE)
-        # ...
-
-    def draw(self):
-        canvas = self.root_surface.getCanvas()
-        canvas.clear(skia.ColorWHITE)
-        # ...
-```
-
-Since we didn't create the `tab_surface` on startup, we need to create
-it at the top of `raster_tab`:[^really-big-surface]
-
-[^really-big-surface]: For a very big web page, the `tab_surface` can
-be much larger than the size of the SDL window, and therefore take up
-a very large amount of memory. We'll ignore that, but a real browser
-would only paint and raster surface content up to a certain distance
-from the visible region, and re-paint/raster as the user scrolls.
-
-``` {.python}
-import math
-
-class Browser:
-    def raster_tab(self):
-        tab_height = math.ceil(self.active_tab.document.height + 2*VSTEP)
-
-        if not self.tab_surface or \
-                tab_height != self.tab_surface.height():
-            self.tab_surface = skia.Surface(WIDTH, tab_height)
-
-        # ...
-```
-
-The way we compute the page bounds here, based on the layout tree's
-height, would be incorrect if page elements could stick out below (or
-to the right) of their parents---but our browser doesn't support any
-features like that. Note that we need to recreate the tab surface if
-the page's height changes.
-
-Next, we need new code in `draw` to copy from the chrome and tab
-surfaces to the root surface. Moreover, we need to translate the
-`tab_surface` down by `chrome_bottom` and up by `scroll`, and clips it to
-only the area of the window that doesn't overlap the browser chrome:
-
-``` {.python}
-class Browser:
-    def draw(self):
-        # ...
-        
-        tab_rect = skia.Rect.MakeLTRB(
-            0, self.chrome.bottom, WIDTH, HEIGHT)
-        tab_offset = self.chrome.bottom - self.active_tab.scroll
-        canvas.save()
-        canvas.clipRect(tab_rect)
-        canvas.translate(0, tab_offset)
-        self.tab_surface.draw(canvas, 0, 0)
-        canvas.restore()
-
-        chrome_rect = skia.Rect.MakeLTRB(
-            0, 0, WIDTH, self.chrome.bottom)
-        canvas.save()
-        canvas.clipRect(chrome_rect)
-        self.chrome_surface.draw(canvas, 0, 0)
-        canvas.restore()
-
-        # ...
-```
-
-Finally, everywhere in `Browser` that we call `draw`, we now need to
-call either `raster_tab` or `raster_chrome` first. For example, in
-`handle_click`, we do this:
-
-``` {.python}
-class Browser:
-    def handle_click(self, e):
-        if e.y < self.chrome.bottom:
-            # ...
-            self.raster_chrome()
-        else:
-            # ...
-            self.raster_tab()
-        self.draw()
-```
-
-Notice how we don't redraw the chrome when only the tab changes, and
-vice versa. Likewise, in `handle_down`, we don't need to call
-`raster_tab` at all, since scrolling doesn't change the page.
-
-However, clicking on a web page can cause it to navigate to a new one,
-so we do need to detect that and raster the browser chrome if the URL
-changed:
-
-``` {.python}
-class Browser:
-    def handle_click(self, e):
-        if e.y < self.chrome.bottom:
-            # ...
-        else:
-            # ...
-            url = self.active_tab.url
-            tab_y = e.y - self.chrome.bottom
-            self.active_tab.click(e.x, tab_y)
-            if self.active_tab.url != url:
-                self.raster_chrome()
-            self.raster_tab()
-```
-
-We also have some related changes in `Tab`. First, we no longer need
-to pass around the scroll offset to the `execute` methods, or account
-for `chrome_bottom`, because we always draw the whole tab to the tab
-surface:
-
-``` {.python}
-class Tab:
-    def raster(self, canvas):
-        for cmd in self.display_list:
-            cmd.execute(canvas)
-```
-
-Likewise, we can remove the `scroll` parameter from each drawing
-command's `execute` method:
-
-``` {.python}
-class DrawRect:
-    def execute(self, canvas):
-        paint = skia.Paint()
-        paint.setColor(parse_color(self.color))
-        canvas.drawRect(self.rect, paint)
-```
-
-Our browser now uses composited scrolling, making scrolling faster and
-smoother. In fact, in terms of conceptual phases of execution, our
-browser is now very close to real browsers: real browsers paint
-display lists, break content up into different rastered surfaces, and
-finally draw the tree of surfaces to the screen. There's more we can
-do for performance---ideally we'd avoid all duplicate or unnecessary
-operations---but let's leave that for the next few chapters.
-
-::: {.further}
-Real browsers allocate new surfaces for various different situations,
-such as implementing accelerated overflow scrolling and animations of
-certain CSS properties such as [transform][transform-link] and opacity
-that can be done without raster. They also allow scrolling arbitrary
-HTML elements via [`overflow: scroll`][overflow-prop] in CSS. Basic
-scrolling for DOM elements is very similar to what we've just
-implemented. But implementing it in its full generality, and with
-excellent performance, is *extremely* challenging. Scrolling may well
-be the single most complicated feature in a browser rendering engine.
-The corner cases and subtleties involved are almost endless.
-:::
-
-[transform-link]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform
-[overflow-prop]: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow
 
 
 Summary
