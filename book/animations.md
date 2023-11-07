@@ -2182,15 +2182,15 @@ you've implemented width animations.[^note-layout-animations]
 width affects the layout tree, not just different display lists,
 which in turn means that draw commands, not just visual effects,
 change. Such animations are called *layout-inducing*, and
-they are therefore slower and typically not a good idea.[^resize-window]
+they are therefore slower and typically not a good idea.
 [Chapter 16](invalidation.md) will look at one way to speed them up somewhat.
-
-[^resize-window]: One exception is resizing the browser window with your mouse. That's
-layout-inducing, but it's very useful for the user to see the new layout
+<br>
+<br>
+One exception is resizing the browser window with your mouse.
+That's layout-inducing, but it's very useful for the user to see the new layout
 as the window size changes. Modern browsers are fast enough to do this, but it
-used to be that they'd only redraw the screen every couple of frames,
-leaving a visual *gutter* between content and the edge of the window.
-
+used to be that they'd only redraw the screen every couple of frames, leaving a
+visual *gutter* between content and the edge of the window.
 
 *CSS animations*: Implement the basics of the
 [CSS animations][css-animations] API, in particular enough of the `animation`
