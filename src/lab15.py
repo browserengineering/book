@@ -813,6 +813,7 @@ class JSContext:
     def __init__(self, tab, url_origin):
         self.tab = tab
         self.url_origin = url_origin
+        self.discarded = False
 
         self.interp = dukpy.JSInterpreter()
         self.interp.export_function("log", print)

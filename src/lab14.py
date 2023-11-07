@@ -780,6 +780,7 @@ RUNTIME_JS = open("runtime13.js").read()
 class JSContext:
     def __init__(self, tab):
         self.tab = tab
+        self.discarded = False
 
         self.interp = dukpy.JSInterpreter()
         self.interp.export_function("log", print)
@@ -804,97 +805,10 @@ class JSContext:
         self.node_to_handle = {}
         self.handle_to_node = {}
 
-    def run(self, script, code):
-        try:
-            self.interp.evaljs(code)
-        except dukpy.JSRuntimeError as e:
-            print("Script", script, "crashed", e)
-
-    def dispatch_event(self, type, elt):
-        handle = self.node_to_handle.get(elt, -1)
-        do_default = self.interp.evaljs(
-            EVENT_DISPATCH_JS, type=type, handle=handle)
-        return not do_default
-
-    def get_handle(self, elt):
-        if elt not in self.node_to_handle:
-            handle = len(self.node_to_handle)
-            self.node_to_handle[elt] = handle
-            self.handle_to_node[handle] = elt
-        else:
-            handle = self.node_to_handle[elt]
-        return handle
-
-    def querySelectorAll(self, selector_text):
-        selector = CSSParser(selector_text).selector()
-        nodes = [node for node
-                 in tree_to_list(self.tab.nodes, [])
-                 if selector.matches(node)]
-        return [self.get_handle(node) for node in nodes]
-
-    def getAttribute(self, handle, attr):
-        elt = self.handle_to_node[handle]
-        attr = elt.attributes.get(attr, None)
-        return attr if attr else ""
-
     def setAttribute(self, handle, attr, value):
         elt = self.handle_to_node[handle]
         elt.attributes[attr] = value
         self.tab.set_needs_render()
-        
-    def innerHTML_set(self, handle, s):
-        doc = HTMLParser(
-            "<html><body>" + s + "</body></html>").parse()
-        new_nodes = doc.children[0].children
-        elt = self.handle_to_node[handle]
-        elt.children = new_nodes
-        for child in elt.children:
-            child.parent = elt
-        self.tab.set_needs_render()
-
-    def style_set(self, handle, s):
-        elt = self.handle_to_node[handle]
-        elt.attributes["style"] = s;
-        self.tab.set_needs_render()
-
-    def dispatch_settimeout(self, handle):
-        self.interp.evaljs(SETTIMEOUT_CODE, handle=handle)
-
-    def setTimeout(self, handle, time):
-        def run_callback():
-            task = Task(self.dispatch_settimeout, handle)
-            self.tab.task_runner.schedule_task(task)
-        threading.Timer(time / 1000.0, run_callback).start()
-
-    def dispatch_xhr_onload(self, out, handle):
-        do_default = self.interp.evaljs(
-            XHR_ONLOAD_CODE, out=out, handle=handle)
-
-    def XMLHttpRequest_send(self, method, url, body, isasync, handle):
-        full_url = self.tab.url.resolve(url)
-        if not self.tab.allowed_request(full_url):
-            raise Exception("Cross-origin XHR blocked by CSP")
-        if full_url.origin() != self.tab.url.origin():
-            raise Exception(
-                "Cross-origin XHR request not allowed")
-
-        def run_load():
-            headers, response = full_url.request(self.tab.url, body)
-            task = Task(self.dispatch_xhr_onload, response, handle)
-            self.tab.task_runner.schedule_task(task)
-            if not isasync:
-                return response
-
-        if not isasync:
-            return run_load()
-        else:
-            threading.Thread(target=run_load).start()
-
-    def now(self):
-        return int(time.time() * 1000)
-
-    def requestAnimationFrame(self):
-        self.tab.browser.set_needs_animation_frame(self.tab)
 
 class CommitData:
     def __init__(self, url, scroll, height, display_list,
@@ -925,6 +839,7 @@ class Tab:
         self.document = None
         self.dark_mode = browser.dark_mode
         self.loaded = False
+        self.js = None
 
         self.accessibility_tree = None
 
@@ -941,13 +856,6 @@ class Tab:
         with open("browser14.css") as f:
             self.default_style_sheet = \
                 CSSParser(f.read(), internal=True).parse()
-
-    def allowed_request(self, url):
-        return self.allowed_origins == None or \
-            url.origin() in self.allowed_origins
-
-    def script_run_wrapper(self, script, script_text):
-        return Task(self.js.run, script, script_text)
 
     def load(self, url, payload=None):
         self.loaded = False
@@ -969,6 +877,7 @@ class Tab:
 
         self.nodes = HTMLParser(body).parse()
 
+        if self.js: self.js.discarded = True
         self.js = JSContext(self)
         scripts = [node.attributes["src"] for node
                    in tree_to_list(self.nodes, [])
