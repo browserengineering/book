@@ -1453,7 +1453,7 @@ will come from another thread, we'll need to acquire a lock. Another important
 step is to not clear the `animation_timer` object until *after* the next
 commit occurs. Otherwise multiple rendering tasks could be queued at the same
 time. Finally, rename `scroll` to `active_tab_scroll` and `url` to
-`active_tab_url` to make more clear whatt they mean.
+`active_tab_url` to make more clear what they mean.
 
 ``` {.python}
 class Browser:
