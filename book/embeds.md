@@ -1284,19 +1284,7 @@ class Frame:
         return max(0, min(scroll, maxscroll))
 ```
 
-For browser-thread scrolling we'll have a similar function that uses
-the active tab height:
-
-``` {.python}
-class Browser:
-    def clamp_scroll(self, scroll):
-        height = self.active_tab_height
-        maxscroll = height - (HEIGHT - self.chrome.bottom)
-        return max(0, min(scroll, maxscroll))
-```
-
-Make sure to use the new `clamp_scroll` methods in place of the old
-ones everywhere. For example, in `scroll_to`:
+Make sure to use `clamp_scroll` method everywhere. For example, in `scroll_to`:
 
 ``` {.python}
 class Frame:

@@ -1714,8 +1714,8 @@ class Browser:
         self.focus = None
         self.address_bar = ""
         self.lock = threading.Lock()
-        self.url = None
-        self.scroll = 0
+        self.active_tab_url = None
+        self.active_tab_scroll = 0
 
         self.measure = MeasureTime()
 
@@ -1762,9 +1762,9 @@ class Browser:
     def commit(self, tab, data):
         self.lock.acquire(blocking=True)
         if tab == self.active_tab:
-            self.url = data.url
+            self.active_tab_url = data.url
             if data.scroll != None:
-                self.scroll = data.scroll
+                self.active_tab_scroll = data.scroll
             self.root_frame_focused = data.root_frame_focused
             self.active_tab_height = data.height
             if data.display_list:
@@ -1781,19 +1781,14 @@ class Browser:
                 self.set_needs_draw()
         self.lock.release()
 
-    def clamp_scroll(self, scroll):
-        height = self.active_tab_height
-        maxscroll = height - (HEIGHT - self.chrome.bottom)
-        return max(0, min(scroll, maxscroll))
-
     def handle_down(self):
         self.lock.acquire(blocking=True)
         if self.root_frame_focused:
             if not self.active_tab_height:
                 self.lock.release()
                 return
-            self.scroll = \
-                self.clamp_scroll(self.scroll + SCROLL_STEP)
+            self.active_tab_scroll = \
+                self.clamp_scroll(self.active_tab_scroll + SCROLL_STEP)
             self.set_needs_draw()
             self.needs_animation_frame = True
             self.lock.release()

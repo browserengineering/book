@@ -37,13 +37,15 @@ from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, parse_blend_mode, linespace, paint_tree
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
 from lab12 import Task, REFRESH_RATE_SEC
-from lab13 import JSContext, diff_styles, clamp_scroll, add_parent_pointers
+from lab13 import JSContext, diff_styles, add_parent_pointers
 from lab13 import local_to_absolute, absolute_bounds_for_obj
 from lab13 import NumericAnimation
 from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
 from lab13 import CompositedLayer, paint_visual_effects
-from lab13 import DrawCommand, DrawText, DrawCompositedLayer, DrawOutline, DrawLine, DrawRRect
-from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform, Chrome
+from lab13 import DrawCommand, DrawText, DrawCompositedLayer, DrawOutline, \
+    DrawLine, DrawRRect
+from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform, Chrome, \
+    Tab, Browser
 
 @wbetools.patch(Element)
 class Element:
@@ -905,6 +907,7 @@ class CommitData:
         self.accessibility_tree = accessibility_tree
         self.focus = focus
 
+@wbetools.patch(Tab)
 class Tab:
     def __init__(self, browser, tab_height):
         self.history = []
@@ -1040,8 +1043,7 @@ class Tab:
         self.render()
 
         document_height = math.ceil(self.document.height + 2*VSTEP)
-        clamped_scroll = clamp_scroll(
-            self.scroll, document_height, self.tab_height)
+        clamped_scroll = self.clamp_scroll(self.scroll)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
         self.scroll = clamped_scroll
@@ -1142,8 +1144,7 @@ class Tab:
 
         document_height = math.ceil(self.document.height + 2*VSTEP)
         new_scroll = obj.y - SCROLL_STEP
-        self.scroll = clamp_scroll(
-            new_scroll, document_height, self.tab_height)
+        self.scroll = self.clamp_scroll(new_scroll)
         self.scroll_changed_in_tab = True
 
     def click(self, x, y):
@@ -1305,7 +1306,8 @@ class Chrome:
                 self.address_rect.bottom(),
                 "red", 1))
         else:
-            url = str(self.browser.url if self.browser.url else "")
+            url = str(self.browser.active_tab_url if \
+                self.browser.active_tab_url else "")
             cmds.append(DrawText(
                 self.address_rect.left() + self.padding,
                 self.address_rect.top(),
@@ -1317,6 +1319,7 @@ class Chrome:
         self.focus = "address bar"
         self.address_bar = ""
 
+@wbetools.patch(Browser)
 class Browser:
     def __init__(self):
         self.chrome = Chrome(self)
@@ -1368,8 +1371,8 @@ class Browser:
         self.focus = None
         self.address_bar = ""
         self.lock = threading.Lock()
-        self.url = None
-        self.scroll = 0
+        self.active_tab_url = None
+        self.active_tab_scroll = 0
 
         self.measure = MeasureTime()
 
@@ -1416,14 +1419,14 @@ class Browser:
         assert not wbetools.USE_BROWSER_THREAD
         self.active_tab.task_runner.run_tasks()
         if self.active_tab.loaded:
-            self.active_tab.run_animation_frame(self.scroll)
+            self.active_tab.run_animation_frame(self.active_tab_scroll)
 
     def commit(self, tab, data):
         self.lock.acquire(blocking=True)
         if tab == self.active_tab:
-            self.url = data.url
+            self.active_tab_url = data.url
             if data.scroll != None:
-                self.scroll = data.scroll
+                self.active_tab_scroll = data.scroll
             self.active_tab_height = data.height
             if data.display_list:
                 self.active_tab_display_list = data.display_list
@@ -1521,7 +1524,7 @@ class Browser:
 
         if self.pending_hover:
             (x, y) = self.pending_hover
-            y += self.scroll
+            y += self.active_tab_scroll
             a11y_node = self.accessibility_tree.hit_test(x, y)
             if a11y_node:
                 if not self.hovered_a11y_node or \
@@ -1615,7 +1618,7 @@ class Browser:
     def schedule_animation_frame(self):
         def callback():
             self.lock.acquire(blocking=True)
-            scroll = self.scroll
+            scroll = self.active_tab_scroll
             active_tab = self.active_tab
             self.needs_animation_frame = False
             self.lock.release()
@@ -1634,11 +1637,8 @@ class Browser:
         if not self.active_tab_height:
             self.lock.release()
             return
-        scroll = clamp_scroll(
-            self.scroll + SCROLL_STEP,
-            self.active_tab_height,
-            HEIGHT - self.chrome.bottom)
-        self.scroll = scroll
+        self.active_tab_scroll = self.clamp_scroll(
+            self.active_tab_scroll + SCROLL_STEP)
         self.set_needs_draw()
         self.needs_animation_frame = True
         self.lock.release()
@@ -1668,8 +1668,8 @@ class Browser:
         self.lock.release()
 
     def clear_data(self):
-        self.scroll = 0
-        self.url = None
+        self.active_tab_scroll = 0
+        self.active_tab_url = None
         self.display_list = []
         self.accessibility_tree = None
         self.composited_layers = []
@@ -1833,7 +1833,7 @@ class Browser:
             canvas.clear(skia.ColorWHITE)
 
         canvas.save()
-        canvas.translate(0, self.chrome.bottom - self.scroll)
+        canvas.translate(0, self.chrome.bottom - self.active_tab_scroll)
         for item in self.draw_list:
             item.execute(canvas)
         canvas.restore()
