@@ -843,8 +843,8 @@ class Browser:
     def draw(self):
         # ...
         canvas.save()
-        canvas.translate(
-            0, self.chrome.bottom - self.active_tab_scroll)
+        canvas.translate(0,
+            self.chrome.bottom - self.active_tab_scroll)
         for item in self.draw_list:
             item.execute(canvas)
         canvas.restore()
