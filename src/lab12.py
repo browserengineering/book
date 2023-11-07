@@ -85,7 +85,7 @@ class MeasureTime:
 
 SETTIMEOUT_CODE = "__runSetTimeout(dukpy.handle)"
 XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
-RUNTIME_JS = open("runtime13.js").read()
+RUNTIME_JS = open("runtime12.js").read()
 
 @wbetools.patch(JSContext)
 class JSContext:
@@ -618,10 +618,11 @@ class Browser:
         def callback():
             self.lock.acquire(blocking=True)
             scroll = self.active_tab_scroll
+            active_tab = self.active_tab
             self.needs_animation_frame = False
             self.lock.release()
             task = Task(self.active_tab.run_animation_frame, scroll)
-            self.active_tab.task_runner.schedule_task(task)
+            active_tab.task_runner.schedule_task(task)
         self.lock.acquire(blocking=True)
         if self.needs_animation_frame and not self.animation_timer:
             if wbetools.USE_BROWSER_THREAD:

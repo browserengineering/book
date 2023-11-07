@@ -22,14 +22,14 @@ from lab4 import print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS
 from lab6 import TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, cascade_priority
-from lab6 import tree_to_list
+from lab6 import tree_to_list, CSSParser
 from lab8 import Text, Element, INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, parse_color, parse_blend_mode, linespace
 from lab11 import paint_tree
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
-from lab12 import Tab, Browser, Task, REFRESH_RATE_SEC, Chrome
+from lab12 import Tab, Browser, Task, REFRESH_RATE_SEC, Chrome, JSContext
 
 @wbetools.patch(Text)
 class Text:
@@ -307,6 +307,7 @@ def parse_transform(transform_str):
         transform_str[left_paren + 1:right_paren].split(",")
     return (float(x_px[:-2]), float(y_px[:-2]))
 
+@wbetools.patch(CSSParser)
 class CSSParser:
     def __init__(self, s):
         self.s = s
@@ -775,9 +776,11 @@ SETTIMEOUT_CODE = "__runSetTimeout(dukpy.handle)"
 XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
 RUNTIME_JS = open("runtime13.js").read()
 
+@wbetools.patch(JSContext)
 class JSContext:
     def __init__(self, tab):
         self.tab = tab
+        self.discarded = False
 
         self.interp = dukpy.JSInterpreter()
         self.interp.export_function("log", print)
@@ -800,12 +803,6 @@ class JSContext:
         self.node_to_handle = {}
         self.handle_to_node = {}
 
-    def run(self, script, code):
-        try:
-            self.interp.evaljs(code)
-        except dukpy.JSRuntimeError as e:
-            print("Script", script, "crashed", e)
-
     def dispatch_event(self, type, elt):
         handle = self.node_to_handle.get(elt, -1)
         do_default = self.interp.evaljs(
@@ -821,70 +818,13 @@ class JSContext:
             handle = self.node_to_handle[elt]
         return handle
 
-    def querySelectorAll(self, selector_text):
-        selector = CSSParser(selector_text).selector()
-        nodes = [node for node
-                 in tree_to_list(self.tab.nodes, [])
-                 if selector.matches(node)]
-        return [self.get_handle(node) for node in nodes]
-
-    def getAttribute(self, handle, attr):
-        elt = self.handle_to_node[handle]
-        return elt.attributes.get(attr, None)
-
-    def innerHTML_set(self, handle, s):
-        doc = HTMLParser(
-            "<html><body>" + s + "</body></html>").parse()
-        new_nodes = doc.children[0].children
-        elt = self.handle_to_node[handle]
-        elt.children = new_nodes
-        for child in elt.children:
-            child.parent = elt
-        self.tab.set_needs_render()
-
     def style_set(self, handle, s):
         elt = self.handle_to_node[handle]
         elt.attributes["style"] = s;
         self.tab.set_needs_render()
 
-    def dispatch_settimeout(self, handle):
-        self.interp.evaljs(SETTIMEOUT_CODE, handle=handle)
-
-    def setTimeout(self, handle, time):
-        def run_callback():
-            task = Task(self.dispatch_settimeout, handle)
-            self.tab.task_runner.schedule_task(task)
-        threading.Timer(time / 1000.0, run_callback).start()
-
-    def dispatch_xhr_onload(self, out, handle):
-        do_default = self.interp.evaljs(
-            XHR_ONLOAD_CODE, out=out, handle=handle)
-
-    def XMLHttpRequest_send(self, method, url, body, isasync, handle):
-        full_url = self.tab.url.resolve(url)
-        if not self.tab.allowed_request(full_url):
-            raise Exception("Cross-origin XHR blocked by CSP")
-        if full_url.origin() != self.tab.url.origin():
-            raise Exception(
-                "Cross-origin XHR request not allowed")
-
-        def run_load():
-            headers, response = full_url.request(self.tab.url, body)
-            task = Task(self.dispatch_xhr_onload, response, handle)
-            self.tab.task_runner.schedule_task(task)
-            if not isasync:
-                return response
-
-        if not isasync:
-            return run_load()
-        else:
-            threading.Thread(target=run_load).start()
-
     def now(self):
         return int(time.time() * 1000)
-
-    def requestAnimationFrame(self):
-        self.tab.browser.set_needs_animation_frame(self.tab)
 
 def parse_transition(value):
     properties = {}
@@ -1092,6 +1032,7 @@ class Tab:
         self.needs_style = False
         self.needs_layout = False
         self.needs_paint = False
+        self.js = None
         self.browser = browser
         self.loaded = False
         if wbetools.USE_BROWSER_THREAD:
@@ -1104,66 +1045,6 @@ class Tab:
 
         with open("browser8.css") as f:
             self.default_style_sheet = CSSParser(f.read()).parse()
-
-    def allowed_request(self, url):
-        return self.allowed_origins == None or \
-            url.origin() in self.allowed_origins
-
-    def script_run_wrapper(self, script, script_text):
-        return Task(self.js.run, script, script_text)
-
-    def load(self, url, payload=None):
-        self.loaded = False
-        self.scroll = 0
-        self.scroll_changed_in_tab = True
-        self.task_runner.clear_pending_tasks()
-        headers, body = url.request(self.url, payload)
-        self.url = url
-        self.history.append(url)
-
-        self.allowed_origins = None
-        if "content-security-policy" in headers:
-           csp = headers["content-security-policy"].split()
-           if len(csp) > 0 and csp[0] == "default-src":
-               self.allowed_origins = csp[1:]
-
-        self.nodes = HTMLParser(body).parse()
-
-        self.js = JSContext(self)
-        scripts = [node.attributes["src"] for node
-                   in tree_to_list(self.nodes, [])
-                   if isinstance(node, Element)
-                   and node.tag == "script"
-                   and "src" in node.attributes]
-        for script in scripts:
-            script_url = url.resolve(script)
-            if not self.allowed_request(script_url):
-                print("Blocked script", script, "due to CSP")
-                continue
-
-            header, body = script_url.request(url)
-            task = Task(self.js.run, script_url, body)
-            self.task_runner.schedule_task(task)
-
-        self.rules = self.default_style_sheet.copy()
-        links = [node.attributes["href"]
-                 for node in tree_to_list(self.nodes, [])
-                 if isinstance(node, Element)
-                 and node.tag == "link"
-                 and node.attributes.get("rel") == "stylesheet"
-                 and "href" in node.attributes]
-        for link in links:
-            style_url = url.resolve(link)
-            if not self.allowed_request(style_url):
-                print("Blocked style", link, "due to CSP")
-                continue
-            try:
-                header, body = style_url.request(url)
-            except:
-                continue
-            self.rules.extend(CSSParser(body).parse())
-        self.set_needs_render()
-        self.loaded = True
 
     def set_needs_render(self):
         self.needs_style = True
@@ -1283,36 +1164,11 @@ class Tab:
                     elt = elt.parent
             elt = elt.parent
 
-    def submit_form(self, elt):
-        if self.js.dispatch_event("submit", elt): return
-        inputs = [node for node in tree_to_list(elt, [])
-                  if isinstance(node, Element)
-                  and node.tag == "input"
-                  and "name" in node.attributes]
-
-        body = ""
-        for input in inputs:
-            name = input.attributes["name"]
-            value = input.attributes.get("value", "")
-            name = urllib.parse.quote(name)
-            value = urllib.parse.quote(value)
-            body += "&" + name + "=" + value
-        body = body [1:]
-
-        url = self.url.resolve(elt.attributes["action"])
-        self.load(url, body)
-
     def keypress(self, char):
         if self.focus:
             if self.js.dispatch_event("keydown", self.focus): return
             self.focus.attributes["value"] += char
             self.set_needs_render()
-
-    def go_back(self):
-        if len(self.history) > 1:
-            self.history.pop()
-            back = self.history.pop()
-            self.load(back)
 
 class CommitData:
     def __init__(self, url, scroll, height,
@@ -1417,12 +1273,6 @@ class Browser:
         self.composited_layers = []
         self.draw_list = []
 
-    def render(self):
-        assert not wbetools.USE_BROWSER_THREAD
-        self.active_tab.task_runner.run_tasks()
-        if self.active_tab.loaded:
-            self.active_tab.run_animation_frame(self.active_tab_scroll)
-
     def commit(self, tab, data):
         self.lock.acquire(blocking=True)
         if tab == self.active_tab:
@@ -1439,12 +1289,6 @@ class Browser:
                 self.set_needs_composite()
             else:
                 self.set_needs_draw()
-        self.lock.release()
-
-    def set_needs_animation_frame(self, tab):
-        self.lock.acquire(blocking=True)
-        if tab == self.active_tab:
-            self.needs_animation_frame = True
         self.lock.release()
 
     def set_needs_raster(self):
@@ -1541,23 +1385,6 @@ class Browser:
         self.needs_draw = False
         self.lock.release()
 
-    def schedule_animation_frame(self):
-        def callback():
-            self.lock.acquire(blocking=True)
-            scroll = self.active_tab_scroll
-            active_tab = self.active_tab
-            self.needs_animation_frame = False
-            self.lock.release()
-            task = Task(active_tab.run_animation_frame, scroll)
-            active_tab.task_runner.schedule_task(task)
-        self.lock.acquire(blocking=True)
-        if self.needs_animation_frame and not self.animation_timer:
-            if wbetools.USE_BROWSER_THREAD:
-                self.animation_timer = \
-                    threading.Timer(REFRESH_RATE_SEC, callback)
-                self.animation_timer.start()
-        self.lock.release()
-
     def handle_down(self):
         self.lock.acquire(blocking=True)
         if not self.active_tab_height:
@@ -1606,26 +1433,11 @@ class Browser:
             self.active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
-    def schedule_load(self, url, body=None):
-        task = Task(self.active_tab.load, url, body)
-        self.active_tab.task_runner.schedule_task(task)
-
     def handle_enter(self):
         self.lock.acquire(blocking=True)
         if self.chrome.enter():
             self.set_needs_raster()
         self.lock.release()
-
-    def new_tab(self, url):
-        self.lock.acquire(blocking=True)
-        self.new_tab_internal(url)
-        self.lock.release()
-
-    def new_tab_internal(self, url):
-        new_tab = Tab(self, HEIGHT - self.chrome.bottom)
-        self.set_active_tab(new_tab)
-        self.tabs.append(new_tab)
-        self.schedule_load(url)
 
     def raster_tab(self):
         for composited_layer in self.composited_layers:
@@ -1643,8 +1455,8 @@ class Browser:
         canvas.clear(skia.ColorWHITE)
 
         canvas.save()
-        canvas.translate(
-            0, self.chrome.bottom - self.active_tab_scroll)
+        canvas.translate(0,
+            self.chrome.bottom - self.active_tab_scroll)
         for item in self.draw_list:
             item.execute(canvas)
         canvas.restore()
