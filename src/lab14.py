@@ -1287,12 +1287,6 @@ class Browser:
         self.active_alerts = []
         self.spoken_alerts = []
 
-    def render(self):
-        assert not wbetools.USE_BROWSER_THREAD
-        self.active_tab.task_runner.run_tasks()
-        if self.active_tab.loaded:
-            self.active_tab.run_animation_frame(self.active_tab_scroll)
-
     def commit(self, tab, data):
         self.lock.acquire(blocking=True)
         if tab == self.active_tab:
@@ -1315,71 +1309,17 @@ class Browser:
                 self.set_needs_draw()
         self.lock.release()
 
-    def set_needs_animation_frame(self, tab):
-        self.lock.acquire(blocking=True)
-        if tab == self.active_tab:
-            self.needs_animation_frame = True
-        self.lock.release()
-
-    def set_needs_raster(self):
-        self.needs_raster = True
-        self.needs_draw = True
-
-    def set_needs_composite(self):
-        self.needs_composite = True
-        self.needs_raster = True
-        self.needs_draw = True
-
     def set_needs_accessibility(self):
         if not self.accessibility_is_on:
             return
         self.needs_accessibility = True
         self.needs_draw = True
 
-    def set_needs_draw(self):
-        self.needs_draw = True
-
-    def composite(self):
-        self.composited_layers = []
-        add_parent_pointers(self.active_tab_display_list)
-        all_commands = []
-        for cmd in self.active_tab_display_list:
-            all_commands = \
-                tree_to_list(cmd, all_commands)
-        non_composited_commands = [cmd
-            for cmd in all_commands
-            if isinstance(cmd, DrawCommand) or not cmd.needs_compositing
-            if not cmd.parent or cmd.parent.needs_compositing
-        ]
-        for cmd in non_composited_commands:
-            for layer in reversed(self.composited_layers):
-                if layer.can_merge(cmd):
-                    layer.add(cmd)
-                    break
-                elif skia.Rect.Intersects(
-                    layer.absolute_bounds(),
-                    local_to_absolute(cmd, cmd.rect)):
-                    layer = CompositedLayer(self.skia_context, cmd)
-                    self.composited_layers.append(layer)
-                    break
-            else:
-                layer = CompositedLayer(self.skia_context, cmd)
-                self.composited_layers.append(layer)
-
         self.active_tab_height = 0
         for layer in self.composited_layers:
             self.active_tab_height = \
                 max(self.active_tab_height,
                     layer.absolute_bounds().bottom())
-
-    def clone_latest(self, visual_effect, current_effect):
-        node = visual_effect.node
-        if not node in self.composited_updates:
-            return visual_effect.clone(current_effect)
-        save_layer = self.composited_updates[node]
-        if type(visual_effect) is SaveLayer:
-            return save_layer.clone(current_effect)
-        return visual_effect.clone(current_effect)
 
     def paint_draw_list(self):
         self.draw_list = []
@@ -1487,34 +1427,6 @@ class Browser:
 
         self.lock.release()
 
-    def schedule_animation_frame(self):
-        def callback():
-            self.lock.acquire(blocking=True)
-            scroll = self.active_tab_scroll
-            active_tab = self.active_tab
-            self.needs_animation_frame = False
-            self.lock.release()
-            task = Task(active_tab.run_animation_frame, scroll)
-            active_tab.task_runner.schedule_task(task)
-        self.lock.acquire(blocking=True)
-        if self.needs_animation_frame and not self.animation_timer:
-            if wbetools.USE_BROWSER_THREAD:
-                self.animation_timer = \
-                    threading.Timer(REFRESH_RATE_SEC, callback)
-                self.animation_timer.start()
-        self.lock.release()
-
-    def handle_down(self):
-        self.lock.acquire(blocking=True)
-        if not self.active_tab_height:
-            self.lock.release()
-            return
-        self.active_tab_scroll = self.clamp_scroll(
-            self.active_tab_scroll + SCROLL_STEP)
-        self.set_needs_draw()
-        self.needs_animation_frame = True
-        self.lock.release()
-
     def handle_tab(self):
         self.focus = "content"
         self.chrome.blur()
@@ -1613,22 +1525,6 @@ class Browser:
         self.active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
-    def handle_click(self, e):
-        self.lock.acquire(blocking=True)
-        if e.y < self.chrome.bottom:
-            self.focus = None
-            self.chrome.click(e.x, e.y)
-            self.set_needs_raster()
-        else:
-            if self.focus != "content":
-                self.set_needs_raster()
-            self.focus = "content"
-            self.chrome.blur()
-            tab_y = e.y - self.chrome.bottom
-            task = Task(self.active_tab.click, e.x, tab_y)
-            self.active_tab.task_runner.schedule_task(task)
-        self.lock.release()
-
     def handle_hover(self, event):
         if not self.accessibility_is_on or \
             not self.accessibility_tree:
@@ -1645,11 +1541,6 @@ class Browser:
             task = Task(self.active_tab.keypress, char)
             self.active_tab.task_runner.schedule_task(task)
         self.lock.release()
-
-    def schedule_load(self, url, body=None):
-        self.active_tab.task_runner.clear_pending_tasks()
-        task = Task(self.active_tab.load, url, body)
-        self.active_tab.task_runner.schedule_task(task)
 
     def handle_enter(self):
         self.lock.acquire(blocking=True)
@@ -1671,21 +1562,6 @@ class Browser:
         task = Task(self.active_tab.reset_zoom)
         self.active_tab.task_runner.schedule_task(task)
         self.lock.release()
-
-    def new_tab(self, url):
-        self.lock.acquire(blocking=True)
-        self.new_tab_internal(url)
-        self.lock.release()
-
-    def new_tab_internal(self, url):
-        new_tab = Tab(self, HEIGHT -self.chrome.bottom)
-        self.tabs.append(new_tab)
-        self.set_active_tab(new_tab)
-        self.schedule_load(url)
-
-    def raster_tab(self):
-        for composited_layer in self.composited_layers:
-            composited_layer.raster()
 
     def raster_chrome(self):
         canvas = self.chrome_surface.getCanvas()
@@ -1738,13 +1614,6 @@ class Browser:
             # SDL_BlitSurface is what actually does the copy.
             sdl2.SDL_BlitSurface(sdl_surface, rect, window_surface, rect)
             sdl2.SDL_UpdateWindowSurface(self.sdl_window)
-
-    def handle_quit(self):
-        self.measure.finish()
-        self.active_tab.task_runner.set_needs_quit()
-        if wbetools.USE_GPU:
-            sdl2.SDL_GL_DeleteContext(self.gl_context)
-        sdl2.SDL_DestroyWindow(self.sdl_window)
 
 def main_func(url):
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
