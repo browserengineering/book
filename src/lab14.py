@@ -914,18 +914,6 @@ class Tab:
         self.set_needs_render()
         self.loaded = True
 
-    def set_needs_render(self):
-        self.needs_style = True
-        self.browser.set_needs_animation_frame(self)
-
-    def set_needs_layout(self):
-        self.needs_layout = True
-        self.browser.set_needs_animation_frame(self)
-
-    def set_needs_paint(self):
-        self.needs_paint = True
-        self.browser.set_needs_animation_frame(self)
-
     def request_animation_frame_callback(self):
         self.needs_raf_callbacks = True
         self.browser.set_needs_animation_frame(self)
@@ -1076,25 +1064,6 @@ class Tab:
                 return
             elt = elt.parent
 
-    def submit_form(self, elt):
-        if self.js.dispatch_event("submit", elt): return
-        inputs = [node for node in tree_to_list(elt, [])
-                  if isinstance(node, Element)
-                  and node.tag == "input"
-                  and "name" in node.attributes]
-
-        body = ""
-        for input in inputs:
-            name = input.attributes["name"]
-            value = input.attributes.get("value", "")
-            name = urllib.parse.quote(name)
-            value = urllib.parse.quote(value)
-            body += "&" + name + "=" + value
-        body = body [1:]
-
-        url = self.url.resolve(elt.attributes["action"])
-        self.load(url, body)
-
     def keypress(self, char):
         if self.focus and self.focus.tag == "input":
             if not "value" in self.focus.attributes:
@@ -1137,12 +1106,6 @@ class Tab:
     def reset_zoom(self):
         self.zoom = 1
         self.set_needs_render()
-
-    def go_back(self):
-        if len(self.history) > 1:
-            self.history.pop()
-            back = self.history.pop()
-            self.load(back)
 
     def toggle_dark_mode(self):
         self.dark_mode = not self.dark_mode
