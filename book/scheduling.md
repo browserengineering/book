@@ -1452,23 +1452,24 @@ it was sent and call `set_needs_raster_and_draw` as needed. Because this call
 will come from another thread, we'll need to acquire a lock. Another important
 step is to not clear the `animation_timer` object until *after* the next
 commit occurs. Otherwise multiple rendering tasks could be queued at the same
-time.
+time. Finally, rename `scroll` to `active_tab_scroll` and `url` to
+`active_tab_url` to make more clear what they mean.
 
 ``` {.python}
 class Browser:
     def __init__(self):
         self.lock = threading.Lock()
 
-        self.url = None
-        self.scroll = 0
+        self.active_tab_url = None
+        self.active_tab_scroll = 0
         self.active_tab_height = 0
         self.active_tab_display_list = None
 
     def commit(self, tab, data):
         self.lock.acquire(blocking=True)
         if tab == self.active_tab:
-            self.url = data.url
-            self.scroll = data.scroll
+            self.active_tab_url = data.url
+            self.active_tab_scroll = data.scroll
             self.active_tab_height = data.height
             if data.display_list:
                 self.active_tab_display_list = data.display_list
@@ -1697,25 +1698,23 @@ Let's implement that. To start, we'll need to store a `scroll`
 variable on the `Browser`, and update it when the user scrolls:
 
 ``` {.python}
-def clamp_scroll(scroll, document_height, tab_height):
-    return max(0, min(
-        scroll, document_height - tab_height))
-
 class Browser:
     def __init__(self):
         # ...
-        self.scroll = 0
+        self.active_tab_scroll = 0
+
+    def clamp_scroll(self, scroll):
+        height = self.active_tab_height
+        maxscroll = height - (HEIGHT - self.chrome.bottom)
+        return max(0, min(scroll, maxscroll))
 
     def handle_down(self):
         self.lock.acquire(blocking=True)
         if not self.active_tab_height:
             self.lock.release()
             return
-        scroll = clamp_scroll(
-            self.scroll + SCROLL_STEP,
-            self.active_tab_height,
-            HEIGHT - self.chrome.bottom)
-        self.scroll = scroll
+        self.active_tab_scroll = self.clamp_scroll(
+            self.active_tab_scroll + SCROLL_STEP)
         self.set_needs_raster_and_draw()
         self.needs_animation_frame = True
         self.lock.release()
@@ -1739,8 +1738,8 @@ Move tab switching (in `load` and `handle_click`) to a new method
 class Browser:
     def set_active_tab(self, tab):
         self.active_tab = tab
-        self.scroll = 0
-        self.url = None
+        self.active_tab_scroll = 0
+        self.active_tab_url = None
         self.needs_animation_frame = True
 ```
 
@@ -1758,7 +1757,7 @@ class Browser:
         # ...
         def callback():
             self.lock.acquire(blocking=True)
-            scroll = self.scroll
+            scroll = self.active_tab_scroll
             self.needs_animation_frame = False
             task = Task(self.active_tab.run_animation_frame, scroll)
             self.active_tab.task_runner.schedule_task(task)
@@ -1803,11 +1802,15 @@ class Tab:
         self.scroll = 0
         self.scroll_changed_in_tab = True
 
+    def clamp_scroll(self, scroll):
+        height = math.ceil(self.document.height + 2*VSTEP)
+        maxscroll = height - self.tab_height
+        return max(0, min(scroll, maxscroll))
+
     def run_animation_frame(self, scroll):
         # ...
         document_height = math.ceil(self.document.height + 2*VSTEP)
-        clamped_scroll = clamp_scroll(
-            self.scroll, document_height, self.tab_height)
+        clamped_scroll = self.clamp_scroll(self.scroll)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
         self.scroll = clamped_scroll
@@ -1838,7 +1841,7 @@ class Browser:
         if tab == self.active_tab:
             # ...
             if data.scroll != None:
-                self.scroll = data.scroll
+                self.active_tab_scroll = data.scroll
 ```
 
 That's it! If you try the counting demo now, you'll be able to scroll

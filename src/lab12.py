@@ -247,6 +247,11 @@ class Tab:
         self.needs_render = True
         self.browser.set_needs_animation_frame(self)
 
+    def clamp_scroll(self, scroll):
+        height = math.ceil(self.document.height + 2*VSTEP)
+        maxscroll = height - self.tab_height
+        return max(0, min(scroll, maxscroll))
+
     def run_animation_frame(self, scroll):
         if not self.scroll_changed_in_tab:
             self.scroll = scroll
@@ -255,8 +260,7 @@ class Tab:
         self.render()
 
         document_height = math.ceil(self.document.height + 2*VSTEP)
-        clamped_scroll = clamp_scroll(
-            self.scroll, document_height, self.tab_height)
+        clamped_scroll = self.clamp_scroll(self.scroll)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
         if clamped_scroll != self.scroll:
@@ -423,10 +427,6 @@ class TaskRunner:
 
 REFRESH_RATE_SEC = .016
 
-def clamp_scroll(scroll, document_height, tab_height):
-    return max(0, min(
-        scroll, document_height - tab_height))
-
 @wbetools.patch(Chrome)
 class Chrome:
     def click(self, x, y):
@@ -548,8 +548,8 @@ class Browser:
         self.focus = None
         self.address_bar = ""
         self.lock = threading.Lock()
-        self.url = None
-        self.scroll = 0
+        self.active_tab_url = None
+        self.active_tab_scroll = 0
 
         self.measure = MeasureTime()
         threading.current_thread().name = "Browser thread"
@@ -577,14 +577,14 @@ class Browser:
         assert not wbetools.USE_BROWSER_THREAD
         self.active_tab.task_runner.run_tasks()
         if self.active_tab.loaded:
-            self.active_tab.run_animation_frame(self.scroll)
+            self.active_tab.run_animation_frame(self.active_tab_scroll)
 
     def commit(self, tab, data):
         self.lock.acquire(blocking=True)
         if tab == self.active_tab:
-            self.url = data.url
+            self.active_tab_url = data.url
             if data.scroll != None:
-                self.scroll = data.scroll
+                self.active_tab_scroll = data.scroll
             self.active_tab_height = data.height
             if data.display_list:
                 self.active_tab_display_list = data.display_list
@@ -617,7 +617,7 @@ class Browser:
     def schedule_animation_frame(self):
         def callback():
             self.lock.acquire(blocking=True)
-            scroll = self.scroll
+            scroll = self.active_tab_scroll
             self.needs_animation_frame = False
             self.lock.release()
             task = Task(self.active_tab.run_animation_frame, scroll)
@@ -630,24 +630,26 @@ class Browser:
                 self.animation_timer.start()
         self.lock.release()
 
+    def clamp_scroll(self, scroll):
+        height = self.active_tab_height
+        maxscroll = height - (HEIGHT - self.chrome.bottom)
+        return max(0, min(scroll, maxscroll))
+
     def handle_down(self):
         self.lock.acquire(blocking=True)
         if not self.active_tab_height:
             self.lock.release()
             return
-        scroll = clamp_scroll(
-            self.scroll + SCROLL_STEP,
-            self.active_tab_height,
-            HEIGHT - self.chrome.bottom)
-        self.scroll = scroll
+        self.active_tab_scroll = self.clamp_scroll(
+            self.active_tab_scroll + SCROLL_STEP)
         self.set_needs_raster_and_draw()
         self.needs_animation_frame = True
         self.lock.release()
 
     def set_active_tab(self, tab):
         self.active_tab = tab
-        self.scroll = 0
-        self.url = None
+        self.active_tab_scroll = 0
+        self.active_tab_url = None
         self.needs_animation_frame = True
 
     def handle_click(self, e):
@@ -719,6 +721,67 @@ class Browser:
 
 @wbetools.patch(Chrome)
 class Chrome:
+    def paint(self):
+        cmds = []
+        cmds.append(DrawLine(
+            0, self.bottom, WIDTH,
+            self.bottom, "black", 1))
+
+        cmds.append(DrawOutline(self.newtab_rect, "black", 1))
+        cmds.append(DrawText(
+            self.newtab_rect.left() + self.padding,
+            self.newtab_rect.top(),
+            "+", self.font, "black"))
+
+        for i, tab in enumerate(self.browser.tabs):
+            bounds = self.tab_rect(i)
+            cmds.append(DrawLine(
+                bounds.left(), 0, bounds.left(), bounds.bottom(),
+                "black", 1))
+            cmds.append(DrawLine(
+                bounds.right(), 0, bounds.right(), bounds.bottom(),
+                "black", 1))
+            cmds.append(DrawText(
+                bounds.left() + self.padding, bounds.top() + self.padding,
+                "Tab {}".format(i), self.font, "black"))
+
+            if tab == self.browser.active_tab:
+                cmds.append(DrawLine(
+                    0, bounds.bottom(), bounds.left(), bounds.bottom(),
+                    "black", 1))
+                cmds.append(DrawLine(
+                    bounds.right(), bounds.bottom(), WIDTH, bounds.bottom(),
+                    "black", 1))
+
+        cmds.append(DrawOutline(self.back_rect, "black", 1))
+        cmds.append(DrawText(
+            self.back_rect.left() + self.padding,
+            self.back_rect.top(),
+            "<", self.font, "black"))
+
+        cmds.append(DrawOutline(self.address_rect, "black", 1))
+        if self.focus == "address bar":
+            cmds.append(DrawText(
+                self.address_rect.left() + self.padding,
+                self.address_rect.top(),
+                self.address_bar, self.font, "black"))
+            w = self.font.measureText(self.address_bar)
+            cmds.append(DrawLine(
+                self.address_rect.left() + self.padding + w,
+                self.address_rect.top(),
+                self.address_rect.left() + self.padding + w,
+                self.address_rect.bottom(),
+                "red", 1))
+        else:
+            url = str(self.browser.active_tab_url if \
+                self.browser.active_tab_url else "")
+            cmds.append(DrawText(
+                self.address_rect.left() + self.padding,
+                self.address_rect.top(),
+                url, self.font, "black"))
+
+        return cmds
+
     def click(self, x, y):
         if self.newtab_rect.contains(x, y):
             self.browser.new_tab_internal(URL("https://browser.engineering/"))

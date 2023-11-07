@@ -29,7 +29,7 @@ from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, parse_color, parse_blend_mode, linespace
 from lab11 import paint_tree
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
-from lab12 import Task, REFRESH_RATE_SEC, clamp_scroll, Chrome
+from lab12 import Tab, Browser, Task, REFRESH_RATE_SEC, Chrome
 
 @wbetools.patch(Text)
 class Text:
@@ -84,6 +84,7 @@ def map_translation(rect, translation, reversed=False):
 class Transform(VisualEffect):
     def __init__(self, translation, rect, node, children):
         super().__init__(rect, children, node)
+        self.self_rect = rect
         self.translation = translation
 
     def execute(self, canvas):
@@ -103,7 +104,7 @@ class Transform(VisualEffect):
         return map_translation(rect, self.translation, True)
 
     def clone(self, children):
-        return Transform(self.translation, self.rect,
+        return Transform(self.translation, self.self_rect,
             self.node, children)
 
     def __repr__(self):
@@ -240,7 +241,7 @@ class ClipRRect(VisualEffect):
         return rect
 
     def clone(self, children):
-        return ClipRRect(self.rect, self.radius, children, \
+        return ClipRRect(self.rrect.rect(), self.radius, children, \
             self.should_clip)
 
     def __repr__(self):
@@ -1078,6 +1079,7 @@ def raster(display_list, canvas):
     for cmd in display_list:
         cmd.execute(canvas)
 
+@wbetools.patch(Tab)
 class Tab:
     def __init__(self, browser, tab_height):
         self.history = []
@@ -1201,8 +1203,7 @@ class Tab:
         self.render()
 
         document_height = math.ceil(self.document.height + 2*VSTEP)
-        clamped_scroll = clamp_scroll(
-            self.scroll, document_height, self.tab_height)
+        clamped_scroll = self.clamp_scroll(self.scroll)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
         if clamped_scroll != self.scroll:
@@ -1332,6 +1333,7 @@ def add_parent_pointers(nodes, parent=None):
         node.parent = parent
         add_parent_pointers(node.children, node)
 
+@wbetools.patch(Browser)
 class Browser:
     def __init__(self):
         self.chrome = Chrome(self)
@@ -1385,8 +1387,8 @@ class Browser:
         self.focus = None
         self.address_bar = ""
         self.lock = threading.Lock()
-        self.url = None
-        self.scroll = 0
+        self.active_tab_url = None
+        self.active_tab_scroll = 0
 
         self.measure = MeasureTime()
 
@@ -1419,14 +1421,14 @@ class Browser:
         assert not wbetools.USE_BROWSER_THREAD
         self.active_tab.task_runner.run_tasks()
         if self.active_tab.loaded:
-            self.active_tab.run_animation_frame(self.scroll)
+            self.active_tab.run_animation_frame(self.active_tab_scroll)
 
     def commit(self, tab, data):
         self.lock.acquire(blocking=True)
         if tab == self.active_tab:
-            self.url = data.url
+            self.active_tab_url = data.url
             if data.scroll != None:
-                self.scroll = data.scroll
+                self.active_tab_scroll = data.scroll
             self.active_tab_height = data.height
             if data.display_list:
                 self.active_tab_display_list = data.display_list
@@ -1542,7 +1544,7 @@ class Browser:
     def schedule_animation_frame(self):
         def callback():
             self.lock.acquire(blocking=True)
-            scroll = self.scroll
+            scroll = self.active_tab_scroll
             active_tab = self.active_tab
             self.needs_animation_frame = False
             self.lock.release()
@@ -1561,18 +1563,15 @@ class Browser:
         if not self.active_tab_height:
             self.lock.release()
             return
-        scroll = clamp_scroll(
-            self.scroll + SCROLL_STEP,
-            self.active_tab_height,
-            HEIGHT - self.chrome.bottom)
-        self.scroll = scroll
+        self.active_tab_scroll = self.clamp_scroll(
+            self.active_tab_scroll + SCROLL_STEP)
         self.set_needs_draw()
         self.needs_animation_frame = True
         self.lock.release()
 
     def clear_data(self):
-        self.scroll = 0
-        self.url = None
+        self.active_tab_scroll = 0
+        self.active_tab_url = None
         self.display_list = []
         self.composited_layers = []
 
@@ -1644,7 +1643,8 @@ class Browser:
         canvas.clear(skia.ColorWHITE)
 
         canvas.save()
-        canvas.translate(0, self.chrome.bottom - self.scroll)
+        canvas.translate(
+            0, self.chrome.bottom - self.active_tab_scroll)
         for item in self.draw_list:
             item.execute(canvas)
         canvas.restore()
