@@ -2166,27 +2166,18 @@ browser changes line breaks.
 [This example](examples/example13-width-transition.html) should work once
 you've implemented width animations.[^note-layout-animations]
 
-[^note-layout-animations]: Some animations can't be composited because they
-affect more than just the display list. For example, imagine we animate the
-`width` of the `div` above, instead of animating its opacity.
-[This page][width-transition] shows how it looks; click the buttons to animate.
-Here, different frames have different *layout trees*, not just
-different display lists. That totally changes the coordinates for the
-`DrawText` calls, and we wouldn't necessarily be able to reuse any
-composited layers. Such animations are called *layout-inducing*, and
-speeding them up requires [different
-techniques](invalidation.md).
-Because layout-inducing animations can't easily make use of
-compositing, they're usually not a good idea on the web. Not only are they
-slower, but they also cause page elements to jump around suddenly and
-don't create that illusion of continuous movement. An
-exception is resizing the browser window with your mouse. That's
+[^note-layout-animations]: Width animations can't be composited because
+width affects the layout tree, not just different display lists,
+which in turn means that draw commands, not just visual effects,
+change. Such animations are called *layout-inducing*, and
+they are therefore slower and typically not a good idea.[^resize-window]
+[Chapter 16](invalidation.md) will look at one way to speed them up somewhat.
+
+[^resize-window]: One exception is resizing the browser window with your mouse. That's
 layout-inducing, but it's very useful for the user to see the new layout
 as the window size changes. Modern browsers are fast enough to do this, but it
 used to be that they'd only redraw the screen every couple of frames,
 leaving a visual *gutter* between content and the edge of the window.
-
-[width-transition]: examples/example13-width-transition.html
 
 
 *CSS animations*: Implement the basics of the
