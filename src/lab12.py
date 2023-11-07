@@ -85,7 +85,7 @@ class MeasureTime:
 
 SETTIMEOUT_CODE = "__runSetTimeout(dukpy.handle)"
 XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
-RUNTIME_JS = open("runtime13.js").read()
+RUNTIME_JS = open("runtime12.js").read()
 
 @wbetools.patch(JSContext)
 class JSContext:
