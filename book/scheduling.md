@@ -1650,8 +1650,6 @@ leaps they did in recent years. Good debugging tools are essential to
 software engineering!
 :::
 
-
-
 Threaded scrolling
 ==================
 
