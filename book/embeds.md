@@ -1868,7 +1868,7 @@ the exercises.]
 
 [postmessage]: https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage
 
-``` {.javascript.example}
+``` {.javascript .example}
 window.parent.postMessage("...", '*')
 ```
 
@@ -1876,7 +1876,7 @@ This will send the first argument[^structured-cloning] to the parent
 frame, which can receive the message by handling the `message` event
 on its `Window` object:
 
-``` {.javascript.example}
+``` {.javascript .example}
 window.addEventListener("message", function(e) {
     console.log(e.data);
 });

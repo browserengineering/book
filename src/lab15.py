@@ -108,16 +108,19 @@ class URL:
         s.close()
         return response_headers, body
 
+def parse_image_rendering(quality):
+   if quality == "high-quality":
+       return skia.FilterQuality.kHigh_FilterQuality
+   elif quality == "crisp-edges":
+       return skia.FilterQuality.kLow_FilterQuality
+   else:
+       return skia.FilterQuality.kMedium_FilterQuality
+
 class DrawImage(DrawCommand):
     def __init__(self, image, rect, quality):
         super().__init__(rect)
         self.image = image
-        if quality == "high-quality":
-            self.quality = skia.FilterQuality.kHigh_FilterQuality
-        elif quality == "crisp-edges":
-            self.quality = skia.FilterQuality.kLow_FilterQuality
-        else:
-            self.quality = skia.FilterQuality.kMedium_FilterQuality
+        self.quality = parse_image_rendering(quality)
 
     def execute(self, canvas):
         paint = skia.Paint(FilterQuality=self.quality)
@@ -259,7 +262,6 @@ class BlockLayout:
                     self.recurse(child)
 
     def new_line(self):
-        self.previous_word = None
         self.cursor_x = self.x
         last_line = self.children[-1] if self.children else None
         new_line = LineLayout(self.node, self, last_line)
@@ -269,12 +271,12 @@ class BlockLayout:
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
+        previous_word = line.children[-1] if line.children else None
         if word:
-            child = child_class(node, line, self.previous_word, word)
+            child = child_class(node, line, previous_word, word)
         else:
-            child = child_class(node, line, self.previous_word, frame)
+            child = child_class(node, line, previous_word, frame)
         line.children.append(child)
-        self.previous_word = child
         self.cursor_x += w + font(node.style, self.zoom).measureText(" ")
 
     def word(self, node, word):
