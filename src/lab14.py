@@ -37,13 +37,15 @@ from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, parse_blend_mode, linespace, paint_tree
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
 from lab12 import Task, REFRESH_RATE_SEC
-from lab13 import JSContext, diff_styles, clamp_scroll, add_parent_pointers
+from lab13 import JSContext, diff_styles, add_parent_pointers
 from lab13 import local_to_absolute, absolute_bounds_for_obj
 from lab13 import NumericAnimation
 from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
 from lab13 import CompositedLayer, paint_visual_effects
-from lab13 import DrawCommand, DrawText, DrawCompositedLayer, DrawOutline, DrawLine, DrawRRect
-from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform, Chrome
+from lab13 import DrawCommand, DrawText, DrawCompositedLayer, DrawOutline, \
+    DrawLine, DrawRRect
+from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform, Chrome, \
+    Tab, Browser
 
 @wbetools.patch(Element)
 class Element:
@@ -778,6 +780,7 @@ RUNTIME_JS = open("runtime13.js").read()
 class JSContext:
     def __init__(self, tab):
         self.tab = tab
+        self.discarded = False
 
         self.interp = dukpy.JSInterpreter()
         self.interp.export_function("log", print)
@@ -802,97 +805,10 @@ class JSContext:
         self.node_to_handle = {}
         self.handle_to_node = {}
 
-    def run(self, script, code):
-        try:
-            self.interp.evaljs(code)
-        except dukpy.JSRuntimeError as e:
-            print("Script", script, "crashed", e)
-
-    def dispatch_event(self, type, elt):
-        handle = self.node_to_handle.get(elt, -1)
-        do_default = self.interp.evaljs(
-            EVENT_DISPATCH_JS, type=type, handle=handle)
-        return not do_default
-
-    def get_handle(self, elt):
-        if elt not in self.node_to_handle:
-            handle = len(self.node_to_handle)
-            self.node_to_handle[elt] = handle
-            self.handle_to_node[handle] = elt
-        else:
-            handle = self.node_to_handle[elt]
-        return handle
-
-    def querySelectorAll(self, selector_text):
-        selector = CSSParser(selector_text).selector()
-        nodes = [node for node
-                 in tree_to_list(self.tab.nodes, [])
-                 if selector.matches(node)]
-        return [self.get_handle(node) for node in nodes]
-
-    def getAttribute(self, handle, attr):
-        elt = self.handle_to_node[handle]
-        attr = elt.attributes.get(attr, None)
-        return attr if attr else ""
-
     def setAttribute(self, handle, attr, value):
         elt = self.handle_to_node[handle]
         elt.attributes[attr] = value
         self.tab.set_needs_render()
-        
-    def innerHTML_set(self, handle, s):
-        doc = HTMLParser(
-            "<html><body>" + s + "</body></html>").parse()
-        new_nodes = doc.children[0].children
-        elt = self.handle_to_node[handle]
-        elt.children = new_nodes
-        for child in elt.children:
-            child.parent = elt
-        self.tab.set_needs_render()
-
-    def style_set(self, handle, s):
-        elt = self.handle_to_node[handle]
-        elt.attributes["style"] = s;
-        self.tab.set_needs_render()
-
-    def dispatch_settimeout(self, handle):
-        self.interp.evaljs(SETTIMEOUT_CODE, handle=handle)
-
-    def setTimeout(self, handle, time):
-        def run_callback():
-            task = Task(self.dispatch_settimeout, handle)
-            self.tab.task_runner.schedule_task(task)
-        threading.Timer(time / 1000.0, run_callback).start()
-
-    def dispatch_xhr_onload(self, out, handle):
-        do_default = self.interp.evaljs(
-            XHR_ONLOAD_CODE, out=out, handle=handle)
-
-    def XMLHttpRequest_send(self, method, url, body, isasync, handle):
-        full_url = self.tab.url.resolve(url)
-        if not self.tab.allowed_request(full_url):
-            raise Exception("Cross-origin XHR blocked by CSP")
-        if full_url.origin() != self.tab.url.origin():
-            raise Exception(
-                "Cross-origin XHR request not allowed")
-
-        def run_load():
-            headers, response = full_url.request(self.tab.url, body)
-            task = Task(self.dispatch_xhr_onload, response, handle)
-            self.tab.task_runner.schedule_task(task)
-            if not isasync:
-                return response
-
-        if not isasync:
-            return run_load()
-        else:
-            threading.Thread(target=run_load).start()
-
-    def now(self):
-        return int(time.time() * 1000)
-
-    def requestAnimationFrame(self):
-        self.tab.browser.set_needs_animation_frame(self.tab)
 
 class CommitData:
     def __init__(self, url, scroll, height, display_list,
@@ -905,6 +821,7 @@ class CommitData:
         self.accessibility_tree = accessibility_tree
         self.focus = focus
 
+@wbetools.patch(Tab)
 class Tab:
     def __init__(self, browser, tab_height):
         self.history = []
@@ -922,6 +839,7 @@ class Tab:
         self.document = None
         self.dark_mode = browser.dark_mode
         self.loaded = False
+        self.js = None
 
         self.accessibility_tree = None
 
@@ -938,13 +856,6 @@ class Tab:
         with open("browser14.css") as f:
             self.default_style_sheet = \
                 CSSParser(f.read(), internal=True).parse()
-
-    def allowed_request(self, url):
-        return self.allowed_origins == None or \
-            url.origin() in self.allowed_origins
-
-    def script_run_wrapper(self, script, script_text):
-        return Task(self.js.run, script, script_text)
 
     def load(self, url, payload=None):
         self.loaded = False
@@ -966,6 +877,7 @@ class Tab:
 
         self.nodes = HTMLParser(body).parse()
 
+        if self.js: self.js.discarded = True
         self.js = JSContext(self)
         scripts = [node.attributes["src"] for node
                    in tree_to_list(self.nodes, [])
@@ -1002,18 +914,6 @@ class Tab:
         self.set_needs_render()
         self.loaded = True
 
-    def set_needs_render(self):
-        self.needs_style = True
-        self.browser.set_needs_animation_frame(self)
-
-    def set_needs_layout(self):
-        self.needs_layout = True
-        self.browser.set_needs_animation_frame(self)
-
-    def set_needs_paint(self):
-        self.needs_paint = True
-        self.browser.set_needs_animation_frame(self)
-
     def request_animation_frame_callback(self):
         self.needs_raf_callbacks = True
         self.browser.set_needs_animation_frame(self)
@@ -1040,8 +940,7 @@ class Tab:
         self.render()
 
         document_height = math.ceil(self.document.height + 2*VSTEP)
-        clamped_scroll = clamp_scroll(
-            self.scroll, document_height, self.tab_height)
+        clamped_scroll = self.clamp_scroll(self.scroll)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
         self.scroll = clamped_scroll
@@ -1142,8 +1041,7 @@ class Tab:
 
         document_height = math.ceil(self.document.height + 2*VSTEP)
         new_scroll = obj.y - SCROLL_STEP
-        self.scroll = clamp_scroll(
-            new_scroll, document_height, self.tab_height)
+        self.scroll = self.clamp_scroll(new_scroll)
         self.scroll_changed_in_tab = True
 
     def click(self, x, y):
@@ -1165,25 +1063,6 @@ class Tab:
                 self.activate_element(elt)
                 return
             elt = elt.parent
-
-    def submit_form(self, elt):
-        if self.js.dispatch_event("submit", elt): return
-        inputs = [node for node in tree_to_list(elt, [])
-                  if isinstance(node, Element)
-                  and node.tag == "input"
-                  and "name" in node.attributes]
-
-        body = ""
-        for input in inputs:
-            name = input.attributes["name"]
-            value = input.attributes.get("value", "")
-            name = urllib.parse.quote(name)
-            value = urllib.parse.quote(value)
-            body += "&" + name + "=" + value
-        body = body [1:]
-
-        url = self.url.resolve(elt.attributes["action"])
-        self.load(url, body)
 
     def keypress(self, char):
         if self.focus and self.focus.tag == "input":
@@ -1227,12 +1106,6 @@ class Tab:
     def reset_zoom(self):
         self.zoom = 1
         self.set_needs_render()
-
-    def go_back(self):
-        if len(self.history) > 1:
-            self.history.pop()
-            back = self.history.pop()
-            self.load(back)
 
     def toggle_dark_mode(self):
         self.dark_mode = not self.dark_mode
@@ -1305,7 +1178,8 @@ class Chrome:
                 self.address_rect.bottom(),
                 "red", 1))
         else:
-            url = str(self.browser.url if self.browser.url else "")
+            url = str(self.browser.active_tab_url if \
+                self.browser.active_tab_url else "")
             cmds.append(DrawText(
                 self.address_rect.left() + self.padding,
                 self.address_rect.top(),
@@ -1317,6 +1191,7 @@ class Chrome:
         self.focus = "address bar"
         self.address_bar = ""
 
+@wbetools.patch(Browser)
 class Browser:
     def __init__(self):
         self.chrome = Chrome(self)
@@ -1368,8 +1243,8 @@ class Browser:
         self.focus = None
         self.address_bar = ""
         self.lock = threading.Lock()
-        self.url = None
-        self.scroll = 0
+        self.active_tab_url = None
+        self.active_tab_scroll = 0
 
         self.measure = MeasureTime()
 
@@ -1412,18 +1287,12 @@ class Browser:
         self.active_alerts = []
         self.spoken_alerts = []
 
-    def render(self):
-        assert not wbetools.USE_BROWSER_THREAD
-        self.active_tab.task_runner.run_tasks()
-        if self.active_tab.loaded:
-            self.active_tab.run_animation_frame(self.scroll)
-
     def commit(self, tab, data):
         self.lock.acquire(blocking=True)
         if tab == self.active_tab:
-            self.url = data.url
+            self.active_tab_url = data.url
             if data.scroll != None:
-                self.scroll = data.scroll
+                self.active_tab_scroll = data.scroll
             self.active_tab_height = data.height
             if data.display_list:
                 self.active_tab_display_list = data.display_list
@@ -1440,71 +1309,17 @@ class Browser:
                 self.set_needs_draw()
         self.lock.release()
 
-    def set_needs_animation_frame(self, tab):
-        self.lock.acquire(blocking=True)
-        if tab == self.active_tab:
-            self.needs_animation_frame = True
-        self.lock.release()
-
-    def set_needs_raster(self):
-        self.needs_raster = True
-        self.needs_draw = True
-
-    def set_needs_composite(self):
-        self.needs_composite = True
-        self.needs_raster = True
-        self.needs_draw = True
-
     def set_needs_accessibility(self):
         if not self.accessibility_is_on:
             return
         self.needs_accessibility = True
         self.needs_draw = True
 
-    def set_needs_draw(self):
-        self.needs_draw = True
-
-    def composite(self):
-        self.composited_layers = []
-        add_parent_pointers(self.active_tab_display_list)
-        all_commands = []
-        for cmd in self.active_tab_display_list:
-            all_commands = \
-                tree_to_list(cmd, all_commands)
-        non_composited_commands = [cmd
-            for cmd in all_commands
-            if isinstance(cmd, DrawCommand) or not cmd.needs_compositing
-            if not cmd.parent or cmd.parent.needs_compositing
-        ]
-        for cmd in non_composited_commands:
-            for layer in reversed(self.composited_layers):
-                if layer.can_merge(cmd):
-                    layer.add(cmd)
-                    break
-                elif skia.Rect.Intersects(
-                    layer.absolute_bounds(),
-                    local_to_absolute(cmd, cmd.rect)):
-                    layer = CompositedLayer(self.skia_context, cmd)
-                    self.composited_layers.append(layer)
-                    break
-            else:
-                layer = CompositedLayer(self.skia_context, cmd)
-                self.composited_layers.append(layer)
-
         self.active_tab_height = 0
         for layer in self.composited_layers:
             self.active_tab_height = \
                 max(self.active_tab_height,
                     layer.absolute_bounds().bottom())
-
-    def clone_latest(self, visual_effect, current_effect):
-        node = visual_effect.node
-        if not node in self.composited_updates:
-            return visual_effect.clone(current_effect)
-        save_layer = self.composited_updates[node]
-        if type(visual_effect) is SaveLayer:
-            return save_layer.clone(current_effect)
-        return visual_effect.clone(current_effect)
 
     def paint_draw_list(self):
         self.draw_list = []
@@ -1521,7 +1336,7 @@ class Browser:
 
         if self.pending_hover:
             (x, y) = self.pending_hover
-            y += self.scroll
+            y += self.active_tab_scroll
             a11y_node = self.accessibility_tree.hit_test(x, y)
             if a11y_node:
                 if not self.hovered_a11y_node or \
@@ -1612,37 +1427,6 @@ class Browser:
 
         self.lock.release()
 
-    def schedule_animation_frame(self):
-        def callback():
-            self.lock.acquire(blocking=True)
-            scroll = self.scroll
-            active_tab = self.active_tab
-            self.needs_animation_frame = False
-            self.lock.release()
-            task = Task(active_tab.run_animation_frame, scroll)
-            active_tab.task_runner.schedule_task(task)
-        self.lock.acquire(blocking=True)
-        if self.needs_animation_frame and not self.animation_timer:
-            if wbetools.USE_BROWSER_THREAD:
-                self.animation_timer = \
-                    threading.Timer(REFRESH_RATE_SEC, callback)
-                self.animation_timer.start()
-        self.lock.release()
-
-    def handle_down(self):
-        self.lock.acquire(blocking=True)
-        if not self.active_tab_height:
-            self.lock.release()
-            return
-        scroll = clamp_scroll(
-            self.scroll + SCROLL_STEP,
-            self.active_tab_height,
-            HEIGHT - self.chrome.bottom)
-        self.scroll = scroll
-        self.set_needs_draw()
-        self.needs_animation_frame = True
-        self.lock.release()
-
     def handle_tab(self):
         self.focus = "content"
         self.chrome.blur()
@@ -1668,8 +1452,8 @@ class Browser:
         self.lock.release()
 
     def clear_data(self):
-        self.scroll = 0
-        self.url = None
+        self.active_tab_scroll = 0
+        self.active_tab_url = None
         self.display_list = []
         self.accessibility_tree = None
         self.composited_layers = []
@@ -1741,22 +1525,6 @@ class Browser:
         self.active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
-    def handle_click(self, e):
-        self.lock.acquire(blocking=True)
-        if e.y < self.chrome.bottom:
-            self.focus = None
-            self.chrome.click(e.x, e.y)
-            self.set_needs_raster()
-        else:
-            if self.focus != "content":
-                self.set_needs_raster()
-            self.focus = "content"
-            self.chrome.blur()
-            tab_y = e.y - self.chrome.bottom
-            task = Task(self.active_tab.click, e.x, tab_y)
-            self.active_tab.task_runner.schedule_task(task)
-        self.lock.release()
-
     def handle_hover(self, event):
         if not self.accessibility_is_on or \
             not self.accessibility_tree:
@@ -1773,10 +1541,6 @@ class Browser:
             task = Task(self.active_tab.keypress, char)
             self.active_tab.task_runner.schedule_task(task)
         self.lock.release()
-
-    def schedule_load(self, url, body=None):
-        task = Task(self.active_tab.load, url, body)
-        self.active_tab.task_runner.schedule_task(task)
 
     def handle_enter(self):
         self.lock.acquire(blocking=True)
@@ -1799,21 +1563,6 @@ class Browser:
         self.active_tab.task_runner.schedule_task(task)
         self.lock.release()
 
-    def new_tab(self, url):
-        self.lock.acquire(blocking=True)
-        self.new_tab_internal(url)
-        self.lock.release()
-
-    def new_tab_internal(self, url):
-        new_tab = Tab(self, HEIGHT -self.chrome.bottom)
-        self.tabs.append(new_tab)
-        self.set_active_tab(new_tab)
-        self.schedule_load(url)
-
-    def raster_tab(self):
-        for composited_layer in self.composited_layers:
-            composited_layer.raster()
-
     def raster_chrome(self):
         canvas = self.chrome_surface.getCanvas()
         if self.dark_mode:
@@ -1833,7 +1582,7 @@ class Browser:
             canvas.clear(skia.ColorWHITE)
 
         canvas.save()
-        canvas.translate(0, self.chrome.bottom - self.scroll)
+        canvas.translate(0, self.chrome.bottom - self.active_tab_scroll)
         for item in self.draw_list:
             item.execute(canvas)
         canvas.restore()
@@ -1865,13 +1614,6 @@ class Browser:
             # SDL_BlitSurface is what actually does the copy.
             sdl2.SDL_BlitSurface(sdl_surface, rect, window_surface, rect)
             sdl2.SDL_UpdateWindowSurface(self.sdl_window)
-
-    def handle_quit(self):
-        self.measure.finish()
-        self.active_tab.task_runner.set_needs_quit()
-        if wbetools.USE_GPU:
-            sdl2.SDL_GL_DeleteContext(self.gl_context)
-        sdl2.SDL_DestroyWindow(self.sdl_window)
 
 def main_func(url):
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)

@@ -1214,8 +1214,7 @@ class Tab:
 
         document_height = math.ceil(self.document.height + 2*VSTEP)
         new_scroll = obj.y - SCROLL_STEP
-        self.scroll = clamp_scroll(
-            new_scroll, document_height, self.tab_height)
+        self.scroll = self.clamp_scroll(new_scroll)
         self.scroll_changed_in_tab = True
 ```
 
@@ -2240,7 +2239,7 @@ class Browser:
         # ...
         if self.pending_hover:
             (x, y) = self.pending_hover
-            y += self.scroll
+            y += self.active_tab_scroll
             a11y_node = self.accessibility_tree.hit_test(x, y)
 ```
 

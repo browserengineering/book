@@ -507,30 +507,6 @@ compositing is the same no matter what goes where.
 
 [^many]: And there are usually a lot more of them to execute.
 
-Some animations can't be composited because they affect more than just
-the display list. For example, imagine we animate the `width` of the
-`div` above, instead of animating its opacity. Here's how it looks;
-click the buttons to animate.
-
-<iframe width=500 src="examples/example13-width-transition.html"></iframe>
-
-Here, different frames have different *layout trees*, not just
-different display lists. That totally changes the coordinates for the
-`DrawText` calls, and we wouldn't necessarily be able to reuse any
-composited layers. Such animations are called *layout-inducing*, and
-speeding them up requires [different
-techniques](invalidation.md).[^not-advisable]
-
-[^not-advisable]: Because layout-inducing animations can't easily make use of
-compositing, they're usually not a good idea on the web. Not only are they
-slower, but they also cause page elements to jump around suddenly and
-don't create that illusion of continuous movement. An
-exception is resizing the browser window with your mouse. That's
-layout-inducing, but it's very useful for the user to see the new layout
-as the window size changes. Modern browsers are fast enough to do this, but it
-used to be that they'd only redraw the screen every couple of frames,
-leaving a visual *gutter* between content and the edge of the window.
-
 ::: {.further}
 
 If you look closely at the opacity example in this section, you'll see that the
@@ -843,7 +819,8 @@ class Browser:
     def draw(self):
         # ...
         canvas.save()
-        canvas.translate(0, self.chrome.bottom - self.scroll)
+        canvas.translate(0,
+            self.chrome.bottom - self.active_tab_scroll)
         for item in self.draw_list:
             item.execute(canvas)
         canvas.restore()
@@ -2199,7 +2176,21 @@ the string). Since `width` and `height` are layout-inducing, make sure that
 animating them sets `needs_layout`. Check that animating width in your
 browser changes line breaks.
 [This example](examples/example13-width-transition.html) should work once
-you've implemented width animations.
+you've implemented width animations.[^note-layout-animations]
+
+[^note-layout-animations]: Width animations can't be composited because
+width affects the layout tree, not just different display lists,
+which in turn means that draw commands, not just visual effects,
+change. Such animations are called *layout-inducing*, and
+they are therefore slower and typically not a good idea.
+[Chapter 16](invalidation.md) will look at one way to speed them up somewhat.
+<br>
+<br>
+One exception is resizing the browser window with your mouse.
+That's layout-inducing, but it's very useful for the user to see the new layout
+as the window size changes. Modern browsers are fast enough to do this, but it
+used to be that they'd only redraw the screen every couple of frames, leaving a
+visual *gutter* between content and the edge of the window.
 
 *CSS animations*: Implement the basics of the
 [CSS animations][css-animations] API, in particular enough of the `animation`
