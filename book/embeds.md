@@ -956,13 +956,7 @@ class Frame:
         self.frame_height = 0
 ```
 
-And we can set those when the parent frame is laid out:[^no-set-needs]
-
-[^no-set-needs]: You might be surprised that I'm not calling
-    `set_needs_render` on the child frame here. That's a shortcut: the
-    `width` and `height` attributes can only change through
-    `setAttribute`, while `zoom` can only change in `zoom_by` and
-    `reset_zoom`. All of those handlers already invalidate all frames.
+And we can set those when the parent frame is laid out:
 
 ``` {.python}
 class IframeLayout(EmbedLayout):
@@ -973,6 +967,21 @@ class IframeLayout(EmbedLayout):
                 self.height - dpx(2, self.zoom)
             self.node.frame.frame_width = \
                 self.width - dpx(2, self.zoom)
+```
+
+You might be surprised that I'm not calling `set_needs_render` on the child
+frame here. That's a shortcut: the `width` and `height` attributes can only
+change through `setAttribute`, while `zoom` can only change in `zoom_by` and
+`reset_zoom`. All of those handlers, however, need to invalidate all frames,
+via a new method to do so, instead of the old `set_needs_render` on `Tab` which
+is now gone. Update all of these call sites to call it (plus
+changes to dark mode, which affects style for all frames):
+
+``` {.python}
+class Tab:
+    def set_needs_render_all_frames(self):
+        for id, frame in self.window_id_to_frame.items():
+            frame.set_needs_render()
 ```
 
 The conditional is only there to handle the (unusual) case of an
