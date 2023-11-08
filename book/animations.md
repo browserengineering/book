@@ -2318,12 +2318,13 @@ opacity fade on an element that advances as the user scrolls down the page
 animations that start once an element has scrolled to a certain point on the
 screen, or when scroll changes direction.
 
-*Folding opacity*: If a `DrawCompositedLayer` is inside of a
+*Opacity-plus-draw*: If a `DrawCompositedLayer` is inside of a
 `SaveLayer(alpha=0.5)` then right now there might be two surface copies:
 first copying the composited layer's raster buffer into a temporary buffer,
 then applying opacity to it and copying it into the root surface. This is not necessary, and in fact Skia's [`draw`][draw-api] API on a `Surface` allows
 opacity to be applied. Optimize the browser to combine these into into
-one `draw` command when this situation happens.
+one `draw` command when this situation happens. (This is an important
+optimization in real browsers.)
 
 [draw-api]: https://kyamagu.github.io/skia-python/reference/skia.Surface.html#skia.Surface.draw
 
