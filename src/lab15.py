@@ -296,7 +296,7 @@ class BlockLayout:
     def iframe(self, node):
         if "width" in self.node.attributes:
             w = dpx(int(self.node.attributes["width"]),
-                self.zoom)
+                    self.zoom)
         else:
             w = IFRAME_WIDTH_PX + dpx(2, self.zoom)
         self.add_inline_child(node, w, IframeLayout, self.frame)
@@ -1159,7 +1159,7 @@ class FrameAccessibilityNode(AccessibilityNode):
         self.build_internal(self.node.frame.nodes)
 
     def hit_test(self, x, y):
-        if not self.intersects(x, y): return
+        if not self.bounds.contains(x, y): return
         new_x = x - self.bounds.x()
         new_y = y - self.bounds.y() + self.scroll
         node = self
@@ -1234,7 +1234,7 @@ class Frame:
 
         self.nodes = HTMLParser(body).parse()
 
-        self.js = self.tab.get_js(url.origin())
+        self.js = self.tab.get_js(url)
         self.js.add_window(self)
 
         scripts = [node.attributes["src"] for node
@@ -1288,8 +1288,7 @@ class Frame:
                 img.image = skia.Image.MakeFromEncoded(data)
                 assert img.image, "Failed to recognize image format for " + image_url
             except Exception as e:
-                print("Exception loading image: url="
-                    + str(image_url) + " exception=" + str(e))
+                print("Image", image_url, "crashed", e)
                 img.image = BROKEN_IMAGE
 
         iframes = [node
@@ -1443,8 +1442,9 @@ class Frame:
             if isinstance(elt, Text):
                 pass
             elif elt.tag == "iframe":
-                new_x = x - elt.layout_object.x
-                new_y = y - elt.layout_object.y
+                border = dpx(1, elt.layout_object.zoom)
+                new_x = x - elt.layout_object.x - border
+                new_y = y - elt.layout_object.y - border
                 elt.frame.click(new_x, new_y)
                 return
             elif is_focusable(elt):
@@ -1514,7 +1514,8 @@ class Tab:
         self.root_frame.frame_height = self.tab_height
         self.loaded = True
 
-    def get_js(self, origin):
+    def get_js(self, url):
+        origin = url.origin()
         if wbetools.FORCE_CROSS_ORIGIN_IFRAMES:
             return JSContext(self, origin)
         if origin not in self.origin_to_js:
