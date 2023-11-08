@@ -2322,8 +2322,8 @@ screen, or when scroll changes direction.
 `SaveLayer(alpha=0.5)` then right now there might be two surface copies:
 first copying the composited layer's raster buffer into a temporary buffer,
 then applying opacity to it and copying it into the root surface. This is not necessary, and in fact Skia's [`draw`][draw-api] API on a `Surface` allows
-opacity to be applied. Optimize the browser to combine these two into into
-one `draw` command.
+opacity to be applied. Optimize the browser to combine these into into
+one `draw` command when this situation happens.
 
 [draw-api]: https://kyamagu.github.io/skia-python/reference/skia.Surface.html#skia.Surface.draw
 
