@@ -2265,7 +2265,6 @@ elements][stacking-context] with `z-index` properties.
 
 [stacking-context]:  https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
 
-
 *Atomic effects*: Our browser currently uses a simplistic algorithm for building
 the draw list which doesn't handle nested, composited visual effects
 correctly, especially when there are overlapping elements on the page(this was
@@ -2319,7 +2318,17 @@ opacity fade on an element that advances as the user scrolls down the page
 animations that start once an element has scrolled to a certain point on the
 screen, or when scroll changes direction.
 
+*Folding opacity*: If a `DrawCompositedLayer` is inside of a
+`SaveLayer(alpha=0.5)` then right now there might be two surface copies:
+first copying the composited layer's raster buffer into a temporary buffer,
+then applying opacity to it and copying it into the root surface. This is not necessary, and in fact Skia's [`draw`][draw-api] API on a `Surface` allows
+opacity to be applied. Optimize the browser to combine these two into into
+one `draw` command.
+
+[draw-api]: https://kyamagu.github.io/skia-python/reference/skia.Surface.html#skia.Surface.draw
+
 [scroll-linked]: https://drafts.csswg.org/scroll-animations-1/
 [parallax]: https://developer.chrome.com/blog/performant-parallaxing/
 [perspective]: https://developer.mozilla.org/en-US/docs/Web/CSS/perspective
 [csstricks-perspective]: https://css-tricks.com/how-css-perspective-works/
+
