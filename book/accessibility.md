@@ -605,7 +605,7 @@ Web developers can use `prefers-color-scheme` queries in their own
 style sheets, adjusting their own choice of colors to fit user
 requests, but we can also use a `prefers-color-scheme` media query in
 the browser default style sheet to adjust the default colors for links,
-buttons, and text entries:[^ensure-contrast]
+buttons, and text entries:
 
 ``` {.css}
 @media (prefers-color-scheme: dark) {
@@ -617,8 +617,9 @@ buttons, and text entries:[^ensure-contrast]
 
 It's important to choose colors that ensure maximum
 contrast. [This tool][contrast-tool] is a handy one to check. You'll find there
-that `orangered` doesn't contrast at "AAA" quality with white foreground text,
-but increasing the green color channel from `45` to `65` hex will:
+that `orangered` (`#FF4500`) doesn't contrast at "AAA" quality with white
+foreground text, but increasing the green color channel from `45` to `65` hex
+will:
 
 ``` {.python}
 def parse_color(color):
