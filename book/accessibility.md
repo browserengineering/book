@@ -1474,7 +1474,7 @@ talk, specifically the segment from 2:36--3:54:[^whole-talk]
 :::
 
 ::: {.print-only}
-    https://www.youtube-nocookie.com/embed/qi0tY60Hd6M?start=159
+    https://www.youtube.com/watch?v=qi0tY60Hd6M&t=159s
 :::
 
 [^whole-talk]: The whole talk is recommended; it has great examples of
