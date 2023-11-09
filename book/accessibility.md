@@ -611,21 +611,20 @@ buttons, and text entries:
 @media (prefers-color-scheme: dark) {
   a { color: lightblue; }
   input { background-color: blue; }
-  button { background-color: orangered; }
+  button { background-color: orangered; color: black }
 }
 ```
 
 It's important to choose colors that ensure maximum
 contrast. [This tool][contrast-tool] is a handy one to check. You'll find there
 that `orangered` (`#FF4500`) doesn't contrast at "AAA" quality with white
-foreground text, but increasing the green color channel from `45` to `65` hex
-will:
+foreground text, but `#992500` will:
 
 ``` {.python}
 def parse_color(color):
     # ...
     elif color == "orangered":
-        return skia.ColorSetARGB(0xFF, 0xFF, 0x65, 0x00)
+        return skia.ColorSetARGB(0xFF, 0x99, 0x25, 0x00)
 ```
 
 [contrast-tool]: https://webaim.org/resources/contrastchecker/
