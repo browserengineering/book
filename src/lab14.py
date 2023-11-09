@@ -994,7 +994,6 @@ class Tab:
             self.accessibility_tree = AccessibilityNode(self.nodes)
             self.accessibility_tree.build()
             self.needs_accessibility = False
-            self.needs_paint = True
 
         if self.needs_paint:
             self.display_list = []

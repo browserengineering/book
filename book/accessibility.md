@@ -1469,7 +1469,13 @@ screen reader to re-read it.
 You can see an example[^imagine] of screen reader navigation in this
 talk, specifically the segment from 2:36--3:54:[^whole-talk]
 
+::: {.web-only}
 <iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/qi0tY60Hd6M?start=159" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+:::
+
+::: {.print-only}
+    https://www.youtube-nocookie.com/embed/qi0tY60Hd6M?start=159
+:::
 
 [^whole-talk]: The whole talk is recommended; it has great examples of
     using accessibility technology.
