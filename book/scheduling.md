@@ -2016,7 +2016,7 @@ of modern browsers. The main points to remember are:
 - The browser thread draws the display list to the screen,
   handles/dispatches input events, and performs scrolling
 - The main thread communicates with the browser thread via `commit`,
-  which synchronizes the two threadsp
+  which synchronizes the two threads
 
 Additionally, you've seen how hard it is to move tasks between the two
 threads, such as the challenges involved in scrolling on the browser
