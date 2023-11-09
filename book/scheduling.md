@@ -1226,8 +1226,8 @@ an animation frame and `commit` to send it a display list.
 doesn't also communicate back to the browser thread with a `TaskRunner`.
 That could certainly be done. Here I chose to only do it in one direction,
 because the main thread is generally the "slowest" thread in browsers,
-due to the unpredictable nature of `JavaScript` and the unknown size of the
-`DOM`.
+due to the unpredictable nature of JavaScript and the unknown size of the
+DOM.
 
 The overall control flow for rendering a frame will therefore be:
 
