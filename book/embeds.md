@@ -2131,7 +2131,7 @@ Exercises
 *Canvas element*: Implement the [`<canvas>`][canvas-elt] element, the 2D aspect
 of the [`getContext`][getcontext] API, and some of the drawing commands on
 [`CanvasRenderingContext2D`][crc2d]. Canvas layout is just like an iframe,
-including its default width and height. You should allocate a Skia surfae of
+including its default width and height. You should allocate a Skia surface of
 an appropriate size when `getContext("2d")` is called, and implement some of
 the APIs that draw to the canvas.[^eager-canvas] It should be straightforward
 to translate most API methods to their Skia equivalent.
