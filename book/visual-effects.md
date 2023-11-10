@@ -189,7 +189,7 @@ class Browser:
 
 A surface[^or-texture] is a 2D array of pixels, where each pixel is
 thought of as a tiny square of some solid color. Note the `ct`
-argument, meaning "color type", which indicates that each pixel of
+argument,[^at] meaning "color type", which indicates that each pixel of
 this surface should be represented as *r*ed, *g*reen, *b*lue, and
 *a*lpha values, each of which should take up 8 bits. In other words,
 pixels are basically defined like so:
@@ -198,6 +198,8 @@ pixels are basically defined like so:
 well, but these words connote specific CPU or GPU technologies for
 implementing surfaces.
 
+[^at]: We'll talk about the `at` argument somewhat later in this
+    chapter.
 
 ``` {.python file=examples}
 class Pixel:
@@ -207,10 +209,6 @@ class Pixel:
         self.b = b
         self.a = a
 ```
-
-Note that this `Pixel` code is an illustrative example, not something
-our browser has to define. It's standing in for somewhat more complex
-code within Skia itself.
 
 If you'll permit me a short digression here: what exactly do "red",
 "green", and "blue" mean here? Formally, they are defined by the [sRGB
