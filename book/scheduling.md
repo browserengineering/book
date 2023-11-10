@@ -510,6 +510,9 @@ function __runXHROnload(body, handle) {
 }
 ```
 
+As you can see, tasks allow not only the browser but also applications
+running in the browser to delay tasks until later.
+
 ::: {.further}
 
 `XMLHttpRequest` played a key role in helping the web evolve. In the
