@@ -1064,8 +1064,7 @@ class Tab:
                 value = animation.animate()
                 if value:
                     node.style[property_name] = value
-                    if wbetools.USE_COMPOSITING and \
-                        property_name == "opacity":
+                    if wbetools.USE_COMPOSITING:
                         self.composited_updates.append(node)
                         self.set_needs_paint()
                     else:
@@ -1303,7 +1302,8 @@ class Browser:
                 tree_to_list(cmd, all_commands)
         non_composited_commands = [cmd
             for cmd in all_commands
-            if isinstance(cmd, PaintCommand) or not cmd.needs_compositing
+            if isinstance(cmd, PaintCommand) or \
+                not cmd.needs_compositing
             if not cmd.parent or cmd.parent.needs_compositing
         ]
         for cmd in non_composited_commands:
@@ -1393,6 +1393,7 @@ class Browser:
         self.active_tab_url = None
         self.display_list = []
         self.composited_layers = []
+        self.composited_updates = {}
 
     def set_active_tab(self, tab):
         self.active_tab = tab

@@ -1456,6 +1456,7 @@ class Browser:
         self.display_list = []
         self.accessibility_tree = None
         self.composited_layers = []
+        self.composited_updates = {}
 
     def set_active_tab(self, tab):
         self.active_tab = tab
