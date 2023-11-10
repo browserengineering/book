@@ -1658,8 +1658,8 @@ class Tab:
             back = self.history.pop()
             self.load(back)
 
-    def toggle_dark_mode(self):
-        self.dark_mode = not self.dark_mode
+    def set_dark_mode(self, val):
+        self.dark_mode = val
         self.set_needs_render_all_frames()
 
     def post_message(self, message, target_window_id):
@@ -1690,6 +1690,16 @@ class Browser:
             else:
                 self.set_needs_draw()
         self.lock.release()
+
+    def set_active_tab(self, tab):
+        self.active_tab = tab
+        task = Task(self.active_tab.set_dark_mode, self.dark_mode)
+        self.active_tab.task_runner.schedule_task(task)
+        task = Task(self.active_tab.set_needs_render_all_frames)
+        self.active_tab.task_runner.schedule_task(task)
+
+        self.clear_data()
+        self.needs_animation_frame = True
 
     def handle_down(self):
         self.lock.acquire(blocking=True)
