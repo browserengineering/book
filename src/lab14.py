@@ -41,9 +41,9 @@ from lab12 import Task, REFRESH_RATE_SEC
 from lab13 import JSContext, diff_styles, add_parent_pointers
 from lab13 import local_to_absolute, absolute_bounds_for_obj
 from lab13 import NumericAnimation
-from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
+from lab13 import map_translation, parse_transform
 from lab13 import CompositedLayer, paint_visual_effects
-from lab13 import DrawCommand, DrawText, DrawCompositedLayer, DrawOutline, \
+from lab13 import PaintCommand, DrawText, DrawCompositedLayer, DrawOutline, \
     DrawLine, DrawRRect
 from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform, Chrome, \
     Tab, Browser
@@ -355,10 +355,9 @@ def style(node, rules, tab):
         transitions = diff_styles(old_style, node.style)
         for property, (old_value, new_value, num_frames) \
             in transitions.items():
-            if property in ANIMATED_PROPERTIES:
+            if property == "opacity":
                 tab.set_needs_render()
-                AnimationClass = ANIMATED_PROPERTIES[property]
-                animation = AnimationClass(
+                animation = NumericAnimation(
                     old_value, new_value, num_frames)
                 node.animations[property] = animation
                 node.style[property] = animation.animate()
@@ -1462,6 +1461,7 @@ class Browser:
         self.display_list = []
         self.accessibility_tree = None
         self.composited_layers = []
+        self.composited_updates = {}
 
     def set_active_tab(self, tab):
         self.active_tab = tab

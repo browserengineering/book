@@ -531,8 +531,6 @@ high-density enough to retire these techniques.
 
 [font-hinting]: https://en.wikipedia.org/wiki/Font_hinting
 
-
-
 Browser compositing
 ===================
 

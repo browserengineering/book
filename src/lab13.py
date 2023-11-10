@@ -52,7 +52,7 @@ class Element:
         self.is_focused = False
         self.animations = {}
 
-class DrawCommand:
+class PaintCommand:
     def __init__(self, rect):
         self.rect = rect
         self.children = []
@@ -114,7 +114,7 @@ class Transform(VisualEffect):
         else:
             return "Transform(<no-op>)"
 
-class DrawLine(DrawCommand):
+class DrawLine(PaintCommand):
     def __init__(self, x1, y1, x2, y2, color, thickness):
         super().__init__(skia.Rect.MakeLTRB(x1, y1, x2, y2))
         self.x1 = x1
@@ -135,7 +135,7 @@ class DrawLine(DrawCommand):
         return "DrawLine top={} left={} bottom={} right={}".format(
             self.y1, self.x1, self.y2, self.x2)
 
-class DrawRRect(DrawCommand):
+class DrawRRect(PaintCommand):
     def __init__(self, rect, radius, color):
         super().__init__(rect)
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
@@ -153,7 +153,7 @@ class DrawRRect(DrawCommand):
         return "DrawRRect(rect={}, color={})".format(
             str(self.rrect), self.color)
 
-class DrawText(DrawCommand):
+class DrawText(PaintCommand):
     def __init__(self, x1, y1, text, font, color):
         self.left = x1
         self.top = y1
@@ -174,7 +174,7 @@ class DrawText(DrawCommand):
     def __repr__(self):
         return "DrawText(text={})".format(self.text)
 
-class DrawRect(DrawCommand):
+class DrawRect(PaintCommand):
     def __init__(self, x1, y1, x2, y2, color):
         super().__init__(skia.Rect.MakeLTRB(x1, y1, x2, y2))
         self.top = y1
@@ -194,7 +194,7 @@ class DrawRect(DrawCommand):
             self.top, self.left, self.bottom,
             self.right, self.color)
 
-class DrawOutline(DrawCommand):
+class DrawOutline(PaintCommand):
     def __init__(self, rect, color, thickness):
         super().__init__(rect)
         self.color = color
@@ -283,7 +283,7 @@ class SaveLayer(VisualEffect):
         else:
             return "SaveLayer(<no-op>)"
 
-class DrawCompositedLayer(DrawCommand):
+class DrawCompositedLayer(PaintCommand):
     def __init__(self, composited_layer):
         self.composited_layer = composited_layer
         super().__init__(
@@ -836,15 +836,9 @@ def parse_transition(value):
     return properties
 
 def diff_styles(old_style, new_style):
-    old_transitions = \
-        parse_transition(old_style.get("transition"))
-    new_transitions = \
-        parse_transition(new_style.get("transition"))
-
     transitions = {}
-    for property in old_transitions:
-        if property not in new_transitions: continue
-        num_frames = new_transitions[property]
+    for property, num_frames in \
+        parse_transition(new_style.get("transition")).items():
         if property not in old_style: continue
         if property not in new_style: continue
         old_value = old_style[property]
@@ -879,10 +873,6 @@ class NumericAnimation:
             old_value=self.old_value,
             change_per_frame=self.change_per_frame,
             num_frames=self.num_frames)
-
-ANIMATED_PROPERTIES = {
-    "opacity": NumericAnimation
-}
     
 def style(node, rules, tab):
     old_style = node.style
@@ -914,10 +904,9 @@ def style(node, rules, tab):
         transitions = diff_styles(old_style, node.style)
         for property, (old_value, new_value, num_frames) \
             in transitions.items():
-            if property in ANIMATED_PROPERTIES:
+            if property == "opacity":
                 tab.set_needs_render()
-                AnimationClass = ANIMATED_PROPERTIES[property]
-                animation = AnimationClass(
+                animation = NumericAnimation(
                     old_value, new_value, num_frames)
                 node.animations[property] = animation
                 node.style[property] = animation.animate()
@@ -1007,8 +996,8 @@ class CompositedLayer:
         canvas.restore()
 
         if wbetools.SHOW_COMPOSITED_LAYER_BORDERS:
-            DrawOutline(0, 0, irect.width() - 1,
-                irect.height() - 1,
+            DrawOutline(0, 0,
+                irect.width() - 1, irect.height() - 1,
                 "red", 1).execute(canvas)
 
     def __repr__(self):
@@ -1075,8 +1064,7 @@ class Tab:
                 value = animation.animate()
                 if value:
                     node.style[property_name] = value
-                    if wbetools.USE_COMPOSITING and \
-                        property_name == "opacity":
+                    if wbetools.USE_COMPOSITING:
                         self.composited_updates.append(node)
                         self.set_needs_paint()
                     else:
@@ -1314,7 +1302,8 @@ class Browser:
                 tree_to_list(cmd, all_commands)
         non_composited_commands = [cmd
             for cmd in all_commands
-            if isinstance(cmd, DrawCommand) or not cmd.needs_compositing
+            if isinstance(cmd, PaintCommand) or \
+                not cmd.needs_compositing
             if not cmd.parent or cmd.parent.needs_compositing
         ]
         for cmd in non_composited_commands:
@@ -1404,6 +1393,7 @@ class Browser:
         self.active_tab_url = None
         self.display_list = []
         self.composited_layers = []
+        self.composited_updates = {}
 
     def set_active_tab(self, tab):
         self.active_tab = tab
@@ -1464,7 +1454,8 @@ class Browser:
             item.execute(canvas)
         canvas.restore()
 
-        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, self.chrome.bottom)
+        chrome_rect = skia.Rect.MakeLTRB(
+            0, 0, WIDTH, self.chrome.bottom)
         canvas.save()
         canvas.clipRect(chrome_rect)
         self.chrome_surface.draw(canvas, 0, 0)

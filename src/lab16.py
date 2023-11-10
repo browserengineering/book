@@ -31,9 +31,9 @@ from lab12 import Task, TaskRunner, SingleThreadedTaskRunner
 from lab13 import diff_styles, parse_transition, add_parent_pointers
 from lab13 import local_to_absolute, absolute_bounds_for_obj
 from lab13 import NumericAnimation
-from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
+from lab13 import map_translation, parse_transform
 from lab13 import CompositedLayer, paint_visual_effects
-from lab13 import DrawCommand, DrawText, DrawCompositedLayer, DrawOutline, \
+from lab13 import PaintCommand, DrawText, DrawCompositedLayer, DrawOutline, \
     DrawLine, DrawRRect
 from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform
 from lab14 import parse_color, parse_outline, DrawRRect, \
@@ -983,11 +983,12 @@ def style(node, rules, frame):
             new_style["font-size"] = str(node_pct * parent_px) + "px"
         if old_style:
             transitions = diff_styles(old_style, new_style)
-            for property, (old_value, new_value, num_frames) in transitions.items():
-                if property in ANIMATED_PROPERTIES:
+            for property, (old_value, new_value, num_frames) in \
+                transitions.items():
+                if property == "opacity":
                     frame.set_needs_render()
-                    AnimationClass = ANIMATED_PROPERTIES[property]
-                    animation = AnimationClass(old_value, new_value, num_frames)
+                    animation = NumericAnimation(
+                        old_value, new_value, num_frames)
                     node.animations[property] = animation
                     new_style[property] = animation.animate()
         for property, field in node.style.items():
