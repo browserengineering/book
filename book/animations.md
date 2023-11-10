@@ -10,7 +10,7 @@ between states. These animations help users understand the change and improve
 visual polish by replacing sudden jumps with gradual changes. But to
 execute these animations smoothly, the browser must minimize time in each
 animation frame, using GPU acceleration to speed up
-visual effects and compositing\index{compositing} to minimize redundant work.
+visual effects and compositing\index{compositing} to minimize rendering work.
 
 JavaScript Animations
 =====================
@@ -70,8 +70,7 @@ each frame.
 [^why-not-one]: Real browsers apply certain optimizations when opacity
 is exactly 1, so real-world websites often start and end animations at
 0.999 so that each frame is drawn the same way and the animation is
-smooth. Starting and ending animations at 0.999 is also a common trick
-used on websites that want to avoid visual popping of the content as
+smooth. It also avoids visual popping of the content as
 it goes in and out of GPU-accelerated mode. I chose 0.999 because the
 visual difference from 1.0 is imperceptible.
 
@@ -156,13 +155,11 @@ GPU acceleration
 
 Try the fade animation in your browser, and you'll probably notice
 that it's not particularly smooth. And that shouldn't be surprising;
-after all, [last chapter](scheduling.md#profiling-rendering) had the
-following running times for our browser:
+after all, [last chapter](scheduling.md#profiling-rendering) showed
+that raster and draw was about `66ms` for simple pages, and render
+was `23ms`.
 
-    Time in raster-and-draw on average: 66ms
-    Time in render on average: 23ms
-
-With 66ms per frame, our browser is barely doing fifteen frames per
+Even with just 66ms per frame, our browser is barely doing fifteen frames per
 second; for smooth animations we want sixty! So we need to speed up
 raster and draw.
 
@@ -212,7 +209,7 @@ list commands take longer to compile. Raster can be slow if there are
 many surfaces, and draw can be slow if surfaces are deeply nested. On
 a CPU, the upload step and compile steps aren't necessary, and more
 memory is available for raster and draw. Of course, many optimizations
-are available for both GPU and CPU, so choosing the best way to raster
+are available for both GPUs and CPUs, so choosing the best way to raster
 and draw a given page can be quite complex.
 
 [gpu]: https://en.wikipedia.org/wiki/Graphics_processing_unit
@@ -315,7 +312,8 @@ class Browser:
     def draw(self):
         canvas = self.root_surface.getCanvas()
         # ...
-        chrome_rect = skia.Rect.MakeLTRB(0, 0, WIDTH, self.chrome.bottom)
+        chrome_rect = skia.Rect.MakeLTRB(
+            0, 0, WIDTH, self.chrome.bottom)
         canvas.save()
         canvas.clipRect(chrome_rect)
         self.chrome_surface.draw(canvas, 0, 0)
@@ -348,18 +346,14 @@ width and height arguments).
 [^color-space]: Example detail: a different color space is required
 for GPU mode.
 
-Thanks to SDL's and Skia's thorough support for GPU rendering, that
-should be all that's necessary for our browser to raster and draw on
-the GPU. And as expected, speed is much improved:
-
-    Time in raster-and-draw on average: 24ms
-    Time in render on average: 23ms
-
-That's about three times faster, almost fast enough to hit sixty
-frames per second. (And on your computer, you'll likely see even more
+Thanks to SDL's and Skia's thorough support for GPU rendering, that should be
+all that's necessary for our browser to raster and draw on the GPU. And as
+expected, speed is much improved. I found that raster and draw improved to
+`24ms` on average. That's about three times faster, almost fast enough to hit
+sixty frames per second. (And on your computer, you'll likely see even more
 speedup than I did, so for you it might already be fast enough in this
-example.) But if we want to go faster yet, we'll need to find ways to
-reduce the total amount of work in raster and draw.
+example.) But if we want to go faster yet, we'll need to find ways to reduce
+the total amount of work in rendering, raster and draw.
 
 ::: {.further}
 
@@ -402,6 +396,9 @@ multiple images together into a final output. In the context of browsers, it
 typically means combining rastered images into the final on-screen image, but
 a similar technique is used in many operating systems to combine the contents
 of multiple windows. "Compositing" can also refer to multi-threaded rendering.
+ I first discussed compositing in
+ [Chapter 11](visual-effects.md#browser-compositing); the algorithms described
+here generalize that beyond scrolling.
 
 [compositing]: https://en.wikipedia.org/wiki/Compositing
 
@@ -409,7 +406,7 @@ To explain compositing, we'll need to think about our browser's
 display list, and to do that it's useful to print it out. For example,
 for `DrawRect` you might print:
 
-``` {.python replace=DrawRect:/DrawRect(DrawCommand):}
+``` {.python replace=DrawRect:/DrawRect(PaintCommand):}
 class DrawRect:
     def __repr__(self):
         return ("DrawRect(top={} left={} " +
@@ -443,35 +440,36 @@ class Tab:
             print_tree(item)
 ```
 
-For our opacity example, the (key part of) the display list looks like this:
+For our opacity example, the (key part of) the display list one one frame
+might look like this:
 
     SaveLayer(alpha=0.112375)
       DrawText(text=This)
       DrawText(text=text)
       DrawText(text=fades)
 
-On the next frame, it instead looks like this:
+On the next frame, it instead might like this:
 
     SaveLayer(alpha=0.119866666667)
       DrawText(text=This)
       DrawText(text=text)
       DrawText(text=fades)
 
-In each case, rastering this display list means first raster the three words to
-a Skia surface created by `saveLayer`, and then copying that to the root
-surface while applying transparency. Crucially, the raster is identical in
-both frames; only the copy differs. This means we can speed it up with
-caching.
+In each case, rastering this display list means first rastering the three words
+to a Skia surface created by `saveLayer`, and then copying that to the root
+surface while applying transparency. Crucially, the raster is identical in both
+frames; only the copy differs. This means we can speed it up with caching.
 
 The idea is to first raster the three words to a separate surface (but this time
-owned by us, not Skia), which we'll call a *composited layer*:
+owned by us, not Skia), which we'll call a *composited layer*, that is saved
+for future use:
 
     Composited Layer:
       DrawText(text=This)
       DrawText(text=text)
       DrawText(text=fades)
 
-Now instead of drawing those three words, we can just copy over the
+Now instead of rastering those three words, we can just copy over the
 composited layer with a `DrawCompositedLayer` command:
 
     SaveLayer(alpha=0.112375)
@@ -490,10 +488,9 @@ during the browser's raster phase and then cached, and a *draw display
 list*, which is drawn during the browser's draw phase and which uses
 the composited layers.
 
-Compositing helps when different frames of an animation have the same
-composited layers, which can then be reused. That's the case here,
-because the only difference between frames is the `SaveLayer`, which
-is in the draw display list.
+Compositing improves performance when subsequent frames of an animation reuse
+composited layers. That's the case here, because the only difference between
+frames is the `SaveLayer`, which is in the draw display list.
 
 How exactly to split up the display list is up to the browser.
 Typically, visual effects like opacity are very fast to execute on a GPU,
@@ -530,35 +527,34 @@ size.
 Compositing leaves
 ==================
 
-Let's implementing compositing. We'll need identify paint commands and
+Let's implementing compositing. We'll need to identify paint commands and
 move them to composited layers. Then we'll need to create the draw
-display list that combines these composited layers. To keep things
-simple, we'll start by creating a composited layer for every paint
-command.
+display list that combines these composited layers with visual
+effects. To keep things simple, we'll start by creating a composited layer
+for every paint command.
 
 To identify paint commands, it'll be helpful to give them all a
-superclass. I call it `DrawCommand`, since all the paint commands
-already start with `Draw`:
+`PaintCommand` superclass:
 
 ``` {.python}
-class DrawCommand:
+class PaintCommand:
     def __init__(self, rect):
         self.rect = rect
         self.children = []
 ```
 
-Now each paint command needs to be a subclass of `DrawCommand`; to do
+Now each paint command needs to be a subclass of `PaintCommand`; to do
 that, you need to name the superclass when the class is declared and
 also use some special syntax in the constructor:
 
 ``` {.python}
-class DrawLine(DrawCommand):
+class DrawLine(PaintCommand):
     def __init__(self, x1, y1, x2, y2, color, thickness):
         super().__init__(skia.Rect.MakeLTRB(x1, y1, x2, y2))
         # ...
 ```
 
-The `MakeLTRB` creates the `rect` for the `DrawCommand` constructor.
+The `MakeLTRB` creates the `rect` for the `PaintCommand` constructor.
 It'll be useful to have these as Skia `Rect` objects instead of just
 four `x1`/`y1`/`x2`/`y2` fields.
 
@@ -580,7 +576,7 @@ which is then grown by later `join` methods to include all of the
 children as well.
 
 Go ahead and modify each paint command and visual effect class to be a
-subclass of one of these two new classes. Make sure you both declare
+subclass of one of these two new classes. Make sure you declare
 the superclass on the `class` line and also call the superclass
 constructor in the `__init__` method using the `super()` syntax.
 
@@ -593,7 +589,7 @@ class Browser:
         for cmd in self.active_tab_display_list:
             all_commands = tree_to_list(cmd, all_commands)
         paint_commands = [cmd for cmd in all_commands
-            if isinstance(cmd, DrawCommand)]
+            if isinstance(cmd, PaintCommand)]
 ```
 
 Next we need to group paint commands into layers. For now, let's do the
@@ -647,7 +643,7 @@ class Browser:
 ```
 
 Next, we'll need to *clone* each of the ancestors of the layer's paint
-commands and injecting new children, so let's add a new `clone` method
+commands and inject new children, so let's add a new `clone` method
 to the visual effects classes. For `SaveLayer`, it'll create a new
 `SaveLayer` with the same parameters but new children:
 
@@ -661,7 +657,7 @@ class SaveLayer(VisualEffect):
 
 The other visual effect, `ClipRRect`, should do something similar (note
 how we are using `rrect.rect()`, since the first parameter needs to be the
-actual cliping rect):
+actual clipping rect):
 
 ``` {.python}
 class ClipRRect(VisualEffect):
@@ -670,8 +666,8 @@ class ClipRRect(VisualEffect):
             self.should_clip)
 ```
 
-We won't be cloning paint commands, since they're all going to be inside a
-composited layer, so we don't need to implement `clone` for them.
+Our browser won't be cloning paint commands, since they're all going to be
+inside a composited layer, so we don't need to implement `clone` for them.
 
 We can now build the draw display list. For each composited layer,
 create a `DrawCompositedLayer` command (which we'll define in just a
@@ -699,13 +695,12 @@ class Browser:
             self.draw_list.append(current_effect)
 ```
 
-Now that we've split the display list into composited layers and a
-draw display list, we need to update the rest of the browser to use
-them for raster and draw.
+That's it! Now that we've split the display list into composited layers and a
+draw display list, we need to update the rest of the browser to use them for
+raster and draw.
 
 Let's start with raster. In the raster step, the browser needs to walk
-the list of composited layers and raster every display command in the
-composited layer:
+the list of composited layers and raster each:
 
 ``` {.python}
 class Browser:
@@ -714,10 +709,10 @@ class Browser:
             composited_layer.raster()
 ```
 
-Inside `raster`, the composited layer needs to allocate a surface to
-raster itself into. To start, it'll need to know how big a surface to
-allocate. That's just the union of the bounding boxes of all of its
-paint commands---the `rect` field:
+Inside `raster`, the composited layer needs to allocate a surface to raster
+itself into; to make this surface requires knowing how big it is. That's
+just the union of the bounding boxes of all of its paint commands---the `rect`
+field:
 
 ``` {.python expected=False}
 class CompositedLayer:
@@ -729,7 +724,6 @@ class CompositedLayer:
         # ...
 ```
 
-These bounds can then be used to make a surface with the right size.
 Note that we're creating a surface just big enough to store the items in
 this composited layer; this reduces how much GPU memory we need. That
 being said, there are some tricky corner cases to consider, such as how
@@ -741,8 +735,8 @@ side to account for that:
 [^even-more-corner-cases]: One pixel of "slop" around the edges is
 not good enough for a real browser, which has to deal with lots of
 really subtle issues like nicely blending pixels between adjacent
-composited layers, subpixel positioning and effects with infinite
-theoretical extent like blur filters.
+composited layers, subpixel positioning and effects like blur filters
+with infinite theoretical extent.
 
 ``` {.python}
     def composited_bounds(self):
@@ -751,8 +745,7 @@ theoretical extent like blur filters.
         return rect
 ```
 
-Raster now uses the composited bounds:
-
+And now we can make the surface with those bounds:
 
 ``` {.python}
 class CompositedLayer:
@@ -791,7 +784,7 @@ to implement the `DrawCompositedLayer` command. It takes a composited
 layer to draw:
 
 ``` {.python}
-class DrawCompositedLayer(DrawCommand):
+class DrawCompositedLayer(PaintCommand):
     def __init__(self, composited_layer):
         self.composited_layer = composited_layer
         super().__init__(
@@ -805,14 +798,15 @@ Executing a `DrawCompositedLayer` is straightforward---just draw its surface
 into the parent surface, adjusting for the correct offset:
 
 ``` {.python}
-class DrawCompositedLayer(DrawCommand):
+class DrawCompositedLayer(PaintCommand):
     def execute(self, canvas):
         layer = self.composited_layer
         bounds = layer.composited_bounds()
         layer.surface.draw(canvas, bounds.left(), bounds.top())
 ```
 
-And `draw` is satisfyingly simple: simply execute the draw display list.
+Compared with raster, the browser's `draw` phase is satisfyingly simple: simply
+execute the draw display list.
 
 ``` {.python}
 class Browser:
@@ -828,8 +822,8 @@ class Browser:
 ```
 
 All that's left is wiring these methods up; let's rename
-`raster_and_draw` to `composite_raster_and_draw` to remind us that
-there's now an additional composite step and add our two new methods.
+`raster_and_draw` to `composite_raster_and_draw` (to remind us that
+there's now an additional composite step) and add our two new methods.
 (And don't forget to rename the corresponding dirty bit and call
 sites.)
 
@@ -849,7 +843,7 @@ So simple and elegant! Now, on every frame, we are simply splitting
 the display list into composited layers and the draw display list, and
 then running each of those it their own phase. We're now half-way
 toward getting super-smooth animations. What remains is skipping the
-raster step if the display list didn't change much between frames.
+layout and raster steps if the display list didn't change much between frames.
 
 ::: {.further}
 
@@ -892,7 +886,7 @@ avoid the render surface for opacity if there is no overlap?
 
 You might think that all this means I chose badly with the "paint commands"
 compositing algorithm presented here, but that is not the case. Render surface
-optimizations are just as necessary (and complicated to get right!) even with
+optimizations are just as necessary (and complicated to get right!) with
 a "layer tree" approach, because it's so important to optimize GPU memory.
 
 In addition, the algorithm presented here is a simplified version of what
@@ -934,7 +928,7 @@ always be somewhat brittle and incomplete.
 [chromium-diff]: https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/core/style/style_difference.h
 
 CSS transitions take the `requestAnimationFrame` loop we
-used to implement animations and move it into the browser. The web page
+used to implement animations and move it "into the browser". The web page
 just needs to interpret the CSS [`transition`][css-transitions] property,
 which defines properties to animate and how long to animate them for. Here's
 how to say opacity changes to a `div` should animate for two seconds:
@@ -968,10 +962,9 @@ function for CSS transitions because it looks better. We'll implement
 a linear easing function for our browser, so it will look identical to
 the JavaScript and subtly different from real browsers.
 
-To implement CSS transitions, we'll need to move JavaScript variables
-like `current_frame` and `change_per_frame` into some kind of
-animation object inside the browser. Since multiple elements can
-animate at a time, let's store an `animations` dictionary on each
+To implement CSS transitions, we'll need to represent animation
+state---like the JavaScript variables like `current_frame` and
+`change_per_frame` from the earlier example---in the browser. Since multiple elements can animate at a time, let's store an `animations` dictionary on each
 node, keyed by the property being animated:[^delete-complicated]
 
 [^delete-complicated]: For simplicity, this code leaves animations in
@@ -994,7 +987,7 @@ class Element:
         self.animations = {}
 ```
 
-The simplest type of animation animates numeric properties like
+The simplest type of thing to animate is numeric properties like
 `opacity`:
 
 ``` {.python}
@@ -1012,8 +1005,7 @@ class NumericAnimation:
 [units]: https://developer.mozilla.org/en-US/docs/Learn/CSS/Building_blocks/Values_and_units
 
 Much like in JavaScript, we'll need an `animate` method that
-increments the frame count, computes the new value and returns it; this
-value will be placed in the style of an element.
+increments the frame count, computes the new value and returns it:
 
 ``` {.python}
 class NumericAnimation:
@@ -1066,15 +1058,9 @@ removed instead of changing values.]
 
 ``` {.python}
 def diff_styles(old_style, new_style):
-    old_transitions = \
-        parse_transition(old_style.get("transition"))
-    new_transitions = \
-        parse_transition(new_style.get("transition"))
-
     transitions = {}
-    for property in old_transitions:
-        if property not in new_transitions: continue
-        num_frames = new_transitions[property]
+    for property, num_frames in \
+        parse_transition(new_style.get("transition")).items():
         if property not in old_style: continue
         if property not in new_style: continue
         old_value = old_style[property]
@@ -1631,7 +1617,7 @@ class Browser:
         # ...
         non_composited_commands = [cmd
             for cmd in all_commands
-            if isinstance(cmd, DrawCommand) or not cmd.needs_compositing
+            if isinstance(cmd, PaintCommand) or not cmd.needs_compositing
             if not cmd.parent or cmd.parent.needs_compositing
         ]
         # ...
