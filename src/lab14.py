@@ -43,7 +43,7 @@ from lab13 import NumericAnimation
 from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
 from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import DrawCommand, DrawText, DrawCompositedLayer, DrawOutline, DrawLine, DrawRRect
-from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform, Chrome
+from lab13 import VisualEffect, AlphaAndBlend, ClipRRect, Transform, Chrome
 
 @wbetools.patch(Element)
 class Element:
@@ -1504,7 +1504,7 @@ class Browser:
         if not node in self.composited_updates:
             return visual_effect.clone(current_effect)
         save_layer = self.composited_updates[node]
-        if type(visual_effect) is SaveLayer:
+        if type(visual_effect) is AlphaAndBlend:
             return save_layer.clone(current_effect)
         return visual_effect.clone(current_effect)
 

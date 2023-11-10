@@ -217,20 +217,17 @@ class DrawOutline(DrawCommand):
             self.thickness)
 
 class ClipRRect(VisualEffect):
-    def __init__(self, rect, radius, children, should_clip=True):
+    def __init__(self, rect, radius, children):
         super().__init__(rect, children)
-        self.should_clip = should_clip
         self.radius = radius
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
 
     def execute(self, canvas):
-        if self.should_clip:
-            canvas.save()
-            canvas.clipRRect(self.rrect)
+        canvas.save()
+        canvas.clipRRect(self.rrect)
         for cmd in self.children:
             cmd.execute(canvas)
-        if self.should_clip:
-            canvas.restore()
+        canvas.restore()
 
     def map(self, rect):
         bounds = rect.makeOffset(0.0, 0.0)
@@ -241,30 +238,32 @@ class ClipRRect(VisualEffect):
         return rect
 
     def clone(self, children):
-        return ClipRRect(self.rrect.rect(), self.radius, children, \
-            self.should_clip)
+        return ClipRRect(self.rrect.rect(), self.radius, children)
 
     def __repr__(self):
-        if self.should_clip:
-            return "ClipRRect({})".format(str(self.rrect))
-        else:
-            return "ClipRRect(<no-op>)"
+        return "ClipRRect({})".format(str(self.rrect))
 
-class SaveLayer(VisualEffect):
-    def __init__(self, sk_paint, node, children, should_save=True):
+class AlphaAndBlend(VisualEffect):
+    def __init__(self, alpha, blend_mode, node, children):
         super().__init__(skia.Rect.MakeEmpty(), children, node)
-        self.should_save = should_save
-        self.sk_paint = sk_paint
+        self.alpha = alpha
+        self.blend_mode = parse_blend_mode(blend_mode)
 
-        if wbetools.USE_COMPOSITING and self.should_save:
+        should_save = self.alpha < 1 or \
+            self.blend_mode != skia.BlendMode.kSrcOver
+        if wbetools.USE_COMPOSITING and should_save:
             self.needs_compositing = True
 
     def execute(self, canvas):
-        if self.should_save:
-            canvas.saveLayer(paint=self.sk_paint)
+        paint = skia.Paint(Alphaf=self.alpha,
+                           BlendMode=self.blend_mode)
+        should_save = self.alpha < 1 or \
+            self.blend_mode != skia.BlendMode.kSrcOver
+        if should_save:
+            canvas.saveLayer(paint=paint)
         for cmd in self.children:
-                cmd.execute(canvas)
-        if self.should_save:
+            cmd.execute(canvas)
+        if should_save:
             canvas.restore()
 
     def map(self, rect):
@@ -274,14 +273,21 @@ class SaveLayer(VisualEffect):
         return rect
 
     def clone(self, children):
-        return SaveLayer(self.sk_paint, self.node, children, \
-            self.should_save)
+        return AlphaAndBlend(self.alpha, self.blend_mode,
+                             self.node, children)
 
     def __repr__(self):
-        if self.should_save:
-            return "SaveLayer(alpha={})".format(self.sk_paint.getAlphaf())
+        should_save = self.alpha < 1 or \
+            self.blend_mode != skia.BlendMode.kSrcOver
+        if should_save:
+            args = ""
+            if self.alpha < 1:
+                args += ", alpha={}".format(self.alpha)
+            if self.blend_mode != skia.BlendMode.kSrcOver:
+                args += ", blend_mode={}".format(self.blend_mode)
+            return "AlphaAndBlend({})".format(args[2:])
         else:
-            return "SaveLayer(<no-op>)"
+            return "AlphaAndBlend(<no-op>)"
 
 class DrawCompositedLayer(DrawCommand):
     def __init__(self, composited_layer):
@@ -745,31 +751,17 @@ class InputLayout:
 
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
-    blend_mode = parse_blend_mode(node.style.get("mix-blend-mode"))
+    blend_mode = node.style.get("mix-blend-mode")
     translation = parse_transform(
         node.style.get("transform", ""))
 
-    border_radius = float(node.style.get("border-radius", "0px")[:-2])
     if node.style.get("overflow", "visible") == "clip":
-        clip_radius = border_radius
-    else:
-        clip_radius = 0
+        border_radius = float(node.style.get("border-radius", "0px")[:-2])
+        cmds = [ClipRRect(rect, border_radius, cmds)]
 
-    needs_clip = node.style.get("overflow", "visible") == "clip"
-    needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
-        needs_clip or opacity != 1.0
-
-    save_layer = \
-        SaveLayer(skia.Paint(BlendMode=blend_mode, Alphaf=opacity), node, [
-            ClipRRect(rect, clip_radius, cmds,
-                should_clip=needs_clip),
-        ], should_save=needs_blend_isolation)
-
-    transform = Transform(translation, rect, node, [save_layer])
-
-    node.save_layer = save_layer
- 
-    return [transform]
+    blend_op = AlphaAndBlend(opacity, blend_mode, node, cmds)
+    node.save_layer = blend_op
+    return [Transform(translation, rect, node, [blend_op])]
 
 SETTIMEOUT_CODE = "__runSetTimeout(dukpy.handle)"
 XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
@@ -1499,7 +1491,7 @@ class Browser:
         if not node in self.composited_updates:
             return visual_effect.clone(current_effect)
         save_layer = self.composited_updates[node]
-        if type(visual_effect) is SaveLayer:
+        if type(visual_effect) is AlphaAndBlend:
             return save_layer.clone(current_effect)
         return visual_effect.clone(current_effect)
 

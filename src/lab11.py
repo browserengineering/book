@@ -212,22 +212,17 @@ class DrawRRect:
             paint=skia.Paint(Color=sk_color))
 
 class ClipRRect:
-    def __init__(self, rect, radius, children, should_clip=True):
+    def __init__(self, rect, radius, children):
         self.rect = rect
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
         self.children = children
-        self.should_clip = should_clip
 
     def execute(self, canvas):
-        if self.should_clip:
-            canvas.save()
-            canvas.clipRRect(self.rrect)
-
+        canvas.save()
+        canvas.clipRRect(self.rrect)
         for cmd in self.children:
             cmd.execute(canvas)
-
-        if self.should_clip:
-            canvas.restore()
+        canvas.restore()
 
 def paint_tree(layout_object, display_list):
     if layout_object.should_paint():

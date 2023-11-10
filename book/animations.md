@@ -418,17 +418,18 @@ class DrawRect:
             self.right, self.color)
 ```
 
-Some of our display commands have a flag to do nothing, like
-`ClipRRect`'s `should_clip` flag. It's useful to explicitly indicate
-that:
+Some of our display commands optimize away into nothing, like
+`AlphaAndBlend` when there's no alpha or blending:
 
-``` {.python replace=ClipRRect:/ClipRRect(VisualEffect):}
-class ClipRRect:
+``` {.python replace=AlphaAndBlend:/AlphaAndBlend(VisualEffect):}
+class AlphaAndBlend:
     def __repr__(self):
-        if self.should_clip:
-            return "ClipRRect({})".format(str(self.rrect))
+        should_save = self.alpha < 1 or \
+            self.blend_mode != skia.BlendMode.kSrcOver
+        if should_save:
+            # ...
         else:
-            return "ClipRRect(<no-op>)"
+            return "AlphaAndBlend(<no-op>)"
 ```
 
 You'll also need to add `children` fields to all of the paint
@@ -445,14 +446,14 @@ class Tab:
 
 For our opacity example, the (key part of) the display list looks like this:
 
-    SaveLayer(alpha=0.112375)
+    AlphaAndBlend(alpha=0.112375)
       DrawText(text=This)
       DrawText(text=text)
       DrawText(text=fades)
 
 On the next frame, it instead looks like this:
 
-    SaveLayer(alpha=0.119866666667)
+    AlphaAndBlend(alpha=0.119866666667)
       DrawText(text=This)
       DrawText(text=text)
       DrawText(text=fades)
@@ -474,14 +475,14 @@ owned by us, not Skia), which we'll call a *composited layer*:
 Now instead of drawing those three words, we can just copy over the
 composited layer with a `DrawCompositedLayer` command:
 
-    SaveLayer(alpha=0.112375)
+    AlphaAndBlend(alpha=0.112375)
       DrawCompositedLayer()
 
-Importantly, on the next frame, the `SaveLayer` changes but the
+Importantly, on the next frame, the `AlphaAndBlend` changes but the
 `DrawText`s don't, so on that frame all we need to do is rerun the
-`SaveLayer`:
+`AlphaAndBlend`:
 
-    SaveLayer(alpha=0.119866666667)
+    AlphaAndBlend(alpha=0.119866666667)
       DrawCompositedLayer()
 
 In other words, the idea behind compositing is to split the display
@@ -492,7 +493,7 @@ the composited layers.
 
 Compositing helps when different frames of an animation have the same
 composited layers, which can then be reused. That's the case here,
-because the only difference between frames is the `SaveLayer`, which
+because the only difference between frames is the `AlphaAndBlend`, which
 is in the draw display list.
 
 How exactly to split up the display list is up to the browser.
@@ -535,7 +536,7 @@ leaving a visual *gutter* between content and the edge of the window.
 
 If you look closely at the opacity example in this section, you'll see that the
 `DrawText` command's rect is only as wide as the text. On the other hand, the
-`SaveLayer` rect is almost as wide as the viewport. The reason they differ is
+`AlphaAndBlend` rect is almost as wide as the viewport. The reason they differ is
 that the text is only about as wide as it needs to be, but the block element
 that contains it is as wide as the available width.
 
@@ -672,15 +673,15 @@ class Browser:
 
 Next, we'll need to *clone* each of the ancestors of the layer's paint
 commands and injecting new children, so let's add a new `clone` method
-to the visual effects classes. For `SaveLayer`, it'll create a new
-`SaveLayer` with the same parameters but new children:
+to the visual effects classes. For `AlphaAndBlend`, it'll create a new
+`AlphaAndBlend` with the same parameters but new children:
 
 ``` {.python}
-class SaveLayer(VisualEffect):
+class AlphaAndBlend(VisualEffect):
     # ...
     def clone(self, children):
-        return SaveLayer(self.sk_paint, self.node, children, \
-            self.should_save)
+        return AlphaAndBlend(self.alpha, self.blend_mode,
+                             self.node, children)
 ```
 
 The other visual effect, `ClipRRect`, should do something similar (note
@@ -690,8 +691,7 @@ actual cliping rect):
 ``` {.python}
 class ClipRRect(VisualEffect):
     def clone(self, children):
-        return ClipRRect(self.rrect.rect(), self.radius, children, \
-            self.should_clip)
+        return ClipRRect(self.rrect.rect(), self.radius, children)
 ```
 
 We won't be cloning paint commands, since they're all going to be inside a
@@ -885,15 +885,15 @@ there are three composited layers because there is one for the background color
 of the page.]
 
      DrawCompositedLayer()
-     SaveLayer(alpha=0.999)
+     AlphaAndBlend(alpha=0.999)
        DrawCompositedLayer()
-     SaveLayer(alpha=0.999)
-       SaveLayer(alpha=0.5)
+     AlphaAndBlend(alpha=0.999)
+       AlphaAndBlend(alpha=0.5)
          DrawCompositedLayer()
 
 [nested-op]: examples/example13-nested-opacity.html
 
-Notice how there are two `SaveLayer(alpha=0.999)` commands, when there should be
+Notice how there are two `AlphaAndBlend(alpha=0.999)` commands, when there should be
 one. This will cause incorrect results if the two pieces of text overlap. Fixing
 this problem requires some post-processing of the draw display list to merge
 common intermediate visual effects, and allocating temporary surfaces for them.
@@ -980,7 +980,7 @@ your browser)
 Visually, it looks more or less identical[^animation-curve] to the
 JavaScript animation. But since the browser *understands* the
 animation, it can optimize how the animation is run. For example,
-since `opacity` only affects `SaveLayer` commands that end up in the
+since `opacity` only affects `AlphaAndBlend` commands that end up in the
 draw display list, the browser knows that this animation does not
 require layout or raster, just paint and draw.
 
@@ -1340,19 +1340,19 @@ Now, when we `commit` a frame which only needed the paint phase, we
 send the `composited_updates` over to the browser thread. The browser
 thread can use that to skip composite and raster. The data to be sent
 across for each animation update will be an `Element` and a
-`SaveLayer`.
+`AlphaAndBlend`.
 
 To accomplish this we'll need several steps. First, when painting a
-`SaveLayer`, record it on the `Element`:
+`AlphaAndBlend`, record it on the `Element`:
 
 ``` {.python}
 def paint_visual_effects(node, cmds, rect):
     # ...
-    node.save_layer = save_layer
+    node.save_layer = blend_op
 ```
 
 Next add a list of composited updates to `CommitData` (each of which
-will contain the `Element` and `SaveLayer` pointers).
+will contain the `Element` and `AlphaAndBlend` pointers).
 
 ``` {.python}
 class CommitData:
@@ -1472,7 +1472,7 @@ class Browser:
         if not node in self.composited_updates:
             return visual_effect.clone(current_effect)
         save_layer = self.composited_updates[node]
-        if type(visual_effect) is SaveLayer:
+        if type(visual_effect) is AlphaAndBlend:
             return save_layer.clone(current_effect)
         return visual_effect.clone(current_effect)
 ```
@@ -1619,14 +1619,14 @@ class VisualEffect:
 We should set it to `True` when compositing would help us animate
 something. There are all sorts of complex heuristics real browsers
 use, but to keep things simple let's just set it to `True` for
-`SaveLayer`s (when they actually do something, not for no-ops),
+`AlphaAndBlend`s (when they actually do something, not for no-ops),
 regardless of whether they are animating:
 
-``` {.python replace=self.should_save/wbetools.USE_COMPOSITING%20and%20self.should_save}
-class SaveLayer(VisualEffect):
-    def __init__(self, sk_paint, node, children, should_save=True):
+``` {.python replace=should_save/wbetools.USE_COMPOSITING%20and%20should_save}
+class AlphaAndBlend(VisualEffect):
+    def __init__(self, alpha, blend_mode, node, children):
         # ...
-        if self.should_save:
+        if should_save:
             self.needs_compositing = True
 ```
 
@@ -1672,7 +1672,7 @@ rather than draw (which makes composited animations faster).
 
 ::: {.further}
 
-Mostly for simplicity, our browser composites `SaveLayer` visual effects,
+Mostly for simplicity, our browser composites `AlphaAndBlend` visual effects,
 regardless of whether they are animating. But in fact, there are some good
 reasons to always composite certain visual effects.
 
@@ -1851,12 +1851,8 @@ def paint_visual_effects(node, cmds, rect):
     translation = parse_transform(
         node.style.get("transform", ""))
     # ...
-    save_layer = \
-    # ...
-
-    transform = Transform(translation, rect, node, [save_layer])
-    # ...
-    return [transform]
+    blend_op = AlphaAndBlend(opacity, blend_mode, node, cmds)
+    return [Transform(translation, rect, node, [blend_op])]
 ```
 
 These `Transform` display items just call the conveniently built-in
@@ -1976,7 +1972,7 @@ class ClipRRect(VisualEffect):
         bounds.intersect(self.rrect.rect())
         return bounds
 
-class SaveLayer(VisualEffect):
+class AlphaAndBlend(VisualEffect):
     def map(self, rect):
         return rect
 ```
@@ -2054,7 +2050,7 @@ def absolute_to_local(display_item, rect):
     return rect
 ```
 
-Which in turn relies on `unmap`. For `SaveLayer` and `ClipRRect` these should
+Which in turn relies on `unmap`. For `AlphaAndBlend` and `ClipRRect` these should
 be no-ops, but for `Transform` it's just the inverse translation:
 
 
@@ -2283,9 +2279,9 @@ draw display list for [this example][nested-op], with one
 (probably internal-to-Skia) render surface:[^see-render-surface]
     
      DrawCompositedLayer()
-     SaveLayer(alpha=0.999)
+     AlphaAndBlend(alpha=0.999)
        DrawCompositedLayer()
-       SaveLayer(alpha=0.5)
+       AlphaAndBlend(alpha=0.5)
          DrawCompositedLayer()
 
 [^see-render-surface]: See the Go Further block about render surfaces for more

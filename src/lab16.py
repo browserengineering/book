@@ -35,7 +35,7 @@ from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
 from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import DrawCommand, DrawText, DrawCompositedLayer, DrawOutline, \
     DrawLine, DrawRRect
-from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform
+from lab13 import VisualEffect, AlphaAndBlend, ClipRRect, Transform
 from lab14 import parse_color, parse_outline, DrawRRect, \
     paint_outline, \
     dpx, cascade_priority, \
@@ -113,20 +113,14 @@ def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style["opacity"].get())
     blend_mode = parse_blend_mode(node.style["mix-blend-mode"].get())
     translation = parse_transform(node.style["transform"].get())
-    border_radius = float(node.style["border-radius"].get()[:-2])
-    if node.style["overflow"].get() == 'clip':
-        clip_radius = border_radius
-    else:
-        clip_radius = 0
-    needs_clip = node.style['overflow'].get() == 'clip'
-    needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
-        needs_clip or opacity != 1.0
-    save_layer = SaveLayer(
-        skia.Paint(BlendMode=blend_mode, Alphaf=opacity),
-        node, [ClipRRect(rect, clip_radius, cmds, should_clip=needs_clip)],
-        should_save=needs_blend_isolation)
-    transform = Transform(translation, rect, node, [save_layer])
-    node.save_layer = save_layer
+
+    if node.style.get("overflow", "visible") == "clip":
+        border_radius = float(node.style["border-radius"].get()[:-2])
+        cmds = [ClipRRect(rect, border_radius, cmds)]
+
+    blend = AlphaAndBlend(opacity, blend_mode, node, cmds)
+    transform = Transform(translation, rect, node, [blend])
+    node.save_layer = blend
     return [transform]
 
 class ProtectedField:
