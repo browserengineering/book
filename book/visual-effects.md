@@ -74,6 +74,12 @@ JavaScript. Alternatively, one can [compile Skia][canvaskit]
 to [WebAssembly][webassembly] to do the same.
 :::
 
+[canvas]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas
+[webgl]: https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API
+[webassembly]: https://developer.mozilla.org/en-US/docs/WebAssembly
+[canvaskit]: https://skia.org/docs/user/modules/canvaskit/
+
+
 SDL creates the window
 ======================
 
@@ -244,7 +250,7 @@ type, which represents the color of an abstract pixel somewhere. Since
 we're already talking about colors, let's implement a helper function
 to construct a Skia `Color` from a string:
 
-``` {.python}
+``` {.python replace=r%2c%20g%2c%20b/r%2c%20g%2c%20b%2c%20a}
 def parse_color(color):
     if color == "white":
         return skia.ColorWHITE
@@ -360,9 +366,26 @@ class Browser:
 So now we can draw with Skia and show the results in the SDL window.
 
 ::: {.further}
-SDL is most popular for making games. Their site lists [a selection of
-books](https://wiki.libsdl.org/Books) about game programming in SDL.
+Implementing high-quality raster libraries is very interesting in its own
+right---check out [Real-Time Rendering][rtr-book] for more.[^cgpp]
+These days, it's especially important to leverage GPUs when they're
+available, and browsers often push the envelope. Browser teams
+typically include or work closely with raster library experts: Skia
+for Chromium and [Core Graphics][core-graphics] for WebKit, for
+example. Both of these libraries are used outside of the browser, too:
+Core Graphics in iOS and macOS, and Skia in Android.
 :::
+
+[^cgpp]: There is also [Computer Graphics: Principles and
+Practice][classic], which incidentally I remember buying---this is
+Chris speaking---back in the days of my youth (1992 or so). At the time I
+didn't get much further than rastering lines and polygons (in assembly
+language!). These days you can do the same and more with Skia and a
+few lines of Python.
+
+[core-graphics]: https://developer.apple.com/documentation/coregraphics
+[rtr-book]: https://www.realtimerendering.com/
+[classic]: https://en.wikipedia.org/wiki/Computer_Graphics:_Principles_and_Practice
 
 Rasterizing with Skia
 =====================
@@ -852,101 +875,111 @@ class BlockLayout:
 
 Similar changes should be made to `InputLayout`.
 
+Another feature natively supported by Skia is transparency. In CSS,
+you can use a hex color with eight hex digits to indicate that
+something should be drawn semi-transparently. For example, the
+color `#00000080` is 50% transparent black. Over a white background,
+that looks gray, but over an orange background it looks like this:
+
+<div style="background-color: #ffa500; color: #00000080">Test</div>
+
+Note that the text is a kind of dark orange. Skia supports
+transparency like this as a an "alpha" field of all colors:
+
+``` {.python}
+def parse_color(color):
+    elif color.startswith("#"):
+        r = int(color[1:3], 16)
+        g = int(color[3:5], 16)
+        b = int(color[5:7], 16)
+        a = int(color[7:9], 16) if len(color) == 9 else 255
+        return skia.Color(r, g, b, a)
+```
+
+Check that your browser can render the example above with slightly
+orange-tinged text. This demonstrates that the text is semitransparent
+and is letting some background color through.
+
 ::: {.further}
-Implementing high-quality raster libraries is very interesting in its own
-right---check out [Real-Time Rendering][rtr-book] for more.[^cgpp]
-These days, it's especially important to leverage GPUs when they're
-available, and browsers often push the envelope. Browser teams
-typically include or work closely with raster library experts: Skia
-for Chromium and [Core Graphics][core-graphics] for WebKit, for
-example. Both of these libraries are used outside of the browser, too:
-Core Graphics in iOS and macOS, and Skia in Android.
+Alpha might seem intuitive, but it's less obvious than you think: see,
+for example, this [history of alpha][alpha-history] written by its
+co-inventor (and co-founder of Pixar). For example, note that the
+"alpha" field is independent of the red, green, and blue fields. You
+could instead multiply the color channels by the opacity instead of
+allocating a whole color channel. This [premultiplied][premultiplied]
+representation is generally more efficient. Nor is it obvious how
+alpha [behaves when resized][alpha-deriv].
 :::
 
-[^cgpp]: There is also [Computer Graphics: Principles and
-Practice][classic], which incidentally I remember buying---this is
-Chris speaking---back in the days of my youth (1992 or so). At the time I
-didn't get much further than rastering lines and polygons (in assembly
-language!). These days you can do the same and more with Skia and a
-few lines of Python.
-
-[core-graphics]: https://developer.apple.com/documentation/coregraphics
-[rtr-book]: https://www.realtimerendering.com/
-[classic]: https://en.wikipedia.org/wiki/Computer_Graphics:_Principles_and_Practice
+[alpha-history]: http://alvyray.com/Memos/CG/Microsoft/7_alpha.pdf
+[alpha-deriv]: https://jcgt.org/published/0004/02/03/paper.pdf
+[premultiplied]: https://limnu.com/premultiplied-alpha-primer-artists/
 
 
-Pixels, color, and raster
-=========================
 
-::: {.further}
-Screens use red, green, and blue color channels to match the three
-types of [cone cells][cones] in a human eye. We take it for granted,
-but color standards like [CIELAB][cielab] derive from attempts to
-[reverse-engineer human vision][opponent-process]. These cone cells
-vary between people: some have [more][tetrachromats] or
-[fewer][colorblind] (typically an inherited condition carried on the X
-chromosome). Moreover, different people have different ratios of cone
-types and those cone types use different protein structures that vary
-in the exact frequency of green, red, and blue that they respond to.
-The study of color thus combines software, hardware, chemistry,
-biology, and psychology.
-:::
-
-[cones]: https://en.wikipedia.org/wiki/Cone_cell
-[cielab]: https://en.wikipedia.org/wiki/CIELAB_color_space
-[opponent-process]: https://en.wikipedia.org/wiki/Opponent_process
-[colorblind]: https://en.wikipedia.org/wiki/Color_blindness
-[tetrachromats]: https://en.wikipedia.org/wiki/Tetrachromacy#Humans
-
-Blending and stacking
-=====================
-
-Drawing shapes quickly is already a challenge, but with multiple
-shapes there's an additional question: what color should the pixel be
-when two shapes overlap? So far, our browser has only handled opaque
-shapes,[^nor-subpixel] and the answer has been simple: take the color
-of the top shape. But now we need more nuance.
-
-[^nor-subpixel]: It also hasn't considered subpixel geometry or
-    anti-aliasing, which also rely on color mixing.
+Blending and isolation
+======================
 
 Many objects in nature are partially transparent: frosted glass,
-clouds, or colored paper, for example. Looking through one, you see
+clouds, or tissue paper, for example. Looking through one, you see
 multiple colors *blended* together. That's also why computer screens work:
 the red, green, and blue lights [blend together][mixing] and appear to
-our eyes as another color. Designers use this effect[^mostly-models]
+our eyes as another color.[^subpixel] Designers use this effect[^mostly-models]
 in overlays, shadows, and tooltips, so our browser needs to support
 color mixing.
+
+[^subpixel]: Another subtle place blending matters is subpixel geometry and
+    anti-aliasing, which also rely on color mixing.
 
 [mixing]: https://en.wikipedia.org/wiki/Color_mixing
 
 [^mostly-models]: Mostly. Some more advanced blending modes on the web are
 difficult, or perhaps impossible, in real-world physics.
 
-Color mixing means we need to think carefully about the order of
-operations. For example, consider black text on an orange background,
-placed semi-transparently over a white background. The text
-is gray while the background is yellow-orange. That's due to blending:
-the text and the background are both partially transparent and let
-through some of the underlying white:
+Unfortunately, blending can depend on the order in which you mix the
+colors. For example, both of the images below contain semitransparent
+green and blue rectangles over a grid background:[^transforms-etc]
 
-<div style="opacity: 0.5; background: orange; color: black; font-size: 50px;
-    padding: 15px; text-align: center;flex:1;">Text</div>
+[^transforms-etc]: This example uses `transform`, which is one of many
+ways to elements can overlap in a real browser. Other options include
+`position`ed elements, negative margins, and so many more. But color
+mixing works the same way each time.
 
-But importantly, the text isn't orange-gray: even though the text is
-partially transparent, none of the orange shines through. That's
-because the order matters: the text is *first* blended with the
-background; since the text is opaque, its blended pixels are black and
-overwrite the orange background. Only *then* is this black-and-orange
-image blended with the white background. Doing the operations in a
-different order would lead to dark-orange or black text.
+TODO
 
-To handle this properly, browsers apply blending not to individual shapes but to
-a tree of surfaces. Conceptually, each surface is drawn individually,
-and then blended into its parent surface. Rastering a web page requires a
-bottom-up traversal of the tree: to raster a surface you first need to raster
-its contents, including its child stacking contexts, and then the whole
-contents need to be blended together into the parent.[^stacking-context-disc]
+In the left image, the background is drawn first, then the
+semitransparent green rectangle, and then the semitransparent blue
+rectangle. As a result, the pixels where the two rectangles intersect
+mix both blue and green.
+
+The right image, on the other hand, involves first covering an opaque
+green rectangle with an opaque blue rectangle, and then drawing the
+result, semitransparently, over the background. Where the two
+rectangles intersect there is only blue.
+
+This order of operations problem comes up in browsers in the CSS
+`opacity` property. This property first draws an element and its
+contents, and then draws the results, semitransparently, over the rest
+of the page. For example, the black text / orange background example
+from before, but using `opacity` instead of a text color with alpha,
+looks like this:
+
+<div style="background-color: #ffa500; color: #000000; opacity: .5">Test</div>
+
+Here the black text is first placed atop the orange background before
+applying transparency, so the pixels under the text are black, not orange.
+
+To implement this correctly, we need to *isolate* the element and its
+children, combining and overlapping all of them before applying
+transparency. We do that by drawing the element and its children to a
+temporary surface, and then drawing that surface, with transparency,
+onto the actual tab surface. More generally, when rastering the page,
+need a tree of surfaces, each drawn individually and then blended into
+its parent surface. Rastering a web page requires a bottom-up
+traversal of the tree: to raster a surface you first need to raster
+its contents, including its child stacking contexts, and then the
+whole contents need to be blended together into the
+parent.[^stacking-context-disc]
 
 [^stacking-context-disc]: This tree of surfaces is an implementation strategy
 and not something required by any specific web API. However, the web does
@@ -961,97 +994,26 @@ of stacking contexts is very related to the tree of surfaces.
 [stacking-context]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
 [z-index]: https://developer.mozilla.org/en-US/docs/Web/CSS/z-index
 
-To match this use pattern, in Skia, surfaces form a stack. You can
-push a new surface on the stack, raster things to it, and then pop it
-off by blending it with surface below. When traversing the tree of
-stacking contexts, you push a new surface onto the stack every time
-you recurse into a new stacking context, and pop-and-blend every time
-you return from a child stacking context to its parent.
- 
-In real browsers, stacking contexts are formed by HTML elements with
-certain styles, up to any descendants that themselves have such
-styles. The full definition is actually quite complicated, so in this
-chapter we'll simplify by treating every layout object as a stacking
-context.
-
 ::: {.further}
-Mostly, elements [form a stacking context][stacking-context] because
-of CSS properties that have something to do with layering (like
-`z-index`) or visual effects (like `mix-blend-mode`). On the other
-hand, the `overflow` property, which can make an element scrollable,
-does not induce a stacking context, which I think was a
-mistake.[^also-containing-block] The reason is that inside a modern
-browser, scrolling is done on the GPU by offsetting two surfaces.
-Without a stacking context the browser might (depending on the web
-page structure) have to move around multiple independent surfaces with
-complex paint orders, in lockstep, to achieve scrolling. Fixed- and
-sticky-positioned elements also form stacking contexts because of
-their interaction with scrolling.
+[This blog post](https://ciechanow.ski/alpha-compositing/) gives a really nice
+visual overview of many of the same concepts explored in this chapter,
+plus way more content about how a library such as Skia might implement features
+like raster sampling of vector graphics for lines and text, and interpolation
+of surfaces when their pixel arrays don't match resolution or orientation. I
+highly recommend it.
 :::
 
-[^also-containing-block]: While we're at it, perhaps scrollable
-elements should also be a [containing block][containing-block] for
-descendants. Otherwise, a scrollable element can have non-scrolling
-children via properties like `position`. This situation is very
-complicated to handle in real browsers.
 
-[containing-block]: https://developer.mozilla.org/en-US/docs/Web/CSS/Containing_block
 
-Opacity and alpha
-=================
+Implementing opacity
+====================
 
-[canvas]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas
-[webgl]: https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API
-[webassembly]: https://developer.mozilla.org/en-US/docs/WebAssembly
-[canvaskit]: https://skia.org/docs/user/modules/canvaskit/
-
-Color mixing happens when multiple page elements overlap. The easiest
-way that happens in our browser is child elements overlapping their
-parents, like this:[^transforms-etc]
-
-[^transforms-etc]: There are many more ways elements can overlap in a
-real browser: the `transform` property, `position`ed elements,
-negative margins, and so many more. But color mixing works the same
-way each time.
-
-``` {.html .example}
-<div style="background-color:orange">
-    Parent
-    <div style="background-color:white;border-radius:5px">Child</div>
-    Parent
-</div>
-```
-
-It looks like this:
-
-<div style="background-color:orange">
-Parent
-<div style="background-color:white;border-radius:5px">Child</div>
-Parent
-</div>
-
-Right now, the white rectangle completely obscures part of the orange
-one; the two colors don't really need to "mix", and in fact it kind of
-looks like two orange rectangles instead of an orange rectangle with a
-white one on top. Now let's make the white child element
-semi-transparent, so the colors have to mix. In CSS, that requires
-adding an `opacity` property with a value somewhere between 0
-(completely transparent) and 1 (totally opaque). With 50% opacity on
-the white child element, it looks like this:
-
-<div style="background-color:orange">
-Parent
-<div style="background-color:white;border-radius:5px;opacity:0.5">Child</div>
-Parent
-</div>
-
-Notice that instead of being pure white, the child element now has a
-light-orange background color, resulting from orange and white mixing.
-Let's implement this in our browser.
-
-The way to mix colors in Skia is to first create two surfaces, and
-then draw one into the other. The most convenient way to do that is
-with `saveLayer`[^layer-surface] and `restore`:
+Skia provides a convenient layer abstraction for implementing this
+tree-of-surfaces idea. In Skia, a single canvas can actually draw to a
+stack of surfaces. There's a `saveLayer` operation[^layer-surface] to
+push a new surface on the stack and a `raster` operation to pop a
+surface off and blending it with surface below. That means we can draw
+an element with `opacity` like this:
 
 [^layer-surface]: It's called `saveLayer` instead of `createSurface` because
 Skia doesn't actually promise to create a new surface, if it can optimize that
@@ -1141,66 +1103,50 @@ def paint_tree(layout_object, display_list):
     display_list.extend(cmds)
 ```
 
-Inside `paint_visual_effects`, we'll parse the opacity value and
-construct the appropriate `SaveLayer`:
-
-``` {.python expected=False}
-def paint_visual_effects(node, cmds, rect):
-    opacity = float(node.style.get("opacity", "1.0"))
-
-    return [
-        SaveLayer(skia.Paint(Alphaf=opacity), cmds)
-    ]
-```
-
-Note that `paint_visual_effects` receives a list of commands and
-returns another list of commands. It's just that the output list is
-always a single `SaveLayer` command that wraps the original
-content---which makes sense, because first we need to draw the
-commands to a surface, and *then* apply transparency to it when
-blending into the parent.
+You should now be able to view the `opacity` example earlier in this
+section, and see your browser mix colors in the correct order.
 
 ::: {.further}
-[This blog post](https://ciechanow.ski/alpha-compositing/) gives a really nice
-visual overview of many of the same concepts explored in this chapter,
-plus way more content about how a library such as Skia might implement features
-like raster sampling of vector graphics for lines and text, and interpolation
-of surfaces when their pixel arrays don't match resolution or orientation. I
-highly recommend it.
+Mostly, elements [form a stacking context][stacking-context] because
+of CSS properties that have something to do with layering (like
+`z-index`) or visual effects (like `mix-blend-mode`). On the other
+hand, the `overflow` property, which can make an element scrollable,
+does not induce a stacking context, which I think was a
+mistake.[^also-containing-block] The reason is that inside a modern
+browser, scrolling is done on the GPU by offsetting two surfaces.
+Without a stacking context the browser might (depending on the web
+page structure) have to move around multiple independent surfaces with
+complex paint orders, in lockstep, to achieve scrolling. Fixed- and
+sticky-positioned elements also form stacking contexts because of
+their interaction with scrolling.
 :::
+
+[^also-containing-block]: While we're at it, perhaps scrollable
+elements should also be a [containing block][containing-block] for
+descendants. Otherwise, a scrollable element can have non-scrolling
+children via properties like `position`. This situation is very
+complicated to handle in real browsers.
+
+[containing-block]: https://developer.mozilla.org/en-US/docs/Web/CSS/Containing_block
+
+
 
 Compositing pixels
 ==================
 
-Now let's pause and explore how opacity actually works under the hood.
-Skia, SDL, and many other color libraries account for opacity with a
-fourth *alpha* value for each pixel.[^alpha-vs-opacity] An alpha of 0
-means the pixel is fully transparent (meaning, no matter what the
-colors are, you can't see them anyway), and an alpha of 1 means a
-fully opaque.
+Let's pause to discuss how opacity actually works under the hood. As
+mentioned before, Skia surfaces store an alpha value for each pixel in
+the surface.[^alpha-vs-opacity] Then, when one surface is drawn to
+another, overlapping pixels are paired up and the colors are blended
+together, as defined by the `Paint` object passed to `saveLayer`.
 
 [^alpha-vs-opacity]: The difference between opacity and alpha can be
 confusing. Think of opacity as a visual effect *applied to* content,
 but alpha as a *part of* content. Think of alpha as implementation
 technique for representing opacity.
 
-When a pixel with alpha overlaps another pixel, the final color is a
-mix of their two colors. How exactly the colors are mixed is defined
-by Skia's `Paint` objects. Of course, Skia is pretty complex, but we
-can sketch these paint operations in Python as methods on an imaginary
-`Pixel` class.
-
-``` {.python file=examples}
-class Pixel:
-    def __init__(self, r, g, b, a):
-        self.r = r
-        self.g = g
-        self.b = b
-        self.a = a
-```
-
-When we apply a `Paint` with an `Alphaf` parameter, the first thing
-Skia does is add the requested opacity to each pixel:
+So, for example, when we apply a `Paint` with an `Alphaf` parameter,
+the first thing Skia does is add the requested opacity to each pixel:
 
 ``` {.python file=examples}
 class Pixel:
@@ -1208,22 +1154,20 @@ class Pixel:
         self.a = self.a * opacity
 ```
 
-I want to emphasize that this code is not a part of our browser---I'm
-simply using Python code to illustrate what Skia is doing internally.
+Again, this code is not a part of our browser---I'm simply using
+Python code to illustrate what Skia is doing internally. Specifically,
+this `alphaf` operation modifies the pixels in the temporary surface,
+usually called the "source" or "top" surface:
 
-That `Alphaf` operation applies to pixels in one surface. But with
-`SaveLayer` we will end up with two surfaces, with all of their pixels
-aligned, and therefore we will need to combine, or *blend*,
-corresponding pairs of pixels.
+``` {.python file=examples}
+for (x, y) in destination.coordinates():
+    source[x, y].alphaf(opacity)
+```
 
-Here the terminology can get confusing: we imagine that the pixels "on
-top" are blending into the pixels "below", so we call the top surface
-the *source surface*, with source pixels, and the bottom surface the
-*destination surface*, with destination pixels. When we combine them,
-there are lots of ways we could do it, but the default on the web is
-called "simple alpha compositing"\index{compositing} or *source-over*
-compositing. In Python, the code to implement it looks like
-this:[^simple-alpha]
+Next, the two surfaces have to be blended together. On the web the
+default algorithm for blending surfaces is called "simple alpha
+compositing"\index{compositing} or *source-over* compositing. In
+Python, the code to implement it looks like this:[^simple-alpha]
 
 [^simple-alpha]: The formula for this code can be found
 [here](https://www.w3.org/TR/SVG11/masking.html#SimpleAlphaBlending).
@@ -1252,18 +1196,12 @@ class Pixel:
 Here the destination pixel `self` is modified to blend in the source
 pixel `source`. The mathematical expressions for the red, green, and
 blue color channels are identical, and basically average the source
-and destination colors, weighted by alpha.[^source-over-example] You
-might imagine the overall operation of `SaveLayer` with an `Alphaf`
-parameter as something like this:[^no-pixel-loop]
+and destination colors, weighted by alpha.[^source-over-example] So
+pseudocode for `saveLayer`/`restore` with alpha looks like this:
 
 [^source-over-example]: For example, if the alpha of the source pixel
     is 1, the result is just the source pixel color, and if it is 0
     the result is the backdrop pixel color.
-    
-[^no-pixel-loop]: In reality, reading individual pixels into memory to
-manipulate them like this is slow. So libraries such as Skia don't
-make it convenient to do so. (Skia canvases do have `peekPixels` and
-`readPixels` methods that are sometimes used, but not for this.)
 
 ``` {.python file=examples}
 for (x, y) in destination.coordinates():
@@ -1271,11 +1209,10 @@ for (x, y) in destination.coordinates():
     destination[x, y].source_over(source[x, y])
 ```
 
-Source-over compositing is one way to combine two pixel values. But
-it's not the only method---you could write literally any computation
-that combines two pixel values if you wanted. Two computations that
-produce interesting effects are traditionally called "multiply" and
-"difference" and use simple mathematical operations. "Multiply"
+Source-over compositing is algorithm for blending two pixels. But you
+could write literally any computation if you wanted. Two computations
+that produce interesting effects are traditionally called "multiply"
+and "difference" and use simple mathematical operations. "Multiply"
 multiplies the color values:
 
 ``` {.python file=examples}
@@ -1403,22 +1340,25 @@ Note the order of operations here: we _first_ apply transparency, and
 _then_ blend the result into the rest of the page, just like Skia.
 
 ::: {.further}
-Alpha might seem intuitive, but it's less obvious than you think: see,
-for example, this [history of alpha][alpha-history] written by its
-co-inventor (and co-founder of Pixar). And there are several different
-implementation options. For example, many graphics libraries, Skia
-included, multiply the color channels by the opacity instead of
-allocating a whole color channel. This [premultiplied][premultiplied]
-representation is generally more efficient; for example, `source_over`
-above had to divide by `self.a` at the end, because otherwise the
-result would be premultiplied. Using a premultiplied representation
-throughout would save a division. Nor is it obvious how alpha [behaves
-when resized][alpha-deriv].
+Screens use red, green, and blue color channels to match the three
+types of [cone cells][cones] in a human eye. We take it for granted,
+but color standards like [CIELAB][cielab] derive from attempts to
+[reverse-engineer human vision][opponent-process]. These cone cells
+vary between people: some have [more][tetrachromats] or
+[fewer][colorblind] (typically an inherited condition carried on the X
+chromosome). Moreover, different people have different ratios of cone
+types and those cone types use different protein structures that vary
+in the exact frequency of green, red, and blue that they respond to.
+The study of color thus combines software, hardware, chemistry,
+biology, and psychology.
 :::
 
-[alpha-history]: http://alvyray.com/Memos/CG/Microsoft/7_alpha.pdf
-[alpha-deriv]: https://jcgt.org/published/0004/02/03/paper.pdf
-[premultiplied]: https://limnu.com/premultiplied-alpha-primer-artists/
+[cones]: https://en.wikipedia.org/wiki/Cone_cell
+[cielab]: https://en.wikipedia.org/wiki/CIELAB_color_space
+[opponent-process]: https://en.wikipedia.org/wiki/Opponent_process
+[colorblind]: https://en.wikipedia.org/wiki/Color_blindness
+[tetrachromats]: https://en.wikipedia.org/wiki/Tetrachromacy#Humans
+
 
 Clipping and masking
 ====================
