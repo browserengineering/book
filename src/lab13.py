@@ -996,8 +996,8 @@ class CompositedLayer:
         canvas.restore()
 
         if wbetools.SHOW_COMPOSITED_LAYER_BORDERS:
-            DrawOutline(0, 0, irect.width() - 1,
-                irect.height() - 1,
+            DrawOutline(0, 0,
+                irect.width() - 1, irect.height() - 1,
                 "red", 1).execute(canvas)
 
     def __repr__(self):
