@@ -173,7 +173,7 @@ Now that we've downloaded and saved the image, we need to use it.
 That just requires calling Skia's `drawImageRect` function:
 
 ``` {.python replace=%2c%20rect/%2c%20rect%2c%20quality,self.rect)/self.rect%2c%20paint)}
-class DrawImage(DrawCommand):
+class DrawImage(PaintCommand):
     def __init__(self, image, rect):
         super().__init__(rect)
         self.image = image
@@ -246,7 +246,7 @@ def parse_image_rendering(quality):
    else:
        return skia.FilterQuality.kMedium_FilterQuality
 
-class DrawImage(DrawCommand):
+class DrawImage(PaintCommand):
     def __init__(self, image, rect, quality):
         # ...
         self.quality = parse_image_rendering(quality)
