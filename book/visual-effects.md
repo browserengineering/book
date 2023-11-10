@@ -1221,21 +1221,21 @@ generally does not use premultiplied representations, and the code below
 doesn't either. (Skia does represent colors internally in a premultiplied form,
 however.)
 
-
 ``` {.python file=examples}
 class Pixel:
     def source_over(self, source):
-        self.a = 1 - (1 - source.a) * (1 - self.a)
-        if self.a == 0: return self
+        new_a = 1 - (1 - source.a) * (1 - self.a)
+        if new_a == 0: return self
         self.r = \
             (self.r * (1 - source.a) * self.a + \
-                source.r * source.a) / self.a
+                source.r * source.a) / new_a
         self.g = \
             (self.g * (1 - source.a) * self.a + \
-                source.g * source.a) / self.a
+                source.g * source.a) / new_a
         self.b = \
             (self.b * (1 - source.a) * self.a + \
-                source.b * source.a) / self.a
+                source.b * source.a) / new_a
+        self.a = new_a
 ```
 
 Here the destination pixel `self` is modified to blend in the source
@@ -1469,10 +1469,6 @@ fits perfectly. In code, destination-in looks like this:
 class Pixel:
     def destination_in(self, source):
         self.a = self.a * source.a
-        if self.a == 0: return self
-        self.r = (self.r * self.a * source.a) / self.a
-        self.g = (self.g * self.a * source.a) / self.a
-        self.b = (self.b * self.a * source.a) / self.a
 ```
 
 Now, in `paint_visual_effects`, we need to create a new layer, draw
