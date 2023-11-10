@@ -1650,9 +1650,9 @@ rather than draw (which makes composited animations faster).
 At this point, the compositing algorithm and its effect on content is getting
 pretty complicated. It will be very useful to you to add in more visual
 debugging to help understand what is going on. One good way to do this is
-to add a [flag] to our browser that draws a red border around `CompositedLayer`
-content. This is a very simple addition to
-`CompositedLayer.raster`:[^flag-recommendation]
+to add a [flag][^flag-recommendation] to our browser that draws a red border
+around `CompositedLayer` content. This is a very simple addition to
+`CompositedLayer.raster`:
 
 ``` {.python replace=SHOW_COMPOSITED_LAYER_BORDERS/wbetools.SHOW_COMPOSITED_LAYER_BORDERS}
 class CompositedLayer:
