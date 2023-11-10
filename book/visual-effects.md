@@ -430,7 +430,7 @@ To draw just the outline, set the `Style` parameter of the `Paint` to
 
 ``` {.python replace=%2c%20scroll/,rect.makeOffset(0%2c%20-scroll)/rect}
 class DrawOutline:
-    def execute(self, canvas):
+    def execute(self, scroll, canvas):
         paint = skia.Paint()
         paint.setStyle(skia.Paint.kStroke_Style)
         paint.setStrokeWidth(self.thickness)
