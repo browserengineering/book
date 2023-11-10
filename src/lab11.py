@@ -690,12 +690,7 @@ class Browser:
     def handle_quit(self):
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
-if __name__ == "__main__":
-    import sys
-    sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
-    browser = Browser()
-    browser.new_tab(URL(sys.argv[1]))
-
+def mainloop(browser):
     event = sdl2.SDL_Event()
     while True:
         while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
@@ -712,4 +707,11 @@ if __name__ == "__main__":
                     browser.handle_down()
             elif event.type == sdl2.SDL_TEXTINPUT:
                 browser.handle_key(event.text.text.decode('utf8'))
+
+if __name__ == "__main__":
+    import sys
+    sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
+    browser = Browser()
+    browser.new_tab(URL(sys.argv[1]))
+
 

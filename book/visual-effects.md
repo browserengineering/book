@@ -118,7 +118,64 @@ Skia and SDL surfaces for simplicity, but in a highly optimized
 browser, minimizing the number of surfaces is important for good
 performance.
 
-Let's also create a surface for Skia to draw to:
+So now we have an SDL window, which replaces the `Tk` object we were
+creating previously. We also need to handle events sent to this
+window. SDL doesn't have a `mainloop` or `bind` method; we have to
+implement it ourselves:
+
+``` {.python}
+def mainloop(browser):
+    event = sdl2.SDL_Event()
+    while True:
+        while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+            if event.type == sdl2.SDL_QUIT:
+                browser.handle_quit()
+                sdl2.SDL_Quit()
+                sys.exit()
+            # ...
+```
+
+The details of `ctypes` and `PollEvent` aren't too important here, but
+note that `SDL_QUIT` is an event, sent when the user closes the last
+open window. The `handle_quit` method it calls just cleans up the
+window object:
+
+``` {.python}
+class Browser:
+    def handle_quit(self):
+        sdl2.SDL_DestroyWindow(self.sdl_window)
+```
+
+We'll also need to handle all of the other events in this
+loop---clicks, typing, and so on. The SDL syntax looks like this:
+
+``` {.python}
+def mainloop(browser):
+    while True:
+        while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+            # ...
+            elif event.type == sdl2.SDL_MOUSEBUTTONUP:
+                browser.handle_click(event.button)
+            elif event.type == sdl2.SDL_KEYDOWN:
+                if event.key.keysym.sym == sdl2.SDLK_RETURN:
+                    browser.handle_enter()
+                elif event.key.keysym.sym == sdl2.SDLK_DOWN:
+                    browser.handle_down()
+            elif event.type == sdl2.SDL_TEXTINPUT:
+                browser.handle_key(event.text.text.decode('utf8'))
+```
+
+This loop replaces all of the `bind` calls in the `Browser`
+constructor, which you can now remove. I've changed the signatures of
+the various event handler methods. For example, the `handle_click`
+method is now passed a `MouseButtonEvent` object, which thankfully
+contains `x` and `y` coordinates, while the `handle_enter` and
+`handle_down` methods aren't passed any argument at all, because we
+don't use that argument anyway. You'll need to change the `Browser`
+methods' signatures to match.
+
+Next, let's work on output. We want to use Skia for the 2D graphics,
+and in Skia what you need to do is first create a *surface* to draw to:
 
 ``` {.python}
 class Browser:
@@ -302,64 +359,7 @@ class Browser:
         sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 ```
 
-So that's that: we're now creating a window and copying pixels to it.
-But if you run your browser now, you'll find that it exits
-immediately.
-
-That's because SDL doesn't have a `mainloop` or `bind` method; we have
-to implement it ourselves:
-
-``` {.python}
-if __name__ == "__main__":
-    # ...
-    event = sdl2.SDL_Event()
-    while True:
-        while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            if event.type == sdl2.SDL_QUIT:
-                browser.handle_quit()
-                sdl2.SDL_Quit()
-                sys.exit()
-            # ...
-```
-
-The details of `ctypes` and `PollEvent` aren't too important here, but
-note that `SDL_QUIT` is an event, sent when the user closes the last
-open window. The `handle_quit` method it calls just cleans up the
-window object:
-
-``` {.python}
-class Browser:
-    def handle_quit(self):
-        sdl2.SDL_DestroyWindow(self.sdl_window)
-```
-
-We'll also need to handle all of the other events in this
-loop---clicks, typing, and so on. The SDL syntax looks like this:
-
-``` {.python}
-if __name__ == "__main__":
-    while True:
-        while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            # ...
-            elif event.type == sdl2.SDL_MOUSEBUTTONUP:
-                browser.handle_click(event.button)
-            elif event.type == sdl2.SDL_KEYDOWN:
-                if event.key.keysym.sym == sdl2.SDLK_RETURN:
-                    browser.handle_enter()
-                elif event.key.keysym.sym == sdl2.SDLK_DOWN:
-                    browser.handle_down()
-            elif event.type == sdl2.SDL_TEXTINPUT:
-                browser.handle_key(event.text.text.decode('utf8'))
-```
-
-This loop replaces all of the `bind` calls in the `Browser`
-constructor, which you can now remove. I've changed the signatures of
-the various event handler methods. For example, the `handle_click`
-method is now passed a `MouseButtonEvent` object, which thankfully
-contains `x` and `y` coordinates, while the `handle_enter` and
-`handle_down` methods aren't passed any argument at all, because we
-don't use that argument anyway. You'll need to change the `Browser`
-methods' signatures to match.
+So now we can draw with Skia and show the results in the SDL window.
 
 ::: {.further}
 SDL is most popular for making games. Their site lists [a selection of
