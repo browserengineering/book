@@ -46,7 +46,7 @@ from lab15 import URL, HTMLParser, AttributeParser, DrawImage, \
     EmbedLayout, InputLayout, LineLayout, TextLayout, ImageLayout, \
     IframeLayout, JSContext, style, AccessibilityNode, Frame, Tab, \
     CommitData, Browser, BROKEN_IMAGE, font, \
-    IFRAME_WIDTH_PX, IFRAME_HEIGHT_PX
+    IFRAME_WIDTH_PX, IFRAME_HEIGHT_PX, parse_image_rendering
 import wbetools
 
 @wbetools.patch(is_focusable)
@@ -1075,7 +1075,7 @@ class Frame:
 
         self.nodes = HTMLParser(body).parse()
 
-        self.js = self.tab.get_js(url.origin())
+        self.js = self.tab.get_js(url)
         self.js.add_window(self)
 
         scripts = [node.attributes["src"] for node

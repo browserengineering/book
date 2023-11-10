@@ -503,7 +503,8 @@ class Browser:
     # ...
     def toggle_dark_mode(self):
         # ...
-        task = Task(self.active_tab.toggle_dark_mode)
+        self.dark_mode = not self.dark_mode
+        task = Task(self.active_tab.set_dark_mode, self.dark_mode)
         self.active_tab.task_runner.schedule_task(task)
 ```
 
@@ -515,13 +516,22 @@ class Tab:
         # ...
         self.dark_mode = browser.dark_mode
 
-    def toggle_dark_mode(self):
-        self.dark_mode = not self.dark_mode
+    def set_dark_mode(self, val):
+        self.dark_mode = val
         self.set_needs_render()
 ```
 
 Note that we need to re-render the page when the dark mode setting is
-flipped, so that the user actually sees the new colors.
+flipped, so that the user actually sees the new colors. On that note,
+we also need to set dark mode when changing tabs, since all tabs should
+be either dark or light:
+
+``` {.python}
+   def set_active_tab(self, tab):
+        # ...
+        task = Task(self.active_tab.set_dark_mode, self.dark_mode)
+        self.active_tab.task_runner.schedule_task(task)
+```
 
 Now we need the page's colors to somehow depend on dark mode. The
 easiest to change are the default text color and the background color
@@ -1483,7 +1493,13 @@ screen reader to re-read it.
 You can see an example[^imagine] of screen reader navigation in this
 talk, specifically the segment from 2:36--3:54:[^whole-talk]
 
+::: {.web-only}
 <iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/qi0tY60Hd6M?start=159" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+:::
+
+::: {.print-only}
+    https://www.youtube.com/watch?v=qi0tY60Hd6M&t=159s
+:::
 
 [^whole-talk]: The whole talk is recommended; it has great examples of
     using accessibility technology.

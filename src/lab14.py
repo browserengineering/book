@@ -996,7 +996,6 @@ class Tab:
             self.accessibility_tree = AccessibilityNode(self.nodes)
             self.accessibility_tree.build()
             self.needs_accessibility = False
-            self.needs_paint = True
 
         if self.needs_paint:
             self.display_list = []
@@ -1109,8 +1108,8 @@ class Tab:
         self.zoom = 1
         self.set_needs_render()
 
-    def toggle_dark_mode(self):
-        self.dark_mode = not self.dark_mode
+    def set_dark_mode(self, val):
+        self.dark_mode = val
         self.set_needs_render()
 
 def draw_line(canvas, x1, y1, x2, y2, color):
@@ -1462,6 +1461,8 @@ class Browser:
 
     def set_active_tab(self, tab):
         self.active_tab = tab
+        task = Task(self.active_tab.set_dark_mode, self.dark_mode)
+        self.active_tab.task_runner.schedule_task(task)
         task = Task(self.active_tab.set_needs_paint)
         self.active_tab.task_runner.schedule_task(task)
 
@@ -1523,7 +1524,7 @@ class Browser:
     def toggle_dark_mode(self):
         self.lock.acquire(blocking=True)
         self.dark_mode = not self.dark_mode
-        task = Task(self.active_tab.toggle_dark_mode)
+        task = Task(self.active_tab.set_dark_mode, self.dark_mode)
         self.active_tab.task_runner.schedule_task(task)
         self.lock.release()
 

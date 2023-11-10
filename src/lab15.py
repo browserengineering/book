@@ -108,16 +108,19 @@ class URL:
         s.close()
         return response_headers, body
 
+def parse_image_rendering(quality):
+   if quality == "high-quality":
+       return skia.FilterQuality.kHigh_FilterQuality
+   elif quality == "crisp-edges":
+       return skia.FilterQuality.kLow_FilterQuality
+   else:
+       return skia.FilterQuality.kMedium_FilterQuality
+
 class DrawImage(DrawCommand):
     def __init__(self, image, rect, quality):
         super().__init__(rect)
         self.image = image
-        if quality == "high-quality":
-            self.quality = skia.FilterQuality.kHigh_FilterQuality
-        elif quality == "crisp-edges":
-            self.quality = skia.FilterQuality.kLow_FilterQuality
-        else:
-            self.quality = skia.FilterQuality.kMedium_FilterQuality
+        self.quality = parse_image_rendering(quality)
 
     def execute(self, canvas):
         paint = skia.Paint(FilterQuality=self.quality)
@@ -259,7 +262,6 @@ class BlockLayout:
                     self.recurse(child)
 
     def new_line(self):
-        self.previous_word = None
         self.cursor_x = self.x
         last_line = self.children[-1] if self.children else None
         new_line = LineLayout(self.node, self, last_line)
@@ -269,12 +271,12 @@ class BlockLayout:
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
+        previous_word = line.children[-1] if line.children else None
         if word:
-            child = child_class(node, line, self.previous_word, word)
+            child = child_class(node, line, previous_word, word)
         else:
-            child = child_class(node, line, self.previous_word, frame)
+            child = child_class(node, line, previous_word, frame)
         line.children.append(child)
-        self.previous_word = child
         self.cursor_x += w + font(node.style, self.zoom).measureText(" ")
 
     def word(self, node, word):
@@ -296,7 +298,7 @@ class BlockLayout:
     def iframe(self, node):
         if "width" in self.node.attributes:
             w = dpx(int(self.node.attributes["width"]),
-                self.zoom)
+                    self.zoom)
         else:
             w = IFRAME_WIDTH_PX + dpx(2, self.zoom)
         self.add_inline_child(node, w, IframeLayout, self.frame)
@@ -1160,7 +1162,7 @@ class FrameAccessibilityNode(AccessibilityNode):
         self.build_internal(self.node.frame.nodes)
 
     def hit_test(self, x, y):
-        if not self.intersects(x, y): return
+        if not self.bounds.contains(x, y): return
         new_x = x - self.bounds.x()
         new_y = y - self.bounds.y() + self.scroll
         node = self
@@ -1236,7 +1238,7 @@ class Frame:
         self.nodes = HTMLParser(body).parse()
 
         if self.js: self.js.discarded = True
-        self.js = self.tab.get_js(url.origin())
+        self.js = self.tab.get_js(url)
         self.js.add_window(self)
 
         scripts = [node.attributes["src"] for node
@@ -1290,8 +1292,7 @@ class Frame:
                 img.image = skia.Image.MakeFromEncoded(data)
                 assert img.image, "Failed to recognize image format for " + image_url
             except Exception as e:
-                print("Exception loading image: url="
-                    + str(image_url) + " exception=" + str(e))
+                print("Image", image_url, "crashed", e)
                 img.image = BROKEN_IMAGE
 
         iframes = [node
@@ -1445,8 +1446,9 @@ class Frame:
             if isinstance(elt, Text):
                 pass
             elif elt.tag == "iframe":
-                new_x = x - elt.layout_object.x
-                new_y = y - elt.layout_object.y
+                border = dpx(1, elt.layout_object.zoom)
+                new_x = x - elt.layout_object.x - border
+                new_y = y - elt.layout_object.y - border
                 elt.frame.click(new_x, new_y)
                 return
             elif is_focusable(elt):
@@ -1516,7 +1518,8 @@ class Tab:
         self.root_frame.frame_height = self.tab_height
         self.loaded = True
 
-    def get_js(self, origin):
+    def get_js(self, url):
+        origin = url.origin()
         if wbetools.FORCE_CROSS_ORIGIN_IFRAMES:
             return JSContext(self, origin)
         if origin not in self.origin_to_js:
@@ -1655,8 +1658,8 @@ class Tab:
             back = self.history.pop()
             self.load(back)
 
-    def toggle_dark_mode(self):
-        self.dark_mode = not self.dark_mode
+    def set_dark_mode(self, val):
+        self.dark_mode = val
         self.set_needs_render_all_frames()
 
     def post_message(self, message, target_window_id):
@@ -1687,6 +1690,16 @@ class Browser:
             else:
                 self.set_needs_draw()
         self.lock.release()
+
+    def set_active_tab(self, tab):
+        self.active_tab = tab
+        task = Task(self.active_tab.set_dark_mode, self.dark_mode)
+        self.active_tab.task_runner.schedule_task(task)
+        task = Task(self.active_tab.set_needs_render_all_frames)
+        self.active_tab.task_runner.schedule_task(task)
+
+        self.clear_data()
+        self.needs_animation_frame = True
 
     def handle_down(self):
         self.lock.acquire(blocking=True)
