@@ -1648,6 +1648,32 @@ grouping together non-animating content to reduce the number of composited
 layers (which saves GPU memory), and doing as much work as possible in raster
 rather than draw (which makes composited animations faster).
 
+At this point, the compositing algorithm and its effect on content is getting
+pretty complicated. It will be very useful to you to add in more visual
+debugging to help understand what is going on. One good way to do this is
+to add a [flag][^flag-recommendation] to our browser that draws a red border
+around `CompositedLayer` content. This is a very simple addition to
+`CompositedLayer.raster`:
+
+``` {.python replace=SHOW_COMPOSITED_LAYER_BORDERS/wbetools.SHOW_COMPOSITED_LAYER_BORDERS}
+class CompositedLayer:
+    def raster(self):
+        # ...
+        if SHOW_COMPOSITED_LAYER_BORDERS:
+            DrawOutline(0, 0,
+                irect.width() - 1, irect.height() - 1,
+                "red", 1).execute(canvas)
+```
+
+[flag]: https://docs.python.org/3/library/argparse.html
+
+[^flag-recommendation]: I also recommend you add a mode to your browser that
+disables compositing (i.e. setting `needs_compositing` to `False` for every
+`VisualEffect`), and disables use of the GPU (i.e. going back to the old way of
+making Skia surfaces). Everything should still work (albeit more slowly) in all
+of the modes, and you can use these additional modes to debug your browser more
+fully and benchmark its performance.
+
 ::: {.further}
 
 Mostly for simplicity, our browser composites `SaveLayer` visual effects,
@@ -1672,30 +1698,6 @@ purpose of signaling pre-compositing.
 
 [subpixel]: https://en.wikipedia.org/wiki/Subpixel_rendering
 [will-change]: https://developer.mozilla.org/en-US/docs/Web/CSS/will-change
-
-At this point, the compositing algorithm and its effect on content is getting
-pretty complicated. It will be very useful to you to add in more visual
-debugging to help understand what is going on. One good way to do this is
-to add a flag to our browser that draws a red border around `CompositedLayer`
-content. This is a very simple addition to `CompositedLayer.raster`:
-
-``` {.python}
-class CompositedLayer:
-    def raster(self):
-        # ...
-            draw_rect(
-                canvas, 0, 0, irect.width() - 1,
-                irect.height() - 1,
-                border_color="red")
-  
-```
-
-I also recommend you add a mode to your browser that disables compositing
-(i.e. set `needs_compositing` to `False` for every `VisualEffect`), and
-disables use of the GPU (i.e. go back to the old way of making Skia surfaces).
-Everything should still work (albeit more slowly) in all of the modes, and you
-can use these additional modes to debug your browser more fully and benchmark
-its performance.
 :::
 
 
@@ -2264,7 +2266,6 @@ elements][stacking-context] with `z-index` properties.
 
 [stacking-context]:  https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
 
-
 *Atomic effects*: Our browser currently uses a simplistic algorithm for building
 the draw list which doesn't handle nested, composited visual effects
 correctly, especially when there are overlapping elements on the page(this was
@@ -2293,7 +2294,8 @@ and use it to cause animated scroll in `handle_down`, by delegating scroll to
 a main thread animation.[^main-thread-scroll] You'll need to implement a new
 `ScrollAnimation` class and some logic in `run_animation_frame`. Scrolling in
 the [transform transition](examples/example13-transform-transition.html)
-example should now be smooth, as that example uses `scroll-behavior`.
+example should now be smooth, as that example uses
+`scroll-behavior`.[^scroll-linked-animations]
 
 [scroll-behavior]: https://developer.mozilla.org/en-US/docs/Web/CSS/scroll-behavior
 
@@ -2301,34 +2303,34 @@ example should now be smooth, as that example uses `scroll-behavior`.
 scrolling. If you've implemented the threaded animations exercise, you could
 build on that code to animate scroll on the browser thread.
 
-::: {.further}
+[^scroll-linked-animations]: These days, many websites implement a number
+of *scroll-linked* animation effects, such as *parallax*. In real
+life, parallax is the phenomenon that objects further away appear to move
+slower than closer-in objects (due to the angle of light changing less
+quickly). This can be achieved with the [`perspective`][perspective] CSS
+property. [This article][parallax] explains how, and
+[this one][csstricks-perspective] gives a much deeper dive into perspective
+in CSS generally.
+<br><br>
+There are also animations that are [tied to scroll offset][scroll-linked] but
+are not, strictly speaking, part of the scroll. An example is a rotation or
+opacity fade on an element that advances as the user scrolls down the page
+(and reverses as they scroll back up). Or there are *scroll-triggered*
+animations that start once an element has scrolled to a certain point on the
+screen, or when scroll changes direction.
 
-These days, many websites implement a number of *scroll-linked* animation
-effects. One common one is *parallax*. In real life, parallax is the phenomenon
-that objects further away appear to move slower than closer-in objects (due to
-the angle of light changing less quickly). For example, when riding a train,
-the trees nearby move faster across your field of view than the hills in the
-distance. The same mathematical result can be applied to web contents by way of
-the [`perspective`][perspective] CSS property. [This
-article][parallax] explains how, and [this one][csstricks-perspective]
-gives a much deeper dive into perspective in CSS generally.
+*Opacity-plus-draw*: If a `DrawCompositedLayer` is inside of a
+`SaveLayer(alpha=0.5)` then right now there might be two surface copies:
+first copying the composited layer's raster buffer into a temporary buffer,
+then applying opacity to it and copying it into the root surface. This is not necessary, and in fact Skia's [`draw`][draw-api] API on a `Surface` allows
+opacity to be applied. Optimize the browser to combine these into into
+one `draw` command when this situation happens. (This is an important
+optimization in real browsers.)
 
+[draw-api]: https://kyamagu.github.io/skia-python/reference/skia.Surface.html#skia.Surface.draw
+
+[scroll-linked]: https://drafts.csswg.org/scroll-animations-1/
 [parallax]: https://developer.chrome.com/blog/performant-parallaxing/
 [perspective]: https://developer.mozilla.org/en-US/docs/Web/CSS/perspective
 [csstricks-perspective]: https://css-tricks.com/how-css-perspective-works/
 
-There are also animations that are tied to scroll offset but are not, strictly
-speaking, part of the scroll. An example is a rotation or opacity fade on an
-element that advances as the user scrolls down the page (and reverses as they
-scroll back up). Or there are *scroll-triggered* animations that start once an
-element has scrolled to a certain point on the screen, or when scroll changes
-direction. An example of that is animation of a top-bar onto the page when the
-user starts to change scroll direction.
-
-Scroll-linked animations implemented in JavaScript work ok most of the time, but
-suffer from the problem that they cannot perfectly sync with real browsers'
-threaded scrolling architectures. This will be solved by the upcoming
-[scroll-linked animations][scroll-linked] specification.
-
-[scroll-linked]: https://drafts.csswg.org/scroll-animations-1/
-:::
