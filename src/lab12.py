@@ -28,7 +28,7 @@ from lab10 import COOKIE_JAR, JSContext, URL
 from lab11 import get_font, FONTS, DrawLine, DrawRect, DrawOutline
 from lab11 import linespace, DrawText, SaveLayer, ClipRRect
 from lab11 import BlockLayout, LineLayout, TextLayout, InputLayout, Chrome
-from lab11 import Tab, Browser, paint_tree
+from lab11 import Tab, Browser, paint_tree, DEFAULT_STYLE_SHEET
 
 class MeasureTime:
     def __init__(self):
