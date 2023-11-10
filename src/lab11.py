@@ -24,6 +24,7 @@ from lab8 import Browser, LineLayout, TextLayout, DocumentLayout, Chrome
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL, JSContext, Tab
 import wbetools
+import sys
 
 FONTS = {}
 
@@ -61,7 +62,7 @@ def parse_color(color):
         a = int(color[7:9], 16) if len(color) == 9 else 255
         return skia.Color(r, g, b, a)
     else:
-        raise ValueError("Unknown color " + color)
+        raise Exception("Unknown color " + color)
 
 def parse_blend_mode(blend_mode_str):
     if blend_mode_str == "destination-in":
@@ -731,7 +732,6 @@ def mainloop(browser):
                 browser.handle_key(event.text.text.decode('utf8'))
 
 if __name__ == "__main__":
-    import sys
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
     browser.new_tab(URL(sys.argv[1]))
