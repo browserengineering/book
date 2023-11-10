@@ -873,10 +873,6 @@ class NumericAnimation:
             old_value=self.old_value,
             change_per_frame=self.change_per_frame,
             num_frames=self.num_frames)
-
-ANIMATED_PROPERTIES = {
-    "opacity": NumericAnimation
-}
     
 def style(node, rules, tab):
     old_style = node.style
@@ -908,10 +904,9 @@ def style(node, rules, tab):
         transitions = diff_styles(old_style, node.style)
         for property, (old_value, new_value, num_frames) \
             in transitions.items():
-            if property in ANIMATED_PROPERTIES:
+            if property == "opacity":
                 tab.set_needs_render()
-                AnimationClass = ANIMATED_PROPERTIES[property]
-                animation = AnimationClass(
+                animation = NumericAnimation(
                     old_value, new_value, num_frames)
                 node.animations[property] = animation
                 node.style[property] = animation.animate()
