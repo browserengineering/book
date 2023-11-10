@@ -218,7 +218,7 @@ But when we toggle to dark, it switches:
     >>> browser.toggle_dark_mode()
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
-     DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=blue)
+     DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=#2222FF)
      DrawText(text=)
      DrawText(text=Link)
 
@@ -228,8 +228,8 @@ The rules parsed by the browser style sheet should also indicate dark mode:
     ...     if guard == "dark":
     ...         print(str(selector) + " " + str(body))
     TagSelector(tag=a, priority=1) {'color': 'lightblue'}
-    TagSelector(tag=input, priority=1) {'background-color': 'blue'}
-    TagSelector(tag=button, priority=1) {'background-color': 'orangered'}
+    TagSelector(tag=input, priority=1) {'background-color': '#2222FF'}
+    TagSelector(tag=button, priority=1) {'background-color': '#992500'}
     PseudoclassSelector(focus, TagSelector(tag=input, priority=1)) {'outline': '2px solid white'}
     PseudoclassSelector(focus, TagSelector(tag=button, priority=1)) {'outline': '2px solid white'}
     PseudoclassSelector(focus, TagSelector(tag=div, priority=1)) {'outline': '2px solid white'}
@@ -248,7 +248,7 @@ It also nd also causes a painted outline:
 
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
-     DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=blue)
+     DrawRRect(rect=RRect(13, 21, 213, 37, 1), color=#2222FF)
      DrawText(text=)
      DrawLine top=21.0 left=13.0 bottom=37.0 right=13.0
      DrawOutline(top=21.0 left=13.0 bottom=37.0 right=213.0 border_color=white thickness=2)

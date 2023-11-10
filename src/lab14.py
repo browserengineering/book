@@ -83,8 +83,6 @@ def parse_color(color):
         return skia.ColorSetARGB(0xFF, 0xAD, 0xD8, 0xE6)
     elif color == "orange":
         return skia.ColorSetARGB(0xFF, 0xFF, 0xA5, 0x00)
-    elif color == "orangered":
-        return skia.ColorSetARGB(0xFF, 0x99, 0x25, 0x00)
     elif color == "red":
         return skia.ColorRED
     elif color == "green":
@@ -95,6 +93,12 @@ def parse_color(color):
         return skia.ColorGRAY
     elif color == "lightgreen":
         return skia.ColorSetARGB(0xFF, 0x90, 0xEE, 0x90)
+    elif "#" in color:
+        rgb = color.split("#")[1]
+        red = int(rgb[0:2], 16)
+        green = int(rgb[2:4], 16)
+        blue = int(rgb[4:6], 16)
+        return skia.ColorSetARGB(0xFF, red, green, blue)
     else:
         return skia.ColorBLACK
 
