@@ -408,25 +408,6 @@ everywhere that the sides of the rectangle (e.g. `left`) where checked,
 replace them with the corresponding function on a Skia `Rect` (e.g. `left()`).
 Also replace calls to `containsPoint` with Skia's `contains`.
 
-To draw just the outline, set the `Style` parameter of the `Paint` to
-`Stroke_Style`. Here "stroke" is a standard term referring to drawing
-along the border of some shape; the opposite is "fill", meaning
-filling in the interior of the shape:
-
-``` {.python replace=%2c%20scroll/,rect.makeOffset(0%2c%20-scroll)/rect}
-class DrawOutline:
-    def execute(self, canvas):
-        paint = skia.Paint()
-        paint.setStyle(skia.Paint.kStroke_Style)
-        paint.setStrokeWidth(self.thickness)
-        paint.setColor(parse_color(self.color))
-        canvas.drawRect(self.rect.makeOffset(0, -scroll), paint)
-```
-
-If you look at the details of these helper methods, you'll see that
-they all use a Skia `Paint` object to describe a shape's borders and
-colors. We'll be seeing a lot more features of `Paint` in this chapter.
-
 While we're here, let's also add a `rect` field to the other drawing
 commands, replacing its `top`, `left`, `bottom`, and `right`
 fields:
@@ -444,13 +425,12 @@ class DrawLine:
         self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
 ```
 
-
-Finally, to draw an outline, we do the same as in `DrawRect` but now
-set the style to "stroke" instead:
+To draw just the outline, set the `Style` parameter of the `Paint` to
+`Stroke_Style`:
 
 ``` {.python replace=%2c%20scroll/,rect.makeOffset(0%2c%20-scroll)/rect}
 class DrawOutline:
-    def execute(self, canvas):
+    def execute(self, scroll, canvas):
         paint = skia.Paint()
         paint.setStyle(skia.Paint.kStroke_Style)
         paint.setStrokeWidth(self.thickness)
