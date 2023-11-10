@@ -59,6 +59,7 @@
 
         "visual-effects.md": {
             "lab": "lab11.py",
+            "stylesheet": "browser11.css",
             "examples": "examples11.py",
             "tests": "lab11-tests.md"
         },

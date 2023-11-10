@@ -1,42 +1,21 @@
-pre { background-color: gray; }
+pre { background-color: #d3d3d3; }
+a { color: #0000ff; }
+input { background-color: #add8e6; }
+button { background-color: #ffa500; }
 
-a { color: blue; }
 i { font-style: italic; }
 b { font-weight: bold; }
 small { font-size: 90%; }
 big { font-size: 110%; }
 
 
-input {
-    font-size: 16px; font-weight: normal; font-style: normal;
-    background-color: lightblue;
-}
-button {
-    font-size: 16px; font-weight: normal; font-style: normal;
-    background-color: orange;
-}
+input { font-size: 16px; font-weight: normal; font-style: normal; }
+button { font-size: 16px; font-weight: normal; font-style: normal; }
 
 input:focus { outline: 1px solid black; }
-
 button:focus { outline: 1px solid black; }
-
 div:focus { outline: 1px solid black; }
-
-a:focus {
-    outline: 1px solid black;
-}
-
-input:-internal-accessibility-hover {
-    outline: 4px solid red;
-}
-
-button:-internal-accessibility-hover {
-    outline: 4px solid red;
-}
-
-a:-internal-accessibility-hover {
-    outline: 4px solid red;
-}
+a:focus { outline: 1px solid black; }
 
 iframe {
     outline: 1px solid black;
@@ -44,17 +23,12 @@ iframe {
 }
 
 @media (prefers-color-scheme: dark) {
+  a { color: #add8e6; }
+  input { background-color: #0000ff; }
+  button { background-color: #ff4500; }
 
-a { color: lightblue; }
-input { background-color: blue; }
-button { background-color: orangered; }
-
-input:focus { outline: 1px solid white; }
-
-button:focus { outline: 1px solid white; }
-
-div:focus { outline: 1px solid white; }
-
-a:focus { outline: 1px solid white; }
-
+  input:focus { outline: 1px solid white; }
+  button:focus { outline: 1px solid white; }
+  div:focus { outline: 1px solid white; }
+  a:focus { outline: 1px solid white; }
 }

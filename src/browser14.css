@@ -1,35 +1,26 @@
-pre { background-color: gray; }
+pre { background-color: #d3d3d3; }
+a { color: #0000ff; }
+input { background-color: #add8e6; }
+button { background-color: #ffa500; }
 
-a { color: blue; }
 i { font-style: italic; }
 b { font-weight: bold; }
 small { font-size: 90%; }
 big { font-size: 110%; }
 
 
-input {
-    font-size: 16px; font-weight: normal; font-style: normal;
-    background-color: lightblue;
-}
-button {
-    font-size: 16px; font-weight: normal; font-style: normal;
-    background-color: orange;
-}
+input { font-size: 16px; font-weight: normal; font-style: normal; }
+button { font-size: 16px; font-weight: normal; font-style: normal; }
 
 input:focus { outline: 2px solid black; }
-
 button:focus { outline: 2px solid black; }
-
 div:focus { outline: 2px solid black; }
-
-a:focus {
-    outline: 2px solid black;
-}
+a:focus { outline: 2px solid black; }
 
 @media (prefers-color-scheme: dark) {
-  a { color: lightblue; }
-  input { background-color: blue; }
-  button { background-color: orangered; }
+  a { color: #add8e6; }
+  input { background-color: #0000ff; }
+  button { background-color: #ff4500; }
 
   input:focus { outline: 2px solid white; }
   button:focus { outline: 2px solid white; }

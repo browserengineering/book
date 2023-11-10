@@ -609,9 +609,9 @@ buttons, and text entries:
 
 ``` {.css}
 @media (prefers-color-scheme: dark) {
-  a { color: lightblue; }
-  input { background-color: blue; }
-  button { background-color: orangered; }
+  a { color: #add8e6; }
+  input { background-color: #0000ff; }
+  button { background-color: #ff4500; }
 }
 ```
 

@@ -12,7 +12,7 @@ test the bitmap outputs directly, but instead the display lists generated.
     >>> styles = 'http://test.test/styles.css'
     >>> test.socket.respond(styles, b"HTTP/1.0 200 OK\r\n" +
     ... b"content-type: text/css\r\n\r\n" +
-    ... b"div { background-color:blue}")
+    ... b"div { background-color:#0000ff}")
 
 Opacity can be applied.
 

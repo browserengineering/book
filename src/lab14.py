@@ -94,8 +94,6 @@ def parse_color(color):
     else:
         return skia.ColorBLACK
 
-DEFAULT_STYLE_SHEET = CSSParser(open("browser14.css").read()).parse()
-
 def parse_outline(outline_str):
     if not outline_str: return None
     values = outline_str.split(" ")
@@ -773,6 +771,8 @@ class CSSParser:
                 else:
                     break
         return rules
+
+DEFAULT_STYLE_SHEET = CSSParser(open("browser14.css").read()).parse()
 
 RUNTIME_JS = open("runtime13.js").read()
 
