@@ -989,7 +989,7 @@ Before the `requestAnimationFrame` API, developers approximated it with
 `setTimeout`. This did run animations at a
 (roughly) fixed cadence, but because it didn't line up with the
 browser's rendering loop, events would sometimes be handled between the
-callback an rendering, which might force an extra, unnecessary rendering step.
+callback and rendering, which might force an extra, unnecessary rendering step.
 Not only does `requestAnimationFrame` avoid this, but it also lets the
 browser turn off rendering work when a web page tab or window is
 backgrounded, minimized or otherwise throttled, while still allowing
