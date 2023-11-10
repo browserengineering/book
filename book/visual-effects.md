@@ -1072,7 +1072,7 @@ Note that `saveLayer` and `restore` are like a pair of parentheses
 enclosing and isolating the child drawing operations to a temporary
 surface. It's only when `restore` is called that we draw the the
 temporary surface back to the main surface. The `paint` argument to
-`SaveLayer` is used then, to control how the two surfaces' colors are
+`saveLayer` is used then, to control how the two surfaces' colors are
 mixed.
 
 These paired `saveLayer`/`restore` commands mean our display list is
@@ -1692,15 +1692,14 @@ canvas.restore()
 ```
 
 You might notice the similarity between `save`/`restore` and the
-`saveLayer`/`restore` operations created by `SaveLayer`. That's
+`saveLayer`/`restore` operations created by `AlphaAndBlend`. That's
 because Skia has a combined stack of surfaces and canvas states.
 Unlike `saveLayer`, however, `save` never creates a new surface;
 it just changes the canvas state to change how commands are executed,
 in this case to clip those commands to a rounded rectangle.
 
 Let's wrap this pattern into a `ClipRRect` drawing command, which like
-`SaveLayer` takes a list of subcommands and a `should_clip` parameter
-indicating whether the clip is necessary:[^save-clip]
+`AlphaAndBlend` takes a list of subcommands:[^save-clip]
 
 [^save-clip]: If you're doing two clips at once, or a clip and a
 transform, or some other more complex setup that would benefit from
@@ -1710,28 +1709,21 @@ doesn't create a surface it's still a big optimization here.
 
 ``` {.python}
 class ClipRRect:
-    def __init__(self, rect, radius, children, should_clip=True):
+    def __init__(self, rect, radius, children):
         self.rect = rect
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
         self.children = children
-        self.should_clip = should_clip
 
     def execute(self, canvas):
-        if self.should_clip:
-            canvas.save()
-            canvas.clipRRect(self.rrect)
-
+        canvas.save()
+        canvas.clipRRect(self.rrect)
         for cmd in self.children:
             cmd.execute(canvas)
-
-        if self.should_clip:
-            canvas.restore()
+        canvas.restore()
 ```
 
 Now, in `paint_visual_effects`, we can use `ClipRRect` instead of
-destination-in blending with `DrawRRect` (and we can
-fold the opacity into the `skia.Paint` passed to the outer
-`SaveLayer`, since that is defined to be applied before blending):
+destination-in blending with `DrawRRect`:
 
 ``` {.python}
 def paint_visual_effects(node, cmds, rect):
