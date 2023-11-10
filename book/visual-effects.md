@@ -1062,48 +1062,47 @@ our purposes it makes sense to assume that each new layer comes with a
 surface.
 
 ``` {.python .example}
-# draw parent
+# draw previous elements
 canvas.saveLayer(paint=skia.Paint(Alphaf=0.5))
-# draw child
+# draw element and contents
 canvas.restore()
 ```
 
-We first draw the parent, then create a new surface with `saveLayer`
-to draw the child into, and then when the `restore` call is made the
-`paint` parameters passed into `saveLayer` are used to mix the colors
-in the two surfaces together. Here we're using the `Alphaf` parameter,
-which describes the opacity as a floating-point number from 0 to 1.
-
 Note that `saveLayer` and `restore` are like a pair of parentheses
-enclosing the child drawing operations. This means our display list is
+enclosing and isolating the child drawing operations to a temporary
+surface. It's only when `restore` is called that we draw the the
+temporary surface back to the main surface. The `paint` argument to
+`SaveLayer` is used then, to control how the two surfaces' colors are
+mixed.
+
+These paired `saveLayer`/`restore` commands mean our display list is
 no longer just a linear sequence of drawing operations, but a tree. So
-in our display list, let's represent `saveLayer` with a `SaveLayer`
+in our display list, let's represent this parrent with an `Alpha`
 command that takes a sequence of other drawing commands as an
 argument:
 
-``` {.python expected=False}
-class SaveLayer:
-    def __init__(self, sk_paint, children):
-        self.sk_paint = sk_paint
+``` {.python}
+class Alpha:
+    def __init__(self, alpha, children):
+        self.alpha = alpha
         self.children = children
         self.rect = skia.Rect.MakeEmpty()
         for cmd in self.children:
             self.rect.join(cmd.rect)
 
-    def execute(self, scroll, canvas):
-        canvas.saveLayer(paint=self.sk_paint)
+    def execute(self, canvas):
+        paint = skia.Paint(Alphaf=self.alpha)
+        canvas.saveLayer(paint=paint)
         for cmd in self.children:
-            cmd.execute(scroll, canvas)
+            cmd.execute(canvas)
         canvas.restore()
 ```
 
-Now let's look at how we can add this to our existing `paint` method for
-`BlockLayout`s. Now, _before_ we add its `cmds` command list to the overall
-display list, we can use `SaveLayer` to add transparency to the whole element.
-I'm going to do this in a new `paint_effects` method, which will wrap `cmds`
-in a `SaveLayer`. The actual `SaveLayer` will be computed in a new
-global `paint_visual_effects` method (because other object types will need it
-also).
+Since `Alpha` wraps all the drawing commands for the element, it has
+to be constructed after `paint` is called. So I'm going to define a
+new `paint_effects` method on `BlockLayout` to construct it. Since all
+of the layout object types will be pretty similar, I'll put actual
+`Alpha` construction in a new global `paint_visual_effects` function:
 
 ``` {.python}
 class BlockLayout:
@@ -1113,10 +1112,22 @@ class BlockLayout:
         return cmds
 ```
 
-A change is now needed in `paint_tree` to call this method, but only *after*
-recursing into children, and only if `should_paint` is true. That's because
-these visual effects apply to the entire subtree's display list, not just the
-current object, and don't apply to "anonymous" objects (see Chapter 8).
+Note that `paint_visual_effects` receives a list of commands and
+returns another list of commands. This output list is always a single
+`Alpha` command:
+
+``` {.python expected=False}
+def paint_visual_effects(node, cmds, rect):
+    opacity = float(node.style.get("opacity", "1.0"))
+
+    return [
+        Alpha(opacity, cmds)
+    ]
+```
+
+Now `paint_tree` can call `paint_effects` after recursing into
+children. That's because these visual effects apply to the entire
+subtree's display list, not just the current object:
 
 ``` {.python}
 def paint_tree(layout_object, display_list):
@@ -1345,7 +1356,7 @@ and [difference][mbm-diff] blend modes natively:
 [mbm-mult]: https://drafts.fxtf.org/compositing-1/#blendingmultiply
 [mbm-diff]: https://drafts.fxtf.org/compositing-1/#blendingdifference
 
-``` {.python}
+``` {.python replace=%20if/%20elif}
 def parse_blend_mode(blend_mode_str):
     if blend_mode_str == "multiply":
         return skia.BlendMode.kMultiply
@@ -1355,25 +1366,41 @@ def parse_blend_mode(blend_mode_str):
         return skia.BlendMode.kSrcOver
 ```
 
-This makes adding support for blend modes to our browser as simple as
-passing the `BlendMode` parameter to the `Paint` object:
+We can make a corresponding draw command using `saveLayer`:
+
+``` {.python}
+class Blend:
+    def __init__(self, blend_mode, children):
+        self.blend_mode = parse_blend_mode(blend_mode)
+        self.children = children
+        self.rect = skia.Rect.MakeEmpty()
+        for cmd in self.children:
+            self.rect.join(cmd.rect)
+
+    def execute(self, canvas):
+        paint = skia.Paint(BlendMode=self.blend_mode)
+        canvas.saveLayer(paint=paint)
+        for cmd in self.children:
+            cmd.execute(canvas)
+        canvas.restore()
+```
+
+Then we just add a `Blend` operation to `paint_visual_effects`:
 
 ``` {.python expected=False}
 def paint_visual_effects(node, cmds, rect):
     # ...
-    blend_mode = parse_blend_mode(node.style.get("mix-blend-mode"))
+    blend_mode = node.style.get("mix-blend-mode")
     
     return [
-        SaveLayer(skia.Paint(BlendMode=blend_mode), [
-            SaveLayer(skia.Paint(Alphaf=opacity), cmds),
+        Blend(blend_mode, [
+            Alpha(opacity, cmds),
         ]),
     ]
 ```
 
 Note the order of operations here: we _first_ apply transparency, and
-_then_ blend the result into the rest of the page. If we switched the
-two `SaveLayer` calls, so that we first applied blending, there
-wouldn't be anything to blend it into!
+_then_ blend the result into the rest of the page, just like Skia.
 
 ::: {.further}
 Alpha might seem intuitive, but it's less obvious than you think: see,
@@ -1471,37 +1498,38 @@ class Pixel:
         self.a = self.a * source.a
 ```
 
-Now, in `paint_visual_effects`, we need to create a new layer, draw
-the mask image into it, and then blend it with the element contents
-with destination-in blending:
+To use this for masking, we just need to detect `overflow: clip` in
+`paint_visual_effects` and draw the mask image with destination-in
+blending to clip the element contents:
 
 ``` {.python expected=False}
 def paint_visual_effects(node, cmds, rect):
     # ...
-    border_radius = float(node.style.get("border-radius", "0px")[:-2])
     if node.style.get("overflow", "visible") == "clip":
-        clip_radius = border_radius
-    else:
-        clip_radius = 0
-
-
-    return [
-        SaveLayer(skia.Paint(BlendMode=blend_mode), [
-            SaveLayer(skia.Paint(Alphaf=opacity), cmds),
-            SaveLayer(skia.Paint(BlendMode=skia.kDstIn), [
-                DrawRRect(rect, clip_radius, "white")
-            ]),
-        ]),
-    ]
+        border_radius = float(node.style.get("border-radius", "0px")[:-2])
+        cmds.append(Blend("destination-in", [
+            DrawRRect(rect, border_radius, "white")
+        ])
+    # ...
 ```
 
-After drawing all of the element contents with `cmds` (and applying
-opacity), this code draws a rounded rectangle on another layer to
-serve as the mask, and uses destination-in blending to clip the
-element contents. Here I chose to draw the rounded rectangle in white,
-but the color doesn't matter as long as it's opaque. On the other
-hand, if there's no clipping, I don't round the corners of the mask,
-which means nothing is clipped out.
+Note that the mask commands come at the end of `cmds`, so they apply
+after all element contents are drawn but before any alpha or
+`mix-blend-mode` is applied. The mask command itself just draws a
+rounded rectangle in white, though the color doesn't matter as long as
+it's opaque.
+
+By the way, I passed the string `destination-in` to `Blend` to get
+destination in blending, but that's actually a small hack; it's
+not actually a valid value for `mix-blend-mode`. Still, it avoids
+refactoring code:
+
+``` {.python}
+def parse_blend_mode(blend_mode_str):
+    if blend_mode_str == "destination-in":
+        return skia.BlendMode.kDstIn
+    # ...
+```
 
 Notice how similar this masking technique is to the physical analogy
 with scissors described earlier, with the two layers playing the role
@@ -1551,57 +1579,37 @@ the page, so that clipping only applies to that element.
 - The first nested surface is used for applying *opacity*.
 - The second nested surface is used to implement *clipping*.
 
-But not every element has opacity, blend modes, or clipping applied,
-and we could skip creating those surfaces most of the time. To implement this without
-making the code hard to read, let's change `SaveLayer` to take two
-additional optional parameters: `should_save` and `should_paint_cmds`.
-These control whether `saveLayer` is called and whether subcommands
-are actually painted:
+But most elements are opaque, use the default blend mode, and don't
+clip, so using this many surfaces is wasteful. We can avoid a lot of
+those surfaces by just detecting the default value:
 
 ``` {.python}
-class SaveLayer:
-    def __init__(self, sk_paint, children,
-            should_save=True, should_paint_cmds=True):
-        self.should_save = should_save
-        self.should_paint_cmds = should_paint_cmds
-        # ...
-
+class Alpha:
     def execute(self, canvas):
-        if self.should_save:
-            canvas.saveLayer(paint=self.sk_paint)
-        if self.should_paint_cmds:
-            for cmd in self.children:
-                cmd.execute(canvas)
-        if self.should_save:
+        paint = skia.Paint(Alphaf=self.alpha)
+        if self.alpha < 1:
+            canvas.saveLayer(paint=paint)
+        for cmd in self.children:
+            cmd.execute(canvas)
+        if self.alpha < 1:
             canvas.restore()
-```
 
-Turn off those parameters if an effect isn't applied:
-
-``` {.python expected=False}
-def paint_visual_effects(node, cmds, rect):
-    # ...
-
-    needs_clip = node.style.get("overflow", "visible") == "clip"
-    needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
-        needs_clip
-    needs_opacity = opacity != 1.0
-
-   return [
-        SaveLayer(skia.Paint(BlendMode=blend_mode), [
-            SaveLayer(skia.Paint(Alphaf=opacity), cmds,
-                should_save=needs_opacity),
-            SaveLayer(skia.Paint(BlendMode=skia.kDstIn), [
-                DrawRRect(rect, clip_radius, "white")
-            ], should_save=needs_clip, should_paint_cmds=needs_clip),
-        ], should_save=needs_blend_isolation),
-    ]
+class Blend:
+    def execute(self, canvas):
+        paint = skia.Paint(BlendMode=self.blend_mode)
+        if self.blend_mode != skia.BlendMode.kSrcOver:
+            canvas.saveLayer(paint=paint)
+        for cmd in self.children:
+            cmd.execute(canvas)
+        if self.blend_mode != skia.BlendMode.kSrcOver:
+            canvas.restore()
 ```
 
 Now simple web pages always use a single surface---a huge saving in
 memory. But we can save even more surfaces. For example, what if there
-is a blend mode and opacity at the same time: can we use the same
-surface? Indeed, yes you can! That's also pretty simple:[^filters]
+is a blend mode and opacity at the same time: can we apply opacity and
+blending at the same time?[^filters] Sure, if we merge `Alpha` and
+`Blend` together:
 
 [^filters]: This works for opacity, but not for filters that "move
 pixels" such as [blur][mdn-blur]. Such a filter needs to be applied
@@ -1610,23 +1618,37 @@ the edge of the blur will not be sharp.
 
 [mdn-blur]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/blur()
 
+``` {.python}
+class AlphaAndBlend:
+    def __init__(self, alpha, blend_mode, children):
+        self.alpha = alpha
+        self.blend_mode = parse_blend_mode(blend_mode)
+        self.children = children
+        self.rect = skia.Rect.MakeEmpty()
+        for cmd in self.children:
+            self.rect.join(cmd.rect)
+
+    def execute(self, canvas):
+        paint = skia.Paint(Alphaf=self.alpha,
+            BlendMode=self.blend_mode)
+        should_save = self.alpha < 1 or \
+            self.blend_mode != skia.BlendMode.kSrcOver
+        if should_save:
+            canvas.saveLayer(paint=paint)
+        for cmd in self.children:
+            cmd.execute(canvas)
+        if should_save:
+            canvas.restore()
+```
+
+Then we'd use `AlphaAndBlend` instead of using `Alpha` and `Blend`
+separately:
+
 ``` {.python expected=False}
 def paint_visual_effects(node, cmds, rect):
     # ...
 
-    needs_clip = node.style.get("overflow", "visible") == "clip"
-    needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
-        needs_clip
-    needs_opacity = opacity != 1.0
-
-   return [
-        SaveLayer(skia.Paint(BlendMode=blend_mode, Alphaf=opacity),
-            cmds + [
-            SaveLayer(skia.Paint(BlendMode=skia.kDstIn), [
-                DrawRRect(rect, clip_radius, "white")
-            ], should_save=needs_clip, should_paint_cmds=needs_clip),
-        ], should_save=needs_blend_isolation or needs_opacity),
-    ]
+    return [ AlphaAndBlend(opacity, blend_mode, cmds) ]
 ```
 
 There's one more optimization to make: using Skia's `clipRRect`
@@ -1714,13 +1736,10 @@ fold the opacity into the `skia.Paint` passed to the outer
 ``` {.python}
 def paint_visual_effects(node, cmds, rect):
     # ...
-    return [
-        SaveLayer(skia.Paint(BlendMode=blend_mode, Alphaf=opacity), [
-            ClipRRect(rect, clip_radius,
-                cmds,
-            should_clip=needs_clip),
-        ], should_save=needs_blend_isolation),
-    ]
+    if node.style.get("overflow", "visible") == "clip":
+        border_radius = float(node.style.get("border-radius", "0px")[:-2])
+        cmds = [ClipRRect(rect, border_radius, cmds)]
+    # ...
 ```
 
 Of course, `clipRRect` only applies for rounded rectangles, while

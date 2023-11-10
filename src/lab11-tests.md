@@ -33,7 +33,7 @@ Opacity can be applied.
     restore()
     drawString(text=), x=13.0, y=53.0, color=ff000000)
 
-So can `mix-blend-mode:multiply` and `mix-blend-mode: difference`.
+So can `mix-blend-mode: multiply` and `mix-blend-mode: difference`.
 
     >>> size_and_mix_blend_mode_url = 'http://test.test/size_and_mix_blend_mode'
     >>> test.socket.respond(size_and_mix_blend_mode_url, b"HTTP/1.0 200 OK\r\n" +
@@ -75,13 +75,11 @@ make a canvas in which to draw the circular clip mask.
     >>> browser.new_tab(lab11.URL(size_and_rounded_clip_url))
     >>> browser.tab_surface.printTabCommands()
     clear(color=ffffffff)
-    saveLayer(color=ff000000)
     save()
     clipRRect(bounds=Rect(13, 18, 787, 38), radius=Point(5, 5))
     drawRRect(bounds=Rect(13, 18, 787, 38), radius=Point(5, 5), color=ff0000ff)
     drawRRect(bounds=Rect(13, 18, 787, 38), radius=Point(0, 0), color=ff0000ff)
     drawString(text=Clip, x=13.0, y=33.0, color=ff000000)
-    restore()
     restore()
     drawString(text=), x=13.0, y=53.0, color=ff000000)
 
