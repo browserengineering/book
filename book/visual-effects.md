@@ -479,20 +479,6 @@ class DrawLine:
         self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
 ```
 
-
-Finally, to draw an outline, we do the same as in `DrawRect` but now
-set the style to "stroke" instead:
-
-``` {.python replace=%2c%20scroll/,rect.makeOffset(0%2c%20-scroll)/rect}
-class DrawOutline:
-    def execute(self, canvas):
-        paint = skia.Paint()
-        paint.setStyle(skia.Paint.kStroke_Style)
-        paint.setStrokeWidth(self.thickness)
-        paint.setColor(parse_color(self.color))
-        canvas.drawRect(self.rect.makeOffset(0, -scroll), paint)
-```
-
 Since we're replacing Tkinter with Skia, we are also replacing
 `tkinter.font`. In Skia, a font object has two pieces: a `Typeface`,
 which is a type family with a certain weight, style, and width; and a
