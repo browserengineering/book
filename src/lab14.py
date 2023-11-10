@@ -1329,7 +1329,7 @@ class Browser:
             parent = composited_layer.display_items[0].parent
             while parent:
                 current_effect = \
-                    self.clone_latest(parent, [current_effect])
+                    self.clone_latest(parent, current_effect)
                 parent = parent.parent
             self.draw_list.append(current_effect)
 

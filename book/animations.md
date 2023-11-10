@@ -654,8 +654,8 @@ to the visual effects classes. For `SaveLayer`, it'll create a new
 ``` {.python}
 class SaveLayer(VisualEffect):
     # ...
-    def clone(self, children):
-        return SaveLayer(self.sk_paint, self.node, children, \
+    def clone(self, child):
+        return SaveLayer(self.sk_paint, self.node, [child], \
             self.should_save)
 ```
 
@@ -665,8 +665,8 @@ actual cliping rect):
 
 ``` {.python}
 class ClipRRect(VisualEffect):
-    def clone(self, children):
-        return ClipRRect(self.rrect.rect(), self.radius, children, \
+    def clone(self, child):
+        return ClipRRect(self.rrect.rect(), self.radius, [child], \
             self.should_clip)
 ```
 
@@ -694,7 +694,7 @@ class Browser:
             parent = composited_layer.display_items[0].parent
             while parent:
                 current_effect = \
-                    parent.clone([current_effect])
+                    parent.clone(current_effect)
                 parent = parent.parent
             self.draw_list.append(current_effect)
 ```
@@ -1444,14 +1444,15 @@ the original:
 ``` {.python}
 class Browser:
     # ...
-    def clone_latest(self, visual_effect, current_effect):
-        node = visual_effect.node
+    def clone_latest(self, parent_effect, child_effect):
+        node = parent_effect.node
         if not node in self.composited_updates:
-            return visual_effect.clone(current_effect)
-        save_layer = self.composited_updates[node]
-        if type(visual_effect) is SaveLayer:
-            return save_layer.clone(current_effect)
-        return visual_effect.clone(current_effect)
+            return parent_effect.clone(child_effect)
+
+        if type(parent_effect) is SaveLayer:
+            return self.composited_updates[node].clone(
+                child_effect)
+        return parent_effect.clone(child_effect)
 ```
 
 Using `clone_latest` in `paint_draw_list` is a one-liner:
@@ -1462,7 +1463,7 @@ class Browser:
         for composited_layer in self.composited_layers:
             while parent:
                 current_effect = \
-                    self.clone_latest(parent, [current_effect])
+                    self.clone_latest(parent, current_effect)
                 # ...
 ```
 
@@ -1856,9 +1857,9 @@ class Transform(VisualEffect):
         if self.translation:
             canvas.restore()
 
-    def clone(self, children):
+    def clone(self, child):
         return Transform(self.translation, self.self_rect,
-            self.node, children)
+            self.node, [child])
 
     def __repr__(self):
         if self.translation:
