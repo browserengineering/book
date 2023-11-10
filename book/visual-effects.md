@@ -182,11 +182,50 @@ _gamut_ of possible colors that the screen can display.[^other-spaces]
 [CRT]: https://en.wikipedia.org/wiki/Cathode-ray_tube
 [color-spec]: https://drafts.csswg.org/css-color-4/
 
+By the way, this `Pixel` code is an illustrative example, not something
+our browser has to define. It's standing in for somewhat more complex
+code within Skia itself. What Skia *does* have, though, is a `Color`
+type, which represents the color of an abstract pixel somewhere. Since
+we're already talking about colors, let's implement a helper function
+to construct a Skia `Color` from a string:
 
-Now there's an SDL surface for the window contents and a Skia surface
-that we can draw to. We'll raster\index{raster} to the Skia surface,
-and then once we're done we'll copy it to the SDL surface to
-display on the screen.
+``` {.python}
+def parse_color(color):
+    if color == "white":
+        return skia.ColorWHITE
+    elif color == "black":
+        return skia.ColorBLACK
+    elif color == "red":
+        return skia.ColorRED
+    elif color.startswith("#"):
+        r = int(color[1:3], 16)
+        g = int(color[3:5], 16)
+        b = int(color[5:7], 16)
+        return skia.Color(r, g, b)
+    else:
+        raise ValueError("Unknown color " + color)
+```
+
+I special-cased the colors "white", "black", and "red" because we use
+them when drawing the browser chrome. We also use blue, light blue,
+and orange in our default browser stylesheet, but we can use hex
+colors instead:
+
+``` {.css}
+pre { background-color: #d3d3d3; }
+a { color: #0000ff; }
+input { background-color: #add8e6; }
+button { background-color: #ffa500; }
+```
+
+You can always add more [named colors][css-colors] if you'd like.
+
+[css-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/color_value
+
+Anyway, now there's an SDL surface for the window contents and a Skia
+surface that we can draw to. Skia will draw to the Skia surface, and
+once it's done we'll copy it to the SDL surface to display on the
+screen.
 
 This is a little hairy, because we are moving data between two
 low-level libraries, but really it's just copying pixels from one
@@ -337,47 +376,11 @@ shapes on it---is called "rasterization"\index{raster} and is one
 important task of a graphics library.
 
 We'll need our browser's drawing commands to invoke Skia, not Tk
-methods. Skia is a bit more verbose than Tkinter, so let's abstract
-over some details with helper functions.[^skia-docs] First, a helper
-function to convert colors to Skia colors:
+methods. Let's start with `DrawLine`. To draw a line, you use Skia's
+`Path` object:[^skia-docs]
 
 [^skia-docs]: Consult the [Skia][skia] and [skia-python][skia-python]
 documentation for more on the Skia API.
-
-``` {.python}
-def parse_color(color):
-    if color == "white":
-        return skia.ColorWHITE
-    elif color == "lightblue":
-        return skia.ColorSetARGB(0xFF, 0xAD, 0xD8, 0xE6)
-    elif color == "orange":
-        return skia.ColorSetARGB(0xFF, 0xFF, 0xA5, 0x00)
-    elif color == "red":
-        return skia.ColorRED
-    elif color == "green":
-        return skia.ColorGREEN
-    elif color == "blue":
-        return skia.ColorBLUE
-    elif color == "gray":
-        return skia.ColorGRAY
-    elif color == "lightgreen":
-        return skia.ColorSetARGB(0xFF, 0x90, 0xEE, 0x90)
-    else:
-        return skia.ColorBLACK
-```
-
-Note that the `Color` constructor takes alpha, red, green, and blue
-values, closely matching (except for the order) our `Pixel` definition.
-
-You can add "elif" blocks to support any other color names you use;
-modern browsers support [quite a lot][css-colors]. If you'd like to
-use a color Skia doesn't pre-define, you can use the `skia.Color`
-constructor, which takes red, green, and blue parameters from 0 to
-255.
-
-[css-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/color_value
-
-To draw a line, you use Skia's `Path` object:
 
 ``` {.python replace=%2c%20scroll/,%20-%20scroll/}
 class DrawLine:
