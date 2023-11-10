@@ -620,10 +620,30 @@ buttons, and text entries:
 ``` {.css}
 @media (prefers-color-scheme: dark) {
   a { color: lightblue; }
-  input { background-color: blue; }
-  button { background-color: orangered; }
+  input { background-color: #2222FF; }
+  button { background-color: #992500; }
 }
 ```
+
+Here I chose very specific hexadecimal colors that preserve the general color
+scheme of blue and orange, but ensure maximum contrast with white foreground
+text so they are easy to read. It's important to choose colors that ensure
+maximum contrast (an "AAA" rating). [This tool][contrast-tool] is a handy one to check constrast of a foreground and background color.
+
+But to do that we need to add support for hex colors:
+
+``` {.python}
+def parse_color(color):
+    # ...
+    elif "#" in color:
+        rgb = color.split("#")[1]
+        red = int(rgb[0:2], 16)
+        green = int(rgb[2:4], 16)
+        blue = int(rgb[4:6], 16)
+        return skia.ColorSetARGB(0xFF, red, green, blue)
+```
+
+[contrast-tool]: https://webaim.org/resources/contrastchecker/
 
 To implement media queries, we'll have to start with parsing this
 syntax:

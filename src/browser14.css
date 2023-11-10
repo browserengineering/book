@@ -28,8 +28,8 @@ a:focus {
 
 @media (prefers-color-scheme: dark) {
   a { color: lightblue; }
-  input { background-color: blue; }
-  button { background-color: orangered; }
+  input { background-color: #2222FF; }
+  button { background-color: #992500; }
 
   input:focus { outline: 2px solid white; }
   button:focus { outline: 2px solid white; }

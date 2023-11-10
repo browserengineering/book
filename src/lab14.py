@@ -34,7 +34,8 @@ from lab6 import tree_to_list
 from lab8 import INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL
-from lab11 import FONTS, get_font, parse_blend_mode, linespace, paint_tree
+from lab11 import FONTS, get_font, parse_blend_mode, linespace, paint_tree, \
+    parse_color
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
 from lab12 import Task, REFRESH_RATE_SEC
 from lab13 import JSContext, diff_styles, add_parent_pointers
@@ -74,6 +75,7 @@ class Text:
         self.is_focused = False
         self.layout_object = None
 
+@wbetools.patch(parse_color)
 def parse_color(color):
     if color == "white":
         return skia.ColorWHITE
@@ -81,8 +83,6 @@ def parse_color(color):
         return skia.ColorSetARGB(0xFF, 0xAD, 0xD8, 0xE6)
     elif color == "orange":
         return skia.ColorSetARGB(0xFF, 0xFF, 0xA5, 0x00)
-    elif color == "orangered":
-        return skia.ColorSetARGB(0xFF, 0xFF, 0x45, 0x00)
     elif color == "red":
         return skia.ColorRED
     elif color == "green":
@@ -93,6 +93,12 @@ def parse_color(color):
         return skia.ColorGRAY
     elif color == "lightgreen":
         return skia.ColorSetARGB(0xFF, 0x90, 0xEE, 0x90)
+    elif "#" in color:
+        rgb = color.split("#")[1]
+        red = int(rgb[0:2], 16)
+        green = int(rgb[2:4], 16)
+        blue = int(rgb[4:6], 16)
+        return skia.ColorSetARGB(0xFF, red, green, blue)
     else:
         return skia.ColorBLACK
 
