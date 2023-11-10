@@ -2162,7 +2162,7 @@ property.
 
 *Object-fit*: implement the [`object-fit`][obj-fit] CSS property. It determines
 how the image within an `<img>` element is sized relative to its container
-element. This will require clipping images with the wrong aspect ratio.
+element. This will require clipping images with a different aspect ratio.
 
 [obj-fit]: https://developer.mozilla.org/en-US/docs/Web/CSS/object-fit
 
