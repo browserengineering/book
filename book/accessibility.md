@@ -1335,7 +1335,7 @@ any string of characters except one of a specified set of `chars`:
 
 ``` {.python}
 class CSSParser:
-    def until_char(self, chars):
+    def until_chars(self, chars):
         start = self.i
         while self.i < len(self.s) and self.s[self.i] not in chars:
             self.i += 1
@@ -1343,7 +1343,7 @@ class CSSParser:
 
     def pair(self, until):
         # ...
-        val = self.until_char(until)
+        val = self.until_chars(until)
         # ...
         return prop.casefold(), val.strip()
 ```
