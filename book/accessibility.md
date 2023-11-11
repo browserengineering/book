@@ -209,7 +209,7 @@ class Browser:
 ```
 
 Finally, the `Tab` responds to these commands by adjusting a new
-`zoom` property on `Browser`, which starts at `1` and acts as a
+`zoom` property, which starts at `1` and acts as a
 multiplier for all "CSS sizes" on the web page:[^browser-chrome]
 
 [^browser-chrome]: CSS zoom typically does not change the size of
@@ -571,14 +571,15 @@ white text on a black background.
 
 ::: {.further}
 
-The browser should really not be changing colors on unsuspecting pages;
-that could have terrible accessibility outcomes!
-Instead web pages [indicate support][dark-mode-post] for dark mode
-using the `color-scheme` [`meta` tag][meta-tag] or [CSS
-property][css-prop]. Before `color-scheme` was standardized, web pages
-could in principle offer alternative color schemes using [alternative
-style sheets][alt-style], but few browsers supported it (of the major
-ones, only Firefox) and it wasn't commonly used.
+The browser really should  not be changing colors on unsuspecting pages; that
+could have terrible readability outcomes if the page's theme conflicted!
+Instead web pages [indicate support][dark-mode-post] for dark mode using the
+`color-scheme` [`meta` tag][meta-tag] or [CSS property][css-prop]. Browsers use
+the presence of the meta tag to determine whether it's safe to apply dark mode.
+Before `color-scheme` was standardized, web pages could in principle offer
+alternative color schemes using [alternative style sheets][alt-style], but few
+browsers supported it (of the major ones, only Firefox) and it wasn't commonly
+used.
 
 [meta-tag]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meta/name
 [css-prop]: https://developer.mozilla.org/en-US/docs/Web/CSS/color-scheme
@@ -628,7 +629,10 @@ buttons, and text entries:
 Here I chose very specific hexadecimal colors that preserve the general color
 scheme of blue and orange, but ensure maximum contrast with white foreground
 text so they are easy to read. It's important to choose colors that ensure
-maximum contrast (an "AAA" rating). [This tool][contrast-tool] is a handy one to check constrast of a foreground and background color.
+maximum contrast (an ["AAA"][AAA] rating). [This tool][contrast-tool] is 
+handy for checking constrast of a foreground and background color.
+
+[AAA]: https://accessibleweb.com/rating/aaa/
 
 But to do that we need to add support for hex colors:
 
@@ -745,19 +749,19 @@ mouse,^[Except for scrolling, which is keyboard-only.] which is a
 problem for users with injuries or disabilities in their hand---and
 also a problem for power users that prefer their keyboards. So ideally
 every browser feature should be accessible via the keyboard as well as
-the mouse. That includes browser chrome interactions like going
-back, typing a URL, or quitting the browser, and also web page
+the mouse. That includes browser chrome interactions like back
+navigation, typing a URL, or quitting the browser, and also web page
 interactions such as submitting forms, typing in text areas,
 navigating links, and selecting items on the page.
 
 Let's start with the browser chrome, since it's the easiest. Here, we need
-to allow the user to go back, to type in the address bar, and to
+to allow the user to back-navigate, to type in the address bar, and to
 create and cycle through tabs, all with the keyboard. We'll also add a
 keyboard shortcut for quitting the browser.[^one-more] Let's make all
 these shortcuts in the event loop use the `Ctrl` modifier key so they don't
-interfere with normal typing: `Ctrl-Left` to go back, `Ctrl-L` to type in the
-address bar, `Ctrl-T` to create a new tab, `Ctrl-Tab` to switch to the
-next tab, and `Ctrl-Q` to exit the browser:
+interfere with normal typing: `Ctrl-Left` to go back, `Ctrl-l` to type in the
+address bar, `Ctrl-t` to create a new tab, `Ctrl-Tab` to switch to the
+next tab, and `Ctrl-q` to exit the browser:
 
 [^one-more]: Depending on the OS you might also need shortcuts for
 minimizing or maximizing the browser window. Those require calling
@@ -774,7 +778,8 @@ specialized OS APIs, so I won't implement them.
                     elif event.key.keysym.sym == sdl2.SDLK_l:
                         browser.focus_addressbar()
                     elif event.key.keysym.sym == sdl2.SDLK_t:
-                        browser.new_tab("https://browser.engineering/")
+                        browser.new_tab(
+                            "https://browser.engineering/")
                     elif event.key.keysym.sym == sdl2.SDLK_TAB:
                         browser.cycle_tabs()
                     elif event.key.keysym.sym == sdl2.SDLK_q:
@@ -964,7 +969,7 @@ class Tab:
             elt = elt.parent
 ```
 
-Also, since any now element can be focused, we need `keypress` to
+Also, since now any element can be focused, we need `keypress` to
 check that an `input` element is focused before typing into it:
 
 ``` {.python}
@@ -1073,7 +1078,7 @@ We now have configurable keyboard navigation for both the browser and
 the web page content. And it involved writing barely any new code,
 instead mostly moving code from existing methods into new stand-alone
 ones. The fact that keyboard navigation simplified, not complicated,
-our browser implementation a common outcome: improving accessibility
+our browser implementation is a common outcome: improving accessibility
 often involves generalizing and refining existing concepts, leading to
 more maintainable code overall.
 
@@ -1108,8 +1113,8 @@ focused element.
 To implement focus rings, we'll use the same mechanism we use to draw
 text cursors. Recall that, right now, text cursors are added by
 drawing a vertical line in `InputLayout`'s `paint` method. We'll
-add a call to `paint_outline` in that method, to draw a rectangle around the focused
-element:
+add a call to `paint_outline` in that method, to draw a rectangle around
+the focused element:
 
 ``` {.python replace=node.is_focused/outline,%22black%22/color,1/dpx(thickness%2c%20zoom)}
 def paint_outline(node, cmds, rect, zoom):
@@ -1117,7 +1122,7 @@ def paint_outline(node, cmds, rect, zoom):
     cmds.append(DrawOutline(rect, "black", 1))
 ```
 
-We'll set this flag in a new `focus_element` method that we'll now use
+Set this flag in a new `focus_element` method that we'll now use
 to change the `focus` field in a `Tab`:
 
 ``` {.python}
@@ -1130,8 +1135,8 @@ class Tab:
             node.is_focused = True
 ```
 
-To draw an outline, we'll use `DrawOutline`. This will have to happen in
-`paint_effects`, because it paints on top of the painted subtree.
+Outline painting should happen in `paint_effects`, because it paints on top of
+the subtree.
 
 ``` {.python}
 class InputLayout:
@@ -1142,7 +1147,7 @@ class InputLayout:
 ```
 
 I also changed the cursor drawing to only happen if the node is
-focused *and* it is an `input` element. Tabbing over to a `button`
+focused *and* it's an `input` element. Tabbing over to a `button`
 element should not draw a cursor!
 
 Unfortunately, handling links is a little more complicated. That's
@@ -1152,8 +1157,7 @@ code. Moreover, those `TextLayout`s could be split across several
 lines, so we might want to draw more than one focus ring. To work
 around this, let's draw the focus ring in `LineLayout`. Each
 `LineLayout` finds all of its child `TextLayout`s that are focused,
-and draws a rectangle around them all. This will need to happen in
-`paint_effects` because it paints on top of the painted subtree.
+and draws a rectangle around them all.
 
 ``` {.python replace=child.node.parent.is_focused/parse_outline(outline_str)}
 class LineLayout:
@@ -1205,7 +1209,7 @@ class Tab:
             self.needs_focus_scroll = True
 ```
 
-Then, `run_animation_frame` can scroll appropriately to reset the
+Then, `run_animation_frame` can scroll appropriately before resetting the
 flag:
 
 ``` {.python}
@@ -1272,9 +1276,9 @@ attribute on the matched elements.
 
 [class]: https://developer.mozilla.org/en-US/docs/Web/CSS/Class_selectors
 
-To implement this, we need to first parse a new kind of selector. To
-do that, let's change `selector` to call a new `simple_selector`
-subroutine to parse a tag name and a possible pseudo-class:
+To implement this, we need to parse this new kind of selector. Let's change
+`selector` to call a new `simple_selector` subroutine to parse a tag name and a
+possible pseudo-class:
 
 ``` {.python}
 class CSSParser:
@@ -1325,11 +1329,10 @@ class PseudoclassSelector:
 
 Unknown pseudoclasses simply never match anything.
 
-We can now use `:focus` to customize our focus indicator; for example,
-we can make the focused element a different color. But ideally we'd
-also be able to customize the focus outline itself. That's normally
-done with the CSS [`outline` property][outline], which looks like
-this:[^outline-syntax]
+The focused element can now be styled. But ideally we'd also be able to
+customize the focus outline itself and not just the element. That can be done
+by adding support for the CSS [`outline` property][outline], which looks like
+this to show a 3px red outline:[^outline-syntax]
 
     outline: 3px solid red;
 
@@ -1338,13 +1341,10 @@ this:[^outline-syntax]
 [^outline-syntax]: We'll only implement this syntax, but `outline` can
     also take a few other forms.
 
-This asks for a three pixel red outline. To add support for this in
-our browser, we'll again need to first generalize the parser.
-
-First, annoyingly, our CSS parser right now doesn't recognize the line
-above as a valid property/value pair, since it parses values as a
-single word. Let's replace that with any string of characters except a
-semicolon or a curly brace:
+The first challenge in implementing `outline` is that, annoyingly, at the moment
+our CSS parser doesn't recognize the line above as a valid property/value pair,
+since it parses values as a single word. Let's upgrade the parser to recognize
+any string of characters except one of a specified set of `chars`:
 
 ``` {.python}
 class CSSParser:
@@ -1379,9 +1379,8 @@ class CSSParser:
         # ...
 ```
 
-Now we have `outline` value in the relevant element's `style`. We can
-parse that into a thickness and a color, assuming that we only want to
-support `solid` outlines:
+Now we have `outline`'s value in the relevant element's `style`. We can
+parse that into a thickness and a color:
 
 ``` {.python}
 def parse_outline(outline_str):
@@ -1392,8 +1391,7 @@ def parse_outline(outline_str):
     return int(values[0][:-2]), values[2]
 ```
 
-Now we can use this `parse_outline` method when drawing an outline, in
-`paint_outline`:
+And then paint a parsed outline:
 
 ``` {.python}
 def paint_outline(node, cmds, rect, zoom):
@@ -1403,8 +1401,8 @@ def paint_outline(node, cmds, rect, zoom):
     cmds.append(DrawOutline(rect, color, dpx(thickness, zoom)))
 ```
 
-The default two-pixel black outline can now be moved into the browser
-default style sheet, like this:
+Even better, we can move the default two-pixel black outline
+into the browser default style sheet, like this:
 
 ``` {.css}
 input:focus { outline: 2px solid black; }
@@ -1426,9 +1424,7 @@ a:focus { outline: 2px solid white; }
 ```
 
 Finally, change all of our `paint` methods to use `parse_outline` instead of
-`is_focused` to draw the outline. Focused elements will have an outline thanks
-to the browser style sheet above, and web developers can also add an
-outline on any other element they want:
+`is_focused` to draw the outline. Here is `LineLayout`:
 
 ``` {.python}
 class LineLayout:
@@ -1445,7 +1441,7 @@ As with dark mode, focus outlines are a case where adding an
 accessibility feature meant generalizing existing browser features to
 make them more powerful. And once they were generalized, this
 generalized form can be made accessible to web page authors, who can
-use it for all sorts of things.
+use it for anything they like.
 
 ::: {.further}
 
@@ -1456,8 +1452,7 @@ the default focus indicator looks like the page or element background.
 For example, it might be best to draw [two outlines][ms-blog], white
 and black, to guarantee a visible focus indicator on both dark and
 light backgrounds. If you're designing your own, the [Web Content
-Accessibility Guidelines][wcag] is a standard set of accessibility
-guidelines, including for ensuring good contrast.
+Accessibility Guidelines][wcag] provides contrast guidance.
 
 :::
 
@@ -1475,11 +1470,11 @@ seeing fine details, but if the user can't see the screen at all,^[The
 original motivation of screen readers was for blind users, but it's
 also sometimes useful for situations where the user shouldn't be
 looking at the screen (such as driving), or for devices with no
-screen.] screen reader software is typically used instead. The name
-kind of explains it all: this software reads the text on the screen
+screen.] they typically use a screen reader instead. The name
+kind of explains it all: the screen reader reads the text on the screen
 out loud, so that users know what it says without having to see it.
-So: what should a screen reader say?
 
+So: what should a screen reader say?
 There are basically two big challenges we must overcome.
 
 First, web pages contain visual hints besides text that we need to
@@ -1518,7 +1513,7 @@ talk, specifically the segment from 2:36--3:54:[^whole-talk]
     built-in screen reader to get a feel for what screen reader
     navigation is like. On macOS, type Cmd-Fn-F5 to turn on Voice
     Over; on Windows, type Win-Ctrl-Enter or Win-Enter to start
-    Narrator; on ChromeOS type Ctrl-Alt-Z to start ChromeVox. All are
+    Narrator; on ChromeOS type Ctrl-Alt-z to start ChromeVox. All are
     largely used via keyboard shortcuts that you can look up.
     
 To support all this, browsers structure the page as a tree and use that
@@ -1544,7 +1539,7 @@ reader navigation.
 several other ways in real browsers that elements can be made
 invisible, such as with the `visibility` or `display` CSS properties.
 
-Let's implement an accessibility tree in our browser. It is built in a
+Let's implement an accessibility tree in our browser. It's built in a
 rendering phase just after layout:
 
 ``` {.python}
@@ -1618,8 +1613,9 @@ class AccessibilityNode:
                 self.role = "none"
 ```
 
-To build the accessibility tree, we just recursively walk the HTML
-tree. As we do so, we skip nodes with a `none` role, but not their children:
+To build the accessibility tree, just recursively walk the HTML
+tree. along the way, skip nodes with a `none` role, but still recurse into
+their children:
 
 ``` {.python}
 class AccessibilityNode:
@@ -1638,19 +1634,18 @@ class AccessibilityNode:
 ```
 
 The user can now direct the screen reader to walk up or down this
-accessibility tree and describe each node to the user. 
-
+accessibility tree and describe each node or trigger actions on it. 
 
 ::: {.further}
 
 In a multi-process\index{process} browser
-([like Chromium][chrome-mp]), the browser and main threads run in
-different processes, and sending data from one to the other can be slow.
-Chromium, therefore, [stores two copies][chrome-mp-a11y] of the
-accessibility tree, one in the browser and one in the main thread, and
+([like Chromium][chrome-mp]), there is a browser process that interfaces with
+the OS, and render processes for loading web pages. Since screen reader APIs
+are synchronous, Chromium [stores two copies][chrome-mp-a11y] of the
+accessibility tree, one in the browser and one in each renderer, and
 only sends changes between the two. An alternative design, used by
-pre-Chromium Microsoft Edge and some other browsers, has each tab
-process respond to accessibility API requests from the operating system.
+pre-Chromium Microsoft Edge and some other browsers, connects each render
+processto accessibility API requests from the operating system.
 This removes the need to duplicate the accessibility tree, but exposing
 the operating system to individual tabs can lead to security issues.
 
@@ -1665,33 +1660,19 @@ Screen readers
 ==============
 
 Typically, the screen reader is a separate application from the
-browser,[^why-diff] with which the browser communicates through
+browser[^why-diff] the browser communicates with through
 OS-specific APIs. To keep this book platform-independent and demonstrate
 more clearly how screen readers interact with the accessibility tree, our
 discussion of screen reader support will instead include a minimal
 screen reader integrated directly into the browser.
 
 But should our built-in screen reader live in the `Browser` or each `Tab`?
-Modern browsers implement it in the `Browser`, so we'll do that
-too.^[And therefore the browser thread in our multi-threaded browser.]
-This is sensible for a couple of reasons. One is that screen readers need
-to describe not just the tab contents but also browser chrome interactions,
-and doing it all in one place makes it easier to present everything
-seamlessly to the user. But the most critical reason is that since
-real-world screen readers tend to be in the OS, *and their APIs are almost
-always synchronous*, those APIs have to be serviced on the same thread. So the
-browser thread needs to interact with the screen reader without the main
-thread's help.^[I suppose you could temporarily synchronize all threads,
-but that's a really bad idea, not only because it's
-very slow, but also is likely to cause deadlocks unless the browser
-engineer is
-extremely careful. Most browsers these days are also multi-process,
-which makes it even harder.]
-
-So the very first thing we need to do is send the tab's accessibility tree over
-to the browser thread. That'll be a straightforward extension of the commit
-concept introduced in [Chapter 12][ch12-commit]. First we'll add the tree
-to `CommitData`: 
+Modern browsers generally talk to screen readers from  something like the
+`Browser`, so we'll do that too.^[And therefore the browser thread in our
+multi-threaded browser.] So the very first thing we need to do is send the
+tab's accessibility tree over to the browser thread. That'll be a
+straightforward extension of the commit concept introduced in
+[Chapter 12][ch12-commit]. First we'll add the tree to `CommitData`: 
 
 ``` {.python replace=accessibility_tree)/accessibility_tree%2c%20focus)}
 class CommitData:
@@ -1773,12 +1754,12 @@ need to consult the [`gtts`][gtts] or [`playsound`][playsound]
 documentation. If you can't get these libraries working, just delete
 everything in `speak_text` except the `print` statement. You won't
 hear things being spoken, but you can at least debug by watching the
-standard output.
+console output.
 :::
 
 To start with, we'll want a key binding that turns the screen reader
 on and off. While real operating systems typically use more obscure
-shortcuts, I'll use `Ctrl-A` to turn on the screen reader in the event loop:
+shortcuts, I'll use `Ctrl-a` to turn on the screen reader in the event loop:
 
 ``` {.python}
     while True:
@@ -1813,8 +1794,8 @@ class Browser:
         self.lock.release()
 ```
 
-When accessibility is on, the `Browser` calls `update_accessibility`, which
-is what actually produces sound:
+When accessibility is on, the `Browser` should call a new `update_accessibility`
+method, which we'll implement in a moment to actually produce sound:
 
 ``` {.python}
 class Browser:
@@ -1824,7 +1805,7 @@ class Browser:
             self.update_accessibility()
 ```
 
-Now, what should the screen reader say? Well, that's not really up to
+Now, what should the screen reader say? That's not really up to
 the browser---the screen reader is a stand-alone application, often
 heavily configured by its user, and can decide on its own. But as a
 simple debugging aid, let's write a screen reader that speaks the
@@ -1881,9 +1862,7 @@ This text construction logic is, of course, pretty naive, but it's
 enough to demonstrate the idea.
 
 The screen reader can then read the whole document by speaking the
-`text` field on each `AccessibilityNode`. While in a real screen
-reader, this would happen via a browser API, I'll just put this code
-in `Browser` for simplicity.
+`text` field on each `AccessibilityNode`.
 
 ``` {.python}
 class Browser:
@@ -2040,9 +2019,9 @@ setting the `role` attribute.
     chapter, I won't handle all of these cases and just focus on new
     elements with an `alert` role, not changes to contents or CSS.
     
-Before we jump to implementation, we first need to make it possible
-for scripts to change the `role` attribute. To do that, we'll need to
-add support for the `setAttribute` method. On the JavaScript side,
+On to implementation. We first need to make it possible
+for scripts to change the `role` attribute, by
+adding support for the `setAttribute` method. On the JavaScript side,
 this just calls a browser API:
 
 ``` {.javascript}
@@ -2067,7 +2046,7 @@ class JSContext:
         self.tab.set_needs_render()
 ```
 
-Now we can implement the `alert` role. To do so, we'll search the
+Now we can implement the `alert` role. Search the
 accessibility tree for elements with that role:
 
 ``` {.python}
@@ -2103,9 +2082,9 @@ class Browser:
                 self.spoken_alerts.append(alert)
 ```
 
-Since `spoken_alerts` points into the accessibility tree, we'll need to
+Since `spoken_alerts` points into the accessibility tree, we need to
 update it any time the accessibility tree is rebuilt, to point into
-the new tree. Just like with compositing, we'll use the `node`
+the new tree. Just like with compositing, use the `node`
 pointers in the accessibility tree to match accessibility nodes
 between the old and new accessibility tree. Note that, while this
 matching *could* be done inside `commit`, we want that method to be as
@@ -2171,17 +2150,17 @@ read the text. Such a user might use their mouse to navigate the page,
 but need the items under the mouse to be read to them by a
 screen-reader.
 
-Implementing this feature will require each accessibility node to know
-about its geometry on the page. The user could then instruct the
-screen-reader to determine which object is under the mouse (this is
-called [hit testing][hit-test]) and read it aloud.
+Let's try that. Implementing this particular feature requires each
+accessibility node to know about its geometry on the page. The user could then
+instruct the screen-reader to determine which object is under the mouse
+(via [hit testing][hit-test]) and read it aloud.
 
 [hit-test]: https://chromium.googlesource.com/chromium/src/+/HEAD/docs/accessibility/browser/how_a11y_works_3.md#Hit-testing
 
 Getting access to the geometry is tricky, because the accessibility
-tree is generated from the element tree, while the geometry is
+tree is generated from the HTML tree, while the geometry is
 accessible in the layout tree. Let's add a `layout_object` pointer to
-each `Element` object:[^if-has]
+each `Element` object to help with that:[^if-has]
 
 [^if-has]: If it has a layout object, that is. Some `Element`s might
     not, and their `layout_object` pointers will stay `None`.
@@ -2209,10 +2188,9 @@ class BlockLayout:
         node.layout_object = self
 ```
 
-Make sure to add a similar line of code to the constructors for every
-other type of layout object.
-
-Now each `AccessibilityNode` can store the layout object's bounds:
+Make sure to add a similar line of code to the constructors for every other type
+of layout object. Each `AccessibilityNode` can then store the layout object's
+bounds:
 
 ``` {.python}
 class AccessibilityNode:
@@ -2239,11 +2217,11 @@ move events in the event loop, which in SDL are called `MOUSEMOTION`:
                 browser.handle_hover(event.motion)
 ```
 
-Now the browser should listen to the hovered position, determine if
+The browser should listen to the hovered position, determine if
 it's over an accessibility node, and highlight that node. We don't
-want to disturb our normal rendering cadence, so in `handle_hover`
-we'll save the hover event and then in `composite_raster_and_draw`
-we'll react to the hover:
+want to disturb the normal rendering cadence, so in `handle_hover`
+save the hover event and then in `composite_raster_and_draw`
+react to the hover:
 
 ``` {.python}
 class Browser:
@@ -2259,10 +2237,10 @@ class Browser:
         self.set_needs_accessibility()
 ```
 
-When the user hovers over a node, we'll do two things. First, we'll
+When the user hovers over a node, we'll do two things. First,
 draw its bounds on the screen; this helps users see what they're
-hovering over, plus it's also helpful for debugging. We'll do that in
-`paint_draw_list`; we'll start by finding the accessibility node the
+hovering over, plus it's also helpful for debugging. Do that in
+`paint_draw_list`; start by finding the accessibility node the
 user is hovering over (note the need to take scroll into account):
 
 ``` {.python}
@@ -2279,11 +2257,11 @@ class Browser:
             a11y_node = self.accessibility_tree.hit_test(x, y)
 ```
 
-The acronym `a11y`, with an "a", the number 11, and a "y", is a common
-shorthand for the word "accessibility".[^why-11] The `hit_test`
-function I'm calling is similar to code we wrote [many chapters
-ago](chrome.md#click-handling) to handle clicks, except of course that
-it is searching a different tree:
+By the way, the acronym `a11y` in `a11y_node`, with an "a", the number 11, and
+a "y", is a common shorthand for the word "accessibility".[^why-11] The
+`hit_test` function I'm calling is the same one we wrote earlier
+[earlier](chrome.md#click-handling) to handle clicks, except
+of course that it's searching a different tree:
 
 [^why-11]: The number "11" refers to the number of letters we're
     eliding from "accessibility".
@@ -2297,9 +2275,9 @@ class AccessibilityNode:
             return nodes[-1]
 ```
 
-Once we've done the hit test and we know what node the user is
-hovering over, we can save that on the `Browser` (so that the outline
-persists between frames) and draw an outline:
+Once the hit test is done and the browser knows what node the user is
+hovering over, save this information on the `Browser`---so that the outline
+persists between frames---and draw an outline:
 
 ``` {.python}
 class Browser:
@@ -2324,7 +2302,7 @@ class Browser:
 ```
 
 Note that the color of the outline depends on whether or not dark mode
-is on, to try to ensure high contrast.
+is on, to ensure high contrast.
 
 So now we have an outline drawn. But we additionally want to speak
 what the user is hovering over. To do that we'll need another flag,
@@ -2347,7 +2325,7 @@ class Browser:
 ```
 
 The ugly conditional is necessary to handle two cases: either hovering
-over an object when nothing was previously hovered over, or moving the
+over an object when nothing was previously hovered, or moving the
 mouse from one object onto another. We set the flag in either case,
 and then use that flag in `update_accessibility`:
 
@@ -2368,15 +2346,16 @@ what you're hovering on!
 
 A common accessibility issue is web page authors making custom input
 elements and not thinking much about their accessibility. The reason
-for this is that input elements are hard to style. They often involve
+for this is that built-in input elements are hard to style, so
+authors roll their own better-looking one.
+
+Built-in input elements often involve
 several separate pieces, like the path and button in a `file` input,
 the check box in a `checkbox` element, or the pop-up menu in a
 `select` drop-down, and CSS isn't (yet) good at styling such
-"compound" elements, though "[pseudo-elements][pseudoelts]" such as
-`::backdrop` or `::file-selector-button` help. Plus, their default
-appearance should match operating system defaults, which might not
-match standard CSS. New properties like [`accent-color`][accent-color]
-help. Perhaps the real solution here are [new standards][openui] for
+"compound" elements, though [pseudo-elements][pseudoelts] such as
+`::backdrop` or `::file-selector-button` help.
+Perhaps the best solution is [standards][openui] for
 new [fully-styleable][selectmenu] input elements.
 
 :::
@@ -2393,18 +2372,18 @@ Summary
 =======
 
 This chapter introduces accessibility---features to ensure *all* users can
-access and interact with websites---then shows how to solve several of
+access and interact with websites---and shows how to solve several of
 the most common accessibility problems in browsers. The key takeaways are:
 
 - The semantic and declarative nature of HTML makes accessibility
-  features natural extensions.
+  features natural extensions
 - Accessibility features often serve multiple needs, and almost
-  everyone benefits from these features in one way or another.
+  everyone benefits from these features in one way or another
 - The accessibility tree is similar to the display list and drives
   the browser's interaction with screen readers and other assistive
-  technologies.
+  technologies
 - New features like dark mode, keyboard navigation, and outlines need
-  to be customizable by web page authors to be maximally usable.
+  to be customizable by web page authors to be maximally usable
 
 Outline
 =======
@@ -2427,8 +2406,7 @@ surrounding content.
 *`Element.focus`*: Implement the JavaScript [`focus`][focus-el]
 method, which lets JavaScript focus a particular element. Make sure
 that the option to prevent scrolling works properly. Be careful:
-before reading an element's position, make sure that layout has been
-executed.
+before reading an element's position, make sure that layout is up-to-date.
 
 [focus-el]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/focus
 
@@ -2454,11 +2432,10 @@ zooming in or out can trigger this media query.
 [^responsive-width-size]: As you've seen, many accessibility features
 also have non-accessibility uses. For example, the `max-width` media
 query is indeed a way to customize behavior on zoom, but most
-developers think of it instead as a way to instead customize their
+developers think of it instead as a way to customize their
 website for different devices, like desktops, tablets, and mobile
-devices. [Responsive design][responsive-design] means designing
-websites to work well on any kind of browser screen and context, so it
-can be viewed as a kind of accessibility.
+devices. This is called [responsive design][responsive-design],
+and can be viewed as a kind of accessibility.
 
 [responsive-design]: https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Responsive_Design
 
@@ -2472,14 +2449,12 @@ around each line, but instead the block as a whole.
 
 *Threaded accessibility*: The accessibility code currently speaks text
 on the browser thread, and blocks the browser thread while it speaks.
-This is pretty annoying. Solve this by moving the speaking to a new
-accessibility thread that is in charge of speaking the document.
+That's frustrating to use. Solve this by moving the speaking to a new
+accessibility thread.
 
 *High-contrast mode*: Implement high-contrast [forced-colors] mode.
 This should replace all colors with one of a small set of
-[high-contrast][contrast] colors. You should also draw a rectangular
-*backplate* behind all lines of text in order to ensure that there is
-sufficient contrast between the text and whatever is behind it.
+[high-contrast][contrast] colors.
 
 [forced-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/@media/forced-colors
 
@@ -2503,6 +2478,6 @@ browser heuristics I mentioned above.
 *OS integration*: Add the [`accessible_output`][os-integ] Python
 library and use it to integrate directly with your OS's built-in
 screen reader. Try out some of the examples in this chapter and
-compare their behavior with a real browser.
+compare behavior with a real browser.
 
 [os-integ]: https://pypi.org/project/accessible_output/
