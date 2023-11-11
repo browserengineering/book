@@ -319,8 +319,8 @@ red, green, and blue color channels. Parsing a CSS color like
 def parse_color(color):
     if color.startswith("#") and len(color) == 7:
         r = int(color[1:3], 16)
-        g = int(color[1:3], 16)
-        b = int(color[1:3], 16)
+        g = int(color[3:5], 16)
+        b = int(color[5:7], 16)
         return skia.Color(r, g, b)
 ```
 
