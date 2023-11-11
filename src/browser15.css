@@ -26,18 +26,6 @@ a:focus {
     outline: 1px solid black;
 }
 
-input:-internal-accessibility-hover {
-    outline: 4px solid red;
-}
-
-button:-internal-accessibility-hover {
-    outline: 4px solid red;
-}
-
-a:-internal-accessibility-hover {
-    outline: 4px solid red;
-}
-
 iframe {
     outline: 1px solid black;
     overflow: clip;
