@@ -35,9 +35,10 @@ from lab12 import Task, TaskRunner, SingleThreadedTaskRunner
 from lab13 import diff_styles, parse_transition, add_parent_pointers
 from lab13 import local_to_absolute, absolute_bounds_for_obj
 from lab13 import NumericAnimation
-from lab13 import map_translation, parse_transform, ANIMATED_PROPERTIES
+from lab13 import map_translation, parse_transform
 from lab13 import CompositedLayer, paint_visual_effects
-from lab13 import DrawCommand, DrawText, DrawCompositedLayer, DrawOutline, DrawLine, DrawRRect
+from lab13 import PaintCommand, DrawText, DrawCompositedLayer, DrawOutline, \
+    DrawLine, DrawRRect
 from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform
 from lab14 import parse_color, DrawRRect, \
     parse_outline, paint_outline, \
@@ -107,19 +108,22 @@ class URL:
         body = response.read()
         s.close()
         return response_headers, body
-
+      
 DEFAULT_STYLE_SHEET = CSSParser(open("browser15.css").read()).parse()
 
-class DrawImage(DrawCommand):
+def parse_image_rendering(quality):
+   if quality == "high-quality":
+       return skia.FilterQuality.kHigh_FilterQuality
+   elif quality == "crisp-edges":
+       return skia.FilterQuality.kLow_FilterQuality
+   else:
+       return skia.FilterQuality.kMedium_FilterQuality
+
+class DrawImage(PaintCommand):
     def __init__(self, image, rect, quality):
         super().__init__(rect)
         self.image = image
-        if quality == "high-quality":
-            self.quality = skia.FilterQuality.kHigh_FilterQuality
-        elif quality == "crisp-edges":
-            self.quality = skia.FilterQuality.kLow_FilterQuality
-        else:
-            self.quality = skia.FilterQuality.kMedium_FilterQuality
+        self.quality = parse_image_rendering(quality)
 
     def execute(self, canvas):
         paint = skia.Paint(FilterQuality=self.quality)
@@ -261,7 +265,6 @@ class BlockLayout:
                     self.recurse(child)
 
     def new_line(self):
-        self.previous_word = None
         self.cursor_x = self.x
         last_line = self.children[-1] if self.children else None
         new_line = LineLayout(self.node, self, last_line)
@@ -271,12 +274,12 @@ class BlockLayout:
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
+        previous_word = line.children[-1] if line.children else None
         if word:
-            child = child_class(node, line, self.previous_word, word)
+            child = child_class(node, line, previous_word, word)
         else:
-            child = child_class(node, line, self.previous_word, frame)
+            child = child_class(node, line, previous_word, frame)
         line.children.append(child)
-        self.previous_word = child
         self.cursor_x += w + font(node.style, self.zoom).measureText(" ")
 
     def word(self, node, word):
@@ -298,7 +301,7 @@ class BlockLayout:
     def iframe(self, node):
         if "width" in self.node.attributes:
             w = dpx(int(self.node.attributes["width"]),
-                self.zoom)
+                    self.zoom)
         else:
             w = IFRAME_WIDTH_PX + dpx(2, self.zoom)
         self.add_inline_child(node, w, IframeLayout, self.frame)
@@ -815,6 +818,7 @@ class JSContext:
     def __init__(self, tab, url_origin):
         self.tab = tab
         self.url_origin = url_origin
+        self.discarded = False
 
         self.interp = dukpy.JSInterpreter()
         self.interp.export_function("log", print)
@@ -1021,10 +1025,9 @@ def style(node, rules, frame):
         transitions = diff_styles(old_style, node.style)
         for property, (old_value, new_value, num_frames) \
             in transitions.items():
-            if property in ANIMATED_PROPERTIES:
+            if property == "opacity":
                 frame.set_needs_render()
-                AnimationClass = ANIMATED_PROPERTIES[property]
-                animation = AnimationClass(
+                animation = NumericAnimation(
                     old_value, new_value, num_frames)
                 node.animations[property] = animation
                 node.style[property] = animation.animate()
@@ -1161,7 +1164,7 @@ class FrameAccessibilityNode(AccessibilityNode):
         self.build_internal(self.node.frame.nodes)
 
     def hit_test(self, x, y):
-        if not self.intersects(x, y): return
+        if not self.bounds.contains(x, y): return
         new_x = x - self.bounds.x()
         new_y = y - self.bounds.y() + self.scroll
         node = self
@@ -1236,7 +1239,8 @@ class Frame:
 
         self.nodes = HTMLParser(body).parse()
 
-        self.js = self.tab.get_js(url.origin())
+        if self.js: self.js.discarded = True
+        self.js = self.tab.get_js(url)
         self.js.add_window(self)
 
         scripts = [node.attributes["src"] for node
@@ -1290,8 +1294,7 @@ class Frame:
                 img.image = skia.Image.MakeFromEncoded(data)
                 assert img.image, "Failed to recognize image format for " + image_url
             except Exception as e:
-                print("Exception loading image: url="
-                    + str(image_url) + " exception=" + str(e))
+                print("Image", image_url, "crashed", e)
                 img.image = BROKEN_IMAGE
 
         iframes = [node
@@ -1445,8 +1448,9 @@ class Frame:
             if isinstance(elt, Text):
                 pass
             elif elt.tag == "iframe":
-                new_x = x - elt.layout_object.x
-                new_y = y - elt.layout_object.y
+                border = dpx(1, elt.layout_object.zoom)
+                new_x = x - elt.layout_object.x - border
+                new_y = y - elt.layout_object.y - border
                 elt.frame.click(new_x, new_y)
                 return
             elif is_focusable(elt):
@@ -1516,7 +1520,8 @@ class Tab:
         self.root_frame.frame_height = self.tab_height
         self.loaded = True
 
-    def get_js(self, origin):
+    def get_js(self, url):
+        origin = url.origin()
         if wbetools.FORCE_CROSS_ORIGIN_IFRAMES:
             return JSContext(self, origin)
         if origin not in self.origin_to_js:
@@ -1655,8 +1660,8 @@ class Tab:
             back = self.history.pop()
             self.load(back)
 
-    def toggle_dark_mode(self):
-        self.dark_mode = not self.dark_mode
+    def set_dark_mode(self, val):
+        self.dark_mode = val
         self.set_needs_render_all_frames()
 
     def post_message(self, message, target_window_id):
@@ -1666,107 +1671,12 @@ class Tab:
 
 @wbetools.patch(Browser)
 class Browser:
-    def __init__(self):
-        self.chrome = Chrome(self)
-
-        if wbetools.USE_GPU:
-            self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
-                sdl2.SDL_WINDOWPOS_CENTERED,
-                sdl2.SDL_WINDOWPOS_CENTERED,
-                WIDTH, HEIGHT,
-                sdl2.SDL_WINDOW_SHOWN | sdl2.SDL_WINDOW_OPENGL)
-            self.gl_context = sdl2.SDL_GL_CreateContext(
-                self.sdl_window)
-            print(("OpenGL initialized: vendor={}," + \
-                "renderer={}").format(
-                OpenGL.GL.glGetString(OpenGL.GL.GL_VENDOR),
-                OpenGL.GL.glGetString(OpenGL.GL.GL_RENDERER)))
-
-            self.skia_context = skia.GrDirectContext.MakeGL()
-
-            self.root_surface = \
-                skia.Surface.MakeFromBackendRenderTarget(
-                self.skia_context,
-                skia.GrBackendRenderTarget(
-                    WIDTH, HEIGHT, 0, 0, 
-                    skia.GrGLFramebufferInfo(0, OpenGL.GL.GL_RGBA8)),
-                    skia.kBottomLeft_GrSurfaceOrigin,
-                    skia.kRGBA_8888_ColorType,
-                    skia.ColorSpace.MakeSRGB())
-            assert self.root_surface is not None
-
-            self.chrome_surface = skia.Surface.MakeRenderTarget(
-                    self.skia_context, skia.Budgeted.kNo,
-                    skia.ImageInfo.MakeN32Premul(WIDTH, math.ceil(self.chrome.bottom)))
-            assert self.chrome_surface is not None
-        else:
-            self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
-            sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
-            WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
-            self.root_surface = skia.Surface.MakeRaster(
-                skia.ImageInfo.Make(
-                WIDTH, HEIGHT,
-                ct=skia.kRGBA_8888_ColorType,
-                at=skia.kUnpremul_AlphaType))
-            self.chrome_surface = skia.Surface(WIDTH, math.ceil(self.chrome.bottom))
-            self.skia_context = None
-
-        self.tabs = []
-        self.active_tab = None
-        self.focus = None
-        self.address_bar = ""
-        self.lock = threading.Lock()
-        self.url = None
-        self.scroll = 0
-
-        self.measure = MeasureTime()
-
-        if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
-            self.RED_MASK = 0xff000000
-            self.GREEN_MASK = 0x00ff0000
-            self.BLUE_MASK = 0x0000ff00
-            self.ALPHA_MASK = 0x000000ff
-        else:
-            self.RED_MASK = 0x000000ff
-            self.GREEN_MASK = 0x0000ff00
-            self.BLUE_MASK = 0x00ff0000
-            self.ALPHA_MASK = 0xff000000
-
-        self.animation_timer = None
-
-        self.needs_animation_frame = False
-        self.needs_composite = False
-        self.needs_raster = False
-        self.needs_draw = False
-        self.needs_accessibility = False
-
-        self.active_tab_height = 0
-        self.active_tab_display_list = None
-
-        self.composited_updates = {}
-        self.composited_layers = []
-        self.draw_list = []
-        self.accessibility_is_on = False
-        self.muted = True
-        self.dark_mode = False
-
-        self.accessibility_is_on = False
-        self.has_spoken_document = False
-        self.pending_hover = None
-        self.hovered_a11y_node = None
-        self.focus_a11y_node = None
-        self.needs_speak_hovered_node = False
-        self.tab_focus = None
-        self.last_tab_focus = None
-        self.active_alerts = []
-        self.spoken_alerts = []
-
     def commit(self, tab, data):
         self.lock.acquire(blocking=True)
         if tab == self.active_tab:
-            self.url = data.url
+            self.active_tab_url = data.url
             if data.scroll != None:
-                self.scroll = data.scroll
+                self.active_tab_scroll = data.scroll
             self.root_frame_focused = data.root_frame_focused
             self.active_tab_height = data.height
             if data.display_list:
@@ -1783,10 +1693,15 @@ class Browser:
                 self.set_needs_draw()
         self.lock.release()
 
-    def clamp_scroll(self, scroll):
-        height = self.active_tab_height
-        maxscroll = height - (HEIGHT - self.chrome.bottom)
-        return max(0, min(scroll, maxscroll))
+    def set_active_tab(self, tab):
+        self.active_tab = tab
+        task = Task(self.active_tab.set_dark_mode, self.dark_mode)
+        self.active_tab.task_runner.schedule_task(task)
+        task = Task(self.active_tab.set_needs_render_all_frames)
+        self.active_tab.task_runner.schedule_task(task)
+
+        self.clear_data()
+        self.needs_animation_frame = True
 
     def handle_down(self):
         self.lock.acquire(blocking=True)
@@ -1794,8 +1709,8 @@ class Browser:
             if not self.active_tab_height:
                 self.lock.release()
                 return
-            self.scroll = \
-                self.clamp_scroll(self.scroll + SCROLL_STEP)
+            self.active_tab_scroll = \
+                self.clamp_scroll(self.active_tab_scroll + SCROLL_STEP)
             self.set_needs_draw()
             self.needs_animation_frame = True
             self.lock.release()

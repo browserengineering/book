@@ -122,7 +122,7 @@ United States Government websites are required to be accessible under
 are also required to be accessible under the [Americans with
 Disabilities Act][ada], though it's [not yet clear][ada-unclear]
 exactly what that legal requirement means in practice, since it's
-mostly being done through the courts. A similar law in the European Union
+mostly being decided through the courts. A similar law in the European Union
 is the [European Accessibility Act][europe-a11y].
 :::
 
@@ -503,7 +503,8 @@ class Browser:
     # ...
     def toggle_dark_mode(self):
         # ...
-        task = Task(self.active_tab.toggle_dark_mode)
+        self.dark_mode = not self.dark_mode
+        task = Task(self.active_tab.set_dark_mode, self.dark_mode)
         self.active_tab.task_runner.schedule_task(task)
 ```
 
@@ -515,13 +516,22 @@ class Tab:
         # ...
         self.dark_mode = browser.dark_mode
 
-    def toggle_dark_mode(self):
-        self.dark_mode = not self.dark_mode
+    def set_dark_mode(self, val):
+        self.dark_mode = val
         self.set_needs_render()
 ```
 
 Note that we need to re-render the page when the dark mode setting is
-flipped, so that the user actually sees the new colors.
+flipped, so that the user actually sees the new colors. On that note,
+we also need to set dark mode when changing tabs, since all tabs should
+be either dark or light:
+
+``` {.python}
+   def set_active_tab(self, tab):
+        # ...
+        task = Task(self.active_tab.set_dark_mode, self.dark_mode)
+        self.active_tab.task_runner.schedule_task(task)
+```
 
 Now we need the page's colors to somehow depend on dark mode. The
 easiest to change are the default text color and the background color
@@ -610,10 +620,30 @@ buttons, and text entries:
 ``` {.css}
 @media (prefers-color-scheme: dark) {
   a { color: lightblue; }
-  input { background-color: blue; }
-  button { background-color: orangered; }
+  input { background-color: #2222FF; }
+  button { background-color: #992500; }
 }
 ```
+
+Here I chose very specific hexadecimal colors that preserve the general color
+scheme of blue and orange, but ensure maximum contrast with white foreground
+text so they are easy to read. It's important to choose colors that ensure
+maximum contrast (an "AAA" rating). [This tool][contrast-tool] is a handy one to check constrast of a foreground and background color.
+
+But to do that we need to add support for hex colors:
+
+``` {.python}
+def parse_color(color):
+    # ...
+    elif "#" in color and len(color) == 7:
+        rgb = color.split("#")[1]
+        red = int(rgb[0:2], 16)
+        green = int(rgb[2:4], 16)
+        blue = int(rgb[4:6], 16)
+        return skia.ColorSetARGB(0xFF, red, green, blue)
+```
+
+[contrast-tool]: https://webaim.org/resources/contrastchecker/
 
 To implement media queries, we'll have to start with parsing this
 syntax:
@@ -1214,8 +1244,7 @@ class Tab:
 
         document_height = math.ceil(self.document.height + 2*VSTEP)
         new_scroll = obj.y - SCROLL_STEP
-        self.scroll = clamp_scroll(
-            new_scroll, document_height, self.tab_height)
+        self.scroll = self.clamp_scroll(new_scroll)
         self.scroll_changed_in_tab = True
 ```
 
@@ -1470,7 +1499,13 @@ screen reader to re-read it.
 You can see an example[^imagine] of screen reader navigation in this
 talk, specifically the segment from 2:36--3:54:[^whole-talk]
 
+::: {.web-only}
 <iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/qi0tY60Hd6M?start=159" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+:::
+
+::: {.print-only}
+    https://www.youtube.com/watch?v=qi0tY60Hd6M&t=159s
+:::
 
 [^whole-talk]: The whole talk is recommended; it has great examples of
     using accessibility technology.
@@ -2240,7 +2275,7 @@ class Browser:
         # ...
         if self.pending_hover:
             (x, y) = self.pending_hover
-            y += self.scroll
+            y += self.active_tab_scroll
             a11y_node = self.accessibility_tree.hit_test(x, y)
 ```
 

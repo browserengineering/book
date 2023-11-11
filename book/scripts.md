@@ -571,7 +571,8 @@ handle and an attribute:
 class JSContext:
     def getAttribute(self, handle, attr):
         elt = self.handle_to_node[handle]
-        return elt.attributes.get(attr, None)
+        attr = elt.attributes.get(attr, None)
+        return attr if attr else ""
 ```
 
 Note that if the attribute is not assigned, the `get` method will

@@ -72,7 +72,8 @@ class JSContext:
 
     def getAttribute(self, handle, attr):
         elt = self.handle_to_node[handle]
-        return elt.attributes.get(attr, None)
+        attr = elt.attributes.get(attr, None)
+        return attr if attr else ""
 
     def innerHTML_set(self, handle, s):
         doc = HTMLParser("<html><body>" + s + "</body></html>").parse()

@@ -555,7 +555,7 @@ to render the page, and as you may recall from [Chapter
 exactly as fast as the display hardware can refresh. On most
 computers, this is 60 times per second, or 16ms per frame.
 
-Let's establish 16ms our ideal refresh rate:[^why-16ms]
+Let's establish 16ms as our ideal refresh rate:[^why-16ms]
 
 [^why-16ms]: Of course, 60 times per second is actually 16.66666...
     milliseconds. But it's a toy browser, and having a more exact
@@ -584,7 +584,7 @@ Now, we don't need _each_ tab redrawing itself every frame, because
 the user only sees one tab at a time. We just need the _active_ tab
 redrawing itself. Therefore, it's the `Browser` that should control
 when we update the display, not individual `Tab`s. So let's write a
-`schedule_animation_frame` method[^animation-frame] to schedules a
+`schedule_animation_frame` method[^animation-frame] that schedules a
 task to `render` the active tab:
 
 [^animation-frame]: It's called an "animation frame" because
@@ -689,15 +689,15 @@ class JSContext:
         self.tab.set_needs_render()
 ```
 
-There are more calls to `render`; you should find and fix all of them...
-Except, let's take a closer look at `click`.
+There are more calls to `render`; you should find and fix all of
+them...except, let's take a closer look at `click`.
 
 We now don't immediately render when something changes. That means that the
 layout tree (and style) could be out of date when a method is called. Normally,
 this isn't a problem, but in one important case it is: click handling. That's
 because we need to read the layout tree to figure out what object was clicked
-on, which means the layout tree needs to be up to date. Add a call to render at
-the top of click:
+on, which means the layout tree needs to be up to date. To fix this, add a
+call to render at the top of `click`:
 
 ``` {.python}
 class Tab:
@@ -802,8 +802,8 @@ running complex interactive applications, but it still took until
 the 2010s for all modern browsers to adopt it, well after such web
 applications became widespread. That's because it
 typically required extensive refactors of vast browser codebases.
-Chromium, for example, [only recently][renderingng] finished adopting this
-model, though of course work (always) remains to be done.
+Chromium, for example, [only recently][renderingng] finished 100% of the work
+to leverage this model, though of course work (always) remains to be done.
 :::
 
 [renderingng]: https://developer.chrome.com/blog/renderingng/
@@ -985,11 +985,11 @@ if our browser consistently runs slower than 60 frames per second, we
 won't end up with an ever-growing queue of rendering tasks.
 
 ::: {.further}
-Before the `requestAnimationFrame` API, developers used a self-scheduling
-timer instead, via `setTimeout`. This did run animations at a
+Before the `requestAnimationFrame` API, developers approximated it with
+`setTimeout`. This did run animations at a
 (roughly) fixed cadence, but because it didn't line up with the
-browser's rendering loop, events would sometimes be handled between the callback and
-rendering, which might force an extra, unnecessary rendering step.
+browser's rendering loop, events would sometimes be handled between the
+callback and rendering, which might force an extra, unnecessary rendering step.
 Not only does `requestAnimationFrame` avoid this, but it also lets the
 browser turn off rendering work when a web page tab or window is
 backgrounded, minimized or otherwise throttled, while still allowing
@@ -1180,7 +1180,7 @@ Two threads
 ===========
 
 Well, one option, of course, is optimizing raster-and-draw, or even
-render. And we'll do that in the [next chapter][animations.md] But
+render. And we'll do that in the [next chapter](animations.md) But
 another option---complex, but worthwhile and done by every major
 browser---is to do the render step in parallel with the
 raster-and-draw step by adopting a multi-threaded architecture. Not
@@ -1205,7 +1205,7 @@ browser thread.
 [cc]: https://chromium.googlesource.com/chromium/src.git/+/refs/heads/main/docs/how_cc_works.md
 
 [^main-thread-name]: Here I'm going with the name real browsers often
-use. A better name might be the "JavaScript" or "DOM" thread (since
+use. A better name might be the "DOM" thread (since
 JavaScript can sometimes run on [other threads][webworker]).
 
 [webworker]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API
@@ -1219,11 +1219,18 @@ communicate to handle events and draw to the screen.
 
 When the browser thread needs to communicate with the main thread, to
 inform it of events, it'll place tasks on the main thread's
-`TaskRunner`. The main thread will need to communicate with the
-browser thread to request animation frames and to send it a display
-list to raster and draw, and the main thread will do that via two
-methods on `browser`: `set_needs_animation_frame` to request an
-animation frame and `commit` to send it a display list.
+`TaskRunner`.[^why-no-browser-taskrunner] The main thread will need to
+communicate with the browser thread to request animation frames and to
+send it a display list to raster and draw, and the main thread will do
+that via two methods on `browser`: `set_needs_animation_frame` to request
+an animation frame and `commit` to send it a display list.
+
+[^why-no-browser-taskrunner]: You might be wondering why the main thread
+doesn't also communicate back to the browser thread with a `TaskRunner`.
+That could certainly be done. Here I chose to only do it in one direction,
+because the main thread is generally the "slowest" thread in browsers,
+due to the unpredictable nature of JavaScript and the unknown size of the
+DOM.
 
 The overall control flow for rendering a frame will therefore be:
 
@@ -1412,9 +1419,10 @@ class CommitData:
 When running an animation frame, the `Tab` should construct one of
 these objects and pass it to `commit`. To keep `render` from getting
 too confusing, let's put this in a new `run_animation_frame` method,
-and move `__runRAFHandlers` there too.^[The `render` method is just about
-updating style, layout and paint when needed; it's called for every frame,
-but it's also called from `click`, and in real browsers from many other places too.
+and move `__runRAFHandlers` there too.^[Why not reuse `render` instead of
+a new method? Because the `render` method is just about updating style, layout
+and paint when needed; it's called for every frame, but it's also called from
+`click`, and in real browsers from many other places too.
 Meanwhile, `run_animation_frame` is only called for frames, and therefore
 it, not `render`, runs RAF handlers and calls `commit`.]
 
@@ -1434,7 +1442,7 @@ class Tab:
 ```
 
 Think of the `CommitData` object as being sent from the main
-thread to browser thread. That means the main thread shouldn't access
+thread to the browser thread. That means the main thread shouldn't access
 it any more, and for this reason I'm resetting the `display_list`
 field. The `Browser` should now schedule `run_animation_frame`:
 
@@ -1452,23 +1460,24 @@ it was sent and call `set_needs_raster_and_draw` as needed. Because this call
 will come from another thread, we'll need to acquire a lock. Another important
 step is to not clear the `animation_timer` object until *after* the next
 commit occurs. Otherwise multiple rendering tasks could be queued at the same
-time.
+time. Finally, rename `scroll` to `active_tab_scroll` and `url` to
+`active_tab_url` to make more clear what they mean.
 
 ``` {.python}
 class Browser:
     def __init__(self):
         self.lock = threading.Lock()
 
-        self.url = None
-        self.scroll = 0
+        self.active_tab_url = None
+        self.active_tab_scroll = 0
         self.active_tab_height = 0
         self.active_tab_display_list = None
 
     def commit(self, tab, data):
         self.lock.acquire(blocking=True)
         if tab == self.active_tab:
-            self.url = data.url
-            self.scroll = data.scroll
+            self.active_tab_url = data.url
+            self.active_tab_scroll = data.scroll
             self.active_tab_height = data.height
             if data.display_list:
                 self.active_tab_display_list = data.display_list
@@ -1493,9 +1502,7 @@ maximize parallelism and responsiveness. In modern browsers, optimizing commit
 is quite challenging, because their method of caching and sending data between
 threads is much more sophisticated.
 
-[^inactive-tab-tasks]: That's because even inactive tabs are still running their
-main threads and responding to callbacks from `setTimeout` or `XMLHttpRequest`,
-and might be processing one last animation frame.
+[^inactive-tab-tasks]: That's because even inactive tabs might be processing one last animation frame.
 
 Now that we have a browser lock, we also need to acquire the lock any
 time the browser thread accesses any of its variables. For example, in
@@ -1548,7 +1555,7 @@ And that's it: we should now be doing render on one thread and raster
 and draw on another!
 
 ::: {.further}
-Due to the Python GIL, threading in Python therefore doesn't increase
+Due to the Python GIL, threading in Python doesn't increase
 *throughput*, but it can increase *responsiveness* by, say,
 running JavaScript tasks on the main thread while the browser does
 raster and draw. It's also possible to turn off the global interpreter
@@ -1649,8 +1656,6 @@ leaps they did in recent years. Good debugging tools are essential to
 software engineering!
 :::
 
-
-
 Threaded scrolling
 ==================
 
@@ -1693,29 +1698,27 @@ send scroll offsets to the main thread when it renders, but then the
 main thread will have to be able to *override* that scroll offset if
 the new frame requires it.
 
-Let's implement that. To start, we'll need to store a `scroll`
+Let's implement that. To start, we'll need to store an `active_tab_scroll`
 variable on the `Browser`, and update it when the user scrolls:
 
 ``` {.python}
-def clamp_scroll(scroll, document_height, tab_height):
-    return max(0, min(
-        scroll, document_height - tab_height))
-
 class Browser:
     def __init__(self):
         # ...
-        self.scroll = 0
+        self.active_tab_scroll = 0
+
+    def clamp_scroll(self, scroll):
+        height = self.active_tab_height
+        maxscroll = height - (HEIGHT - self.chrome.bottom)
+        return max(0, min(scroll, maxscroll))
 
     def handle_down(self):
         self.lock.acquire(blocking=True)
         if not self.active_tab_height:
             self.lock.release()
             return
-        scroll = clamp_scroll(
-            self.scroll + SCROLL_STEP,
-            self.active_tab_height,
-            HEIGHT - self.chrome.bottom)
-        self.scroll = scroll
+        self.active_tab_scroll = self.clamp_scroll(
+            self.active_tab_scroll + SCROLL_STEP)
         self.set_needs_raster_and_draw()
         self.needs_animation_frame = True
         self.lock.release()
@@ -1739,8 +1742,8 @@ Move tab switching (in `load` and `handle_click`) to a new method
 class Browser:
     def set_active_tab(self, tab):
         self.active_tab = tab
-        self.scroll = 0
-        self.url = None
+        self.active_tab_scroll = 0
+        self.active_tab_url = None
         self.needs_animation_frame = True
 ```
 
@@ -1758,7 +1761,7 @@ class Browser:
         # ...
         def callback():
             self.lock.acquire(blocking=True)
-            scroll = self.scroll
+            scroll = self.active_tab_scroll
             self.needs_animation_frame = False
             task = Task(self.active_tab.run_animation_frame, scroll)
             self.active_tab.task_runner.schedule_task(task)
@@ -1803,11 +1806,15 @@ class Tab:
         self.scroll = 0
         self.scroll_changed_in_tab = True
 
+    def clamp_scroll(self, scroll):
+        height = math.ceil(self.document.height + 2*VSTEP)
+        maxscroll = height - self.tab_height
+        return max(0, min(scroll, maxscroll))
+
     def run_animation_frame(self, scroll):
         # ...
         document_height = math.ceil(self.document.height + 2*VSTEP)
-        clamped_scroll = clamp_scroll(
-            self.scroll, document_height, self.tab_height)
+        clamped_scroll = self.clamp_scroll(self.scroll)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
         self.scroll = clamped_scroll
@@ -1838,7 +1845,7 @@ class Browser:
         if tab == self.active_tab:
             # ...
             if data.scroll != None:
-                self.scroll = data.scroll
+                self.active_tab_scroll = data.scroll
 ```
 
 That's it! If you try the counting demo now, you'll be able to scroll
@@ -1871,7 +1878,7 @@ disable threaded scrolling only if a `scroll` event listener calls
 
 [mdn-bg-fixed]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-attachment
 
-[designed-for]: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener#improving_scrolling_performance_with_passive_listeners
+[designed-for]: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener#passive
 
 [^not-supported]: Our browser doesn't support any of these features,
 so it doesn't run into these difficulties. That's also a strategy. For
@@ -1889,7 +1896,7 @@ into even more threads? Wouldn't that make the browser even faster?
 
 [^processes]: Note that many browsers now run some parts of the
     browser thread and main thread in different processes, which has
-    some advantages for security and error handling.
+    advantages for security and error handling.
     
 In a word, yes. Modern browsers have [dozens of
 threads][renderingng-architecture], which together serve to make the
@@ -1911,7 +1918,7 @@ In principle, yes. The only thing browsers *have* to do is implement
 all the web API specifications correctly, and draw to the screen after
 scripts and `requestAnimationFrame` callbacks have completed. The
 specification spells this out in detail in what it calls the
-"[update-the-rendering]" steps. The specification doesn't mention
+"[update-the-rendering]" steps. These steps don't mention
 style or layout at all---because style and layout, just like paint and
 draw, are implementation details of a browser. The specification's
 update-the-rendering steps are the *JavaScript-observable* things that
@@ -1920,8 +1927,8 @@ have to happen before drawing to the screen.
 [update-the-rendering]: https://html.spec.whatwg.org/multipage/webappapis.html#update-the-rendering
 
 Nevertheless, in practice, no current modern browser runs style or
-layout on off the main thread.[^servo] The reason is simple: there are
-many JavaScript APIs that can query style or layout state. For
+layout on any thread but the the main one.[^servo] The reason is simple: there
+are many JavaScript APIs that can query style or layout state. For
 example, [`getComputedStyle`][gcs] requires first computing style, and
 [`getBoundingClientRect`][gbcr] requires first doing
 layout.[^nothing-later] If a web page calls one of these APIs, and
@@ -1935,7 +1942,7 @@ be able to compute style and layout on the main thread.[^or-stall]
 [gcs]: https://developer.mozilla.org/en-US/docs/Web/API/Window/getComputedStyle
 [gbcr]: https://developer.mozilla.org/en-US/docs/Web/API/Element/getBoundingClientRect
 
-[^or-stall]: Or the main thread could force the compositor thread to
+[^or-stall]: Or the main thread could force the browser thread to
 do that work, but that's even worse, because forcing work on the
 compositor thread will make scrolling janky unless you do even more work to
 avoid that somehow.
@@ -1951,7 +1958,7 @@ avoid that somehow.
 
 [^nothing-later]: There is no JavaScript API that allows reading back
     state from anything later in the rendering pipeline than layout,
-    which made it easier to move the back half of the pipeline to
+    which is what made it possible to move the back half of the pipeline to
     another thread.
 
 One possible way to resolve these tensions is to optimistically move
@@ -2002,15 +2009,15 @@ This chapter demonstrated the two-thread rendering system at the core
 of modern browsers. The main points to remember are:
 
 - The browser organizes work into task queues, with tasks for things
-  like running JavaScript, handling user input, and rendering the page.
+  like running JavaScript, handling user input, and rendering the page
 - The goal is to consistently generate frames to the screen at a 60Hz
-  cadence, which means a 16ms budget to draw each animation frame.
-- The browser has two key threads involved in rendering.
-- The main thread runs JavaScript and the special rendering task.
+  cadence, which means a 16ms budget to draw each animation frame
+- The browser has two key threads involved in rendering
+- The main thread runs JavaScript and the special rendering task
 - The browser thread draws the display list to the screen,
-  handles/dispatches input events, and performs scrolling.
+  handles/dispatches input events, and performs scrolling
 - The main thread communicates with the browser thread via `commit`,
-  which synchronizes the two threads.
+  which synchronizes the two threads
 
 Additionally, you've seen how hard it is to move tasks between the two
 threads, such as the challenges involved in scrolling on the browser

@@ -102,7 +102,7 @@ Make sure to make this change everywhere in your browser that you call
 `request`, including inside `XMLHttpRequest_send` and in several other places
 in `load`.
 
-When we download images, however, we _won't_ call `decode`, and just
+When we download images, however, we _won't_ call `decode`; we'll just
 use the binary data directly.
 
 ``` {.python replace=Tab/Frame}
@@ -165,24 +165,15 @@ class Tab:
             try:
                 # ...
             except Exception as e:
-                print("Exception loading image: url="
-                    + str(image_url) + " exception=" + str(e))
+                print("Image", image_url, "crashed", e)
                 img.image = BROKEN_IMAGE
 ```
 
 Now that we've downloaded and saved the image, we need to use it.
-Recall that the `Image` object is created using a `MakeFromEncoded`
-method. That name reminds us that the image we've downloaded isn't raw
-image bytes. In fact, all of the image formats you know---JPG, PNG,
-and the many more obscure ones---encode the image data using various
-sophisticated algorithms. The image therefore needs to be *decoded*
-before it can be used.
-
-Luckily, Skia will automatically do the decoding for us, so drawing
-the image is pretty simple:
+That just requires calling Skia's `drawImageRect` function:
 
 ``` {.python replace=%2c%20rect/%2c%20rect%2c%20quality,self.rect)/self.rect%2c%20paint)}
-class DrawImage(DrawCommand):
+class DrawImage(PaintCommand):
     def __init__(self, image, rect):
         super().__init__(rect)
         self.image = image
@@ -190,6 +181,14 @@ class DrawImage(DrawCommand):
     def execute(self, canvas):
         canvas.drawImageRect(self.image, self.rect)
 ```
+
+The internals of `drawImageRect`, however, are a little complicated
+and worth expanding on. Recall that the `Image` object is created using a `MakeFromEncoded`
+method. That name reminds us that the image we've downloaded isn't raw
+image bytes. In fact, all of the image formats you know---JPG, PNG,
+and the many more obscure ones---encode the image data using various
+sophisticated algorithms. The image therefore needs to be *decoded*
+before it can be used.
 
 Skia applies a variety of clever optimizations to decoding, such as
 directly decoding the image to its eventual size and caching the
@@ -210,10 +209,10 @@ phones these days) produces 48 megabytes of raw data.
 [html-image-decode]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLImageElement/decoding
 
 But because image decoding can be so expensive, Skia actually has several
-algorithms for decoding to different sizes, some of which are faster but result
-in a worse-looking image.[^lossy] For example, just for resizing an image,
-there's fast, simple, "nearest neighbor" resizing and the slower but
-higher-quality "bilinear" or even "[Lanczos][lanczos]" resizing algorithms.
+algorithms for decoding, some of which are faster but result
+in a worse-looking image.[^lossy] For example,
+there's fast, simple, "nearest neighbor" algorithm and the slower but
+higher-quality "bilinear" or even "[Lanczos][lanczos]" algorithms.[^resizing]
 
 [^lossy]: Image formats like JPEG are also [*lossy*][lossy], meaning that
     they don't faithfully represent all of the information in the
@@ -221,6 +220,11 @@ higher-quality "bilinear" or even "[Lanczos][lanczos]" resizing algorithms.
     before the file is saved. Typically these formats try to drop
     "noisy details" that a human is unlikely to notice, just like
     different resizing algorithms might.
+    
+[^resizing]: Specifically, these algorithms decide how to decode an
+    image when the image size and the destination size are different
+    and the image therefore needs to be resized. The faster algorithms
+    tend to result in chopier, more jagged images.
 
 [lossy]: https://en.wikipedia.org/wiki/Lossy_compression
 
@@ -234,23 +238,27 @@ indicates which algorithm to use. Let's add that as an argument to
 [image-rendering]: https://developer.mozilla.org/en-US/docs/Web/CSS/image-rendering
 
 ``` {.python}
-class DrawImage(DrawCommand):
+def parse_image_rendering(quality):
+   if quality == "high-quality":
+       return skia.FilterQuality.kHigh_FilterQuality
+   elif quality == "crisp-edges":
+       return skia.FilterQuality.kLow_FilterQuality
+   else:
+       return skia.FilterQuality.kMedium_FilterQuality
+
+class DrawImage(PaintCommand):
     def __init__(self, image, rect, quality):
         # ...
-        if quality == "high-quality":
-            self.quality = skia.FilterQuality.kHigh_FilterQuality
-        elif quality == "crisp-edges":
-            self.quality = skia.FilterQuality.kLow_FilterQuality
-        else:
-            self.quality = skia.FilterQuality.kMedium_FilterQuality
+        self.quality = parse_image_rendering(quality)
 
     def execute(self, canvas):
         paint = skia.Paint(FilterQuality=self.quality)
         canvas.drawImageRect(self.image, self.rect, paint)
 ```
 
-With the images downloaded and decoded, all we need to see the
-downloaded images is to add images into our browser's layout tree.
+But to talk about where this argument comes from, or more generally to
+actually see downloaded images in our browser, we first need to add
+images into our browser's layout tree.
 
 ::: {.further}
 The HTTP `Content-Type` header lets the web server tell the browser
@@ -274,8 +282,8 @@ Extensions, and was originally intended for enumerating all of the
 acceptable data formats for email attachments. These days the loop has
 basically closed: most email clients are now "webmail" clients,
 accessed through your browser, and most emails are now HTML, encoded
-with the `text/html` MIME type. Many mail clients do still have an
-option to encode the email in `text/plain`, however.
+with the `text/html` MIME type, though typically there is still a
+plain-text option.
 
 [mime-list]: https://www.iana.org/assignments/media-types/media-types.xhtml
 
@@ -348,8 +356,8 @@ The idea is that `EmbedLayout` should provide common layout code for
 all kinds of embedded content, while its subclasses like `InputLayout`
 should provide the custom code for that type of content. Different
 types of embedded content might have different widths and heights, so
-that should happen in `InputLayout`, and each subclass has its own unique
-definition of `paint`:
+that should happen in each subclass, as should the definition of
+`paint`:
 
 ``` {.python}
 class InputLayout(EmbedLayout):
@@ -386,8 +394,8 @@ real browser, it can be avoided by forcing an image into a block or
 other layout mode via the `display` CSS property.] The underlying
 reason for this is because, as a type of inline layout, images are
 designed to flow along with related text, which means the
-bottom of the image should line up with the [text baseline][baseline-ch3]
-(in fact, `img_height` is saved in the code above to ensure they line up).
+bottom of the image should line up with the [text baseline][baseline-ch3].
+That's also why we save `img_height` in the code above.
 
 [baseline-ch3]: text.html#text-of-different-sizes
 
@@ -406,11 +414,11 @@ class ImageLayout(EmbedLayout):
 ```
 
 Now we need to create `ImageLayout`s in `BlockLayout`. Input elements
-are created in an `input` method, so we could duplicate it
-calling it `image`...but `input` is itself a duplicate of `text`, so
-this would be a lot of almost-identical methods. The only part of
-these methods that differs is the part that computes the width of the
-new inline child; most of the rest of the logic is shared.
+are created in an `input` method, so we create a largely-similar
+`image` method. But `input` is itself a duplicate of `word`, so
+this would be a lot of duplication. The only part of these methods
+that differs is the part that computes the width of the new inline
+child; most of the rest of the logic is shared.
 
 Let's instead refactor the shared code into new methods which `text`,
 `input`, and `input` can call. First, all of these methods need a font
@@ -429,9 +437,9 @@ def font(style, zoom):
 ```
 
 There's also shared code that handles line layout; let's put that into
-a new `add_inline_child` method. We'll need parameters for the layout
-class to instantiate and a `word` parameter that is only passed for some
-layout classes.
+a new `add_inline_child` method. We'll need to pass in the HTML node,
+the element, and the layout class to instantiate (plus a `word`
+parameter that's just for `TextLayout`s):
 
 ``` {.python replace=child_class%2c/child_class%2c%20frame%2c,previous_word)/previous_word%2c%20frame)}
 class BlockLayout:
@@ -439,12 +447,12 @@ class BlockLayout:
         if self.cursor_x + w > self.x + self.width:
             self.new_line()
         line = self.children[-1]
+        previous_word = line.children[-1] if line.children else None
         if word:
-            child = child_class(node, line, self.previous_word, word)
+            child = child_class(node, line, previous_word, word)
         else:
-            child = child_class(node, line, self.previous_word, frame)
+            child = child_class(node, line, previous_word)
         line.children.append(child)
-        self.previous_word = child
         self.cursor_x += w + font(node.style, self.zoom).measureText(" ")
 ```
 
@@ -484,7 +492,7 @@ But what about our second output modality, screen readers? That's what
 the `alt` attribute is for. It works like this:
 
     <img src="https://browser.engineering/im/hes.jpg"
-    alt="A computer operator using a hypertext editing system in 1969">
+    alt="An operator using a hypertext editing system in 1969">
 
 Implementing this in `AccessibilityNode` is very easy:
 
@@ -679,7 +687,7 @@ handling three significant differences:
     synchronously access the parent DOM. That means that it'd be
     basically impossible to put that iframe in a different thread or
     CPU process, and in practice it ends up in the same rendering
-    event loop as a result.
+    event loop.
 
 [cross-origin]: https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy
 
@@ -690,7 +698,7 @@ handling three significant differences:
 We'll get to these differences, but for now, let's start working on
 the idea of a `Tab` within a `Tab`. What we're going to do is split
 the `Tab` class into two pieces: `Tab` will own the event loop and
-script environments, `Frame`s that do the rest.
+script environments, `Frame`s will do the rest.
 
 It's good to plan out complicated refactors like this in some detail.
 A `Tab` will:
@@ -815,9 +823,10 @@ paint.[^why-split] We'll need to implement that split, and also add code
 to trigger each `Frame`'s rendering from the `Tab`.
 
 [^why-split]: Why split the rendering pipeline this way? Because the
-    output of accessibility and paint is combined across all
-    frames---a single display list, and a single accessibility
-    tree---while the DOMs and layout trees don't intermingle.
+    accessibility tree and display list is ultimately transfered from
+    the main thread to the browser thread, so ultimately gets combined
+    anyway. DOM, style, and layout trees, meanwhile, don't get passed
+    between threads so don't intermingle.
     
 Let's start with splitting the rendering pipeline. The main method
 here is still the `Tab`'s `render` method, which first calls `render`
@@ -872,12 +881,12 @@ class Frame:
 Again, these dirty bits move to the `Frame` because they relate to the
 frame's part of rendering.
 
-Yet unlike images, iframes have
-*no [intrinsic size][intrinsic-size]*--the layout size of an `<iframe>` element
- does not depend on its content.[^seamless-iframe] That means there's a crucial
- extra bit of communication that needs to happen between the parent and child
- frames: how wide and tall should a frame be laid out? This is defined by the
- attributes and CSS of the `iframe` element:
+Unlike images, iframes have *no [intrinsic size][intrinsic-size]*:
+the layout size of an `<iframe>` element
+does not depend on its content.[^seamless-iframe] That means there's a crucial
+extra bit of communication that needs to happen between the parent and child
+frames: how wide and tall should a frame be laid out? This is defined by the
+attributes and CSS of the `iframe` element:
 
 [intrinsic-size]: https://developer.mozilla.org/en-US/docs/Glossary/Intrinsic_Size
 
@@ -902,7 +911,7 @@ class BlockLayout:
     def iframe(self, node):
         if "width" in self.node.attributes:
             w = dpx(int(self.node.attributes["width"]),
-            self.zoom)
+                    self.zoom)
         else:
             w = IFRAME_WIDTH_PX + dpx(2, self.zoom)
         self.add_inline_child(node, w, IframeLayout, self.frame)
@@ -929,7 +938,9 @@ class IframeLayout(EmbedLayout):
             self.height = dpx(IFRAME_HEIGHT_PX + 2, self.zoom)
 ```
 
-Note that if the `width` isn't specified, it uses a [default
+The extra two pixels provide room for a border, one pixel on each side, later on.
+
+Note that if its `width` isn't specified, an iframe uses a [default
 value][iframe-defaults], chosen a long time ago based on the average
 screen sizes of the day:
 
@@ -940,11 +951,8 @@ IFRAME_WIDTH_PX = 300
 IFRAME_HEIGHT_PX = 150
 ```
 
-The extra 2 pixels (corrected for zoom, of course) provide room for a border
-later on.
-
-Now, note that this code is run in the *parent* frame. We need to get
-this width and height over to the *child* frame, so it can know its
+Now, this code is run in the *parent* frame. We need to get
+this width and height over to the *child* frame, so that it can know its
 width and height during layout. So let's add a field for that in the
 child frame:
 
@@ -956,13 +964,7 @@ class Frame:
         self.frame_height = 0
 ```
 
-And we can set those when the parent frame is laid out:[^no-set-needs]
-
-[^no-set-needs]: You might be surprised that I'm not calling
-    `set_needs_render` on the child frame here. That's a shortcut: the
-    `width` and `height` attributes can only change through
-    `setAttribute`, while `zoom` can only change in `zoom_by` and
-    `reset_zoom`. All of those handlers already invalidate all frames.
+And we can set those when the parent frame is laid out:
 
 ``` {.python}
 class IframeLayout(EmbedLayout):
@@ -973,6 +975,21 @@ class IframeLayout(EmbedLayout):
                 self.height - dpx(2, self.zoom)
             self.node.frame.frame_width = \
                 self.width - dpx(2, self.zoom)
+```
+
+You might be surprised that I'm not calling `set_needs_render` on the child
+frame here. That's a shortcut: the `width` and `height` attributes can only
+change through `setAttribute`, while `zoom` can only change in `zoom_by` and
+`reset_zoom`. All of those handlers, however, need to invalidate all frames,
+via a new method to do so, instead of the old `set_needs_render` on `Tab` which
+is now gone. Update all of these call sites to call it (plus
+changes to dark mode, which affects style for all frames):
+
+``` {.python}
+class Tab:
+    def set_needs_render_all_frames(self):
+        for id, frame in self.window_id_to_frame.items():
+            frame.set_needs_render()
 ```
 
 The conditional is only there to handle the (unusual) case of an
@@ -995,7 +1012,7 @@ guaranteed for us by Python (3.7 or later), where dictionaries are
 sorted by insertion order, but if you're following along in another
 language, you might need to sort frames before rendering them.
 
-Alright, we've now got frames styled and laid out, and just need to
+We've now got frames styled and laid out, and just need to
 paint them. Unlike layout and style, all the frames in a tab produce a
 single, unified display list, so we're going to need to work
 recursively. We'll have the `Tab` paint the root `Frame`:
@@ -1061,8 +1078,7 @@ top-left corner starts in the right place,[^content-box] while
 `paint_outline` adds the border and `paint_visual_effects` clips
 content outside the viewable area of the iframe. Conveniently, we've
 already implemented all of these features and can simply trigger them
-from our browser CSS file:^[Another good reason to delay iframes and
-images until chapter 15 perhaps?]
+from our browser CSS file:
 
 [^content-box]: This book doesn't go into the details of the [CSS box
 model][box-model], but the `width` and `height` attributes of an
@@ -1111,7 +1127,7 @@ interacting with them.
 Before iframes, there were the [`<frameset>` and `<frame>`][frameset] elements.
 A `<frameset>` replaces the `<body>` tag and splits browser window
 screen among multiple `<frame>`s; this was an early alternative layout
-algorithm to the one presented in this book. Frames had confusing
+system to the one presented in this book. Frames had confusing
 navigation and accessibility, and lacked the flexibility of
 `<iframe>`s, so aren't used much these days.
 :::
@@ -1145,8 +1161,9 @@ class Frame:
         while elt:
             # ...
             elif elt.tag == "iframe":
-                new_x = x - elt.layout_object.x
-                new_y = y - elt.layout_object.y
+                border = dpx(1, elt.layout_object.zoom)
+                new_x = x - elt.layout_object.x - border
+                new_y = y - elt.layout_object.y - border
                 elt.frame.click(new_x, new_y)
                 return
 
@@ -1192,7 +1209,11 @@ stops drawing the focus outline.
 
 Another interaction is pressing `Tab` to cycle through focusable
 elements in the current frame. Let's move the `advance_tab` logic into
-`Frame` and just dispatch to it from the `Tab`:
+`Frame` and just dispatch to it from the `Tab`:[^tab-exercise]
+
+[^tab-exercise]: This is not a particularly user-friendly
+    implementation of tab cycling when multiple frames are involved;
+    see the [exercises](#exercises) for a better version.
 
 ``` {.python}
 class Tab:
@@ -1215,8 +1236,8 @@ class Frame:
 
 Now, as you might recall from [Chapter 13](animations.md), scrolling
 happens both inside `Browser` and inside `Tab`, to reduce latency.
-That was already quite complicated, so to keep things simple, we won't
-support both for non-root iframes. We'll need a new commit parameter
+That was already quite complicated, so to keep things simple, we'll only
+support threaded scrolling on the root frame. We'll need a new commit parameter
 so the browser thread knows whether the root frame is focused:
 
 ``` {.python}
@@ -1284,19 +1305,7 @@ class Frame:
         return max(0, min(scroll, maxscroll))
 ```
 
-For browser-thread scrolling we'll have a similar function that uses
-the active tab height:
-
-``` {.python}
-class Browser:
-    def clamp_scroll(self, scroll):
-        height = self.active_tab_height
-        maxscroll = height - (HEIGHT - self.chrome.bottom)
-        return max(0, min(scroll, maxscroll))
-```
-
-Make sure to use the new `clamp_scroll` methods in place of the old
-ones everywhere. For example, in `scroll_to`:
+Make sure to use `clamp_scroll` method everywhere. For example, in `scroll_to`:
 
 ``` {.python}
 class Frame:
@@ -1376,7 +1385,7 @@ frame's coordinates:
 ``` {.python}
 class FrameAccessibilityNode(AccessibilityNode):
     def hit_test(self, x, y):
-        if not self.intersects(x, y): return
+        if not self.bounds.contains(x, y): return
         new_x = x - self.bounds.x()
         new_y = y - self.bounds.y() + self.scroll
         node = self
@@ -1419,8 +1428,8 @@ class AccessibilityNode:
         return rect
 ```
 
-This method depends on calls `map_to_parent` to adjust the bounds. For
- most accessibility nodes we don't need to do anything, because they are in the same
+This method calls `map_to_parent` to adjust the bounds. For
+most accessibility nodes we don't need to do anything, because they are in the same
 coordinate space as their parent:
 
 ``` {.python}
@@ -1451,7 +1460,7 @@ scrolling happen on the browser thread as much as possible, including
 for iframes. The hard part is handling the many obscure combinations
 of containing blocks, [stacking orders][stacking-order], [scroll
 bars][overflow], transforms, and iframes: with scrolling on the
-browser thread, all of these complex interactions have be communicated
+browser thread, all of these complex interactions have to be communicated
 from the main thread to the browser thread, and correctly interpreted
 by both sides.
 :::
@@ -1483,7 +1492,8 @@ class Tab:
         # ...
         self.origin_to_js = {}
 
-    def get_js(self, origin):
+    def get_js(self, url):
+        origin = url.origin()
         if origin not in self.origin_to_js:
             self.origin_to_js[origin] = JSContext(self, origin)
         return self.origin_to_js[origin]
@@ -1495,7 +1505,7 @@ Each `Frame` will then ask the `Tab` for its JavaScript context:
 class Frame:
     def load(self, url, payload=None):
         # ...
-        self.js = self.tab.get_js(url.origin())
+        self.js = self.tab.get_js(url)
         # ...
 ```
 
@@ -1511,8 +1521,8 @@ to do the same in our runtime:
 
 [^shadow-realms]: There are [various proposals][shadowrealm] to expose
 multiple global namespaces as a JavaScript API. It would definitely be
-convenient to have that capability in this chapter, to avoid this
-restriction!
+convenient to have that capability in this chapter, to avoid having to
+write `window` everywhere!
 
 [shadowrealm]: https://github.com/tc39/proposal-shadowrealm
 
@@ -1534,8 +1544,8 @@ If you miss one, you'll get errors like this:
     	duk_js_var.c:1258
     	eval src/pyduktape.c:1 preventsyield
 
-Then you'll need to go find where you forgot to put `window.` in front
-of `Node`. You'll also need to modify `EVENT_DISPATCH_JS` to prefix
+If you see this error, this means you need to go find where you need
+to write `window.Node` instead of `Node`. You'll also need to modify `EVENT_DISPATCH_JS` to prefix
 classes with `window`:
 
 ``` {.python}
@@ -1585,6 +1595,13 @@ class JSContext:
         code = "var window_{} = new Window({});".format(
             frame.window_id, frame.window_id)
         self.interp.evaljs(code)
+
+class Frame:
+    def load(self, url, payload=None):
+        # ...
+        self.js = self.tab.get_js(url)
+        self.js.add_window(self)
+        # ...
 ```
 
 Before running any JavaScript, we'll want to change which window the
@@ -1702,12 +1719,11 @@ Finally, for `setTimeout` and `XMLHttpRequest`, which involve a call
 from JavaScript into the browser and later a call from the browser
 into JavaScript, we'll likewise need to pass in a window ID from
 JavaScript, and use that window ID when calling back into JavaScript.
-
 I've omitted many of the code changes in this section because they are
 quite repetitive. You can find all of the needed locations by
-searching your codebase for `evaljs`; once you've got scripts working
-again, let's make it possible for scripts in different frames to
-interact.
+searching your codebase for `evaljs`.
+
+So now we've isolated different frames. Next, let's let them interact.
 
 ::: {.further}
 Same-origin iframes can access each other's state, but cross-origin
@@ -1791,7 +1807,7 @@ Object.defineProperty(Window.prototype, 'parent', {
 Note that it's possible for the lookup in `WINDOWS` to fail, if the
 parent frame is not in the same origin as the current one and
 therefore isn't running in the same `JSContext`. In that case, this
-code return a fresh `Window` object with that id. But iframes are not
+code returns a fresh `Window` object with that id. But iframes are not
 allowed to access each others' documents across origins (or call various
 other APIs that are unsafe), so add a method that checks for this situation
 and raises an exception:
@@ -1832,7 +1848,7 @@ class JSContext:
         # ...
 ```
 
-So via `parent`, same-origin iframes can communicate. But what about
+So same-origin iframes can communicate via `parent`. But what about
 cross-origin iframes? It would be insecure to let them access each
 other's variables or call each other's methods, so instead browsers
 allow a form of [*message passing*][message-passing], a technique for
@@ -1849,15 +1865,19 @@ the exercises.]
 
 [postmessage]: https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage
 
-    window.parent.postMessage("...", '*')
+``` {.javascript .example}
+window.parent.postMessage("...", '*')
+```
 
 This will send the first argument[^structured-cloning] to the parent
 frame, which can receive the message by handling the `message` event
 on its `Window` object:
 
-    window.addEventListener("message", function(e) {
-        console.log(e.data);
-    });
+``` {.javascript .example}
+window.addEventListener("message", function(e) {
+    console.log(e.data);
+});
+```
 
 [^structured-cloning]: In a real browser, you can also pass data that
 is not a string, such as numbers and objects. It works via a
@@ -1878,7 +1898,7 @@ this event happens on the `Window`, not on a `Node`, we'll need a new
 `WINDOW_LISTENERS` array:
 
 ``` {.javascript}
-    window.WINDOW_LISTENERS = {}
+window.WINDOW_LISTENERS = {}
 ```
 
 Each listener will be called with a `MessageEvent` object:
@@ -2047,7 +2067,7 @@ like `Date.now` or `setTimeout`.
 Worse yet, there are browser APIs that don't seem like timers but can
 be used as such.[^sharedarraybuffer-attack] These API are useful, so
 browsers don't quite want to remove it, but there is also no way to
-make it "less accurate", since it's not primarily a clock anyway.
+make it "less accurate", since it's not primarily a clock to begin with.
 Browsers now require [certain optional HTTP headers][sab-headers] to
 be present in the parent *and* child frames' HTTP responses in order
 to allow use of `SharedArrayBuffer`, though this is not a perfect
@@ -2120,27 +2140,22 @@ Exercises
 *Canvas element*: Implement the [`<canvas>`][canvas-elt] element, the 2D aspect
 of the [`getContext`][getcontext] API, and some of the drawing commands on
 [`CanvasRenderingContext2D`][crc2d]. Canvas layout is just like an iframe,
-including its default width and height. You should allocate a Skia canvas of
+including its default width and height. You should allocate a Skia surface of
 an appropriate size when `getContext("2d")` is called, and implement some of
 the APIs that draw to the canvas.[^eager-canvas] It should be straightforward
 to translate most API methods to their Skia equivalent.
 
+[getcontext]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/getContext
 [crc2d]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D
 
-[^eager-canvas]: Note that once JavaScript draws to a canvas, the drawing
-persists forever until [`reset`][canvas-reset] or similar is called. This
-allows a web developer to build up a display list with a sequence of commands,
-but also places the burden on them to decide when to do so, and also when to
-clear it when needed. This approach is called an *immediate mode* of
-rendering---as opposed to the [*retained mode*][retained-mode] used by HTML,
-which does not have this complexity for developers. (Instead, the complexity
-is borne by the browser.)
+[^eager-canvas]: Note that the Canvas APIs raster each drawing command
+immediately, instead of waiting until the rest of the page is rastered.
+This is called *immediate mode* rendering---as opposed to the [*retained mode*][retained-mode] used by HTML.
+Immediate mode means the web developer decides when to incur the
+rasterization time, which is tricky for complex images, but it makes
+memory usage and runtime more predictable.
 
 [retained-mode]: https://en.wikipedia.org/wiki/Retained_mode
-
-[canvas-reset]: https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-reset
-
-[getcontext]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/getContext
 
 *Background images*: Elements can have a [`background-image`][bg-img].
 Implement the basics of this CSS property: a `url(...)` value for the
@@ -2156,25 +2171,18 @@ property.
 
 *Object-fit*: implement the [`object-fit`][obj-fit] CSS property. It determines
 how the image within an `<img>` element is sized relative to its container
-element.
+element. This will require clipping images with a different aspect ratio.
 
 [obj-fit]: https://developer.mozilla.org/en-US/docs/Web/CSS/object-fit
 
-*Iframe aspect ratio*: Implement the [`aspect-ratio`][aspect-ratio] CSS
-property and use it to provide an implicit sizing to iframes and images
-when only one of `width` or `height` is specified (or when the image is not
-yet loaded, if you did the lazy loading exercise).
-
-[aspect-ratio]: https://developer.mozilla.org/en-US/docs/Web/CSS/aspect-ratio
-
-*Lazy loading*: Even encoded images can be quite
-large.[^early-lazy-loading] Add support for the
-[`loading` attribute][img-loading] on `img` elements. Your browser should only
+*Lazy loading*: Downloading images can use quite a bit of
+data.[^early-lazy-loading] While browsers default to download all
+images on the page immediately, the [`loading`
+attribute][img-loading] on `img` elements can instruct a browser to only
 download images if they are close to the visible area of the page.
 This kind of optimization is generally called [lazy loading][lli].
-Implement a second optimization in your browser that only renders images that
-are within a certain number of pixels of the being visible on the
-screen.
+Implement `loading`. Make sure the page is laid out correctly both
+before and after the image finishes loading.
 
 [^early-lazy-loading]: In the early days of the web, computer networks
 were slow enough that browsers had a user setting to disable
@@ -2183,6 +2191,13 @@ downloading of images until the user expressly asked for them.
 [lli]: https://developer.mozilla.org/en-US/docs/Web/Performance/Lazy_loading
 
 [img-loading]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/img#loading
+
+*Iframe aspect ratio*: Implement the [`aspect-ratio`][aspect-ratio] CSS
+property and use it to provide an implicit sizing to iframes and images
+when only one of `width` or `height` is specified (or when the image is not
+yet loaded, if you do the lazy loading exercise).
+
+[aspect-ratio]: https://developer.mozilla.org/en-US/docs/Web/CSS/aspect-ratio
 
 *Image placeholders*: Building on top of lazy loading, implement placeholder
 styling of images that haven't loaded yet. This is done by setting a 0x0 sizing,
@@ -2193,7 +2208,7 @@ to the meaning of the website, and so it should tell the user that they
 are missing out on some of the content if it fails to load. But otherwise,
 the broken image icon is probably just ugly clutter.]
 
-*Media queries*: Implement the [width][width-mq] media query. Make
+*Media queries*: Implement the [`width`][width-mq] media query. Make
 sure it works inside iframes. Also make sure it works even when the
 width of an iframe is changed by its parent frame.
 
@@ -2205,8 +2220,8 @@ which indicates the frame origins that are allowed to receive the
 message.
 
 *Multi-frame focus*: in our browser, pressing `Tab` cycles through
-the elements in the focused frame. But means it's impossible to access
-focusable elements in other frames via the keyboard alone. Fix it to move
+the elements in the focused frame. But this means it's impossible to access
+focusable elements in other frames by keyboard alone. Fix it to move
 between frames after iterating through all focusable elements in one
 frame.
 
