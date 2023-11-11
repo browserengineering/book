@@ -10,25 +10,22 @@ class Pixel:
         return self
 
     def source_over(self, source):
-        self.a = 1 - (1 - source.a) * (1 - self.a)
-        if self.a == 0: return self
+        new_a = 1 - (1 - source.a) * (1 - self.a)
+        if new_a == 0: return self
         self.r = \
             (self.r * (1 - source.a) * self.a + \
-                source.r * source.a) / self.a
+                source.r * source.a) / new_a
         self.g = \
             (self.g * (1 - source.a) * self.a + \
-                source.g * source.a) / self.a
+                source.g * source.a) / new_a
         self.b = \
             (self.b * (1 - source.a) * self.a + \
-                source.b * source.a) / self.a
+                source.b * source.a) / new_a
+        self.a = new_a
         return self
 
     def destination_in(self, source):
         self.a = self.a * source.a
-        if self.a == 0: return self
-        self.r = (self.r * self.a * source.a) / self.a
-        self.g = (self.g * self.a * source.a) / self.a
-        self.b = (self.b * self.a * source.a) / self.a
         return self
 
     def multiply(self, source):
