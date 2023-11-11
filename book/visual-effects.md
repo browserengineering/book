@@ -1245,7 +1245,6 @@ generally does not use premultiplied representations, and the code below
 doesn't either. (Skia does represent colors internally in a premultiplied form,
 however.)
 
-
 ``` {.python file=examples}
 class Pixel:
     def source_over(self, source):
