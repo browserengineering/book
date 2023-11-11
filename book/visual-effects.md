@@ -303,33 +303,57 @@ one important task of a graphics library.
 
 We'll need our browser's drawing commands to invoke Skia, not Tk
 methods. Skia is a bit more verbose than Tkinter, so let's abstract
-over some details with helper functions.[^skia-docs] First, a helper
-function to convert colors to Skia colors:
+over some details with helper functions.[^skia-docs] First, let's talk
+about parsing colors.
 
 [^skia-docs]: Consult the [Skia][skia] and [skia-python][skia-python]
 documentation for more on the Skia API.
 
+Skia represents colors as simple 32-bit integers, with the most
+significant byte representing the alpha value (255 meaning opaque and
+0 meaning transparent) and then the next three bytes representing the
+red, green, and blue color channels. Parsing a CSS color like
+`#ffd700` to this representation is pretty easy:
+
 ``` {.python}
 def parse_color(color):
-    if color == "white":
-        return skia.ColorWHITE
-    elif color == "lightblue":
-        return skia.ColorSetARGB(0xFF, 0xAD, 0xD8, 0xE6)
-    elif color == "orange":
-        return skia.ColorSetARGB(0xFF, 0xFF, 0xA5, 0x00)
-    elif color == "red":
-        return skia.ColorRED
-    elif color == "green":
-        return skia.ColorGREEN
-    elif color == "blue":
-        return skia.ColorBLUE
-    elif color == "gray":
-        return skia.ColorGRAY
-    elif color == "lightgreen":
-        return skia.ColorSetARGB(0xFF, 0x90, 0xEE, 0x90)
+    if color.startswith("#") and len(color) == 7:
+        r = int(color[1:3], 16)
+        g = int(color[1:3], 16)
+        b = int(color[1:3], 16)
+        return skia.Color(r, g, b)
+```
+
+Skia's `Color` constructor packs the red, green, and blue values into
+its integer representation for us.
+
+However, there are also a whole lot of named colors. Supporting this
+is necessary to see many of the examples in this book:
+
+``` {.python}
+NAMED_COLORS = {
+    "black": "#000000",
+    "white": "#ffffff",
+    "red":   "#ff0000",
+    # ...
+}
+
+def parse_color(color):
+    # ...
+    elif color in NAMED_COLORS:
+        return parse_color(NAMED_COLORS[color])
     else:
         return skia.ColorBLACK
 ```
+
+You can add more named colors from [the list][named-colors] as you
+come across them; the demos in this book use `blue`, `green`,
+`lightblue`, `lightgreen`, `orange`, `orangered`, and `gray`. Note
+that unsupported colors are interpreted as black, so that at least
+something is drawn to the screen.
+
+[named-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/named-color
+
 
 Note that the `Color` constructor takes alpha, red, green, and blue
 values, closely matching (except for the order) our `Pixel` definition.

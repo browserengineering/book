@@ -45,23 +45,27 @@ def get_font(size, weight, style):
         FONTS[key] = font
     return skia.Font(FONTS[key], size)
 
+NAMED_COLORS = {
+    "black": "#000000",
+    "gray":  "#808080",
+    "white": "#ffffff",
+    "red":   "#ff0000",
+    "green": "#00ff00",
+    "blue":  "#0000ff",
+    "lightblue": "#add8e6",
+    "lightgreen": "#90ee90",
+    "orange": "#ffa500",
+    "orangered": "#ff4500",
+}
+
 def parse_color(color):
-    if color == "white":
-        return skia.ColorWHITE
-    elif color == "lightblue":
-        return skia.ColorSetARGB(0xFF, 0xAD, 0xD8, 0xE6)
-    elif color == "orange":
-        return skia.ColorSetARGB(0xFF, 0xFF, 0xA5, 0x00)
-    elif color == "red":
-        return skia.ColorRED
-    elif color == "green":
-        return skia.ColorGREEN
-    elif color == "blue":
-        return skia.ColorBLUE
-    elif color == "gray":
-        return skia.ColorGRAY
-    elif color == "lightgreen":
-        return skia.ColorSetARGB(0xFF, 0x90, 0xEE, 0x90)
+    if color.startswith("#") and len(color) == 7:
+        r = int(color[1:3], 16)
+        g = int(color[1:3], 16)
+        b = int(color[1:3], 16)
+        return skia.Color(r, g, b)
+    elif color in NAMED_COLORS:
+        return parse_color(NAMED_COLORS[color])
     else:
         return skia.ColorBLACK
 
