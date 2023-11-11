@@ -122,7 +122,7 @@ United States Government websites are required to be accessible under
 are also required to be accessible under the [Americans with
 Disabilities Act][ada], though it's [not yet clear][ada-unclear]
 exactly what that legal requirement means in practice, since it's
-mostly being done through the courts. A similar law in the European Union
+mostly being decided through the courts. A similar law in the European Union
 is the [European Accessibility Act][europe-a11y].
 :::
 
