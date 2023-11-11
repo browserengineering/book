@@ -70,6 +70,8 @@ def parse_blend_mode(blend_mode_str):
         return skia.BlendMode.kMultiply
     elif blend_mode_str == "difference":
         return skia.BlendMode.kDifference
+    elif blend_mode_str == "destination-in":
+        return skia.BlendMode.kDstIn
     else:
         return skia.BlendMode.kSrcOver
 
@@ -77,23 +79,64 @@ def linespace(font):
     metrics = font.getMetrics()
     return metrics.fDescent - metrics.fAscent
 
-class SaveLayer:
-    def __init__(self, sk_paint, children,
-            should_save=True, should_paint_cmds=True):
-        self.should_save = should_save
-        self.should_paint_cmds = should_paint_cmds
-        self.sk_paint = sk_paint
+class Alpha:
+    def __init__(self, alpha, children):
+        self.alpha = alpha
         self.children = children
         self.rect = skia.Rect.MakeEmpty()
         for cmd in self.children:
             self.rect.join(cmd.rect)
 
     def execute(self, canvas):
+        paint = skia.Paint(Alphaf=self.alpha)
+        if self.alpha < 1:
+            canvas.saveLayer(paint=paint)
+        for cmd in self.children:
+            cmd.execute(canvas)
+        if self.alpha < 1:
+            canvas.restore()
+
+class Blend:
+    def __init__(self, blend_mode, isolate, children):
+        self.blend_mode = blend_mode
+        self.children = children
+        self.rect = skia.Rect.MakeEmpty()
+        for cmd in self.children:
+            self.rect.join(cmd.rect)
+        self.isolate = isolate
+        self.should_save = self.isolate or self.blend_mode
+
+    def execute(self, canvas):
+        paint = skia.Paint(
+            BlendMode=parse_blend_mode(self.blend_mode))
         if self.should_save:
-            canvas.saveLayer(paint=self.sk_paint)
-        if self.should_paint_cmds:
-            for cmd in self.children:
-                cmd.execute(canvas)
+            canvas.saveLayer(paint=paint)
+        for cmd in self.children:
+            cmd.execute(canvas)
+        if self.should_save:
+            canvas.restore()
+
+class AlphaAndBlend:
+    def __init__(self, alpha, blend_mode, isolate, children):
+        self.alpha = alpha
+        self.blend_mode = blend_mode
+        self.isolate = isolate
+        self.should_save = self.alpha < 1 or self.isolate \
+            or self.blend_mode
+
+        self.children = children
+        self.rect = skia.Rect.MakeEmpty()
+        for cmd in self.children:
+            self.rect.join(cmd.rect)
+
+    def execute(self, canvas):
+        paint = skia.Paint(
+            Alphaf=self.alpha,
+            BlendMode=parse_blend_mode(self.blend_mode))
+        if self.should_save:
+            canvas.saveLayer(paint=paint)
+        for cmd in self.children:
+            cmd.execute(canvas)
         if self.should_save:
             canvas.restore()
 
@@ -383,8 +426,7 @@ class InputLayout:
 
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
-
-    blend_mode = parse_blend_mode(node.style.get("mix-blend-mode"))
+    blend_mode = node.style.get("mix-blend-mode")
 
     border_radius = float(node.style.get("border-radius", "0px")[:-2])
     if node.style.get("overflow", "visible") == "clip":
@@ -393,15 +435,13 @@ def paint_visual_effects(node, cmds, rect):
         clip_radius = 0
 
     needs_clip = node.style.get("overflow", "visible") == "clip"
-    needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
-        needs_clip or opacity != 1.0
 
     return [
-        SaveLayer(skia.Paint(BlendMode=blend_mode, Alphaf=opacity), [
+        AlphaAndBlend(opacity, blend_mode, clip_radius > 0, [
             ClipRRect(rect, clip_radius,
                 cmds,
             should_clip=needs_clip),
-        ], should_save=needs_blend_isolation),
+        ]),
     ]
 
 @wbetools.patch(DocumentLayout)

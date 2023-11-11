@@ -35,7 +35,7 @@ from lab13 import map_translation, parse_transform
 from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import PaintCommand, DrawText, DrawCompositedLayer, DrawOutline, \
     DrawLine, DrawRRect
-from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform
+from lab13 import VisualEffect, AlphaAndBlend, ClipRRect, Transform
 from lab14 import parse_color, parse_outline, DrawRRect, \
     paint_outline, \
     dpx, cascade_priority, \
@@ -119,14 +119,10 @@ def paint_visual_effects(node, cmds, rect):
     else:
         clip_radius = 0
     needs_clip = node.style['overflow'].get() == 'clip'
-    needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
-        needs_clip or opacity != 1.0
-    save_layer = SaveLayer(
-        skia.Paint(BlendMode=blend_mode, Alphaf=opacity),
-        node, [ClipRRect(rect, clip_radius, cmds, should_clip=needs_clip)],
-        should_save=needs_blend_isolation)
-    transform = Transform(translation, rect, node, [save_layer])
-    node.save_layer = save_layer
+    blend_op = AlphaAndBlend(opacity, blend_mode, False, node,
+        [ClipRRect(rect, clip_radius, cmds, should_clip=needs_clip)])
+    transform = Transform(translation, rect, node, [blend_op])
+    node.blend_op = blend_op
     return [transform]
 
 class ProtectedField:
@@ -1318,7 +1314,7 @@ class Tab:
         composited_updates = {}
         if not needs_composite:
             for node in self.composited_updates:
-                composited_updates[node] = node.save_layer
+                composited_updates[node] = node.blend_op
         self.composited_updates.clear()
 
         root_frame_focused = not self.focused_frame or \

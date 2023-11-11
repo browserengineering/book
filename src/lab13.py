@@ -250,23 +250,34 @@ class ClipRRect(VisualEffect):
         else:
             return "ClipRRect(<no-op>)"
 
-class SaveLayer(VisualEffect):
-    def __init__(self, sk_paint, node, children, should_save=True):
+class AlphaAndBlend(VisualEffect):
+    def __init__(self, alpha, blend_mode, isolate, node, children):
         super().__init__(skia.Rect.MakeEmpty(), children, node)
-        self.should_save = should_save
-        self.sk_paint = sk_paint
+        self.alpha = alpha
+        self.blend_mode = blend_mode
+        self.isolate = isolate
+        self.should_save = self.alpha < 1 or self.isolate \
+            or self.blend_mode
 
         if wbetools.USE_COMPOSITING and self.should_save:
             self.needs_compositing = True
 
-    def execute(self, canvas):
-        if self.should_save:
-            canvas.saveLayer(paint=self.sk_paint)
+        self.children = children
+        self.rect = skia.Rect.MakeEmpty()
         for cmd in self.children:
-                cmd.execute(canvas)
+            self.rect.join(cmd.rect)
+
+    def execute(self, canvas):
+        paint = skia.Paint(
+            Alphaf=self.alpha,
+            BlendMode=parse_blend_mode(self.blend_mode))
+        if self.should_save:
+            canvas.saveLayer(paint=paint)
+        for cmd in self.children:
+            cmd.execute(canvas)
         if self.should_save:
             canvas.restore()
-
+        
     def map(self, rect):
         return rect
 
@@ -274,14 +285,20 @@ class SaveLayer(VisualEffect):
         return rect
 
     def clone(self, child):
-        return SaveLayer(self.sk_paint, self.node, [child], \
-            self.should_save)
+        return AlphaAndBlend(self.alpha, self.blend_mode,
+                             self.isolate, self.node, [child])
 
     def __repr__(self):
-        if self.should_save:
-            return "SaveLayer(alpha={})".format(self.sk_paint.getAlphaf())
-        else:
-            return "SaveLayer(<no-op>)"
+        args = ""
+        if self.alpha < 1:
+            args += ", alpha={}".format(self.alpha)
+        if self.blend_mode:
+            args += ", blend_mode={}".format(self.blend_mode)
+        if self.isolate:
+            args += ", isolate"
+        if not args:
+            args = ", <no-op>"
+        return "AlphaAndBlend({})".format(args[2:])
 
 class DrawCompositedLayer(PaintCommand):
     def __init__(self, composited_layer):
@@ -746,7 +763,7 @@ class InputLayout:
 
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
-    blend_mode = parse_blend_mode(node.style.get("mix-blend-mode"))
+    blend_mode = node.style.get("mix-blend-mode")
     translation = parse_transform(
         node.style.get("transform", ""))
 
@@ -760,15 +777,13 @@ def paint_visual_effects(node, cmds, rect):
     needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
         needs_clip or opacity != 1.0
 
-    save_layer = \
-        SaveLayer(skia.Paint(BlendMode=blend_mode, Alphaf=opacity), node, [
-            ClipRRect(rect, clip_radius, cmds,
-                should_clip=needs_clip),
-        ], should_save=needs_blend_isolation)
-
-    transform = Transform(translation, rect, node, [save_layer])
-
-    node.save_layer = save_layer
+    blend_op = AlphaAndBlend(opacity, blend_mode, False, node, [
+        ClipRRect(rect, clip_radius,
+                  cmds,
+                  should_clip=needs_clip),
+    ])
+    transform = Transform(translation, rect, node, [blend_op])
+    node.blend_op = blend_op
  
     return [transform]
 
@@ -1088,7 +1103,7 @@ class Tab:
         composited_updates = {}
         if not needs_composite:
             for node in self.composited_updates:
-                composited_updates[node] = node.save_layer
+                composited_updates[node] = node.blend_op
         self.composited_updates = []
 
         commit_data = CommitData(
@@ -1335,7 +1350,7 @@ class Browser:
         if not node in self.composited_updates:
             return parent_effect.clone(child_effect)
 
-        if type(parent_effect) is SaveLayer:
+        if type(parent_effect) is AlphaAndBlend:
             return self.composited_updates[node].clone(
                 child_effect)
         return parent_effect.clone(child_effect)

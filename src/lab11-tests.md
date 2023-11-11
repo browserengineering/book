@@ -59,7 +59,7 @@ So can `mix-blend-mode:multiply` and `mix-blend-mode: difference`.
     restore()
     drawString(text=), x=13.0, y=93.0, color=ff000000)
 
-Non-rectangular clips via `clip-path:circle` are supported.
+Non-rectangular clips via `overflow: clip` are supported.
 
     >>> size_and_rounded_clip_url = 'http://test.test/size_and_rounded_clip_url'
     >>> test.socket.respond(size_and_rounded_clip_url, b"HTTP/1.0 200 OK\r\n" +
