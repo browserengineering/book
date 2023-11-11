@@ -108,6 +108,8 @@ class URL:
         s.close()
         return response_headers, body
 
+DEFAULT_STYLE_SHEET = CSSParser(open("browser15.css").read()).parse()
+
 class DrawImage(DrawCommand):
     def __init__(self, image, rect, quality):
         super().__init__(rect)
