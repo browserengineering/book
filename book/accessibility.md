@@ -635,7 +635,7 @@ But to do that we need to add support for hex colors:
 ``` {.python}
 def parse_color(color):
     # ...
-    elif "#" in color:
+    elif "#" in color and len(color) == 7:
         rgb = color.split("#")[1]
         red = int(rgb[0:2], 16)
         green = int(rgb[2:4], 16)
