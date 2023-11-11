@@ -93,7 +93,7 @@ def parse_color(color):
         return skia.ColorGRAY
     elif color == "lightgreen":
         return skia.ColorSetARGB(0xFF, 0x90, 0xEE, 0x90)
-    elif "#" in color:
+    elif "#" in color and len(color) == 7:
         rgb = color.split("#")[1]
         red = int(rgb[0:2], 16)
         green = int(rgb[2:4], 16)
