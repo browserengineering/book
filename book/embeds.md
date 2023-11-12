@@ -768,8 +768,34 @@ class Frame:
                 iframe.frame = None
                 continue
             iframe.frame = Frame(self.tab, self, iframe)
-            iframe.frame.load(document_url)
         # ...
+```
+
+Since iframes can have subresources (and subframes!) and therefore be slow to
+load, so we should load them asynchronously, just like scripts.
+
+``` {.python}
+class Frame:
+    def load(self, url, payload=None):
+        for iframe in iframes:
+            # ...
+            task = Task(iframe.frame.load, document_url)
+            self.tab.task_runner.schedule_task(task)
+```
+
+And since they are async, we need to record whether they have loaded yet,
+to avoid trying to render an unloaded iframe:
+
+``` {.python}
+class Frame:
+    def __init__(self, tab, parent_frame, frame_element):
+        # ...
+        self.loaded = False
+
+    def load(self, url, payload=None):
+        self.loaded = False
+        ...
+        self.loaded = True
 ```
 
 So we've now got a tree of frames inside a single tab. But because we
@@ -828,17 +854,24 @@ to trigger each `Frame`'s rendering from the `Tab`.
     anyway. DOM, style, and layout trees, meanwhile, don't get passed
     between threads so don't intermingle.
     
-Let's start with splitting the rendering pipeline. The main method
-here is still the `Tab`'s `render` method, which first calls `render`
-on each frame to do style and layout:
+Let's start with splitting the rendering pipeline. The main methods
+here are still the `Tab`'s `run_animation_frame` and `render`, which
+iterate over all loaeded iframes:
 
 ``` {.python}
 class Tab:
+    def run_animation_frame(self, scroll):
+        # ...
+        for (window_id, frame) in self.window_id_to_frame.items():
+            if not frame.loaded:
+                continue
+
     def render(self):
         self.browser.measure.time('render')
 
         for id, frame in self.window_id_to_frame.items():
-            frame.render()
+            if frame.loaded:
+                frame.render()
 
         if self.needs_accessibility:
             # ...
@@ -1042,7 +1075,7 @@ def paint_tree(layout_object, display_list):
     cmds = layout_object.paint()
 
     if isinstance(layout_object, IframeLayout) and \
-        layout_object.node.frame:
+        layout_object.node.frame and layout_object.node.frame.loaded:
         paint_tree(layout_object.node.frame.document, cmds)
     else:
         for child in layout_object.children:
@@ -1115,7 +1148,8 @@ To `build` such a node, we just recurse into the frame:
 class AccessibilityNode:
    def build_internal(self, child_node):
         if isinstance(child_node, Element) \
-            and child_node.tag == "iframe" and child_node.frame:
+            and child_node.tag == "iframe" and child_node.frame \
+            and child_node.frame.loaded:
             child = AccessibilityNode(child_node.frame.nodes)
         # ... 
 ```
@@ -1359,7 +1393,8 @@ We'll create one of those below each `iframe` node:
 class AccessibilityNode:
     def build_internal(self, child_node):
         if isinstance(child_node, Element) \
-            and child_node.tag == "iframe" and child_node.frame:
+            and child_node.tag == "iframe" and child_node.frame \
+            and child_node.frame.loaded:
             child = FrameAccessibilityNode(child_node)
 ```
 
