@@ -164,7 +164,7 @@ console one second from now:
 
 [settimeout]: https://developer.mozilla.org/en-US/docs/Web/API/setTimeout
 
-``` {.javascript expected=false}
+``` {.javascript .example}
 function callback() { console.log('Callback'); }
 setTimeout(callback, 1000);
 ```
