@@ -826,8 +826,8 @@ paint.[^why-split] We'll need to implement that split, and also add code
 to trigger each `Frame`'s rendering from the `Tab`.
 
 [^why-split]: Why split the rendering pipeline this way? Because the
-    accessibility tree and display list is ultimately transfered from
-    the main thread to the browser thread, so gets combined
+    accessibility tree and display list are ultimately transfered from
+    the main thread to the browser thread, so they get combined
     anyway. DOM, style, and layout trees, meanwhile, don't get passed
     between threads so don't intermingle.
     
