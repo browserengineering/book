@@ -1813,13 +1813,18 @@ class Tab:
 
     def run_animation_frame(self, scroll):
         # ...
-        document_height = math.ceil(self.document.height + 2*VSTEP)
+        self.render()
+        # ...
+        self.browser.commit(self, commit_data)
+        self.scroll_changed_in_tab = False
+
+    def render(self):
+        # ...
         clamped_scroll = self.clamp_scroll(self.scroll)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
         self.scroll = clamped_scroll
         # ...
-        self.scroll_changed_in_tab = False
 ```
 
 If the main thread *hasn't* overridden the browser's scroll offset,

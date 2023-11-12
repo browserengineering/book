@@ -1314,21 +1314,6 @@ class Frame:
         self.scroll = self.clamp_scroll(new_scroll)
 ```
 
-Scroll clamping can also come into play if a layout causes a page's
-maximum height to shrink. You'll need to move the scroll clamping
-logic out of `Tab`'s `run_animation_frame` method and into the
-`Frame`'s `render` to handle this:
-
-``` {.python}
-class Frame:
-    def render(self):
-        clamped_scroll = self.clamp_scroll(self.scroll)
-        if clamped_scroll != self.scroll:
-            self.scroll_changed_in_frame = True
-        self.scroll = clamped_scroll
-```
-
-
 There's also a set of accessibility hover interactions that we need to
 support. This is hard, because the accessibility interactions happen
 in the browser thread, which has limited information:

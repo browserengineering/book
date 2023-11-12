@@ -259,17 +259,10 @@ class Tab:
 
         self.render()
 
-        document_height = math.ceil(self.document.height + 2*VSTEP)
-        clamped_scroll = self.clamp_scroll(self.scroll)
-        if clamped_scroll != self.scroll:
-            self.scroll_changed_in_tab = True
-        if clamped_scroll != self.scroll:
-            self.scroll_changed_in_tab = True
-        self.scroll = clamped_scroll
-
         scroll = None
         if self.scroll_changed_in_tab:
             scroll = self.scroll
+        document_height = math.ceil(self.document.height + 2*VSTEP)
         commit_data = CommitData(
             self.url, scroll, document_height, self.display_list)
         self.display_list = None
@@ -286,6 +279,12 @@ class Tab:
         self.display_list = []
         paint_tree(self.document, self.display_list)
         self.needs_render = False
+
+        clamped_scroll = self.clamp_scroll(self.scroll)
+        if clamped_scroll != self.scroll:
+            self.scroll_changed_in_tab = True
+        self.scroll = clamped_scroll
+
         self.browser.measure.stop('render')
 
     def click(self, x, y):
