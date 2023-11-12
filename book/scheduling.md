@@ -95,7 +95,9 @@ To run those tasks, we need to call the `run` method on our
 class Tab:
     def __init__(self):
         self.task_runner = TaskRunner(self)
+```
 
+``` {.python expected=False}
 if __name__ == "__main__":
     while True:
         # ...
@@ -114,19 +116,21 @@ will download and run all scripts before doing its rendering steps.
 That makes pages slower to load. We can fix this by creating tasks for
 running scripts:
 
-``` {.python expected=False}
-class Tab:
-    def run_script(self, url, body):
+``` {.python}
+class JSContext:
+    def run(self, script, code):
         try:
-            self.js.run(body)
+            self.interp.evaljs(code)
         except dukpy.JSRuntimeError as e:
-            print("Script", url, "crashed", e)
+            print("Script", script, "crashed", e)
 
-    def load(self):
+class Tab:
+    def load(self, url, payload=None):
+        # ...
         for script in scripts:
             # ...
             header, body = script_url.request(url)
-            task = Task(self.run_script, script_url, body)
+            task = Task(self.js.run, script_url, body)
             self.task_runner.schedule_task(task)
 ```
 
