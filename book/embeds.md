@@ -1133,7 +1133,7 @@ screen among multiple `<frame>`s; this was an early alternative layout
 system to the one presented in this book. Frames had confusing
 navigation and accessibility, and lacked the flexibility of
 `<iframe>`s, so aren't used much these days. The name "iframe" references
-these elements in a way, because it is short for "inline frame".
+these elements in a way---it's short for "inline frame".
 :::
 
 [frameset]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/frameset
