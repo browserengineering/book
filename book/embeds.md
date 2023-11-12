@@ -2043,7 +2043,7 @@ rasterizer, that rasterizer wouldn't be able to exfiltrate data over the
 network, preventing private data from leaking.
 
 These isolation and sandboxing features may seem "straightforward", in
-the same sense thatre the browser thread we added in [Chapter
+the same sense that the browser thread we added in [Chapter
 13](scheduling.md) is "straightforward". In practice, the many browser
 APIs mean the implementation is full of subtleties and ends up being
 extremely complex. Chromium, for example, took many years to ship the
