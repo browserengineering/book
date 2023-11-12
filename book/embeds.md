@@ -772,7 +772,7 @@ class Frame:
 ```
 
 Since iframes can have subresources (and subframes!) and therefore be slow to
-load, so we should load them asynchronously, just like scripts.
+load, we should load them asynchronously, just like scripts:
 
 ``` {.python}
 class Frame:
@@ -856,7 +856,7 @@ to trigger each `Frame`'s rendering from the `Tab`.
     
 Let's start with splitting the rendering pipeline. The main methods
 here are still the `Tab`'s `run_animation_frame` and `render`, which
-iterate over all loaeded iframes:
+iterate over all loaded iframes:
 
 ``` {.python}
 class Tab:
@@ -865,6 +865,8 @@ class Tab:
         for (window_id, frame) in self.window_id_to_frame.items():
             if not frame.loaded:
                 continue
+            frame.js.dispatch_RAF(frame.window_id)
+            # ...
 
     def render(self):
         self.browser.measure.time('render')
@@ -1075,7 +1077,8 @@ def paint_tree(layout_object, display_list):
     cmds = layout_object.paint()
 
     if isinstance(layout_object, IframeLayout) and \
-        layout_object.node.frame and layout_object.node.frame.loaded:
+        layout_object.node.frame and \
+        layout_object.node.frame.loaded:
         paint_tree(layout_object.node.frame.document, cmds)
     else:
         for child in layout_object.children:
