@@ -2486,7 +2486,7 @@ compare behavior with a real browser.
 [`focus()`][focus-method] method
 and the corresponding [`focus`][focus-event] and
 [`blur`][blur-event] events on DOM elements. Make sure that `focus()`
-only has an effect on focusable elements.
+only has an effect for focusable elements.
 
 [focus-method]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/focus
 [focus-event]: https://developer.mozilla.org/en-US/docs/Web/API/Element/focus_event
