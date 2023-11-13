@@ -2482,7 +2482,7 @@ compare behavior with a real browser.
 
 [os-integ]: https://pypi.org/project/accessible_output/
 
-*Focus method and evnets*: Add support for the JavaScript
+*Focus method and events*: Add support for the JavaScript
 [`focus()`][focus-method] method
 and the corresponding [`focus`][focus-event] and
 [`blur`][blur-event] events on DOM elements. Make sure that `focus()`
