@@ -124,7 +124,7 @@ class Tab:
         except dukpy.JSRuntimeError as e:
             print("Script", url, "crashed", e)
 
-   def load(self):
+    def load(self):
         for script in scripts:
             # ...
             header, body = script_url.request(url)
