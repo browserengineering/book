@@ -2481,3 +2481,13 @@ screen reader. Try out some of the examples in this chapter and
 compare behavior with a real browser.
 
 [os-integ]: https://pypi.org/project/accessible_output/
+
+*Focus events and method*: Add support for the JavaScript
+[`Element.focus`][focus-methd] method
+and the corresponding [`focus`][focus-event] and
+[`blur`][blur-event] events on DOM elements. Make sure that `Element.focus`
+only has an effect on focusable elements.
+
+[focus-method]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/focus
+[focus-event]: https://developer.mozilla.org/en-US/docs/Web/API/Element/focus_event
+[blur-event]: https://developer.mozilla.org/en-US/docs/Web/API/Element/blur_event
