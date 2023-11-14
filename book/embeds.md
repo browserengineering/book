@@ -484,6 +484,21 @@ class BlockLayout:
         self.add_inline_child(node, w, ImageLayout)
 ```
 
+And of course, images also get the same inline layout mode as input elements:
+
+``` {.python replace=%22img%22/%22img%22%2c%20%22iframe%22}
+class BlockLayout:
+    def layout_mode(self):
+        # ...
+        elif self.node.tag in {"input", "img"}:
+            return "inline"
+
+    def should_paint(self):
+        return isinstance(self.node, Text) or \
+            (self.node.tag not in {"input", "button", "img"})
+```
+
+
 Now that we have `ImageLayout` nodes in our layout tree, we'll be
 painting `DrawImage` commands to our display list and showing the
 image on the screen!
@@ -902,6 +917,12 @@ a "seamless" iframe whose layout coordinates with its parent frame.
 ``` {.python}
 class BlockLayout:
     # ...
+
+    def layout_mode(self):
+        # ...
+        elif self.node.tag in {"input", "img", "iframe"}:
+            return "inline"
+
     def recurse(self, node):
         # ...
             elif node.tag == "iframe" and \
@@ -915,6 +936,11 @@ class BlockLayout:
         else:
             w = IFRAME_WIDTH_PX + dpx(2, self.zoom)
         self.add_inline_child(node, w, IframeLayout, self.frame)
+
+    def should_paint(self):
+        return isinstance(self.node, Text) or \
+            (self.node.tag not in {"input", "button", "img", "iframe"})
+
 ```
 
 The `IframeLayout` layout code is also similar, inheriting from

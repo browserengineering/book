@@ -239,7 +239,7 @@ class BlockLayout:
                 if child.tag in BLOCK_ELEMENTS:
                     return "block"
             return "inline"
-        elif self.node.tag == "input":
+        elif self.node.tag in {"input", "img", "iframe"}:
             return "inline"
         else:
             return "block"
@@ -311,8 +311,7 @@ class BlockLayout:
 
     def should_paint(self):
         return isinstance(self.node, Text) or \
-            (self.node.tag != "input" and self.node.tag != "button" \
-             and self.node.tag != "img" and self.node.tag != "iframe")        
+            (self.node.tag not in {"input", "button", "img", "iframe"})
 
     def paint(self):
         cmds = []
