@@ -510,7 +510,7 @@ class BlockLayout:
 
     def should_paint(self):
         return isinstance(self.node, Text) or \
-            (self.node.tag not in {"input", "button"})
+            (self.node.tag != "input" and self.node.tag !=  "button")
 
     def self_rect(self):
         return skia.Rect.MakeLTRB(
