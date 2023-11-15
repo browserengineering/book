@@ -1203,7 +1203,7 @@ class Pixel:
 I want to emphasize that this code is not a part of our browser---I'm
 simply using Python code to illustrate what Skia is doing internally.
 
-That `alphaf` operation applies to pixels in one surface. But with
+That `Alphaf` parameter applies to pixels in one surface. But with
 `saveLayer` we will end up with two surfaces, with all of their pixels
 aligned, and therefore we will need to combine, or *blend*,
 corresponding pairs of pixels.
