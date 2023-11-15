@@ -425,7 +425,7 @@ class TaskRunner:
     def handle_quit(self):
         pass
 
-REFRESH_RATE_SEC = .016
+REFRESH_RATE_SEC = .033
 
 @wbetools.patch(Chrome)
 class Chrome:

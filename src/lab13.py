@@ -831,7 +831,7 @@ def parse_transition(value):
     if not value: return properties
     for item in value.split(","):
         property, duration = item.split(" ", 1)
-        frames = float(duration[:-1]) / REFRESH_RATE_SEC
+        frames = int(float(duration[:-1]) / REFRESH_RATE_SEC)
         properties[property] = frames
     return properties
 

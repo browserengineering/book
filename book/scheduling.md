@@ -95,7 +95,9 @@ To run those tasks, we need to call the `run` method on our
 class Tab:
     def __init__(self):
         self.task_runner = TaskRunner(self)
+```
 
+``` {.python expected=False}
 if __name__ == "__main__":
     while True:
         # ...
@@ -553,17 +555,20 @@ tasks at a fixed cadence. But besides JavaScript the browser also has
 to render the page, and as you may recall from [Chapter
 2](graphics.md#framebudget), we'd like the browser to render the page
 exactly as fast as the display hardware can refresh. On most
-computers, this is 60 times per second, or 16ms per frame.
+computers, this is 60 times per second, or 16ms per frame. However, even
+with today's computers, it's quite difficult to maintain such a high
+frame rate, and certainly too high of a bar for our toy browser.
 
-Let's establish 16ms as our ideal refresh rate:[^why-16ms]
+So let's establish 30 frames per second---33ms for each frame---as our refresh
+rate target:[^why-33ms]
 
-[^why-16ms]: Of course, 60 times per second is actually 16.66666...
+[^why-33ms]: Of course, 30 times per second is actually 33.33333...
     milliseconds. But it's a toy browser, and having a more exact
     value also makes tests easier to write.
 
 
 ``` {.python}
-REFRESH_RATE_SEC = .016
+REFRESH_RATE_SEC = .033
 ```
 
 Now, drawing a frame\index{rendering pipeline} is split between the
@@ -621,7 +626,7 @@ as we wanted to.
 
 ::: {.further}
 
-There's nothing special about 60 frames per second. Some displays
+There's nothing special about any particular refresh rate. Some displays
 refresh 72 times per second, and displays that [refresh even more
 often][refresh-rate] are becoming more common. Movies are often shot
 in 24 frames per second (though [some directors advocate
