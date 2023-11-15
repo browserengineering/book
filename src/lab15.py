@@ -281,7 +281,8 @@ class BlockLayout:
         else:
             child = child_class(node, line, previous_word, frame)
         line.children.append(child)
-        self.cursor_x += w + font(node.style, self.zoom).measureText(" ")
+        self.cursor_x += w + \
+            font(node.style, self.zoom).measureText(" ")
 
     def word(self, node, word):
         node_font = font(node.style, self.zoom)
