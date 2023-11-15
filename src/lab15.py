@@ -801,8 +801,6 @@ class HTMLParser:
         return self.unfinished.pop()
 
 
-INTERNAL_ACCESSIBILITY_HOVER = "-internal-accessibility-hover"
-
 EVENT_DISPATCH_JS = \
     "new window.Node(dukpy.handle)" + \
     ".dispatchEvent(new window.Event(dukpy.type))"
