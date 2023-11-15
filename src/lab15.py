@@ -138,7 +138,8 @@ def paint_tree(layout_object, display_list):
     cmds = layout_object.paint()
 
     if isinstance(layout_object, IframeLayout) and \
-        layout_object.node.frame:
+        layout_object.node.frame and \
+        layout_object.node.frame.loaded:
         paint_tree(layout_object.node.frame.document, cmds)
     else:
         for child in layout_object.children:
@@ -1112,7 +1113,8 @@ class AccessibilityNode:
 
     def build_internal(self, child_node):
         if isinstance(child_node, Element) \
-            and child_node.tag == "iframe" and child_node.frame:
+            and child_node.tag == "iframe" and child_node.frame \
+            and child_node.frame.loaded:
             child = FrameAccessibilityNode(child_node, self)
         else:
             child = AccessibilityNode(child_node, self)
@@ -1198,6 +1200,7 @@ class Frame:
         self.nodes = None
         self.url = None
         self.js = None
+        self.loaded = False
 
         self.frame_width = 0
         self.frame_height = 0
@@ -1224,6 +1227,7 @@ class Frame:
             url.origin() in self.allowed_origins
 
     def load(self, url, payload=None):
+        self.loaded = False
         self.zoom = 1
         self.scroll = 0
         self.scroll_changed_in_frame = True
@@ -1309,9 +1313,11 @@ class Frame:
                 iframe.frame = None
                 continue
             iframe.frame = Frame(self.tab, self, iframe)
-            iframe.frame.load(document_url)
+            task = Task(iframe.frame.load, document_url)
+            self.tab.task_runner.schedule_task(task)
 
         self.set_needs_render()
+        self.loaded = True
 
     def render(self):
         if self.needs_style:
@@ -1552,6 +1558,9 @@ class Tab:
 
         needs_composite = False
         for (window_id, frame) in self.window_id_to_frame.items():
+            if not frame.loaded:
+                continue
+
             frame.js.dispatch_RAF(frame.window_id)
     
             for node in tree_to_list(frame.nodes, []):
@@ -1604,7 +1613,8 @@ class Tab:
         self.browser.measure.time('render')
 
         for id, frame in self.window_id_to_frame.items():
-            frame.render()
+            if frame.loaded:
+                frame.render()
 
         if self.needs_accessibility:
             self.accessibility_tree = AccessibilityNode(self.root_frame.nodes)
