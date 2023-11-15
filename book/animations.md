@@ -428,6 +428,22 @@ class ClipRRect:
             return "ClipRRect(<no-op>)"
 ```
 
+Similarly, `Blend` should indicate which parameters were
+actually passed:
+
+``` {.python replace=Blend:/Blend(VisualEffect):}
+class Blend:
+    def __repr__(self):
+        args = ""
+        if self.opacity < 1:
+            args += ", opacity={}".format(self.opacity)
+        if self.blend_mode:
+            args += ", blend_mode={}".format(self.blend_mode)
+        if not args:
+            args = ", <no-op>"
+        return "Blend({})".format(args[2:])
+```
+
 You'll also need to add `children` fields to all of the paint
 commands, since `print_tree` relies on those. Now we can print out our
 browser's display list:
@@ -443,20 +459,20 @@ class Tab:
 For our opacity example, the (key part of) the display list one one frame
 might look like this:
 
-    SaveLayer(alpha=0.112375)
+    Blend(alpha=0.112375)
       DrawText(text=This)
       DrawText(text=text)
       DrawText(text=fades)
 
 On the next frame, it instead might like this:
 
-    SaveLayer(alpha=0.119866666667)
+    Blend(alpha=0.119866666667)
       DrawText(text=This)
       DrawText(text=text)
       DrawText(text=fades)
 
 In each case, rastering this display list means first rastering the three words
-to a Skia surface created by `saveLayer`, and then copying that to the root
+to a Skia surface created by `Blend`, and then copying that to the root
 surface while applying transparency. Crucially, the raster is identical in both
 frames; only the copy differs. This means we can speed it up with caching.
 
@@ -472,14 +488,14 @@ for future use:
 Now instead of rastering those three words, we can just copy over the
 composited layer with a `DrawCompositedLayer` command:
 
-    SaveLayer(alpha=0.112375)
+    Blend(alpha=0.112375)
       DrawCompositedLayer()
 
-Importantly, on the next frame, the `SaveLayer` changes but the
+Importantly, on the next frame, the `Blend` changes but the
 `DrawText`s don't, so on that frame all we need to do is rerun the
-`SaveLayer`:
+`Blend`:
 
-    SaveLayer(alpha=0.119866666667)
+    Blend(alpha=0.119866666667)
       DrawCompositedLayer()
 
 In other words, the idea behind compositing is to split the display
@@ -490,7 +506,7 @@ the composited layers.
 
 Compositing improves performance when subsequent frames of an animation reuse
 composited layers. That's the case here, because the only difference between
-frames is the `SaveLayer`, which is in the draw display list.
+frames is the `Blend`, which is in the draw display list.
 
 How exactly to split up the display list is up to the browser.
 Typically, visual effects like opacity are very fast to execute on a GPU,
@@ -508,7 +524,7 @@ compositing is the same no matter what goes where.
 
 If you look closely at the opacity example in this section, you'll see that the
 `DrawText` command's rect is only as wide as the text. On the other hand, the
-`SaveLayer` rect is almost as wide as the viewport. The reason they differ is
+`Blend` rect is almost as wide as the viewport. The reason they differ is
 that the text is only about as wide as it needs to be, but the block element
 that contains it is as wide as the available width.
 
@@ -644,15 +660,15 @@ class Browser:
 
 Next, we'll need to *clone* each of the ancestors of the layer's paint
 commands and inject new children, so let's add a new `clone` method
-to the visual effects classes. For `SaveLayer`, it'll create a new
-`SaveLayer` with the same parameters but new children:
+to the visual effects classes. For `Blend`, it'll create a new
+`Blend` with the same parameters but new children:
 
 ``` {.python}
-class SaveLayer(VisualEffect):
+class Blend(VisualEffect):
     # ...
     def clone(self, child):
-        return SaveLayer(self.sk_paint, self.node, [child], \
-            self.should_save)
+        return Blend(self.opacity, self.blend_mode,
+                     self.node, [child])
 ```
 
 The other visual effect, `ClipRRect`, should do something similar (note
@@ -856,15 +872,15 @@ there are three composited layers because there is one for the background color
 of the page.]
 
      DrawCompositedLayer()
-     SaveLayer(alpha=0.999)
+     Blend(alpha=0.999)
        DrawCompositedLayer()
-     SaveLayer(alpha=0.999)
-       SaveLayer(alpha=0.5)
+     Blend(alpha=0.999)
+       Blend(alpha=0.5)
          DrawCompositedLayer()
 
 [nested-op]: examples/example13-nested-opacity.html
 
-Notice how there are two `SaveLayer(alpha=0.999)` commands, when there should be
+Notice how there are two `Blend(alpha=0.999)` commands, when there should be
 one. This will cause incorrect results if the two pieces of text overlap. Fixing
 this problem requires some post-processing of the draw display list to merge
 common intermediate visual effects, and allocating temporary surfaces for them.
@@ -951,7 +967,7 @@ your browser)
 Visually, it looks more or less identical[^animation-curve] to the
 JavaScript animation. But since the browser *understands* the
 animation, it can optimize how the animation is run. For example,
-since `opacity` only affects `SaveLayer` commands that end up in the
+since `opacity` only affects `Blend` commands that end up in the
 draw display list, the browser knows that this animation does not
 require layout or raster, just paint and draw.
 
@@ -1285,19 +1301,21 @@ Now, when we `commit` a frame which only needs the paint phase,
 send the `composited_updates` over to the browser, which it
 will use that to skip composite and raster. The data to be sent
 across for each animation update will be an `Element` and a
-`SaveLayer`.
+`Blend`.
 
 To accomplish this we'll need several steps. First, when painting a
-`SaveLayer`, record it on the `Element`:
+`Blend`, record it on the `Element`:
 
-``` {.python}
+``` {.python replace=[blend_op]/[transform]}
 def paint_visual_effects(node, cmds, rect):
     # ...
-    node.save_layer = save_layer
+    blend_op = # ...
+    node.blend_op = blend_op
+    return [blend_op]
 ```
 
 Next add a list of composited updates to `CommitData` (each of which
-will contain the `Element` and `SaveLayer` pointers).
+will contain the `Element` and `Blend` pointers).
 
 ``` {.python}
 class CommitData:
@@ -1321,7 +1339,7 @@ class Tab:
         if not needs_composite:
             for node in self.composited_updates:
                 composited_updates[node] = \
-                    (node, node.save_layer))
+                    (node, node.blend_op))
         self.composited_updates.clear()
 
         commit_data = CommitData(
@@ -1417,7 +1435,7 @@ class Browser:
         if not node in self.composited_updates:
             return parent_effect.clone(child_effect)
 
-        if type(parent_effect) is SaveLayer:
+        if type(parent_effect) is Blend:
             return self.composited_updates[node].clone(
                 child_effect)
         return parent_effect.clone(child_effect)
@@ -1566,12 +1584,12 @@ class VisualEffect:
 We should set it to `True` when compositing would help us animate
 something. There are all sorts of complex heuristics real browsers
 use, but to keep things simple let's just set it to `True` for
-`SaveLayer`s (when they actually do something, not for no-ops),
+`Blend`s (when they actually do something, not for no-ops),
 regardless of whether they are animating:
 
 ``` {.python replace=self.should_save/wbetools.USE_COMPOSITING%20and%20self.should_save}
-class SaveLayer(VisualEffect):
-    def __init__(self, sk_paint, node, children, should_save=True):
+class Blend(VisualEffect):
+    def __init__(self, opacity, blend_mode, node, children):
         # ...
         if self.should_save:
             self.needs_compositing = True
@@ -1646,7 +1664,7 @@ fully and benchmark its performance.
 
 ::: {.further}
 
-Mostly for simplicity, our browser composites `SaveLayer` visual effects,
+Mostly for simplicity, our browser composites `Blend` visual effects,
 regardless of whether they are animating. But in fact, there are some good
 reasons to always composite certain visual effects.
 
@@ -1791,10 +1809,7 @@ def paint_visual_effects(node, cmds, rect):
     translation = parse_transform(
         node.style.get("transform", ""))
     # ...
-    save_layer = \
-    # ...
-
-    transform = Transform(translation, rect, node, [save_layer])
+    transform = Transform(translation, rect, node, [blend_op])
     # ...
     return [transform]
 ```
@@ -1927,7 +1942,7 @@ class ClipRRect(VisualEffect):
         bounds.intersect(self.rrect.rect())
         return bounds
 
-class SaveLayer(VisualEffect):
+class Blend(VisualEffect):
     def map(self, rect):
         return rect
 ```
@@ -1995,7 +2010,7 @@ def absolute_to_local(display_item, rect):
     return rect
 ```
 
-Which in turn relies on `unmap`. For `SaveLayer` and `ClipRRect` these should
+Which in turn relies on `unmap`. For `Blend` and `ClipRRect` these should
 be no-ops, but for `Transform` it's just the inverse translation:
 
 ``` {.python}
@@ -2198,9 +2213,9 @@ but you'll need to avoid making two clones of the same visual effect node. You s
 render surface:[^see-render-surface]
     
      DrawCompositedLayer()
-     SaveLayer(alpha=0.999)
+     Blend(alpha=0.999)
        DrawCompositedLayer()
-       SaveLayer(alpha=0.5)
+       Blend(alpha=0.5)
          DrawCompositedLayer()
 
 [^see-render-surface]: See the Go Further block about render surfaces for more
@@ -2242,7 +2257,7 @@ animations that start once an element has scrolled to a certain point on the
 screen, or when scroll changes direction.
 
 *Opacity-plus-draw*: If a `DrawCompositedLayer` is inside of a
-`SaveLayer(alpha=0.5)` then right now there might be two surface copies:
+`Blend(alpha=0.5)` then right now there might be two surface copies:
 first copying the composited layer's raster buffer into a temporary buffer,
 then applying opacity to it and copying it into the root surface. This is not necessary, and in fact Skia's [`draw`][draw-api] API on a `Surface` allows
 opacity to be applied. Optimize the browser to combine these into into

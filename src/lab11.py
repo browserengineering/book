@@ -75,6 +75,10 @@ def parse_blend_mode(blend_mode_str):
         return skia.BlendMode.kMultiply
     elif blend_mode_str == "difference":
         return skia.BlendMode.kDifference
+    elif blend_mode_str == "destination-in":
+        return skia.BlendMode.kDstIn
+    elif blend_mode_str == "source-over":
+        return skia.BlendMode.kSrcOver
     else:
         return skia.BlendMode.kSrcOver
 
@@ -82,23 +86,25 @@ def linespace(font):
     metrics = font.getMetrics()
     return metrics.fDescent - metrics.fAscent
 
-class SaveLayer:
-    def __init__(self, sk_paint, children,
-            should_save=True, should_paint_cmds=True):
-        self.should_save = should_save
-        self.should_paint_cmds = should_paint_cmds
-        self.sk_paint = sk_paint
+class Blend:
+    def __init__(self, opacity, blend_mode, children):
+        self.opacity = opacity
+        self.blend_mode = blend_mode
+        self.should_save = self.blend_mode or self.opacity < 1
+
         self.children = children
         self.rect = skia.Rect.MakeEmpty()
         for cmd in self.children:
             self.rect.join(cmd.rect)
 
     def execute(self, canvas):
+        paint = skia.Paint(
+            Alphaf=self.opacity,
+            BlendMode=parse_blend_mode(self.blend_mode))
         if self.should_save:
-            canvas.saveLayer(paint=self.sk_paint)
-        if self.should_paint_cmds:
-            for cmd in self.children:
-                cmd.execute(canvas)
+            canvas.saveLayer(paint=paint)
+        for cmd in self.children:
+            cmd.execute(canvas)
         if self.should_save:
             canvas.restore()
 
@@ -388,25 +394,24 @@ class InputLayout:
 
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
-
-    blend_mode = parse_blend_mode(node.style.get("mix-blend-mode"))
+    blend_mode = node.style.get("mix-blend-mode")
 
     border_radius = float(node.style.get("border-radius", "0px")[:-2])
     if node.style.get("overflow", "visible") == "clip":
         clip_radius = border_radius
+        if not blend_mode:
+            blend_mode = "source-over"
     else:
         clip_radius = 0
 
     needs_clip = node.style.get("overflow", "visible") == "clip"
-    needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
-        needs_clip or opacity != 1.0
 
     return [
-        SaveLayer(skia.Paint(BlendMode=blend_mode, Alphaf=opacity), [
+        Blend(opacity, blend_mode, [
             ClipRRect(rect, clip_radius,
                 cmds,
             should_clip=needs_clip),
-        ], should_save=needs_blend_isolation),
+        ]),
     ]
 
 @wbetools.patch(DocumentLayout)

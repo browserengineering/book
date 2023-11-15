@@ -40,7 +40,7 @@ from lab13 import map_translation, parse_transform
 from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import PaintCommand, DrawText, DrawCompositedLayer, DrawOutline, \
     DrawLine, DrawRRect
-from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform
+from lab13 import VisualEffect, Blend, ClipRRect, Transform
 from lab14 import DrawRRect, \
     parse_outline, paint_outline, \
     dpx, cascade_priority, style, \
@@ -1591,7 +1591,7 @@ class Tab:
         composited_updates = {}
         if not needs_composite:
             for node in self.composited_updates:
-                composited_updates[node] = node.save_layer
+                composited_updates[node] = node.blend_op
         self.composited_updates.clear()
 
         root_frame_focused = not self.focused_frame or \
