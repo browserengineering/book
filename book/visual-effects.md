@@ -325,7 +325,8 @@ def parse_color(color):
 ```
 
 Skia's `Color` constructor packs the red, green, and blue values into
-its integer representation for us.
+its integer representation for us. (Alpha is implicitly 255, meaning
+opaque, in this case.)
 
 However, there are also a whole lot of named colors. Supporting this
 is necessary to see many of the examples in this book:
@@ -350,7 +351,12 @@ You can add more named colors from [the list][named-colors] as you
 come across them; the demos in this book use `blue`, `green`,
 `lightblue`, `lightgreen`, `orange`, `orangered`, and `gray`. Note
 that unsupported colors are interpreted as black, so that at least
-something is drawn to the screen.
+something is drawn to the screen.[^not-standard]
+
+[^not-standard]: This is not the standards-required behavior---the
+    invalid value should just not participate in styling, so an
+    element styled with an unknown color might inherit a color other
+    than black---but I'm doing it as a convenience.
 
 [named-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/named-color
 
