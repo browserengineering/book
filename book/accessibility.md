@@ -634,19 +634,6 @@ handy for checking constrast of a foreground and background color.
 
 [AAA]: https://accessibleweb.com/rating/aaa/
 
-But to do that we need to add support for hex colors:
-
-``` {.python}
-def parse_color(color):
-    # ...
-    elif "#" in color and len(color) == 7:
-        rgb = color.split("#")[1]
-        red = int(rgb[0:2], 16)
-        green = int(rgb[2:4], 16)
-        blue = int(rgb[4:6], 16)
-        return skia.ColorSetARGB(0xFF, red, green, blue)
-```
-
 [contrast-tool]: https://webaim.org/resources/contrastchecker/
 
 To implement media queries, we'll have to start with parsing this
@@ -1348,7 +1335,7 @@ any string of characters except one of a specified set of `chars`:
 
 ``` {.python}
 class CSSParser:
-    def until_char(self, chars):
+    def until_chars(self, chars):
         start = self.i
         while self.i < len(self.s) and self.s[self.i] not in chars:
             self.i += 1
@@ -1356,7 +1343,7 @@ class CSSParser:
 
     def pair(self, until):
         # ...
-        val = self.until_char(until)
+        val = self.until_chars(until)
         # ...
         return prop.casefold(), val.strip()
 ```
