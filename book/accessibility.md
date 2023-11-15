@@ -634,19 +634,6 @@ handy for checking constrast of a foreground and background color.
 
 [AAA]: https://accessibleweb.com/rating/aaa/
 
-But to do that we need to add support for hex colors:
-
-``` {.python}
-def parse_color(color):
-    # ...
-    elif "#" in color and len(color) == 7:
-        rgb = color.split("#")[1]
-        red = int(rgb[0:2], 16)
-        green = int(rgb[2:4], 16)
-        blue = int(rgb[4:6], 16)
-        return skia.ColorSetARGB(0xFF, red, green, blue)
-```
-
 [contrast-tool]: https://webaim.org/resources/contrastchecker/
 
 To implement media queries, we'll have to start with parsing this
@@ -2481,3 +2468,13 @@ screen reader. Try out some of the examples in this chapter and
 compare behavior with a real browser.
 
 [os-integ]: https://pypi.org/project/accessible_output/
+
+*Focus method and events*: Add support for the JavaScript
+[`focus()`][focus-method] method
+and the corresponding [`focus`][focus-event] and
+[`blur`][blur-event] events on DOM elements. Make sure that `focus()`
+only has an effect on focusable elements.
+
+[focus-method]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/focus
+[focus-event]: https://developer.mozilla.org/en-US/docs/Web/API/Element/focus_event
+[blur-event]: https://developer.mozilla.org/en-US/docs/Web/API/Element/blur_event

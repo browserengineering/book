@@ -34,8 +34,8 @@ from lab6 import tree_to_list
 from lab8 import INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL
-from lab11 import FONTS, get_font, parse_blend_mode, linespace, paint_tree, \
-    parse_color
+from lab11 import FONTS, get_font, parse_blend_mode, linespace, paint_tree
+from lab11 import parse_color, NAMED_COLORS
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
 from lab12 import Task, REFRESH_RATE_SEC
 from lab13 import JSContext, diff_styles, add_parent_pointers
@@ -74,33 +74,6 @@ class Text:
 
         self.is_focused = False
         self.layout_object = None
-
-@wbetools.patch(parse_color)
-def parse_color(color):
-    if color == "white":
-        return skia.ColorWHITE
-    elif color == "lightblue":
-        return skia.ColorSetARGB(0xFF, 0xAD, 0xD8, 0xE6)
-    elif color == "orange":
-        return skia.ColorSetARGB(0xFF, 0xFF, 0xA5, 0x00)
-    elif color == "red":
-        return skia.ColorRED
-    elif color == "green":
-        return skia.ColorGREEN
-    elif color == "blue":
-        return skia.ColorBLUE
-    elif color == "gray":
-        return skia.ColorGRAY
-    elif color == "lightgreen":
-        return skia.ColorSetARGB(0xFF, 0x90, 0xEE, 0x90)
-    elif "#" in color and len(color) == 7:
-        rgb = color.split("#")[1]
-        red = int(rgb[0:2], 16)
-        green = int(rgb[2:4], 16)
-        blue = int(rgb[4:6], 16)
-        return skia.ColorSetARGB(0xFF, red, green, blue)
-    else:
-        return skia.ColorBLACK
 
 def parse_outline(outline_str):
     if not outline_str: return None
@@ -779,6 +752,8 @@ class CSSParser:
                     break
         return rules
 
+DEFAULT_STYLE_SHEET = CSSParser(open("browser14.css").read()).parse()
+
 RUNTIME_JS = open("runtime14.js").read()
 
 @wbetools.patch(JSContext)
@@ -944,12 +919,6 @@ class Tab:
         needs_composite = self.needs_style or self.needs_layout
         self.render()
 
-        document_height = math.ceil(self.document.height + 2*VSTEP)
-        clamped_scroll = self.clamp_scroll(self.scroll)
-        if clamped_scroll != self.scroll:
-            self.scroll_changed_in_tab = True
-        self.scroll = clamped_scroll
-
         if self.needs_focus_scroll and self.focus:
             self.scroll_to(self.focus)
         self.needs_focus_scroll = False
@@ -963,7 +932,7 @@ class Tab:
             for node in self.composited_updates:
                 composited_updates[node] = node.save_layer
         self.composited_updates.clear()
-
+        document_height = math.ceil(self.document.height + 2*VSTEP)
         commit_data = CommitData(
             self.url, scroll, document_height, self.display_list,
             composited_updates,
@@ -1004,6 +973,11 @@ class Tab:
             self.display_list = []
             paint_tree(self.document, self.display_list)
             self.needs_paint = False
+
+        clamped_scroll = self.clamp_scroll(self.scroll)
+        if clamped_scroll != self.scroll:
+            self.scroll_changed_in_tab = True
+        self.scroll = clamped_scroll
 
         self.browser.measure.stop('render')
 

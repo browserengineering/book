@@ -23,12 +23,13 @@ from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import tree_to_list
 from lab8 import Text, Element, INPUT_WIDTH_PX, DocumentLayout
+from lab8 import DEFAULT_STYLE_SHEET
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, JSContext, URL
 from lab11 import get_font, FONTS, DrawLine, DrawRect, DrawOutline
 from lab11 import linespace, DrawText, SaveLayer, ClipRRect
 from lab11 import BlockLayout, LineLayout, TextLayout, InputLayout, Chrome
-from lab11 import Tab, Browser, paint_tree
+from lab11 import Tab, Browser, paint_tree, NAMED_COLORS, parse_color
 
 class MeasureTime:
     def __init__(self):
@@ -259,17 +260,10 @@ class Tab:
 
         self.render()
 
-        document_height = math.ceil(self.document.height + 2*VSTEP)
-        clamped_scroll = self.clamp_scroll(self.scroll)
-        if clamped_scroll != self.scroll:
-            self.scroll_changed_in_tab = True
-        if clamped_scroll != self.scroll:
-            self.scroll_changed_in_tab = True
-        self.scroll = clamped_scroll
-
         scroll = None
         if self.scroll_changed_in_tab:
             scroll = self.scroll
+        document_height = math.ceil(self.document.height + 2*VSTEP)
         commit_data = CommitData(
             self.url, scroll, document_height, self.display_list)
         self.display_list = None
@@ -286,6 +280,12 @@ class Tab:
         self.display_list = []
         paint_tree(self.document, self.display_list)
         self.needs_render = False
+
+        clamped_scroll = self.clamp_scroll(self.scroll)
+        if clamped_scroll != self.scroll:
+            self.scroll_changed_in_tab = True
+        self.scroll = clamped_scroll
+
         self.browser.measure.stop('render')
 
     def click(self, x, y):
@@ -425,7 +425,7 @@ class TaskRunner:
     def handle_quit(self):
         pass
 
-REFRESH_RATE_SEC = .016
+REFRESH_RATE_SEC = .033
 
 @wbetools.patch(Chrome)
 class Chrome:

@@ -204,19 +204,17 @@ class BlockLayout:
             for child in node.children:
                 self.recurse(child)
 
-    def font(self, node):
+    def word(self, node, word):
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         if style == "normal": style = "roman"
         size = int(float(node.style["font-size"][:-2]) * .75)
-        return get_font(size, weight, style)
+        font = get_font(size, weight, style)
 
-    def word(self, node, word):
-        color = node.style["color"]
-        font = self.font(node)
         w = font.measure(word)
         if self.cursor_x + w > self.width:
             self.flush()
+        color = node.style["color"]
         self.line.append((self.cursor_x, word, font, color))
         self.cursor_x += w + font.measure(" ")
 

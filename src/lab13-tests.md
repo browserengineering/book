@@ -63,10 +63,10 @@ Testing CSS transtions
     >>> div = tab.nodes.children[1].children[0]
 
 There is a transition defined for opacity, for a duration of 2 seconds. This is
-about 125 animation frames, so `parse_transition` should return 125.
+about 60 animation frames, so `parse_transition` should return 60.
 
 	>>> lab13.parse_transition(div.style.get("transition"))
-	{'opacity': 125.0}
+	{'opacity': 60}
 
 At first there is not a transition running:
 
@@ -79,7 +79,7 @@ But once opacity changes, one starts:
     >>> tab.set_needs_render()
     >>> tab.run_animation_frame(0)
     >>> div.animations
-    {'opacity': NumericAnimation(old_value=0.5, change_per_frame=-0.0032, num_frames=125.0)}
+    {'opacity': NumericAnimation(old_value=0.5, change_per_frame=-0.006666666666666667, num_frames=60)}
 
 Testing CSS transforms
 ======================
@@ -115,7 +115,7 @@ Animations work:
     >>> tab = browser.active_tab
     >>> div = tab.nodes.children[1].children[0]
     >>> lab13.parse_transition(div.style.get("transition"))
-    {'transform': 125.0}
+    {'transform': 60}
     >>> div.animations
     {}
 

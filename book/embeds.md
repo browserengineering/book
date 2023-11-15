@@ -188,14 +188,15 @@ method. That name reminds us that the image we've downloaded isn't raw
 image bytes. In fact, all of the image formats you know---JPG, PNG,
 and the many more obscure ones---encode the image data using various
 sophisticated algorithms. The image therefore needs to be *decoded*
-before it can be used.
+before it can be used.^[And with much more complicated algorithms
+than just `utf8` conversion.]
 
 Skia applies a variety of clever optimizations to decoding, such as
 directly decoding the image to its eventual size and caching the
 decoded image as long as possible.[^html-image-decode] That's because
 raw image data can be quite large:[^time-memory] a pixel is usually
 stored as four bytes, so a 12 megapixel camera (as you can find on
-phones these days) produces 48 megabytes of raw data.
+phones these days) produces 48 megabytes of raw data for a single image.
 
 [^time-memory]: Decoding costs both a lot of memory and also a lot of
     time, since just writing out all of those bytes can take a big
@@ -208,8 +209,8 @@ phones these days) produces 48 megabytes of raw data.
 
 [html-image-decode]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLImageElement/decoding
 
-But because image decoding can be so expensive, Skia actually has several
-algorithms for decoding, some of which are faster but result
+Because image decoding can be so expensive, Skia also has several
+algorithms available for decoding, some of which are faster but result
 in a worse-looking image.[^lossy] For example,
 there's fast, simple, "nearest neighbor" algorithm and the slower but
 higher-quality "bilinear" or even "[Lanczos][lanczos]" algorithms.[^resizing]
@@ -294,7 +295,7 @@ Embedded layout
 
 Based on your experience with prior chapters, you can probably guess
 how to add images to our browser's layout and paint process. We'll
-need to create an `ImageLayout` method; add a new `image` case to
+need to create an `ImageLayout` class; add a new `image` case to
 `BlockLayout`'s `recurse` method; and generate a `DrawImage` command
 from `ImageLayout`'s `paint` method.
 
@@ -377,6 +378,7 @@ but take its width and height from the image itself:
 class ImageLayout(EmbedLayout):
     def __init__(self, node, parent, previous):
         super().__init__(node, parent, previous)
+
     def layout(self):
         super().layout()
         self.width = dpx(self.node.image.width(), self.zoom)
@@ -415,7 +417,7 @@ class ImageLayout(EmbedLayout):
 
 Now we need to create `ImageLayout`s in `BlockLayout`. Input elements
 are created in an `input` method, so we create a largely-similar
-`image` method. But `input` is itself a duplicate of `word`, so
+`image` method. But `input` is itself largely a duplicate of `word`, so
 this would be a lot of duplication. The only part of these methods
 that differs is the part that computes the width of the new inline
 child; most of the rest of the logic is shared.
@@ -453,7 +455,8 @@ class BlockLayout:
         else:
             child = child_class(node, line, previous_word)
         line.children.append(child)
-        self.cursor_x += w + font(node.style, self.zoom).measureText(" ")
+        self.cursor_x += w + \
+            font(node.style, self.zoom).measureText(" ")
 ```
 
 We can redefine `word` and `input` in a satisfying way now:
@@ -470,7 +473,7 @@ class BlockLayout:
         self.add_inline_child(node, w, InputLayout) 
 ```
 
-Adding `image` is now also straightforward:
+Adding `image` is easy:
 
 ``` {.python replace=ImageLayout/ImageLayout%2c%20self.frame}
 class BlockLayout:
@@ -542,8 +545,8 @@ authors to control the size of embedded content. There are a number of ways to
 do this,^[For example, the `width` and `height` CSS properties (not to be
 confused with the `width` and `height` attributes!), which were an exercise in
 Chapter 13.] but one way is the special `width` and `height`
-attributes.^[Images have these mostly for historical reasons, because these
-attributes were invented before CSS existed.]
+attributes.^[Images have these mostly for historical reasons: they
+were invented before CSS existed.]
 
 If _both_ those attributes are present, things are pretty easy: we
 just read from them when laying out the element, both in `image`:
@@ -586,9 +589,7 @@ and `height`, and compute the other using the image's *aspect
 ratio*.[^only-recently-aspect-ratio]
 
 [^only-recently-aspect-ratio]: Despite it being easy to implement, this
-feature of real web browsers only appeared in 2021. Before that, developers
-resorted to things like the [padding-top hack][padding-top-hack]. Sometimes
-design oversights take a long time to fix.
+feature of real web browsers only reached all of them in 2021. Before that, developers resorted to things like the [padding-top hack][padding-top-hack]. Sometimes design oversights take a long time to fix.
 
 [padding-top-hack]: https://web.dev/aspect-ratio/#the-old-hack-maintaining-aspect-ratio-with-padding-top
 
@@ -639,13 +640,14 @@ they don't offer quite the customizability[^openui] and flexibility
 that complex embedded content use cases like maps, PDFs, ads, and social media
 controls require. So in modern browsers, these are handled by
 *embedding one web page within another* using the `<iframe>`\index{iframe}
-element.
+element.^[Or via the `embed` and `object` tags, for cases like PDFs. I won't
+discuss those here.]
 
 [^variants]: As are variations like the [`<canvas>`][canvas-elt]
     element. Instead of loading an image from the network, JavaScript
     can draw on a `<canvas>` element via an API. Unlike images,
     `<canvas>` element's don't have intrinsic sizes, but besides that
-    they are pretty similar.
+    they are pretty similar in terms of layout.
 
 [canvas-elt]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas
     
@@ -658,16 +660,17 @@ element.
 [web-components]: https://developer.mozilla.org/en-US/docs/Web/Web_Components
 [form-el]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/attachInternals
 
-Semantically, an `<iframe>` is almost exactly a `Tab` inside a
+Semantically, an `<iframe>` is similar to a `Tab` inside a
 `Tab`---it has its own HTML document, CSS, and scripts. And
 layout-wise, an `<iframe>` is a lot like the `<img>` tag, with `width`
 and `height` attributes. So implementing basic iframes just requires
-handling three significant differences:
+handling these three significant differences:
 
 * Iframes have *no browser chrome*. So any page navigation has to happen from
    within the page (either through an `<a>` element or script), or as a side
    effect of navigation on the web page that *contains* the `<iframe>`
-   element.
+   element. Clicking on a link in an iframe also navigates the iframe, not
+   the top-level page.
 
 * Iframes can *share a rendering event loop*.[^iframe-event-loop] In
   real browsers, [cross-origin] iframes are often "site isolated",
@@ -703,19 +706,19 @@ script environments, `Frame`s will do the rest.
 It's good to plan out complicated refactors like this in some detail.
 A `Tab` will:
 
-* Interface between the `Browser` and the `Frame`s to handle events.
-* Proxy communication between frames.
-* Kick off animation frames and rendering.
-* Paint and own the display list for all frames in the tab.
-* Construct and own the accessibility tree.
-* Commit to the browser thread.
+* Interface between the `Browser` and the `Frame`s to handle events
+* Proxy communication between frames
+* Kick off animation frames and rendering
+* Paint and own the display list for all frames in the tab
+* Construct and own the accessibility tree
+* Commit to the browser thread
 
 And the new `Frame` class will:
 
-* Own the DOM, layout trees, and scroll offset for its HTML document.
-* Run style and layout on the its DOM and layout tree.
+* Own the DOM, layout trees, and scroll offset for its HTML document
+* Run style and layout on the its DOM and layout tree
 * Implement loading and event handling (focus, hit testing, etc) for its HTML
-  document.
+  document
 
 Create these two classes and split the methods between them accordingly.
   
@@ -768,8 +771,34 @@ class Frame:
                 iframe.frame = None
                 continue
             iframe.frame = Frame(self.tab, self, iframe)
-            iframe.frame.load(document_url)
         # ...
+```
+
+Since iframes can have subresources (and subframes!) and therefore be slow to
+load, we should load them asynchronously, just like scripts:
+
+``` {.python}
+class Frame:
+    def load(self, url, payload=None):
+        for iframe in iframes:
+            # ...
+            task = Task(iframe.frame.load, document_url)
+            self.tab.task_runner.schedule_task(task)
+```
+
+And since they are async, we need to record whether they have loaded yet,
+to avoid trying to render an unloaded iframe:
+
+``` {.python}
+class Frame:
+    def __init__(self, tab, parent_frame, frame_element):
+        # ...
+        self.loaded = False
+
+    def load(self, url, payload=None):
+        self.loaded = False
+        ...
+        self.loaded = True
 ```
 
 So we've now got a tree of frames inside a single tab. But because we
@@ -823,22 +852,31 @@ paint.[^why-split] We'll need to implement that split, and also add code
 to trigger each `Frame`'s rendering from the `Tab`.
 
 [^why-split]: Why split the rendering pipeline this way? Because the
-    accessibility tree and display list is ultimately transfered from
-    the main thread to the browser thread, so ultimately gets combined
+    accessibility tree and display list are ultimately transfered from
+    the main thread to the browser thread, so they get combined
     anyway. DOM, style, and layout trees, meanwhile, don't get passed
     between threads so don't intermingle.
     
-Let's start with splitting the rendering pipeline. The main method
-here is still the `Tab`'s `render` method, which first calls `render`
-on each frame to do style and layout:
+Let's start with splitting the rendering pipeline. The main methods
+here are still the `Tab`'s `run_animation_frame` and `render`, which
+iterate over all loaded iframes:
 
 ``` {.python}
 class Tab:
+    def run_animation_frame(self, scroll):
+        # ...
+        for (window_id, frame) in self.window_id_to_frame.items():
+            if not frame.loaded:
+                continue
+            frame.js.dispatch_RAF(frame.window_id)
+            # ...
+
     def render(self):
         self.browser.measure.time('render')
 
         for id, frame in self.window_id_to_frame.items():
-            frame.render()
+            if frame.loaded:
+                frame.render()
 
         if self.needs_accessibility:
             # ...
@@ -1042,7 +1080,8 @@ def paint_tree(layout_object, display_list):
     cmds = layout_object.paint()
 
     if isinstance(layout_object, IframeLayout) and \
-        layout_object.node.frame:
+        layout_object.node.frame and \
+        layout_object.node.frame.loaded:
         paint_tree(layout_object.node.frame.document, cmds)
     else:
         for child in layout_object.children:
@@ -1052,8 +1091,6 @@ def paint_tree(layout_object, display_list):
     display_list.extend(cmds)
 
 ```
-
-Note the last line, where we recursively paint the child frame. 
 
 Before putting those commands in the display list, though, we need to
 add a border, clip content outside of it, and transform the coordinate
@@ -1070,6 +1107,8 @@ class IframeLayout(EmbedLayout):
         inner_rect = skia.Rect.MakeLTRB(
             self.x + diff, self.y + diff,
             self.x + self.width - diff, self.y + self.height - diff)
+        cmds = paint_visual_effects(self.node, cmds, inner_rect)
+        paint_outline(self.node, cmds, rect, self.zoom)
         return cmds
 ```
 
@@ -1115,7 +1154,8 @@ To `build` such a node, we just recurse into the frame:
 class AccessibilityNode:
    def build_internal(self, child_node):
         if isinstance(child_node, Element) \
-            and child_node.tag == "iframe" and child_node.frame:
+            and child_node.tag == "iframe" and child_node.frame \
+            and child_node.frame.loaded:
             child = AccessibilityNode(child_node.frame.nodes)
         # ... 
 ```
@@ -1129,7 +1169,8 @@ A `<frameset>` replaces the `<body>` tag and splits browser window
 screen among multiple `<frame>`s; this was an early alternative layout
 system to the one presented in this book. Frames had confusing
 navigation and accessibility, and lacked the flexibility of
-`<iframe>`s, so aren't used much these days.
+`<iframe>`s, so aren't used much these days. The name "iframe" references
+these elements in a way---it's short for "inline frame".
 :::
 
 [frameset]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/frameset
@@ -1181,7 +1222,7 @@ link will add another recursive iframe.
 Let's get the other interactions working as well, starting with
 focusing an element. You can focus on *only one element per tab*, so we
 will still store the `focus` on the `Tab`, but we'll need to store the
-frame the focused element is on too:
+iframe the focused element is on too:
 
 ``` {.python}
 class Tab:
@@ -1190,9 +1231,9 @@ class Tab:
         self.focused_frame = None
 ```
 
-When a frame tries to focus on an element, it sets itself as the
-focused frame, but before it does that, it needs to un-focus the
-previously-focused frame:
+When an iframe tries to focus on an element, it sets itself as the
+focused iframe, but before it does that, it needs to un-focus the
+previously-focused iframe:
 
 ``` {.python}
 class Frame:
@@ -1204,7 +1245,7 @@ class Frame:
         # ...
 ```
 
-We need to re-render the previously-focused frame so that it
+We need to re-render the previously-focused iframe so that it
 stops drawing the focus outline.
 
 Another interaction is pressing `Tab` to cycle through focusable
@@ -1222,7 +1263,7 @@ class Tab:
         frame.advance_tab()
 ```
 
-Do the same exact thing for `keypress` and `enter`, which are used for
+Do the same thing for `keypress` and `enter`, which are used for
 interacting with text inputs and buttons.
 
 Another big interaction we need to support is scrolling. We'll store
@@ -1235,7 +1276,7 @@ class Frame:
 ```
 
 Now, as you might recall from [Chapter 13](animations.md), scrolling
-happens both inside `Browser` and inside `Tab`, to reduce latency.
+happens both inside `Browser` and inside `Tab`, to improve responsiveness.
 That was already quite complicated, so to keep things simple, we'll only
 support threaded scrolling on the root frame. We'll need a new commit parameter
 so the browser thread knows whether the root frame is focused:
@@ -1314,21 +1355,6 @@ class Frame:
         self.scroll = self.clamp_scroll(new_scroll)
 ```
 
-Scroll clamping can also come into play if a layout causes a page's
-maximum height to shrink. You'll need to move the scroll clamping
-logic out of `Tab`'s `run_animation_frame` method and into the
-`Frame`'s `render` to handle this:
-
-``` {.python}
-class Frame:
-    def render(self):
-        clamped_scroll = self.clamp_scroll(self.scroll)
-        if clamped_scroll != self.scroll:
-            self.scroll_changed_in_frame = True
-        self.scroll = clamped_scroll
-```
-
-
 There's also a set of accessibility hover interactions that we need to
 support. This is hard, because the accessibility interactions happen
 in the browser thread, which has limited information:
@@ -1359,7 +1385,8 @@ We'll create one of those below each `iframe` node:
 class AccessibilityNode:
     def build_internal(self, child_node):
         if isinstance(child_node, Element) \
-            and child_node.tag == "iframe" and child_node.frame:
+            and child_node.tag == "iframe" and child_node.frame \
+            and child_node.frame.loaded:
             child = FrameAccessibilityNode(child_node)
 ```
 
@@ -1380,14 +1407,19 @@ class AccessibilityNode:
 
 Hit testing `FrameAccessibilityNodes` will use the frame's bounds to
 ignore clicks outside the frame bounds, and adjust clicks against the
-frame's coordinates:
+frame's coordinates (note how we subtract off the zoomed border of the frame):
 
 ``` {.python}
 class FrameAccessibilityNode(AccessibilityNode):
+    def __init__(self, node, parent = None):
+        super().__init__(node, parent)
+        self.scroll = self.node.frame.scroll
+        self.zoom = self.node.layout_object.zoom
+
     def hit_test(self, x, y):
         if not self.bounds.contains(x, y): return
-        new_x = x - self.bounds.x()
-        new_y = y - self.bounds.y() + self.scroll
+        new_x = x - self.bounds.x() - dpx(1, self.zoom)
+        new_y = y - self.bounds.y() - dpx(1, self.zoom) + self.scroll
         node = self
         for child in self.children:
             res = child.hit_test(new_x, new_y)
@@ -1447,7 +1479,8 @@ class FrameAccessibilityNode(AccessibilityNode):
 ```
 
 You should now be able to hover on nodes and have them read out by our
-accessibility subsystem.
+accessibility subsystem.^[Note that this doesn't fully account for transforms.
+See the exercises.]
 
 Alright, we've now got all of our browser's forms of user interaction
 properly recursing through the frame tree. It's time to add more
@@ -1991,8 +2024,8 @@ challenging source of performance and [user experience][ux] problems.
 For example, ad [analytics] are important to the ad economy, but
 involve running a lot of code and measuring lots of data. Some web
 APIs, such as [Intersection Observer][io], basically exist to make
-analytics computations more efficient. And, of course, the most
-popular [browser extensions][extensions] are probably ad blockers.
+analytics computations more efficient. And, of course, ad blockers
+are probably the most popular [browser extensions][extensions].
 :::
 
 [ux]: https://en.wikipedia.org/wiki/User_experience
@@ -2010,7 +2043,8 @@ pages don't trust each other---both in the case of embedding an
 untrusted page into your own page, and the reverse, where an attacker
 embeds your page into their own, malicious one. In both cases, we want
 to protect your page from any security or privacy risks caused by the
-other frame.
+other frame.^[Web sites can protect themselves from being iframed via
+the `X-Frame-Options` header.]
 
 The starting point is that cross-origin iframes can't access each
 other directly through JavaScript. That's good---but what if a bug in
@@ -2025,17 +2059,16 @@ processes have.
 [buffer-overrun]: https://en.wikipedia.org/wiki/Buffer_overflow
 [sandbox]: https://chromium.googlesource.com/chromium/src/+/main/docs/linux/sandboxing.md
 
-Other parts of the browser mix content from multiple frames, like our
-browser's `Tab`-wide display list. That means that a bug in the
-rasterizer could allow one frame to take over the rasterizer and then
-read data that ultimately came from another frame. This might seem
-like a rather complex attack, but it's worth defending against, so
-modern browsers use [sandboxing][sandbox] techniques to prevent it. For
-example, Chromium can place the rasterizer in its own process and use
-a Linux feature called `seccomp` to limit what system calls that
-process can make. Even if a bug compromised the rasterizer, that
-rasterizer wouldn't be able to exfiltrate data over the network,
-preventing private date from leaking.
+Other parts of the browser mix content from multiple frames, like our browser's
+`Tab`-wide display list. That means that a bug in the rasterizer could allow
+one frame to take over the rasterizer and then read data that ultimately came
+from another frame. This might seem like a rather complex attack, but it has
+happened before, so modern browsers use
+[sandboxing][sandbox] techniques to prevent it. For example, Chromium can place
+the rasterizer in its own process and use a Linux feature called `seccomp` to
+limit what system calls that process can make. Even if a bug compromised the
+rasterizer, that rasterizer wouldn't be able to exfiltrate data over the
+network, preventing private data from leaking.
 
 These isolation and sandboxing features may seem "straightforward", in
 the same sense that the browser thread we added in [Chapter
@@ -2051,7 +2084,7 @@ CPU cache timing attacks called [*spectre* and
 *meltdown*][spectre-meltdown]. In short, these attacks allow an
 attacker to read arbitrary locations in memory---including another
 frame's data, if the two frames are in the same process---by measuring
-the time certain operations take. Placing sensitive content in
+the time certain CPU operations take. Placing sensitive content in
 different CPU processes (which come with their own memory address
 spaces) is a good protection against these attacks.
 
@@ -2066,12 +2099,12 @@ like `Date.now` or `setTimeout`.
 
 Worse yet, there are browser APIs that don't seem like timers but can
 be used as such.[^sharedarraybuffer-attack] These API are useful, so
-browsers don't quite want to remove it, but there is also no way to
-make it "less accurate", since it's not primarily a clock to begin with.
+browsers don't quite want to remove them, but there is also no way to
+make them "less accurate", since they are not a clock to begin with.
 Browsers now require [certain optional HTTP headers][sab-headers] to
 be present in the parent *and* child frames' HTTP responses in order
-to allow use of `SharedArrayBuffer`, though this is not a perfect
-solution.
+to allow use of `SharedArrayBuffer` in particular, though this is not
+a perfect solution.
 
 [^sharedarraybuffer-attack]: For example, the [SharedArrayBuffer] API lets
 two JavaScript threads run concurrently and share memory, which can be
@@ -2105,24 +2138,24 @@ This chapter introduced how the browser handles embedded content use cases like
 images and iframes. Reiterating the main points:
 
 * Non-HTML *embedded content*---images, video, canvas, iframes, input elements,
-  and plugins---can be embedded in a web page.
+  and plugins---can be embedded in a web page
 
 * Embedded content comes with its own performance concerns---like
-  image decoding time---and necessitates custom optimizations.
+  image decoding time---and necessitates custom optimizations
 
 * Iframes are a particularly important kind of embedded content,
   having over time replaced browser plugins as the standard way to
-  easily embed complex content into a web page.
+  easily embed complex content into a web page
 
 * Iframes introduce all the complexities of the web---rendering, event
   handling, navigation, security---into the browser's handling of
   embedded content. However, this complexity is justified, because
   they enable important cross-origin use cases like ads, video, and
-  social media buttons.
+  social media buttons
 
 And as we hope you saw in this chapter, none of these features are too
 difficult to implement, though---as you'll see in the exercises
-below---implementing them well requires a lot of attention to detail.
+below---implementing them well requires a lot of attention to detail
 
 Outline
 =======
@@ -2152,8 +2185,7 @@ to translate most API methods to their Skia equivalent.
 immediately, instead of waiting until the rest of the page is rastered.
 This is called *immediate mode* rendering---as opposed to the [*retained mode*][retained-mode] used by HTML.
 Immediate mode means the web developer decides when to incur the
-rasterization time, which is tricky for complex images, but it makes
-memory usage and runtime more predictable.
+rasterization time.
 
 [retained-mode]: https://en.wikipedia.org/wiki/Retained_mode
 
@@ -2242,3 +2274,8 @@ that accessibility handles iframes under transform correctly in all cases.
 to be added or removed, but our browser doesn't load or unload them
 when this happens. Fix this: new iframes should be loaded and old ones
 unloaded.
+
+*X-Frame-Options*: Implement [this header][xfo], which disallows a web page from
+appearing in an iframe.
+
+[xfo]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options

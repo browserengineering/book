@@ -23,10 +23,10 @@ from lab5 import BLOCK_ELEMENTS
 from lab6 import TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, cascade_priority
 from lab6 import tree_to_list, CSSParser
-from lab8 import Text, Element, INPUT_WIDTH_PX
+from lab8 import Text, Element, INPUT_WIDTH_PX, DEFAULT_STYLE_SHEET
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL
-from lab11 import FONTS, get_font, parse_color, parse_blend_mode, linespace
+from lab11 import FONTS, get_font, parse_color, NAMED_COLORS, parse_blend_mode, linespace
 from lab11 import paint_tree
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
 from lab12 import Tab, Browser, Task, REFRESH_RATE_SEC, Chrome, JSContext
@@ -831,7 +831,7 @@ def parse_transition(value):
     if not value: return properties
     for item in value.split(","):
         property, duration = item.split(" ", 1)
-        frames = float(duration[:-1]) / REFRESH_RATE_SEC
+        frames = int(float(duration[:-1]) / REFRESH_RATE_SEC)
         properties[property] = frames
     return properties
 
@@ -1071,26 +1071,19 @@ class Tab:
                         self.set_needs_layout()
 
         needs_composite = self.needs_style or self.needs_layout
-        self.render()
 
-        document_height = math.ceil(self.document.height + 2*VSTEP)
-        clamped_scroll = self.clamp_scroll(self.scroll)
-        if clamped_scroll != self.scroll:
-            self.scroll_changed_in_tab = True
-        if clamped_scroll != self.scroll:
-            self.scroll_changed_in_tab = True
-        self.scroll = clamped_scroll
+        self.render()
 
         scroll = None
         if self.scroll_changed_in_tab:
             scroll = self.scroll
-
         composited_updates = {}
         if not needs_composite:
             for node in self.composited_updates:
                 composited_updates[node] = node.save_layer
         self.composited_updates = []
 
+        document_height = math.ceil(self.document.height + 2*VSTEP)
         commit_data = CommitData(
             self.url, scroll, document_height,
             self.display_list, composited_updates,
@@ -1118,6 +1111,13 @@ class Tab:
             self.display_list = []
             paint_tree(self.document, self.display_list)
             self.needs_paint = False
+
+        clamped_scroll = self.clamp_scroll(self.scroll)
+        if clamped_scroll != self.scroll:
+            self.scroll_changed_in_tab = True
+        if clamped_scroll != self.scroll:
+            self.scroll_changed_in_tab = True
+        self.scroll = clamped_scroll
 
         self.browser.measure.stop('render')
 

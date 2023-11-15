@@ -81,6 +81,8 @@ class URL:
         s.close()
         return body
 
+DEFAULT_STYLE_SHEET = CSSParser(open("browser8.css").read()).parse()
+
 INPUT_WIDTH_PX = 200
 
 class InputLayout:
@@ -205,7 +207,13 @@ class BlockLayout:
         previous_word = line.children[-1] if line.children else None
         input = InputLayout(node, line, previous_word)
         line.children.append(input)
-        font = self.font(node)
+
+        weight = node.style["font-weight"]
+        style = node.style["font-style"]
+        if style == "normal": style = "roman"
+        size = int(float(node.style["font-size"][:-2]) * .75)
+        font = get_font(size, weight, style)
+
         self.cursor_x += w + font.measure(" ")
 
     def should_paint(self):
