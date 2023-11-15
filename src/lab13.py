@@ -250,14 +250,14 @@ class ClipRRect(VisualEffect):
         else:
             return "ClipRRect(<no-op>)"
 
-class AlphaAndBlend(VisualEffect):
-    def __init__(self, alpha, blend_mode, isolate, node, children):
+class Blend(VisualEffect):
+    def __init__(self, opacity, blend_mode, isolate, node, children):
         super().__init__(skia.Rect.MakeEmpty(), children, node)
-        self.alpha = alpha
+        self.opacity = opacity
         self.blend_mode = blend_mode
         self.isolate = isolate
-        self.should_save = self.alpha < 1 or self.isolate \
-            or self.blend_mode
+        self.should_save = self.isolate or self.blend_mode \
+            or self.opacity < 1
 
         if wbetools.USE_COMPOSITING and self.should_save:
             self.needs_compositing = True
@@ -269,7 +269,7 @@ class AlphaAndBlend(VisualEffect):
 
     def execute(self, canvas):
         paint = skia.Paint(
-            Alphaf=self.alpha,
+            Alphaf=self.opacity,
             BlendMode=parse_blend_mode(self.blend_mode))
         if self.should_save:
             canvas.saveLayer(paint=paint)
@@ -285,20 +285,20 @@ class AlphaAndBlend(VisualEffect):
         return rect
 
     def clone(self, child):
-        return AlphaAndBlend(self.alpha, self.blend_mode,
+        return Blend(self.opacity, self.blend_mode,
                              self.isolate, self.node, [child])
 
     def __repr__(self):
         args = ""
-        if self.alpha < 1:
-            args += ", alpha={}".format(self.alpha)
+        if self.opacity < 1:
+            args += ", opacity={}".format(self.opacity)
         if self.blend_mode:
             args += ", blend_mode={}".format(self.blend_mode)
         if self.isolate:
             args += ", isolate"
         if not args:
             args = ", <no-op>"
-        return "AlphaAndBlend({})".format(args[2:])
+        return "Blend({})".format(args[2:])
 
 class DrawCompositedLayer(PaintCommand):
     def __init__(self, composited_layer):
@@ -777,7 +777,7 @@ def paint_visual_effects(node, cmds, rect):
     needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
         needs_clip or opacity != 1.0
 
-    blend_op = AlphaAndBlend(opacity, blend_mode, False, node, [
+    blend_op = Blend(opacity, blend_mode, False, node, [
         ClipRRect(rect, clip_radius,
                   cmds,
                   should_clip=needs_clip),
@@ -1350,7 +1350,7 @@ class Browser:
         if not node in self.composited_updates:
             return parent_effect.clone(child_effect)
 
-        if type(parent_effect) is AlphaAndBlend:
+        if type(parent_effect) is Blend:
             return self.composited_updates[node].clone(
                 child_effect)
         return parent_effect.clone(child_effect)

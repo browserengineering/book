@@ -35,7 +35,7 @@ from lab13 import map_translation, parse_transform
 from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import PaintCommand, DrawText, DrawCompositedLayer, DrawOutline, \
     DrawLine, DrawRRect
-from lab13 import VisualEffect, AlphaAndBlend, ClipRRect, Transform
+from lab13 import VisualEffect, Blend, ClipRRect, Transform
 from lab14 import parse_color, parse_outline, DrawRRect, \
     paint_outline, \
     dpx, cascade_priority, \
@@ -119,7 +119,7 @@ def paint_visual_effects(node, cmds, rect):
     else:
         clip_radius = 0
     needs_clip = node.style['overflow'].get() == 'clip'
-    blend_op = AlphaAndBlend(opacity, blend_mode, False, node,
+    blend_op = Blend(opacity, blend_mode, False, node,
         [ClipRRect(rect, clip_radius, cmds, should_clip=needs_clip)])
     transform = Transform(translation, rect, node, [blend_op])
     node.blend_op = blend_op

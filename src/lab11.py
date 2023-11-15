@@ -79,50 +79,30 @@ def linespace(font):
     metrics = font.getMetrics()
     return metrics.fDescent - metrics.fAscent
 
-class Alpha:
-    def __init__(self, alpha, children):
-        self.alpha = alpha
+class Opacity:
+    def __init__(self, opacity, children):
+        self.opacity = opacity
         self.children = children
         self.rect = skia.Rect.MakeEmpty()
         for cmd in self.children:
             self.rect.join(cmd.rect)
 
     def execute(self, canvas):
-        paint = skia.Paint(Alphaf=self.alpha)
-        if self.alpha < 1:
+        paint = skia.Paint(Alphaf=self.opacity)
+        if self.opacity < 1:
             canvas.saveLayer(paint=paint)
         for cmd in self.children:
             cmd.execute(canvas)
-        if self.alpha < 1:
+        if self.opacity < 1:
             canvas.restore()
 
 class Blend:
-    def __init__(self, blend_mode, isolate, children):
-        self.blend_mode = blend_mode
-        self.children = children
-        self.rect = skia.Rect.MakeEmpty()
-        for cmd in self.children:
-            self.rect.join(cmd.rect)
-        self.isolate = isolate
-        self.should_save = self.isolate or self.blend_mode
-
-    def execute(self, canvas):
-        paint = skia.Paint(
-            BlendMode=parse_blend_mode(self.blend_mode))
-        if self.should_save:
-            canvas.saveLayer(paint=paint)
-        for cmd in self.children:
-            cmd.execute(canvas)
-        if self.should_save:
-            canvas.restore()
-
-class AlphaAndBlend:
-    def __init__(self, alpha, blend_mode, isolate, children):
-        self.alpha = alpha
+    def __init__(self, opacity, blend_mode, isolate, children):
+        self.opacity = opacity
         self.blend_mode = blend_mode
         self.isolate = isolate
-        self.should_save = self.alpha < 1 or self.isolate \
-            or self.blend_mode
+        self.should_save = self.isolate or self.blend_mode \
+            or self.opacity < 1
 
         self.children = children
         self.rect = skia.Rect.MakeEmpty()
@@ -131,7 +111,7 @@ class AlphaAndBlend:
 
     def execute(self, canvas):
         paint = skia.Paint(
-            Alphaf=self.alpha,
+            Alphaf=self.opacity,
             BlendMode=parse_blend_mode(self.blend_mode))
         if self.should_save:
             canvas.saveLayer(paint=paint)
@@ -437,7 +417,7 @@ def paint_visual_effects(node, cmds, rect):
     needs_clip = node.style.get("overflow", "visible") == "clip"
 
     return [
-        AlphaAndBlend(opacity, blend_mode, clip_radius > 0, [
+        Blend(opacity, blend_mode, clip_radius > 0, [
             ClipRRect(rect, clip_radius,
                 cmds,
             should_clip=needs_clip),

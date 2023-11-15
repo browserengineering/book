@@ -39,7 +39,7 @@ from lab13 import map_translation, parse_transform
 from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import PaintCommand, DrawText, DrawCompositedLayer, DrawOutline, \
     DrawLine, DrawRRect
-from lab13 import VisualEffect, AlphaAndBlend, ClipRRect, Transform
+from lab13 import VisualEffect, Blend, ClipRRect, Transform
 from lab14 import parse_color, DrawRRect, \
     parse_outline, paint_outline, \
     dpx, cascade_priority, style, \
