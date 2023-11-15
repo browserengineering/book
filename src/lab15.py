@@ -108,6 +108,8 @@ class URL:
         body = response.read()
         s.close()
         return response_headers, body
+      
+DEFAULT_STYLE_SHEET = CSSParser(open("browser15.css").read()).parse()
 
 def parse_image_rendering(quality):
    if quality == "high-quality":
@@ -798,8 +800,6 @@ class HTMLParser:
             parent.children.append(node)
         return self.unfinished.pop()
 
-
-INTERNAL_ACCESSIBILITY_HOVER = "-internal-accessibility-hover"
 
 EVENT_DISPATCH_JS = \
     "new window.Node(dukpy.handle)" + \

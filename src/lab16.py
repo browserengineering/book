@@ -46,7 +46,7 @@ from lab15 import URL, HTMLParser, AttributeParser, DrawImage, \
     EmbedLayout, InputLayout, LineLayout, TextLayout, ImageLayout, \
     IframeLayout, JSContext, style, AccessibilityNode, Frame, Tab, \
     CommitData, Browser, BROKEN_IMAGE, font, \
-    IFRAME_WIDTH_PX, IFRAME_HEIGHT_PX, parse_image_rendering
+    IFRAME_WIDTH_PX, IFRAME_HEIGHT_PX, parse_image_rendering, DEFAULT_STYLE_SHEET
 import wbetools
 
 @wbetools.patch(is_focusable)

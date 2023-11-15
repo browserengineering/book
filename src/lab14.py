@@ -779,6 +779,8 @@ class CSSParser:
                     break
         return rules
 
+DEFAULT_STYLE_SHEET = CSSParser(open("browser14.css").read()).parse()
+
 RUNTIME_JS = open("runtime14.js").read()
 
 @wbetools.patch(JSContext)

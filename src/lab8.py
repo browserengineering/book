@@ -81,6 +81,8 @@ class URL:
         s.close()
         return body
 
+DEFAULT_STYLE_SHEET = CSSParser(open("browser8.css").read()).parse()
+
 INPUT_WIDTH_PX = 200
 
 class InputLayout:

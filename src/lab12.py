@@ -23,6 +23,7 @@ from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import tree_to_list
 from lab8 import Text, Element, INPUT_WIDTH_PX, DocumentLayout
+from lab8 import DEFAULT_STYLE_SHEET
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, JSContext, URL
 from lab11 import get_font, FONTS, DrawLine, DrawRect, DrawOutline
