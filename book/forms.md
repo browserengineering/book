@@ -262,7 +262,7 @@ class BlockLayout:
     # ...
     def should_paint(self):
         return isinstance(self.node, Text) or \
-            (self.node.tag != "input" and self.node.tag != "button")
+            (self.node.tag != "input" and self.node.tag !=  "button")
 ```
 
 ``` {.python}

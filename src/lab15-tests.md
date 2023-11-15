@@ -77,6 +77,10 @@ Now let's test setting a different width and height:
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
      DrawImage(rect=Rect(13, 18, 23, 38))
 
+And double-check the layout mode:
+    >>> browser.tabs[0].root_frame.document.children[0].children[0].layout_mode()
+    'inline'
+
 Iframes
 =======
 
@@ -98,6 +102,11 @@ Let's load the original image in an iframe.
          Transform(translate(14.0, 19.0))
            DrawImage(rect=Rect(13, 29, 18, 34))
      DrawOutline(top=18.0 left=13.0 bottom=170.0 right=315.0 border_color=black thickness=1.0)
+
+Iframe layout mode is inline:
+    >>> browser.tabs[0].root_frame.document.children[0].children[0].layout_mode()
+    'inline'
+
 
 And the sized one:
 
