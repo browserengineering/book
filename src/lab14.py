@@ -919,12 +919,6 @@ class Tab:
         needs_composite = self.needs_style or self.needs_layout
         self.render()
 
-        document_height = math.ceil(self.document.height + 2*VSTEP)
-        clamped_scroll = self.clamp_scroll(self.scroll)
-        if clamped_scroll != self.scroll:
-            self.scroll_changed_in_tab = True
-        self.scroll = clamped_scroll
-
         if self.needs_focus_scroll and self.focus:
             self.scroll_to(self.focus)
         self.needs_focus_scroll = False
@@ -938,7 +932,7 @@ class Tab:
             for node in self.composited_updates:
                 composited_updates[node] = node.save_layer
         self.composited_updates.clear()
-
+        document_height = math.ceil(self.document.height + 2*VSTEP)
         commit_data = CommitData(
             self.url, scroll, document_height, self.display_list,
             composited_updates,
@@ -979,6 +973,11 @@ class Tab:
             self.display_list = []
             paint_tree(self.document, self.display_list)
             self.needs_paint = False
+
+        clamped_scroll = self.clamp_scroll(self.scroll)
+        if clamped_scroll != self.scroll:
+            self.scroll_changed_in_tab = True
+        self.scroll = clamped_scroll
 
         self.browser.measure.stop('render')
 
