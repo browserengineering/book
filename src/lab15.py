@@ -30,6 +30,7 @@ from lab8 import INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, linespace, parse_blend_mode
+from lab11 import parse_color, NAMED_COLORS
 from lab12 import MeasureTime, REFRESH_RATE_SEC
 from lab12 import Task, TaskRunner, SingleThreadedTaskRunner
 from lab13 import diff_styles, parse_transition, add_parent_pointers
@@ -40,7 +41,7 @@ from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import PaintCommand, DrawText, DrawCompositedLayer, DrawOutline, \
     DrawLine, DrawRRect
 from lab13 import VisualEffect, SaveLayer, ClipRRect, Transform
-from lab14 import parse_color, DrawRRect, \
+from lab14 import DrawRRect, \
     parse_outline, paint_outline, \
     dpx, cascade_priority, style, \
     is_focusable, get_tabindex, speak_text, \
@@ -108,6 +109,8 @@ class URL:
         body = response.read()
         s.close()
         return response_headers, body
+      
+DEFAULT_STYLE_SHEET = CSSParser(open("browser15.css").read()).parse()
 
 def parse_image_rendering(quality):
    if quality == "high-quality":
@@ -135,7 +138,8 @@ def paint_tree(layout_object, display_list):
     cmds = layout_object.paint()
 
     if isinstance(layout_object, IframeLayout) and \
-        layout_object.node.frame:
+        layout_object.node.frame and \
+        layout_object.node.frame.loaded:
         paint_tree(layout_object.node.frame.document, cmds)
     else:
         for child in layout_object.children:
@@ -278,7 +282,8 @@ class BlockLayout:
         else:
             child = child_class(node, line, previous_word, frame)
         line.children.append(child)
-        self.cursor_x += w + font(node.style, self.zoom).measureText(" ")
+        self.cursor_x += w + \
+            font(node.style, self.zoom).measureText(" ")
 
     def word(self, node, word):
         node_font = font(node.style, self.zoom)
@@ -799,8 +804,6 @@ class HTMLParser:
         return self.unfinished.pop()
 
 
-INTERNAL_ACCESSIBILITY_HOVER = "-internal-accessibility-hover"
-
 EVENT_DISPATCH_JS = \
     "new window.Node(dukpy.handle)" + \
     ".dispatchEvent(new window.Event(dukpy.type))"
@@ -1110,7 +1113,8 @@ class AccessibilityNode:
 
     def build_internal(self, child_node):
         if isinstance(child_node, Element) \
-            and child_node.tag == "iframe" and child_node.frame:
+            and child_node.tag == "iframe" and child_node.frame \
+            and child_node.frame.loaded:
             child = FrameAccessibilityNode(child_node, self)
         else:
             child = AccessibilityNode(child_node, self)
@@ -1196,6 +1200,7 @@ class Frame:
         self.nodes = None
         self.url = None
         self.js = None
+        self.loaded = False
 
         self.frame_width = 0
         self.frame_height = 0
@@ -1222,6 +1227,7 @@ class Frame:
             url.origin() in self.allowed_origins
 
     def load(self, url, payload=None):
+        self.loaded = False
         self.zoom = 1
         self.scroll = 0
         self.scroll_changed_in_frame = True
@@ -1307,9 +1313,11 @@ class Frame:
                 iframe.frame = None
                 continue
             iframe.frame = Frame(self.tab, self, iframe)
-            iframe.frame.load(document_url)
+            task = Task(iframe.frame.load, document_url)
+            self.tab.task_runner.schedule_task(task)
 
         self.set_needs_render()
+        self.loaded = True
 
     def render(self):
         if self.needs_style:
@@ -1550,6 +1558,9 @@ class Tab:
 
         needs_composite = False
         for (window_id, frame) in self.window_id_to_frame.items():
+            if not frame.loaded:
+                continue
+
             frame.js.dispatch_RAF(frame.window_id)
     
             for node in tree_to_list(frame.nodes, []):
@@ -1602,7 +1613,8 @@ class Tab:
         self.browser.measure.time('render')
 
         for id, frame in self.window_id_to_frame.items():
-            frame.render()
+            if frame.loaded:
+                frame.render()
 
         if self.needs_accessibility:
             self.accessibility_tree = AccessibilityNode(self.root_frame.nodes)

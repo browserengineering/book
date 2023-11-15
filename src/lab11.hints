@@ -1,3 +1,4 @@
 [{"code": "key not in FONTS", "type": "dict"},
- {"code": "b'Browser'", "js": "'Browser'"}
+ {"code": "b'Browser'", "js": "'Browser'"},
+ {"code": "color in NAMED_COLORS", "type": "dict"}
  ]
