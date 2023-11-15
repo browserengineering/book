@@ -634,19 +634,6 @@ handy for checking constrast of a foreground and background color.
 
 [AAA]: https://accessibleweb.com/rating/aaa/
 
-But to do that we need to add support for hex colors:
-
-``` {.python}
-def parse_color(color):
-    # ...
-    elif "#" in color and len(color) == 7:
-        rgb = color.split("#")[1]
-        red = int(rgb[0:2], 16)
-        green = int(rgb[2:4], 16)
-        blue = int(rgb[4:6], 16)
-        return skia.ColorSetARGB(0xFF, red, green, blue)
-```
-
 [contrast-tool]: https://webaim.org/resources/contrastchecker/
 
 To implement media queries, we'll have to start with parsing this
