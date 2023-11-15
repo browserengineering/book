@@ -871,20 +871,12 @@ class BlockLayout:
             # ...
 
     def word(self, node, word):
-        font = self.font(node)
-        # ...
-```
-
-Here, the `font` method is a simple wrapper around our font cache:
-
-``` {.python}
-class BlockLayout:
-    def font(self, node):
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         if style == "normal": style = "roman"
         size = int(float(node.style["font-size"][:-2]) * .75)
-        return get_font(size, weight, style)
+        font = get_font(size, weight, style)
+        # ...
 ```
 
 Note that for `font-style` we need to translate CSS "normal" to Tk
