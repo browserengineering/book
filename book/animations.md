@@ -439,8 +439,6 @@ class Blend:
             args += ", opacity={}".format(self.opacity)
         if self.blend_mode:
             args += ", blend_mode={}".format(self.blend_mode)
-        if self.isolate:
-            args += ", isolate"
         if not args:
             args = ", <no-op>"
         return "Blend({})".format(args[2:])
@@ -670,7 +668,7 @@ class Blend(VisualEffect):
     # ...
     def clone(self, child):
         return Blend(self.opacity, self.blend_mode,
-            self.isolate, self.node, [child])
+                     self.node, [child])
 ```
 
 The other visual effect, `ClipRRect`, should do something similar (note
@@ -1591,7 +1589,7 @@ regardless of whether they are animating:
 
 ``` {.python replace=self.should_save/wbetools.USE_COMPOSITING%20and%20self.should_save}
 class Blend(VisualEffect):
-    def __init__(self, opacity, blend_mode, isolate, node, children):
+    def __init__(self, opacity, blend_mode, node, children):
         # ...
         if self.should_save:
             self.needs_compositing = True

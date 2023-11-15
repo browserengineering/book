@@ -93,9 +93,10 @@ Let's load the original image in an iframe.
     >>> browser.tabs[0].advance_tab()
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
-     ClipRRect(RRect(14, 19, 314, 169, 1))
-       Transform(translate(14.0, 19.0))
-         DrawImage(rect=Rect(13, 29, 18, 34))
+     Blend(blend_mode=source-over)
+       ClipRRect(RRect(14, 19, 314, 169, 1))
+         Transform(translate(14.0, 19.0))
+           DrawImage(rect=Rect(13, 29, 18, 34))
      DrawOutline(top=18.0 left=13.0 bottom=170.0 right=315.0 border_color=black thickness=1.0)
 
 And the sized one:
@@ -111,9 +112,10 @@ And the sized one:
     >>> browser.tabs[0].advance_tab()
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
-     ClipRRect(RRect(14, 19, 314, 169, 1))
-       Transform(translate(14.0, 19.0))
-         DrawImage(rect=Rect(13, 18, 23, 38))
+     Blend(blend_mode=source-over)
+       ClipRRect(RRect(14, 19, 314, 169, 1))
+         Transform(translate(14.0, 19.0))
+           DrawImage(rect=Rect(13, 18, 23, 38))
      DrawOutline(top=18.0 left=13.0 bottom=170.0 right=315.0 border_color=black thickness=1.0)
 
 Iframes can be sized too:
@@ -166,9 +168,10 @@ Iframes can be sized too:
      DrawText(text=.)
      DrawText(text=.)
      DrawText(text=.)
-     ClipRRect(RRect(46, 679, 96, 709, 1))
-       Transform(translate(46.0, 679.0))
-         DrawImage(rect=Rect(13, 29, 18, 34))
+     Blend(blend_mode=source-over)
+       ClipRRect(RRect(46, 679, 96, 709, 1))
+         Transform(translate(46.0, 679.0))
+           DrawImage(rect=Rect(13, 29, 18, 34))
      DrawOutline(top=678.0 left=45.0 bottom=710.0 right=97.0 border_color=black thickness=1.0)
 
 Now let's test scrolling of the root frame:

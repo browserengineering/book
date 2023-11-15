@@ -1627,42 +1627,43 @@ def paint_visual_effects(node, cmds, rect):
 
 Here, the outer `Blend` operation not only applies blending but also
 isolates the element contents `cmds` so only they are clipped by
-`overflow`. So let's add an `isolate` parameter to `Blend`, and skip
-blending only if we don't need isolation _and_ we aren't applying
-blending:
+`overflow`. So let's skip creating a layer in `Blend` when there's no
+blending mode, but let's set the blend mode to a special, non-standard
+`source-over` value when we need clipping:
 
-``` {.python replace=blend_mode%2c/opacity%2c%20blend_mode%2c,or%20self.blend_mode/or%20self.blend_mode%20\\}
+``` {.python}
+def paint_visual_effects(node, cmds, rect):
+    if node.style.get("overflow", "visible") == "clip":
+        clip_radius = border_radius
+        if not blend_mode:
+            blend_mode = "source-over"
+```
+
+We'll parse that as the default source-over blend mode:
+
+``` {.python}
+def parse_blend_mode(blend_mode_str):
+    # ...
+    elif blend_mode_str == "source-over":
+        return skia.BlendMode.kSrcOver
+    # ...
+```
+
+This is actually unnecessary, since `parse_blend_mode` already parses
+unknown strings as source-over blending, but it's good to be explicit.
+Anyway, now `Blend` can skip `saveLayer` if no blend mode is passed:
+
+``` {.python replace=self.blend_mode:/self.should_save:}
 class Blend:
-    def __init__(self, blend_mode, isolate, children):
-        self.blend_mode = blend_mode
-        self.isolate = isolate
-        self.should_save = self.isolate or self.blend_mode
-        # ...
-
     def execute(self, canvas):
         paint = skia.Paint(
             BlendMode=parse_blend_mode(self.blend_mode))
-        if self.should_save:
+        if self.blend_mode:
             canvas.saveLayer(paint=paint)
         for cmd in self.children:
             cmd.execute(canvas)
-        if self.should_save:
+        if self.blend_mode:
             canvas.restore()
-```
-
-The `isolate` parameter will indicate whether we're clipping:
-
-``` {.python expected=False}
-def paint_visual_effects(node, cmds, rect):
-    # ...
-   return [
-        Blend(blend_mode, clip_radius > 0, [
-            Opacity(opacity, cmds)
-            Blend("destination-in", False, [
-                DrawRRect(rect, clip_radius, "white")
-            ]),
-        ]),
-    ]
 ```
 
 So now we skip creating extra surfaces when `Opacity` and `Blend` aren't
@@ -1679,12 +1680,10 @@ the edge of the blur will not be sharp.
 
 ``` {.python}
 class Blend:
-    def __init__(self, opacity, blend_mode, isolate, children):
+    def __init__(self, opacity, blend_mode, children):
         self.opacity = opacity
         self.blend_mode = blend_mode
-        self.isolate = isolate
-        self.should_save = self.isolate or self.blend_mode \
-            or self.opacity < 1
+        self.should_save = self.blend_mode or self.opacity < 1
 
         self.children = children
         self.rect = skia.Rect.MakeEmpty()
@@ -1710,9 +1709,9 @@ def paint_visual_effects(node, cmds, rect):
     # ...
 
    return [
-       Blend(opacity, blend_mode, clip_radius > 0,
+       Blend(opacity, blend_mode,
             cmds + [
-            Blend(1.0, "destination-in", False, [
+            Blend(1.0, "destination-in", [
                 DrawRRect(rect, clip_radius, "white")
             ]),
         ]),
@@ -1807,7 +1806,7 @@ fold the opacity into the `skia.Paint` passed to the outer
 def paint_visual_effects(node, cmds, rect):
     # ...
     return [
-        Blend(opacity, blend_mode, clip_radius > 0, [
+        Blend(opacity, blend_mode, [
             ClipRRect(rect, clip_radius,
                 cmds,
             should_clip=needs_clip),

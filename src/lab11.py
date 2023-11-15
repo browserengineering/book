@@ -72,6 +72,8 @@ def parse_blend_mode(blend_mode_str):
         return skia.BlendMode.kDifference
     elif blend_mode_str == "destination-in":
         return skia.BlendMode.kDstIn
+    elif blend_mode_str == "source-over":
+        return skia.BlendMode.kSrcOver
     else:
         return skia.BlendMode.kSrcOver
 
@@ -97,12 +99,10 @@ class Opacity:
             canvas.restore()
 
 class Blend:
-    def __init__(self, opacity, blend_mode, isolate, children):
+    def __init__(self, opacity, blend_mode, children):
         self.opacity = opacity
         self.blend_mode = blend_mode
-        self.isolate = isolate
-        self.should_save = self.isolate or self.blend_mode \
-            or self.opacity < 1
+        self.should_save = self.blend_mode or self.opacity < 1
 
         self.children = children
         self.rect = skia.Rect.MakeEmpty()
@@ -411,13 +411,15 @@ def paint_visual_effects(node, cmds, rect):
     border_radius = float(node.style.get("border-radius", "0px")[:-2])
     if node.style.get("overflow", "visible") == "clip":
         clip_radius = border_radius
+        if not blend_mode:
+            blend_mode = "source-over"
     else:
         clip_radius = 0
 
     needs_clip = node.style.get("overflow", "visible") == "clip"
 
     return [
-        Blend(opacity, blend_mode, clip_radius > 0, [
+        Blend(opacity, blend_mode, [
             ClipRRect(rect, clip_radius,
                 cmds,
             should_clip=needs_clip),

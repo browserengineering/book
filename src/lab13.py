@@ -251,13 +251,11 @@ class ClipRRect(VisualEffect):
             return "ClipRRect(<no-op>)"
 
 class Blend(VisualEffect):
-    def __init__(self, opacity, blend_mode, isolate, node, children):
+    def __init__(self, opacity, blend_mode, node, children):
         super().__init__(skia.Rect.MakeEmpty(), children, node)
         self.opacity = opacity
         self.blend_mode = blend_mode
-        self.isolate = isolate
-        self.should_save = self.isolate or self.blend_mode \
-            or self.opacity < 1
+        self.should_save = self.blend_mode or self.opacity < 1
 
         if wbetools.USE_COMPOSITING and self.should_save:
             self.needs_compositing = True
@@ -286,7 +284,7 @@ class Blend(VisualEffect):
 
     def clone(self, child):
         return Blend(self.opacity, self.blend_mode,
-                             self.isolate, self.node, [child])
+                     self.node, [child])
 
     def __repr__(self):
         args = ""
@@ -294,8 +292,6 @@ class Blend(VisualEffect):
             args += ", opacity={}".format(self.opacity)
         if self.blend_mode:
             args += ", blend_mode={}".format(self.blend_mode)
-        if self.isolate:
-            args += ", isolate"
         if not args:
             args = ", <no-op>"
         return "Blend({})".format(args[2:])
@@ -770,6 +766,8 @@ def paint_visual_effects(node, cmds, rect):
     border_radius = float(node.style.get("border-radius", "0px")[:-2])
     if node.style.get("overflow", "visible") == "clip":
         clip_radius = border_radius
+        if not blend_mode:
+            blend_mode = "source-over"
     else:
         clip_radius = 0
 
@@ -777,7 +775,7 @@ def paint_visual_effects(node, cmds, rect):
     needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
         needs_clip or opacity != 1.0
 
-    blend_op = Blend(opacity, blend_mode, False, node, [
+    blend_op = Blend(opacity, blend_mode, node, [
         ClipRRect(rect, clip_radius,
                   cmds,
                   should_clip=needs_clip),
