@@ -1380,7 +1380,7 @@ class AccessibilityNode:
 
 Hit testing `FrameAccessibilityNodes` will use the frame's bounds to
 ignore clicks outside the frame bounds, and adjust clicks against the
-frame's coordinates:
+frame's coordinates (note how we subtract off the zoomed border of the frame):
 
 ``` {.python}
 class FrameAccessibilityNode(AccessibilityNode):
