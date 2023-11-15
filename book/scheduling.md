@@ -557,7 +557,7 @@ to render the page, and as you may recall from [Chapter
 exactly as fast as the display hardware can refresh. On most
 computers, this is 60 times per second, or 16ms per frame. However, even
 with today's computers, it's quite difficult to maintain such a high
-framem rate, and certainly too high of a bar for our toy browser.
+frame rate, and certainly too high of a bar for our toy browser.
 
 So let's establish 30 frames per second---33ms for each frame---as our refresh
 rate target:[^why-33ms]
