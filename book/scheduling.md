@@ -298,7 +298,7 @@ lock.[^try-it]
 [^try-it]: Try removing this code and observe. The timers will become quite
 erratic.
 
-``` {.python}
+``` {.python expected=False}
 class TaskRunner:
     def __init__(self, tab):
         # ...
@@ -311,9 +311,6 @@ class TaskRunner:
         self.condition.release()
 
     def run(self):
-```
-
-``` {.python indent=4 replace=%3d%3d%200/%3d%3d%200%20or%20self.needs_quit}
         task = None
         self.condition.acquire(blocking=True)
         if len(self.tasks) > 0:
