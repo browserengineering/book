@@ -164,7 +164,7 @@ console one second from now:
 
 [settimeout]: https://developer.mozilla.org/en-US/docs/Web/API/setTimeout
 
-``` {.javascript expected=false}
+``` {.javascript .example}
 function callback() { console.log('Callback'); }
 setTimeout(callback, 1000);
 ```
@@ -217,7 +217,7 @@ so I expect the `Timer` to be more efficient.
 [timer]: https://docs.python.org/3/library/threading.html#timer-objects
 [threading]: https://docs.python.org/3/library/threading.html
 
-``` {.python expected=False}
+``` {.python .example}
 import threading
 def callback():
     # ...
@@ -602,7 +602,7 @@ time you render it's one "frame"---like a drawing in a picture frame.
 class Browser:
     def schedule_animation_frame(self):
         def callback():
-            active_tab = self.tabs[self.active_tab]
+            active_tab = self.active_tab
             task = Task(active_tab.render)
             active_tab.task_runner.schedule_task(task)
         threading.Timer(REFRESH_RATE_SEC, callback).start()
@@ -852,13 +852,15 @@ function requestAnimationFrame(fn) {
 In `JSContext`, when that method is called, we need to schedule a new
 rendering task:
 
-``` {.python expected=False}
+``` {.python}
 class JSContext:
     def __init__(self, tab):
         # ...
         self.interp.export_function("requestAnimationFrame",
             self.requestAnimationFrame)
+```
 
+``` {.python expected=False}
     def requestAnimationFrame(self):
         task = Task(self.tab.render)
         self.tab.task_runner.schedule_task(task)
@@ -867,7 +869,7 @@ class JSContext:
 Then, when `render` is actually called, we need to call back into
 JavaScript, like this:
 
-``` {.python expected=False}
+``` {.python dropline=self.needs_render replace=render(self)/run_animation_frame(self%2c%20scroll)}
 class Tab:
     def render(self):
         if not self.needs_render: return
@@ -944,22 +946,21 @@ between. To avoid having two rendering tasks we'll add a dirty bit
 called `needs_animation_frame` to the `Browser` which indicates
 whether a rendering task actually needs to be scheduled:
 
-``` {.python expected=False}
+``` {.python}
 class Browser:
     def __init__(self):
         self.animation_timer = None
         # ...
         self.needs_animation_frame = True
+```
 
+``` {.python}
     def schedule_animation_frame(self):
-        def callback():
-             ...
-             self.animation_timer = None
         # ...
         if self.needs_animation_frame and not self.animation_timer:
             self.animation_timer = \
                 threading.Timer(REFRESH_RATE_SEC, callback)
-            self.animation_timer.start_timing()
+            self.animation_timer.start()
 ```
 
 Note how I also checked for not having an animation timer object; this avoids
