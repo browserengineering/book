@@ -677,7 +677,7 @@ class CSSParser:
 
         return self.s[start:self.i]
 
-    def until_char(self, chars):
+    def until_chars(self, chars):
         start = self.i
         while self.i < len(self.s) and self.s[self.i] not in chars:
             self.i += 1
@@ -688,7 +688,7 @@ class CSSParser:
         self.whitespace()
         self.literal(":")
         self.whitespace()
-        val = self.until_char(until)
+        val = self.until_chars(until)
         return prop.casefold(), val.strip()
 
     def ignore_until(self, chars):
@@ -781,7 +781,7 @@ class CSSParser:
 
 DEFAULT_STYLE_SHEET = CSSParser(open("browser14.css").read()).parse()
 
-RUNTIME_JS = open("runtime13.js").read()
+RUNTIME_JS = open("runtime14.js").read()
 
 @wbetools.patch(JSContext)
 class JSContext:
@@ -1661,7 +1661,8 @@ def main_func(url):
                     elif event.key.keysym.sym == sdl2.SDLK_m:
                         browser.toggle_mute()
                     elif event.key.keysym.sym == sdl2.SDLK_t:
-                        browser.new_tab("https://browser.engineering/")
+                        browser.new_tab(
+                            "https://browser.engineering/")
                     elif event.key.keysym.sym == sdl2.SDLK_TAB:
                         browser.cycle_tabs()
                     elif event.key.keysym.sym == sdl2.SDLK_q:
