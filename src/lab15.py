@@ -632,7 +632,7 @@ class IframeLayout(EmbedLayout):
             self.x, self.y,
             self.x + self.width, self.y + self.height)
         bgcolor = self.node.style.get("background-color",
-                                 "transparent")
+            "transparent")
         if bgcolor != "transparent":
             radius = dpx(float(
                 self.node.style.get("border-radius", "0px")[:-2]),
@@ -1157,14 +1157,15 @@ class FrameAccessibilityNode(AccessibilityNode):
     def __init__(self, node, parent = None):
         super().__init__(node, parent)
         self.scroll = self.node.frame.scroll
+        self.zoom = self.node.layout_object.zoom
 
     def build(self):
         self.build_internal(self.node.frame.nodes)
 
     def hit_test(self, x, y):
         if not self.bounds.contains(x, y): return
-        new_x = x - self.bounds.x()
-        new_y = y - self.bounds.y() + self.scroll
+        new_x = x - self.bounds.x() - dpx(1, self.zoom)
+        new_y = y - self.bounds.y() - dpx(1, self.zoom) + self.scroll
         node = self
         for child in self.children:
             res = child.hit_test(new_x, new_y)
