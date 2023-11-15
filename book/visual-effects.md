@@ -1083,7 +1083,7 @@ in our display list, let's handle `opacity` with an `Alpha`
 command that takes a sequence of other drawing commands as an
 argument:
 
-``` {.python}
+``` {.python file=examples11.py}
 class Opacity:
     def __init__(self, opacity, children):
         self.opacity = opacity
@@ -1596,7 +1596,7 @@ and we could skip creating those surfaces most of the time. For
 example, there's no reason to create a surface in `Opacity` if no
 opacity is actually applied:
 
-``` {.python}
+``` {.python file=examples11.py}
 class Opacity:
     def execute(self, canvas):
         paint = skia.Paint(Alphaf=self.opacity)
