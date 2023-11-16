@@ -4,6 +4,7 @@ up to and including Chapter 11 (Adding Visual Effects),
 without exercises.
 """
 
+import sys
 import ctypes
 import dukpy
 import math
@@ -723,7 +724,6 @@ def mainloop(browser):
                 browser.handle_key(event.text.text.decode('utf8'))
 
 if __name__ == "__main__":
-    import sys
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
     browser.new_tab(URL(sys.argv[1]))
