@@ -415,21 +415,8 @@ class DrawRect:
             self.right, self.color)
 ```
 
-Some of our display commands have a flag to do nothing, like
-`ClipRRect`'s `should_clip` flag. It's useful to explicitly indicate
-that:
-
-``` {.python replace=ClipRRect:/ClipRRect(VisualEffect):}
-class ClipRRect:
-    def __repr__(self):
-        if self.should_clip:
-            return "ClipRRect({})".format(str(self.rrect))
-        else:
-            return "ClipRRect(<no-op>)"
-```
-
-Similarly, `Blend` should indicate which parameters were
-actually passed:
+The `Blend` command sometimes does nothing if no opacity or blend mode
+is passed; it's helpful to indicate that when printing:
 
 ``` {.python replace=Blend:/Blend(VisualEffect):}
 class Blend:
@@ -678,8 +665,7 @@ actual clipping rect):
 ``` {.python}
 class ClipRRect(VisualEffect):
     def clone(self, child):
-        return ClipRRect(self.rrect.rect(), self.radius, [child], \
-            self.should_clip)
+        return ClipRRect(self.rrect.rect(), self.radius, [child])
 ```
 
 Our browser won't be cloning paint commands, since they're all going to be
@@ -1306,10 +1292,10 @@ across for each animation update will be an `Element` and a
 To accomplish this we'll need several steps. First, when painting a
 `Blend`, record it on the `Element`:
 
-``` {.python replace=[blend_op]/[transform]}
+``` {.python replace=blend_mode/blend_mode%2c%20node dropline=return}
 def paint_visual_effects(node, cmds, rect):
     # ...
-    blend_op = # ...
+    blend_op = Blend(opacity, blend_mode, cmds)
     node.blend_op = blend_op
     return [blend_op]
 ```
@@ -1805,13 +1791,10 @@ visual effects:
 
 ``` {.python}
 def paint_visual_effects(node, cmds, rect):
-    # ...
     translation = parse_transform(
         node.style.get("transform", ""))
     # ...
-    transform = Transform(translation, rect, node, [blend_op])
-    # ...
-    return [transform]
+    return [Transform(translation, rect, node, [blend_op])]
 ```
 
 These `Transform` display items just call the conveniently built-in

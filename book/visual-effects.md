@@ -1536,19 +1536,15 @@ with destination-in blending:
 ``` {.python expected=False}
 def paint_visual_effects(node, cmds, rect):
     # ...
-    border_radius = float(node.style.get("border-radius", "0px")[:-2])
     if node.style.get("overflow", "visible") == "clip":
-        clip_radius = border_radius
-    else:
-        clip_radius = 0
-
+        border_radius = float(node.style.get("border-radius", "0px")[:-2])
+        cmds.append(Blend("destination-in", [
+            DrawRRect(rect, border_radius, "white")
+        ]))
 
     return [
         Blend(blend_mode, [
             Opacity(opacity, cmds),
-            Blend("destination-in", [
-                DrawRRect(rect, clip_radius, "white")
-            ]),
         ]),
     ]
 ```
@@ -1639,24 +1635,9 @@ class Opacity:
 ```
 
 Similarly, `Blend` doesn't necessarily need to create a layer if
-there's no blending going on. But the logic here is a little trickier.
-Recall `paint_visual_effects`:
-
-``` {.python expected=False}
-def paint_visual_effects(node, cmds, rect):
-    # ...
-   return [
-        Blend(blend_mode, [
-            Opacity(opacity, cmds)
-            Blend("destination-in", [
-                DrawRRect(rect, clip_radius, "white")
-            ]),
-        ]),
-    ]
-```
-
-Here, the outer `Blend` operation not only applies blending but also
-isolates the element contents `cmds` so only they are clipped by
+there's no blending going on. But the logic here is a little trickier:
+`Blend` operation not only applies blending but also
+isolates the element contents `cmds`, which matters if they are being clipped by
 `overflow`. So let's skip creating a layer in `Blend` when there's no
 blending mode, but let's set the blend mode to a special, non-standard
 `source-over` value when we need clipping:
@@ -1664,9 +1645,9 @@ blending mode, but let's set the blend mode to a special, non-standard
 ``` {.python}
 def paint_visual_effects(node, cmds, rect):
     if node.style.get("overflow", "visible") == "clip":
-        clip_radius = border_radius
         if not blend_mode:
             blend_mode = "source-over"
+        # ...
 ```
 
 We'll parse that as the default source-over blend mode:
@@ -1738,17 +1719,16 @@ Now `paint_visual_effects` looks like this:
 def paint_visual_effects(node, cmds, rect):
     # ...
 
-   return [
-       Blend(opacity, blend_mode,
-            cmds + [
-            Blend(1.0, "destination-in", [
-                DrawRRect(rect, clip_radius, "white")
-            ]),
-        ]),
-    ]
+    if node.style.get("overflow", "visible") == "clip":
+        # ...
+        cmds.append(Blend(1.0, "destination-in", [
+            DrawRRect(rect, border_radius, "white")
+        ]))
+
+    return [Blend(opacity, blend_mode, cmds)]
 ```
 
-Note that I've specified an opacity of `1.0` to the inner `Blend`.
+Note that I've specified an opacity of `1.0` for the clip `Blend`.
 
 There's one more optimization to make: using Skia's `clipRRect`
 operation to get rid of the destination-in blended surface. This
@@ -1798,8 +1778,7 @@ it just changes the canvas state to change how commands are executed,
 in this case to clip those commands to a rounded rectangle.
 
 Let's wrap this pattern into a `ClipRRect` drawing command, which like
-`Blend` takes a list of subcommands and a `should_clip` parameter
-indicating whether the clip is necessary:[^save-clip]
+`Blend` takes a list of subcommands:[^save-clip]
 
 [^save-clip]: If you're doing two clips at once, or a clip and a
 transform, or some other more complex setup that would benefit from
@@ -1809,22 +1788,19 @@ doesn't create a surface it's still a big optimization here.
 
 ``` {.python}
 class ClipRRect:
-    def __init__(self, rect, radius, children, should_clip=True):
+    def __init__(self, rect, radius, children):
         self.rect = rect
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
         self.children = children
-        self.should_clip = should_clip
 
     def execute(self, canvas):
-        if self.should_clip:
-            canvas.save()
-            canvas.clipRRect(self.rrect)
+        canvas.save()
+        canvas.clipRRect(self.rrect)
 
         for cmd in self.children:
             cmd.execute(canvas)
 
-        if self.should_clip:
-            canvas.restore()
+        canvas.restore()
 ```
 
 Now, in `paint_visual_effects`, we can use `ClipRRect` instead of
@@ -1834,14 +1810,9 @@ fold the opacity into the `skia.Paint` passed to the outer
 
 ``` {.python}
 def paint_visual_effects(node, cmds, rect):
-    # ...
-    return [
-        Blend(opacity, blend_mode, [
-            ClipRRect(rect, clip_radius,
-                cmds,
-            should_clip=needs_clip),
-        ]),
-    ]
+    if node.style.get("overflow", "visible") == "clip":
+        # ...
+        cmds = [ClipRRect(rect, border_radius, cmds)]
 ```
 
 Of course, `clipRRect` only applies for rounded rectangles, while
