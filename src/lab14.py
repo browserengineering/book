@@ -514,9 +514,9 @@ class AccessibilityNode:
         self.text = ""
 
         if node.layout_object:
-            self.bounds = absolute_bounds_for_obj(node.layout_object)
+            self.bounds = [absolute_bounds_for_obj(node.layout_object)]
         else:
-            self.bounds = None
+            self.bounds = []
 
         if isinstance(node, Text):
             if is_focusable(node.parent):
@@ -580,8 +580,9 @@ class AccessibilityNode:
                 self.build_internal(grandchild_node)
 
     def intersects(self, x, y):
-        if self.bounds:
-            return self.bounds.contains(x, y)
+        for bound in self.bounds:
+            if bound.contains(x, y):
+                return True
         return False
 
     def hit_test(self, x, y):
@@ -1332,9 +1333,10 @@ class Browser:
         self.pending_hover = None
 
         if self.hovered_a11y_node:
-            self.draw_list.append(DrawOutline(
-                self.hovered_a11y_node.bounds,
-                "white" if self.dark_mode else "black", 2))
+            for bound in self.hovered_a11y_node.bounds:
+                self.draw_list.append(DrawOutline(
+                    bound,
+                    "white" if self.dark_mode else "black", 2))
 
     def update_accessibility(self):
         if not self.accessibility_tree: return
