@@ -1119,7 +1119,7 @@ def paint_tree(layout_object, display_list):
 ```
 
 Before putting those commands in the display list, though, we need to add a
-border, clip iframe content that exceeds the visible area available, and
+border, clip iframe content that exceeds the visual area available, and
 transform the coordinate system:
 
 ``` {.python}
