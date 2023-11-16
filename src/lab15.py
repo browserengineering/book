@@ -45,7 +45,8 @@ from lab14 import DrawRRect, \
     parse_outline, paint_outline, \
     dpx, cascade_priority, style, \
     is_focusable, get_tabindex, speak_text, \
-    CSSParser, DrawOutline, main_func, Browser, Chrome, Tab
+    CSSParser, DrawOutline, main_func, Browser, Chrome, Tab, \
+    AccessibilityNode
 
 @wbetools.patch(URL)
 class URL:
@@ -1035,6 +1036,7 @@ def style(node, rules, frame):
     for child in node.children:
         style(child, rules, frame)
 
+@wbetools.patch(AccessibilityNode)
 class AccessibilityNode:
     def __init__(self, node, parent = None):
         self.node = node
@@ -1123,21 +1125,6 @@ class AccessibilityNode:
         else:
             for grandchild_node in child_node.children:
                 self.build_internal(grandchild_node)
-
-    def intersects(self, x, y):
-        if self.bounds:
-            return skia.Rect.Intersects(self.bounds,
-                skia.Rect.MakeXYWH(x, y, 1, 1))
-        return False
-
-    def hit_test(self, x, y):
-        node = None
-        if self.intersects(x, y):
-            node = self
-        for child in self.children:
-            res = child.hit_test(x, y)
-            if res: node = res
-        return node
 
     def map_to_parent(self, rect):
         pass
