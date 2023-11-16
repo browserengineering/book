@@ -512,7 +512,7 @@ class AccessibilityNode:
         self.node = node
         self.children = []
         self.text = ""
-        self.bounds = AccessibilityNode.compute_bounds(node)
+        self.bounds = self.compute_bounds()
 
         if isinstance(node, Text):
             if is_focusable(node.parent):
@@ -535,18 +535,18 @@ class AccessibilityNode:
             else:
                 self.role = "none"
 
-    def compute_bounds(node):
-        if node.layout_object:
-            return [absolute_bounds_for_obj(node.layout_object)]
-        if isinstance(node, Text):
+    def compute_bounds():
+        if self.node.layout_object:
+            return [absolute_bounds_for_obj(self.node.layout_object)]
+        if isinstance(self.node, Text):
             return []
-        inline = node.parent
+        inline = self.node.parent
         bounds = []
         while not inline.layout_object: inline = inline.parent
         for line in inline.layout_object.children:
             line_bounds = skia.Rect.MakeEmpty()
             for child in line.children:
-                if child.node.parent == node:
+                if child.node.parent == self.node:
                     line_bounds.join(skia.Rect.MakeXYWH(
                         child.x, child.y, child.width, child.height))
             bounds.append(line_bounds)
