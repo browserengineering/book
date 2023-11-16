@@ -1145,9 +1145,10 @@ class FrameAccessibilityNode(AccessibilityNode):
         self.build_internal(self.node.frame.nodes)
 
     def hit_test(self, x, y):
-        if not self.bounds.contains(x, y): return
-        new_x = x - self.bounds.x() - dpx(1, self.zoom)
-        new_y = y - self.bounds.y() - dpx(1, self.zoom) + self.scroll
+        bounds = self.bounds[0]
+        if not bounds.contains(x, y): return
+        new_x = x - bounds.x() - dpx(1, self.zoom)
+        new_y = y - bounds.y() - dpx(1, self.zoom) + self.scroll
         node = self
         for child in self.children:
             res = child.hit_test(new_x, new_y)
@@ -1155,7 +1156,8 @@ class FrameAccessibilityNode(AccessibilityNode):
         return node
 
     def map_to_parent(self, rect):
-        rect.offset(self.bounds.x(), self.bounds.y() - self.scroll)
+        bounds = self.bounds[0]
+        rect.offset(bounds.x(), bounds.y() - self.scroll)
 
     def __repr__(self):
         return "FrameAccessibilityNode(node={} role={} text={}".format(
