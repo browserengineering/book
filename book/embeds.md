@@ -1118,9 +1118,9 @@ def paint_tree(layout_object, display_list):
 
 ```
 
-Before putting those commands in the display list, though, we need to
-add a border, clip content outside of it, and transform the coordinate
-system:
+Before putting those commands in the display list, though, we need to add a
+border, clip iframe content that exceeds the visible area available, and
+transform the coordinate system:
 
 ``` {.python}
 class IframeLayout(EmbedLayout):
@@ -1142,10 +1142,8 @@ class IframeLayout(EmbedLayout):
 The `Transform` shifts over the child frame contents so that its
 top-left corner starts in the right place,[^content-box] `ClipRRect` clips
 the contents of the iframe to the inside of the border, and
-`paint_outline` adds the border and `paint_visual_effects` clips
-content outside the viewable area of the iframe. Conveniently, we've
-already implemented all of these features and can simply trigger them
-from our browser CSS file:
+`paint_outline` adds the border. To trigger the outline, just add this
+to the browser CSS file:
 
 [^content-box]: This book doesn't go into the details of the [CSS box
 model][box-model], but the `width` and `height` attributes of an
