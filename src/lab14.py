@@ -552,7 +552,6 @@ class AccessibilityNode:
             bounds.append(line_bounds)
         return bounds
 
-
     def build(self):
         for child_node in self.node.children:
             self.build_internal(child_node)
@@ -990,7 +989,6 @@ class Tab:
         if self.needs_accessibility:
             self.accessibility_tree = AccessibilityNode(self.nodes)
             self.accessibility_tree.build()
-            print_tree(self.accessibility_tree)
             self.needs_accessibility = False
 
         if self.needs_paint:

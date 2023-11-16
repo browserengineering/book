@@ -1043,7 +1043,7 @@ class AccessibilityNode:
         self.children = []
         self.parent = parent
         self.text = ""
-        self.bounds = AccessibilityNode.compute_bounds(node)
+        self.bounds = self.compute_bounds()
 
         if isinstance(node, Text):
             if is_focusable(node.parent):

@@ -2183,15 +2183,42 @@ bounds:
 class AccessibilityNode:
     def __init__(self, node):
         # ...
-        if node.layout_object:
-            self.bounds = absolute_bounds_for_obj(node.layout_object)
-        else:
-            self.bounds = None
+        self.bounds = self.compute_bounds()
+
+    def compute_bounds(self):
+        if self.node.layout_object:
+            return [absolute_bounds_for_obj(self.node.layout_object)]
+        # ...
 ```
 
-Note that I'm using `absolute_bounds_for_obj` here, because the bounds
-we're interested in are the absolute coordinates on the screen, after
-any transformations like `translate`.
+Note that I'm using `absolute_bounds_for_obj` here, because the bounds we're
+interested in are the absolute coordinates on the screen, after any
+transformations like `translate`. However, it may not be that
+`node.layout_object` is set; for example, text nodes do not (and I chose to not
+set bounds at all for these nodes, as they are not focusable). Likewise, nodes
+with inline layout generally do not. So we need to walk up the tree to find the
+parent with a `BlockLayout` and union all text nodes in all `LineLayouts` that
+are children of the current `node`. And because there can be multiple text nodes
+and lines, the bounds needs to be an array of `skia.Rect` objects:
+
+``` {.python}
+class AccessibilityNode:
+    def compute_bounds(self):
+        # ...
+        if isinstance(self.node, Text):
+            return []
+        inline = self.node.parent
+        bounds = []
+        while not inline.layout_object: inline = inline.parent
+        for line in inline.layout_object.children:
+            line_bounds = skia.Rect.MakeEmpty()
+            for child in line.children:
+                if child.node.parent == self.node:
+                    line_bounds.join(skia.Rect.MakeXYWH(
+                        child.x, child.y, child.width, child.height))
+            bounds.append(line_bounds)
+        return bounds
+```
 
 So let's implement the read-on-hover feature. First we need to listen for mouse
 move events in the event loop, which in SDL are called `MOUSEMOTION`:
@@ -2256,8 +2283,9 @@ of course that it's searching a different tree:
 ``` {.python}
 class AccessibilityNode:
     def intersects(self, x, y):
-        if self.bounds:
-            return self.bounds.contains(x, y)
+        for bound in self.bounds:
+            if bound.contains(x, y):
+                return True
         return False
 
     def hit_test(self, x, y):
@@ -2291,9 +2319,11 @@ class Browser:
     def paint_draw_list(self):
         # ...
         if self.hovered_a11y_node:
-            self.draw_list.append(DrawOutline(
-                self.hovered_a11y_node.bounds,
-                "white" if self.dark_mode else "black", 2))
+            for bound in self.hovered_a11y_node.bounds:
+                self.draw_list.append(DrawOutline(
+                    bound,
+                    "white" if self.dark_mode else "black", 2))
+
 ```
 
 Note that the color of the outline depends on whether or not dark mode
