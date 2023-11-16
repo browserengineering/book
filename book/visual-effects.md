@@ -236,8 +236,7 @@ That's because SDL doesn't have a `mainloop` or `bind` method; we have
 to implement it ourselves:
 
 ``` {.python}
-if __name__ == "__main__":
-    # ...
+def mainloop(browser):
     event = sdl2.SDL_Event()
     while True:
         while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
@@ -259,11 +258,20 @@ class Browser:
         sdl2.SDL_DestroyWindow(self.sdl_window)
 ```
 
-We'll also need to handle all of the other events in this
-loop---clicks, typing, and so on. The SDL syntax looks like this:
+Call `mainloop` in place of `tkinter.mainloop`:
 
 ``` {.python}
 if __name__ == "__main__":
+    # ...
+    mainloop(browser)
+```
+
+In place of all the `bind` calls in the `Browser` constructor, we can
+just directly call methods for various types of events, like clicks,
+typing, and so on. The SDL syntax looks like this:
+
+``` {.python}
+def mainloop(browser):
     while True:
         while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             # ...
@@ -278,14 +286,12 @@ if __name__ == "__main__":
                 browser.handle_key(event.text.text.decode('utf8'))
 ```
 
-This loop replaces all of the `bind` calls in the `Browser`
-constructor, which you can now remove. I've changed the signatures of
-the various event handler methods. For example, the `handle_click`
-method is now passed a `MouseButtonEvent` object, which thankfully
-contains `x` and `y` coordinates, while the `handle_enter` and
-`handle_down` methods aren't passed any argument at all, because we
-don't use that argument anyway. You'll need to change the `Browser`
-methods' signatures to match.
+I've changed the signatures of the various event handler methods. For
+example, the `handle_click` method is now passed a `MouseButtonEvent`
+object, which thankfully contains `x` and `y` coordinates, while the
+`handle_enter` and `handle_down` methods aren't passed any argument at
+all, because we don't use that argument anyway. You'll need to change
+the `Browser` methods' signatures to match.
 
 ::: {.further}
 SDL is most popular for making games. Their site lists [a selection of

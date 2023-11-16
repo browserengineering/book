@@ -41,7 +41,7 @@ from lab14 import parse_outline, DrawRRect, \
     paint_outline, \
     dpx, cascade_priority, \
     is_focusable, get_tabindex, speak_text, \
-    CSSParser, main_func, DrawOutline
+    CSSParser, mainloop, DrawOutline
 from lab15 import URL, HTMLParser, AttributeParser, DrawImage, \
     DocumentLayout, BlockLayout, \
     EmbedLayout, InputLayout, LineLayout, TextLayout, ImageLayout, \
@@ -1357,4 +1357,7 @@ class Tab:
 
 if __name__ == "__main__":
     wbetools.parse_flags()
-    main_func(URL(sys.argv[1]))
+    sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
+    browser = Browser()
+    browser.new_tab(URL(sys.argv[1]))
+    mainloop(browser)

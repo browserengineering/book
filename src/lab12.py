@@ -4,6 +4,7 @@ up to and including Chapter 12 (Scheduling and Threading),
 without exercises.
 """
 
+import sys
 import ctypes
 import dukpy
 import math
@@ -807,24 +808,7 @@ class Chrome:
             self.focus = None
             self.browser.focus = None
 
-if __name__ == "__main__":
-    import sys
-    import argparse
-
-    parser = argparse.ArgumentParser(description='Toy browser')
-    parser.add_argument("url", type=str, help="URL to load")
-    parser.add_argument('--single_threaded', action="store_true", default=False,
-        help='Whether to run the browser without a browser thread')
-    parser.add_argument('--trace', action="store_true", default=False,
-        help='Whether to generate a browser trace file')
-    args = parser.parse_args()
-
-    wbetools.USE_BROWSER_THREAD = not args.single_threaded
-    wbetools.OUTPUT_TRACE = args.trace
-
-    sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
-    browser = Browser()
-    browser.new_tab(URL(args.url))
+def mainloop(browser):
     event = sdl2.SDL_Event()
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
@@ -850,3 +834,10 @@ if __name__ == "__main__":
                 browser.render()
         browser.raster_and_draw()
         browser.schedule_animation_frame()
+
+if __name__ == "__main__":
+    wbetools.parse_flags()
+    sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
+    browser = Browser()
+    browser.new_tab(URL(sys.argv[1]))
+    mainloop(browser)
