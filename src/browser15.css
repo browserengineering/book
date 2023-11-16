@@ -28,7 +28,6 @@ a:focus {
 
 iframe {
     outline: 1px solid black;
-    overflow: clip;
 }
 
 @media (prefers-color-scheme: dark) {

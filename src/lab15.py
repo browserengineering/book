@@ -655,8 +655,9 @@ class IframeLayout(EmbedLayout):
         inner_rect = skia.Rect.MakeLTRB(
             self.x + diff, self.y + diff,
             self.x + self.width - diff, self.y + self.height - diff)
-        cmds = paint_visual_effects(self.node, cmds, inner_rect)
+        cmds = [ClipRRect(inner_rect, 0, cmds, should_clip=True)]
         paint_outline(self.node, cmds, rect, self.zoom)
+        cmds = paint_visual_effects(self.node, cmds, rect)
         return cmds
 
     def __repr__(self):
@@ -1441,9 +1442,11 @@ class Frame:
             if isinstance(elt, Text):
                 pass
             elif elt.tag == "iframe":
+                abs_bounds = \
+                    absolute_bounds_for_obj(elt.layout_object)
                 border = dpx(1, elt.layout_object.zoom)
-                new_x = x - elt.layout_object.x - border
-                new_y = y - elt.layout_object.y - border
+                new_x = x - abs_bounds.x() - border
+                new_y = y - abs_bounds.y() - border
                 elt.frame.click(new_x, new_y)
                 return
             elif is_focusable(elt):
