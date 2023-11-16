@@ -1043,11 +1043,7 @@ class AccessibilityNode:
         self.children = []
         self.parent = parent
         self.text = ""
-
-        if node.layout_object:
-            self.bounds = [absolute_bounds_for_obj(node.layout_object)]
-        else:
-            self.bounds = None
+        self.bounds = AccessibilityNode.compute_bounds(node)
 
         if isinstance(node, Text):
             if is_focusable(node.parent):
