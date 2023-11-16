@@ -516,7 +516,7 @@ class AccessibilityNode:
         if node.layout_object:
             self.bounds = [absolute_bounds_for_obj(node.layout_object)]
         else:
-            self.bounds = []
+            self.bounds = AccessibilityNode.inline_bounds(node)
 
         if isinstance(node, Text):
             if is_focusable(node.parent):
@@ -538,6 +538,27 @@ class AccessibilityNode:
                 self.role = "focusable"
             else:
                 self.role = "none"
+
+    def inline_bounds(node):
+        assert not node.layout_object
+        inline = node.parent
+        bounds = []
+        if isinstance(node, Text):
+            return bounds
+
+        print('here2')
+        while not inline.layout_object: inline = inline.parent
+        assert inline.layout_object.layout_mode() == "inline"
+        print(inline.layout_object)
+        for line in inline.layout_object.children:
+            line_bounds = skia.Rect.MakeEmpty()
+            for child in line.children:
+                if child.node.parent == node:
+                    line_bounds.join(skia.Rect.MakeXYWH(
+                        child.x, child.y, child.width, child.height))
+            bounds.append(line_bounds)
+        return bounds
+
 
     def build(self):
         for child_node in self.node.children:
@@ -595,8 +616,8 @@ class AccessibilityNode:
         return node
 
     def __repr__(self):
-        return "AccessibilityNode(node={} role={} text={}".format(
-            str(self.node), self.role, self.text)
+        return "AccessibilityNode(node={} role={} text={} bounds={}".format(
+            str(self.node), self.role, self.text, self.bounds)
 
 SPEECH_FILE = "/tmp/speech-fragment.mp3"
 
@@ -976,6 +997,7 @@ class Tab:
         if self.needs_accessibility:
             self.accessibility_tree = AccessibilityNode(self.nodes)
             self.accessibility_tree.build()
+            print_tree(self.accessibility_tree)
             self.needs_accessibility = False
 
         if self.needs_paint:

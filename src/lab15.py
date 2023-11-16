@@ -1139,10 +1139,6 @@ class AccessibilityNode:
             obj = obj.parent
         return rect
 
-    def __repr__(self):
-        return "AccessibilityNode(node={} role={} text={}".format(
-            str(self.node), self.role, self.text)
-
 class FrameAccessibilityNode(AccessibilityNode):
     def __init__(self, node, parent = None):
         super().__init__(node, parent)
