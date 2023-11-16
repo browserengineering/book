@@ -2193,13 +2193,16 @@ class AccessibilityNode:
 
 Note that I'm using `absolute_bounds_for_obj` here, because the bounds we're
 interested in are the absolute coordinates on the screen, after any
-transformations like `translate`. However, it may not be that
-`node.layout_object` is set; for example, text nodes do not (and I chose to not
-set bounds at all for these nodes, as they are not focusable). Likewise, nodes
-with inline layout generally do not. So we need to walk up the tree to find the
-parent with a `BlockLayout` and union all text nodes in all `LineLayouts` that
-are children of the current `node`. And because there can be multiple text nodes
-and lines, the bounds needs to be an array of `skia.Rect` objects:
+transformations like `translate`.
+
+However, there is another complication: it may not be that `node.layout_object`
+is set; for example, text nodes do not have one.^[And that's ok, because I
+chose not to set bounds at all for these nodes, as they are not focusable.]
+Likewise, nodes with inline layout generally do not. So we need to walk up the
+tree to find the parent with a `BlockLayout` and union all text nodes in all
+`LineLayouts` that are children of the current `node`. And because there can be
+multiple text nodes and lines, the bounds needs to be an array of `skia.Rect`
+objects:
 
 ``` {.python}
 class AccessibilityNode:
