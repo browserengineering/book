@@ -538,15 +538,11 @@ class AccessibilityNode:
     def compute_bounds(node):
         if node.layout_object:
             return [absolute_bounds_for_obj(node.layout_object)]
-
-        inline = node.parent
         if isinstance(node, Text):
             return []
-
+        inline = node.parent
         bounds = []
         while not inline.layout_object: inline = inline.parent
-        assert inline.layout_object.layout_mode() == "inline"
-        print(inline.layout_object)
         for line in inline.layout_object.children:
             line_bounds = skia.Rect.MakeEmpty()
             for child in line.children:
