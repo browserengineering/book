@@ -2201,8 +2201,8 @@ chose not to set bounds at all for these nodes, as they are not focusable.]
 Likewise, nodes with inline layout generally do not. So we need to walk up the
 tree to find the parent with a `BlockLayout` and union all text nodes in all
 `LineLayouts` that are children of the current `node`. And because there can be
-multiple text nodes and lines, the bounds needs to be an array of `skia.Rect`
-objects:
+multiple `LineLayouts` and text nodes, the bounds needs to be an array of
+`skia.Rect` objects:
 
 ``` {.python}
 class AccessibilityNode:
