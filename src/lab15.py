@@ -643,12 +643,6 @@ class IframeLayout(EmbedLayout):
                 self.node.style.get("border-radius", "0px")[:-2]),
                 self.zoom)
             cmds.append(DrawRRect(rect, radius, bgcolor))
-        rect = skia.Rect.MakeLTRB(
-            self.x, self.y,
-            self.x + self.width, self.y + self.height)
-        diff = dpx(1, self.zoom)
-        offset = (self.x + diff, self.y + diff)
-
         return cmds
 
     def paint_effects(self, cmds):
