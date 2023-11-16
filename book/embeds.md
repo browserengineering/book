@@ -1133,13 +1133,15 @@ class IframeLayout(EmbedLayout):
         inner_rect = skia.Rect.MakeLTRB(
             self.x + diff, self.y + diff,
             self.x + self.width - diff, self.y + self.height - diff)
-        cmds = paint_visual_effects(self.node, cmds, inner_rect)
+        cmds = [ClipRRect(inner_rect, 0, cmds, should_clip=True)]
         paint_outline(self.node, cmds, rect, self.zoom)
+        cmds = paint_visual_effects(self.node, cmds, rect)
         return cmds
 ```
 
 The `Transform` shifts over the child frame contents so that its
-top-left corner starts in the right place,[^content-box] while
+top-left corner starts in the right place,[^content-box] `ClipRRect` clips
+the contents of the iframe to the inside of the border, and
 `paint_outline` adds the border and `paint_visual_effects` clips
 content outside the viewable area of the iframe. Conveniently, we've
 already implemented all of these features and can simply trigger them
@@ -1148,17 +1150,14 @@ from our browser CSS file:
 [^content-box]: This book doesn't go into the details of the [CSS box
 model][box-model], but the `width` and `height` attributes of an
 iframe refer to the *content box*, and adding the border width yields
-the *border box*. Note also that the clip we're appling is an overflow
-clip, which is not quite the same as an iframe clip, and the differences have
-to do with the box model as well. As a result, what we've implemented is
-somewhat incorrect with respect to all of those factors.
+the *border box*. As a result, what we've implemented is
+somewhat incorrect.
 
 [box-model]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Box_Model/Introduction_to_the_CSS_box_model
 
 ``` {.css}
 iframe {
     outline: 1px solid black;
-    overflow: clip;
 }
 ```
 
@@ -1219,7 +1218,9 @@ class Tab:
 
 When an iframe is clicked, it passes the click through to the child
 frame, and immediately return afterwards, because iframes capture
-click events:
+click events. Note how I subtracted the absolute x and y offset of the
+iframe from the (absolute) x and y click position when recursing into the child
+frame:
 
 ``` {.python}
 class Frame:
@@ -1228,12 +1229,13 @@ class Frame:
         while elt:
             # ...
             elif elt.tag == "iframe":
+                abs_bounds = \
+                    absolute_bounds_for_obj(elt.layout_object)
                 border = dpx(1, elt.layout_object.zoom)
-                new_x = x - elt.layout_object.x - border
-                new_y = y - elt.layout_object.y - border
+                new_x = x - abs_bounds.x() - border
+                new_y = y - abs_bounds.y() - border
                 elt.frame.click(new_x, new_y)
                 return
-
 ```
 
 Now, clicking on `<a>` elements will work, which means that you can
@@ -2275,11 +2277,6 @@ works even when the user clicks links in multiple frames in various
 orders.^[It's debatable whether this is a good feature of iframes, as
 it causes a lot of confusion for web developers who embed iframes they
 don't plan on navigating.]
-
-*Iframes under transforms*: painting an iframe that has a CSS `transform` on it
-or an ancestor should already work, but event targeting for clicks doesn't work,
-because `click` doesn't account for that transform. Fix this. Also make sure
-that accessibility handles iframes under transform correctly in all cases.
 
 *Iframes added or removed by script*: the `innerHTML` API can cause iframes
 to be added or removed, but our browser doesn't load or unload them
