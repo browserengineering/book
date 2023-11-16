@@ -1045,7 +1045,7 @@ class AccessibilityNode:
         self.text = ""
 
         if node.layout_object:
-            self.bounds = absolute_bounds_for_obj(node.layout_object)
+            self.bounds = [absolute_bounds_for_obj(node.layout_object)]
         else:
             self.bounds = None
 

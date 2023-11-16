@@ -512,11 +512,7 @@ class AccessibilityNode:
         self.node = node
         self.children = []
         self.text = ""
-
-        if node.layout_object:
-            self.bounds = [absolute_bounds_for_obj(node.layout_object)]
-        else:
-            self.bounds = AccessibilityNode.inline_bounds(node)
+        self.bounds = AccessibilityNode.compute_bounds(node)
 
         if isinstance(node, Text):
             if is_focusable(node.parent):
@@ -539,14 +535,15 @@ class AccessibilityNode:
             else:
                 self.role = "none"
 
-    def inline_bounds(node):
-        assert not node.layout_object
-        inline = node.parent
-        bounds = []
-        if isinstance(node, Text):
-            return bounds
+    def compute_bounds(node):
+        if node.layout_object:
+            return [absolute_bounds_for_obj(node.layout_object)]
 
-        print('here2')
+        inline = node.parent
+        if isinstance(node, Text):
+            return []
+
+        bounds = []
         while not inline.layout_object: inline = inline.parent
         assert inline.layout_object.layout_mode() == "inline"
         print(inline.layout_object)
