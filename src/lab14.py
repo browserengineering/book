@@ -535,7 +535,7 @@ class AccessibilityNode:
             else:
                 self.role = "none"
 
-    def compute_bounds():
+    def compute_bounds(self):
         if self.node.layout_object:
             return [absolute_bounds_for_obj(self.node.layout_object)]
         if isinstance(self.node, Text):
