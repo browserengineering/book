@@ -2257,8 +2257,7 @@ of course that it's searching a different tree:
 class AccessibilityNode:
     def intersects(self, x, y):
         if self.bounds:
-            return skia.Rect.Intersects(self.bounds,
-                skia.Rect.MakeXYWH(x, y, 1, 1))
+            return self.bounds.contains(x, y)
         return False
 
     def hit_test(self, x, y):
