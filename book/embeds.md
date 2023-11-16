@@ -1416,21 +1416,6 @@ class AccessibilityNode:
             child = FrameAccessibilityNode(child_node)
 ```
 
-Hit testing now has to become recursive, so that
-`FrameAccessibilityNode` can adjust for the iframe location:
-
-``` {.python}
-class AccessibilityNode:
-    def hit_test(self, x, y):
-        node = None
-        if self.intersects(x, y):
-            node = self
-        for child in self.children:
-            res = child.hit_test(x, y)
-            if res: node = res
-        return node
-```
-
 Hit testing `FrameAccessibilityNodes` will use the frame's bounds to
 ignore clicks outside the frame bounds, and adjust clicks against the
 frame's coordinates (note how we subtract off the zoomed border of the frame):

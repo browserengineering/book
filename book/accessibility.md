@@ -2255,11 +2255,19 @@ of course that it's searching a different tree:
 
 ``` {.python}
 class AccessibilityNode:
+    def intersects(self, x, y):
+        if self.bounds:
+            return self.bounds.contains(x, y)
+        return False
+
     def hit_test(self, x, y):
-        nodes = [node for node in tree_to_list(self, [])
-            if node.bounds and node.bounds.contains(x, y)]
-        if nodes:
-            return nodes[-1]
+        node = None
+        if self.intersects(x, y):
+            node = self
+        for child in self.children:
+            res = child.hit_test(x, y)
+            if res: node = res
+        return node
 ```
 
 Once the hit test is done and the browser knows what node the user is
