@@ -1248,7 +1248,7 @@ however.)
 ``` {.python file=examples}
 class Pixel:
     def source_over(self, source):
-        new_a = 1 - (1 - source.a) * (1 - self.a)
+        new_a = source.a + self.a * (1 - source.a)
         if new_a == 0: return self
         self.r = \
             (self.r * (1 - source.a) * self.a + \
