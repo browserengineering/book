@@ -397,7 +397,7 @@ That's also why we save `img_height` in the code above.
 
 Also, in the code above I introduced new `ascent` and `descent` fields on
 `EmbedLayout` subclasses. This is meant to be used in `LineLayout` layout
-in place. of the existing layout code for ascent and descent. It also requires
+in place of the existing layout code for ascent and descent. It also requires
 introducing those fields on `TextLayout`:
 
 ``` {.python}
