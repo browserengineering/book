@@ -114,19 +114,16 @@ def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style["opacity"].get())
     blend_mode = parse_blend_mode(node.style["mix-blend-mode"].get())
     translation = parse_transform(node.style["transform"].get())
-    border_radius = float(node.style["border-radius"].get()[:-2])
-    if node.style["overflow"].get() == 'clip':
-        clip_radius = border_radius
+
+    if node.style["overflow"].get() == "clip":
+        border_radius = float(node.style["border-radius"].get()[:-2])
         if not blend_mode:
             blend_mode = "source-over"
-    else:
-        clip_radius = 0
-    needs_clip = node.style['overflow'].get() == 'clip'
-    blend_op = Blend(opacity, blend_mode, node,
-        [ClipRRect(rect, clip_radius, cmds, should_clip=needs_clip)])
-    transform = Transform(translation, rect, node, [blend_op])
+        cmds = [ClipRRect(rect, border_radius, cmds)]
+
+    blend_op = Blend(opacity, blend_mode, node, cmds)
     node.blend_op = blend_op
-    return [transform]
+    return [Transform(translation, rect, node, [blend_op])]
 
 class ProtectedField:
     def __init__(self, obj, name, parent=None, dependencies=None,

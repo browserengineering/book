@@ -217,20 +217,17 @@ class DrawOutline(PaintCommand):
             self.thickness)
 
 class ClipRRect(VisualEffect):
-    def __init__(self, rect, radius, children, should_clip=True):
+    def __init__(self, rect, radius, children):
         super().__init__(rect, children)
-        self.should_clip = should_clip
         self.radius = radius
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
 
     def execute(self, canvas):
-        if self.should_clip:
-            canvas.save()
-            canvas.clipRRect(self.rrect)
+        canvas.save()
+        canvas.clipRRect(self.rrect)
         for cmd in self.children:
             cmd.execute(canvas)
-        if self.should_clip:
-            canvas.restore()
+        canvas.restore()
 
     def map(self, rect):
         bounds = rect.makeOffset(0.0, 0.0)
@@ -241,14 +238,10 @@ class ClipRRect(VisualEffect):
         return rect
 
     def clone(self, child):
-        return ClipRRect(self.rrect.rect(), self.radius, [child], \
-            self.should_clip)
+        return ClipRRect(self.rrect.rect(), self.radius, [child])
 
     def __repr__(self):
-        if self.should_clip:
-            return "ClipRRect({})".format(str(self.rrect))
-        else:
-            return "ClipRRect(<no-op>)"
+        return "ClipRRect({})".format(str(self.rrect))
 
 class Blend(VisualEffect):
     def __init__(self, opacity, blend_mode, node, children):
@@ -763,27 +756,15 @@ def paint_visual_effects(node, cmds, rect):
     translation = parse_transform(
         node.style.get("transform", ""))
 
-    border_radius = float(node.style.get("border-radius", "0px")[:-2])
     if node.style.get("overflow", "visible") == "clip":
-        clip_radius = border_radius
+        border_radius = float(node.style.get("border-radius", "0px")[:-2])
         if not blend_mode:
             blend_mode = "source-over"
-    else:
-        clip_radius = 0
+        cmds = [ClipRRect(rect, border_radius, cmds)]
 
-    needs_clip = node.style.get("overflow", "visible") == "clip"
-    needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
-        needs_clip or opacity != 1.0
-
-    blend_op = Blend(opacity, blend_mode, node, [
-        ClipRRect(rect, clip_radius,
-                  cmds,
-                  should_clip=needs_clip),
-    ])
-    transform = Transform(translation, rect, node, [blend_op])
+    blend_op = Blend(opacity, blend_mode, node, cmds)
     node.blend_op = blend_op
- 
-    return [transform]
+    return [Transform(translation, rect, node, [blend_op])]
 
 SETTIMEOUT_CODE = "__runSetTimeout(dukpy.handle)"
 XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
