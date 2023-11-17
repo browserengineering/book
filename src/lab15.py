@@ -45,7 +45,7 @@ from lab14 import DrawRRect, \
     parse_outline, paint_outline, \
     dpx, cascade_priority, style, \
     is_focusable, get_tabindex, speak_text, \
-    CSSParser, DrawOutline, main_func, Browser, Chrome, Tab, \
+    CSSParser, DrawOutline, mainloop, Browser, Chrome, Tab, \
     AccessibilityNode
 
 @wbetools.patch(URL)
@@ -1722,4 +1722,7 @@ class Browser:
 
 if __name__ == "__main__":
     wbetools.parse_flags()
-    main_func(URL(sys.argv[1]))
+    sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
+    browser = Browser()
+    browser.new_tab(URL(sys.argv[1]))
+    mainloop(browser)

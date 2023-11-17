@@ -28,7 +28,7 @@ from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, parse_color, NAMED_COLORS, parse_blend_mode, linespace
 from lab11 import paint_tree
-from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
+from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner, mainloop
 from lab12 import Tab, Browser, Task, REFRESH_RATE_SEC, Chrome, JSContext
 
 @wbetools.patch(Text)
@@ -1491,29 +1491,4 @@ if __name__ == "__main__":
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
     browser.new_tab(URL(sys.argv[1]))
-
-    event = sdl2.SDL_Event()
-    while True:
-        if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            if event.type == sdl2.SDL_QUIT:
-                browser.handle_quit()
-                sdl2.SDL_Quit()
-                sys.exit()
-                break
-            elif event.type == sdl2.SDL_MOUSEBUTTONUP:
-                browser.handle_click(event.button)
-            elif event.type == sdl2.SDL_KEYDOWN:
-                if event.key.keysym.sym == sdl2.SDLK_RETURN:
-                    browser.handle_enter()
-                elif event.key.keysym.sym == sdl2.SDLK_DOWN:
-                    browser.handle_down()
-            elif event.type == sdl2.SDL_TEXTINPUT:
-                browser.handle_key(event.text.text.decode('utf8'))
-        if not wbetools.USE_BROWSER_THREAD:
-            if browser.active_tab.task_runner.needs_quit:
-                break
-            if browser.needs_animation_frame:
-                browser.needs_animation_frame = False
-                browser.render()
-        browser.composite_raster_and_draw()
-        browser.schedule_animation_frame()
+    mainloop(browser)

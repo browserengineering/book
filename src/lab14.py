@@ -1604,11 +1604,7 @@ class Browser:
             sdl2.SDL_BlitSurface(sdl_surface, rect, window_surface, rect)
             sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 
-def main_func(url):
-    sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
-    browser = Browser()
-    browser.new_tab(url)
-
+def mainloop(browser):
     event = sdl2.SDL_Event()
     ctrl_down = False
     while True:
@@ -1676,5 +1672,8 @@ def main_func(url):
 
 if __name__ == "__main__":
     wbetools.parse_flags()
-    main_func(URL(sys.argv[1]))
+    sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
+    browser = Browser()
+    browser.new_tab(URL(sys.argv[1]))
+    mainloop(browser)
 
