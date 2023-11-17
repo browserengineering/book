@@ -835,7 +835,34 @@ class BlockLayout:
                 self.self_rect(), radius, bgcolor))
 ```
 
-Similar changes should be made to `InputLayout`.
+Similar changes should be made to `InputLayout`. So that's one thing
+Skia gives us: new rasterization features, meaning new shapes we can
+draw.
+
+Another feature natively supported by Skia is transparency. In CSS,
+you can use a hex color with eight hex digits to indicate that
+something should be drawn semi-transparently. For example, the
+color `#00000080` is 50% transparent black. Over a white background,
+that looks gray, but over an orange background it looks like this:
+
+<div style="background-color: #ffa500; color: #00000080">Test</div>
+
+Note that the text is a kind of dark orange. Skia supports these
+"RGBA" colors by setting the "alpha" field in the color:
+
+``` {.python}
+def parse_color(color):
+    elif color.startswith("#") and len(color) == 9:
+        r = int(color[1:3], 16)
+        g = int(color[3:5], 16)
+        b = int(color[5:7], 16)
+        a = int(color[7:9], 16)
+        return skia.Color(r, g, b, a)
+```
+
+Check that your browser can render the example above with slightly
+orange-tinged text. This demonstrates that the text is semitransparent
+and is letting some background color through.
 
 ::: {.further}
 Implementing high-quality raster libraries is very interesting in its own

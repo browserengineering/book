@@ -187,3 +187,40 @@ the blend to the color.
 
     >>> red_opaque.copy().difference(blue_opaque)
     Pixel(1.0, 0.0, 1.0, 1.0)
+
+Testing color parsing
+=====================
+
+Hex color parsing works:
+
+    >>> hex(lab11.parse_color("#123456"))
+    '0xff123456'
+    >>> hex(lab11.parse_color("#abcdef"))
+    '0xffabcdef'
+    >>> hex(lab11.parse_color("#ff0000"))
+    '0xffff0000'
+    >>> hex(lab11.parse_color("#00ff00"))
+    '0xff00ff00'
+    >>> hex(lab11.parse_color("#0000ff"))
+    '0xff0000ff'
+
+So do RGBA colors:
+
+    >>> hex(lab11.parse_color("#000000ff"))
+    '0xff000000'
+    >>> hex(lab11.parse_color("#00000000"))
+    '0x0'
+    >>> hex(lab11.parse_color("#12345678"))
+    '0x78123456'
+
+Some named colors are supported, too:
+
+    >>> hex(lab11.parse_color("blue"))
+    '0xff0000ff'
+    >>> hex(lab11.parse_color("red"))
+    '0xffff0000'
+    >>> hex(lab11.parse_color("black"))
+    '0xff000000'
+    >>> hex(lab11.parse_color("white"))
+    '0xffffffff'
+
