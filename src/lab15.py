@@ -353,12 +353,6 @@ class EmbedLayout:
         self.height = None
         self.font = None
 
-    def get_ascent(self, font_multiplier=1.0):
-        return -self.height
-
-    def get_descent(self, font_multiplier=1.0):
-        return 0
-
     def layout(self):
         self.zoom = self.parent.zoom
         self.font = font(self.node.style, self.zoom)
@@ -381,6 +375,9 @@ class InputLayout(EmbedLayout):
 
         self.width = dpx(INPUT_WIDTH_PX, self.zoom)
         self.height = linespace(self.font)
+
+        self.ascent = -self.height
+        self.descent = 0
 
     def self_rect(self):
         return skia.Rect.MakeLTRB(
@@ -455,12 +452,16 @@ class LineLayout:
             self.height = 0
             return
 
-        max_ascent = max([-child.get_ascent(1.25) 
+        max_ascent = max([-child.ascent 
                           for child in self.children])
         baseline = self.y + max_ascent
+
         for child in self.children:
-            child.y = baseline + child.get_ascent()
-        max_descent = max([child.get_descent(1.25)
+            if isinstance(child, TextLayout):
+                child.y = baseline + child.ascent / 1.25
+            else:
+                child.y = baseline + child.ascent
+        max_descent = max([child.descent
                            for child in self.children])
         self.height = max_ascent + max_descent
 
@@ -503,12 +504,6 @@ class TextLayout:
         self.height = None
         self.font = None
 
-    def get_ascent(self, font_multiplier=1.0):
-        return self.font.getMetrics().fAscent * font_multiplier
-
-    def get_descent(self, font_multiplier=1.0):
-        return self.font.getMetrics().fDescent * font_multiplier
-
     def layout(self):
         self.zoom = self.parent.zoom
         self.font = font(self.node.style, self.zoom)
@@ -523,6 +518,9 @@ class TextLayout:
             self.x = self.parent.x
 
         self.height = linespace(self.font)
+
+        self.ascent = self.font.getMetrics().fAscent * 1.25
+        self.descent = self.font.getMetrics().fDescent * 1.25
 
     def should_paint(self):
         return True
@@ -584,6 +582,9 @@ class ImageLayout(EmbedLayout):
 
         self.height = max(self.img_height, linespace(self.font))
 
+        self.ascent = -self.height
+        self.descent = 0
+
     def paint(self):
         cmds = []
         rect = skia.Rect.MakeLTRB(
@@ -629,6 +630,9 @@ class IframeLayout(EmbedLayout):
                 self.height - dpx(2, self.zoom)
             self.node.frame.frame_width = \
                 self.width - dpx(2, self.zoom)
+
+        self.ascent = -self.height
+        self.descent = 0
 
     def paint(self):
         cmds = []

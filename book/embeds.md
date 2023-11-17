@@ -327,12 +327,6 @@ class EmbedLayout:
     def __init__(self, node, parent, previous, frame):
         # ...
 
-    def get_ascent(self, font_multiplier=1.0):
-        return -self.height
-
-    def get_descent(self, font_multiplier=1.0):
-        return 0
-
     def layout(self):
         self.zoom = self.parent.zoom
         self.font = font(self.node.style, self.zoom)
@@ -366,6 +360,8 @@ class InputLayout(EmbedLayout):
         # ...
         self.width = dpx(INPUT_WIDTH_PX, self.zoom)
         self.height = linespace(self.font)
+        self.ascent = -self.height
+        self.descent = 0
 
     def paint(self):
         # ...
@@ -384,6 +380,8 @@ class ImageLayout(EmbedLayout):
         self.width = dpx(self.node.image.width(), self.zoom)
         self.img_height = dpx(self.node.image.height(), self.zoom)
         self.height = max(self.img_height, linespace(self.font))
+        self.ascent = -self.height
+        self.descent = 0
 ```
 
 Notice that the height of the image depends on the font size of the
@@ -398,6 +396,35 @@ reason for this is because, as a type of inline layout, images are
 designed to flow along with related text, which means the
 bottom of the image should line up with the [text baseline][baseline-ch3].
 That's also why we save `img_height` in the code above.
+
+Also, in the code above I introduced new `ascent` and `descent` fields on
+`EmbedLayout` subclasses. This is meant to be used in `LineLayout` layout
+in place of the existing layout code for ascent and descent. It also requires
+introducing those fields on `TextLayout`:
+
+``` {.python}
+class LineLayout:
+    def layout(self):
+        # ...
+        max_ascent = max([-child.ascent 
+                          for child in self.children])
+        baseline = self.y + max_ascent
+
+        for child in self.children:
+            if isinstance(child, TextLayout):
+                child.y = baseline + child.ascent / 1.25
+            else:
+                child.y = baseline + child.ascent
+        max_descent = max([child.descent
+                           for child in self.children])
+        self.height = max_ascent + max_descent
+
+class TextLayout:
+    def layout(self):
+        # ...
+        self.ascent = self.font.getMetrics().fAscent * 1.25
+        self.descent = self.font.getMetrics().fDescent * 1.25
+```
 
 [baseline-ch3]: text.html#text-of-different-sizes
 
@@ -1000,6 +1027,8 @@ class IframeLayout(EmbedLayout):
             self.height = dpx(int(height_attr) + 2, self.zoom)
         else:
             self.height = dpx(IFRAME_HEIGHT_PX + 2, self.zoom)
+        self.ascent = -self.height
+        self.descent = 0
 ```
 
 The extra two pixels provide room for a border, one pixel on each side, later on.

@@ -589,7 +589,10 @@ class LineLayout:
         for child in self.children:
             new_y = self.y.read(notify=child.y)
             new_y += self.ascent.read(notify=child.y)
-            new_y += child.ascent.read(notify=child.y)
+            if isinstance(child, TextLayout):
+                new_y += child.ascent.read(notify=child.y) / 1.25
+            else:
+                new_y += child.ascent.read(notify=child.y)
             child.y.set(new_y)
 
         max_ascent = self.ascent.read(notify=self.height)
