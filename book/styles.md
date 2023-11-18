@@ -599,8 +599,7 @@ including query-relative and scheme-relative URLs, that I'm skipping.]
 -   A path-relative URL, which doesn't start with a slash and is
     resolved like a file name would be.
 -   A protocol-relative URL that starts with "//" followed by a full URL,
-    which should be completed to a full url using the same protocol
-    (`http` or` https`) as the current URL.
+    which should use the existing scheme.
 
 To download the style sheets, we'll need to convert each relative URL
 into a full URL:
