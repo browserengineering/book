@@ -25,6 +25,9 @@ Testing resolve_url
     >>> lab6.URL("http://bar.com/url1/").resolve("url2")
     URL(scheme=http, host=bar.com, port=80, path='/url1/url2')
 
+    >>> lab6.URL("http://bar.com/url1/").resolve("//baz.com/url2")
+    URL(scheme=http, host=baz.com, port=80, path='/url2')
+
 A trailing slash is automatically added if omitted:
 
     >>> lab6.URL("http://bar.com").resolve("url2")
