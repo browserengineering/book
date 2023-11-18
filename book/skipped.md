@@ -166,7 +166,7 @@ are often implemented in HTML and rendered by the browser itself.
 Also, it'd be almost impossible to build complex web apps without some
 kind of debugging aid, so all real browsers have built-in debuggers.
 Believe it or not, for quite a long time we developers just did a
-lot of [`printf` debugging][printf]. This changed in a big way with the
+lot of [`console.log` debugging][printf] (or even `alert` debugging, before there was an easy way to see the console!). This changed in a big way with the
 innovative [Firebug] browser extension for Firefox, and eventually
 today's integrated developer tools. These developer tools have deep
 integration with the browser engine itself to implement features like
