@@ -4,6 +4,7 @@ up to and including Chapter 11 (Adding Visual Effects),
 without exercises.
 """
 
+import sys
 import ctypes
 import dukpy
 import math
@@ -65,6 +66,12 @@ def parse_color(color):
         g = int(color[3:5], 16)
         b = int(color[5:7], 16)
         return skia.Color(r, g, b)
+    elif color.startswith("#") and len(color) == 9:
+        r = int(color[1:3], 16)
+        g = int(color[3:5], 16)
+        b = int(color[5:7], 16)
+        a = int(color[7:9], 16)
+        return skia.Color(r, g, b, a)
     elif color in NAMED_COLORS:
         return parse_color(NAMED_COLORS[color])
     else:
@@ -189,22 +196,17 @@ class DrawRRect:
             paint=skia.Paint(Color=sk_color))
 
 class ClipRRect:
-    def __init__(self, rect, radius, children, should_clip=True):
+    def __init__(self, rect, radius, children):
         self.rect = rect
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
         self.children = children
-        self.should_clip = should_clip
 
     def execute(self, canvas):
-        if self.should_clip:
-            canvas.save()
-            canvas.clipRRect(self.rrect)
-
+        canvas.save()
+        canvas.clipRRect(self.rrect)
         for cmd in self.children:
             cmd.execute(canvas)
-
-        if self.should_clip:
-            canvas.restore()
+        canvas.restore()
 
 def paint_tree(layout_object, display_list):
     cmds = []
@@ -396,23 +398,13 @@ def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
     blend_mode = node.style.get("mix-blend-mode")
 
-    border_radius = float(node.style.get("border-radius", "0px")[:-2])
     if node.style.get("overflow", "visible") == "clip":
-        clip_radius = border_radius
+        border_radius = float(node.style.get("border-radius", "0px")[:-2])
         if not blend_mode:
             blend_mode = "source-over"
-    else:
-        clip_radius = 0
+        cmds = [ClipRRect(rect, border_radius, cmds)]
 
-    needs_clip = node.style.get("overflow", "visible") == "clip"
-
-    return [
-        Blend(opacity, blend_mode, [
-            ClipRRect(rect, clip_radius,
-                cmds,
-            should_clip=needs_clip),
-        ]),
-    ]
+    return [Blend(opacity, blend_mode, cmds)]
 
 @wbetools.patch(DocumentLayout)
 class DocumentLayout:
@@ -704,12 +696,7 @@ class Browser:
     def handle_quit(self):
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
-if __name__ == "__main__":
-    import sys
-    sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
-    browser = Browser()
-    browser.new_tab(URL(sys.argv[1]))
-
+def mainloop(browser):
     event = sdl2.SDL_Event()
     while True:
         while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
@@ -726,4 +713,11 @@ if __name__ == "__main__":
                     browser.handle_down()
             elif event.type == sdl2.SDL_TEXTINPUT:
                 browser.handle_key(event.text.text.decode('utf8'))
+
+if __name__ == "__main__":
+    sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
+    browser = Browser()
+    browser.new_tab(URL(sys.argv[1]))
+    mainloop(browser)
+
 

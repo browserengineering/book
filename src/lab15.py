@@ -45,7 +45,7 @@ from lab14 import DrawRRect, \
     parse_outline, paint_outline, \
     dpx, cascade_priority, style, \
     is_focusable, get_tabindex, speak_text, \
-    CSSParser, DrawOutline, main_func, Browser, Chrome, Tab, \
+    CSSParser, DrawOutline, mainloop, Browser, Chrome, Tab, \
     AccessibilityNode
 
 @wbetools.patch(URL)
@@ -353,12 +353,6 @@ class EmbedLayout:
         self.height = None
         self.font = None
 
-    def get_ascent(self, font_multiplier=1.0):
-        return -self.height
-
-    def get_descent(self, font_multiplier=1.0):
-        return 0
-
     def layout(self):
         self.zoom = self.parent.zoom
         self.font = font(self.node.style, self.zoom)
@@ -381,6 +375,9 @@ class InputLayout(EmbedLayout):
 
         self.width = dpx(INPUT_WIDTH_PX, self.zoom)
         self.height = linespace(self.font)
+
+        self.ascent = -self.height
+        self.descent = 0
 
     def self_rect(self):
         return skia.Rect.MakeLTRB(
@@ -455,12 +452,16 @@ class LineLayout:
             self.height = 0
             return
 
-        max_ascent = max([-child.get_ascent(1.25) 
+        max_ascent = max([-child.ascent 
                           for child in self.children])
         baseline = self.y + max_ascent
+
         for child in self.children:
-            child.y = baseline + child.get_ascent()
-        max_descent = max([child.get_descent(1.25)
+            if isinstance(child, TextLayout):
+                child.y = baseline + child.ascent / 1.25
+            else:
+                child.y = baseline + child.ascent
+        max_descent = max([child.descent
                            for child in self.children])
         self.height = max_ascent + max_descent
 
@@ -503,12 +504,6 @@ class TextLayout:
         self.height = None
         self.font = None
 
-    def get_ascent(self, font_multiplier=1.0):
-        return self.font.getMetrics().fAscent * font_multiplier
-
-    def get_descent(self, font_multiplier=1.0):
-        return self.font.getMetrics().fDescent * font_multiplier
-
     def layout(self):
         self.zoom = self.parent.zoom
         self.font = font(self.node.style, self.zoom)
@@ -523,6 +518,9 @@ class TextLayout:
             self.x = self.parent.x
 
         self.height = linespace(self.font)
+
+        self.ascent = self.font.getMetrics().fAscent * 1.25
+        self.descent = self.font.getMetrics().fDescent * 1.25
 
     def should_paint(self):
         return True
@@ -584,6 +582,9 @@ class ImageLayout(EmbedLayout):
 
         self.height = max(self.img_height, linespace(self.font))
 
+        self.ascent = -self.height
+        self.descent = 0
+
     def paint(self):
         cmds = []
         rect = skia.Rect.MakeLTRB(
@@ -630,6 +631,9 @@ class IframeLayout(EmbedLayout):
             self.node.frame.frame_width = \
                 self.width - dpx(2, self.zoom)
 
+        self.ascent = -self.height
+        self.descent = 0
+
     def paint(self):
         cmds = []
 
@@ -655,8 +659,9 @@ class IframeLayout(EmbedLayout):
         inner_rect = skia.Rect.MakeLTRB(
             self.x + diff, self.y + diff,
             self.x + self.width - diff, self.y + self.height - diff)
-        cmds = paint_visual_effects(self.node, cmds, inner_rect)
+        cmds = [ClipRRect(inner_rect, 0, cmds)]
         paint_outline(self.node, cmds, rect, self.zoom)
+        cmds = paint_visual_effects(self.node, cmds, rect)
         return cmds
 
     def __repr__(self):
@@ -694,7 +699,9 @@ class AttributeParser:
                 self.i += 1
             else:
                 break
-        assert self.i > start
+        if self.i == start:
+            self.i = len(self.s)
+            return ""
         if quoted:
             return self.s[start+1:self.i-1]
         return self.s[start:self.i]
@@ -1282,7 +1289,8 @@ class Frame:
                 img.encoded_data = body
                 data = skia.Data.MakeWithoutCopy(body)
                 img.image = skia.Image.MakeFromEncoded(data)
-                assert img.image, "Failed to recognize image format for " + image_url
+                assert img.image, \
+                    "Failed to recognize image format for " + str(image_url)
             except Exception as e:
                 print("Image", image_url, "crashed", e)
                 img.image = BROKEN_IMAGE
@@ -1440,9 +1448,11 @@ class Frame:
             if isinstance(elt, Text):
                 pass
             elif elt.tag == "iframe":
+                abs_bounds = \
+                    absolute_bounds_for_obj(elt.layout_object)
                 border = dpx(1, elt.layout_object.zoom)
-                new_x = x - elt.layout_object.x - border
-                new_y = y - elt.layout_object.y - border
+                new_x = x - abs_bounds.x() - border
+                new_y = y - abs_bounds.y() - border
                 elt.frame.click(new_x, new_y)
                 return
             elif is_focusable(elt):
@@ -1749,4 +1759,7 @@ class Browser:
 
 if __name__ == "__main__":
     wbetools.parse_flags()
-    main_func(URL(sys.argv[1]))
+    sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
+    browser = Browser()
+    browser.new_tab(URL(sys.argv[1]))
+    mainloop(browser)

@@ -113,17 +113,19 @@ principles* likewise make the web accessible to people of all types
 and abilities.
 
 ::: {.further}
-In the United States, the European Union, and many other countries,
+In the United States, the United Kingdom, the European Union, and many other countries,
 website accessibility is in many cases legally required. For example,
 United States Government websites are required to be accessible under
 [Section 508][sec508] of the [Rehabilitation Act Amendments of
-1973 (with amendments added later)][rehab-act], and the government has a bunch of
-[regulations][a11yreg]. In the United States, non-government websites
+1973 (with amendments added later)][rehab-act], and associated
+[regulations][a11yreg]. Non-government websites
 are also required to be accessible under the [Americans with
 Disabilities Act][ada], though it's [not yet clear][ada-unclear]
 exactly what that legal requirement means in practice, since it's
-mostly being decided through the courts. A similar law in the European Union
-is the [European Accessibility Act][europe-a11y].
+mostly being decided through the courts. In the UK, the [Equality Act
+2010][uk-a11y] established similar rules for websites, with stricter
+rules for government websites added in 2018. A similar law in the
+European Union is the [European Accessibility Act][europe-a11y].
 :::
 
 [sec508]: https://www.access-board.gov/law/ra.html#section-508-federal-electronic-and-information-technology
@@ -131,6 +133,7 @@ is the [European Accessibility Act][europe-a11y].
 [ada]: https://www.ada.gov/ada_intro.htm
 [a11yreg]: https://www.access-board.gov/ict/
 [ada-unclear]: https://www.americanbar.org/groups/law_practice/publications/law_practice_magazine/2022/jf22/vu-launey-egan/
+[uk-a11y]: https://www.siteimprove.com/glossary/uk-accessibility-laws/
 [europe-a11y]: https://ec.europa.eu/social/main.jsp?catId=1202
 
 CSS zoom

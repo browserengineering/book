@@ -28,8 +28,12 @@ class URL:
                 if "/" in dir:
                     dir, _ = dir.rsplit("/", 1)
             url = dir + "/" + url
-        return URL(self.scheme + "://" + self.host + \
-                   ":" + str(self.port) + url)
+        if url.startswith("//"):
+            return URL(self.scheme + ":" + url)
+        else:
+            return URL(self.scheme + "://" + self.host + \
+                       ":" + str(self.port) + url)
+
 
 def tree_to_list(tree, list):
     list.append(tree)

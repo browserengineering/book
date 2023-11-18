@@ -84,7 +84,6 @@ started:
 
 ``` {.python}
 if __name__ == "__main__":
-    import sys
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
     browser.new_tab(URL(sys.argv[1]))
@@ -236,8 +235,7 @@ That's because SDL doesn't have a `mainloop` or `bind` method; we have
 to implement it ourselves:
 
 ``` {.python}
-if __name__ == "__main__":
-    # ...
+def mainloop(browser):
     event = sdl2.SDL_Event()
     while True:
         while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
@@ -259,11 +257,20 @@ class Browser:
         sdl2.SDL_DestroyWindow(self.sdl_window)
 ```
 
-We'll also need to handle all of the other events in this
-loop---clicks, typing, and so on. The SDL syntax looks like this:
+Call `mainloop` in place of `tkinter.mainloop`:
 
 ``` {.python}
 if __name__ == "__main__":
+    # ...
+    mainloop(browser)
+```
+
+In place of all the `bind` calls in the `Browser` constructor, we can
+just directly call methods for various types of events, like clicks,
+typing, and so on. The SDL syntax looks like this:
+
+``` {.python}
+def mainloop(browser):
     while True:
         while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             # ...
@@ -278,14 +285,12 @@ if __name__ == "__main__":
                 browser.handle_key(event.text.text.decode('utf8'))
 ```
 
-This loop replaces all of the `bind` calls in the `Browser`
-constructor, which you can now remove. I've changed the signatures of
-the various event handler methods. For example, the `handle_click`
-method is now passed a `MouseButtonEvent` object, which thankfully
-contains `x` and `y` coordinates, while the `handle_enter` and
-`handle_down` methods aren't passed any argument at all, because we
-don't use that argument anyway. You'll need to change the `Browser`
-methods' signatures to match.
+I've changed the signatures of the various event handler methods. For
+example, the `handle_click` method is now passed a `MouseButtonEvent`
+object, which thankfully contains `x` and `y` coordinates, while the
+`handle_enter` and `handle_down` methods aren't passed any argument at
+all, because we don't use that argument anyway. You'll need to change
+the `Browser` methods' signatures to match.
 
 ::: {.further}
 SDL is most popular for making games. Their site lists [a selection of
@@ -835,7 +840,34 @@ class BlockLayout:
                 self.self_rect(), radius, bgcolor))
 ```
 
-Similar changes should be made to `InputLayout`.
+Similar changes should be made to `InputLayout`. So that's one thing
+Skia gives us: new rasterization features, meaning new shapes we can
+draw.
+
+Another feature natively supported by Skia is transparency. In CSS,
+you can use a hex color with eight hex digits to indicate that
+something should be drawn semi-transparently. For example, the
+color `#00000080` is 50% transparent black. Over a white background,
+that looks gray, but over an orange background it looks like this:
+
+<div style="background-color: #ffa500; color: #00000080">Test</div>
+
+Note that the text is a kind of dark orange. Skia supports these
+"RGBA" colors by setting the "alpha" field in the color:
+
+``` {.python}
+def parse_color(color):
+    elif color.startswith("#") and len(color) == 9:
+        r = int(color[1:3], 16)
+        g = int(color[3:5], 16)
+        b = int(color[5:7], 16)
+        a = int(color[7:9], 16)
+        return skia.Color(r, g, b, a)
+```
+
+Check that your browser can render the example above with slightly
+orange-tinged text. This demonstrates that the text is semitransparent
+and is letting some background color through.
 
 ::: {.further}
 Implementing high-quality raster libraries is very interesting in its own
@@ -1254,21 +1286,21 @@ generally does not use premultiplied representations, and the code below
 doesn't either. (Skia does represent colors internally in a premultiplied form,
 however.)
 
-
 ``` {.python file=examples}
 class Pixel:
     def source_over(self, source):
-        self.a = 1 - (1 - source.a) * (1 - self.a)
-        if self.a == 0: return self
+        new_a = source.a + self.a * (1 - source.a)
+        if new_a == 0: return self
         self.r = \
             (self.r * (1 - source.a) * self.a + \
-                source.r * source.a) / self.a
+                source.r * source.a) / new_a
         self.g = \
             (self.g * (1 - source.a) * self.a + \
-                source.g * source.a) / self.a
+                source.g * source.a) / new_a
         self.b = \
             (self.b * (1 - source.a) * self.a + \
-                source.b * source.a) / self.a
+                source.b * source.a) / new_a
+        self.a = new_a
 ```
 
 Here the destination pixel `self` is modified to blend in the source
@@ -1523,10 +1555,6 @@ fits perfectly. In code, destination-in looks like this:
 class Pixel:
     def destination_in(self, source):
         self.a = self.a * source.a
-        if self.a == 0: return self
-        self.r = (self.r * self.a * source.a) / self.a
-        self.g = (self.g * self.a * source.a) / self.a
-        self.b = (self.b * self.a * source.a) / self.a
 ```
 
 Now, in `paint_visual_effects`, we need to create a new layer, draw
@@ -1536,19 +1564,15 @@ with destination-in blending:
 ``` {.python expected=False}
 def paint_visual_effects(node, cmds, rect):
     # ...
-    border_radius = float(node.style.get("border-radius", "0px")[:-2])
     if node.style.get("overflow", "visible") == "clip":
-        clip_radius = border_radius
-    else:
-        clip_radius = 0
-
+        border_radius = float(node.style.get("border-radius", "0px")[:-2])
+        cmds.append(Blend("destination-in", [
+            DrawRRect(rect, border_radius, "white")
+        ]))
 
     return [
         Blend(blend_mode, [
             Opacity(opacity, cmds),
-            Blend("destination-in", [
-                DrawRRect(rect, clip_radius, "white")
-            ]),
         ]),
     ]
 ```
@@ -1639,24 +1663,9 @@ class Opacity:
 ```
 
 Similarly, `Blend` doesn't necessarily need to create a layer if
-there's no blending going on. But the logic here is a little trickier.
-Recall `paint_visual_effects`:
-
-``` {.python expected=False}
-def paint_visual_effects(node, cmds, rect):
-    # ...
-   return [
-        Blend(blend_mode, [
-            Opacity(opacity, cmds)
-            Blend("destination-in", [
-                DrawRRect(rect, clip_radius, "white")
-            ]),
-        ]),
-    ]
-```
-
-Here, the outer `Blend` operation not only applies blending but also
-isolates the element contents `cmds` so only they are clipped by
+there's no blending going on. But the logic here is a little trickier:
+`Blend` operation not only applies blending but also
+isolates the element contents `cmds`, which matters if they are being clipped by
 `overflow`. So let's skip creating a layer in `Blend` when there's no
 blending mode, but let's set the blend mode to a special, non-standard
 `source-over` value when we need clipping:
@@ -1664,9 +1673,9 @@ blending mode, but let's set the blend mode to a special, non-standard
 ``` {.python}
 def paint_visual_effects(node, cmds, rect):
     if node.style.get("overflow", "visible") == "clip":
-        clip_radius = border_radius
         if not blend_mode:
             blend_mode = "source-over"
+        # ...
 ```
 
 We'll parse that as the default source-over blend mode:
@@ -1738,17 +1747,16 @@ Now `paint_visual_effects` looks like this:
 def paint_visual_effects(node, cmds, rect):
     # ...
 
-   return [
-       Blend(opacity, blend_mode,
-            cmds + [
-            Blend(1.0, "destination-in", [
-                DrawRRect(rect, clip_radius, "white")
-            ]),
-        ]),
-    ]
+    if node.style.get("overflow", "visible") == "clip":
+        # ...
+        cmds.append(Blend(1.0, "destination-in", [
+            DrawRRect(rect, border_radius, "white")
+        ]))
+
+    return [Blend(opacity, blend_mode, cmds)]
 ```
 
-Note that I've specified an opacity of `1.0` to the inner `Blend`.
+Note that I've specified an opacity of `1.0` for the clip `Blend`.
 
 There's one more optimization to make: using Skia's `clipRRect`
 operation to get rid of the destination-in blended surface. This
@@ -1798,8 +1806,7 @@ it just changes the canvas state to change how commands are executed,
 in this case to clip those commands to a rounded rectangle.
 
 Let's wrap this pattern into a `ClipRRect` drawing command, which like
-`Blend` takes a list of subcommands and a `should_clip` parameter
-indicating whether the clip is necessary:[^save-clip]
+`Blend` takes a list of subcommands:[^save-clip]
 
 [^save-clip]: If you're doing two clips at once, or a clip and a
 transform, or some other more complex setup that would benefit from
@@ -1809,22 +1816,19 @@ doesn't create a surface it's still a big optimization here.
 
 ``` {.python}
 class ClipRRect:
-    def __init__(self, rect, radius, children, should_clip=True):
+    def __init__(self, rect, radius, children):
         self.rect = rect
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
         self.children = children
-        self.should_clip = should_clip
 
     def execute(self, canvas):
-        if self.should_clip:
-            canvas.save()
-            canvas.clipRRect(self.rrect)
+        canvas.save()
+        canvas.clipRRect(self.rrect)
 
         for cmd in self.children:
             cmd.execute(canvas)
 
-        if self.should_clip:
-            canvas.restore()
+        canvas.restore()
 ```
 
 Now, in `paint_visual_effects`, we can use `ClipRRect` instead of
@@ -1834,14 +1838,9 @@ fold the opacity into the `skia.Paint` passed to the outer
 
 ``` {.python}
 def paint_visual_effects(node, cmds, rect):
-    # ...
-    return [
-        Blend(opacity, blend_mode, [
-            ClipRRect(rect, clip_radius,
-                cmds,
-            should_clip=needs_clip),
-        ]),
-    ]
+    if node.style.get("overflow", "visible") == "clip":
+        # ...
+        cmds = [ClipRRect(rect, border_radius, cmds)]
 ```
 
 Of course, `clipRRect` only applies for rounded rectangles, while

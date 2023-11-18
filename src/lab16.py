@@ -41,7 +41,7 @@ from lab14 import parse_outline, DrawRRect, \
     paint_outline, \
     dpx, cascade_priority, \
     is_focusable, get_tabindex, speak_text, \
-    CSSParser, main_func, DrawOutline
+    CSSParser, mainloop, DrawOutline
 from lab15 import URL, HTMLParser, AttributeParser, DrawImage, \
     DocumentLayout, BlockLayout, \
     EmbedLayout, InputLayout, LineLayout, TextLayout, ImageLayout, \
@@ -114,19 +114,16 @@ def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style["opacity"].get())
     blend_mode = parse_blend_mode(node.style["mix-blend-mode"].get())
     translation = parse_transform(node.style["transform"].get())
-    border_radius = float(node.style["border-radius"].get()[:-2])
-    if node.style["overflow"].get() == 'clip':
-        clip_radius = border_radius
+
+    if node.style["overflow"].get() == "clip":
+        border_radius = float(node.style["border-radius"].get()[:-2])
         if not blend_mode:
             blend_mode = "source-over"
-    else:
-        clip_radius = 0
-    needs_clip = node.style['overflow'].get() == 'clip'
-    blend_op = Blend(opacity, blend_mode, node,
-        [ClipRRect(rect, clip_radius, cmds, should_clip=needs_clip)])
-    transform = Transform(translation, rect, node, [blend_op])
+        cmds = [ClipRRect(rect, border_radius, cmds)]
+
+    blend_op = Blend(opacity, blend_mode, node, cmds)
     node.blend_op = blend_op
-    return [transform]
+    return [Transform(translation, rect, node, [blend_op])]
 
 class ProtectedField:
     def __init__(self, obj, name, parent=None, dependencies=None,
@@ -592,7 +589,10 @@ class LineLayout:
         for child in self.children:
             new_y = self.y.read(notify=child.y)
             new_y += self.ascent.read(notify=child.y)
-            new_y += child.ascent.read(notify=child.y)
+            if isinstance(child, TextLayout):
+                new_y += child.ascent.read(notify=child.y) / 1.25
+            else:
+                new_y += child.ascent.read(notify=child.y)
             child.y.set(new_y)
 
         max_ascent = self.ascent.read(notify=self.height)
@@ -1357,4 +1357,7 @@ class Tab:
 
 if __name__ == "__main__":
     wbetools.parse_flags()
-    main_func(URL(sys.argv[1]))
+    sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
+    browser = Browser()
+    browser.new_tab(URL(sys.argv[1]))
+    mainloop(browser)

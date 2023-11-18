@@ -98,7 +98,7 @@ class Tab:
 ```
 
 ``` {.python expected=False}
-if __name__ == "__main__":
+def mainloop(browser):
     while True:
         # ...
         browser.active_tab.task_runner.run()
@@ -614,8 +614,7 @@ loop, after running a task on the active tab the browser will need to
 raster-and-draw, in case that task was a rendering task:
 
 ``` {.python expected=False}
-if __name__ == "__main__":
-    browser = Browser()
+def mainloop(browser):
     while True:
         # ...
         browser.active_tab.task_runner.run()
@@ -1552,7 +1551,7 @@ Luckily, that's exactly what we're doing:
 pipeline by means of the speed of its end is called *back pressure*.
 
 ``` {.python}
-if __name__ == "__main__":
+def mainloop(browser):
     while True:
         # ...
         browser.raster_and_draw()

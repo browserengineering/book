@@ -28,7 +28,7 @@ from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, parse_color, NAMED_COLORS, parse_blend_mode, linespace
 from lab11 import paint_tree
-from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
+from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner, mainloop
 from lab12 import Tab, Browser, Task, REFRESH_RATE_SEC, Chrome, JSContext
 
 @wbetools.patch(Text)
@@ -217,20 +217,17 @@ class DrawOutline(PaintCommand):
             self.thickness)
 
 class ClipRRect(VisualEffect):
-    def __init__(self, rect, radius, children, should_clip=True):
+    def __init__(self, rect, radius, children):
         super().__init__(rect, children)
-        self.should_clip = should_clip
         self.radius = radius
         self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
 
     def execute(self, canvas):
-        if self.should_clip:
-            canvas.save()
-            canvas.clipRRect(self.rrect)
+        canvas.save()
+        canvas.clipRRect(self.rrect)
         for cmd in self.children:
             cmd.execute(canvas)
-        if self.should_clip:
-            canvas.restore()
+        canvas.restore()
 
     def map(self, rect):
         bounds = rect.makeOffset(0.0, 0.0)
@@ -241,14 +238,10 @@ class ClipRRect(VisualEffect):
         return rect
 
     def clone(self, child):
-        return ClipRRect(self.rrect.rect(), self.radius, [child], \
-            self.should_clip)
+        return ClipRRect(self.rrect.rect(), self.radius, [child])
 
     def __repr__(self):
-        if self.should_clip:
-            return "ClipRRect({})".format(str(self.rrect))
-        else:
-            return "ClipRRect(<no-op>)"
+        return "ClipRRect({})".format(str(self.rrect))
 
 class Blend(VisualEffect):
     def __init__(self, opacity, blend_mode, node, children):
@@ -763,27 +756,15 @@ def paint_visual_effects(node, cmds, rect):
     translation = parse_transform(
         node.style.get("transform", ""))
 
-    border_radius = float(node.style.get("border-radius", "0px")[:-2])
     if node.style.get("overflow", "visible") == "clip":
-        clip_radius = border_radius
+        border_radius = float(node.style.get("border-radius", "0px")[:-2])
         if not blend_mode:
             blend_mode = "source-over"
-    else:
-        clip_radius = 0
+        cmds = [ClipRRect(rect, border_radius, cmds)]
 
-    needs_clip = node.style.get("overflow", "visible") == "clip"
-    needs_blend_isolation = blend_mode != skia.BlendMode.kSrcOver or \
-        needs_clip or opacity != 1.0
-
-    blend_op = Blend(opacity, blend_mode, node, [
-        ClipRRect(rect, clip_radius,
-                  cmds,
-                  should_clip=needs_clip),
-    ])
-    transform = Transform(translation, rect, node, [blend_op])
+    blend_op = Blend(opacity, blend_mode, node, cmds)
     node.blend_op = blend_op
- 
-    return [transform]
+    return [Transform(translation, rect, node, [blend_op])]
 
 SETTIMEOUT_CODE = "__runSetTimeout(dukpy.handle)"
 XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
@@ -1510,29 +1491,4 @@ if __name__ == "__main__":
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
     browser.new_tab(URL(sys.argv[1]))
-
-    event = sdl2.SDL_Event()
-    while True:
-        if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            if event.type == sdl2.SDL_QUIT:
-                browser.handle_quit()
-                sdl2.SDL_Quit()
-                sys.exit()
-                break
-            elif event.type == sdl2.SDL_MOUSEBUTTONUP:
-                browser.handle_click(event.button)
-            elif event.type == sdl2.SDL_KEYDOWN:
-                if event.key.keysym.sym == sdl2.SDLK_RETURN:
-                    browser.handle_enter()
-                elif event.key.keysym.sym == sdl2.SDLK_DOWN:
-                    browser.handle_down()
-            elif event.type == sdl2.SDL_TEXTINPUT:
-                browser.handle_key(event.text.text.decode('utf8'))
-        if not wbetools.USE_BROWSER_THREAD:
-            if browser.active_tab.task_runner.needs_quit:
-                break
-            if browser.needs_animation_frame:
-                browser.needs_animation_frame = False
-                browser.render()
-        browser.composite_raster_and_draw()
-        browser.schedule_animation_frame()
+    mainloop(browser)

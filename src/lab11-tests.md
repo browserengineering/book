@@ -33,7 +33,7 @@ Opacity can be applied.
     restore()
     drawString(text=), x=13.0, y=53.0, color=ff000000)
 
-So can `mix-blend-mode:multiply` and `mix-blend-mode: difference`.
+So can `mix-blend-mode: multiply` and `mix-blend-mode: difference`.
 
     >>> size_and_mix_blend_mode_url = 'http://test.test/size_and_mix_blend_mode'
     >>> test.socket.respond(size_and_mix_blend_mode_url, b"HTTP/1.0 200 OK\r\n" +
@@ -140,7 +140,10 @@ compositing applies a bit differently to the background and foreground
 colors. Likewise, the final alpha is a bit different than you might think.
 
     >>> red_semitransparent.copy().source_over(blue_semitransparent)
-    Pixel(0.5, 0.0, 0.6666666666666666, 0.75)
+    Pixel(0.3333333333333333, 0.0, 0.6666666666666666, 0.75)
+
+Note that the computed result matches
+https://drafts.fxtf.org/compositing-1/#example-9f8d7c4e
 
 Destination-in compositing ignores the source color except for its alpha
 channel, and multiplies the color of the backdrop by that alpha.
@@ -154,7 +157,7 @@ destination-in compositing yields the backdrop.
 But transparency multiplies.
 
     >>> red_opaque.copy().destination_in(blue_semitransparent)
-    Pixel(0.5, 0.0, 0.0, 0.5)
+    Pixel(1.0, 0.0, 0.0, 0.5)
 
 And of course, a fully transparent source color yields a full-zero result.
 
@@ -187,3 +190,40 @@ the blend to the color.
 
     >>> red_opaque.copy().difference(blue_opaque)
     Pixel(1.0, 0.0, 1.0, 1.0)
+
+Testing color parsing
+=====================
+
+Hex color parsing works:
+
+    >>> hex(lab11.parse_color("#123456"))
+    '0xff123456'
+    >>> hex(lab11.parse_color("#abcdef"))
+    '0xffabcdef'
+    >>> hex(lab11.parse_color("#ff0000"))
+    '0xffff0000'
+    >>> hex(lab11.parse_color("#00ff00"))
+    '0xff00ff00'
+    >>> hex(lab11.parse_color("#0000ff"))
+    '0xff0000ff'
+
+So do RGBA colors:
+
+    >>> hex(lab11.parse_color("#000000ff"))
+    '0xff000000'
+    >>> hex(lab11.parse_color("#00000000"))
+    '0x0'
+    >>> hex(lab11.parse_color("#12345678"))
+    '0x78123456'
+
+Some named colors are supported, too:
+
+    >>> hex(lab11.parse_color("blue"))
+    '0xff0000ff'
+    >>> hex(lab11.parse_color("red"))
+    '0xffff0000'
+    >>> hex(lab11.parse_color("black"))
+    '0xff000000'
+    >>> hex(lab11.parse_color("white"))
+    '0xffffffff'
+
