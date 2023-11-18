@@ -7,7 +7,7 @@ prev: skipped
 
 The web is a dynamic, ever-changing place. The first web browser, in
 1989, did not support colors, images, styling, or scripting. Three
-decades of evolution driven by market forces, implementation quirks,
+decades of market forces, implementation quirks,
 and the ever-expanding reach of the web then made browsers what they
 are today. Those forces are as strong as ever.  Browsers continue to evolve!
 

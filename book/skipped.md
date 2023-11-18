@@ -7,7 +7,7 @@ next: change
 
 The last sixteen chapters have, I hope, given you a solid understanding
 of all of the major components of a web browser, from the network
-requests it makes to way it stores your data and keeps it safe. With
+requests it makes to the way it stores your data safely. With
 such a vast topic I had to leave a few things out. Here's my list of
 the most important things not covered by this book, in no particular
 order.
@@ -22,7 +22,7 @@ using runtime type analysis. Plus, techniques like hidden classes
 infer structure where JavaScript doesn't provide any, lowering memory
 usage and garbage collection pressure. On top of all of that, modern
 browsers also execute WebAssembly, a hardware-independent bytecode format
-target for many other programming languages that may one day be co-equal
+for many other programming languages to target, and which may one day be co-equal
 to JavaScript on the web.
 
 This book skips building the JavaScript engine, instead using DukPy. I
@@ -37,7 +37,7 @@ Text & Graphics Rendering
 
 Text rendering is much more complex than it may seem at the surface.
 Letters differ in widths and heights. Accents may need to be stacked
-atop characters. Characters may change shape by proximity to other
+atop characters. Characters may change shape when next to other
 characters, like for ligatures or for *shaping* (for cursive fonts).
 Sometimes languages are written right-to-left or top-to-bottom. Then
 there are typographic features, like kerning and variants. But the
@@ -47,7 +47,7 @@ grid. Text rendering of course affects Skia, but it also affects
 layout, determining the size and position of content on the screen.
 
 And more broadly, graphics in general is pretty complex! Our
-browser uses Skia, which is the real rasterization engine of Chromium
+browser uses Skia, which is the actual rasterization engine used by Chromium
 and some other browsers. But we didn't really talk at all about how
 Skia actually works, and it turns out to be pretty complex. It not
 only renders text but applies all sorts of blends and effects quickly
@@ -55,7 +55,7 @@ and with high quality on basically all CPUs and GPUs. In a real
 browser this becomes even more complex, with fancy compositing
 systems, graphics process security sandboxing, and various
 platform-specific font and OS compositing integrations. And there is a
-whole lot of additional effort to implementation lower-level
+whole lot of additional effort to implement lower-level
 JavaScript-exposed APIs like [Canvas], [WebGL], and [WebGPU].
 
 [Canvas]: https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API
@@ -76,7 +76,7 @@ protocols with bewildering names like AES-GCM, ChaCha20, and
 HMAC-SHA512. These protocols protect against malicious actors with the
 ability to read or write network packets. At the broadest
 level, connection security is established via the TLS protocol (which
-cameos in [Chapter 1](http.md)) and maintained by an ecosystem of
+cameos in [Chapter 1](http.md)) and is maintained by an ecosystem of
 cryptographers, certificate authorities, and open-source projects.
 
 I chose to skip an in-depth discussion of TLS because this book's
@@ -119,8 +119,8 @@ world of complexity in real-time video encoding, decoding and
 rendering. Real browsers have large teams devoted to these services
 and APIs, and many researchers across the world work on video
 compression. Video codecs are fascinating, but again not very
-browser-specific, so this book skips it entirely, and I suggest
-dedicated books on these subjects.
+browser-specific, so this book skips them entirely, and I advise
+reading a dedicated book about them.
 
 Fancier Layout Modes
 ====================
@@ -147,7 +147,7 @@ much about.
     example of multi-phase layout, and real browsers have much more
     complex sets of layout phases.
 
-Browser UIs and Developer tools
+Browser UIs and Developer Tools
 ===============================
 
 A real browser has a *much* more complex and powerful "browser
@@ -164,9 +164,9 @@ developers to extend the browser UI. To help with that, browser UIs
 are often implemented in HTML and rendered by the browser itself.
 
 Also, it'd be almost impossible to build complex web apps without some
-kind of debugging aid, so all real browsres have built-in debuggers.
-Believe it or not, for quite a long time browser engineers just did a
-lot of [printf debugging][printf]. This changed in a big way with the
+kind of debugging aid, so all real browsers have built-in debuggers.
+Believe it or not, for quite a long time we developers just did a
+lot of [`console.log` debugging][printf] (or even `alert` debugging, before there was an easy way to see the console!). This changed in a big way with the
 innovative [Firebug] browser extension for Firefox, and eventually
 today's integrated developer tools. These developer tools have deep
 integration with the browser engine itself to implement features like
@@ -189,7 +189,7 @@ Testing
 
 Real browsers have evolved an incredibly impressive array of testing
 techniques to ensure they maintain and improve quality over time. In total,
-they have batteries of hundreds of thousands of [unit], and [integration] tests.
+they have batteries of hundreds of thousands of [unit] and [integration] tests.
 Recently, a lot of focus has been put on robust
 [cross-browser tests](https://wpt.fyi) that allow a single automated test
 to run on all browsers to verify that they all behave the same on the same
