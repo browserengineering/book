@@ -5,8 +5,8 @@ prev: embeds
 next: skipped
 ...
 
-We [used compositing](animations.md) to make animations smoother, but
-that doesn't help with interactions that affect layout, like text
+[Compositing](animations.md) makes animations smoother, but
+it doesn't help with interactions that affect layout, like text
 editing or DOM modifications. Luckily, we can avoid redundant layout
 work by treating the layout tree as a kind of cache, and only
 recomputing the parts that change. This *invalidation*\index{invalidation}
@@ -18,10 +18,11 @@ Editing Content
 
 In [Chapter 13](animations.md), we used compositing to smoothly
 animate CSS properties like `transform` or `opacity`. But we couldn't
-animate _layout-inducing_ properties this way because they change not
+animate _layout-inducing_ properties like `width` or `font-size` this
+way because they change not
 only the _display list_ but also the _layout tree_. And while it's
 best to avoid animating layout-inducing properties, many user
-interactions need to be responsive but change the layout tree.
+interactions that change the layout tree need to be responsive.
 
 One good example is editing text. People type pretty quickly, so even
 a few frames' delay is distracting. But editing changes the HTML tree
@@ -134,7 +135,7 @@ Here, `DrawCursor` is just a wrapper around `DrawLine`:
 ``` {.python replace=.x/.x.get(),.y/.y.get(),.height/.height.get()}
 def DrawCursor(elt, offset):
     x = elt.x + offset
-    return DrawLine(x, elt.y, x, elt.y + elt.height, "black", 1)
+    return DrawLine(x, elt.y, x, elt.y + elt.height, "red", 1)
 ```
 
 We might as well also use this wrapper in `InputLayout`:
@@ -168,7 +169,7 @@ Fundamentally, the reason editing this page is slow in our browser is
 that it's pretty big. After all, it's not handling the
 keypress that's slow: appending a character to a `Text` node takes
 almost no time. What takes time is re-rendering the whole page
-afterwards. On a big page, even tiny changes can take a long time.
+afterwards.
 
 We want interactions to be fast, even on large, complex pages, so we
 want re-rendering the page to take time proportional to the *size of
@@ -178,7 +179,9 @@ handling large and complex web applications. Not only does it make
 text editing fast, it also means that developers can think about
 performance one change at a time, without considering the contents of
 the whole page. Incremental performance is therefore necessary for
-complex applications. But the principle of incremental performance
+complex applications.
+
+But the principle of incremental performance
 also really constrains our browser implementation. For example, even
 *traversing* the whole layout tree would take time proportional to the
 whole page, not the change being made, so we can't even afford to do that.
@@ -189,13 +192,15 @@ the page is first loaded, rendering will take time proportional to the
 size of the page. But we'll treat that initial render as a cache.
 Later renders will *invalidate* and recompute parts of that cache,
 taking time proportional to the size of the change, but won't touch
-most of the page.[^other-reasons]
+most of the page.[^other-reasons] In a real browser, every step of the
+rendering pipeline needs to be
+incremental, but this chapter focuses on layout.[^why-layout] 
 
 [^big-change]: While initial and later renders are in some ways
     conceptually different, they'll use the same code path.
     Basically, the initial render will be one big change from no page
     to the initial page, while later re-renders will handle smaller
-    changes. And anyway, a page could use `innerHTML` to replace the
+    changes. After all, a page could use `innerHTML` to replace the
     whole page; that would be a big change, and rendering it would take
     time proportional to the whole page, because the change is the size
     of the whole page! The point is: all of these will ultimately use
@@ -205,7 +210,7 @@ most of the page.[^other-reasons]
     improvements possible without implementing the invalidation
     techniques from this chapter, but invalidation is still essential
     for incremental performance, which is a kind of asymptotic
-    guarantee that simple optimizations won't achieve.
+    guarantee that optimization alone won't achieve.
 
 The key to this cache-and-invalidate approach will be tracking the
 effects of changes. When one part of the page, like a `style`
@@ -213,11 +218,9 @@ attribute, changes, other things that depends on it, like that
 element's size, change as well. So we'll need to construct a detailed
 *dependency graph*, down to the level of each layout field, and use
 that graph to determine what to recompute. It will be similar to our
-`needs_style` and `needs_layout` flags, but with many more fields.
-
-In a real browser, every step of the rendering pipeline needs to be
-incremental, but this chapter focuses on layout.[^why-layout] Most of
-this chapter is about tracking dependencies in the dependency graph,
+`needs_style` and `needs_layout` flags, scaled way up.
+Most of
+this chapter is thus about tracking dependencies in the dependency graph,
 and building abstractions to help us do that. To use those
 abstractions, we'll need to refactor our layout engine significantly.
 But incrementalizing layout will allow us to skip the two
@@ -259,7 +262,7 @@ class Frame:
             # ...
 ```
 
-By creating a new `DocumentLayout`, we ignore all of the old layout
+By starting over with a new `DocumentLayout`, we ignore all of the old layout
 information and start from scratch; we are essentially *invalidating*
 the whole tree. So our first optimization has to be avoiding that,
 reusing as many layout objects as possible. That both saves time
@@ -271,7 +274,7 @@ are created. Search your browser code for `Layout`, which all layout
 class names end with. You should see that layout objects are created
 in just a few places:
 
-- `DocumentLayout` objects are created by the `Tab` in `render`.
+- `DocumentLayout` objects are created by the `Frame` in `render`.
 - `BlockLayout` objects are created by either:
   - a `DocumentLayout`, in `layout`, or
   - a `BlockLayout`, in `layout`.
@@ -396,11 +399,12 @@ idempotent. I found:[^exercises]
 The `new_line` and `add_inline_child` methods are only called through
 `layout`, which resets the `children` array, so they don't break
 idempotency. The `get_font` function acts as a cache, so multiple
-calls return the same font object. And `display_px` just does math, so
+calls return the same font object, maintaining idempotency.
+And `dpx` just does math, so
 it always returns the same result given the same inputs. In other
 words all of our `layout` methods are now idempotent.
 
-Because all of the `layout` methods are now idempotent, it's safe to
+It's therefore safe to
 call `layout` multiple times on the same object---which is exactly
 what we're now doing. More generally, since it doesn't matter _how
 many_ times an idempotent function is called, we can *skip redundant
@@ -429,7 +433,7 @@ Dependencies
 
 So far, we're only reusing two layout objects: the `DocumentLayout`,
 and the root `BlockLayout`. Let's look at the other `BlockLayout`s,
-created when laying out a `BlockLayout`:
+created here:
 
 ``` {.python file=lab15 dropline=self.children%20%3d}
 class BlockLayout:
@@ -448,7 +452,7 @@ class BlockLayout:
 This code is a little more complicated than the code that creates the
 root `BlockLayout`: the `child` and `previous` arguments come from
 `node.children`, and that `children` array can change---as a result of
-`contenteditable` edits or calls to `innerHTML`.[^or-others] Moreover,
+`contenteditable` edits or `innerHTML` calls.[^or-others] Moreover,
 in order to even run this code, the node's `layout_mode` has to be
 `block`, and `layout_mode` itself also reads the node's
 `children`.[^and-tags] This makes it harder to know when we need to
@@ -526,7 +530,7 @@ about which fields depend on which others. But if we do forget to set
 the dirty bit, we'll sometimes fail to recompute the protected
 fields, which means we'll display the page incorrectly. Typically
 these bugs look like unpredictable layout glitches, and they can be
-very hard to debug---so let's be careful.
+very hard to debug---so we need to be careful.
 
 Anyway, now that we're setting the dirty flag, the next step is
 checking it before using the protected field.
@@ -559,7 +563,9 @@ you'd rather that trigger a crash rather than a subtly incorrect
 rendering---at least when debugging a toy browser![^no-crash]
 
 [^no-crash]: Real browsers prefer not to crash, however---better a 
-slightly wrong page than a browser that is crashing all the time.
+slightly wrong page than a browser that is crashing all the time. So
+in release mode browsers turn off these assertions, or at least make
+them not crash the browser.
 
 Finally, when the field is recomputed we need to reset the dirty flag.
 Here, we reset the flag when we've recomputed the `children` array:
@@ -589,13 +595,7 @@ class BlockLayout:
     def layout(self):
         if mode == "block":
             if self.children_dirty:
-                self.children = []
-                previous = None
-                for child in self.node.children:
-                    next = BlockLayout(child, self, previous,
-                        self.frame)
-                    self.children.append(next)
-                    previous = next
+                # ...
                 self.children_dirty = False
 ```
 
@@ -622,8 +622,8 @@ Protected fields
 
 Dirty flags like `children_dirty` are the traditional approach to
 layout invalidation, but they have downsides. Using them correctly
-means paying attention to the dependencies between fields and when
-each is read from and written to. And it's easy to forget to check or
+means paying attention to the dependencies between fields and knowing when
+each field is read from and written to. And it's easy to forget to check or
 set a dirty flag, which leads to hard-to-find bugs. In our simple
 browser, it could probably be done, but a real browser's layout system
 is much more complex, and mistakes become almost impossible to avoid.
@@ -661,8 +661,7 @@ class ProtectedField:
 
 Note the early return: marking an already-dirty field doesn't do
 anything. That'll become relevant later.
-
-Call `mark` in `innerHTML_set` and `keypress`:
+Now call `mark` in `innerHTML_set` and `keypress`:
 
 ``` {.python}
 class JSContext:
@@ -737,8 +736,8 @@ class BlockLayout:
 
 But the benefit is that `set`, much like `get`, automates the dirty
 flag operations, making them hard to mess up. That makes it possible
-to think about more complex and ambitious invalidation algorithms to
-make layout faster.
+to think about more complex and ambitious invalidation algorithms in
+order to make layout faster.
 
 ::: {.further}
 [Under-invalidation][under-invalidation] is the technical name for
@@ -759,7 +758,7 @@ Recursive invalidation
 
 Let's leverage the `ProtectedField` class to avoid re-creating all of
 the `LineLayout`s and their children every time inline layout happens.
-It all starts with this `if` statement:
+It all starts here:
 
 ``` {.python file=lab15 ignore=self.children}
 class BlockLayout:
@@ -772,14 +771,19 @@ class BlockLayout:
             self.recurse(self.node)
 ```
 
-These lines handle line wrapping: they check widths, create new lines,
-and so on. That can be pretty slow, so we'd like to skip it if the
-`children` field isn't dirty. That means the `children` field will
-depend on any field read during line wrapping, and so we'll want all
-of those fields to be `ProtectedField`s.
+The `new_line` and `recurse` methods, and the helpers they call like
+`word`, `input`, `iframe`, `image`, and `add_inline_child`, handle
+line wrapping: they check widths, create new lines,
+and so on. We'd like to skip all that if the
+`children` field isn't dirty, but this will be a bit more challenging
+that for block layout mode: lots of different fields are read during
+line wrapping, and the `children` field depends on all of them.
 
-Let's start with `zoom`, which almost every method reads. Zoom is
-initially set in `DocumentLayout`:
+Converting all of those fields into `ProtectedField`s
+will be a challenging project. We'll take it bit by bit, starting with
+`zoom`, which almost every method reads.
+
+Zoom is initially set in `DocumentLayout`:
 
 ``` {.python ignore=ProtectedField}
 class DocumentLayout:
@@ -817,9 +821,9 @@ class BlockLayout:
 ```
 
 However, recall that with dirty flags we must always think about
-setting them, checking them, and resetting them. The `get` method
-automatically checks the dirty flag, and the `set` method
-automatically resets it, but who *marks* the `zoom` dirty flag?[^why-mark]
+setting them (with `mark`), checking them (with `get`), and resetting
+them (with `set`). We've added `get` and `set`, but who *marks* the
+`zoom` dirty flag?[^why-mark]
 
 [^why-mark]: Without marking them when they change, we will
     incorrectly skip too much layout work.
@@ -829,7 +833,18 @@ We mark a field's dirty flag when its dependency changes. For example,
 tree's `children` field depends on, so those handlers call `mark` on
 the `children` field. Since a child's `zoom` field depends on its
 parents' `zoom` field, we need to mark all the children when the
-`zoom` field changes:
+`zoom` field changes. So in `DocumentLayout`, we have to do:
+
+``` {.python .example}
+class DocumentLayout:
+    def layout(self, width, zoom):
+        # ...
+        self.zoom.set(zoom)
+        child.zoom.mark()
+        # ...
+```
+
+Similarly, in `BlockLayout`, which has multiple children, we must do:
 
 ``` {.python .example}
 class BlockLayout:
@@ -924,7 +939,8 @@ class BlockLayout:
 
 `BlockLayout` also reads from the `zoom` field inside the `input`,
 `image`, `iframe`, `word`, and `add_inline_child` methods, which are
-all part of computing the `children` field. We can use `read` to read
+all part of computing the `children` field. In those methods, we can
+use `read` to both get
 the zoom value and also invalidate the `children` field if the zoom
 value ever changes:
 
@@ -937,13 +953,13 @@ class BlockLayout:
 
 Do the same in each of the other methods mentioned above. Also, go and
 protect the `zoom` field on every other layout object type (there are
-now quite a few!) using `copy` in place of writes and `get` in place
-of `read`s. Run your browser and make sure that nothing crashes, even
+now quite a few!) using `copy` in place of writes and `read` in place
+of `get`s. Run your browser and make sure that nothing crashes, even
 when you increase or decrease the zoom level, to make sure you got it
 right.
 
 Now---protecting the `zoom` field did not speed our browser up. We're
-still copying the zoom level around as before as well as some extra
+still copying the zoom level around, plus we're now doing some extra
 work checking dirty flags and updating invalidations. But protecting
 the `zoom` field means we can invalidate `children`, and other fields
 that depend on it, when the zoom level changes, which will help tell
@@ -964,7 +980,7 @@ new approaches.
 Protecting widths
 =================
 
-Another field that Line wrapping depends on is `width`. Let's convert
+Another field that line wrapping depends on is `width`. Let's convert
 that to a `ProtectedField`, using the new `read` method along the way.
 Like `zoom`, `width` is initially set in `DocumentLayout`:
 
@@ -997,7 +1013,7 @@ class BlockLayout:
 ```
 
 The `width` field is read during line wrapping. For example,
-`add_inline_child` reads from the `width` to determine whether to add
+`add_inline_child` needs it to determine whether to add
 a new line. We'll use `read` to set up that dependency:
 
 ``` {.python}
@@ -1016,7 +1032,7 @@ If you look through `add_inline_child`'s callers, you'll see that most
 of the time, this argument just depends on `zoom`, but in `word` it
 depends on a font object:
 
-``` {.python replace=node.style/self.children%2c%20node.style}
+``` {.python replace=zoom)/zoom%2c%20notify%3dself.children)}
 class BlockLayout:
     def word(self, node, word):
         zoom = self.zoom.read(notify=self.children)
@@ -1059,7 +1075,7 @@ def style(node, rules, frame):
         style(child, rules, frame)
 ```
 
-Inside `style`, a couple of lines read from the parent node's style.
+Inside `style`, one code path reads from the parent node's style.
 We need to mark dependencies in these cases:
 
 ``` {.python expected=False}
@@ -1088,7 +1104,7 @@ class JSContext:
 Finally, in `word` (and also in similar code in `add_inline_child`) we
 can depend on the `style` field:
 
-``` {.python dropline=read(node.style) replace=style/self.children%2c%20node.style}
+``` {.python dropline=read(node.style) replace=style/node.style,zoom/zoom%2c%20notify%3dself.children}
 class BlockLayout:
     def word(self, node, word):
         # ...
@@ -1204,7 +1220,7 @@ constructing a layout tree and then a separate [fragment
 tree][fragment-tree].[^our-book-simple] In Chromium, the fragment tree
 is immutable, and invalidation is done by comparing the previous
 and new fragment trees instead of by using dirty flags, though the
-overall algorithm ends up pretty similar to what this book describes.
+effect of that is pretty similar to what this book describes.
 :::
 
 [fragment-tree]: https://developer.chrome.com/articles/renderingng-data-structures/#the-immutable-fragment-tree
@@ -1216,8 +1232,8 @@ overall algorithm ends up pretty similar to what this book describes.
 Widths for inline elements
 ==========================
 
-At this point, `BlockLayout`'s `width` field is
-protected but not for other layout object types. Let's fix that, because
+At this point, `BlockLayout` has a protected `width` field,
+but other layout object types do not. Let's fix that, because
 we'll need it later. `LineLayout` is pretty easy:
 
 ``` {.python ignore=ProtectedField}
@@ -1317,12 +1333,10 @@ need to think about monads in general, just `ProtectedField`.
 Invalidating layout fields
 ==========================
 
-Not re-building the layout tree saves some layout work and potentially
-also some memory, but we still don't satisfy the principle of
-incremental performance because we still have to *traverse* the whole
-layout tree every time we do layout. We'd like to use invalidation to
-skip that traversal, too, but that means we have to protect any layout
-field read during `paint`, including `x`, `y`, and `height`.
+While we're here, let's take a moment to protect all of the other layout
+fields, including `x`, `y`, and `height`. Once we've done that, we'll
+be ready to talk about speeding up layout even further by skipping
+unnecessary traversals.
 
 As with `width`, let's start with `DocumentLayout` and `BlockLayout`.
 First, `x` and `y` positions. In `DocumentLayout`, just use `set`:
@@ -1411,16 +1425,18 @@ class BlockLayout:
         self.height.set(new_height)
 ```
 
-Note that we have to `read` the `children` field before using it.
-That's because `height`, unlike the previous layout fields, depends on
-the children's fields, not the parent's. Luckily, just using the
-`ProtectedField` methods handles this correctly.
+Note that in this last code block, we first `read` the `children`
+field, then iterate over the list of children and `read` each of their
+`height` fields. The `height` field, unlike the previous layout
+fields, depends on the children's fields, not the parent's, and that's
+how we correctly iterate over children.
 
 So that's all the layout fields on `BlockLayout` and `DocumentLayout`.
 Do go through and fix up these layout types' `paint` methods (and also
 the `DrawCursor` helper)---but note that the browser won't quite run
 right now, because the `BlockLayout` assumes its children's `height`
 fields are protected, but if those fields are `LineLayout`s they aren't.
+Let's get to that next.
 
 ::: {.further}
 
@@ -1429,7 +1445,8 @@ another option is to keep track of *delta*s. For example, in the
 [Adapton][adapton] project, each computation that converts inputs to
 outputs can also convert input deltas to output deltas. [Operational
 Transform][ot], the collaboration technology behind Google Docs, also
-works using this principle. However, dirty flags can be implemented
+works using this principle, as does [differential dataflow][dd] in
+databases. However, dirty flags can be implemented
 with much less memory overhead, which makes them a better fit in
 browsers.
 
@@ -1437,6 +1454,7 @@ browsers.
 
 [adapton]: http://adapton.org/
 [ot]: https://en.wikipedia.org/wiki/Operational_transformation
+[dd]: https://www.microsoft.com/en-us/research/publication/differential-dataflow/
 
 Protecting inline layout
 ========================
@@ -1444,19 +1462,12 @@ Protecting inline layout
 We need to protect `LineLayout`s', `TextLayout`s', and `EmbedLayout`s'
 fields too, and their `layout` methods work a little differently. Yes,
 each of these layout objects has `x`, `y`, and `height` fields. But
-they also compute `font` fields and have `get_ascent` and
-`get_descent` methods that are called by other layout objects. We'll
-have to protect all of these.[^dps] Since we now have quite a bit of
+they also compute `font`, `ascent`, and `descent` fields
+that are used by other layout objects. We'll
+have to protect all of these. Since we now have quite a bit of
 `ProtectedField` experience, we'll do all the fields in one go.
 
-[^dps]: This means we'll rewrite `get_ascent` and `get_descent` from
-    methods into fields. It's possible to protect methods as well,
-    using something called "destination passing style", where the
-    destination of a method's return value is passed to it as an
-    argument, somewhat like out parameters in C. But converting to
-    fields is usually cleaner.
-
-Let's start with `TextLayout`. Note the new `ascent` and `descent` fields:
+Let's start with `TextLayout`:
 
 ``` {.python ignore=ProtectedField}
 class TextLayout:
@@ -1474,16 +1485,14 @@ class TextLayout:
 We'll need to compute these fields in `layout`. All of the
 font-related ones are fairly straightforward:
 
-``` {.python dropline=self.node.style.read(notify%3dself.font) replace=font(style/font(self.font%2c%20self.node.style}
+``` {.python dropline=self.node.style.read(notify%3dself.font) replace=style/self.node.style,zoom))/zoom%2c%20notify%3dself.font))}
 class TextLayout:
     def layout(self):
         # ...
 
         zoom = self.zoom.read(notify=self.font)
         style = self.node.style.read(notify=self.font)
-
-        f = self.font.read(notify=self.width)
-        self.width.set(f.measureText(self.word))
+        self.font.set(font(style, zoom))
 
         f = self.font.read(notify=self.ascent)
         self.ascent.set(f.getMetrics().fAscent * 1.25)
@@ -1502,7 +1511,7 @@ establishes a dependency for one layout field upon another. I like to
 think of each `f` as being scoped to its field's computation.
 
 We also need to compute the `x` position of a `TextLayout`. That can
-use the previous sibling's font, x position, and width:
+use the previous sibling's font, *x* position, and width:
 
 ``` {.python}
 class TextLayout:
@@ -1518,50 +1527,22 @@ class TextLayout:
             self.x.copy(self.parent.x)
 ```
 
-`EmbedLayout` is basically identical, except that its `ascent` and
-`descent` are simpler. However, there's a bit of a catch with how
-`EmbedLayout`'s subclasses work: `EmbedLayout` handles computing the
-`zoom`, `x`, `y`, and `font` fields, each subclass handles
-computing the `width` and `height` fields, and then the `ascent` and
-`descent` are also handled by `EmbedLayout` but depend on `height`.
+`EmbedLayout` is basically identical. As for its
+subclasses, here's `InputLayout`:
 
-To handle this, I'll split the `EmbedLayout`'s `layout` method into a
-`layout_before` method, containing `zoom`, `x`, `y`, and `font`, and a
-new `layout_after` method that computes `ascent` and `descent`:
-
-``` {.python}
-class EmbedLayout:
-    def layout_before(self):
-        # ...
-    
-    def layout_after(self):
-        height = self.height.read(notify=self.ascent)
-        self.ascent.set(-height)
-        
-        self.descent.set(0)
-```
-
-Each of the `EmbedLayout` subclasses can call `layout_before` at the
-start of `layout` and `layout_after` at the end. Here's `InputLayout`,
-but make the same change to each one:
-
-``` {.python}
+``` {.python replace=super().layout()/EmbedLayout.layout(self)}
 class InputLayout(EmbedLayout):
     def layout(self):
-        self.layout_before()
-        # ...
-        self.layout_after()
-```
+        super().layout()
+        zoom = self.zoom.read(notify=self.width)
+        self.width.set(dpx(INPUT_WIDTH_PX, zoom))
 
-As for computing height in subclasses, here's `InputLayout`:
-
-``` {.python}
-class InputLayout(EmbedLayout):
-    def layout(self):
-        # ...
         font = self.font.read(notify=self.height)
         self.height.set(linespace(font))
-        # ...
+
+        height = self.height.read(notify=self.ascent)
+        self.ascent.set(-height)
+        self.descent.set(0)
 ```
 
 And here's `ImageLayout`; it has an `img_height` field, which I'm
@@ -1574,9 +1555,14 @@ class ImageLayout(EmbedLayout):
         # ...
         font = self.font.read(notify=self.height)
         self.height.set(max(self.img_height, linespace(font)))
+
+        height = self.height.read(notify=self.ascent)
+        self.ascent.set(-height)
+        self.descent.set(0)
 ```
 
-Finally, here's `IframeLayout`, which is straightforward:
+Finally, here's how `IframeLayout` computes its height, which is
+straightforward:
 
 ``` {.python}
 class IframeLayout(EmbedLayout):
@@ -1655,7 +1641,7 @@ class LineLayout:
 ```
 
 Note that we don't need to `read` the `children` field because in
-`LineLayout` it isn't protected it's filled in by `BlockLayout` when
+`LineLayout` it isn't protected; it's filled in by `BlockLayout` when
 the `LineLayout` is created, and then never modified.
 
 Next, let's compute the maximum ascent and descent:
@@ -1704,7 +1690,7 @@ protected. Just like before, make sure all uses of these fields use
 `read` and `get` and that your browser still runs, including during
 `contenteditable`. You will likely need to now fix a few uses of
 `height` and `y` inside `Frame` and `Tab`, like for clamping scroll
-positions.
+offsets.
 
 ::: {.further}
 
@@ -1937,8 +1923,8 @@ class ProtectedField:
         self.parent = parent
 ```
 
-For each layout object type, pass the parameter for each `ProtectedField`.
-Here's `BlockLayout`, for example:
+Make sure to pass this parameter for each `ProtectedField` in each
+layout object type. Here's `BlockLayout`, for example:
 
 ``` {.python expected=False}
 class BlockLayout:
@@ -1970,10 +1956,10 @@ class ProtectedField:
 
 Note that the `while` loop exits early if the descendants bit is
 already set. That's because whoever set _that_ bit already set all the
-ancestors' descendant dirty bits, so we don't need to do that too.^[This
-optimization is important in real browsers, because otherwise repeated
-invalidation before the next render would use time more than the size of
-the layout tree, violating the principle of incremental performance.]
+ancestors' descendant dirty bits.^[This
+optimization is important in real browsers. Without it, repeatedly
+invalidating the same object would walk up the tree to the root repeatedly,
+violating the principle of incremental performance.]
 
 We'll need to clear the descendant bits after `layout`:
 
@@ -2048,7 +2034,7 @@ class Tab:
             frame.document.zoom.mark()
 ```
 
-Skipping unneeded `layout` methods should provide a bit of a speed
+Skipping unneeded `layout` methods should provide a noticable speed
 bump, with small edits now taking less than a millisecond to update
 layout and editing now much smoother.[^other-phases]
 
@@ -2061,7 +2047,7 @@ layout and editing now much smoother.[^other-phases]
 pattern][observer-pattern], where one piece of code runs a callback
 when a piece of state changes. This pattern is [common in UI
 frameworks][kvo]. Usually these observers *eagerly* recompute
-dependent results, but our callbacks--`mark` and `notify`---simply set a
+dependent results, but our callbacks---`mark` and `notify`---simply set a
 dirty bit to be cleaned up later. That means our invalidation
 algorithm is a kind of [*lazy* observer][lazy-eval]. Laziness helps
 performance by batching updates.
@@ -2116,7 +2102,7 @@ CSS_PROPERTIES = {
 ```
 
 When setting the `style` property from JavaScript, I'll invalidate all
-of the fields, by calling a new `dirty_style` function:
+of the fields by calling a new `dirty_style` function:
 
 ``` {.python}
 def dirty_style(node):
@@ -2242,7 +2228,7 @@ properties of `style`. To keep things compact, I'm going to rewrite
 `font` to pass in the field to invalidate as an argument:
 
 ``` {.python}
-def font(notify, css_style, zoom):
+def font(css_style, zoom, notify):
     weight = css_style['font-weight'].read(notify)
     style = css_style['font-style'].read(notify)
     try:
@@ -2260,7 +2246,7 @@ requesting a font during line breaking:
 class BlockLayout:
     def word(self, node, word):
         zoom = self.zoom.read(notify=self.children)
-        node_font = font(self.children, node.style, zoom)
+        node_font = font(node.style, zoom, notify=self.children)
         # ...
 ```
 
@@ -2271,7 +2257,7 @@ class TextLayout:
     def layout(self):
         if self.font.dirty:
             zoom = self.zoom.read(notify=self.font)
-            self.font.set(font(self.font, self.node.style, zoom))
+            self.font.set(font(self.node.style, zoom, notify=self.font))
 ```
 
 Make sure to update all other uses of the `font` method to this new
@@ -2307,9 +2293,9 @@ changes, that may also need to be invalidated.[^our-browser] Browsers
 have clever algorithms to avoid redoing selector matching for every
 selector on the page. For example, Chromium constructs [*invalidation
 sets*][invalidation-set] for each selector, which tell it which
-elements to recheck each selector on. New selectors such as `:has()`
-make invalidation [more complicated][has-invalidation], but this
-complexity is necessary for fast re-styles.
+selector-element matches to recheck. New selectors such as `:has()`
+require [more complicated][has-invalidation] invalidation strategies,
+but this complexity is necessary for fast re-styles.
 
 :::
 
@@ -2329,9 +2315,9 @@ get invalidated from any given operation. That makes it hard to
 understand which operations are fast and which are slow, especially as
 we add new style and layout features. This *auditability* concern
 happens in real browsers, too. After all, real browsers are millions,
-not thousands, of lines long, and support thousands, not just a
-couple, of CSS properties. Their dependency graphs are therefore
-dramatically more complex than in our browser.
+not thousands, of lines long, and support thousands of CSS properties.
+Their dependency graphs are
+dramatically more complex our browser's.
 
 We'd therefore like to make it easier to see the dependency graph.
 And along the way we can centralize *invariants* about the shape of
@@ -2360,7 +2346,7 @@ dependencies, just checks that they were declared:
 class ProtectedField:
     def __init__(self, obj, name, parent=None, dependencies=None):
         # ...
-        self.frozen_dependencies = dependencies != None
+        self.frozen_dependencies = (dependencies != None)
         if dependencies != None:
             for dependency in dependencies:
                 dependency.invalidations.add(self)
@@ -2394,8 +2380,8 @@ But note that `height` is missing the dependencies parameter. A
 `DocumentLayout`'s height depends on its child's height, and that
 child doesn't exist until `layout` is called. "Downward" dependencies
 like this mean we can't freeze every `ProtectedField` when it's
-constructed. But the more protected fields we freeze, the easier the
-dependency graph is to audit.
+constructed. But every protected field we freeze makes the
+dependency graph easier to audit.
 
 We can also freeze the `zoom`, `width`, `x`, and `y` fields in
 `BlockLayout`. For `y`, the dependencies differ based on whether or
@@ -2529,7 +2515,7 @@ class LineLayout:
 The last layout class is `EmbedLayout`. The dependencies there are
 straightforward except for two things: first, just like for `TextLayout`,
 `x` depends on the previous `x` if present, and second, `height` depends
-on `width` because of aspect ratio:
+on `width` because of aspect ratios:
 
 ``` {.python}
 class EmbedLayout:
@@ -2582,7 +2568,7 @@ def style(node, rules, frame):
         init_style(node)
 ```
 
-Inside `init_style`, we need to the dependencies of each style field.
+Inside `init_style`, we need to freeze the dependencies of each style field.
 That's easy: only inherited fields have any dependencies:
 
 ``` {.python}
@@ -2601,7 +2587,7 @@ By freezing every layout and style field, except `children`, we can
 get a good sense of our browser's dependency graph just by looking at
 layout object type constructors. That's nice, and helps us avoid
 cycles and long dependency chains as we add more style and layout
-features. That's pretty nice.
+features.
 
 But to obtain maximum performance, the kind you would need for a real
  browser, there's an additional benefit. All these fancy
@@ -2636,9 +2622,9 @@ Real browsers also use assertions to catch bugs, much like the
 down the browser for users, non-essential assertions are "compiled
 out" in the *release build*, which is what end-users run. The *debug
 build*, which browser engineers use when debugging or developing new
-features. Automated tests also keep these assertions on. Debug builds
+features, and also in automated tests. Debug builds
 also compile in debugging features like [sanitizers][ffx-sanitizers],
-while release builds instead use optimizations [like PGO][chrome-pgo].
+while release builds instead use heavy-weight optimizations [like PGO][chrome-pgo].
 
 :::
 
@@ -2648,24 +2634,24 @@ while release builds instead use optimizations [like PGO][chrome-pgo].
 Summary
 =======
 
-This chapter introduces the concept of partial style and layout through the
-technique of optimized cache invalidation. The main takeaways are:
+This chapter introduces the concept of partial style and layout
+through optimized cache invalidation. The main takeaways are:
 
-- Caching and invalidation is a powerful way to speeds up key browser
-  interactions, and is therefore an essential technique in real browsers.
+- Caching and invalidation is a powerful way to speed up key browser
+  interactions, and is therefore an essential technique in real browsers
 
 - Making rendering idempotent allows us skip redundant work
-  while guaranteeing that the page will look the same.
+  while guaranteeing that the page will look the same
 
 - A good browser aims for the principle of incremental performance:
   the cost of an change should be proportional to size of the change,
-  not the size of the page as a whole.
+  not the size of the page as a whole
 
 - Cache invalidation is difficult and error-prone,
-  and justifies careful abstractions like `ProtectedField`.
+  and justifies careful abstractions like `ProtectedField`
 
-- Invalidation can be used to skip allocation, computation, or
-  even traversals.
+- Invalidation can be used to skip allocation, computation, and
+  even traversals of objects
 
 Outline
 =======
@@ -2687,7 +2673,7 @@ method should delete all the children of a given element. Make sure to
 handle invalidation properly.
 
 *Protecting layout phases*: Replace the `needs_style` and
-`needs_layout` dirty flags by making the `document` field on `Tab`s a
+`needs_layout` dirty flags by making the `document` field on `Frame`s a
 `ProtectedField`. Make sure animations still work correctly:
 animations of `opacity` or `transform` shouldn't trigger layout, while
 animations of other properties should.
@@ -2752,7 +2738,7 @@ invalidate the hovered element's style.
 [hover-pseudo]: https://developer.mozilla.org/en-US/docs/Web/CSS/:hover
 
 *Optimizing away `ProtectedField`*: as mentioned in the last section
-of the chapter, creating all these objects is way too expensive for
+of this chapter, creating all these `ProtectedField` objects is way too expensive for
 a real browser. See if you can find a way to avoid creating the
 objects entirely. Depending on the language you're using to implement
 your browser, you might have compile-time macros available to help;
