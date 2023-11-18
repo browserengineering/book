@@ -695,7 +695,9 @@ class AttributeParser:
                 self.i += 1
             else:
                 break
-        assert self.i > start
+        if self.i == start:
+            self.i = len(self.s)
+            return ""
         if quoted:
             return self.s[start+1:self.i-1]
         return self.s[start:self.i]
@@ -1284,7 +1286,8 @@ class Frame:
                 img.encoded_data = body
                 data = skia.Data.MakeWithoutCopy(body)
                 img.image = skia.Image.MakeFromEncoded(data)
-                assert img.image, "Failed to recognize image format for " + image_url
+                assert img.image, \
+                    "Failed to recognize image format for " + str(image_url)
             except Exception as e:
                 print("Image", image_url, "crashed", e)
                 img.image = BROKEN_IMAGE

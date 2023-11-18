@@ -598,6 +598,9 @@ including query-relative and scheme-relative URLs, that I'm skipping.]
     existing scheme and host; or
 -   A path-relative URL, which doesn't start with a slash and is
     resolved like a file name would be.
+-   A protocol-relative URL that starts with "//" followed by a full URL,
+    which should be completed to a full url using the same protocol
+    (`http` or` https`) as the current URL.
 
 To download the style sheets, we'll need to convert each relative URL
 into a full URL:
@@ -609,8 +612,11 @@ class URL:
         if not url.startswith("/"):
             dir, _ = self.path.rsplit("/", 1)
             url = dir + "/" + url
-        return URL(self.scheme + "://" + self.host + \
-                   ":" + str(self.port) + url)
+        if url.startswith("//"):
+            return URL(self.scheme + ":" + url)
+        else:
+            return URL(self.scheme + "://" + self.host + \
+                       ":" + str(self.port) + url)
 ```
 
 Also, because of the early web architecture, browsers are responsible
