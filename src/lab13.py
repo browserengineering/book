@@ -248,7 +248,8 @@ class Blend(VisualEffect):
         super().__init__(skia.Rect.MakeEmpty(), children, node)
         self.opacity = opacity
         self.blend_mode = blend_mode
-        self.should_save = self.blend_mode or self.opacity < 1
+        self.should_save = self.blend_mode != skia.BlendMode.kSrcOver \
+             or self.opacity < 1
 
         if wbetools.USE_COMPOSITING and self.should_save:
             self.needs_compositing = True
@@ -259,10 +260,10 @@ class Blend(VisualEffect):
             self.rect.join(cmd.rect)
 
     def execute(self, canvas):
-        paint = skia.Paint(
-            Alphaf=self.opacity,
-            BlendMode=parse_blend_mode(self.blend_mode))
         if self.should_save:
+            paint = skia.Paint(
+                Alphaf=self.opacity,
+                BlendMode=parse_blend_mode(self.blend_mode))
             canvas.saveLayer(paint=paint)
         for cmd in self.children:
             cmd.execute(canvas)
@@ -752,14 +753,12 @@ class InputLayout:
 
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
-    blend_mode = node.style.get("mix-blend-mode")
+    blend_mode = parse_blend_mode(node.style.get("mix-blend-mode"))
     translation = parse_transform(
         node.style.get("transform", ""))
 
     if node.style.get("overflow", "visible") == "clip":
         border_radius = float(node.style.get("border-radius", "0px")[:-2])
-        if not blend_mode:
-            blend_mode = "source-over"
         cmds = [ClipRRect(rect, border_radius, cmds)]
 
     blend_op = Blend(opacity, blend_mode, node, cmds)
@@ -1289,6 +1288,7 @@ class Browser:
         self.needs_draw = True
 
     def composite(self):
+        t = time.time()
         self.composited_layers = []
         add_parent_pointers(self.active_tab_display_list)
         all_commands = []

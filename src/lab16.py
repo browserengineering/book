@@ -714,7 +714,6 @@ class TextLayout:
             self.x.get(), self.y.get(), self.x.get() + self.width.get(),
             self.y.get() + self.height.get())
 
-
 @wbetools.patch(EmbedLayout)
 class EmbedLayout:
     def __init__(self, node, parent, previous, frame):
@@ -1266,7 +1265,6 @@ class Frame:
                 self.set_needs_render()
                 return
             elt = elt.parent
-
 
 @wbetools.patch(Tab)
 class Tab:

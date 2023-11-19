@@ -84,7 +84,7 @@ def parse_blend_mode(blend_mode_str):
         return skia.BlendMode.kDifference
     elif blend_mode_str == "destination-in":
         return skia.BlendMode.kDstIn
-    elif blend_mode_str == "source-over":
+    elif blend_mode_str == "normal":
         return skia.BlendMode.kSrcOver
     else:
         return skia.BlendMode.kSrcOver
@@ -95,6 +95,7 @@ def linespace(font):
 
 class Blend:
     def __init__(self, opacity, blend_mode, children):
+        print("blend")
         self.opacity = opacity
         self.blend_mode = blend_mode
         self.should_save = self.blend_mode or self.opacity < 1
