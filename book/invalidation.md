@@ -821,7 +821,7 @@ class BlockLayout:
 ```
 
 However, recall that with dirty flags we must always think about
-setting them (with `mark`), checking them (with `get`), and resetting
+invalidating them (with `mark`), checking them (with `get`), and resetting
 them (with `set`). We've added `get` and `set`, but who *marks* the
 `zoom` dirty flag?[^why-mark]
 
