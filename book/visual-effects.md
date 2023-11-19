@@ -1669,19 +1669,37 @@ there's no blending going on. But the logic here is a little trickier:
 `Blend` operation not only applies blending but also
 isolates the element contents `cmds`, which matters if they are being clipped by
 `overflow`. So let's skip creating a layer in `Blend` when there's no
-blending mode other than `kSrcOver`:
+blending mode other than `kSrcOver`, or isolation is needed:
 
+``` {.python expected=False}
+def paint_visual_effects(node, cmds, rect):
+    needs_isolation = False
+    if node.style.get("overflow", "visible") == "clip":
+        needs_isolation = True
+        # ...
 
-``` {.python replace=self.blend_mode%20!=%20skia.BlendMode.kSrcOver:/self.should_save:}
+    return [
+        Blend(blend_mode, needs_isolation [
+            Opacity(opacity, cmds),
+        ]),
+    ]
+```
+
+``` {.python replace=blend_mode%2c/opacity%2c%20blend_mode%2c,kSrcOver/kSrcOver%20or%20\\}
 class Blend:
+    def __init__(self, blend_mode, children, needs_isolation):
+        # ...
+        self.should_save = needs_isolation or \
+            self.blend_mode != skia.BlendMode.kSrcOver
+
     def execute(self, canvas):
         paint = skia.Paint(
             BlendMode=self.blend_mode)
-        if self.blend_mode != skia.BlendMode.kSrcOver:
+        if self.should_save:
             canvas.saveLayer(paint=paint)
         for cmd in self.children:
             cmd.execute(canvas)
-        if self.blend_mode:
+        if self.should_save:
             canvas.restore()
 ```
 
