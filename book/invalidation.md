@@ -210,7 +210,7 @@ incremental, but this chapter focuses on layout.[^why-layout]
     improvements possible without implementing the invalidation
     techniques from this chapter, but invalidation is still essential
     for incremental performance, which is a kind of asymptotic
-    guarantee that optimization alone won't achieve.
+    guarantee that micro-optimization alone won't achieve.
 
 The key to this cache-and-invalidate approach will be tracking the
 effects of changes. When one part of the page, like a `style`
