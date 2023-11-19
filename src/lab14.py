@@ -1389,19 +1389,26 @@ class Browser:
             self.needs_accessibility:
             self.lock.release()
             return
-        self.measure.time('raster/draw')
+
+        self.measure.time('composite_raster_and_draw')
         start_time = time.time()
         if self.needs_composite:
+            self.measure.time('composite')
             self.composite()
+            self.measure.stop('composite')
         if self.needs_raster:
+            self.measure.time('raster')
             self.raster_chrome()
             self.raster_tab()
+            self.measure.stop('raster')
 
         if self.needs_draw:
+            self.measure.time('draw')
             self.paint_draw_list()
             self.draw()
+            self.measure.stop('draw')
 
-        self.measure.stop('raster/draw')
+        self.measure.stop('composite_raster_and_draw')
 
         if self.needs_accessibility:
             self.update_accessibility()
