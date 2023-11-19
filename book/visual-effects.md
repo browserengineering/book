@@ -1416,6 +1416,8 @@ def parse_blend_mode(blend_mode_str):
         return skia.BlendMode.kMultiply
     elif blend_mode_str == "difference":
         return skia.BlendMode.kDifference
+    elif blend_mode_str == "normal":
+        return skia.BlendMode.kSrcOver
     else:
         return skia.BlendMode.kSrcOver
 ```
@@ -1435,7 +1437,7 @@ class Blend:
 
     def execute(self, canvas):
         paint = skia.Paint(
-            BlendMode=parse_blend_mode(self.blend_mode))
+            BlendMode=self.blend_mode)
         canvas.saveLayer(paint=paint)
         for cmd in self.children:
             cmd.execute(canvas)
@@ -1448,7 +1450,7 @@ to `paint_visual_effects`:
 ``` {.python expected=False}
 def paint_visual_effects(node, cmds, rect):
     # ...
-    blend_mode = node.style.get("mix-blend-mode")
+    blend_mode = parse_blend_mode(node.style.get("mix-blend-mode"))
     
     return [
         Blend(blend_mode, [
@@ -1667,37 +1669,15 @@ there's no blending going on. But the logic here is a little trickier:
 `Blend` operation not only applies blending but also
 isolates the element contents `cmds`, which matters if they are being clipped by
 `overflow`. So let's skip creating a layer in `Blend` when there's no
-blending mode, but let's set the blend mode to a special, non-standard
-`source-over` value when we need clipping:
+blending mode other than `kSrcOver`:
 
-``` {.python}
-def paint_visual_effects(node, cmds, rect):
-    if node.style.get("overflow", "visible") == "clip":
-        if not blend_mode:
-            blend_mode = "source-over"
-        # ...
-```
 
-We'll parse that as the default source-over blend mode:
-
-``` {.python}
-def parse_blend_mode(blend_mode_str):
-    # ...
-    elif blend_mode_str == "source-over":
-        return skia.BlendMode.kSrcOver
-    # ...
-```
-
-This is actually unnecessary, since `parse_blend_mode` already parses
-unknown strings as source-over blending, but it's good to be explicit.
-Anyway, now `Blend` can skip `saveLayer` if no blend mode is passed:
-
-``` {.python replace=self.blend_mode:/self.should_save:}
+``` {.python replace=self.blend_mode%20!=%20skia.BlendMode.kSrcOver:/self.should_save:}
 class Blend:
     def execute(self, canvas):
         paint = skia.Paint(
-            BlendMode=parse_blend_mode(self.blend_mode))
-        if self.blend_mode:
+            BlendMode=self.blend_mode)
+        if self.blend_mode != skia.BlendMode.kSrcOver:
             canvas.saveLayer(paint=paint)
         for cmd in self.children:
             cmd.execute(canvas)

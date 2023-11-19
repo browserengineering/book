@@ -397,12 +397,10 @@ class InputLayout:
 
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
-    blend_mode = node.style.get("mix-blend-mode")
+    blend_mode = parse_blend_mode(node.style.get("mix-blend-mode"))
 
     if node.style.get("overflow", "visible") == "clip":
         border_radius = float(node.style.get("border-radius", "0px")[:-2])
-        if not blend_mode:
-            blend_mode = "source-over"
         cmds = [ClipRRect(rect, border_radius, cmds)]
 
     return [Blend(opacity, blend_mode, cmds)]
