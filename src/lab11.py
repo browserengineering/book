@@ -195,19 +195,6 @@ class DrawRRect:
         canvas.drawRRect(self.rrect,
             paint=skia.Paint(Color=sk_color))
 
-class ClipRRect:
-    def __init__(self, rect, radius, children):
-        self.rect = rect
-        self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
-        self.children = children
-
-    def execute(self, canvas):
-        canvas.save()
-        canvas.clipRRect(self.rrect)
-        for cmd in self.children:
-            cmd.execute(canvas)
-        canvas.restore()
-
 def paint_tree(layout_object, display_list):
     cmds = []
     if layout_object.should_paint():
@@ -402,7 +389,9 @@ def paint_visual_effects(node, cmds, rect):
         border_radius = float(node.style.get("border-radius", "0px")[:-2])
         if not blend_mode:
             blend_mode = "source-over"
-        cmds = [ClipRRect(rect, border_radius, cmds)]
+        cmds.append(Blend(1.0, "destination-in", [
+            DrawRRect(rect, border_radius, "white")
+        ]))
 
     return [Blend(opacity, blend_mode, cmds)]
 
