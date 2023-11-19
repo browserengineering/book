@@ -415,8 +415,8 @@ class DrawRect:
             self.right, self.color)
 ```
 
-The `Blend` command sometimes does nothing if no opacity or blend mode
-is passed; it's helpful to indicate that when printing:
+The `Blend` command sometimes does nothing if no opacity or a non-trivial blend
+mode is passed; it's helpful to indicate that when printing:
 
 ``` {.python replace=Blend:/Blend(VisualEffect):}
 class Blend:
@@ -424,7 +424,8 @@ class Blend:
         args = ""
         if self.opacity < 1:
             args += ", opacity={}".format(self.opacity)
-        if self.blend_mode:
+        if self.blend_mode and \
+            self.blend_mode != skia.BlendMode.kSrcOver:
             args += ", blend_mode={}".format(self.blend_mode)
         if not args:
             args = ", <no-op>"
@@ -654,7 +655,7 @@ to the visual effects classes. For `Blend`, it'll create a new
 class Blend(VisualEffect):
     # ...
     def clone(self, child):
-        return Blend(self.opacity, self.blend_mode,
+        return Blend(self.opacity, self.blend_mode, self.should_save,
                      self.node, [child])
 ```
 
@@ -1292,10 +1293,10 @@ across for each animation update will be an `Element` and a
 To accomplish this we'll need several steps. First, when painting a
 `Blend`, record it on the `Element`:
 
-``` {.python replace=blend_mode/blend_mode%2c%20node dropline=return}
+``` {.python replace=needs_isolation/needs_isolation%2c%20node dropline=return}
 def paint_visual_effects(node, cmds, rect):
     # ...
-    blend_op = Blend(opacity, blend_mode, cmds)
+    blend_op = Blend(opacity, blend_mode, needs_isolation, cmds)
     node.blend_op = blend_op
     return [blend_op]
 ```
@@ -1575,7 +1576,7 @@ regardless of whether they are animating:
 
 ``` {.python replace=self.should_save/wbetools.USE_COMPOSITING%20and%20self.should_save}
 class Blend(VisualEffect):
-    def __init__(self, opacity, blend_mode, node, children):
+    def __init__(self, opacity, blend_mode, needs_isolation, node, children):
         # ...
         if self.should_save:
             self.needs_compositing = True

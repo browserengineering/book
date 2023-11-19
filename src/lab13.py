@@ -278,14 +278,15 @@ class Blend(VisualEffect):
         return rect
 
     def clone(self, child):
-        return Blend(self.opacity, self.blend_mode,
+        return Blend(self.opacity, self.blend_mode, self.should_save,
                      self.node, [child])
 
     def __repr__(self):
         args = ""
         if self.opacity < 1:
             args += ", opacity={}".format(self.opacity)
-        if self.blend_mode:
+        if self.blend_mode and \
+            self.blend_mode != skia.BlendMode.kSrcOver:
             args += ", blend_mode={}".format(self.blend_mode)
         if not args:
             args = ", <no-op>"
