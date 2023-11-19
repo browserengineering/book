@@ -1732,6 +1732,7 @@ class Browser:
         self.active_tab_scroll = 0
 
         self.measure = MeasureTime()
+        threading.current_thread().name = "Browser thread"
 
         if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
             self.RED_MASK = 0xff000000
