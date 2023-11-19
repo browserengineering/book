@@ -115,13 +115,13 @@ def paint_visual_effects(node, cmds, rect):
     blend_mode = parse_blend_mode(node.style["mix-blend-mode"].get())
     translation = parse_transform(node.style["transform"].get())
 
+    needs_isolation = False
     if node.style["overflow"].get() == "clip":
         border_radius = float(node.style["border-radius"].get()[:-2])
-        if not blend_mode:
-            blend_mode = "source-over"
+        needs_isolation = True
         cmds = [ClipRRect(rect, border_radius, cmds)]
 
-    blend_op = Blend(opacity, blend_mode, node, cmds)
+    blend_op = Blend(opacity, blend_mode, needs_isolation, node, cmds)
     node.blend_op = blend_op
     return [Transform(translation, rect, node, [blend_op])]
 
