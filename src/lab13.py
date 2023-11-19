@@ -244,7 +244,8 @@ class ClipRRect(VisualEffect):
         return "ClipRRect({})".format(str(self.rrect))
 
 class Blend(VisualEffect):
-    def __init__(self, opacity, blend_mode, needs_isolation, node, children):
+    def __init__(self, opacity, blend_mode, needs_isolation, \
+        node, children):
         super().__init__(skia.Rect.MakeEmpty(), children, node)
         self.opacity = opacity
         self.blend_mode = blend_mode

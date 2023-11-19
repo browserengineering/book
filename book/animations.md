@@ -1576,7 +1576,8 @@ regardless of whether they are animating:
 
 ``` {.python replace=self.should_save/wbetools.USE_COMPOSITING%20and%20self.should_save}
 class Blend(VisualEffect):
-    def __init__(self, opacity, blend_mode, needs_isolation, node, children):
+    def __init__(self, opacity, blend_mode, needs_isolation, \
+        node, children):
         # ...
         if self.should_save:
             self.needs_compositing = True

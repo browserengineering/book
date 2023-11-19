@@ -1567,7 +1567,8 @@ with destination-in blending:
 def paint_visual_effects(node, cmds, rect):
     # ...
     if node.style.get("overflow", "visible") == "clip":
-        border_radius = float(node.style.get("border-radius", "0px")[:-2])
+        border_radius = \
+            float(node.style.get("border-radius", "0px")[:-2])
         cmds.append(Blend("destination-in", [
             DrawRRect(rect, border_radius, "white")
         ]))
@@ -1717,7 +1718,8 @@ the edge of the blur will not be sharp.
 
 ``` {.python}
 class Blend:
-    def __init__(self, opacity, blend_mode, needs_isolation, children):
+    def __init__(self, opacity, blend_mode, needs_isolation, \
+        children):
         self.opacity = opacity
         self.blend_mode = blend_mode
         self.should_save = needs_isolation or \

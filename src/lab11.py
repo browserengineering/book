@@ -94,7 +94,8 @@ def linespace(font):
     return metrics.fDescent - metrics.fAscent
 
 class Blend:
-    def __init__(self, opacity, blend_mode, needs_isolation, children):
+    def __init__(self, opacity, blend_mode, needs_isolation, \
+        children):
         self.opacity = opacity
         self.blend_mode = blend_mode
         self.should_save = needs_isolation or \
