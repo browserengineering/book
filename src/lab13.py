@@ -263,7 +263,7 @@ class Blend(VisualEffect):
         if self.should_save:
             paint = skia.Paint(
                 Alphaf=self.opacity,
-                BlendMode=parse_blend_mode(self.blend_mode))
+                BlendMode=self.blend_mode)
             canvas.saveLayer(paint=paint)
         for cmd in self.children:
             cmd.execute(canvas)
