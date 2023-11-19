@@ -1688,7 +1688,8 @@ def paint_visual_effects(node, cmds, rect):
 
 ``` {.python replace=blend_mode%2c/opacity%2c%20blend_mode%2c,kSrcOver/kSrcOver%20or%20\\}
 class Blend:
-    def __init__(self, blend_mode, needs_isolation, children):
+    def __init__(self, blend_mode, needs_isolation, \
+        children):
         # ...
         self.should_save = needs_isolation or \
             self.blend_mode != skia.BlendMode.kSrcOver
