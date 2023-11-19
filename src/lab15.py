@@ -1678,6 +1678,101 @@ class Tab:
 
 @wbetools.patch(Browser)
 class Browser:
+    def __init__(self):
+        self.chrome = Chrome(self)
+
+        if wbetools.USE_GPU:
+            self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
+                sdl2.SDL_WINDOWPOS_CENTERED,
+                sdl2.SDL_WINDOWPOS_CENTERED,
+                WIDTH, HEIGHT,
+                sdl2.SDL_WINDOW_SHOWN | sdl2.SDL_WINDOW_OPENGL)
+            self.gl_context = sdl2.SDL_GL_CreateContext(
+                self.sdl_window)
+            print(("OpenGL initialized: vendor={}," + \
+                "renderer={}").format(
+                OpenGL.GL.glGetString(OpenGL.GL.GL_VENDOR),
+                OpenGL.GL.glGetString(OpenGL.GL.GL_RENDERER)))
+
+            self.skia_context = skia.GrDirectContext.MakeGL()
+
+            self.root_surface = \
+                skia.Surface.MakeFromBackendRenderTarget(
+                self.skia_context,
+                skia.GrBackendRenderTarget(
+                    WIDTH, HEIGHT, 0, 0, 
+                    skia.GrGLFramebufferInfo(0, OpenGL.GL.GL_RGBA8)),
+                    skia.kBottomLeft_GrSurfaceOrigin,
+                    skia.kRGBA_8888_ColorType,
+                    skia.ColorSpace.MakeSRGB())
+            assert self.root_surface is not None
+
+            self.chrome_surface = skia.Surface.MakeRenderTarget(
+                    self.skia_context, skia.Budgeted.kNo,
+                    skia.ImageInfo.MakeN32Premul(WIDTH, math.ceil(self.chrome.bottom)))
+            assert self.chrome_surface is not None
+        else:
+            self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
+            sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED,
+            WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
+            self.root_surface = skia.Surface.MakeRaster(
+                skia.ImageInfo.Make(
+                WIDTH, HEIGHT,
+                ct=skia.kRGBA_8888_ColorType,
+                at=skia.kUnpremul_AlphaType))
+            self.chrome_surface = skia.Surface(WIDTH, math.ceil(self.chrome.bottom))
+            self.skia_context = None
+
+        self.tabs = []
+        self.active_tab = None
+        self.focus = None
+        self.address_bar = ""
+        self.lock = threading.Lock()
+        self.active_tab_url = None
+        self.active_tab_scroll = 0
+
+        self.measure = MeasureTime()
+
+        if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
+            self.RED_MASK = 0xff000000
+            self.GREEN_MASK = 0x00ff0000
+            self.BLUE_MASK = 0x0000ff00
+            self.ALPHA_MASK = 0x000000ff
+        else:
+            self.RED_MASK = 0x000000ff
+            self.GREEN_MASK = 0x0000ff00
+            self.BLUE_MASK = 0x00ff0000
+            self.ALPHA_MASK = 0xff000000
+
+        self.animation_timer = None
+
+        self.needs_animation_frame = False
+        self.needs_composite = False
+        self.needs_raster = False
+        self.needs_draw = False
+        self.needs_accessibility = False
+
+        self.active_tab_height = 0
+        self.active_tab_display_list = None
+
+        self.composited_updates = {}
+        self.composited_layers = []
+        self.draw_list = []
+        self.muted = True
+        self.dark_mode = False
+
+        self.accessibility_is_on = False
+        self.has_spoken_document = False
+        self.pending_hover = None
+        self.hovered_a11y_node = None
+        self.focus_a11y_node = None
+        self.needs_speak_hovered_node = False
+        self.tab_focus = None
+        self.last_tab_focus = None
+        self.active_alerts = []
+        self.spoken_alerts = []
+        self.root_frame_focused = False
+
     def commit(self, tab, data):
         self.lock.acquire(blocking=True)
         if tab == self.active_tab:
@@ -1732,4 +1827,5 @@ if __name__ == "__main__":
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
     browser.new_tab(URL(sys.argv[1]))
+    browser.draw()
     mainloop(browser)
