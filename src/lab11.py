@@ -95,10 +95,10 @@ def linespace(font):
 
 class Blend:
     def __init__(self, opacity, blend_mode, children):
-        print("blend")
         self.opacity = opacity
         self.blend_mode = blend_mode
-        self.should_save = self.blend_mode or self.opacity < 1
+        self.should_save = self.blend_mode != skia.BlendMode.kSrcOver or \
+            self.opacity < 1
 
         self.children = children
         self.rect = skia.Rect.MakeEmpty()
@@ -108,7 +108,7 @@ class Blend:
     def execute(self, canvas):
         paint = skia.Paint(
             Alphaf=self.opacity,
-            BlendMode=parse_blend_mode(self.blend_mode))
+            BlendMode=self.blend_mode)
         if self.should_save:
             canvas.saveLayer(paint=paint)
         for cmd in self.children:
