@@ -216,33 +216,6 @@ class DrawOutline(PaintCommand):
             self.rect.right(), self.color,
             self.thickness)
 
-class ClipRRect(VisualEffect):
-    def __init__(self, rect, radius, children):
-        super().__init__(rect, children)
-        self.radius = radius
-        self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
-
-    def execute(self, canvas):
-        canvas.save()
-        canvas.clipRRect(self.rrect)
-        for cmd in self.children:
-            cmd.execute(canvas)
-        canvas.restore()
-
-    def map(self, rect):
-        bounds = rect.makeOffset(0.0, 0.0)
-        bounds.intersect(self.rrect.rect())
-        return bounds
-
-    def unmap(self, rect):
-        return rect
-
-    def clone(self, child):
-        return ClipRRect(self.rrect.rect(), self.radius, [child])
-
-    def __repr__(self):
-        return "ClipRRect({})".format(str(self.rrect))
-
 class Blend(VisualEffect):
     def __init__(self, opacity, blend_mode, node, children):
         super().__init__(skia.Rect.MakeEmpty(), children, node)
@@ -270,7 +243,14 @@ class Blend(VisualEffect):
             canvas.restore()
         
     def map(self, rect):
-        return rect
+        if self.children and \
+           isinstance(self.children[-1], Blend) and \
+           self.children[-1].blend_mode == "destination-in":
+            bounds = rect.makeOffset(0.0, 0.0)
+            bounds.intersect(self.children[-1].rect)
+            return bounds
+        else:
+            return rect
 
     def unmap(self, rect):
         return rect
@@ -760,7 +740,9 @@ def paint_visual_effects(node, cmds, rect):
         border_radius = float(node.style.get("border-radius", "0px")[:-2])
         if not blend_mode:
             blend_mode = "source-over"
-        cmds = [ClipRRect(rect, border_radius, cmds)]
+        cmds.append(Blend(1.0, "destination-in", None, [
+            DrawRRect(rect, border_radius, cmds)
+        ]))
 
     blend_op = Blend(opacity, blend_mode, node, cmds)
     node.blend_op = blend_op

@@ -45,7 +45,7 @@ from lab13 import map_translation, parse_transform
 from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import PaintCommand, DrawText, DrawCompositedLayer, DrawOutline, \
     DrawLine, DrawRRect
-from lab13 import VisualEffect, Blend, ClipRRect, Transform, Chrome, \
+from lab13 import VisualEffect, Blend, Transform, Chrome, \
     Tab, Browser
 
 @wbetools.patch(Element)
