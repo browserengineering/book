@@ -83,7 +83,6 @@ class MeasureTime:
                 '"args": { "name": "' + thread.name + '"}}')
         self.file.write(']}')
         self.file.close()
-        print('write trace')
         self.lock.release()
 
 SETTIMEOUT_CODE = "__runSetTimeout(dukpy.handle)"
