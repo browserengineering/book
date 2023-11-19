@@ -776,6 +776,8 @@ class EmbedLayout:
         else:
             self.x.copy(self.parent.x)
 
+        self.has_dirty_descendants = False
+
 @wbetools.patch(InputLayout)
 class InputLayout(EmbedLayout):
     def layout(self):
