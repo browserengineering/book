@@ -1699,10 +1699,11 @@ the edge of the blur will not be sharp.
 
 ``` {.python}
 class Blend:
-    def __init__(self, opacity, blend_mode, children):
+    def __init__(self, opacity, blend_mode, children, needs_isolation):
         self.opacity = opacity
         self.blend_mode = blend_mode
-        self.should_save = self.blend_mode != skia.BlendMode.kSrcOver or \
+        self.should_save = needs_isolation or \
+            self.blend_mode != skia.BlendMode.kSrcOver or \
             self.opacity < 1
 
         self.children = children

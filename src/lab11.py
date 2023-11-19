@@ -94,10 +94,11 @@ def linespace(font):
     return metrics.fDescent - metrics.fAscent
 
 class Blend:
-    def __init__(self, opacity, blend_mode, children):
+    def __init__(self, opacity, blend_mode, children, needs_isolation):
         self.opacity = opacity
         self.blend_mode = blend_mode
-        self.should_save = self.blend_mode != skia.BlendMode.kSrcOver or \
+        self.should_save = needs_isolation or \
+            self.blend_mode != skia.BlendMode.kSrcOver or \
             self.opacity < 1
 
         self.children = children
@@ -398,12 +399,14 @@ class InputLayout:
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
     blend_mode = parse_blend_mode(node.style.get("mix-blend-mode"))
+    needs_isolation = False
 
     if node.style.get("overflow", "visible") == "clip":
+        needs_isolation = True
         border_radius = float(node.style.get("border-radius", "0px")[:-2])
         cmds = [ClipRRect(rect, border_radius, cmds)]
 
-    return [Blend(opacity, blend_mode, cmds)]
+    return [Blend(opacity, blend_mode, cmds, needs_isolation)]
 
 @wbetools.patch(DocumentLayout)
 class DocumentLayout:
