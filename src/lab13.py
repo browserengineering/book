@@ -244,12 +244,13 @@ class ClipRRect(VisualEffect):
         return "ClipRRect({})".format(str(self.rrect))
 
 class Blend(VisualEffect):
-    def __init__(self, opacity, blend_mode, node, children):
+    def __init__(self, opacity, blend_mode, needs_isolation, node, children):
         super().__init__(skia.Rect.MakeEmpty(), children, node)
         self.opacity = opacity
         self.blend_mode = blend_mode
-        self.should_save = self.blend_mode != skia.BlendMode.kSrcOver \
-             or self.opacity < 1
+        self.should_save = needs_isolation or \
+            self.blend_mode != skia.BlendMode.kSrcOver or \
+            self.opacity < 1
 
         if wbetools.USE_COMPOSITING and self.should_save:
             self.needs_compositing = True
@@ -757,11 +758,13 @@ def paint_visual_effects(node, cmds, rect):
     translation = parse_transform(
         node.style.get("transform", ""))
 
+    needs_isolation = False
     if node.style.get("overflow", "visible") == "clip":
+        needs_isolation = True
         border_radius = float(node.style.get("border-radius", "0px")[:-2])
         cmds = [ClipRRect(rect, border_radius, cmds)]
 
-    blend_op = Blend(opacity, blend_mode, node, cmds)
+    blend_op = Blend(opacity, blend_mode, needs_isolation, node, cmds)
     node.blend_op = blend_op
     return [Transform(translation, rect, node, [blend_op])]
 

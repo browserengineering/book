@@ -94,7 +94,7 @@ def linespace(font):
     return metrics.fDescent - metrics.fAscent
 
 class Blend:
-    def __init__(self, opacity, blend_mode, children, needs_isolation):
+    def __init__(self, opacity, blend_mode, needs_isolation, children):
         self.opacity = opacity
         self.blend_mode = blend_mode
         self.should_save = needs_isolation or \
@@ -406,7 +406,7 @@ def paint_visual_effects(node, cmds, rect):
         border_radius = float(node.style.get("border-radius", "0px")[:-2])
         cmds = [ClipRRect(rect, border_radius, cmds)]
 
-    return [Blend(opacity, blend_mode, cmds, needs_isolation)]
+    return [Blend(opacity, blend_mode, needs_isolation, cmds)]
 
 @wbetools.patch(DocumentLayout)
 class DocumentLayout:
