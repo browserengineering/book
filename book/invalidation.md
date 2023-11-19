@@ -2317,7 +2317,7 @@ we add new style and layout features. This *auditability* concern
 happens in real browsers, too. After all, real browsers are millions,
 not thousands, of lines long, and support thousands of CSS properties.
 Their dependency graphs are
-dramatically more complex our browser's.
+dramatically more complex than our browser's.
 
 We'd therefore like to make it easier to see the dependency graph.
 And along the way we can centralize *invariants* about the shape of
