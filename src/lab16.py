@@ -1068,7 +1068,7 @@ class Frame:
         self.scroll = 0
         self.scroll_changed_in_frame = True
         headers, body = url.request(self.url, payload)
-        body = body.decode("utf8")
+        body = body.decode("utf8", "replace")
         self.url = url
 
         self.allowed_origins = None
@@ -1094,7 +1094,7 @@ class Frame:
                 continue
 
             header, body = script_url.request(url)
-            body = body.decode("utf8")
+            body = body.decode("utf8", "replace")
             task = Task(self.js.run, script_url, body,
                 self.window_id)
             self.tab.task_runner.schedule_task(task)
@@ -1115,7 +1115,7 @@ class Frame:
                 header, body = style_url.request(url)
             except:
                 continue
-            self.rules.extend(CSSParser(body.decode("utf8")).parse())
+            self.rules.extend(CSSParser(body.decode("utf8", "replace")).parse())
 
         images = [node
             for node in tree_to_list(self.nodes, [])
