@@ -94,9 +94,13 @@ class Tab:
     def load(self, url, payload=None):
         # ...
         headers, body = url.request(self.url, payload)
-        body = body.decode("utf8")
+        body = body.decode("utf8", "replace")
         # ...
 ```
+
+By passing `replace` as the second argument to `decode`, I tell Python
+to replace any invalid characters by a special � character instead of
+throwing an exception.
 
 Make sure to make this change everywhere in your browser that you call
 `request`, including inside `XMLHttpRequest_send` and in several other places
