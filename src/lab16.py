@@ -1126,15 +1126,14 @@ class Frame:
                 src = img.attributes.get("src", "")
                 image_url = url.resolve(src)
                 assert self.allowed_request(image_url), \
-                    "Blocked load of " + image_url + " due to CSP"
+                    "Blocked load of " + str(image_url) + " due to CSP"
                 header, body = image_url.request(url)
                 img.encoded_data = body
                 data = skia.Data.MakeWithoutCopy(body)
                 img.image = skia.Image.MakeFromEncoded(data)
-                assert img.image, "Failed to recognize image format for " + image_url
+                assert img.image, "Failed to recognize image format for " + str(image_url)
             except Exception as e:
-                print("Exception loading image: url="
-                    + image_url + " exception=" + str(e))
+                print("Image", image_url, "crashed", e)
                 img.image = BROKEN_IMAGE
 
         iframes = [node
