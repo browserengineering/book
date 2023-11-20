@@ -1242,12 +1242,12 @@ class Frame:
         self.set_needs_render()
 
     def click(self, x, y):
-        self.focus_element(None)
         y += self.scroll
         loc_rect = skia.Rect.MakeXYWH(x, y, 1, 1)
         objs = [obj for obj in tree_to_list(self.document, [])
                 if absolute_bounds_for_obj(obj).intersects(
                     loc_rect)]
+        self.focus_element(None)
         if not objs: return
         elt = objs[-1].node
         if elt and self.js.dispatch_event(
