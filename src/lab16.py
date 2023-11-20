@@ -1126,15 +1126,14 @@ class Frame:
                 src = img.attributes.get("src", "")
                 image_url = url.resolve(src)
                 assert self.allowed_request(image_url), \
-                    "Blocked load of " + image_url + " due to CSP"
+                    "Blocked load of " + str(image_url) + " due to CSP"
                 header, body = image_url.request(url)
                 img.encoded_data = body
                 data = skia.Data.MakeWithoutCopy(body)
                 img.image = skia.Image.MakeFromEncoded(data)
-                assert img.image, "Failed to recognize image format for " + image_url
+                assert img.image, "Failed to recognize image format for " + str(image_url)
             except Exception as e:
-                print("Exception loading image: url="
-                    + image_url + " exception=" + str(e))
+                print("Image", image_url, "crashed", e)
                 img.image = BROKEN_IMAGE
 
         iframes = [node
@@ -1242,12 +1241,12 @@ class Frame:
         self.set_needs_render()
 
     def click(self, x, y):
-        self.focus_element(None)
         y += self.scroll
         loc_rect = skia.Rect.MakeXYWH(x, y, 1, 1)
         objs = [obj for obj in tree_to_list(self.document, [])
                 if absolute_bounds_for_obj(obj).intersects(
                     loc_rect)]
+        self.focus_element(None)
         if not objs: return
         elt = objs[-1].node
         if elt and self.js.dispatch_event(
