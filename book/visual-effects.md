@@ -101,6 +101,77 @@ class Browser:
             WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
 ```
 
+Now that we've created a window, we need to handle events sent to it.
+SDL doesn't have a `mainloop` or `bind` method; we have to implement
+it ourselves:
+
+``` {.python}
+def mainloop(browser):
+    event = sdl2.SDL_Event()
+    while True:
+        while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+            if event.type == sdl2.SDL_QUIT:
+                browser.handle_quit()
+                sdl2.SDL_Quit()
+                sys.exit()
+            # ...
+```
+
+The details of `ctypes` and `PollEvent` aren't too important here, but
+note that `SDL_QUIT` is an event, sent when the user closes the last
+open window. The `handle_quit` method it calls just cleans up the
+window object:
+
+``` {.python}
+class Browser:
+    def handle_quit(self):
+        sdl2.SDL_DestroyWindow(self.sdl_window)
+```
+
+Call `mainloop` in place of `tkinter.mainloop`:
+
+``` {.python}
+if __name__ == "__main__":
+    # ...
+    mainloop(browser)
+```
+
+In place of all the `bind` calls in the `Browser` constructor, we can
+just directly call methods for various types of events, like clicks,
+typing, and so on. The SDL syntax looks like this:
+
+``` {.python}
+def mainloop(browser):
+    while True:
+        while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+            # ...
+            elif event.type == sdl2.SDL_MOUSEBUTTONUP:
+                browser.handle_click(event.button)
+            elif event.type == sdl2.SDL_KEYDOWN:
+                if event.key.keysym.sym == sdl2.SDLK_RETURN:
+                    browser.handle_enter()
+                elif event.key.keysym.sym == sdl2.SDLK_DOWN:
+                    browser.handle_down()
+            elif event.type == sdl2.SDL_TEXTINPUT:
+                browser.handle_key(event.text.text.decode('utf8'))
+```
+
+I've changed the signatures of the various event handler methods. For
+example, the `handle_click` method is now passed a `MouseButtonEvent`
+object, which thankfully contains `x` and `y` coordinates, while the
+`handle_enter` and `handle_down` methods aren't passed any argument at
+all, because we don't use that argument anyway. You'll need to change
+the `Browser` methods' signatures to match.
+
+::: {.further}
+SDL is most popular for making games. Their site lists [a selection of
+books](https://wiki.libsdl.org/Books) about game programming in SDL.
+:::
+
+
+Creating Surfaces
+=================
+
 When we create this SDL window, we're asking SDL to allocate a
 *surface*, a chunk of memory representing the pixels on the
 screen.[^surface] On today's large screens, surfaces take up a lot of
@@ -146,6 +217,69 @@ class Pixel:
 Note that this `Pixel` code is an illustrative example, not something
 our browser has to define. It's standing in for somewhat more complex
 code within Skia itself.
+
+Skia represents colors as simple 32-bit integers, with the most
+significant byte representing the alpha value (255 meaning opaque and
+0 meaning transparent) and then the next three bytes representing the
+red, green, and blue color channels. Parsing a CSS color like
+`#ffd700` to this representation is pretty easy:
+
+``` {.python}
+def parse_color(color):
+    if color.startswith("#") and len(color) == 7:
+        r = int(color[1:3], 16)
+        g = int(color[3:5], 16)
+        b = int(color[5:7], 16)
+        return skia.Color(r, g, b)
+```
+
+Skia's `Color` constructor packs the red, green, and blue values into
+its integer representation for us. (Alpha is implicitly 255, meaning
+opaque, in this case.)
+
+However, there are also a whole lot of named colors. Supporting this
+is necessary to see many of the examples in this book:
+
+``` {.python}
+NAMED_COLORS = {
+    "black": "#000000",
+    "white": "#ffffff",
+    "red":   "#ff0000",
+    # ...
+}
+
+def parse_color(color):
+    # ...
+    elif color in NAMED_COLORS:
+        return parse_color(NAMED_COLORS[color])
+    else:
+        return skia.ColorBLACK
+```
+
+You can add more named colors from [the list][named-colors] as you
+come across them; the demos in this book use `blue`, `green`,
+`lightblue`, `lightgreen`, `orange`, `orangered`, and `gray`. Note
+that unsupported colors are interpreted as black, so that at least
+something is drawn to the screen.[^not-standard]
+
+[^not-standard]: This is not the standards-required behavior---the
+    invalid value should just not participate in styling, so an
+    element styled with an unknown color might inherit a color other
+    than black---but I'm doing it as a convenience.
+
+[named-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/named-color
+
+
+Note that the `Color` constructor takes alpha, red, green, and blue
+values, closely matching (except for the order) our `Pixel` definition.
+
+You can add "elif" blocks to support any other color names you use;
+modern browsers support [quite a lot][css-colors]. If you'd like to
+use a color Skia doesn't pre-define, you can use the `skia.Color`
+constructor, which takes red, green, and blue parameters from 0 to
+255.
+
+[css-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/color_value
 
 Now there's an SDL surface for the window contents and a Skia surface
 that we can draw to. We'll raster\index{raster} to the Skia surface,
@@ -226,76 +360,14 @@ class Browser:
         sdl2.SDL_BlitSurface(sdl_surface, rect, window_surface, rect)
         sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 ```
+Skia is a bit more verbose than Tkinter, so let's abstract
+over some details with helper functions.[^skia-docs] First, let's talk
+about parsing colors.
 
-So that's that: we're now creating a window and copying pixels to it.
-But if you run your browser now, you'll find that it exits
-immediately.
+[^skia-docs]: Consult the [Skia][skia] and [skia-python][skia-python]
+documentation for more on the Skia API.
 
-That's because SDL doesn't have a `mainloop` or `bind` method; we have
-to implement it ourselves:
 
-``` {.python}
-def mainloop(browser):
-    event = sdl2.SDL_Event()
-    while True:
-        while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            if event.type == sdl2.SDL_QUIT:
-                browser.handle_quit()
-                sdl2.SDL_Quit()
-                sys.exit()
-            # ...
-```
-
-The details of `ctypes` and `PollEvent` aren't too important here, but
-note that `SDL_QUIT` is an event, sent when the user closes the last
-open window. The `handle_quit` method it calls just cleans up the
-window object:
-
-``` {.python}
-class Browser:
-    def handle_quit(self):
-        sdl2.SDL_DestroyWindow(self.sdl_window)
-```
-
-Call `mainloop` in place of `tkinter.mainloop`:
-
-``` {.python}
-if __name__ == "__main__":
-    # ...
-    mainloop(browser)
-```
-
-In place of all the `bind` calls in the `Browser` constructor, we can
-just directly call methods for various types of events, like clicks,
-typing, and so on. The SDL syntax looks like this:
-
-``` {.python}
-def mainloop(browser):
-    while True:
-        while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            # ...
-            elif event.type == sdl2.SDL_MOUSEBUTTONUP:
-                browser.handle_click(event.button)
-            elif event.type == sdl2.SDL_KEYDOWN:
-                if event.key.keysym.sym == sdl2.SDLK_RETURN:
-                    browser.handle_enter()
-                elif event.key.keysym.sym == sdl2.SDLK_DOWN:
-                    browser.handle_down()
-            elif event.type == sdl2.SDL_TEXTINPUT:
-                browser.handle_key(event.text.text.decode('utf8'))
-```
-
-I've changed the signatures of the various event handler methods. For
-example, the `handle_click` method is now passed a `MouseButtonEvent`
-object, which thankfully contains `x` and `y` coordinates, while the
-`handle_enter` and `handle_down` methods aren't passed any argument at
-all, because we don't use that argument anyway. You'll need to change
-the `Browser` methods' signatures to match.
-
-::: {.further}
-SDL is most popular for making games. Their site lists [a selection of
-books](https://wiki.libsdl.org/Books) about game programming in SDL.
-:::
 
 Rasterizing with Skia
 =====================
@@ -307,77 +379,7 @@ to draw shapes on it---is called "rasterization"\index{raster} and is
 one important task of a graphics library.
 
 We'll need our browser's drawing commands to invoke Skia, not Tk
-methods. Skia is a bit more verbose than Tkinter, so let's abstract
-over some details with helper functions.[^skia-docs] First, let's talk
-about parsing colors.
-
-[^skia-docs]: Consult the [Skia][skia] and [skia-python][skia-python]
-documentation for more on the Skia API.
-
-Skia represents colors as simple 32-bit integers, with the most
-significant byte representing the alpha value (255 meaning opaque and
-0 meaning transparent) and then the next three bytes representing the
-red, green, and blue color channels. Parsing a CSS color like
-`#ffd700` to this representation is pretty easy:
-
-``` {.python}
-def parse_color(color):
-    if color.startswith("#") and len(color) == 7:
-        r = int(color[1:3], 16)
-        g = int(color[3:5], 16)
-        b = int(color[5:7], 16)
-        return skia.Color(r, g, b)
-```
-
-Skia's `Color` constructor packs the red, green, and blue values into
-its integer representation for us. (Alpha is implicitly 255, meaning
-opaque, in this case.)
-
-However, there are also a whole lot of named colors. Supporting this
-is necessary to see many of the examples in this book:
-
-``` {.python}
-NAMED_COLORS = {
-    "black": "#000000",
-    "white": "#ffffff",
-    "red":   "#ff0000",
-    # ...
-}
-
-def parse_color(color):
-    # ...
-    elif color in NAMED_COLORS:
-        return parse_color(NAMED_COLORS[color])
-    else:
-        return skia.ColorBLACK
-```
-
-You can add more named colors from [the list][named-colors] as you
-come across them; the demos in this book use `blue`, `green`,
-`lightblue`, `lightgreen`, `orange`, `orangered`, and `gray`. Note
-that unsupported colors are interpreted as black, so that at least
-something is drawn to the screen.[^not-standard]
-
-[^not-standard]: This is not the standards-required behavior---the
-    invalid value should just not participate in styling, so an
-    element styled with an unknown color might inherit a color other
-    than black---but I'm doing it as a convenience.
-
-[named-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/named-color
-
-
-Note that the `Color` constructor takes alpha, red, green, and blue
-values, closely matching (except for the order) our `Pixel` definition.
-
-You can add "elif" blocks to support any other color names you use;
-modern browsers support [quite a lot][css-colors]. If you'd like to
-use a color Skia doesn't pre-define, you can use the `skia.Color`
-constructor, which takes red, green, and blue parameters from 0 to
-255.
-
-[css-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/color_value
-
-To draw a line, you use Skia's `Path` object:
+methods. To draw a line, you use Skia's `Path` object:
 
 ``` {.python replace=%2c%20scroll/,%20-%20scroll/}
 class DrawLine:
