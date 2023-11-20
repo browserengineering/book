@@ -248,7 +248,7 @@ class Blend(VisualEffect):
         super().__init__(skia.Rect.MakeEmpty(), children, node)
         self.opacity = opacity
         self.blend_mode = blend_mode
-        self.should_save = self.blend_mode or self.opacity < 1
+        self.should_save = self.blend_mode != "normal" or self.opacity < 1
 
         if wbetools.USE_COMPOSITING and self.should_save:
             self.needs_compositing = True
@@ -283,7 +283,7 @@ class Blend(VisualEffect):
         args = ""
         if self.opacity < 1:
             args += ", opacity={}".format(self.opacity)
-        if self.blend_mode:
+        if self.blend_mode != "normal":
             args += ", blend_mode={}".format(self.blend_mode)
         if not args:
             args = ", <no-op>"
@@ -752,7 +752,7 @@ class InputLayout:
 
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
-    blend_mode = node.style.get("mix-blend-mode")
+    blend_mode = node.style.get("mix-blend-mode", "normal")
     translation = parse_transform(
         node.style.get("transform", ""))
 

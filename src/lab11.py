@@ -97,7 +97,7 @@ class Blend:
     def __init__(self, opacity, blend_mode, children):
         self.opacity = opacity
         self.blend_mode = blend_mode
-        self.should_save = self.blend_mode or self.opacity < 1
+        self.should_save = self.blend_mode != "normal" or self.opacity < 1
 
         self.children = children
         self.rect = skia.Rect.MakeEmpty()
@@ -396,7 +396,7 @@ class InputLayout:
 
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
-    blend_mode = node.style.get("mix-blend-mode")
+    blend_mode = node.style.get("mix-blend-mode", "normal")
 
     if node.style.get("overflow", "visible") == "clip":
         border_radius = float(node.style.get("border-radius", "0px")[:-2])

@@ -2201,7 +2201,7 @@ with `style[property].get()`:
 ``` {.python}
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style["opacity"].get())
-    blend_mode = parse_blend_mode(node.style["mix-blend-mode"].get())
+    blend_mode = node.style["mix-blend-mode"].get()
     translation = parse_transform(node.style["transform"].get())
 
     if node.style["overflow"].get() == "clip":
