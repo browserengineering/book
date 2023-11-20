@@ -172,15 +172,17 @@ books](https://wiki.libsdl.org/Books) about game programming in SDL.
 Creating Surfaces
 =================
 
-When we create this SDL window, we're asking SDL to allocate a
+Let's peek under the hood of these SDL calls. 
+When we create an SDL window, we're asking SDL to allocate a
 *surface*, a chunk of memory representing the pixels on the
-screen.[^surface] On today's large screens, surfaces take up a lot of
-memory and drawing to them can take a lot of time, so managing
-surfaces is going to be a big focus of this chapter.
+screen.[^surface] Both SDL's and Skia's graphics APIs use surfaces
+internally, so creating and managing
+surfaces is going to be the big focus of this chapter.
+On today's large screens, surfaces take up a lot of memory
+and operations on them take a lot of time,
+so handling surfaces well is essential to a modern web browser.
 
-[^surface]: In Skia and SDL, a *surface* is a representation of a
-graphics buffer into which you can draw *pixels* (bits representing
-colors). A surface may or may not be bound to the physical pixels on the
+[^surface]: A surface may or may not be bound to the physical pixels on the
 screen via a window, and there can be many surfaces. A *canvas* is an
 API interface that allows you to draw into a surface with higher-level
 commands such as for rectangles or text. Our browser uses separate
@@ -188,7 +190,10 @@ Skia and SDL surfaces for simplicity, but in a highly optimized
 browser, minimizing the number of surfaces is important for good
 performance.
 
-Let's also create a surface for Skia to draw to:
+In Skia and SDL, a *surface* is a representation of a
+graphics buffer into which you can draw *pixels* (bits representing
+colors). We implicitly created an SDL surface when we created
+and SDL window; let's also create a surface for Skia to draw to:
 
 ``` {.python}
 class Browser:
@@ -200,6 +205,7 @@ class Browser:
                 at=skia.kUnpremul_AlphaType))
 ```
 
+Each pixel has a color.
 Note the `ct` argument, meaning "color type", which indicates that
 each pixel of this surface should be represented as *r*ed, *g*reen,
 *b*lue, and *a*lpha values, each of which should take up 8 bits. In
@@ -214,15 +220,43 @@ class Pixel:
         self.a = a
 ```
 
-Note that this `Pixel` code is an illustrative example, not something
-our browser has to define. It's standing in for somewhat more complex
-code within Skia itself.
+This `Pixel` definition is an illustrative example, not actual code in
+our browser. It's standing in for somewhat more complex code within
+SDL and Skia themselves. For example, Skia actually represents colors
+(and therefore pixels) as 32-bit integers, with the most significant byte representing
+the alpha value (255 meaning opaque and 0 meaning transparent) and
+then the next three bytes representing the red, green, and blue color
+channels.
 
-Skia represents colors as simple 32-bit integers, with the most
-significant byte representing the alpha value (255 meaning opaque and
-0 meaning transparent) and then the next three bytes representing the
-red, green, and blue color channels. Parsing a CSS color like
-`#ffd700` to this representation is pretty easy:
+Defining colors via red, green, and blue values is fairly
+standard[^other-spaces] and corresponds to how computer screens
+work[^lcd-design]. For example, in CSS, we refer to arbitrary colors
+with a hash character and six hex digits, like `#ffd700`, with two
+digits each for red, green, and blue:[^opaque]
+
+[^other-spaces]: It's formally known as the [sRGB color space][srgb],
+and it dates back to [CRT displays][CRT], which had a pretty limited
+*gamut* of expressible colors. New technologies like LCD, LED, and
+OLED can display more colors, so CSS now includes [syntax][color-spec]
+for expressing these new colors. Still, all color spaces have a
+limited gamut of expressible colors.
+
+[^lcd-design]: Actually, some screens contain [lights besides red,
+    green, and blue][lcd-design], including white, cyan, or yellow.
+    Moreover, different screens can use slightly different reds,
+    greens, or blues; professional color designers typically have to
+    [calibrate their screen][calibrate] to display colors accurately.
+    For the rest of us, the software still communicates with the
+    display in terms of standard red, green, and blue colors, and the
+    display hardware converts to whatever pixels it uses.
+
+[^opaque]: Alpha is implicitly 255, meaning opaque, in this case.
+    
+[lcd-design]: https://geometrian.com/programming/reference/subpixelzoo/index.php
+[calibrate]: https://en.wikipedia.org/wiki/Color_calibration
+[srgb]: https://en.wikipedia.org/wiki/SRGB
+[CRT]: https://en.wikipedia.org/wiki/Cathode-ray_tube
+[color-spec]: https://drafts.csswg.org/css-color-4/
 
 ``` {.python}
 def parse_color(color):
@@ -233,12 +267,8 @@ def parse_color(color):
         return skia.Color(r, g, b)
 ```
 
-Skia's `Color` constructor packs the red, green, and blue values into
-its integer representation for us. (Alpha is implicitly 255, meaning
-opaque, in this case.)
-
-However, there are also a whole lot of named colors. Supporting this
-is necessary to see many of the examples in this book:
+The named colors we've seen so far can just be specified in terms of
+this syntax:
 
 ``` {.python}
 NAMED_COLORS = {
@@ -269,27 +299,13 @@ something is drawn to the screen.[^not-standard]
 
 [named-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/named-color
 
-
-Note that the `Color` constructor takes alpha, red, green, and blue
-values, closely matching (except for the order) our `Pixel` definition.
-
-You can add "elif" blocks to support any other color names you use;
-modern browsers support [quite a lot][css-colors]. If you'd like to
-use a color Skia doesn't pre-define, you can use the `skia.Color`
-constructor, which takes red, green, and blue parameters from 0 to
-255.
-
-[css-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/color_value
-
-Now there's an SDL surface for the window contents and a Skia surface
-that we can draw to. We'll raster\index{raster} to the Skia surface,
-and then once we're done we'll copy it to the SDL surface to
-display on the screen.
-
-This is a little hairy, because we are moving data between two
-low-level libraries, but really it's just copying pixels from one
-place to another. First, get the sequence of bytes representing the
-Skia surface:
+Let's now use our understanding of surfaces and colors to copy from
+the Skia surface, where we will draw the chrome and page content, to
+the SDL surface, which actually appears on the screen. This is a
+little hairy, because we are moving data between two low-level
+libraries, but really it's just copying pixels from one place to
+another. First, get the sequence of bytes representing the Skia
+surface:
 
 ``` {.python}
 class Browser:
@@ -324,16 +340,7 @@ class Browser:
 ```
 
 The `CreateRGBSurfaceFrom` method then wraps the data in an SDL surface
-(without copying the bytes):[^use-after-free]
-
-[^use-after-free]: Note that since Skia and SDL are C++ libraries, they are not
-always consistent with Python's garbage collection system. So the link between
-the output of `tobytes` and `sdl_window` is not guaranteed to be kept
-consistent when `skia_bytes` is garbage collected. Instead, the SDL surface
-will be pointing at a bogus piece of memory, which will lead to memory
-corruption or a crash. The code here is correct because all of these are local
-variables that are garbage-collected together, but if not you need to be
-careful to keep all of them alive at the same time.
+(without copying the bytes):
 
 ``` {.python}
 class Browser:
@@ -348,7 +355,7 @@ class Browser:
 ```
 
 Finally, we draw all this pixel data on the window itself by blitting (copying)
-it from `sdl_surface` to `sdl_window`'s surface:
+it from `sdl_surface` to `sdl_window`'s surface:[^use-after-free]
 
 ``` {.python}
 class Browser:
@@ -360,12 +367,15 @@ class Browser:
         sdl2.SDL_BlitSurface(sdl_surface, rect, window_surface, rect)
         sdl2.SDL_UpdateWindowSurface(self.sdl_window)
 ```
-Skia is a bit more verbose than Tkinter, so let's abstract
-over some details with helper functions.[^skia-docs] First, let's talk
-about parsing colors.
 
-[^skia-docs]: Consult the [Skia][skia] and [skia-python][skia-python]
-documentation for more on the Skia API.
+[^use-after-free]: Note that since Skia and SDL are C++ libraries, they are not
+always consistent with Python's garbage collection system. So the link between
+the output of `tobytes` and `sdl_window` is not guaranteed to be kept
+consistent when `skia_bytes` is garbage collected. The SDL surface
+could be left pointing at a bogus piece of memory, leading to memory
+corruption or a crash. The code here is correct because all of these are local
+variables that are garbage-collected together, but if not you need to be
+careful to keep all of them alive at the same time.
 
 
 
@@ -379,7 +389,10 @@ to draw shapes on it---is called "rasterization"\index{raster} and is
 one important task of a graphics library.
 
 We'll need our browser's drawing commands to invoke Skia, not Tk
-methods. To draw a line, you use Skia's `Path` object:
+methods. To draw a line, you use Skia's `Path` object:[^skia-docs]
+
+[^skia-docs]: Consult the [Skia][skia] and [skia-python][skia-python]
+documentation for more on the Skia API.
 
 ``` {.python replace=%2c%20scroll/,%20-%20scroll/}
 class DrawLine:
@@ -901,41 +914,6 @@ _rasterization_\index{raster} library: it converts shapes like rectangles and
 text into pixels. Before we move on to Skia's advanced features, let's talk
 about how rasterization works at a deeper level. This will help to understand
 how exactly those features work.
-
-You probably already know that computer screens are a 2D array of
-pixels. Each pixel contains red, green and blue lights,[^lcd-design]
-or _color channels_, that can shine with an intensity between 0 (off)
-and 1 (fully on). By mixing red, green, and blue, which is formally
-known as the [sRGB color space][srgb], any color in that space's
-_gamut_ can be made.[^other-spaces] In a rasterization library, a 2D
-array of pixels like this is called a *surface*.[^or-texture] Since
-modern devices have lots of pixels, surfaces require a lot of memory,
-and we'll typically want to create as few as possible.
-
-[^or-texture]: Sometimes they are called *bitmaps* or *textures* as
-well, but these words connote specific CPU or GPU technologies for
-implementing surfaces.
-
-[^lcd-design]: Actually, some screens contain [pixels besides red,
-    green, and blue][lcd-design], including white, cyan, or yellow.
-    Moreover, different screens can use slightly different reds,
-    greens, or blues; professional color designers typically have to
-    [calibrate their screen][calibrate] to display colors accurately.
-    For the rest of us, the software still communicates with the
-    display in terms of standard red, green, and blue colors, and the
-    display hardware converts to whatever pixels it uses.
-    
-[lcd-design]: https://geometrian.com/programming/reference/subpixelzoo/index.php
-[calibrate]: https://en.wikipedia.org/wiki/Color_calibration
-[srgb]: https://en.wikipedia.org/wiki/SRGB
-[CRT]: https://en.wikipedia.org/wiki/Cathode-ray_tube
-[color-spec]: https://drafts.csswg.org/css-color-4/
-
-[^other-spaces]: The sRGB color space dates back to [CRT
-displays][CRT]. New technologies like LCD, LED, and OLED can display
-more colors, so CSS now includes [syntax][color-spec] for expressing
-these new colors. All color spaces have a limited gamut of expressible
-colors.
 
 The job of a rasterization library is to determine the red, green, and
 blue intensity of each pixel on the screen, based on the
