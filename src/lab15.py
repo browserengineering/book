@@ -959,8 +959,10 @@ class JSContext:
         frame.set_needs_render()
 
     def dispatch_settimeout(self, handle, window_id):
+        self.tab.browser.measure.time('script-settimeout')
         self.interp.evaljs(
             self.wrap(SETTIMEOUT_JS, window_id), handle=handle)
+        self.tab.browser.measure.done('script-settimeout')
 
     def setTimeout(self, handle, time, window_id):
         def run_callback():
@@ -970,7 +972,9 @@ class JSContext:
 
     def dispatch_xhr_onload(self, out, handle, window_id):
         code = self.wrap(XHR_ONLOAD_JS, window_id)
+        self.tab.browser.measure.time('script-settimeout')
         do_default = self.interp.evaljs(code, out=out, handle=handle)
+        self.tab.browser.measure.done('script-settimeout')
 
     def XMLHttpRequest_send(
         self, method, url, body, isasync, handle, window_id):
