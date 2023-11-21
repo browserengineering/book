@@ -972,9 +972,9 @@ class CompositedLayer:
         canvas.restore()
 
         if wbetools.SHOW_COMPOSITED_LAYER_BORDERS:
-            DrawOutline(0, 0,
-                irect.width() - 1, irect.height() - 1,
-                "red", 1).execute(canvas)
+            border_rect = skia.Rect.MakeXYWH(
+                1, 1, irect.width() - 2, irect.height() - 2)
+            DrawOutline(border_rect, "red", 1).execute(canvas)
 
     def __repr__(self):
         return ("layer: composited_bounds={} " +
