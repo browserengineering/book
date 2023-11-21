@@ -1034,7 +1034,9 @@ class Tab:
     def run_animation_frame(self, scroll):
         if not self.scroll_changed_in_tab:
             self.scroll = scroll
+        self.browser.measure.time('script-runRAFHandlers')
         self.js.interp.evaljs("__runRAFHandlers()")
+        self.browser.measure.done('script-runRAFHandlers')
 
         for node in tree_to_list(self.nodes, []):
             for (property_name, animation) in \

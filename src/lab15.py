@@ -1568,8 +1568,10 @@ class Tab:
             if not frame.loaded:
                 continue
 
+            self.browser.measure.time('script-runRAFHandlers')
             frame.js.dispatch_RAF(frame.window_id)
-    
+            self.browser.measure.done('script-runRAFHandlers')
+
             for node in tree_to_list(frame.nodes, []):
                 for (property_name, animation) in \
                     node.animations.items():
