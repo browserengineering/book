@@ -70,7 +70,7 @@ def parse_flags():
     global SHOW_COMPOSITED_LAYER_BORDERS, \
         USE_COMPOSITING, USE_GPU, USE_BROWSER_THREAD, \
         FORCE_CROSS_ORIGIN_IFRAMES, ASSERT_LAYOUT_CLEAN, \
-        PRINT_INVALIDATION_DEPENDENCIES
+        PRINT_INVALIDATION_DEPENDENCIES, OUTPUT_TRACE
 
     parser = argparse.ArgumentParser(description='Chapter 13 code')
     parser.add_argument("url", type=str, help="URL to load")

@@ -28,7 +28,7 @@ from lab8 import DEFAULT_STYLE_SHEET
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, JSContext, URL
 from lab11 import get_font, FONTS, DrawLine, DrawRect, DrawOutline
-from lab11 import linespace, DrawText, Blend, ClipRRect
+from lab11 import linespace, DrawText, Blend
 from lab11 import BlockLayout, LineLayout, TextLayout, InputLayout, Chrome
 from lab11 import Tab, Browser, paint_tree, NAMED_COLORS, parse_color
 
@@ -840,4 +840,5 @@ if __name__ == "__main__":
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
     browser.new_tab(URL(sys.argv[1]))
+    browser.raster_and_draw()
     mainloop(browser)

@@ -101,138 +101,9 @@ class Browser:
             WIDTH, HEIGHT, sdl2.SDL_WINDOW_SHOWN)
 ```
 
-When we create this SDL window, we're asking SDL to allocate a
-*surface*, a chunk of memory representing the pixels on the
-screen.[^surface] On today's large screens, surfaces take up a lot of
-memory and drawing to them can take a lot of time, so managing
-surfaces is going to be a big focus of this chapter.
-
-[^surface]: In Skia and SDL, a *surface* is a representation of a
-graphics buffer into which you can draw *pixels* (bits representing
-colors). A surface may or may not be bound to the physical pixels on the
-screen via a window, and there can be many surfaces. A *canvas* is an
-API interface that allows you to draw into a surface with higher-level
-commands such as for rectangles or text. Our browser uses separate
-Skia and SDL surfaces for simplicity, but in a highly optimized
-browser, minimizing the number of surfaces is important for good
-performance.
-
-Let's also create a surface for Skia to draw to:
-
-``` {.python}
-class Browser:
-    def __init__(self):
-        self.root_surface = skia.Surface.MakeRaster(
-            skia.ImageInfo.Make(
-                WIDTH, HEIGHT,
-                ct=skia.kRGBA_8888_ColorType,
-                at=skia.kUnpremul_AlphaType))
-```
-
-Note the `ct` argument, meaning "color type", which indicates that
-each pixel of this surface should be represented as *r*ed, *g*reen,
-*b*lue, and *a*lpha values, each of which should take up 8 bits. In
-other words, pixels are basically defined like so:
-
-``` {.python file=examples}
-class Pixel:
-    def __init__(self, r, g, b, a):
-        self.r = r
-        self.g = g
-        self.b = b
-        self.a = a
-```
-
-Note that this `Pixel` code is an illustrative example, not something
-our browser has to define. It's standing in for somewhat more complex
-code within Skia itself.
-
-Now there's an SDL surface for the window contents and a Skia surface
-that we can draw to. We'll raster\index{raster} to the Skia surface,
-and then once we're done we'll copy it to the SDL surface to
-display on the screen.
-
-This is a little hairy, because we are moving data between two
-low-level libraries, but really it's just copying pixels from one
-place to another. First, get the sequence of bytes representing the
-Skia surface:
-
-``` {.python}
-class Browser:
-    def draw(self):
-        # ...
-
-        # This makes an image interface to the Skia surface, but
-        # doesn't actually copy anything yet.
-        skia_image = self.root_surface.makeImageSnapshot()
-        skia_bytes = skia_image.tobytes()
-```
-
-Next, we need to copy the data to an SDL surface. This requires
-telling SDL what order the pixels are stored in and on your computer's
-[endianness][wiki-endianness]:
-
-[wiki-endianness]: https://en.wikipedia.org/wiki/Endianness
-
-``` {.python}
-class Browser:
-    def __init__(self):
-        if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
-            self.RED_MASK = 0xff000000
-            self.GREEN_MASK = 0x00ff0000
-            self.BLUE_MASK = 0x0000ff00
-            self.ALPHA_MASK = 0x000000ff
-        else:
-            self.RED_MASK = 0x000000ff
-            self.GREEN_MASK = 0x0000ff00
-            self.BLUE_MASK = 0x00ff0000
-            self.ALPHA_MASK = 0xff000000
-```
-
-The `CreateRGBSurfaceFrom` method then wraps the data in an SDL surface
-(without copying the bytes):[^use-after-free]
-
-[^use-after-free]: Note that since Skia and SDL are C++ libraries, they are not
-always consistent with Python's garbage collection system. So the link between
-the output of `tobytes` and `sdl_window` is not guaranteed to be kept
-consistent when `skia_bytes` is garbage collected. Instead, the SDL surface
-will be pointing at a bogus piece of memory, which will lead to memory
-corruption or a crash. The code here is correct because all of these are local
-variables that are garbage-collected together, but if not you need to be
-careful to keep all of them alive at the same time.
-
-``` {.python}
-class Browser:
-    def draw(self):
-        # ...
-        depth = 32 # Bits per pixel
-        pitch = 4 * WIDTH # Bytes per row
-        sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
-            skia_bytes, WIDTH, HEIGHT, depth, pitch,
-            self.RED_MASK, self.GREEN_MASK,
-            self.BLUE_MASK, self.ALPHA_MASK)
-```
-
-Finally, we draw all this pixel data on the window itself by blitting (copying)
-it from `sdl_surface` to `sdl_window`'s surface:
-
-``` {.python}
-class Browser:
-    def draw(self):
-        # ...
-        rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
-        window_surface = sdl2.SDL_GetWindowSurface(self.sdl_window)
-        # SDL_BlitSurface is what actually does the copy.
-        sdl2.SDL_BlitSurface(sdl_surface, rect, window_surface, rect)
-        sdl2.SDL_UpdateWindowSurface(self.sdl_window)
-```
-
-So that's that: we're now creating a window and copying pixels to it.
-But if you run your browser now, you'll find that it exits
-immediately.
-
-That's because SDL doesn't have a `mainloop` or `bind` method; we have
-to implement it ourselves:
+Now that we've created a window, we need to handle events sent to it.
+SDL doesn't have a `mainloop` or `bind` method; we have to implement
+it ourselves:
 
 ``` {.python}
 def mainloop(browser):
@@ -297,28 +168,97 @@ SDL is most popular for making games. Their site lists [a selection of
 books](https://wiki.libsdl.org/Books) about game programming in SDL.
 :::
 
-Rasterizing with Skia
-=====================
 
-\index{canvas}Now our browser has an SDL surface, a Skia surface, and
-can copy between them. Now we want to draw text, rectangles, and so on
-to that Skia surface. This step---coloring in the pixels of a surface
-to draw shapes on it---is called "rasterization"\index{raster} and is
-one important task of a graphics library.
+Creating Surfaces
+=================
 
-We'll need our browser's drawing commands to invoke Skia, not Tk
-methods. Skia is a bit more verbose than Tkinter, so let's abstract
-over some details with helper functions.[^skia-docs] First, let's talk
-about parsing colors.
+Let's peek under the hood of these SDL calls. 
+When we create an SDL window, we're asking SDL to allocate a
+*surface*, a chunk of memory representing the pixels on the
+screen.[^surface] Both SDL's and Skia's graphics APIs use surfaces
+internally, so creating and managing
+surfaces is going to be the big focus of this chapter.
+On today's large screens, surfaces take up a lot of memory
+and operations on them take a lot of time,
+so handling surfaces well is essential to a modern web browser.
 
-[^skia-docs]: Consult the [Skia][skia] and [skia-python][skia-python]
-documentation for more on the Skia API.
+[^surface]: A surface may or may not be bound to the physical pixels on the
+screen via a window, and there can be many surfaces. A *canvas* is an
+API interface that allows you to draw into a surface with higher-level
+commands such as for rectangles or text. Our browser uses separate
+Skia and SDL surfaces for simplicity, but in a highly optimized
+browser, minimizing the number of surfaces is important for good
+performance.
 
-Skia represents colors as simple 32-bit integers, with the most
-significant byte representing the alpha value (255 meaning opaque and
-0 meaning transparent) and then the next three bytes representing the
-red, green, and blue color channels. Parsing a CSS color like
-`#ffd700` to this representation is pretty easy:
+In Skia and SDL, a *surface* is a representation of a
+graphics buffer into which you can draw *pixels* (bits representing
+colors). We implicitly created an SDL surface when we created
+an SDL window; let's also create a surface for Skia to draw to:
+
+``` {.python}
+class Browser:
+    def __init__(self):
+        self.root_surface = skia.Surface.MakeRaster(
+            skia.ImageInfo.Make(
+                WIDTH, HEIGHT,
+                ct=skia.kRGBA_8888_ColorType,
+                at=skia.kUnpremul_AlphaType))
+```
+
+Each pixel has a color.
+Note the `ct` argument, meaning "color type", which indicates that
+each pixel of this surface should be represented as *r*ed, *g*reen,
+*b*lue, and *a*lpha values, each of which should take up 8 bits. In
+other words, pixels are basically defined like so:
+
+``` {.python file=examples}
+class Pixel:
+    def __init__(self, r, g, b, a):
+        self.r = r
+        self.g = g
+        self.b = b
+        self.a = a
+```
+
+This `Pixel` definition is an illustrative example, not actual code in
+our browser. It's standing in for somewhat more complex code within
+SDL and Skia themselves.[^skia-color]
+
+[^skia-color]: Skia actually represents colors
+as 32-bit integers, with the most significant byte representing
+the alpha value (255 meaning opaque and 0 meaning transparent) and
+then the next three bytes representing the red, green, and blue color
+channels.
+
+Defining colors via red, green, and blue values is fairly
+standard[^other-spaces] and corresponds to how computer screens
+work[^lcd-design]. For example, in CSS, we refer to arbitrary colors
+with a hash character and six hex digits, like `#ffd700`, with two
+digits each for red, green, and blue:[^opaque]
+
+[^other-spaces]: It's formally known as the [sRGB color space][srgb],
+and it dates back to [CRT displays][CRT], which had a pretty limited
+*gamut* of expressible colors. New technologies like LCD, LED, and
+OLED can display more colors, so CSS now includes [syntax][color-spec]
+for expressing these new colors. Still, all color spaces have a
+limited gamut of expressible colors.
+
+[^lcd-design]: Actually, some screens contain [lights besides red,
+    green, and blue][lcd-design], including white, cyan, or yellow.
+    Moreover, different screens can use slightly different reds,
+    greens, or blues; professional color designers typically have to
+    [calibrate their screen][calibrate] to display colors accurately.
+    For the rest of us, the software still communicates with the
+    display in terms of standard red, green, and blue colors, and the
+    display hardware converts them to whatever pixels it uses.
+
+[^opaque]: Alpha is implicitly 255, meaning opaque, in this case.
+    
+[lcd-design]: https://geometrian.com/programming/reference/subpixelzoo/index.php
+[calibrate]: https://en.wikipedia.org/wiki/Color_calibration
+[srgb]: https://en.wikipedia.org/wiki/SRGB
+[CRT]: https://en.wikipedia.org/wiki/Cathode-ray_tube
+[color-spec]: https://drafts.csswg.org/css-color-4/
 
 ``` {.python}
 def parse_color(color):
@@ -329,12 +269,8 @@ def parse_color(color):
         return skia.Color(r, g, b)
 ```
 
-Skia's `Color` constructor packs the red, green, and blue values into
-its integer representation for us. (Alpha is implicitly 255, meaning
-opaque, in this case.)
-
-However, there are also a whole lot of named colors. Supporting this
-is necessary to see many of the examples in this book:
+The named colors we've seen so far can just be specified in terms of
+this syntax:
 
 ``` {.python}
 NAMED_COLORS = {
@@ -365,19 +301,133 @@ something is drawn to the screen.[^not-standard]
 
 [named-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/named-color
 
+Let's now use our understanding of surfaces and colors to copy from
+the Skia surface, where we will draw the chrome and page content, to
+the SDL surface, which actually appears on the screen. This is a
+little hairy, because we are moving data between two low-level
+libraries, but really it's just copying pixels from one place to
+another. First, get the sequence of bytes representing the Skia
+surface:
 
-Note that the `Color` constructor takes alpha, red, green, and blue
-values, closely matching (except for the order) our `Pixel` definition.
+``` {.python}
+class Browser:
+    def draw(self):
+        # ...
 
-You can add "elif" blocks to support any other color names you use;
-modern browsers support [quite a lot][css-colors]. If you'd like to
-use a color Skia doesn't pre-define, you can use the `skia.Color`
-constructor, which takes red, green, and blue parameters from 0 to
-255.
+        # This makes an image interface to the Skia surface, but
+        # doesn't actually copy anything yet.
+        skia_image = self.root_surface.makeImageSnapshot()
+        skia_bytes = skia_image.tobytes()
+```
 
-[css-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/color_value
+Next, we need to copy the data to an SDL surface. This requires
+telling SDL what order the pixels are stored in and on your computer's
+[endianness][wiki-endianness]:
 
-To draw a line, you use Skia's `Path` object:
+[wiki-endianness]: https://en.wikipedia.org/wiki/Endianness
+
+``` {.python}
+class Browser:
+    def __init__(self):
+        if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
+            self.RED_MASK = 0xff000000
+            self.GREEN_MASK = 0x00ff0000
+            self.BLUE_MASK = 0x0000ff00
+            self.ALPHA_MASK = 0x000000ff
+        else:
+            self.RED_MASK = 0x000000ff
+            self.GREEN_MASK = 0x0000ff00
+            self.BLUE_MASK = 0x00ff0000
+            self.ALPHA_MASK = 0xff000000
+```
+
+The `CreateRGBSurfaceFrom` method then wraps the data in an SDL surface
+(without copying the bytes):
+
+``` {.python}
+class Browser:
+    def draw(self):
+        # ...
+        depth = 32 # Bits per pixel
+        pitch = 4 * WIDTH # Bytes per row
+        sdl_surface = sdl2.SDL_CreateRGBSurfaceFrom(
+            skia_bytes, WIDTH, HEIGHT, depth, pitch,
+            self.RED_MASK, self.GREEN_MASK,
+            self.BLUE_MASK, self.ALPHA_MASK)
+```
+
+Finally, we draw all this pixel data on the window itself by blitting (copying)
+it from `sdl_surface` to `sdl_window`'s surface:[^use-after-free]
+
+``` {.python}
+class Browser:
+    def draw(self):
+        # ...
+        rect = sdl2.SDL_Rect(0, 0, WIDTH, HEIGHT)
+        window_surface = sdl2.SDL_GetWindowSurface(self.sdl_window)
+        # SDL_BlitSurface is what actually does the copy.
+        sdl2.SDL_BlitSurface(sdl_surface, rect, window_surface, rect)
+        sdl2.SDL_UpdateWindowSurface(self.sdl_window)
+```
+
+[^use-after-free]: Note that since Skia and SDL are C++ libraries, they are not
+always consistent with Python's garbage collection system. So the link between
+the output of `tobytes` and `sdl_window` is not guaranteed to be kept
+consistent when `skia_bytes` is garbage collected. The SDL surface
+could be left pointing at a bogus piece of memory, leading to memory
+corruption or a crash. The code here is correct because all of these are local
+variables that are garbage-collected together, but if not you need to be
+careful to keep all of them alive at the same time.
+
+So now we can copy from the Skia surface to the SDL window. One last
+step: we have to draw the browser to the Skia surface.
+
+::: {.further}
+Screens use red, green, and blue color channels to match the three
+types of [cone cells][cones] in a human eye. We take it for granted,
+but color standards like [CIELAB][cielab] derive from attempts to
+[reverse-engineer human vision][opponent-process]. These cone cells
+vary between people: some have [more][tetrachromats] or
+[fewer][colorblind] (typically an inherited condition carried on the X
+chromosome). Moreover, different people have different ratios of cone
+types and those cone types use different protein structures that vary
+in the exact frequency of green, red, and blue that they respond to.
+The study of color thus combines software, hardware, chemistry,
+biology, and psychology.
+:::
+
+[cones]: https://en.wikipedia.org/wiki/Cone_cell
+[cielab]: https://en.wikipedia.org/wiki/CIELAB_color_space
+[opponent-process]: https://en.wikipedia.org/wiki/Opponent_process
+[colorblind]: https://en.wikipedia.org/wiki/Color_blindness
+[tetrachromats]: https://en.wikipedia.org/wiki/Tetrachromacy#Humans
+
+
+
+Rasterizing with Skia
+=====================
+
+We want to draw text, rectangles, and so on to the Skia
+surface. This step---coloring in the pixels of a surface to draw
+shapes on it---is called "rasterization"\index{raster} and is one
+important task of a graphics library.
+
+In Skia, rasterization happens via a *canvas*\index{canvas} API. A
+canvas is just an object that draws to a particular surface:
+
+``` {.python}
+class Browser:
+    def draw(self, canvas, offset):
+        # ...
+        canvas = self.root_surface.getCanvas()
+        # ...
+```
+
+Our browser's drawing commands will need to invoke Skia methods on
+this canvas. To draw a line, you use Skia's `Path` object:[^skia-docs]
+
+[^skia-docs]: Consult the [Skia][skia] and [skia-python][skia-python]
+documentation for more on the Skia API.
 
 ``` {.python replace=%2c%20scroll/,%20-%20scroll/}
 class DrawLine:
@@ -900,67 +950,12 @@ text into pixels. Before we move on to Skia's advanced features, let's talk
 about how rasterization works at a deeper level. This will help to understand
 how exactly those features work.
 
-You probably already know that computer screens are a 2D array of
-pixels. Each pixel contains red, green and blue lights,[^lcd-design]
-or _color channels_, that can shine with an intensity between 0 (off)
-and 1 (fully on). By mixing red, green, and blue, which is formally
-known as the [sRGB color space][srgb], any color in that space's
-_gamut_ can be made.[^other-spaces] In a rasterization library, a 2D
-array of pixels like this is called a *surface*.[^or-texture] Since
-modern devices have lots of pixels, surfaces require a lot of memory,
-and we'll typically want to create as few as possible.
-
-[^or-texture]: Sometimes they are called *bitmaps* or *textures* as
-well, but these words connote specific CPU or GPU technologies for
-implementing surfaces.
-
-[^lcd-design]: Actually, some screens contain [pixels besides red,
-    green, and blue][lcd-design], including white, cyan, or yellow.
-    Moreover, different screens can use slightly different reds,
-    greens, or blues; professional color designers typically have to
-    [calibrate their screen][calibrate] to display colors accurately.
-    For the rest of us, the software still communicates with the
-    display in terms of standard red, green, and blue colors, and the
-    display hardware converts to whatever pixels it uses.
-    
-[lcd-design]: https://geometrian.com/programming/reference/subpixelzoo/index.php
-[calibrate]: https://en.wikipedia.org/wiki/Color_calibration
-[srgb]: https://en.wikipedia.org/wiki/SRGB
-[CRT]: https://en.wikipedia.org/wiki/Cathode-ray_tube
-[color-spec]: https://drafts.csswg.org/css-color-4/
-
-[^other-spaces]: The sRGB color space dates back to [CRT
-displays][CRT]. New technologies like LCD, LED, and OLED can display
-more colors, so CSS now includes [syntax][color-spec] for expressing
-these new colors. All color spaces have a limited gamut of expressible
-colors.
-
 The job of a rasterization library is to determine the red, green, and
 blue intensity of each pixel on the screen, based on the
 shapes---lines, rectangles, text---that the application wants to
 display. The interface for drawing shapes onto a surface is called a
 *canvas*; both Tkinter and Skia had canvas APIs. In Skia, each surface
 has an associated canvas that draws to that surface.
-
-::: {.further}
-Screens use red, green, and blue color channels to match the three
-types of [cone cells][cones] in a human eye. We take it for granted,
-but color standards like [CIELAB][cielab] derive from attempts to
-[reverse-engineer human vision][opponent-process]. These cone cells
-vary between people: some have [more][tetrachromats] or
-[fewer][colorblind] (typically an inherited condition carried on the X
-chromosome). Moreover, different people have different ratios of cone
-types and those cone types use different protein structures that vary
-in the exact frequency of green, red, and blue that they respond to.
-The study of color thus combines software, hardware, chemistry,
-biology, and psychology.
-:::
-
-[cones]: https://en.wikipedia.org/wiki/Cone_cell
-[cielab]: https://en.wikipedia.org/wiki/CIELAB_color_space
-[opponent-process]: https://en.wikipedia.org/wiki/Opponent_process
-[colorblind]: https://en.wikipedia.org/wiki/Color_blindness
-[tetrachromats]: https://en.wikipedia.org/wiki/Tetrachromacy#Humans
 
 Blending and stacking
 =====================
@@ -1448,7 +1443,7 @@ to `paint_visual_effects`:
 ``` {.python expected=False}
 def paint_visual_effects(node, cmds, rect):
     # ...
-    blend_mode = node.style.get("mix-blend-mode")
+    blend_mode = node.style.get("mix-blend-mode", "normal")
     
     return [
         Blend(blend_mode, [
@@ -1603,7 +1598,16 @@ of two sheets of paper and destination-in compositing playing the role
 of the scissors. This implementation technique for clipping is called
 *masking*, and it is very general---you can use it with arbitrarily
 complex mask shapes, like text, bitmap images, or anything else you
-can imagine.
+can imagine.[^cliprrect]
+
+[^cliprrect]: If all our browser wanted to clip were rounded
+    rectangles, Skia actually provides a specialized `clipRRect`
+    operation. It's more efficient than destination-in blending
+    because it applies as other commands are being drawn, and so can
+    skip drawing anything outside the clipped region. This requires
+    specialized code in each of Skia's *shaders*, or GPU programs, so
+    can only be done for a couple of common shapes. Destination-in
+    blending is more general.
 
 ::: {.further}
 Rounded corners have an [interesting history][mac-story] in computing.
@@ -1722,7 +1726,7 @@ class Blend:
     def __init__(self, opacity, blend_mode, children):
         self.opacity = opacity
         self.blend_mode = blend_mode
-        self.should_save = self.blend_mode or self.opacity < 1
+        self.should_save = self.blend_mode != "normal" or self.opacity < 1
 
         self.children = children
         self.rect = skia.Rect.MakeEmpty()
@@ -1743,7 +1747,7 @@ class Blend:
 
 Now `paint_visual_effects` looks like this:
 
-``` {.python expected=False}
+``` {.python}
 def paint_visual_effects(node, cmds, rect):
     # ...
 
@@ -1757,100 +1761,6 @@ def paint_visual_effects(node, cmds, rect):
 ```
 
 Note that I've specified an opacity of `1.0` for the clip `Blend`.
-
-There's one more optimization to make: using Skia's `clipRRect`
-operation to get rid of the destination-in blended surface. This
-operation takes in a rounded rectangle and changes the *canvas state*
-so that all future commands skip drawing any pixels outside that
-rounded rectangle.
-
-There are multiple advantages to using `clipRRect` over an explicit
-destination-in surface. First, most of the time, it allows Skia to
-avoid making a surface for the mask.[^shader-rounded] It also allows
-Skia to skip draw operations that don't intersect the mask, or
-dynamically draw only the parts of operations that intersect it. It's
-basically the optimization we implemented for scrolling
-[in Chapter 2](graphics.md#faster-rendering).[^no-other-shapes]
-
-[^shader-rounded]: At a high level, this is achieved by having the GPU
-*shaders*---the code---for various drawing commands check for clipping
-when they draw. In effect, the clip region is stored implicitly, in
-the code and state of the canvas, instead of explicitly in a surface.
-GPU programs are out of scope for this book, but if you're curious
-there are many online resources with more information.
-
-[^no-other-shapes]: This kind of code is complex for Skia to implement,
-so it only makes sense to do it for common patterns, like rounded
-rectangles. This is why Skia only supports optimized clips for a few
-common shapes.
-
-Since `clipRRect` changes the canvas state, we'll need to restore it
-once we're done with clipping. That uses the `save` and `restore`
-methods---you call `save` before calling `clipRRect`, and `restore`
-after finishing drawing the commands that should be clipped:
-
-``` {.python .example}
-# Draw commands that should not be clipped.
-canvas.save()
-canvas.clipRRect(rounded_rect)
-# Draw commands that should be clipped.
-canvas.restore()
-# Draw commands that should not be clipped.
-```
-
-You might notice the similarity between `save`/`restore` and the
-`saveLayer`/`restore` operations created by `Blend`. That's
-because Skia has a combined stack of surfaces and canvas states.
-Unlike `saveLayer`, however, `save` never creates a new surface;
-it just changes the canvas state to change how commands are executed,
-in this case to clip those commands to a rounded rectangle.
-
-Let's wrap this pattern into a `ClipRRect` drawing command, which like
-`Blend` takes a list of subcommands:[^save-clip]
-
-[^save-clip]: If you're doing two clips at once, or a clip and a
-transform, or some other more complex setup that would benefit from
-only saving once but doing multiple things inside it, this pattern of
-always saving canvas parameters might be wasteful, but since it
-doesn't create a surface it's still a big optimization here.
-
-``` {.python}
-class ClipRRect:
-    def __init__(self, rect, radius, children):
-        self.rect = rect
-        self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
-        self.children = children
-
-    def execute(self, canvas):
-        canvas.save()
-        canvas.clipRRect(self.rrect)
-
-        for cmd in self.children:
-            cmd.execute(canvas)
-
-        canvas.restore()
-```
-
-Now, in `paint_visual_effects`, we can use `ClipRRect` instead of
-destination-in blending with `DrawRRect` (and we can
-fold the opacity into the `skia.Paint` passed to the outer
-`Blend`, since that is defined to be applied before blending):
-
-``` {.python}
-def paint_visual_effects(node, cmds, rect):
-    if node.style.get("overflow", "visible") == "clip":
-        # ...
-        cmds = [ClipRRect(rect, border_radius, cmds)]
-```
-
-Of course, `clipRRect` only applies for rounded rectangles, while
-masking is a general technique that can be used to implement all
-sorts of clips and masks (like CSS's `clip-path` and `mask`), so a
-real browser will typically have both code paths.
-
-So now, each element uses at most one surface, and even then only if
-it has opacity or a non-default blend mode. Everything else should
-look visually the same, but will be faster and use less memory.
 
 ::: {.further}
 Besides using fewer surfaces, real browsers also need to avoid

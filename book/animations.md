@@ -424,7 +424,7 @@ class Blend:
         args = ""
         if self.opacity < 1:
             args += ", opacity={}".format(self.opacity)
-        if self.blend_mode:
+        if self.blend_mode != "normal":
             args += ", blend_mode={}".format(self.blend_mode)
         if not args:
             args = ", <no-op>"
@@ -656,16 +656,6 @@ class Blend(VisualEffect):
     def clone(self, child):
         return Blend(self.opacity, self.blend_mode,
                      self.node, [child])
-```
-
-The other visual effect, `ClipRRect`, should do something similar (note
-how we are using `rrect.rect()`, since the first parameter needs to be the
-actual clipping rect):
-
-``` {.python}
-class ClipRRect(VisualEffect):
-    def clone(self, child):
-        return ClipRRect(self.rrect.rect(), self.radius, [child])
 ```
 
 Our browser won't be cloning paint commands, since they're all going to be
@@ -1581,9 +1571,9 @@ class Blend(VisualEffect):
             self.needs_compositing = True
 ```
 
-We'll *also* need to mark a visual effect as needing compositing if any of its
-descendants do (even if it's a `ClipRRect`). That's because if one effect is
-in the draw phase, then the ones above it will have to be as well:
+We'll *also* need to mark a visual effect as needing compositing if
+any of its descendants do. That's because if one effect is in the draw
+phase, then the ones above it will have to be as well:
 
 ``` {.python}
 class VisualEffect:
@@ -1918,16 +1908,21 @@ in the *x* direction.
 class Transform(VisualEffect):
     def map(self, rect):
         return map_translation(rect, self.translation)
+```
 
-class ClipRRect(VisualEffect):
-    def map(self, rect):
-        bounds = rect.makeOffset(0.0, 0.0)
-        bounds.intersect(self.rrect.rect())
-        return bounds
+For `Blend`, it's worth adding a special case for clipping:
 
+``` {.python}
 class Blend(VisualEffect):
     def map(self, rect):
-        return rect
+        if self.children and \
+           isinstance(self.children[-1], Blend) and \
+           self.children[-1].blend_mode == "destination-in":
+            bounds = rect.makeOffset(0.0, 0.0)
+            bounds.intersect(self.children[-1].rect)
+            return bounds
+        else:
+            return rect
 ```
 
 Now we can compute the absolute bounds of a display item, mapping its
@@ -1950,8 +1945,8 @@ testing is now complete. You should now be able to render
 [overlap-example]: examples/example13-transform-overlap.html
 
 There's one more situation worth thinking about, though. Suppose we have a huge
-composited layer, containing a lot of text, except that most of that layer is
-clipped out by a `ClipRRect` somewhere above it. Then the `absolute_bounds`
+composited layer, containing a lot of text, except that only a small
+part of that layer is shown on the screen, the rest being clipped out. Then the `absolute_bounds`
 consider the clip operations and the `composited_bounds` don't, meaning that
 we'll make a much larger composited layer than necessary and waste a lot of
 time rastering pixels that the user will never see.
@@ -1993,7 +1988,7 @@ def absolute_to_local(display_item, rect):
     return rect
 ```
 
-Which in turn relies on `unmap`. For `Blend` and `ClipRRect` these should
+Which in turn relies on `unmap`. For `Blend` these should
 be no-ops, but for `Transform` it's just the inverse translation:
 
 ``` {.python}

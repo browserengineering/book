@@ -97,7 +97,7 @@ class Blend:
     def __init__(self, opacity, blend_mode, children):
         self.opacity = opacity
         self.blend_mode = blend_mode
-        self.should_save = self.blend_mode or self.opacity < 1
+        self.should_save = self.blend_mode != "normal" or self.opacity < 1
 
         self.children = children
         self.rect = skia.Rect.MakeEmpty()
@@ -194,19 +194,6 @@ class DrawRRect:
         sk_color = parse_color(self.color)
         canvas.drawRRect(self.rrect,
             paint=skia.Paint(Color=sk_color))
-
-class ClipRRect:
-    def __init__(self, rect, radius, children):
-        self.rect = rect
-        self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
-        self.children = children
-
-    def execute(self, canvas):
-        canvas.save()
-        canvas.clipRRect(self.rrect)
-        for cmd in self.children:
-            cmd.execute(canvas)
-        canvas.restore()
 
 def paint_tree(layout_object, display_list):
     cmds = []
@@ -396,13 +383,15 @@ class InputLayout:
 
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
-    blend_mode = node.style.get("mix-blend-mode")
+    blend_mode = node.style.get("mix-blend-mode", "normal")
 
     if node.style.get("overflow", "visible") == "clip":
         border_radius = float(node.style.get("border-radius", "0px")[:-2])
         if not blend_mode:
             blend_mode = "source-over"
-        cmds = [ClipRRect(rect, border_radius, cmds)]
+        cmds.append(Blend(1.0, "destination-in", [
+            DrawRRect(rect, border_radius, "white")
+        ]))
 
     return [Blend(opacity, blend_mode, cmds)]
 
@@ -718,6 +707,7 @@ if __name__ == "__main__":
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
     browser.new_tab(URL(sys.argv[1]))
+    browser.draw()
     mainloop(browser)
 
 

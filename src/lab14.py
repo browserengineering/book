@@ -45,7 +45,7 @@ from lab13 import map_translation, parse_transform
 from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import PaintCommand, DrawText, DrawCompositedLayer, DrawOutline, \
     DrawLine, DrawRRect
-from lab13 import VisualEffect, Blend, ClipRRect, Transform, Chrome, \
+from lab13 import VisualEffect, Blend, Transform, Chrome, \
     Tab, Browser
 
 @wbetools.patch(Element)
@@ -1247,6 +1247,7 @@ class Browser:
         self.active_tab_scroll = 0
 
         self.measure = MeasureTime()
+        threading.current_thread().name = "Browser thread"
 
         if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
             self.RED_MASK = 0xff000000
@@ -1404,19 +1405,26 @@ class Browser:
             self.needs_accessibility:
             self.lock.release()
             return
-        self.measure.time('raster/draw')
+
+        self.measure.time('composite_raster_and_draw')
         start_time = time.time()
         if self.needs_composite:
+            self.measure.time('composite')
             self.composite()
+            self.measure.stop('composite')
         if self.needs_raster:
+            self.measure.time('raster')
             self.raster_chrome()
             self.raster_tab()
+            self.measure.stop('raster')
 
         if self.needs_draw:
+            self.measure.time('draw')
             self.paint_draw_list()
             self.draw()
+            self.measure.stop('draw')
 
-        self.measure.stop('raster/draw')
+        self.measure.stop('composite_raster_and_draw')
 
         if self.needs_accessibility:
             self.update_accessibility()
@@ -1690,5 +1698,6 @@ if __name__ == "__main__":
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
     browser.new_tab(URL(sys.argv[1]))
+    browser.draw()
     mainloop(browser)
 

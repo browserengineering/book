@@ -28,7 +28,7 @@ from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, parse_color, NAMED_COLORS, parse_blend_mode, linespace
 from lab11 import paint_tree
-from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner, mainloop
+from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
 from lab12 import Tab, Browser, Task, REFRESH_RATE_SEC, Chrome, JSContext
 
 @wbetools.patch(Text)
@@ -216,39 +216,12 @@ class DrawOutline(PaintCommand):
             self.rect.right(), self.color,
             self.thickness)
 
-class ClipRRect(VisualEffect):
-    def __init__(self, rect, radius, children):
-        super().__init__(rect, children)
-        self.radius = radius
-        self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
-
-    def execute(self, canvas):
-        canvas.save()
-        canvas.clipRRect(self.rrect)
-        for cmd in self.children:
-            cmd.execute(canvas)
-        canvas.restore()
-
-    def map(self, rect):
-        bounds = rect.makeOffset(0.0, 0.0)
-        bounds.intersect(self.rrect.rect())
-        return bounds
-
-    def unmap(self, rect):
-        return rect
-
-    def clone(self, child):
-        return ClipRRect(self.rrect.rect(), self.radius, [child])
-
-    def __repr__(self):
-        return "ClipRRect({})".format(str(self.rrect))
-
 class Blend(VisualEffect):
     def __init__(self, opacity, blend_mode, node, children):
         super().__init__(skia.Rect.MakeEmpty(), children, node)
         self.opacity = opacity
         self.blend_mode = blend_mode
-        self.should_save = self.blend_mode or self.opacity < 1
+        self.should_save = self.blend_mode != "normal" or self.opacity < 1
 
         if wbetools.USE_COMPOSITING and self.should_save:
             self.needs_compositing = True
@@ -270,7 +243,14 @@ class Blend(VisualEffect):
             canvas.restore()
         
     def map(self, rect):
-        return rect
+        if self.children and \
+           isinstance(self.children[-1], Blend) and \
+           self.children[-1].blend_mode == "destination-in":
+            bounds = rect.makeOffset(0.0, 0.0)
+            bounds.intersect(self.children[-1].rect)
+            return bounds
+        else:
+            return rect
 
     def unmap(self, rect):
         return rect
@@ -283,7 +263,7 @@ class Blend(VisualEffect):
         args = ""
         if self.opacity < 1:
             args += ", opacity={}".format(self.opacity)
-        if self.blend_mode:
+        if self.blend_mode != "normal":
             args += ", blend_mode={}".format(self.blend_mode)
         if not args:
             args = ", <no-op>"
@@ -752,7 +732,7 @@ class InputLayout:
 
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
-    blend_mode = node.style.get("mix-blend-mode")
+    blend_mode = node.style.get("mix-blend-mode", "normal")
     translation = parse_transform(
         node.style.get("transform", ""))
 
@@ -760,7 +740,9 @@ def paint_visual_effects(node, cmds, rect):
         border_radius = float(node.style.get("border-radius", "0px")[:-2])
         if not blend_mode:
             blend_mode = "source-over"
-        cmds = [ClipRRect(rect, border_radius, cmds)]
+        cmds.append(Blend(1.0, "destination-in", None, [
+            DrawRRect(rect, border_radius, cmds)
+        ]))
 
     blend_op = Blend(opacity, blend_mode, node, cmds)
     node.blend_op = blend_op
@@ -1231,6 +1213,7 @@ class Browser:
         self.active_tab_scroll = 0
 
         self.measure = MeasureTime()
+        threading.current_thread().name = "Browser thread"
 
         if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
             self.RED_MASK = 0xff000000
@@ -1355,17 +1338,23 @@ class Browser:
             self.lock.release()
             return
 
-        self.measure.time('raster/draw')
+        self.measure.time('composite_raster_and_draw')
         start_time = time.time()
         if self.needs_composite:
+            self.measure.time('composite')
             self.composite()
+            self.measure.stop('composite')
         if self.needs_raster:
+            self.measure.time('raster')
             self.raster_chrome()
             self.raster_tab()
+            self.measure.stop('raster')
         if self.needs_draw:
+            self.measure.time('draw')
             self.paint_draw_list()
             self.draw()
-        self.measure.stop('raster/draw')
+            self.measure.stop('draw')
+        self.measure.stop('composite_raster_and_draw')
         self.needs_composite = False
         self.needs_raster = False
         self.needs_draw = False
@@ -1484,6 +1473,33 @@ class Browser:
             sdl2.SDL_GL_DeleteContext(self.gl_context)
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
+def mainloop(browser):
+    event = sdl2.SDL_Event()
+    while True:
+        if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+            if event.type == sdl2.SDL_QUIT:
+                browser.handle_quit()
+                sdl2.SDL_Quit()
+                sys.exit()
+                break
+            elif event.type == sdl2.SDL_MOUSEBUTTONUP:
+                browser.handle_click(event.button)
+            elif event.type == sdl2.SDL_KEYDOWN:
+                if event.key.keysym.sym == sdl2.SDLK_RETURN:
+                    browser.handle_enter()
+                elif event.key.keysym.sym == sdl2.SDLK_DOWN:
+                    browser.handle_down()
+            elif event.type == sdl2.SDL_TEXTINPUT:
+                browser.handle_key(event.text.text.decode('utf8'))
+        if not wbetools.USE_BROWSER_THREAD:
+            if browser.active_tab.task_runner.needs_quit:
+                break
+            if browser.needs_animation_frame:
+                browser.needs_animation_frame = False
+                browser.render()
+        browser.composite_raster_and_draw()
+        browser.schedule_animation_frame()
+
 if __name__ == "__main__":
     import sys
     wbetools.parse_flags()
@@ -1491,4 +1507,5 @@ if __name__ == "__main__":
     sdl2.SDL_Init(sdl2.SDL_INIT_EVENTS)
     browser = Browser()
     browser.new_tab(URL(sys.argv[1]))
+    browser.draw()
     mainloop(browser)
