@@ -513,7 +513,7 @@ class DrawLine:
         self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
 ```
 
-To draw an outline, draw a rectangle but set the `Style` parameter of
+To create an outline, draw a rectangle but set the `Style` parameter of
 the `Paint` to `Stroke_Style`:
 
 ``` {.python replace=%2c%20scroll/,rect.makeOffset(0%2c%20-scroll)/rect}
