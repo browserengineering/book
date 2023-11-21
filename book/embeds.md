@@ -94,9 +94,13 @@ class Tab:
     def load(self, url, payload=None):
         # ...
         headers, body = url.request(self.url, payload)
-        body = body.decode("utf8")
+        body = body.decode("utf8", "replace")
         # ...
 ```
+
+By passing `replace` as the second argument to `decode`, I tell Python
+to replace any invalid characters by a special � character instead of
+throwing an exception.
 
 Make sure to make this change everywhere in your browser that you call
 `request`, including inside `XMLHttpRequest_send` and in several other places
@@ -117,7 +121,7 @@ class Tab:
             src = img.attributes.get("src", "")
             image_url = url.resolve(src)
             assert self.allowed_request(image_url), \
-                "Blocked load of " + image_url + " due to CSP"
+                "Blocked load of " + str(image_url) + " due to CSP"
             header, body = image_url.request(url)
 ```
 

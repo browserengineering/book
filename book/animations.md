@@ -424,7 +424,7 @@ class Blend:
         args = ""
         if self.opacity < 1:
             args += ", opacity={}".format(self.opacity)
-        if self.blend_mode:
+        if self.blend_mode != "normal":
             args += ", blend_mode={}".format(self.blend_mode)
         if not args:
             args = ", <no-op>"

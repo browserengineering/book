@@ -980,7 +980,7 @@ class JSContext:
 
         def run_load():
             headers, response = full_url.request(frame.url, body)
-            response = response.decode("utf8")
+            response = response.decode("utf8", "replace")
             task = Task(
                 self.dispatch_xhr_onload, response, handle, window_id)
             self.tab.task_runner.schedule_task(task)
@@ -1228,7 +1228,7 @@ class Frame:
         self.scroll = 0
         self.scroll_changed_in_frame = True
         headers, body = url.request(self.url, payload)
-        body = body.decode("utf8")
+        body = body.decode("utf8", "replace")
         self.url = url
 
         self.allowed_origins = None
@@ -1255,7 +1255,7 @@ class Frame:
                 continue
 
             header, body = script_url.request(url)
-            body = body.decode("utf8")
+            body = body.decode("utf8", "replace")
             task = Task(self.js.run, script_url, body,
                 self.window_id)
             self.tab.task_runner.schedule_task(task)
@@ -1276,7 +1276,7 @@ class Frame:
                 header, body = style_url.request(url)
             except:
                 continue
-            self.rules.extend(CSSParser(body.decode("utf8")).parse())
+            self.rules.extend(CSSParser(body.decode("utf8", "replace")).parse())
 
         images = [node
             for node in tree_to_list(self.nodes, [])
@@ -1287,7 +1287,7 @@ class Frame:
                 src = img.attributes.get("src", "")
                 image_url = url.resolve(src)
                 assert self.allowed_request(image_url), \
-                    "Blocked load of " + image_url + " due to CSP"
+                    "Blocked load of " + str(image_url) + " due to CSP"
                 header, body = image_url.request(url)
                 img.encoded_data = body
                 data = skia.Data.MakeWithoutCopy(body)
@@ -1734,6 +1734,7 @@ class Browser:
         self.active_tab_scroll = 0
 
         self.measure = MeasureTime()
+        threading.current_thread().name = "Browser thread"
 
         if sdl2.SDL_BYTEORDER == sdl2.SDL_BIG_ENDIAN:
             self.RED_MASK = 0xff000000

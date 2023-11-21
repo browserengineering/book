@@ -82,7 +82,6 @@ make a canvas in which to draw the circular clip mask.
     saveLayer(color=ff000000, blend_mode=BlendMode.kDstIn)
     drawRRect(bounds=Rect(13, 18, 787, 38), radius=Point(5, 5), color=ffffffff)
     restore()
-    restore()
     drawString(text=), x=13.0, y=53.0, color=ff000000)
 
 `border-radius` clipping is also supported, but if `overflow:clip` is not

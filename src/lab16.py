@@ -89,7 +89,7 @@ def paint_outline(node, cmds, rect, zoom):
         color, dpx(thickness, zoom)))
 
 @wbetools.patch(font)
-def font(notify, css_style, zoom):
+def font(css_style, zoom, notify):
     weight = css_style['font-weight'].read(notify)
     style = css_style['font-style'].read(notify)
     try:
@@ -112,7 +112,7 @@ def absolute_bounds_for_obj(obj):
 @wbetools.patch(paint_visual_effects)
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style["opacity"].get())
-    blend_mode = parse_blend_mode(node.style["mix-blend-mode"].get())
+    blend_mode = node.style["mix-blend-mode"].get()
     translation = parse_transform(node.style["transform"].get())
 
     if node.style["overflow"].get() == "clip":
@@ -137,7 +137,7 @@ class ProtectedField:
         self.value = None
         self.dirty = True
         self.invalidations = set()
-        self.frozen_dependencies = dependencies != None
+        self.frozen_dependencies = (dependencies != None)
         if dependencies != None:
             for dependency in dependencies:
                 dependency.invalidations.add(self)
@@ -440,7 +440,7 @@ class BlockLayout:
 
     def word(self, node, word):
         zoom = self.zoom.read(notify=self.children)
-        node_font = font(self.children, node.style, zoom)
+        node_font = font(node.style, zoom, notify=self.children)
         w = node_font.measureText(word)
         self.add_inline_child(
             node, w, TextLayout, self.frame, word)
@@ -466,7 +466,7 @@ class BlockLayout:
         line.children.append(child)
         self.previous_word = child
         zoom = self.zoom.read(notify=self.children)
-        self.cursor_x += w + font(self.children, node.style, zoom).measureText(' ')
+        self.cursor_x += w + font(node.style, zoom, notify=self.children).measureText(' ')
 
     def self_rect(self):
         return skia.Rect.MakeLTRB(
@@ -508,7 +508,7 @@ class BlockLayout:
 
 def DrawCursor(elt, offset):
     x = elt.x.get() + offset
-    return DrawLine(x, elt.y.get(), x, elt.y.get() + elt.height.get(), "black", 1)
+    return DrawLine(x, elt.y.get(), x, elt.y.get() + elt.height.get(), "red", 1)
 
 @wbetools.patch(LineLayout)
 class LineLayout:
@@ -674,7 +674,7 @@ class TextLayout:
         self.zoom.copy(self.parent.zoom)
 
         zoom = self.zoom.read(notify=self.font)
-        self.font.set(font(self.font, self.node.style, zoom))
+        self.font.set(font(self.node.style, zoom, notify=self.font))
 
         f = self.font.read(notify=self.width)
         self.width.set(f.measureText(self.word))
@@ -763,11 +763,11 @@ class EmbedLayout:
         if self.has_dirty_descendants: return True
         return False
 
-    def layout_before(self):
+    def layout(self):
         self.zoom.copy(self.parent.zoom)
 
         zoom = self.zoom.read(notify=self.font)
-        self.font.set(font(self.font, self.node.style, zoom))
+        self.font.set(font(self.node.style, zoom, notify=self.font))
 
         if self.previous:
             assert hasattr(self, "previous")
@@ -778,24 +778,22 @@ class EmbedLayout:
         else:
             self.x.copy(self.parent.x)
 
-    def layout_after(self):
-        height = self.height.read(notify=self.ascent)
-        self.ascent.set(-height)
-
-        self.descent.set(0)
-
         self.has_dirty_descendants = False
 
 @wbetools.patch(InputLayout)
 class InputLayout(EmbedLayout):
     def layout(self):
         if not self.layout_needed(): return
-        self.layout_before()
+        EmbedLayout.layout(self)
         zoom = self.zoom.read(notify=self.width)
         self.width.set(dpx(INPUT_WIDTH_PX, zoom))
+
         font = self.font.read(notify=self.height)
         self.height.set(linespace(font))
-        self.layout_after()
+
+        height = self.height.read(notify=self.ascent)
+        self.ascent.set(-height)
+        self.descent.set(0)
 
     def self_rect(self):
         return skia.Rect.MakeLTRB(
@@ -840,7 +838,7 @@ class InputLayout(EmbedLayout):
 class ImageLayout(EmbedLayout):
     def layout(self):
         if not self.layout_needed(): return
-        self.layout_before()
+        EmbedLayout.layout(self)
         width_attr = self.node.attributes.get('width')
         height_attr = self.node.attributes.get('height')
         image_width = self.node.image.width()
@@ -864,7 +862,9 @@ class ImageLayout(EmbedLayout):
             self.img_height = dpx(image_height, h_zoom)
         font = self.font.read(notify=self.height)
         self.height.set(max(self.img_height, linespace(font)))
-        self.layout_after()
+        height = self.height.read(notify=self.ascent)
+        self.ascent.set(-height)
+        self.descent.set(0)
 
     def paint(self):
         cmds = []
@@ -884,7 +884,7 @@ class ImageLayout(EmbedLayout):
 class IframeLayout(EmbedLayout):
     def layout(self):
         if not self.layout_needed(): return
-        self.layout_before()
+        EmbedLayout.layout(self)
         width_attr = self.node.attributes.get('width')
         height_attr = self.node.attributes.get('height')
         
@@ -906,7 +906,10 @@ class IframeLayout(EmbedLayout):
             self.node.frame.frame_width = \
                 self.width.get() - dpx(2, self.zoom.get())
             self.node.frame.document.width.mark()
-        self.layout_after()
+
+        height = self.height.read(notify=self.ascent)
+        self.ascent.set(-height)
+        self.descent.set(0)
 
     def paint(self):
         cmds = []
@@ -929,8 +932,9 @@ class IframeLayout(EmbedLayout):
         offset = (self.x.get() + diff, self.y.get() + diff)
         cmds = [Transform(offset, rect, self.node, cmds)]
         inner_rect = skia.Rect.MakeLTRB(self.x.get() + diff, self.y.get() + diff, self.x.get() + self.width.get() - diff, self.y.get() + self.height.get() - diff)
-        cmds = paint_visual_effects(self.node, cmds, inner_rect)
+        cmds = [ClipRRect(inner_rect, 0, cmds)]
         paint_outline(self.node, cmds, rect, self.zoom.get())
+        cmds = paint_visual_effects(self.node, cmds, inner_rect)
         return cmds
 
 def init_style(node):
@@ -1066,7 +1070,7 @@ class Frame:
         self.scroll = 0
         self.scroll_changed_in_frame = True
         headers, body = url.request(self.url, payload)
-        body = body.decode("utf8")
+        body = body.decode("utf8", "replace")
         self.url = url
 
         self.allowed_origins = None
@@ -1092,7 +1096,7 @@ class Frame:
                 continue
 
             header, body = script_url.request(url)
-            body = body.decode("utf8")
+            body = body.decode("utf8", "replace")
             task = Task(self.js.run, script_url, body,
                 self.window_id)
             self.tab.task_runner.schedule_task(task)
@@ -1113,7 +1117,7 @@ class Frame:
                 header, body = style_url.request(url)
             except:
                 continue
-            self.rules.extend(CSSParser(body.decode("utf8")).parse())
+            self.rules.extend(CSSParser(body.decode("utf8", "replace")).parse())
 
         images = [node
             for node in tree_to_list(self.nodes, [])
@@ -1124,15 +1128,14 @@ class Frame:
                 src = img.attributes.get("src", "")
                 image_url = url.resolve(src)
                 assert self.allowed_request(image_url), \
-                    "Blocked load of " + image_url + " due to CSP"
+                    "Blocked load of " + str(image_url) + " due to CSP"
                 header, body = image_url.request(url)
                 img.encoded_data = body
                 data = skia.Data.MakeWithoutCopy(body)
                 img.image = skia.Image.MakeFromEncoded(data)
-                assert img.image, "Failed to recognize image format for " + image_url
+                assert img.image, "Failed to recognize image format for " + str(image_url)
             except Exception as e:
-                print("Exception loading image: url="
-                    + image_url + " exception=" + str(e))
+                print("Image", image_url, "crashed", e)
                 img.image = BROKEN_IMAGE
 
         iframes = [node
@@ -1240,12 +1243,12 @@ class Frame:
         self.set_needs_render()
 
     def click(self, x, y):
-        self.focus_element(None)
         y += self.scroll
         loc_rect = skia.Rect.MakeXYWH(x, y, 1, 1)
         objs = [obj for obj in tree_to_list(self.document, [])
                 if absolute_bounds_for_obj(obj).intersects(
                     loc_rect)]
+        self.focus_element(None)
         if not objs: return
         elt = objs[-1].node
         if elt and self.js.dispatch_event(
