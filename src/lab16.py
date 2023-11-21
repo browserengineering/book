@@ -1296,7 +1296,7 @@ class Tab:
         for (window_id, frame) in self.window_id_to_frame.items():
             self.browser.measure.time('script-runRAFHandlers')
             frame.js.dispatch_RAF(frame.window_id)
-            self.browser.measure.done('script-runRAFHandlers')
+            self.browser.measure.stop('script-runRAFHandlers')
     
             for node in tree_to_list(frame.nodes, []):
                 for (property_name, animation) in \

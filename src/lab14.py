@@ -913,7 +913,7 @@ class Tab:
             self.scroll = scroll
         self.browser.measure.time('script-runRAFHandlers')
         self.js.interp.evaljs("__runRAFHandlers()")
-        self.browser.measure.done('script-runRAFHandlers')
+        self.browser.measure.stop('script-runRAFHandlers')
 
         for node in tree_to_list(self.nodes, []):
             for (property_name, animation) in \

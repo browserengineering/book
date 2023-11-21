@@ -962,7 +962,7 @@ class JSContext:
         self.tab.browser.measure.time('script-settimeout')
         self.interp.evaljs(
             self.wrap(SETTIMEOUT_JS, window_id), handle=handle)
-        self.tab.browser.measure.done('script-settimeout')
+        self.tab.browser.measure.stop('script-settimeout')
 
     def setTimeout(self, handle, time, window_id):
         def run_callback():
@@ -974,7 +974,7 @@ class JSContext:
         code = self.wrap(XHR_ONLOAD_JS, window_id)
         self.tab.browser.measure.time('script-settimeout')
         do_default = self.interp.evaljs(code, out=out, handle=handle)
-        self.tab.browser.measure.done('script-settimeout')
+        self.tab.browser.measure.stop('script-settimeout')
 
     def XMLHttpRequest_send(
         self, method, url, body, isasync, handle, window_id):
@@ -1570,7 +1570,7 @@ class Tab:
 
             self.browser.measure.time('script-runRAFHandlers')
             frame.js.dispatch_RAF(frame.window_id)
-            self.browser.measure.done('script-runRAFHandlers')
+            self.browser.measure.stop('script-runRAFHandlers')
 
             for node in tree_to_list(frame.nodes, []):
                 for (property_name, animation) in \
