@@ -557,7 +557,7 @@ tasks at a fixed cadence. But besides JavaScript the browser also has
 to render the page, and as you may recall from [Chapter
 2](graphics.md#framebudget), we'd like the browser to render the page
 exactly as fast as the display hardware can refresh. On most
-computers, this is 60 times per second, or 16ms per frame. However, even
+computers, this is 60 times per second, or 33ms per frame. However, even
 with today's computers, it's quite difficult to maintain such a high
 frame rate, and certainly too high of a bar for our toy browser.
 
@@ -622,7 +622,7 @@ def mainloop(browser):
         browser.schedule_animation_frame()
 ```
 
-Now we're scheduling a new rendering task every 16 milliseconds, just
+Now we're scheduling a new rendering task every 33 milliseconds, just
 as we wanted to.
 
 ::: {.further}
@@ -1006,8 +1006,8 @@ other background tasks like saving your work to the cloud.
 Profiling rendering
 ===================
 
-We now have a system for scheduling a rendering task every 16ms. But
-what if rendering takes longer than 16ms to finish? Before we answer
+We now have a system for scheduling a rendering task every 33ms. But
+what if rendering takes longer than 33ms to finish? Before we answer
 this question, let's instrument the browser and measure how much time
 is really being spent rendering. It's important to always measure
 before optimizing, because the result is often surprising.
@@ -1123,7 +1123,8 @@ class Tab:
         self.browser.measure.stop('render')
 ```
 
-Do the same for `raster_and_draw`.
+Do the same for `raster_and_draw`, and for all of the code that calls
+`evaljs` to run JavaScript.
 
 Finally, when we finish tracing (that is, when we close the browser
 window), we want to leave the file a valid JSON file:
@@ -1150,19 +1151,27 @@ crash.
 
 Fire up the server, open our timer script, wait for it to finish
 counting, and then exit the browser. Then open up Chrome tracing or
-one of the other tracing tools named above and load the trace. You
-should see something like this:
+one of the other tracing tools named above and load the trace.
+If you don't want to do it yourself,
+[here](examples/example12-count-single-threaded.trace) is a sample trace file
+from my computer. You should see something like this:
 
-::: {.todo}
-Need screenshots
-:::
+<figure>
+  <img src="examples/example12-trace-count-single-threaded.png"
+    alt="Screenshot of Chrome Tracing for the timer script in single-threaded mode">
+</figure>
 
 In Chrome tracing, you can choose the cursor icon from the toolbar and
 drag a selection around a set of trace events. That will show counts
 and average times for those events in the details window at the bottom
-of the screen. On my computer, my browser spent about 20ms in `render`
-and about 66ms in `raster_and_draw` on average. That clearly blows
-through our 16ms budget. So, what can we do?
+of the screen. On my computer, my browser spent about 23ms in `render`
+and about 62ms in `raster_and_draw` on average, as you can see in the zoomed-in
+view below. That clearly blows through our 33ms budget. So, what can we do?
+
+<figure>
+  <img src="examples/example12-trace-count-render-raster.png"
+    alt="Screenshot of Chrome Tracing for render and raster of one frame of the timer script">
+</figure>
 
 ::: {.further}
 
@@ -1191,8 +1200,8 @@ render. And we'll do that in the [next chapter](animations.md) But
 another option---complex, but worthwhile and done by every major
 browser---is to do the render step in parallel with the
 raster-and-draw step by adopting a multi-threaded architecture. Not
-only would this speed up the rendering pipeline (dropping from 88 to
-66 milliseconds) but we could also execute JavaScript on one thread
+only would this speed up the rendering pipeline (dropping from 85 to
+62 milliseconds) but we could also execute JavaScript on one thread
 while the expensive `raster_and_draw` task runs on the other.
 
 Let's call our two threads the *browser thread*[^also-compositor] and
@@ -1643,15 +1652,22 @@ class MeasureTime:
 ```
 
 Now, if you make a new trace from the counting animation and load it
-into one of the tracing tools, you should see something like this:
+into one of the tracing tools, you should see something like this (
+click [here](examples/example12-count-two-threads.trace) to download an example trace):
 
-::: {.todo}
-Trace
-:::
+<figure>
+  <img src="examples/example12-trace-count-two-threads.png"
+    alt="Screenshot of Chrome Tracing for the timer script in two-threads mode">
+</figure>
+
 
 You can see how the render and raster tasks now happen on different
 threads, and how our multi-threaded architecture allows them to happen
-concurrently.
+concurrently.^[However in this case the two threads are *not* running
+tasks concurrently. That's because all of the JavaScript tasks are
+`requestAnimationFrame` callbacks, which are scheduled by the browser
+thread, and those are only kicked off once the browser thread finishes
+its raster and draw work. There is an exercise about addressing that problem. ]
 
 ::: {.further}
 The tracing system we introduced in this chapter comes directly from
@@ -1861,7 +1877,17 @@ class Browser:
 ```
 
 That's it! If you try the counting demo now, you'll be able to scroll
-even during the artificial pauses. As you've seen, moving tasks to the
+even during the artificial pauses.
+[Here](examples/example12-count-with-scroll.trace) is a trace that
+shows threaded scrolling at work (notice how raster and draw now
+sometimes happen at the same time as main-thread work):
+
+<figure>
+    <img src="examples/example12-count-with-scroll.png">
+</figure>
+
+
+As you've seen, moving tasks to the
 browser thread can be challenging, but can also lead to a much more
 responsive browser. These same trade-offs are present in real
 browsers, at a much greater level of complexity.
@@ -1947,7 +1973,7 @@ layout.[^nothing-later] If a web page calls one of these APIs, and
 style or layout is not up-to-date, then it has to be computed then and
 there. These computations are called *forced style* or *forced
 layout*: style or layout are "forced" to happen right away, as opposed
-to possibly 16ms in the future, if they're not already computed.
+to possibly 33ms in the future, if they're not already computed.
 Because of these forced style and layout situations, browsers have to
 be able to compute style and layout on the main thread.[^or-stall]
 
@@ -2023,7 +2049,7 @@ of modern browsers. The main points to remember are:
 - The browser organizes work into task queues, with tasks for things
   like running JavaScript, handling user input, and rendering the page
 - The goal is to consistently generate frames to the screen at a 60Hz
-  cadence, which means a 16ms budget to draw each animation frame
+  cadence, which means a 33ms budget to draw each animation frame
 - The browser has two key threads involved in rendering
 - The main thread runs JavaScript and the special rendering task
 - The browser thread draws the display list to the screen,
@@ -2070,20 +2096,21 @@ One option is to use the `__name__` field of `task_code`, which will
 get the name of the Python function run by the task.
 
 *Clock-based frame timing*: Right now our browser schedules each
-animation frame exactly 16ms after the previous one completes. This
-actually leads to a slower animation frame rate cadence than 16ms. Fix
+animation frame exactly 33ms after the previous one completes. This
+actually leads to a slower animation frame rate cadence than 33ms. Fix
 this in our browser by using the absolute time to schedule animation
-frames, instead of a fixed delay between frames. You will likely need to
-choose a slower cadence than 16ms so that the frames don't overlap.
+frames, instead of a fixed delay between frames. Also implement main-thread
+animation frame scheduling that happens *before* raster and draw, not after,
+allowing both threads to do animation work simultaneously.
 
 *Scheduling*: As more types of complex tasks end up on the event
 queue, there comes a greater need to carefully schedule them to ensure
-the rendering cadence is as close to 16ms as possible, and also to
+the rendering cadence is as close to 33ms as possible, and also to
 avoid task starvation. Implement a task scheduler with a priority
 system that balances these two needs: prioritize rendering tasks and
-input handling, and deprioritize (but don't completely starve) tasks that ultimately come from
-JavaScript APIs like `setTimeout`. Test it out on a web page that
-taxes the system with a lot of `setTimeout`-based tasks.
+input handling, and deprioritize (but don't completely starve) tasks that
+ultimately come from JavaScript APIs like `setTimeout`. Test it out on a
+web page that taxes the system with a lot of `setTimeout`-based tasks.
 
 *Threaded loading*: When loading a page, our browser currently waits
 for each style sheet or script resource to load in turn. This is

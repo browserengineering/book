@@ -108,14 +108,18 @@ class JSContext:
             self.setTimeout)
         self.interp.export_function("requestAnimationFrame",
             self.requestAnimationFrame)
+        self.tab.browser.measure.time('script-runtime')
         self.interp.evaljs(RUNTIME_JS)
+        self.tab.browser.measure.stop('script-runtime')
 
         self.node_to_handle = {}
         self.handle_to_node = {}
 
     def run(self, script, code):
         try:
+            self.tab.browser.measure.time('script-load')
             self.interp.evaljs(code)
+            self.tab.browser.measure.stop('script-load')
         except dukpy.JSRuntimeError as e:
             print("Script", script, "crashed", e)
 
@@ -131,7 +135,9 @@ class JSContext:
 
     def dispatch_settimeout(self, handle):
         if self.discarded: return
+        self.tab.browser.measure.time('script-settimeout')
         self.interp.evaljs(SETTIMEOUT_CODE, handle=handle)
+        self.tab.browser.measure.stop('script-settimeout')
 
     def setTimeout(self, handle, time):
         def run_callback():
@@ -141,8 +147,10 @@ class JSContext:
 
     def dispatch_xhr_onload(self, out, handle):
         if self.discarded: return
+        self.tab.browser.measure.time('script-settimeout')
         do_default = self.interp.evaljs(
             XHR_ONLOAD_CODE, out=out, handle=handle)
+        self.tab.browser.measure.stop('script-settimeout')
 
     def XMLHttpRequest_send(
         self, method, url, body, isasync, handle):
@@ -257,7 +265,9 @@ class Tab:
     def run_animation_frame(self, scroll):
         if not self.scroll_changed_in_tab:
             self.scroll = scroll
+        self.browser.measure.time('script-runRAFHandlers')
         self.js.interp.evaljs("__runRAFHandlers()")
+        self.browser.measure.stop('script-runRAFHandlers')
 
         self.render()
 
