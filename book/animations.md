@@ -1624,10 +1624,16 @@ class CompositedLayer:
     def raster(self):
         # ...
         if SHOW_COMPOSITED_LAYER_BORDERS:
-            DrawOutline(0, 0,
-                irect.width() - 1, irect.height() - 1,
-                "red", 1).execute(canvas)
+            border_rect = skia.Rect.MakeXYWH(
+                1, 1, irect.width() - 2, irect.height() - 2)
+            DrawOutline(border_rect, "red", 1).execute(canvas)
 ```
+
+Here is how [this example](examples/example13-opacity-transition.html)'s composited layers should look:
+
+<figure>
+    <img src="examples/example13-opacity-layers.png">
+</figure>
 
 [flag]: https://docs.python.org/3/library/argparse.html
 
@@ -1944,8 +1950,7 @@ testing is now complete. You should now be able to render
 
 [overlap-example]: examples/example13-transform-overlap.html
 
-There's one more situation worth thinking about, though. Suppose we have a huge
-composited layer, containing a lot of text, except that only a small
+There's one more situation worth thinking about, though. Suppose we have a huge composited layer, containing a lot of text, except that only a small
 part of that layer is shown on the screen, the rest being clipped out. Then the `absolute_bounds`
 consider the clip operations and the `composited_bounds` don't, meaning that
 we'll make a much larger composited layer than necessary and waste a lot of
