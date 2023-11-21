@@ -382,6 +382,19 @@ bigger text should still wrap appropriately at the edge of the screen,
 and CSS lengths should be scaled just like the text is. This is great
 for reading text more easily.
 
+Here is an [example](examples/example14-line-breaking.html) of some
+text before zoom:^[No book on the web would be complete without some
+good old [Lorem ipsum][lorem-ipsum]!]
+
+[lorem-ipsum]: https://en.wikipedia.org/wiki/Lorem_ipsum
+
+<img src="examples/example14-line-breaking-unzoomed.png">
+
+And here it is with 2x zoom. Note how not only are the words twice
+as big, but the lines wrap at different words, just as desired:
+
+<img src="examples/example14-line-breaking-zoomed.png">
+
 ::: {.further}
 On high-resolution screens, CSS pixels are scaled by both zoom and a
 [`devicePixelRatio`][dpr] factor.[^js-dpr] This factor scales device
@@ -570,7 +583,9 @@ class Browser:
 ```
 
 Now if you open the browser and switch to dark mode, you should see
-white text on a black background.
+white text on a black background, like this:
+
+<img src="examples/example14-dark-mode.png">
 
 ::: {.further}
 

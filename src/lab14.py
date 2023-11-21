@@ -1087,6 +1087,7 @@ class Tab:
             self.zoom *= 1.1
         else:
             self.zoom *= 1/1.1
+        print(self.zoom)
         self.set_needs_render()
 
     def reset_zoom(self):
