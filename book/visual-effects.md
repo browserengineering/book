@@ -1603,7 +1603,16 @@ of two sheets of paper and destination-in compositing playing the role
 of the scissors. This implementation technique for clipping is called
 *masking*, and it is very general---you can use it with arbitrarily
 complex mask shapes, like text, bitmap images, or anything else you
-can imagine.
+can imagine.[^cliprrect]
+
+[^cliprrect]: If all our browser wanted to clip were rounded
+    rectangles, Skia actually provides a specialized `clipRRect`
+    operation. It's more efficient than destination-in blending
+    because it applies as other commands are being drawn, and so can
+    skip drawing anything outside the clipped region. This requires
+    specialized code in each of Skia's *shaders*, or GPU programs, so
+    can only be done for a couple of common shapes. Destination-in
+    blending is more general.
 
 ::: {.further}
 Rounded corners have an [interesting history][mac-story] in computing.
@@ -1743,7 +1752,7 @@ class Blend:
 
 Now `paint_visual_effects` looks like this:
 
-``` {.python expected=False}
+``` {.python}
 def paint_visual_effects(node, cmds, rect):
     # ...
 
@@ -1757,100 +1766,6 @@ def paint_visual_effects(node, cmds, rect):
 ```
 
 Note that I've specified an opacity of `1.0` for the clip `Blend`.
-
-There's one more optimization to make: using Skia's `clipRRect`
-operation to get rid of the destination-in blended surface. This
-operation takes in a rounded rectangle and changes the *canvas state*
-so that all future commands skip drawing any pixels outside that
-rounded rectangle.
-
-There are multiple advantages to using `clipRRect` over an explicit
-destination-in surface. First, most of the time, it allows Skia to
-avoid making a surface for the mask.[^shader-rounded] It also allows
-Skia to skip draw operations that don't intersect the mask, or
-dynamically draw only the parts of operations that intersect it. It's
-basically the optimization we implemented for scrolling
-[in Chapter 2](graphics.md#faster-rendering).[^no-other-shapes]
-
-[^shader-rounded]: At a high level, this is achieved by having the GPU
-*shaders*---the code---for various drawing commands check for clipping
-when they draw. In effect, the clip region is stored implicitly, in
-the code and state of the canvas, instead of explicitly in a surface.
-GPU programs are out of scope for this book, but if you're curious
-there are many online resources with more information.
-
-[^no-other-shapes]: This kind of code is complex for Skia to implement,
-so it only makes sense to do it for common patterns, like rounded
-rectangles. This is why Skia only supports optimized clips for a few
-common shapes.
-
-Since `clipRRect` changes the canvas state, we'll need to restore it
-once we're done with clipping. That uses the `save` and `restore`
-methods---you call `save` before calling `clipRRect`, and `restore`
-after finishing drawing the commands that should be clipped:
-
-``` {.python .example}
-# Draw commands that should not be clipped.
-canvas.save()
-canvas.clipRRect(rounded_rect)
-# Draw commands that should be clipped.
-canvas.restore()
-# Draw commands that should not be clipped.
-```
-
-You might notice the similarity between `save`/`restore` and the
-`saveLayer`/`restore` operations created by `Blend`. That's
-because Skia has a combined stack of surfaces and canvas states.
-Unlike `saveLayer`, however, `save` never creates a new surface;
-it just changes the canvas state to change how commands are executed,
-in this case to clip those commands to a rounded rectangle.
-
-Let's wrap this pattern into a `ClipRRect` drawing command, which like
-`Blend` takes a list of subcommands:[^save-clip]
-
-[^save-clip]: If you're doing two clips at once, or a clip and a
-transform, or some other more complex setup that would benefit from
-only saving once but doing multiple things inside it, this pattern of
-always saving canvas parameters might be wasteful, but since it
-doesn't create a surface it's still a big optimization here.
-
-``` {.python}
-class ClipRRect:
-    def __init__(self, rect, radius, children):
-        self.rect = rect
-        self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
-        self.children = children
-
-    def execute(self, canvas):
-        canvas.save()
-        canvas.clipRRect(self.rrect)
-
-        for cmd in self.children:
-            cmd.execute(canvas)
-
-        canvas.restore()
-```
-
-Now, in `paint_visual_effects`, we can use `ClipRRect` instead of
-destination-in blending with `DrawRRect` (and we can
-fold the opacity into the `skia.Paint` passed to the outer
-`Blend`, since that is defined to be applied before blending):
-
-``` {.python}
-def paint_visual_effects(node, cmds, rect):
-    if node.style.get("overflow", "visible") == "clip":
-        # ...
-        cmds = [ClipRRect(rect, border_radius, cmds)]
-```
-
-Of course, `clipRRect` only applies for rounded rectangles, while
-masking is a general technique that can be used to implement all
-sorts of clips and masks (like CSS's `clip-path` and `mask`), so a
-real browser will typically have both code paths.
-
-So now, each element uses at most one surface, and even then only if
-it has opacity or a non-default blend mode. Everything else should
-look visually the same, but will be faster and use less memory.
 
 ::: {.further}
 Besides using fewer surfaces, real browsers also need to avoid

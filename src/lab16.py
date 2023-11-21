@@ -36,7 +36,7 @@ from lab13 import map_translation, parse_transform
 from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import PaintCommand, DrawText, DrawCompositedLayer, DrawOutline, \
     DrawLine, DrawRRect
-from lab13 import VisualEffect, Blend, ClipRRect, Transform
+from lab13 import VisualEffect, Blend, Transform
 from lab14 import parse_outline, DrawRRect, \
     paint_outline, \
     dpx, cascade_priority, \
@@ -119,7 +119,9 @@ def paint_visual_effects(node, cmds, rect):
         border_radius = float(node.style["border-radius"].get()[:-2])
         if not blend_mode:
             blend_mode = "source-over"
-        cmds = [ClipRRect(rect, border_radius, cmds)]
+        cmds = [Blend(1.0, "source-over", node,
+                      cmds + [Blend(1.0, "destination-in", None, [
+                          DrawRRect(rect, 0, "white")])])]
 
     blend_op = Blend(opacity, blend_mode, node, cmds)
     node.blend_op = blend_op
@@ -930,7 +932,9 @@ class IframeLayout(EmbedLayout):
         offset = (self.x.get() + diff, self.y.get() + diff)
         cmds = [Transform(offset, rect, self.node, cmds)]
         inner_rect = skia.Rect.MakeLTRB(self.x.get() + diff, self.y.get() + diff, self.x.get() + self.width.get() - diff, self.y.get() + self.height.get() - diff)
-        cmds = [ClipRRect(inner_rect, 0, cmds)]
+        cmds = [Blend(1.0, "source-over", self.node,
+                      cmds + [Blend(1.0, "destination-in", None, [
+                          DrawRRect(inner_rect, 0, "white")])])]
         paint_outline(self.node, cmds, rect, self.zoom.get())
         cmds = paint_visual_effects(self.node, cmds, inner_rect)
         return cmds

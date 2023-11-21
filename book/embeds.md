@@ -1166,7 +1166,9 @@ class IframeLayout(EmbedLayout):
         inner_rect = skia.Rect.MakeLTRB(
             self.x + diff, self.y + diff,
             self.x + self.width - diff, self.y + self.height - diff)
-        cmds = [ClipRRect(inner_rect, 0, cmds)]
+        cmds = [Blend(1.0, "source-over", self.node,
+                      cmds + [Blend(1.0, "destination-in", None, [
+                          DrawRRect(inner_rect, 0, "white")])])]
         paint_outline(self.node, cmds, rect, self.zoom)
         cmds = paint_visual_effects(self.node, cmds, rect)
         return cmds
