@@ -1,4 +1,4 @@
-di"""
+"""
 This file compiles the code in Web Browser Engineering,
 up to and including Chapter 12 (Scheduling and Threading),
 without exercises.
