@@ -583,7 +583,9 @@ class Browser:
 ```
 
 Now if you open the browser and switch to dark mode, you should see
-white text on a black background.
+white text on a black background, like this:
+
+<img src="examples/example14-dark-mode.png">
 
 ::: {.further}
 
