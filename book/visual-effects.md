@@ -629,7 +629,7 @@ Similar changes should be made to `InputLayout`. New shapes, like
 rounded rectangles, is one way that Skia is a more advanced
 rasterization library than Tk. More broadly, since Skia is also used
 by Chromium, we know it has fast, built-in support for all of the
-shapes we might need.
+shapes we might need in a browser.
 
 ::: {.further}
 [Font rasterization](https://en.wikipedia.org/wiki/Font_rasterization)
