@@ -977,11 +977,15 @@ To handle the order of operations properly,
 browsers apply blending not to individual shapes but to
 a tree of surfaces. Conceptually, each shape is drawn to its own surface,
 and then blended into its parent surface. Different structures of
-intermediate surfaces create different visual effects.
+intermediate surfaces create different visual effects.[^tree-blog]
 Rastering a web page requires a
 bottom-up traversal of this conceptual tree: to raster a surface you first need to raster
 its contents, including its child surfaces, and then the whole
 contents need to be blended together into the parent.[^stacking-context-disc]
+
+[^tree-blog]: You can see a more detailed discussion of how the tree
+    structure affects the final image, and how that impacted the CSS
+    specification, on [David Baron's blog](https://dbaron.org/log/20130306-compositing-blending).
 
 [^stacking-context-disc]: This tree of surfaces is an implementation strategy
 and not something required by any specific web API. However, the
