@@ -1629,11 +1629,9 @@ class CompositedLayer:
             DrawOutline(border_rect, "red", 1).execute(canvas)
 ```
 
-Here is how [this example](examples/example13-opacity-transition.html)'s composited layers should look:
+Here is how [this example](examples/example13-opacity-transition.html)'s composited layers should look (notice how there are two layers):
 
-<figure>
-    <img src="examples/example13-opacity-layers.png">
-</figure>
+<img src="examples/example13-opacity-layers.png">
 
 [flag]: https://docs.python.org/3/library/argparse.html
 
