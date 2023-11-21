@@ -1,4 +1,4 @@
-"""
+di"""
 This file compiles the code in Web Browser Engineering,
 up to and including Chapter 12 (Scheduling and Threading),
 without exercises.
@@ -147,10 +147,10 @@ class JSContext:
 
     def dispatch_xhr_onload(self, out, handle):
         if self.discarded: return
-        self.tab.browser.measure.time('script-settimeout')
+        self.tab.browser.measure.time('script-xhr')
         do_default = self.interp.evaljs(
             XHR_ONLOAD_CODE, out=out, handle=handle)
-        self.tab.browser.measure.stop('script-settimeout')
+        self.tab.browser.measure.stop('script-xhr')
 
     def XMLHttpRequest_send(
         self, method, url, body, isasync, handle):

@@ -972,9 +972,9 @@ class JSContext:
 
     def dispatch_xhr_onload(self, out, handle, window_id):
         code = self.wrap(XHR_ONLOAD_JS, window_id)
-        self.tab.browser.measure.time('script-settimeout')
+        self.tab.browser.measure.time('script-xhr')
         do_default = self.interp.evaljs(code, out=out, handle=handle)
-        self.tab.browser.measure.stop('script-settimeout')
+        self.tab.browser.measure.stop('script-xhr')
 
     def XMLHttpRequest_send(
         self, method, url, body, isasync, handle, window_id):
