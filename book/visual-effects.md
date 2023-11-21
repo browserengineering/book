@@ -222,8 +222,10 @@ class Pixel:
 
 This `Pixel` definition is an illustrative example, not actual code in
 our browser. It's standing in for somewhat more complex code within
-SDL and Skia themselves. For example, Skia actually represents colors
-(and therefore pixels) as 32-bit integers, with the most significant byte representing
+SDL and Skia themselves.[^skia-color]
+
+[^skia-color]: Skia actually represents colors
+as 32-bit integers, with the most significant byte representing
 the alpha value (255 meaning opaque and 0 meaning transparent) and
 then the next three bytes representing the red, green, and blue color
 channels.
@@ -377,19 +379,52 @@ corruption or a crash. The code here is correct because all of these are local
 variables that are garbage-collected together, but if not you need to be
 careful to keep all of them alive at the same time.
 
+So now we can copy from the Skia surface to the SDL window. One last
+step: we have to draw the browser to the Skia surface.
+
+::: {.further}
+Screens use red, green, and blue color channels to match the three
+types of [cone cells][cones] in a human eye. We take it for granted,
+but color standards like [CIELAB][cielab] derive from attempts to
+[reverse-engineer human vision][opponent-process]. These cone cells
+vary between people: some have [more][tetrachromats] or
+[fewer][colorblind] (typically an inherited condition carried on the X
+chromosome). Moreover, different people have different ratios of cone
+types and those cone types use different protein structures that vary
+in the exact frequency of green, red, and blue that they respond to.
+The study of color thus combines software, hardware, chemistry,
+biology, and psychology.
+:::
+
+[cones]: https://en.wikipedia.org/wiki/Cone_cell
+[cielab]: https://en.wikipedia.org/wiki/CIELAB_color_space
+[opponent-process]: https://en.wikipedia.org/wiki/Opponent_process
+[colorblind]: https://en.wikipedia.org/wiki/Color_blindness
+[tetrachromats]: https://en.wikipedia.org/wiki/Tetrachromacy#Humans
+
 
 
 Rasterizing with Skia
 =====================
 
-\index{canvas}Now our browser has an SDL surface, a Skia surface, and
-can copy between them. Now we want to draw text, rectangles, and so on
-to that Skia surface. This step---coloring in the pixels of a surface
-to draw shapes on it---is called "rasterization"\index{raster} and is
-one important task of a graphics library.
+We want to draw text, rectangles, and so on to the Skia
+surface. This step---coloring in the pixels of a surface to draw
+shapes on it---is called "rasterization"\index{raster} and is one
+important task of a graphics library.
 
-We'll need our browser's drawing commands to invoke Skia, not Tk
-methods. To draw a line, you use Skia's `Path` object:[^skia-docs]
+In Skia, rasterization happens via a *canvas*\index{canvas} API. A
+canvas is just an object that draws to a particular surface:
+
+``` {.python}
+class Browser:
+    def draw(self, canvas, offset):
+        # ...
+        canvas = self.root_surface.getCanvas()
+        # ...
+```
+
+Our browser's drawing commands will need to invoke Skia methods on
+this canvas. To draw a line, you use Skia's `Path` object:[^skia-docs]
 
 [^skia-docs]: Consult the [Skia][skia] and [skia-python][skia-python]
 documentation for more on the Skia API.
@@ -921,26 +956,6 @@ shapes---lines, rectangles, text---that the application wants to
 display. The interface for drawing shapes onto a surface is called a
 *canvas*; both Tkinter and Skia had canvas APIs. In Skia, each surface
 has an associated canvas that draws to that surface.
-
-::: {.further}
-Screens use red, green, and blue color channels to match the three
-types of [cone cells][cones] in a human eye. We take it for granted,
-but color standards like [CIELAB][cielab] derive from attempts to
-[reverse-engineer human vision][opponent-process]. These cone cells
-vary between people: some have [more][tetrachromats] or
-[fewer][colorblind] (typically an inherited condition carried on the X
-chromosome). Moreover, different people have different ratios of cone
-types and those cone types use different protein structures that vary
-in the exact frequency of green, red, and blue that they respond to.
-The study of color thus combines software, hardware, chemistry,
-biology, and psychology.
-:::
-
-[cones]: https://en.wikipedia.org/wiki/Cone_cell
-[cielab]: https://en.wikipedia.org/wiki/CIELAB_color_space
-[opponent-process]: https://en.wikipedia.org/wiki/Opponent_process
-[colorblind]: https://en.wikipedia.org/wiki/Color_blindness
-[tetrachromats]: https://en.wikipedia.org/wiki/Tetrachromacy#Humans
 
 Blending and stacking
 =====================
