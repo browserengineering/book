@@ -193,7 +193,7 @@ performance.
 In Skia and SDL, a *surface* is a representation of a
 graphics buffer into which you can draw *pixels* (bits representing
 colors). We implicitly created an SDL surface when we created
-and SDL window; let's also create a surface for Skia to draw to:
+an SDL window; let's also create a surface for Skia to draw to:
 
 ``` {.python}
 class Browser:
