@@ -250,7 +250,7 @@ limited gamut of expressible colors.
     [calibrate their screen][calibrate] to display colors accurately.
     For the rest of us, the software still communicates with the
     display in terms of standard red, green, and blue colors, and the
-    display hardware converts to whatever pixels it uses.
+    display hardware converts them to whatever pixels it uses.
 
 [^opaque]: Alpha is implicitly 255, meaning opaque, in this case.
     
