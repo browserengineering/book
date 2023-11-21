@@ -880,7 +880,9 @@ class JSContext:
     def run(self, script, code, window_id):
         try:
             code = self.wrap(code, window_id)
+            self.tab.browser.measure.time('script-load')
             self.interp.evaljs(code)
+            self.tab.browser.measure.stop('script-load')
         except dukpy.JSRuntimeError as e:
             print("Script", script, "crashed", e)
 
