@@ -867,7 +867,9 @@ class JSContext:
             frame.window_id, frame.window_id)
         self.interp.evaljs(code)
 
+        self.tab.browser.measure.time('script-runtime')
         self.interp.evaljs(self.wrap(RUNTIME_JS, frame.window_id))
+        self.tab.browser.measure.stop('script-runtime')
 
         self.interp.evaljs("WINDOWS[{}] = window_{};".format(
             frame.window_id, frame.window_id))

@@ -774,7 +774,9 @@ class JSContext:
             self.now)
         self.interp.export_function("requestAnimationFrame",
             self.requestAnimationFrame)
+        self.tab.browser.measure.time('script-runtime')
         self.interp.evaljs(RUNTIME_JS)
+        self.tab.browser.measure.stop('script-runtime')
 
         self.node_to_handle = {}
         self.handle_to_node = {}
