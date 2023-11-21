@@ -649,7 +649,7 @@ Browser compositing
 
 Skia and SDL have just made our browser more complex, but the
 low-level control offered by these libraries is important because it
-allows us to optimize commonly interactions like scrolling.
+allows us to optimize common interactions like scrolling.
 
 So far, any time the user scrolled a web page, we had to clear
 the canvas and re-raster everything on it from scratch. This is
@@ -689,10 +689,10 @@ to lay out the page contents to know how tall the surface needs to be.
 
 We'll also need to split the browser's `draw` method into three parts:
 
-- `raster_tab` will raster the page to the `tab_surface`; and
-- `raster_chrome` will raster the browser chrome to the `chrome_surface`.
+- `raster_tab` will raster the page to the `tab_surface`;
+- `raster_chrome` will raster the browser chrome to the `chrome_surface`; and
 - `draw` will composite the chrome and tab surfaces and copy the
-  result from Skia to SDL;[^why-two-steps]
+  result from Skia to SDL.[^why-two-steps]
 
 [^why-two-steps]: It might seem wasteful to copy from the chrome and
     tab surface to an intermediate Skia surface, instead of directly
@@ -781,7 +781,7 @@ class Browser:
 
 Note the `draw` calls: these copy the `tab_surface` and
 `chrome_surface` to the `canvas`, which is bound to `root_surface`.
-The `clipRect` and `translate` call make sure we copy the right parts.
+The `clipRect` and `translate` calls make sure we copy the right parts.
 
 Finally, everywhere in `Browser` that we call `draw`, we now need to
 call either `raster_tab` or `raster_chrome` first. For example, in
@@ -935,7 +935,7 @@ is now gray, not dark orange. The black and orange pixels are no
 longer blended together!
 
 That's because opacity introduces what CSS calls a [stacking
-context][stacking-context]. The details aren't important, but the
+context][stacking-context]. Most of the details aren't important right now, but the
 order of operations is. In the first example, the black pixels were
 first made transparent, then blended with the background. Thus, 50%
 transparent black pixels were blending with orange pixels, resulting
@@ -944,7 +944,7 @@ first blended with the background, then the result was made
 transparent. Thus, fully black pixels replaced fully orange ones,
 resulting just black pixels, which were later made 50% transparent.
 
-Applying effect in the proper order, as necessary to implement effects
+Applying blending in the proper order, as is necessary to implement effects
 like `opacity`, requires more careful handling of surfaces.
 
 ::: {.further}
@@ -973,14 +973,14 @@ complicated to handle in real browsers.
 Blending and stacking
 =====================
 
-To handle the order of blending operations properly,
+To handle the order of operations properly,
 browsers apply blending not to individual shapes but to
 a tree of surfaces. Conceptually, each shape is drawn to its own surface,
 and then blended into its parent surface. Different structures of
 intermediate surfaces create different visual effects.
 Rastering a web page requires a
 bottom-up traversal of this conceptual tree: to raster a surface you first need to raster
-its contents, including its child stacking contexts, and then the whole
+its contents, including its child surfaces, and then the whole
 contents need to be blended together into the parent.[^stacking-context-disc]
 
 [^stacking-context-disc]: This tree of surfaces is an implementation strategy
@@ -1053,7 +1053,7 @@ class Opacity:
 We can now wrap the drawing commands painted by an
 element with `Opacity` to add transparency to the whole element.
 I'm going to do this by adding a new `paint_effects` method to layout
-objects, which be passed a list of drawing commands to wrap:
+objects, which should be passed a list of drawing commands to wrap:
 
 ``` {.python}
 class BlockLayout:
@@ -1063,9 +1063,8 @@ class BlockLayout:
         return cmds
 ```
 
-I put the actual construction of the `Opacity` command to a new
-global `paint_visual_effects` method (because other object types will need it
-also):
+I put the actual construction of the `Opacity` command in a new
+global `paint_visual_effects` method (because other object types will also need it):
 
 ``` {.python expected=False}
 def paint_visual_effects(node, cmds, rect):
