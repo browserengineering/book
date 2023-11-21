@@ -774,7 +774,9 @@ class JSContext:
             self.now)
         self.interp.export_function("requestAnimationFrame",
             self.requestAnimationFrame)
+        self.tab.browser.measure.time('script-runtime')
         self.interp.evaljs(RUNTIME_JS)
+        self.tab.browser.measure.stop('script-runtime')
 
         self.node_to_handle = {}
         self.handle_to_node = {}
@@ -1032,7 +1034,9 @@ class Tab:
     def run_animation_frame(self, scroll):
         if not self.scroll_changed_in_tab:
             self.scroll = scroll
+        self.browser.measure.time('script-runRAFHandlers')
         self.js.interp.evaljs("__runRAFHandlers()")
+        self.browser.measure.stop('script-runRAFHandlers')
 
         for node in tree_to_list(self.nodes, []):
             for (property_name, animation) in \
