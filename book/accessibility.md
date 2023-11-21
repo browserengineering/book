@@ -384,7 +384,7 @@ for reading text more easily.
 
 Here is an [example](examples/example14-line-breaking.html) of some
 text before zoom:^[No book on the web would be complete without some
-good old [Lorem Ipsum][lorem-ipsum]!]
+good old [Lorem ipsum][lorem-ipsum]!]
 
 [lorem-ipsum]: https://en.wikipedia.org/wiki/Lorem_ipsum
 
