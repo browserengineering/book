@@ -109,6 +109,11 @@ function Div(el)
     end
     pre.classes = el.classes
     return pre
+  elseif el.classes[1] == "transclude" then
+    io.input(pandoc.utils.stringify(el.content))
+    local div = pandoc.CodeBlock( io.read('a'))
+    div.classes = el.classes
+    return div
   else
     return el
   end
@@ -144,6 +149,9 @@ function Doc(el)
    toc.identifier = "toc"
    table.insert(el.blocks, idx, toc)
    return el
+end
+
+function Pre(pre)
 end
 
 -- Set up and return the three passes

@@ -280,6 +280,10 @@ form h1 { margin-bottom: 1em; margin-top: 0; }
 a.checkoff { font-size: 24px; }
 form .checkoff, form button[type=submit] { margin-top: 1em; }
 
+#html {
+    
+}
+
 #signup { border: 2px solid gold; position: relative; text-align: center; }
 #signup-close {
     position: absolute; top: 0; right: 8px;
