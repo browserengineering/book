@@ -2180,10 +2180,9 @@ hear alert text once the button is clicked.
 You should now be able to load up this example and
 hear alert text once the button is clicked:
 
-::: {.trasclude .html}
+::: {.transclude .html}
 www/examples/example14-alert-role.html
 :::
-
 
 :::
 
