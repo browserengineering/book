@@ -662,7 +662,24 @@ class ImageLayout(EmbedLayout):
 ```
 
 Your browser should now be able to render <a
-href="/examples/example15-img.html">this example page</a> correctly.
+href="/examples/example15-img.html">this example page</a> correctly. It
+should look like this:
+
+<center>
+    <img src="examples/example15-img.png">
+</center>
+
+When it's scrolled down a bit you should see this:
+
+<center>
+    <img src="examples/example15-img-scroll1.png">
+</center>
+
+And scrolled to the end will show this:
+
+<center>
+    <img src="examples/example15-img-scroll2.png">
+</center>
 
 ::: {.further}
 Our browser computes an aspect ratio from the loaded image dimensions,
