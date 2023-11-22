@@ -867,7 +867,9 @@ class JSContext:
             frame.window_id, frame.window_id)
         self.interp.evaljs(code)
 
+        self.tab.browser.measure.time('script-runtime')
         self.interp.evaljs(self.wrap(RUNTIME_JS, frame.window_id))
+        self.tab.browser.measure.stop('script-runtime')
 
         self.interp.evaljs("WINDOWS[{}] = window_{};".format(
             frame.window_id, frame.window_id))
@@ -878,7 +880,9 @@ class JSContext:
     def run(self, script, code, window_id):
         try:
             code = self.wrap(code, window_id)
+            self.tab.browser.measure.time('script-load')
             self.interp.evaljs(code)
+            self.tab.browser.measure.stop('script-load')
         except dukpy.JSRuntimeError as e:
             print("Script", script, "crashed", e)
 
@@ -955,8 +959,10 @@ class JSContext:
         frame.set_needs_render()
 
     def dispatch_settimeout(self, handle, window_id):
+        self.tab.browser.measure.time('script-settimeout')
         self.interp.evaljs(
             self.wrap(SETTIMEOUT_JS, window_id), handle=handle)
+        self.tab.browser.measure.stop('script-settimeout')
 
     def setTimeout(self, handle, time, window_id):
         def run_callback():
@@ -966,7 +972,9 @@ class JSContext:
 
     def dispatch_xhr_onload(self, out, handle, window_id):
         code = self.wrap(XHR_ONLOAD_JS, window_id)
+        self.tab.browser.measure.time('script-xhr')
         do_default = self.interp.evaljs(code, out=out, handle=handle)
+        self.tab.browser.measure.stop('script-xhr')
 
     def XMLHttpRequest_send(
         self, method, url, body, isasync, handle, window_id):
@@ -1560,8 +1568,10 @@ class Tab:
             if not frame.loaded:
                 continue
 
+            self.browser.measure.time('script-runRAFHandlers')
             frame.js.dispatch_RAF(frame.window_id)
-    
+            self.browser.measure.stop('script-runRAFHandlers')
+
             for node in tree_to_list(frame.nodes, []):
                 for (property_name, animation) in \
                     node.animations.items():

@@ -404,8 +404,6 @@ biology, and psychology.
 [colorblind]: https://en.wikipedia.org/wiki/Color_blindness
 [tetrachromats]: https://en.wikipedia.org/wiki/Tetrachromacy#Humans
 
-
-
 Rasterizing with Skia
 =====================
 
@@ -416,7 +414,7 @@ important task of a graphics library.
 In Skia, rasterization happens via a *canvas*\index{canvas} API. A
 canvas is just an object that draws to a particular surface:
 
-``` {.python ignore=def}
+``` {.python replace=%2c%20canvas%2c%20offset/}
 class Browser:
     def draw(self, canvas, offset):
         # ...

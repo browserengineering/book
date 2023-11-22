@@ -382,6 +382,23 @@ bigger text should still wrap appropriately at the edge of the screen,
 and CSS lengths should be scaled just like the text is. This is great
 for reading text more easily.
 
+Here is an [example](examples/example14-line-breaking.html) of some
+text before zoom:^[No book on the web would be complete without some
+good old [Lorem ipsum][lorem-ipsum]!]
+
+[lorem-ipsum]: https://en.wikipedia.org/wiki/Lorem_ipsum
+
+<center>
+    <img src="examples/example14-line-breaking-unzoomed.png">
+</center>
+
+And here it is with 2x zoom. Note how not only are the words twice
+as big, but the lines wrap at different words, just as desired:
+
+<center>
+    <img src="examples/example14-line-breaking-zoomed.png">
+</center>
+
 ::: {.further}
 On high-resolution screens, CSS pixels are scaled by both zoom and a
 [`devicePixelRatio`][dpr] factor.[^js-dpr] This factor scales device
@@ -570,7 +587,11 @@ class Browser:
 ```
 
 Now if you open the browser and switch to dark mode, you should see
-white text on a black background.
+white text on a black background, like this:
+
+<center>
+    <img src="examples/example14-dark-mode.png">
+</center>
 
 ::: {.further}
 
@@ -709,7 +730,11 @@ def style(node, rules, tab):
 Try your browser on a [web page](examples/example14-focus.html) with
 lots of links, text entries, and buttons, and you should now see that
 in dark mode they also change color to have a darker background and
-lighter foreground.
+lighter foreground. It should look like this in dark mode:
+
+<center>
+    <img src="examples/example14-dark-mode-forms.png">
+</center>
 
 ::: {.further}
 
