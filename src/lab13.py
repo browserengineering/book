@@ -242,13 +242,16 @@ class Blend(VisualEffect):
         for cmd in self.children:
             cmd.execute(canvas)
         if self.mask:
-            self.mask.execute(canvas)
+            Blend(1.0, "destination-in", None, None, [self.mask]).execute(
+                canvas)
         if self.should_save:
             canvas.restore()
         
     def map(self, rect):
         if self.mask:
-            return self.mask.rect
+            clipped_rect = rect.makeOffset(0.0, 0.0)
+            clipped_rect.intersect(self.mask.rect)
+            return clipped_rect
         else:
             return rect
 
@@ -739,9 +742,7 @@ def paint_visual_effects(node, cmds, rect):
     mask = None
     if node.style.get("overflow", "visible") == "clip":
         border_radius = float(node.style.get("border-radius", "0px")[:-2])
-        mask = Blend(1.0, "destination-in", None, None, [
-            DrawRRect(rect, border_radius, "white")
-        ])
+        mask = DrawRRect(rect, border_radius, "white")
 
     blend_op = Blend(opacity, blend_mode, mask, node, cmds)
     node.blend_op = blend_op
