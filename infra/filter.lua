@@ -151,9 +151,6 @@ function Doc(el)
    return el
 end
 
-function Pre(pre)
-end
-
 -- Set up and return the three passes
 
 return { 
