@@ -37,10 +37,8 @@ wait for the introduction of Skia.
 
 And which renders something like this:
 
-<figure>
-    <img src="/im/hes.jpg" alt="A computer operator using a hypertext editing system in 1969">
-    <figcaption>Hypertext Editing System <br/> (Gregory Lloyd from <a href="https://commons.wikimedia.org/wiki/File:HypertextEditingSystemConsoleBrownUniv1969.jpg">Wikipedia</a>, <a href="https://creativecommons.org/licenses/by/2.0/legalcode" rel="license">CC BY 2.0</a>)</figcaption>
-</figure>
+![A computer operator using a hypertext editing system in 1969](im/hes.jpg)
+^[Hypertext Editing System <br/> (Gregory Lloyd from <a href="https://commons.wikimedia.org/wiki/File:HypertextEditingSystemConsoleBrownUniv1969.jpg">Wikipedia</a>, <a href="https://creativecommons.org/licenses/by/2.0/legalcode" rel="license">CC BY 2.0</a>).]
 
 Luckily, implementing images isn't too hard, so let's just get
 started. There are four steps to displaying images in our browser:
@@ -665,22 +663,16 @@ Your browser should now be able to render <a
 href="/examples/example15-img.html">this example page</a> correctly. It
 should look like this:
 
-<center>
-    <img src="examples/example15-img.png">
-</center>
+![Rendering of an example with images](examples/example15-img.png)
 
 When it's scrolled down a bit you should see this (notice the different aspect
 ratios):
 
-<center>
-    <img src="examples/example15-img-scroll1.png">
-</center>
+![Rendering of an example with images after scrolling to aspect-ratio differences](examples/example15-img-scroll1.png)
 
 And scrolled to the end will show this, including the "broken image" icon:
 
-<center>
-    <img src="examples/example15-img-scroll2.png">
-</center>
+![Rendering of an example with images after scrolling to a broken image icon](examples/example15-img-scroll2.png)
 
 ::: {.further}
 Our browser computes an aspect ratio from the loaded image dimensions,
@@ -1297,16 +1289,12 @@ works without any more changes!
 You should now be able to load [this
 example](examples/example15-iframe.html).  It should look like this:
 
-<center>
-    <img src="examples/example15-iframe.png">
-</center>
+![Rendering of an iframe](examples/example15-iframe.png)
 
 Repeatedly clicking on the link will add another recursive iframe. After
 clicking twice it should look like this:
 
-<center>
-    <img src="examples/example15-iframe-clicked.png">
-</center>
+![Rendering of an iframe](examples/example15-iframe.png)
 
 Let's get the other interactions working as well, starting with
 focusing an element. You can focus on *only one element per tab*, so we
