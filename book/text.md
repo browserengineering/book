@@ -691,6 +691,10 @@ Here's what it looks like, step by step:
 
 :::
 
+<div class="print-only center">
+![Aligning the words on a line](examples/example3-words-align.png)
+</div>
+
 Since we want words to line up "on the line", let's start by computing
 where that line should be. That depends on the tallest word on the
 line:
