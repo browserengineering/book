@@ -392,7 +392,8 @@ def paint_visual_effects(node, cmds, rect):
 
     mask = None
     if node.style.get("overflow", "visible") == "clip":
-        border_radius = float(node.style.get("border-radius", "0px")[:-2])
+        border_radius = float(
+            node.style.get("border-radius", "0px")[:-2])
         mask = DrawRRect(rect, border_radius, "white")
 
     return [Blend(opacity, blend_mode, mask, cmds)]
