@@ -669,13 +669,14 @@ should look like this:
     <img src="examples/example15-img.png">
 </center>
 
-When it's scrolled down a bit you should see this:
+When it's scrolled down a bit you should see this (notice the different aspect
+ratios):
 
 <center>
     <img src="examples/example15-img-scroll1.png">
 </center>
 
-And scrolled to the end will show this:
+And scrolled to the end will show this, including the "broken image" icon:
 
 <center>
     <img src="examples/example15-img-scroll2.png">
