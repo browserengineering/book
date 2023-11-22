@@ -268,6 +268,8 @@ class Blend(VisualEffect):
             args += ", opacity={}".format(self.opacity)
         if self.blend_mode != "normal":
             args += ", blend_mode={}".format(self.blend_mode)
+        if self.mask:
+            args += ", mask={}".format(self.mask)
         if not args:
             args = ", <no-op>"
         return "Blend({})".format(args[2:])
