@@ -1446,8 +1446,8 @@ class Pixel:
 
 Now, in `paint_visual_effects`, we need to create a new layer, draw
 the mask image into it, and then blend it with the element contents
-with destination-in blending. I'll do that by passing a paint command to
-`Blend` called a *mask*.
+with destination-in blending. I'll do that by passing the masking 
+paint command to `Blend`.
 
 ``` {.python expected=False}
 def paint_visual_effects(node, cmds, rect):
@@ -1585,7 +1585,7 @@ class Blend:
     def execute(self, canvas):
         paint = skia.Paint(
             BlendMode=parse_blend_mode(self.blend_mode))
-        if self.blend_mode and not self.mask:
+        if self.should_paint:
             canvas.saveLayer(paint=paint)
         for cmd in self.children:
             cmd.execute(canvas)
