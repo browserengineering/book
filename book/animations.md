@@ -654,7 +654,7 @@ to the visual effects classes. For `Blend`, it'll create a new
 class Blend(VisualEffect):
     # ...
     def clone(self, child):
-        return Blend(self.opacity, self.blend_mode,
+        return Blend(self.opacity, self.blend_mode, self.mask,
                      self.node, [child])
 ```
 
@@ -1282,10 +1282,10 @@ across for each animation update will be an `Element` and a
 To accomplish this we'll need several steps. First, when painting a
 `Blend`, record it on the `Element`:
 
-``` {.python replace=blend_mode/blend_mode%2c%20node dropline=return}
+``` {.python replace=mask/mask%2c%20node dropline=return}
 def paint_visual_effects(node, cmds, rect):
     # ...
-    blend_op = Blend(opacity, blend_mode, cmds)
+    blend_op = Blend(opacity, blend_mode, mask, cmds)
     node.blend_op = blend_op
     return [blend_op]
 ```
@@ -1565,7 +1565,7 @@ regardless of whether they are animating:
 
 ``` {.python replace=self.should_save/wbetools.USE_COMPOSITING%20and%20self.should_save}
 class Blend(VisualEffect):
-    def __init__(self, opacity, blend_mode, node, children):
+    def __init__(self, opacity, blend_mode, mask, node, children):
         # ...
         if self.should_save:
             self.needs_compositing = True
@@ -1917,14 +1917,11 @@ class Transform(VisualEffect):
 For `Blend`, it's worth adding a special case for clipping:
 
 ``` {.python}
-class Blend(VisualEffect):
     def map(self, rect):
-        if self.children and \
-           isinstance(self.children[-1], Blend) and \
-           self.children[-1].blend_mode == "destination-in":
-            bounds = rect.makeOffset(0.0, 0.0)
-            bounds.intersect(self.children[-1].rect)
-            return bounds
+        if self.mask:
+            clipped_rect = rect.makeOffset(0.0, 0.0)
+            clipped_rect.intersect(self.mask.rect)
+            return clipped_rect
         else:
             return rect
 ```
