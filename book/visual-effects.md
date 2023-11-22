@@ -74,6 +74,12 @@ JavaScript. Alternatively, one can [compile Skia][canvaskit]
 to [WebAssembly][webassembly] to do the same.
 :::
 
+[canvas]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas
+[webgl]: https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API
+[webassembly]: https://developer.mozilla.org/en-US/docs/WebAssembly
+[canvaskit]: https://skia.org/docs/user/modules/canvaskit/
+
+
 SDL creates the window
 ======================
 
@@ -169,18 +175,16 @@ books](https://wiki.libsdl.org/Books) about game programming in SDL.
 :::
 
 
-Creating Surfaces
-=================
+Surfaces and pixels
+===================
 
 Let's peek under the hood of these SDL calls. 
 When we create an SDL window, we're asking SDL to allocate a
 *surface*, a chunk of memory representing the pixels on the
-screen.[^surface] Both SDL's and Skia's graphics APIs use surfaces
-internally, so creating and managing
+screen.[^surface] Creating and managing
 surfaces is going to be the big focus of this chapter.
-On today's large screens, surfaces take up a lot of memory
-and operations on them take a lot of time,
-so handling surfaces well is essential to a modern web browser.
+On today's large screens, surfaces take up a lot of memory,
+so handling surfaces well is essential to good browser performance.
 
 [^surface]: A surface may or may not be bound to the physical pixels on the
 screen via a window, and there can be many surfaces. A *canvas* is an
@@ -190,7 +194,7 @@ Skia and SDL surfaces for simplicity, but in a highly optimized
 browser, minimizing the number of surfaces is important for good
 performance.
 
-In Skia and SDL, a *surface* is a representation of a
+A *surface* is a representation of a
 graphics buffer into which you can draw *pixels* (bits representing
 colors). We implicitly created an SDL surface when we created
 an SDL window; let's also create a surface for Skia to draw to:
@@ -230,7 +234,7 @@ the alpha value (255 meaning opaque and 0 meaning transparent) and
 then the next three bytes representing the red, green, and blue color
 channels.
 
-Defining colors via red, green, and blue values is fairly
+Defining colors via red, green, and blue components is fairly
 standard[^other-spaces] and corresponds to how computer screens
 work[^lcd-design]. For example, in CSS, we refer to arbitrary colors
 with a hash character and six hex digits, like `#ffd700`, with two
@@ -305,7 +309,7 @@ Let's now use our understanding of surfaces and colors to copy from
 the Skia surface, where we will draw the chrome and page content, to
 the SDL surface, which actually appears on the screen. This is a
 little hairy, because we are moving data between two low-level
-libraries, but really it's just copying pixels from one place to
+libraries, but really we're just copying pixels from one place to
 another. First, get the sequence of bytes representing the Skia
 surface:
 
@@ -313,9 +317,6 @@ surface:
 class Browser:
     def draw(self):
         # ...
-
-        # This makes an image interface to the Skia surface, but
-        # doesn't actually copy anything yet.
         skia_image = self.root_surface.makeImageSnapshot()
         skia_bytes = skia_image.tobytes()
 ```
@@ -383,10 +384,11 @@ So now we can copy from the Skia surface to the SDL window. One last
 step: we have to draw the browser to the Skia surface.
 
 ::: {.further}
-Screens use red, green, and blue color channels to match the three
-types of [cone cells][cones] in a human eye. We take it for granted,
+We take it for granted,
 but color standards like [CIELAB][cielab] derive from attempts to
-[reverse-engineer human vision][opponent-process]. These cone cells
+[reverse-engineer human vision][opponent-process].
+Screens use red, green, and blue color channels to match the three
+types of [cone cells][cones] in a human eye. These cone cells
 vary between people: some have [more][tetrachromats] or
 [fewer][colorblind] (typically an inherited condition carried on the X
 chromosome). Moreover, different people have different ratios of cone
@@ -409,7 +411,6 @@ We want to draw text, rectangles, and so on to the Skia
 surface. This step---coloring in the pixels of a surface to draw
 shapes on it---is called "rasterization"\index{raster} and is one
 important task of a graphics library.
-
 In Skia, rasterization happens via a *canvas*\index{canvas} API. A
 canvas is just an object that draws to a particular surface:
 
@@ -462,8 +463,8 @@ class DrawText:
             self.font, paint)
 ```
 
-Note again that we create a `Paint` object identifying the color, the
-fact that we want anti-aliased text.[^anti-alias] We don't specify the
+Note again that we create a `Paint` object identifying the color and
+asking for anti-aliased text.[^anti-alias] We don't specify the
 "style" because we want to fill the interior of the text, the default.
 
 [^anti-alias]: "Anti-alias"ing just means drawing some
@@ -482,14 +483,16 @@ class DrawRect:
         canvas.drawRect(self.rect.makeOffset(0, -scroll), paint)
 ```
 
-Here the `rect` field needs to become a Skia `Rect` object, which you can
-construct using `MakeLTRB` (for "make left-top-right-bottom") or `MakeXYWH`
-(for "make *x*-*y*-width-height"). Get rid of the old `Rect` class that was
-introduced in [Chapter 7](chrome.md) in favor of `skia.Rect`. Everywhere
-that a `Rect` was constructed, instead put `skia.Rect.MakeLTRB`, and
-everywhere that the sides of the rectangle (e.g. `left`) where checked,
-replace them with the corresponding function on a Skia `Rect` (e.g. `left()`).
-Also replace calls to `containsPoint` with Skia's `contains`.
+Here the `rect` field needs to become a Skia `Rect` object.
+
+Get rid of the old `Rect` class that was introduced in [Chapter
+7](chrome.md) in favor of `skia.Rect`. Everywhere that a `Rect` was
+constructed, instead put `skia.Rect.MakeLTRB` (for "make
+left-top-right-bottom") or `MakeXYWH` (for "make
+*x*-*y*-width-height"). Everywhere that the sides of the
+rectangle (e.g. `left`) where checked, replace them with the
+corresponding function on a Skia `Rect` (e.g. `left()`). Also replace
+calls to `containsPoint` with Skia's `contains`.
 
 While we're here, let's also add a `rect` field to the other drawing
 commands, replacing its `top`, `left`, `bottom`, and `right`
@@ -508,8 +511,8 @@ class DrawLine:
         self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
 ```
 
-To draw just the outline, set the `Style` parameter of the `Paint` to
-`Stroke_Style`:
+To create an outline, draw a rectangle but set the `Style` parameter of
+the `Paint` to `Stroke_Style`:
 
 ``` {.python replace=%2c%20scroll/,rect.makeOffset(0%2c%20-scroll)/rect}
 class DrawOutline:
@@ -568,19 +571,10 @@ method in `TextLayout`. Update all of them to use `measureText`.
 
 Also, in the `layout` method of `LineLayout` and in `DrawText` we make
 calls to the `metrics` method on fonts. In Skia, this method is called
-`getMetrics`, and to get the ascent and descent we use
+`getMetrics`, and to get the ascent and descent we need the `fAscent`
+and `fDescent` fields on its result.
 
-``` {.python expected=False}
-    -font.getMetrics().fAscent
-```
-
-and
-
-``` {.python expected=False}
-    font.getMetrics().fDescent
-```
-
-Note the negative sign when accessing the ascent. In Skia, ascent and
+Importantly, in Skia the ascent needs to be negated. In Skia, ascent and
 descent are positive if they go downward and negative if they go
 upward, so ascents will normally be negative, the opposite of Tkinter.
 There's no analog for the `linespace` field that Tkinter provides,
@@ -595,11 +589,45 @@ def linespace(font):
 
 You should now be able to run the browser again. It should look and behave just
 as it did in previous chapters, and it might feel faster on complex pages,
-because Skia and SDL are in general faster than Tkinter. This is one advantage
-of Skia: since it is also used by the Chromium browser, we know it has fast,
-built-in support for all of the shapes we might need. And if the transition
+because Skia and SDL are in general faster than Tkinter. If the transition
 felt easy---well, that's one of the benefits to abstracting over the drawing
 backend using a display list!\index{display list}
+
+Finally, Skia also provides some new features. For example, Skia has
+native support for rounded rectangles via `RRect` objects. We can
+implement that by converting `DrawRect` to `DrawRRect`:
+
+``` {.python replace=scroll%2c%20/}
+class DrawRRect:
+    def __init__(self, rect, radius, color):
+        self.rect = rect
+        self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
+        self.color = color
+
+    def execute(self, scroll, canvas):
+        sk_color = parse_color(self.color)
+        canvas.drawRRect(self.rrect,
+            paint=skia.Paint(Color=sk_color))
+```
+
+Then we can draw these rounded rectangles for backgrounds:
+
+``` {.python replace=is_atomic/self.is_atomic()}
+class BlockLayout:
+    def paint(self):
+        if bgcolor != "transparent":
+            radius = float(
+                self.node.style.get(
+                    "border-radius", "0px")[:-2])
+            cmds.append(DrawRRect(
+                self.self_rect(), radius, bgcolor))
+```
+
+Similar changes should be made to `InputLayout`. New shapes, like
+rounded rectangles, is one way that Skia is a more advanced
+rasterization library than Tk. More broadly, since Skia is also used
+by Chromium, we know it has fast, built-in support for all of the
+shapes we might need in a browser.
 
 ::: {.further}
 [Font rasterization](https://en.wikipedia.org/wiki/Font_rasterization)
@@ -619,7 +647,7 @@ Browser compositing
 
 Skia and SDL have just made our browser more complex, but the
 low-level control offered by these libraries is important because it
-allows us to optimize commonly-used operations like scrolling.
+allows us to optimize common interactions like scrolling.
 
 So far, any time the user scrolled a web page, we had to clear
 the canvas and re-raster everything on it from scratch. This is
@@ -659,10 +687,10 @@ to lay out the page contents to know how tall the surface needs to be.
 
 We'll also need to split the browser's `draw` method into three parts:
 
+- `raster_tab` will raster the page to the `tab_surface`;
+- `raster_chrome` will raster the browser chrome to the `chrome_surface`; and
 - `draw` will composite the chrome and tab surfaces and copy the
-  result from Skia to SDL;[^why-two-steps]
-- `raster_tab` will raster the page to the `tab_surface`; and
-- `raster_chrome` will raster the browser chrome to the `chrome_surface`.
+  result from Skia to SDL.[^why-two-steps]
 
 [^why-two-steps]: It might seem wasteful to copy from the chrome and
     tab surface to an intermediate Skia surface, instead of directly
@@ -722,7 +750,7 @@ the page's height changes.
 
 Next, `draw` should copy from the chrome and tab surfaces to the root
 surface. Moreover, we need to translate the `tab_surface` down by
-`chrome_bottom` and up by `scroll`, and clips it to only the area of
+`chrome_bottom` and up by `scroll`, and clip it to only the area of
 the window that doesn't overlap the browser chrome:
 
 ``` {.python}
@@ -751,7 +779,7 @@ class Browser:
 
 Note the `draw` calls: these copy the `tab_surface` and
 `chrome_surface` to the `canvas`, which is bound to `root_surface`.
-The `clipRect` and `translate` make sure we copy the right parts.
+The `clipRect` and `translate` calls make sure we copy the right parts.
 
 Finally, everywhere in `Browser` that we call `draw`, we now need to
 call either `raster_tab` or `raster_chrome` first. For example, in
@@ -836,127 +864,9 @@ The corner cases and subtleties involved are almost endless.
 [transform-link]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform
 [overflow-prop]: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow
 
-What Skia gives us
-==================
 
-Skia not only gives us low-level control but also new features. For
-example, let's implement rounded corners via the `border-radius` CSS property:
-
-    <div style="border-radius: 10px; background: lightblue">
-        This is some example text.
-    </div>
-
-Which looks like this:[^not-clipped]
-
-[^not-clipped]: If you're very observant, you may notice that the text
-    here protrudes past the background by just a handful of pixels.
-    This is the correct default behavior, and can be modified by the
-    `overflow` CSS property, which we'll see later this chapter.
-
-<div style="border-radius:10px;background:lightblue">
-This is some example text.
-</div>
-
-Implementing `border-radius` requires drawing a rounded rectangle, so
-let's add a new `DrawRRect` command:
-
-``` {.python replace=scroll%2c%20/}
-class DrawRRect:
-    def __init__(self, rect, radius, color):
-        self.rect = rect
-        self.rrect = skia.RRect.MakeRectXY(rect, radius, radius)
-        self.color = color
-
-    def execute(self, scroll, canvas):
-        sk_color = parse_color(self.color)
-        canvas.drawRRect(self.rrect,
-            paint=skia.Paint(Color=sk_color))
-```
-
-Note that Skia supports `RRect`s, or rounded rectangles, natively, so
-we can just draw one right to a canvas. Now we can draw these rounded
-rectangles for the background:
-
-``` {.python replace=is_atomic/self.is_atomic()}
-class BlockLayout:
-    def paint(self):
-        if bgcolor != "transparent":
-            radius = float(
-                self.node.style.get(
-                    "border-radius", "0px")[:-2])
-            cmds.append(DrawRRect(
-                self.self_rect(), radius, bgcolor))
-```
-
-Similar changes should be made to `InputLayout`. So that's one thing
-Skia gives us: new rasterization features, meaning new shapes we can
-draw.
-
-Another feature natively supported by Skia is transparency. In CSS,
-you can use a hex color with eight hex digits to indicate that
-something should be drawn semi-transparently. For example, the
-color `#00000080` is 50% transparent black. Over a white background,
-that looks gray, but over an orange background it looks like this:
-
-<div style="background-color: #ffa500; color: #00000080">Test</div>
-
-Note that the text is a kind of dark orange. Skia supports these
-"RGBA" colors by setting the "alpha" field in the color:
-
-``` {.python}
-def parse_color(color):
-    elif color.startswith("#") and len(color) == 9:
-        r = int(color[1:3], 16)
-        g = int(color[3:5], 16)
-        b = int(color[5:7], 16)
-        a = int(color[7:9], 16)
-        return skia.Color(r, g, b, a)
-```
-
-Check that your browser can render the example above with slightly
-orange-tinged text. This demonstrates that the text is semitransparent
-and is letting some background color through.
-
-::: {.further}
-Implementing high-quality raster libraries is very interesting in its own
-right---check out [Real-Time Rendering][rtr-book] for more.[^cgpp]
-These days, it's especially important to leverage GPUs when they're
-available, and browsers often push the envelope. Browser teams
-typically include or work closely with raster library experts: Skia
-for Chromium and [Core Graphics][core-graphics] for WebKit, for
-example. Both of these libraries are used outside of the browser, too:
-Core Graphics in iOS and macOS, and Skia in Android.
-:::
-
-[^cgpp]: There is also [Computer Graphics: Principles and
-Practice][classic], which incidentally I remember buying---this is
-Chris speaking---back in the days of my youth (1992 or so). At the time I
-didn't get much further than rastering lines and polygons (in assembly
-language!). These days you can do the same and more with Skia and a
-few lines of Python.
-
-[core-graphics]: https://developer.apple.com/documentation/coregraphics
-[rtr-book]: https://www.realtimerendering.com/
-[classic]: https://en.wikipedia.org/wiki/Computer_Graphics:_Principles_and_Practice
-
-Pixels, color, and raster
-=========================
-
-Skia, like the Tkinter canvas we've been using until now, is a
-_rasterization_\index{raster} library: it converts shapes like rectangles and
-text into pixels. Before we move on to Skia's advanced features, let's talk
-about how rasterization works at a deeper level. This will help to understand
-how exactly those features work.
-
-The job of a rasterization library is to determine the red, green, and
-blue intensity of each pixel on the screen, based on the
-shapes---lines, rectangles, text---that the application wants to
-display. The interface for drawing shapes onto a surface is called a
-*canvas*; both Tkinter and Skia had canvas APIs. In Skia, each surface
-has an associated canvas that draws to that surface.
-
-Blending and stacking
-=====================
+Transparency
+============
 
 Drawing shapes quickly is already a challenge, but with multiple
 shapes there's an additional question: what color should the pixel be
@@ -967,6 +877,17 @@ of the top shape. But now we need more nuance.
 [^nor-subpixel]: It also hasn't considered subpixel geometry or
     anti-aliasing, which also rely on color mixing.
 
+Consider partially-transparent colors in CSS. These use a hex color
+with eight hex digits, with the last two indicating the level
+of transparency. For example, the
+color `#00000080` is 50% transparent black. Over a white background,
+that looks gray, but over an orange background it looks like this:
+
+<div style="font-size: 50px; padding: 15px; text-align: center;
+    background: orange; color: #00000080">Test</div>
+
+Note that the text is a kind of dark orange, because its color is
+a mix of 50% black and 50% orange.
 Many objects in nature are partially transparent: frosted glass,
 clouds, or colored paper, for example. Looking through one, you see
 multiple colors *blended* together. That's also why computer screens work:
@@ -980,56 +901,49 @@ color mixing.
 [^mostly-models]: Mostly. Some more advanced blending modes on the web are
 difficult, or perhaps impossible, in real-world physics.
 
-Color mixing means we need to think carefully about the order of
-operations. For example, consider black text on an orange background,
-placed semi-transparently over a white background. The text
-is gray while the background is yellow-orange. That's due to blending:
-the text and the background are both partially transparent and let
-through some of the underlying white:
+Skia supports this kind of transparency by setting
+the "alpha" field on the parsed color:
 
-<div style="opacity: 0.5; background: orange; color: black; font-size: 50px;
-    padding: 15px; text-align: center;flex:1;">Text</div>
+``` {.python}
+def parse_color(color):
+    # ...
+    elif color.startswith("#") and len(color) == 9:
+        r = int(color[1:3], 16)
+        g = int(color[3:5], 16)
+        b = int(color[5:7], 16)
+        a = int(color[7:9], 16)
+        return skia.Color(r, g, b, a)
+    # ...
+```
 
-But importantly, the text isn't orange-gray: even though the text is
-partially transparent, none of the orange shines through. That's
-because the order matters: the text is *first* blended with the
-background; since the text is opaque, its blended pixels are black and
-overwrite the orange background. Only *then* is this black-and-orange
-image blended with the white background. Doing the operations in a
-different order would lead to dark-orange or black text.
+Check that your browser renders dark-orange text for the example
+above. That shows that it's actually mixing the black color with the
+existing orange color from the background.
 
-To handle this properly, browsers apply blending not to individual shapes but to
-a tree of surfaces. Conceptually, each surface is drawn individually,
-and then blended into its parent surface. Rastering a web page requires a
-bottom-up traversal of the tree: to raster a surface you first need to raster
-its contents, including its child stacking contexts, and then the whole
-contents need to be blended together into the parent.[^stacking-context-disc]
+However, there's another, subtle different way to create transparency
+with CSS. Here, 50% transparency is applied to the whole element using
+the `opacity` property:
 
-[^stacking-context-disc]: This tree of surfaces is an implementation strategy
-and not something required by any specific web API. However, the web does
-define the concept of a [*stacking context*][stacking-context], which is
-related. A stacking context is technically a mechanism to define groups and
-ordering during paint, and stacking contexts need not correspond to a surface
-(e.g. ones created via [`z-index`][z-index] do not). However, for ease of
-implementation, all visual effects in CSS that generally require surfaces to
-implement are specified to go hand-in-hand with a stacking context, so the tree
-of stacking contexts is very related to the tree of surfaces.
+<div style="font-size: 50px; padding: 15px; text-align: center;
+    background: orange; color: black; opacity: .5">Test</div>
+    
+Now the opacity applies to both the background and the text, so the
+background is now a little lighter. But note that the text
+is now gray, not dark orange. The black and orange pixels are no
+longer blended together!
 
-[stacking-context]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
-[z-index]: https://developer.mozilla.org/en-US/docs/Web/CSS/z-index
+That's because opacity introduces what CSS calls a [stacking
+context][stacking-context]. Most of the details aren't important right now, but the
+order of operations is. In the first example, the black pixels were
+first made transparent, then blended with the background. Thus, 50%
+transparent black pixels were blending with orange pixels, resulting
+in a dark-orange color. In the second example, the black pixels were
+first blended with the background, then the result was made
+transparent. Thus, fully black pixels replaced fully orange ones,
+resulting just black pixels, which were later made 50% transparent.
 
-To match this use pattern, in Skia, surfaces form a stack. You can
-push a new surface on the stack, raster things to it, and then pop it
-off by blending it with surface below. When traversing the tree of
-stacking contexts, you push a new surface onto the stack every time
-you recurse into a new stacking context, and pop-and-blend every time
-you return from a child stacking context to its parent.
- 
-In real browsers, stacking contexts are formed by HTML elements with
-certain styles, up to any descendants that themselves have such
-styles. The full definition is actually quite complicated, so in this
-chapter we'll simplify by treating every layout object as a stacking
-context.
+Applying blending in the proper order, as is necessary to implement effects
+like `opacity`, requires more careful handling of surfaces.
 
 ::: {.further}
 Mostly, elements [form a stacking context][stacking-context] because
@@ -1054,61 +968,57 @@ complicated to handle in real browsers.
 
 [containing-block]: https://developer.mozilla.org/en-US/docs/Web/CSS/Containing_block
 
-Opacity and alpha
-=================
+Blending and stacking
+=====================
 
-[canvas]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas
-[webgl]: https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API
-[webassembly]: https://developer.mozilla.org/en-US/docs/WebAssembly
-[canvaskit]: https://skia.org/docs/user/modules/canvaskit/
+To handle the order of operations properly,
+browsers apply blending not to individual shapes but to
+a tree of surfaces. Conceptually, each shape is drawn to its own surface,
+and then blended into its parent surface. Different structures of
+intermediate surfaces create different visual effects.[^tree-blog]
+Rastering a web page requires a
+bottom-up traversal of this conceptual tree: to raster a surface you first need to raster
+its contents, including its child surfaces, and then the whole
+contents need to be blended together into the parent.[^stacking-context-disc]
 
-Color mixing happens when multiple page elements overlap. The easiest
-way that happens in our browser is child elements overlapping their
-parents, like this:[^transforms-etc]
+[^tree-blog]: You can see a more detailed discussion of how the tree
+    structure affects the final image, and how that impacted the CSS
+    specifications, on [David Baron's blog](https://dbaron.org/log/20130306-compositing-blending).
 
-[^transforms-etc]: There are many more ways elements can overlap in a
-real browser: the `transform` property, `position`ed elements,
-negative margins, and so many more. But color mixing works the same
-way each time.
+[^stacking-context-disc]: This tree of surfaces is an implementation strategy
+and not something required by any specific web API. However, the
+concept of a [*stacking context*][stacking-context] is related.
+A stacking context is technically a mechanism to define groups and
+ordering during paint, and stacking contexts need not correspond to a surface
+(e.g. ones created via [`z-index`][z-index] do not). However, for ease of
+implementation, all visual effects in CSS that generally require surfaces to
+implement are specified to go hand-in-hand with a stacking context, so the tree
+of stacking contexts is very related to the tree of surfaces.
 
-``` {.html .example}
-<div style="background-color:orange">
-    Parent
-    <div style="background-color:white;border-radius:5px">Child</div>
-    Parent
-</div>
+[stacking-context]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
+[z-index]: https://developer.mozilla.org/en-US/docs/Web/CSS/z-index
+
+To match this use pattern, in Skia, surfaces form a stack. You can
+push a new surface on the stack, raster things to it, and then pop it
+off, which blends it with surface below. When rastering, you push a
+new surface onto the stack every time
+you need to apply some visual effect,
+and pop-and-blend once you're done rastering all the elements
+that that effect will be applied to, like this:
+
+``` {.python .example}
+# draw parent
+canvas.saveLayer(paint=skia.Paint(Alphaf=0.5))
+# draw children
+canvas.restore()
 ```
 
-It looks like this:
-
-<div style="background-color:orange">
-Parent
-<div style="background-color:white;border-radius:5px">Child</div>
-Parent
-</div>
-
-Right now, the white rectangle completely obscures part of the orange
-one; the two colors don't really need to "mix", and in fact it kind of
-looks like two orange rectangles instead of an orange rectangle with a
-white one on top. Now let's make the white child element
-semi-transparent, so the colors have to mix. In CSS, that requires
-adding an `opacity` property with a value somewhere between 0
-(completely transparent) and 1 (totally opaque). With 50% opacity on
-the white child element, it looks like this:
-
-<div style="background-color:orange">
-Parent
-<div style="background-color:white;border-radius:5px;opacity:0.5">Child</div>
-Parent
-</div>
-
-Notice that instead of being pure white, the child element now has a
-light-orange background color, resulting from orange and white mixing.
-Let's implement this in our browser.
-
-The way to mix colors in Skia is to first create two surfaces, and
-then draw one into the other. The most convenient way to do that is
-with `saveLayer`[^layer-surface] and `restore`:
+Here the `saveLayer` asks Skia[^layer-surface] to draw all the
+children to a separate
+surface before blending them into the parent once
+`restore` is called.
+The `paint` option to `saveLayer` specifies the specific type of
+blending, here with the `Alphaf` parameter requesting 50% opacity.
 
 [^layer-surface]: It's called `saveLayer` instead of `createSurface` because
 Skia doesn't actually promise to create a new surface, if it can optimize that
@@ -1118,21 +1028,8 @@ distinguishes between a layer and a surface for this reason as well, but for
 our purposes it makes sense to assume that each new layer comes with a
 surface.
 
-``` {.python .example}
-# draw parent
-canvas.saveLayer(paint=skia.Paint(Alphaf=0.5))
-# draw child
-canvas.restore()
-```
-
-We first draw the parent, then create a new surface with `saveLayer`
-to draw the child into, and then when the `restore` call is made the
-`paint` parameters passed into `saveLayer` are used to mix the colors
-in the two surfaces together. Here we're using the `Alphaf` parameter,
-which describes the opacity as a floating-point number from 0 to 1.
-
-Note that `saveLayer` and `restore` are like a pair of parentheses
-enclosing the child drawing operations. This means our display list is
+`saveLayer` and `restore` are like a pair of parentheses
+enclosing child drawing operations. This means our display list is
 no longer just a linear sequence of drawing operations, but a tree. So
 in our display list, let's handle `opacity` with an `Alpha`
 command that takes a sequence of other drawing commands as an
@@ -1155,13 +1052,10 @@ class Opacity:
         canvas.restore()
 ```
 
-Now let's look at how we can add this to our existing `paint` method for
-`BlockLayout`s. Now, _before_ we add its `cmds` command list to the overall
-display list, we can use `Opacity` to add transparency to the whole element.
-I'm going to do this in a new `paint_effects` method, which will wrap `cmds`
-in a `Opacity`. The actual `Opacity` command will be computed in a new
-global `paint_visual_effects` method (because other object types will need it
-also).
+We can now wrap the drawing commands painted by an
+element with `Opacity` to add transparency to the whole element.
+I'm going to do this by adding a new `paint_effects` method to layout
+objects, which should be passed a list of drawing commands to wrap:
 
 ``` {.python}
 class BlockLayout:
@@ -1171,7 +1065,19 @@ class BlockLayout:
         return cmds
 ```
 
-A change is now needed in `paint_tree` to call this method, but only *after*
+I put the actual construction of the `Opacity` command in a new
+global `paint_visual_effects` method (because other object types will also need it):
+
+``` {.python expected=False}
+def paint_visual_effects(node, cmds, rect):
+    opacity = float(node.style.get("opacity", "1.0"))
+
+    return [
+        Opacity(opacity, cmds)
+    ]
+```
+
+A change is now needed in `paint_tree` to call `paint_effects`, but only *after*
 recursing into children, and only if `should_paint` is true. That's because
 these visual effects apply to the entire subtree's display list, not just the
 current object, and don't apply to "anonymous" objects (see Chapter 8).
@@ -1186,18 +1092,6 @@ def paint_tree(layout_object, display_list):
     if layout_object.should_paint():
         cmds = layout_object.paint_effects(cmds)
     display_list.extend(cmds)
-```
-
-Inside `paint_visual_effects`, we'll parse the opacity value and
-construct the appropriate `Opacity` command:
-
-``` {.python expected=False}
-def paint_visual_effects(node, cmds, rect):
-    opacity = float(node.style.get("opacity", "1.0"))
-
-    return [
-        Opacity(opacity, cmds)
-    ]
 ```
 
 Note that `paint_visual_effects` receives a list of commands and
@@ -1761,18 +1655,27 @@ def paint_visual_effects(node, cmds, rect):
 Note that I've specified an opacity of `1.0` for the clip `Blend`.
 
 ::: {.further}
-Besides using fewer surfaces, real browsers also need to avoid
-surfaces getting too big. Real browsers use *tiling* for this,
-breaking up the surface into a grid of tiles which have their own
-raster surfaces and their own *x* and *y* offset to the page. Whenever
-content that intersects a tile changes its display list, the tile is
-re-rastered. Tiles that are not on or "near"[^near] the screen are not
-rastered at all. This all happens on the GPU, since surfaces (Skia
-ones [in particular](https://kyamagu.github.io/skia-python/reference/skia.Surface.html))
-can be stored on the GPU.
+Implementing high-quality raster libraries is very interesting in its own
+right---check out [Real-Time Rendering][rtr-book] for more.[^cgpp]
+These days, it's especially important to leverage GPUs when they're
+available, and browsers often push the envelope. Browser teams
+typically include or work closely with raster library experts: Skia
+for Chromium and [Core Graphics][core-graphics] for WebKit, for
+example. Both of these libraries are used outside of the browser, too:
+Core Graphics in iOS and macOS, and Skia in Android.
 :::
 
-[^near]: For example, tiles that just scrolled off-screen.
+[^cgpp]: There is also [Computer Graphics: Principles and
+Practice][classic], which incidentally I remember buying---this is
+Chris speaking---back in the days of my youth (1992 or so). At the time I
+didn't get much further than rastering lines and polygons (in assembly
+language!). These days you can do the same and more with Skia and a
+few lines of Python.
+
+[core-graphics]: https://developer.apple.com/documentation/coregraphics
+[rtr-book]: https://www.realtimerendering.com/
+[classic]: https://en.wikipedia.org/wiki/Computer_Graphics:_Principles_and_Practice
+
 
 
 Summary
