@@ -94,10 +94,12 @@ def linespace(font):
     return metrics.fDescent - metrics.fAscent
 
 class Blend:
-    def __init__(self, opacity, blend_mode, children):
+    def __init__(self, opacity, blend_mode, mask, children):
         self.opacity = opacity
         self.blend_mode = blend_mode
-        self.should_save = self.blend_mode != "normal" or self.opacity < 1
+        self.mask = mask
+        self.should_save = self.blend_mode != "normal" or self.opacity < 1 \
+            or self.mask
 
         self.children = children
         self.rect = skia.Rect.MakeEmpty()
@@ -112,6 +114,9 @@ class Blend:
             canvas.saveLayer(paint=paint)
         for cmd in self.children:
             cmd.execute(canvas)
+        if self.mask:
+            Blend(1.0, "destination-in", None, [self.mask]).execute(
+                canvas)
         if self.should_save:
             canvas.restore()
 
@@ -385,15 +390,12 @@ def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
     blend_mode = node.style.get("mix-blend-mode", "normal")
 
+    mask = None
     if node.style.get("overflow", "visible") == "clip":
         border_radius = float(node.style.get("border-radius", "0px")[:-2])
-        if not blend_mode:
-            blend_mode = "source-over"
-        cmds.append(Blend(1.0, "destination-in", [
-            DrawRRect(rect, border_radius, "white")
-        ]))
+        mask = DrawRRect(rect, border_radius, "white")
 
-    return [Blend(opacity, blend_mode, cmds)]
+    return [Blend(opacity, blend_mode, mask, cmds)]
 
 @wbetools.patch(DocumentLayout)
 class DocumentLayout:
