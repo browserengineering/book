@@ -115,15 +115,12 @@ def paint_visual_effects(node, cmds, rect):
     blend_mode = node.style["mix-blend-mode"].get()
     translation = parse_transform(node.style["transform"].get())
 
+    mask = None
     if node.style["overflow"].get() == "clip":
         border_radius = float(node.style["border-radius"].get()[:-2])
-        if not blend_mode:
-            blend_mode = "source-over"
-        cmds = [Blend(1.0, "source-over", node,
-                      cmds + [Blend(1.0, "destination-in", None, [
-                          DrawRRect(rect, 0, "white")])])]
+        mask = DrawRRect(rect, 0, "white")
 
-    blend_op = Blend(opacity, blend_mode, node, cmds)
+    blend_op = Blend(opacity, blend_mode, mask, node, cmds)
     node.blend_op = blend_op
     return [Transform(translation, rect, node, [blend_op])]
 
@@ -932,9 +929,8 @@ class IframeLayout(EmbedLayout):
         offset = (self.x.get() + diff, self.y.get() + diff)
         cmds = [Transform(offset, rect, self.node, cmds)]
         inner_rect = skia.Rect.MakeLTRB(self.x.get() + diff, self.y.get() + diff, self.x.get() + self.width.get() - diff, self.y.get() + self.height.get() - diff)
-        cmds = [Blend(1.0, "source-over", self.node,
-                      cmds + [Blend(1.0, "destination-in", None, [
-                          DrawRRect(inner_rect, 0, "white")])])]
+        cmds = [Blend(1.0, "source-over",
+                    DrawRRect(inner_rect, 0, "white"), self.node, cmds)]
         paint_outline(self.node, cmds, rect, self.zoom.get())
         cmds = paint_visual_effects(self.node, cmds, inner_rect)
         return cmds
