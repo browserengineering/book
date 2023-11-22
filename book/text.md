@@ -691,6 +691,10 @@ Here's what it looks like, step by step:
 
 :::
 
+<div class="print-only center">
+![Aligning the words on a line](examples/example3-words-align.png)
+</div>
+
 Since we want words to line up "on the line", let's start by computing
 where that line should be. That depends on the tallest word on the
 line:
@@ -778,10 +782,10 @@ paragraphs.
 By this point you should be able to load up your browser and display
 [this page](examples/example3-sizes.html). It should look about like this:
 
-<figure>
-<img src="examples/example3-sizes-screenshot.png"
-     alt="Screenshot of a web page demonstrating different text sizes.">
-</figure>
+<div class=center>
+![Screenshot of a web page demonstrating different text sizes](examples/example3-sizes-screenshot.png)
+<br>
+</div>
 
 ::: {.further}
 Actually, browsers support not only *horizontal* but also [*vertical*

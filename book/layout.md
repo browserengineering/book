@@ -305,6 +305,10 @@ complex layout trees!
 
 :::
 
+<div class="print-only center">
+![An example of block layout](examples/example5-block-layout.png)
+</div>
+
 Oh, and you might also notice that the text on these web pages is now
 totally unreadable, because it's all overlapping at the top of the
 page. Let's fix that next.
@@ -754,10 +758,10 @@ the browser. But before we get to that, we need to add some styling
 capabilities to our browser. However, even with layout the `browser.engineering`
 homepage looks a bit better:
 
-<figure>
-<img src="examples/example5-browserengineering-screenshot.png"
-     alt="Screenshot of the browser.engineering website with this chapter's browser.">
-</figure>
+<div class=center>
+![Screenshot of the browser.engineering website with this chapter's browser](examples/example5-browserengineering-screenshot.png)
+<br>
+</div>
 
 ::: {.further}
 The draft CSS [Painting API][mdn-houdini] allows pages to extend the
