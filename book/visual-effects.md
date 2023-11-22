@@ -985,7 +985,7 @@ contents need to be blended together into the parent.[^stacking-context-disc]
 
 [^tree-blog]: You can see a more detailed discussion of how the tree
     structure affects the final image, and how that impacted the CSS
-    specification, on [David Baron's blog](https://dbaron.org/log/20130306-compositing-blending).
+    specifications, on [David Baron's blog](https://dbaron.org/log/20130306-compositing-blending).
 
 [^stacking-context-disc]: This tree of surfaces is an implementation strategy
 and not something required by any specific web API. However, the
