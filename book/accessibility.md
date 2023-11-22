@@ -727,10 +727,11 @@ def style(node, rules, tab):
 
 [mediaquery]: https://developer.mozilla.org/en-US/docs/Web/CSS/Media_Queries/Using_media_queries
 
-Try your browser on a [web page](examples/example14-focus.html) with
-lots of links, text entries, and buttons, and you should now see that
-in dark mode they also change color to have a darker background and
-lighter foreground. It should look like this in dark mode:
+Try your browser on this
+[example web page with lots of links, text entries and buttons](examples/example14-focus.html)^[I'll use it throughout the chapter as the
+"focus example".], and you should now see that in dark mode they also change
+color to have a darker background and lighter foreground. It should look like
+this in dark mode:
 
 <center>
     <img src="examples/example14-dark-mode-forms.png">
@@ -1077,8 +1078,8 @@ def is_focusable(node):
         return node.tag in ["input", "button", "a"]
 ```
 
-If you print out `focusable_nodes` for
-[this example](examples/example14-focus.html), you should
+If you print out `focusable_nodes` for the
+[focus example](examples/example14-focus.html), you should
 get this:
 
 ``` {.python .example}
@@ -1285,7 +1286,7 @@ Here I'm shifting the scroll position to ensure that the object is
 will likely use different logic for scrolling up versus down.
 
 Focus outlines now basically work, and will even scroll on-screen if you try
-examples like [this](examples/example14-focus.html). But ideally, the focus
+it on the [focus example](examples/example14-focus.html). But ideally, the focus
 indicator should be customizable, so that the web page author can make sure the
 focused element stands out. In CSS, that's done with what's called the
 "`:focus` [pseudo-class][pseudoclass]". Basically, this means you can
@@ -1661,8 +1662,8 @@ class AccessibilityNode:
                 self.build_internal(grandchild_node)
 ```
 
-Here is the accessibility tree for
-[this example](examples/example14-focus.html):
+Here is the accessibility tree for the
+[focus example](examples/example14-focus.html):
 
 ``` {.text}
  role=document
@@ -1929,8 +1930,8 @@ class AccessibilityNode:
 ```
 
 This text construction logic is, of course, pretty naive, but it's
-enough to demonstrate the idea. Here is how it works out for
-[this example](examples/example14-focus.html):
+enough to demonstrate the idea. Here is how it works out for the
+[focus example](examples/example14-focus.html):
 
 ``` {.text}
  role=document text=Document
@@ -2579,7 +2580,7 @@ show a focus indicator, but if the user clicked on it, most browsers
 don't---the user knows where the focused element is! And a redundant
 focus indicator could be ugly, or distracting. Implement a similar
 heuristic. Clicking on a button should focus it, but not show a focus
-indicator. (Test this on [a page with](examples/example14-focus.html)
+indicator. (Test this on the [focus example](examples/example14-focus.html)
 a button placed outside a form, so clicking the button doesn't
 navigate to a new page.) But both clicking on and tabbing to an input
 element should show a focus ring. Also add support for the
