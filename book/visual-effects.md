@@ -1399,8 +1399,8 @@ Usually, `overflow: clip` is used with properties like `height` or
 parent. Our browser doesn't support these, but there is one edge case
 where `overflow: clip` is relevant: rounded corners.^[Technically,
 clipping is also relevant for our browser with single words that are longer
-than the browser window's width. [Here][longword] is an example.] Consider this
-example:
+than the browser window's width. [Here][longword] is an example.] Consider
+[this example](examples/example11-overflow-clip.html):
 
 [longword]: examples/example11-longword.html
 
