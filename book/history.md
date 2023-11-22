@@ -176,7 +176,7 @@ even today.[^original-aesthetics] In 1991, Berners-Lee advertised his browser
 and the concept on the [alt.hypertext Usenet
 group](https://www.w3.org/People/Berners-Lee/1991/08/art-6484.txt).
 
-![A screenshot of the WorldWideWeb browser](im/worldwideweb.gif)
+![A screenshot of the WorldWideWeb browser](im/worldwideweb.png)
 ^[WorldWideWeb, the first web browser. <a
 	href="https://dl.acm.org/doi/10.1145/179606.179671">Communications of the
 	ACM</a>, August 1994.]
