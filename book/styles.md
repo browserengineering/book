@@ -996,6 +996,7 @@ links have colors.
 
 <div class=center>
 ![Screenshot of the browser.engineering website with this chapter's browser](examples/example6-browserengineering-screenshot.png)
+<br>
 </div>
 
 ::: {.further}

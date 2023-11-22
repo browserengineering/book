@@ -319,6 +319,7 @@ browser and have it look about like this:
 
 <div class=center>
 ![Screenshot of Chinese text of 'Journey to the West'](examples/example2-text-screenshot.png)
+<br>
 </div>
 
 [ex-monkey]: examples/xiyouji.html

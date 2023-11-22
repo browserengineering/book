@@ -780,6 +780,7 @@ By this point you should be able to load up your browser and display
 
 <div class=center>
 ![Screenshot of a web page demonstrating different text sizes](examples/example3-sizes-screenshot.png)
+<br>
 </div>
 
 ::: {.further}
