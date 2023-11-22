@@ -1294,8 +1294,18 @@ all the loading and navigation logic that `Tab` used to have, it just
 works without any more changes!
 
 You should now be able to load [this
-example](examples/example15-iframe.html). Repeatedly clicking on the
-link will add another recursive iframe.
+example](examples/example15-iframe.html).  It should look like this:
+
+<center>
+    <img src="examples/example15-iframe.png">
+</center>
+
+Repeatedly clicking on the link will add another recursive iframe. After
+clicking twice it should look like this:
+
+<center>
+    <img src="examples/example15-iframe-clicked.png">
+</center>
 
 Let's get the other interactions working as well, starting with
 focusing an element. You can focus on *only one element per tab*, so we
