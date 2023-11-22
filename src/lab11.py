@@ -98,8 +98,8 @@ class Blend:
         self.opacity = opacity
         self.blend_mode = blend_mode
         self.mask = mask
-        self.should_save = self.blend_mode != "normal" or self.opacity < 1 \
-            or self.mask
+        self.should_save = self.blend_mode != "normal" or self.mask \
+            or self.opacity < 1
 
         self.children = children
         self.rect = skia.Rect.MakeEmpty()

@@ -1446,22 +1446,33 @@ class Pixel:
 
 Now, in `paint_visual_effects`, we need to create a new layer, draw
 the mask image into it, and then blend it with the element contents
-with destination-in blending:
+with destination-in blending. I'll do that by passing a paint command to
+`Blend` called a *mask*.
 
 ``` {.python expected=False}
 def paint_visual_effects(node, cmds, rect):
     # ...
+    mask = None
     if node.style.get("overflow", "visible") == "clip":
         border_radius = float(node.style.get("border-radius", "0px")[:-2])
-        cmds.append(Blend("destination-in", [
-            DrawRRect(rect, border_radius, "white")
-        ]))
+        mask = DrawRRect(rect, border_radius, "white")
 
     return [
-        Blend(blend_mode, [
+        Blend(blend_mode, mask, [
             Opacity(opacity, cmds),
         ]),
     ]
+```
+
+``` {.python}
+class Blend:
+    def execute(self, canvas):
+        # ...
+        for cmd in self.children:
+            cmd.execute(canvas)
+        if self.mask:
+            Blend(1.0, "destination-in", None, [self.mask]).execute(
+                canvas)
 ```
 
 Here I pass `destination-in` as the blend mode, though note that this
@@ -1561,43 +1572,24 @@ class Opacity:
 Similarly, `Blend` doesn't necessarily need to create a layer if
 there's no blending going on. But the logic here is a little trickier:
 `Blend` operation not only applies blending but also
-isolates the element contents `cmds`, which matters if they are being clipped by
-`overflow`. So let's skip creating a layer in `Blend` when there's no
-blending mode, but let's set the blend mode to a special, non-standard
-`source-over` value when we need clipping:
+isolates the element contents `cmds`, which matters if there is a mask to apply.
+So let's skip creating a layer in `Blend` when there's no
+blending mode or mask:
 
-``` {.python}
-def paint_visual_effects(node, cmds, rect):
-    if node.style.get("overflow", "visible") == "clip":
-        if not blend_mode:
-            blend_mode = "source-over"
-        # ...
-```
-
-We'll parse that as the default source-over blend mode:
-
-``` {.python}
-def parse_blend_mode(blend_mode_str):
-    # ...
-    elif blend_mode_str == "source-over":
-        return skia.BlendMode.kSrcOver
-    # ...
-```
-
-This is actually unnecessary, since `parse_blend_mode` already parses
-unknown strings as source-over blending, but it's good to be explicit.
-Anyway, now `Blend` can skip `saveLayer` if no blend mode is passed:
-
-``` {.python replace=self.blend_mode:/self.should_save:}
+``` {.python expected=False}
 class Blend:
+    def __init__(self, blend_mode, mask, children):
+        # ...
+        self.should_save = self.blend_mode != "normal" or self.mask
+
     def execute(self, canvas):
         paint = skia.Paint(
             BlendMode=parse_blend_mode(self.blend_mode))
-        if self.blend_mode:
+        if self.blend_mode and not self.mask:
             canvas.saveLayer(paint=paint)
         for cmd in self.children:
             cmd.execute(canvas)
-        if self.blend_mode:
+        if self.should_save:
             canvas.restore()
 ```
 
@@ -1615,10 +1607,12 @@ the edge of the blur will not be sharp.
 
 ``` {.python}
 class Blend:
-    def __init__(self, opacity, blend_mode, children):
+    def __init__(self, opacity, blend_mode, mask, children):
         self.opacity = opacity
         self.blend_mode = blend_mode
-        self.should_save = self.blend_mode != "normal" or self.opacity < 1
+        self.mask = mask
+        self.should_save = self.blend_mode != "normal" or self.mask \
+            or self.opacity < 1
 
         self.children = children
         self.rect = skia.Rect.MakeEmpty()
@@ -1642,14 +1636,7 @@ Now `paint_visual_effects` looks like this:
 ``` {.python}
 def paint_visual_effects(node, cmds, rect):
     # ...
-
-    if node.style.get("overflow", "visible") == "clip":
-        # ...
-        cmds.append(Blend(1.0, "destination-in", [
-            DrawRRect(rect, border_radius, "white")
-        ]))
-
-    return [Blend(opacity, blend_mode, cmds)]
+    return [Blend(opacity, blend_mode, mask, cmds)]
 ```
 
 Note that I've specified an opacity of `1.0` for the clip `Blend`.
