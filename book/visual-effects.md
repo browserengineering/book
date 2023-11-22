@@ -1586,7 +1586,7 @@ class Blend:
     def execute(self, canvas):
         paint = skia.Paint(
             BlendMode=parse_blend_mode(self.blend_mode))
-        if self.should_paint:
+        if self.should_save:
             canvas.saveLayer(paint=paint)
         for cmd in self.children:
             cmd.execute(canvas)
