@@ -170,7 +170,6 @@ body.main { padding: 0 4ex; }
 }
 
 figure { text-align: center; }
-.grid figure { margin: .5em; }
 figure img { width: 100%; }
 
 img { max-width: 100%; }
@@ -186,6 +185,7 @@ img { max-width: 100%; }
 .further { border: 2px solid green; padding-top: 0; }
 .further > :first-child:before { content: "Go further: "; font-weight: bold; color: green; }
 .widget { width: 100%; border: 2px solid navy; }
+.center { text-align: center }
 
 @media (prefers-color-scheme: dark) {
 .quirk { border: 2px solid #CBC3E3; }

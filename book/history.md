@@ -17,14 +17,12 @@ other predecessors to HTML. (Except in this footnote!)
 The Memex concept
 =================
 
-<figure>
-  <img src="im/memex.jpg" alt="A photograph of the first few lines of As You May Think">
-  <figcaption>
-    (<a href="https://www.flickr.com/people/79255326@N00">Dunkoman</a>
+<div class=center>
+![A photograph of the first few lines of As You May Think](im/memex.jpg)
+^[<a href="https://www.flickr.com/people/79255326@N00">Dunkoman</a>
     from <a href="https://commons.wikimedia.org/wiki/File:The_Memex_(3002477109).jpg">Wikipedia</a>,
-    <a href="https://creativecommons.org/licenses/by/2.0/legalcode" rel="license">CC BY 2.0</a>)
-  </figcaption>
-</figure>
+    <a href="https://creativecommons.org/licenses/by/2.0/legalcode" rel="license">CC BY 2.0</a>.]
+</div>
 
 An influential early exploration of how computers might revolutionize
 information is a 1945 essay by Vannevar Bush entitled [As We May
@@ -100,10 +98,10 @@ Protocol.
 criticism in academic and literary communities. The Project Xanadu research
 papers were heavily motivated by this use case.
 
-<figure>
-	<img src="im/hes.jpg" alt="A computer operator using a hypertext editing system in 1969">
-    <figcaption>Hypertext Editing System <br/> (Gregory Lloyd from <a href="https://commons.wikimedia.org/wiki/File:HypertextEditingSystemConsoleBrownUniv1969.jpg">Wikipedia</a>, <a href="https://creativecommons.org/licenses/by/2.0/legalcode" rel="license">CC BY 2.0</a>)</figcaption>
-</figure>
+<div class=center>
+![A computer operator using a hypertext editing system in 1969](im/hes.jpg)
+^[Hypertext Editing System <br/> (Gregory Lloyd from <a href="https://commons.wikimedia.org/wiki/File:HypertextEditingSystemConsoleBrownUniv1969.jpg">Wikipedia</a>, <a href="https://creativecommons.org/licenses/by/2.0/legalcode" rel="license">CC BY 2.0</a>.]
+</div>
 
 Independently of Project Xanadu, the first hyperlink system appeared for
 scrolling within a single document; it was later generalized to linking between
@@ -124,11 +122,11 @@ computing. That demo not only showcased the key concepts of the web, but also
 introduced the computer mouse and graphical user interface, both of which are of
 course central components of a browser UI.[^even-more]
 
-<figure>
-	<img src="im/engelbart.jpg" alt="A picture of Doug Engelbart presenting the mother of all demos">
-	<figcaption>The mother of all demos, 1968 <br/> (SRI International, via the <a
-	href="https://www.dougengelbart.org/content/view/374/464/">Doug Engelbart Institute</a>)</figcaption>
-</figure>
+<div class=center>
+![A picture of Doug Engelbart presenting the mother of all demos](im/engelbart.jpg)
+^[The mother of all demos, 1968. SRI International, via the
+<a href="https://www.dougengelbart.org/content/view/374/464/">Doug Engelbart Institute</a>.]
+</div>
 
 [^even-more]: That demo went beyond even this. There are some parts of it that
 have not yet been realized in any computer system. Watch it!
@@ -178,12 +176,10 @@ even today.[^original-aesthetics] In 1991, Berners-Lee advertised his browser
 and the concept on the [alt.hypertext Usenet
 group](https://www.w3.org/People/Berners-Lee/1991/08/art-6484.txt).
 
-<figure>
-	<img src="im/worldwideweb.gif" alt="A screenshot of the WorldWideWeb browser">
-	<caption>WorldWideWeb, the first web browser <br/> (<a
+![A screenshot of the WorldWideWeb browser](im/worldwideweb.gif)
+^[WorldWideWeb, the first web browser. <a
 	href="https://dl.acm.org/doi/10.1145/179606.179671">Communications of the
-	ACM</a>, August 1994)</caption>
-</figure>
+	ACM</a>, August 1994.]
 
 [^no-css]: No CSS! No JS! Not even images!
 
@@ -251,28 +247,20 @@ Explorer in 1995 and soon bundled it with Windows 95.
 
 [internet-tidal-wave]: https://lettersofnote.com/2011/07/22/the-internet-tidal-wave/
 
-<div class="grid" style="display: grid; grid-template-columns: repeat(2, 1fr);">
-<figure>
-<img src="im/mosaic.png" alt="A screenshot of the Mosaic browser">
-<figcaption>Mosaic (<a href="https://commons.wikimedia.org/wiki/File:NCSA_Mosaic_Browser_Screenshot.png">Wikipedia</a>, <a href="https://creativecommons.org/publicdomain/zero/1.0/legalcode" rel="license">CC0 1.0</a>)</figcaption>
-</figure>
-<figure>
-<img src="im/violawww.png" alt="A screenshot of the ViolaWWW browser">
-<figcaption>
-ViolaWWW (<a href="https://web.archive.org/web/20200706084621/http://viola.org/viola/book/preface.html">Viola in a Nutshell</a>)
-</figcaption>
-</figure>
-<figure>
-<img src="im/netscape.png" alt="A screenshot of the Netscape browser">
-<figcaption>Netscape Navigator (<a href="https://en.wikipedia.org/wiki/File:Navigator_1-22.png#filehistory">Wikipedia</a>)</figcaption>
-</figure>
-<figure>
-<img src="im/ie1.png" alt="A screenshot of the IE 1.0 browser">
-<figcaption>Microsoft Internet Explorer 1.0
-<br/>
-(<a href="https://en.wikipedia.org/wiki/File:Internet_Explorer_1.0.png">Wikipedia</a>,
-used <a href="https://www.microsoft.com/en-us/legal/copyright/permissions">with permission from Microsoft</a>)</figcaption>
-</figure>
+<div class=center>
+![A screenshot of the Mosaic browser](im/mosaic.png)
+^[Mosaic. <a href="https://commons.wikimedia.org/wiki/File:NCSA_Mosaic_Browser_Screenshot.png">Wikipedia</a>, <a href="https://creativecommons.org/publicdomain/zero/1.0/legalcode" rel="license">CC0 1.0</a>.]
+
+![A screenshot of the ViolaWWW browser](im/violawww.png)
+^[ViolaWWW. <a href="https://web.archive.org/web/20200706084621/http://viola.org/viola/book/preface.html">Viola in a Nutshell</a>.]
+
+![A screenshot of the Netscape browser](im/netscape.png)
+^[Netscape Navigator (<a href="https://en.wikipedia.org/wiki/File:Navigator_1-22.png#filehistory">Wikipedia</a>.]
+
+![A screenshot of the IE 1.0 browser](im/ie1.png)
+^[Microsoft Internet Explorer 1.0.
+<a href="https://en.wikipedia.org/wiki/File:Internet_Explorer_1.0.png">Wikipedia</a>,
+used <a href="https://www.microsoft.com/en-us/legal/copyright/permissions">with permission from Microsoft</a>.]
 </div>
 
 The era of the ["first browser
