@@ -919,7 +919,7 @@ def parse_color(color):
 ```
 
 Check that your browser renders dark-orange text for the example
-above. That shows that it is actually mixing the black color with the
+above. That shows that it's actually mixing the black color with the
 existing orange color from the background.
 
 However, there's another, subtle different way to create transparency
