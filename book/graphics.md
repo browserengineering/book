@@ -302,8 +302,6 @@ Here's an widget demonstrating that concept:
 
 :::
 
-
-
 [^crlf]: In the olden days of typewriters, increasing *y* meant
     *feed*ing in a new *line*, and resetting *x* meant *return*ing the
     *carriage* that printed letters to the left edge of the page. So
