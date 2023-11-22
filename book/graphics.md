@@ -317,10 +317,10 @@ Here's an widget demonstrating that concept:
 At this point you should be able to load up [this page][ex-monkey] in your
 browser and have it look about like this:
 
-<figure>
-<img src="examples/example2-text-screenshot.png"
-     alt="Screenshot of Chinese text of 'Journey to the West'">
-</figure>
+<div class=center>
+![Screenshot of Chinese text of 'Journey to the West'](examples/example2-text-screenshot.png)
+<br>
+</div>
 
 [ex-monkey]: examples/xiyouji.html
 
