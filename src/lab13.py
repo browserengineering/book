@@ -217,11 +217,13 @@ class DrawOutline(PaintCommand):
             self.thickness)
 
 class Blend(VisualEffect):
-    def __init__(self, opacity, blend_mode, node, children):
+    def __init__(self, opacity, blend_mode, mask, node, children):
         super().__init__(skia.Rect.MakeEmpty(), children, node)
         self.opacity = opacity
         self.blend_mode = blend_mode
-        self.should_save = self.blend_mode != "normal" or self.opacity < 1
+        self.mask = mask
+        self.should_save = self.blend_mode != "normal" or self.opacity < 1 or \
+            self.mask
 
         if wbetools.USE_COMPOSITING and self.should_save:
             self.needs_compositing = True
@@ -239,16 +241,14 @@ class Blend(VisualEffect):
             canvas.saveLayer(paint=paint)
         for cmd in self.children:
             cmd.execute(canvas)
+        if self.mask:
+            self.mask.execute(canvas)
         if self.should_save:
             canvas.restore()
         
     def map(self, rect):
-        if self.children and \
-           isinstance(self.children[-1], Blend) and \
-           self.children[-1].blend_mode == "destination-in":
-            bounds = rect.makeOffset(0.0, 0.0)
-            bounds.intersect(self.children[-1].rect)
-            return bounds
+        if self.mask:
+            return self.mask.rect
         else:
             return rect
 
@@ -256,7 +256,7 @@ class Blend(VisualEffect):
         return rect
 
     def clone(self, child):
-        return Blend(self.opacity, self.blend_mode,
+        return Blend(self.opacity, self.blend_mode, self.mask,
                      self.node, [child])
 
     def __repr__(self):
@@ -736,15 +736,14 @@ def paint_visual_effects(node, cmds, rect):
     translation = parse_transform(
         node.style.get("transform", ""))
 
+    mask = None
     if node.style.get("overflow", "visible") == "clip":
         border_radius = float(node.style.get("border-radius", "0px")[:-2])
-        if not blend_mode:
-            blend_mode = "source-over"
-        cmds.append(Blend(1.0, "destination-in", None, [
-            DrawRRect(rect, border_radius, cmds)
-        ]))
+        mask = Blend(1.0, "destination-in", None, None, [
+            DrawRRect(rect, border_radius, "white")
+        ])
 
-    blend_op = Blend(opacity, blend_mode, node, cmds)
+    blend_op = Blend(opacity, blend_mode, mask, node, cmds)
     node.blend_op = blend_op
     return [Transform(translation, rect, node, [blend_op])]
 
