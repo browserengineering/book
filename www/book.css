@@ -173,6 +173,8 @@ figure { text-align: center; }
 .grid figure { margin: .5em; }
 figure img { width: 100%; }
 
+img { max-width: 100%; }
+
 .quirk { border: 2px solid purple; }
 .quirk:before { content: "Quirk"; color: purple; }
 .warning { border: 2px solid red; }
