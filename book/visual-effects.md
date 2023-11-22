@@ -1577,7 +1577,7 @@ isolates the element contents `cmds`, which matters if there is a mask to apply.
 So let's skip creating a layer in `Blend` when there's no
 blending mode or mask:
 
-``` {.python expected=False}
+``` {.python}
 class Blend:
     def __init__(self, blend_mode, mask, children):
         # ...
