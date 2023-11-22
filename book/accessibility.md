@@ -1286,9 +1286,16 @@ Here I'm shifting the scroll position to ensure that the object is
 will likely use different logic for scrolling up versus down.
 
 Focus outlines now basically work, and will even scroll on-screen if you try
-it on the [focus example](examples/example14-focus.html). But ideally, the focus
-indicator should be customizable, so that the web page author can make sure the
-focused element stands out. In CSS, that's done with what's called the
+it on the [focus example](examples/example14-focus.html). Here's what it looks
+like after I pressed tab to focus the "this is a link" element:
+
+<center>
+    <img src="examples/example14-focus-outline.png">
+</center>
+
+But ideally, the focus indicator should be customizable, so that the web page
+author can make sure the focused element stands out. In CSS, that's done with
+what's called the
 "`:focus` [pseudo-class][pseudoclass]". Basically, this means you can
 write a selector like this:
 
@@ -1465,6 +1472,13 @@ class LineLayout:
                 outline_rect.join(child.self_rect())
                 outline_node = child.node.parent
 ```
+
+For the [focus example](examples/example14-focus.html), the focus outline
+of an `<a>` element becomes red:
+
+<center>
+    <img src="examples/example14-focus-outline-custom.png">
+</center>
 
 As with dark mode, focus outlines are a case where adding an
 accessibility feature meant generalizing existing browser features to
