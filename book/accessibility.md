@@ -1077,6 +1077,19 @@ def is_focusable(node):
         return node.tag in ["input", "button", "a"]
 ```
 
+If you print out `focusable_nodes` for
+[this example](examples/example14-focus.html), you should
+get this:
+
+``` {.python .example}
+[<a tabindex="1" href="/">,
+ <button tabindex="2">,
+ <div tabindex="3">,
+ <div tabindex="12">,
+ <input>,
+ <a href="http://browser.engineering">]
+```
+
 We also need to make sure to send a `click` event when an element is
 activated. Note that just like clicking on an element, activating an
 element can be canceled from JavaScript using `preventDefault`.
@@ -1648,8 +1661,50 @@ class AccessibilityNode:
                 self.build_internal(grandchild_node)
 ```
 
+Here is the accessibility tree for
+[this example](examples/example14-focus.html):
+
+``` {.text}
+ role=document
+   role=button
+     role=focusable text
+   role=StaticText
+   role=textbox
+   role=StaticText
+   role=link
+     role=focusable text
+   role=StaticText
+   role=textbox
+     role=StaticText
+   role=focusable
+     role=focusable text
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=focusable
+     role=focusable text
+   role=link
+     role=focusable text
+```
+
 The user can now direct the screen reader to walk up or down this
-accessibility tree and describe each node or trigger actions on it. 
+accessibility tree and describe each node or trigger actions on it. Let's
+implement that.
 
 ::: {.further}
 
@@ -1846,7 +1901,7 @@ class AccessibilityNode:
             self.build_internal(child_node)
 
         if self.role == "StaticText":
-            self.text = self.node.text
+            self.text = repr(self.node.text)
         elif self.role == "focusable text":
             self.text = "Focusable text: " + self.node.text
         elif self.role == "focusable":
@@ -1874,7 +1929,46 @@ class AccessibilityNode:
 ```
 
 This text construction logic is, of course, pretty naive, but it's
-enough to demonstrate the idea.
+enough to demonstrate the idea. Here is how it works out for
+[this example](examples/example14-focus.html):
+
+``` {.text}
+ role=document text=Document
+   role=button text=Button
+     role=focusable text text=Focusable text: This is a button
+   role=StaticText text='\nThis is an input element: '
+   role=textbox text=Input box: 
+   role=StaticText text=' and\n'
+   role=link text=Link
+     role=focusable text text=Focusable text: this is a link.
+   role=StaticText text='Not focusable'
+   role=textbox text=Input box: custom contents
+     role=StaticText text='custom contents'
+   role=focusable text=Focusable element
+     role=focusable text text=Focusable text: Tabbable element
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=focusable text=Focusable element
+     role=focusable text text=Focusable text: Offscreen
+   role=link text=Link
+     role=focusable text text=Focusable text: browser.engineering
+```
 
 The screen reader can then read the whole document by speaking the
 `text` field on each `AccessibilityNode`.
@@ -1949,7 +2043,6 @@ class Browser:
 
 Then, if `tab_focus` isn't equal to `last_tab_focus`, we know focus
 has moved and it's time to speak the focused node. The change looks like this:
-
 
 ``` {.python}
 class Browser:
