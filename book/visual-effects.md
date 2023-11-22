@@ -1677,20 +1677,6 @@ few lines of Python.
 [classic]: https://en.wikipedia.org/wiki/Computer_Graphics:_Principles_and_Practice
 
 
-::: {.further}
-Besides using fewer surfaces, real browsers also need to avoid
-surfaces getting too big. Real browsers use *tiling* for this,
-breaking up the surface into a grid of tiles which have their own
-raster surfaces and their own *x* and *y* offset to the page. Whenever
-content that intersects a tile changes its display list, the tile is
-re-rastered. Tiles that are not on or "near"[^near] the screen are not
-rastered at all. This all happens on the GPU, since surfaces (Skia
-ones [in particular](https://kyamagu.github.io/skia-python/reference/skia.Surface.html))
-can be stored on the GPU.
-:::
-
-[^near]: For example, tiles that just scrolled off-screen.
-
 
 Summary
 =======
