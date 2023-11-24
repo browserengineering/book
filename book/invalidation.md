@@ -2257,7 +2257,8 @@ class TextLayout:
     def layout(self):
         if self.font.dirty:
             zoom = self.zoom.read(notify=self.font)
-            self.font.set(font(self.node.style, zoom, notify=self.font))
+            self.font.set(font(
+                self.node.style, zoom, notify=self.font))
 ```
 
 Make sure to update all other uses of the `font` method to this new
@@ -2395,7 +2396,8 @@ class BlockLayout:
             y_dependencies = [self.previous.y, self.previous.height]
         else:
             y_dependencies = [self.parent.y]
-        self.y = ProtectedField(self, "y", self.parent, y_dependencies)
+        self.y = ProtectedField(
+            self, "y", self.parent, y_dependencies)
         # ...
 ```
 
@@ -2534,12 +2536,16 @@ class EmbedLayout:
             [self.zoom, self.font, self.width])
         self.ascent = ProtectedField(self, "ascent", self.parent,
             [self.height])
-        self.descent = ProtectedField(self, "descent", self.parent, [])
+        self.descent = ProtectedField(
+            self, "descent", self.parent, [])
         if self.previous:
-            x_dependencies = [self.previous.x, self.previous.font, self.previous.width]
+            x_dependencies = \
+                [self.previous.x, self.previous.font,
+                 self.previous.width]
         else:
             x_dependencies = [self.parent.x]
-        self.x = ProtectedField(self, "x", self.parent, x_dependencies)
+        self.x = ProtectedField(
+            self, "x", self.parent, x_dependencies)
         self.y = ProtectedField(self, "y", self.parent,
             [self.ascent,self.parent.y, self.parent.ascent])
 ```
