@@ -313,7 +313,97 @@ Try it out in a normal web browser. You should be able to go to the
 main guest book page, click the link to log in, log in with one of the
 username/password pairs above, and then be able to post entries.^[The
 login flow slows down debugging. You might want to add the empty
-string as a username/password pair.] Of course, this login system has
+string as a username/password pair.]
+
+Here are the salient parts of the requests and responses that should be
+happening:^[I also formatted the HTML responses to make them easier to read.]
+
+1. Load "/":
+
+Request:
+```
+GET / HTTP/1.1
+```
+
+Response:
+```
+HTTP/1.0 200 OK
+Set-Cookie: token=8654675686097477
+```
+
+2. Clicking the link to login:
+
+Request (notice how the browser is echoing back the cookie):
+```
+GET /login HTTP/1.1
+Cookie: token=8654675686097477
+```
+
+Response:
+```
+HTTP/1.0 200 OK
+
+<!doctype html>
+<form action=/ method=post>
+<p>Username: <input name=username></p>
+<p>Password:
+<input name=password type=password></p>
+<p><button>Log in</button></p>
+</form>
+```
+
+3. Submitting a username and password:
+
+Request:
+```
+POST / HTTP/1.1
+Cookie: token=8654675686097477
+
+username=crashoverride&password=0cool
+```
+
+Response:
+```
+HTTP/1.0 200 OK
+
+<!doctype html>
+<h1>Hello, crashoverride</h1>
+<form action=add method=post>
+<p><input name=guest></p>
+<p><button>Sign the book!</button></p>
+</form>
+<p>No names. We are nameless!
+<i>by cerealkiller</i></p><p>HACK THE PLANET!!!
+<i>by crashoverride</i></p>
+```
+
+4. Writing a comment:
+
+Request (here the comment is "Comment"):
+```
+POST /add HTTP/1.1
+Cookie: token=8654675686097477
+
+guest=Comment&nonce=9834535579959965
+```
+
+Response (notice how "Comment" appears in the response, echoing back the
+comment submitted):
+```
+HTTP/1.0 200 OK
+
+<!doctype html><h1>Hello, crashoverride</h1>
+<form action=add method=post>
+<p><input name=guest></p>
+<p><button>Sign the book!</button></p>
+</form>
+<p>No names. We are nameless!
+<i>by cerealkiller</i></p><p>HACK THE PLANET!!!
+<i>by crashoverride</i></p><p>Comment
+<i>by crashoverride</i></p>
+```
+
+Of course, this login system has
 a whole slew of insecurities.[^insecurities] But the focus of this
 book is the browser, not the server, so once you're sure it's all
 working, let's switch back to our web browser and implement cookies.

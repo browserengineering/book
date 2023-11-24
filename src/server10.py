@@ -7,18 +7,22 @@ SESSIONS = {}
 
 def handle_connection(conx):
     req = conx.makefile("b")
+    print('\n\nRequest:\n\n')
     reqline = req.readline().decode('utf8')
+    print(reqline)
     method, url, version = reqline.split(" ", 2)
     assert method in ["GET", "POST"]
     headers = {}
     while True:
         line = req.readline().decode('utf8')
+        print(line)
         if line == '\r\n': break
         header, value = line.split(":", 1)
         headers[header.casefold()] = value.strip()
     if 'content-length' in headers:
         length = int(headers['content-length'])
         body = req.read(length).decode('utf8')
+        print(body)
     else:
         body = None
 
@@ -39,6 +43,7 @@ def handle_connection(conx):
     csp = "default-src http://localhost:8000"
     response += "Content-Security-Policy: {}\r\n".format(csp)
     response += "\r\n" + body
+    print("\n\nResponse:\n\n" + response)
     conx.send(response.encode('utf8'))
     conx.close()
     
