@@ -345,7 +345,8 @@ class BlockLayout:
             y_dependencies = [self.previous.y, self.previous.height]
         else:
             y_dependencies = [self.parent.y]
-        self.y = ProtectedField(self, "y", self.parent, y_dependencies)
+        self.y = ProtectedField(
+            self, "y", self.parent, y_dependencies)
 
         self.children = ProtectedField(self, "children", self.parent, None,
             [])
