@@ -348,7 +348,7 @@ class BlockLayout:
         self.y = ProtectedField(self, "y", self.parent, y_dependencies)
 
         self.children = ProtectedField(self, "children", self.parent, None,
-            [self.height])
+            [])
 
         self.has_dirty_descendants = True
 
