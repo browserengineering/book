@@ -318,14 +318,14 @@ string as a username/password pair.]
 Here are the salient parts of the requests and responses that should be
 happening:^[I also formatted the HTML responses to make them easier to read.]
 
-1. Load "/":
+1. Load the main page:
 
-Request:
+* Request:
 ```
 GET / HTTP/1.1
 ```
 
-Response:
+* Response:
 ```
 HTTP/1.0 200 OK
 Set-Cookie: token=8654675686097477
@@ -333,28 +333,27 @@ Set-Cookie: token=8654675686097477
 
 2. Clicking the link to login:
 
-Request (notice how the browser is echoing back the cookie):
+* Request (notice how the browser echoes back the cookie):
 ```
 GET /login HTTP/1.1
 Cookie: token=8654675686097477
 ```
 
-Response:
+* Response (the server does *not* send `Set-Cookie` since it's already set):
 ```
 HTTP/1.0 200 OK
 
 <!doctype html>
 <form action=/ method=post>
 <p>Username: <input name=username></p>
-<p>Password:
-<input name=password type=password></p>
+<p>Password: <input name=password type=password></p>
 <p><button>Log in</button></p>
 </form>
 ```
 
 3. Submitting a username and password:
 
-Request:
+* Request:
 ```
 POST / HTTP/1.1
 Cookie: token=8654675686097477
@@ -362,7 +361,8 @@ Cookie: token=8654675686097477
 username=crashoverride&password=0cool
 ```
 
-Response:
+* Response (observe how the server included "crashoverride" in the response,
+after parsing it out of the body of the request):
 ```
 HTTP/1.0 200 OK
 
@@ -379,16 +379,17 @@ HTTP/1.0 200 OK
 
 4. Writing a comment:
 
-Request (here the comment is "Comment"):
+* Request (here the comment is "HackThePlanet"):
 ```
 POST /add HTTP/1.1
 Cookie: token=8654675686097477
 
-guest=Comment&nonce=9834535579959965
+guest=HackThePlanet
 ```
 
-Response (notice how "Comment" appears in the response, echoing back the
-comment submitted):
+* Response (notice how "HackThePlanet" appears in the response, echoing back the
+comment submitted; likewise, since the server knows the user via the
+`token` cookie, the response includes the username "crashoverride"):
 ```
 HTTP/1.0 200 OK
 
@@ -399,7 +400,7 @@ HTTP/1.0 200 OK
 </form>
 <p>No names. We are nameless!
 <i>by cerealkiller</i></p><p>HACK THE PLANET!!!
-<i>by crashoverride</i></p><p>Comment
+<i>by crashoverride</i></p><p>HackThePlanet
 <i>by crashoverride</i></p>
 ```
 
@@ -823,12 +824,30 @@ def add_entry(session, params):
     # ...
 ```
 
+If you repeat the browser-interaction example form earlier, step 3 now has a
+response containing the nonce in the form:
+
+```
+# ...
+<input name=nonce type=hidden value=9084313527112154>
+# ...
+```
+
+And when the form is submitted to `/add`, the nonce value is communicated back
+to the server like this:
+
+```
+guest=HackThePlanet&nonce=9084313527112154
+```
+
 Now this form can't be submitted except from our website. Repeat this
 nonce fix for each form in the application, and it'll be secure from
 CSRF attacks. But server-side solutions are fragile---what if you
 forget a form---and relying on every website out there to do it right
 is a pipe dream. It'd be better for the browser to provide a fail-safe
 backup.
+
+
 
 ::: {.further}
 One unusual attack, similar in spirit to cross-site request forgery,
@@ -866,7 +885,7 @@ will not send them in cross-site form submissions.[^in-progress]
 
 A cookie is marked `SameSite` in the `Set-Cookie` header like this:
 
-    Set-Cookie: foo=bar; SameSite=Lax
+    Set-Cookie: token=8654675686097477; SameSite=Lax
 
 The `SameSite` attribute can take the value `Lax`, `Strict`, or
 `None`, and as I write, browsers have and plan different defaults. Our
