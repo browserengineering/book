@@ -321,12 +321,13 @@ happening:^[I also formatted the HTML responses to make them easier to read.]
 1. Loading the main page:
 
 * Request:
-```
+
+``` {.example}
 GET / HTTP/1.1
 ```
 
 * Response:
-```
+``` {.example}
 HTTP/1.0 200 OK
 Set-Cookie: token=8654675686097477
 ```
@@ -334,13 +335,15 @@ Set-Cookie: token=8654675686097477
 2. Clicking the link to login:
 
 * Request (notice how the browser echoes back the cookie):
-```
+
+``` {.example}
 GET /login HTTP/1.1
 Cookie: token=8654675686097477
 ```
 
 * Response (the server does *not* send `Set-Cookie` since it's already set):
-```
+
+``` {.example}
 HTTP/1.0 200 OK
 
 <!doctype html>
@@ -354,7 +357,8 @@ HTTP/1.0 200 OK
 3. Submitting a username and password:
 
 * Request:
-```
+
+```  {.example}
 POST / HTTP/1.1
 Cookie: token=8654675686097477
 
@@ -363,7 +367,8 @@ username=crashoverride&password=0cool
 
 * Response (observe how the server included "crashoverride" in the response,
 after parsing it out of the body of the request):
-```
+
+``` {.example}
 HTTP/1.0 200 OK
 
 <!doctype html>
@@ -380,7 +385,8 @@ HTTP/1.0 200 OK
 4. Writing a comment:
 
 * Request (here the comment is "HackThePlanet"):
-```
+
+```  {.example}
 POST /add HTTP/1.1
 Cookie: token=8654675686097477
 
@@ -390,7 +396,8 @@ guest=HackThePlanet
 * Response (notice how "HackThePlanet" appears in the response, echoing back the
 comment submitted; likewise, since the server knows the user via the
 `token` cookie, the response includes the username "crashoverride"):
-```
+
+```  {.example}
 HTTP/1.0 200 OK
 
 <!doctype html><h1>Hello, crashoverride</h1>
@@ -827,7 +834,7 @@ def add_entry(session, params):
 If you repeat the browser-interaction example form earlier, step 3 now has a
 response containing the nonce in the form:
 
-```
+``` {.example}
 # ...
 <input name=nonce type=hidden value=9084313527112154>
 # ...
@@ -836,7 +843,7 @@ response containing the nonce in the form:
 And when the form is submitted to `/add`, the nonce value is communicated back
 to the server like this:
 
-```
+```  {.example}
 guest=HackThePlanet&nonce=9084313527112154
 ```
 
