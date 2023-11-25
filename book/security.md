@@ -318,7 +318,7 @@ string as a username/password pair.]
 Here are the salient parts of the requests and responses that should be
 happening:^[I also formatted the HTML responses to make them easier to read.]
 
-1. Load the main page:
+1. Loading the main page:
 
 * Request:
 ```
