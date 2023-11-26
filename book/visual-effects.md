@@ -623,6 +623,14 @@ class BlockLayout:
                 self.self_rect(), radius, bgcolor))
 ```
 
+With that, [this example](examples/example11-longword.html) will round
+the corners of its background (notice that it does not round the text though:
+
+<div class=center>
+![Example of a long word with rounded background](examples/example11-longword.png)
+<br>
+</div>
+
 Similar changes should be made to `InputLayout`. New shapes, like
 rounded rectangles, is one way that Skia is a more advanced
 rasterization library than Tk. More broadly, since Skia is also used
@@ -1438,7 +1446,7 @@ example:
 
 ``` {.html .example}
 <div 
-  style="border-radius:30px;background-color:lightblue;overflow:clip">
+  style="\:30px;background-color:lightblue;overflow:clip">
     This test text exists here to ensure that the "div" element is
     large enough that the border radius is obvious.
 </div>
