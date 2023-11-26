@@ -624,16 +624,15 @@ class BlockLayout:
 ```
 
 ::: {.web-only}
-With that, [this example](examples/example11-longword.html) will round
+With that, [this example](examples/example11-rounded-background.html) will round
 the corners of its background (notice that it does not round the text though:
 :::
-
 
 ::: {.print-only}
 With that, this example:
 
 ::: {.transclude .html}
-www/examples/example11-longword.html
+www/examples/example11-rounded-background.html
 :::
 
 will round the corners of its background (notice that it does not round the text
@@ -641,10 +640,8 @@ though:
 
 :::
 
-
 <div class=center>
-![Example of a long word with rounded background](examples/example11-longword.png)
-<br>
+![Example of a long word with rounded background](examples/example11-rounded-background.png)<br>
 </div>
 
 Similar changes should be made to `InputLayout`. New shapes, like
@@ -1450,6 +1447,8 @@ property][mdn-mask] lets you instead specify a image URL for the mask.
 
 [mdn-clip-path]: https://developer.mozilla.org/en-US/docs/Web/CSS/clip-path
 
+::: {.web-only}
+
 Usually, `overflow: clip` is used with properties like `height` or
 `rotate` which can make an element's children poke outside their
 parent. Our browser doesn't support these, but there is one edge case
@@ -1459,6 +1458,25 @@ than the browser window's width. [Here][longword] is an example.] Consider this
 example:
 
 [longword]: examples/example11-longword.html
+
+:::
+
+::: {.print-only}
+
+Usually, `overflow: clip` is used with properties like `height` or
+`rotate` which can make an element's children poke outside their
+parent. Our browser doesn't support these, but there is one edge case
+where `overflow: clip` is relevant: rounded corners.^[Technically,
+clipping is also relevant for our browser with single words that are longer
+than the browser window's width. See figure \ref{longword-example} for
+an example.] Consider this
+example:
+
+[longword]: examples/example11-longword.html
+
+![An example of overflowing text not being clipped by rounded corners \label{longword-example}](examples/example11-longword.png)
+
+:::
 
 ``` {.html .example}
 <div 
