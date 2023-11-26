@@ -2417,7 +2417,7 @@ should now look something like this:
 :::
 
 ::: {.print-only .cmd .python .outline}
-    python3 infra/outlines.py src/lab4.py
+    python3 infra/outlines.py src/lab14.py
 :::
 
 
