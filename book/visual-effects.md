@@ -625,7 +625,7 @@ class BlockLayout:
 
 ::: {.web-only}
 With that, [this example](examples/example11-rounded-background.html) will round
-the corners of its background (notice that it does not round the text though:
+the corners of its background (notice that it does not round the text, though):
 :::
 
 ::: {.print-only}
@@ -635,8 +635,8 @@ With that, this example:
 www/examples/example11-rounded-background.html
 :::
 
-will round the corners of its background (notice that it does not round the text
-though:
+will round the corners of its background (notice that it does not round the text,
+though):
 
 :::
 
