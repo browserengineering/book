@@ -229,8 +229,10 @@ class Tab:
     def zoom_by(self, increment):
         if increment:
             self.zoom *= 1.1
+            self.scroll *= 1.1
         else:
             self.zoom *= 1/1.1
+            self.scroll *= 1/1.1
         self.set_needs_render()
 
     def reset_zoom(self):
@@ -239,8 +241,17 @@ class Tab:
 ```
 
 Note that we need to set the `needs_render` flag when we zoom to
-redraw the screen after zooming is complete. We also need to reset the
-zoom level when we navigate to a new page:
+redraw the screen after zooming is complete. Also note that when we
+zoom the page we also need to adjust the scroll
+position.[^zoom-scroll] We also need to reset the zoom level when we
+navigate to a new page:
+
+[^zoom-scroll]: In a real browser, adjusting the scroll position when
+    zooming is more complex than just multiplying. That's because zoom
+    not only changes the height of individual lines of text, but also
+    changes line breaking, meaning more or fewer lines of text. This
+    means there's no easy correspondence between old and new scroll
+    positions.
 
 ``` {.python}
 class Tab:
