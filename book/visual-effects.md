@@ -1480,7 +1480,7 @@ example:
 
 ``` {.html .example}
 <div 
-  style="\:30px;background-color:lightblue;overflow:clip">
+  style="border-radius:30px;background-color:lightblue;overflow:clip">
     This test text exists here to ensure that the "div" element is
     large enough that the border radius is obvious.
 </div>
