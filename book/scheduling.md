@@ -1149,12 +1149,26 @@ might help me debug---are already safely on disk.[^invalid-json]
 accept invalid JSON files, in case the trace comes from a browser
 crash.
 
+::: {.web-only}
+
 Fire up the server, open our timer script, wait for it to finish
 counting, and then exit the browser. Then open up Chrome tracing or
 one of the other tracing tools named above and load the trace.
 If you don't want to do it yourself,
 [here](examples/example12-count-single-threaded.trace) is a sample trace file
 from my computer. You should see something like this:
+
+:::
+
+::: {.print-only}
+
+Fire up the server, open our timer script, wait for it to finish
+counting, and then exit the browser. Then open up Chrome tracing or
+one of the other tracing tools named above and load the trace.
+You should see something like this:
+
+:::
+
 
 <div class=center>
 ![Screenshot of Chrome Tracing for the timer script in single-threaded mode](examples/example12-trace-count-single-threaded.png)
@@ -1651,9 +1665,20 @@ class MeasureTime:
         # ...
 ```
 
+::: {.web-only}
+
 Now, if you make a new trace from the counting animation and load it
 into one of the tracing tools, you should see something like this (
 click [here](examples/example12-count-two-threads.trace) to download an example trace):
+
+:::
+
+::: {.print-only}
+
+Now, if you make a new trace from the counting animation and load it
+into one of the tracing tools, you should see something like this:
+
+:::
 
 <div class=center>
 ![Screenshot of Chrome Tracing for the timer script in two-threads mode](examples/example12-trace-count-two-threads.png)
@@ -1875,11 +1900,24 @@ class Browser:
                 self.active_tab_scroll = data.scroll
 ```
 
+::: {.web-only}
+
 That's it! If you try the counting demo now, you'll be able to scroll
 even during the artificial pauses.
 [Here](examples/example12-count-with-scroll.trace) is a trace that
 shows threaded scrolling at work (notice how raster and draw now
 sometimes happen at the same time as main-thread work):
+
+:::
+
+::: {.print-only}
+
+That's it! If you try the counting demo now, you'll be able to scroll even
+during the artificial pauses. Here is a trace screenshot that shows threaded
+scrolling at work (notice how raster and draw now sometimes happen at the same
+time as main-thread work):
+
+:::
 
 <div class=center>
 ![Trace output of threaded scrolling on the counting demo](examples/example12-count-with-scroll.png)
