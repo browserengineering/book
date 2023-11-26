@@ -95,9 +95,13 @@ function animate() {
 }
 ```
 
+::: {.web-only}
+
 Here's how it looks; click the buttons to start a fade:
 
 <iframe src="examples/example13-opacity-raf.html"></iframe>
+
+:::
 
 This animation *almost* runs in our browser, except that we need to
 add support for changing an element's `style` attribute from
@@ -839,6 +843,8 @@ layout and raster steps if the display list didn't change much between frames.
 
 ::: {.further}
 
+::: {.web-only}
+
 The implementation of `Browser.draw` in this section is incorrect for the case
 of nested visual effects, because it's not correct to draw every paint command
 individually; visual effects have to apply *atomically* (i.e., all at once) to
@@ -847,6 +853,28 @@ effects. Its draw display list looks like this:^[Once no-ops are removed;
 there are three composited layers because there is one for the background color
 of the page.]
 
+[nested-op]: examples/example13-nested-opacity.html
+
+:::
+
+::: {.print-only}
+
+The implementation of `Browser.draw` in this section is incorrect for the case
+of nested visual effects, because it's not correct to draw every paint command
+individually; visual effects have to apply *atomically* (i.e., all at once) to
+all the content at once. Consider [this example][nested-op] of nested opacity
+effects:
+
+::: {.transclude .html}
+www/examples/example13-nested-opacity.html
+:::
+
+ Its draw display list looks like this:^[Once no-ops are removed;
+there are three composited layers because there is one for the background color
+of the page.]
+
+:::
+
      DrawCompositedLayer()
      Blend(alpha=0.999)
        DrawCompositedLayer()
@@ -854,7 +882,6 @@ of the page.]
        Blend(alpha=0.5)
          DrawCompositedLayer()
 
-[nested-op]: examples/example13-nested-opacity.html
 
 Notice how there are two `Blend(alpha=0.999)` commands, when there should be
 one. This will cause incorrect results if the two pieces of text overlap. Fixing
