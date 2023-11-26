@@ -382,9 +382,26 @@ bigger text should still wrap appropriately at the edge of the screen,
 and CSS lengths should be scaled just like the text is. This is great
 for reading text more easily.
 
+::: {.print-only}
+Here is an example of some
+text before zoom:^[No book on the web would be complete without some
+good old [Lorem ipsum][lorem-ipsum]!]
+
+::: {.transclude .html}
+www/examples/example14-line-breaking.html
+:::
+
+And here is a screenshot of how it should render:
+
+:::
+
+::: {.web-only}
+
 Here is an [example](examples/example14-line-breaking.html) of some
 text before zoom:^[No book on the web would be complete without some
 good old [Lorem ipsum][lorem-ipsum]!]
+
+:::
 
 [lorem-ipsum]: https://en.wikipedia.org/wiki/Lorem_ipsum
 
@@ -727,11 +744,30 @@ def style(node, rules, tab):
 
 [mediaquery]: https://developer.mozilla.org/en-US/docs/Web/CSS/Media_Queries/Using_media_queries
 
+::: {.web-only}
+
 Try your browser on this
 [example web page with lots of links, text entries and buttons](examples/example14-focus.html)^[I'll use it throughout the chapter as the
 "focus example".], and you should now see that in dark mode they also change
 color to have a darker background and lighter foreground. It should look like
 this in dark mode:
+
+:::
+
+::: {.print-only}
+
+Try your browser on this web page with
+lots of links, text entries, and buttons:
+
+::: {.transclude .html}
+www/examples/example14-focus.html
+:::
+
+You should now see that
+in dark mode they also change color to have a darker background and
+lighter foreground. It should look like this in dark mode:
+
+:::
 
 <center>
     <img src="examples/example14-dark-mode-forms.png">
@@ -2238,10 +2274,25 @@ will be spoken again. This sounds like an edge case, but having a
 single element for all of your alerts (and just changing its class,
 say, from hidden to visible) is a common pattern.
 
+::: {.web-only}
+
 You should now be able to load up [this example][alert-example] and
 hear alert text once the button is clicked.
 
 [alert-example]: examples/example14-alert-role.html
+
+:::
+
+::: {.print-only}
+
+You should now be able to load up this example and
+hear alert text once the button is clicked:
+
+::: {.transclude .html}
+www/examples/example14-alert-role.html
+:::
+
+:::
 
 [role]: https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Roles
 
@@ -2497,8 +2548,6 @@ new [fully-styleable][selectmenu] input elements.
 [openui]: https://open-ui.org/#proposals
 [selectmenu]: https://blogs.windows.com/msedgedev/2022/05/05/styling-select-elements-for-real/
 
-
-
 Summary
 =======
 
@@ -2522,9 +2571,14 @@ Outline
 The complete set of functions, classes, and methods in our browser 
 should now look something like this:
 
-::: {.cmd .python .outline html=True}
+::: {.web-only .cmd .python .outline html=True}
     python3 infra/outlines.py --html src/lab14.py
 :::
+
+::: {.print-only .cmd .python .outline}
+    python3 infra/outlines.py src/lab14.py
+:::
+
 
 Exercises
 =========
@@ -2569,6 +2623,29 @@ devices. This is called [responsive design][responsive-design],
 and can be viewed as a kind of accessibility.
 
 [responsive-design]: https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Responsive_Design
+
+::: {.web-only}
+After completng the exercise,
+[this example](examples/example14-maxwidth-media.html) should have green text
+on narrow screens.
+:::
+
+
+::: {.print-only}
+
+After completing the exercise, the following example should have green text on
+narrow screens. HTML:
+
+::: {.transclude .html}
+www/examples/example14-maxwidth-media.html
+:::
+
+CSS:
+
+::: {.transclude .css}
+www/examples/example14-maxwidth-media.css
+:::
+:::
 
 *Mixed inlines*: Make the focus ring work correctly on nested inline
 elements. For example in `<a>a <b>bold</b> link</a>`, the focus ring

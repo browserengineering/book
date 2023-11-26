@@ -93,7 +93,7 @@ function Div(el)
     end
     src = src .. "></iframe>"
     return pandoc.RawBlock("html", src)
-  elseif el.classes[1] == "cmd" then
+  elseif el.classes[1] == "cmd" or el.classes[2] == "cmd" then
     if #el.content ~= 1 or
        el.content[1].t ~= "CodeBlock" then
       error("`cmd` block does not contain a code block")
@@ -109,6 +109,11 @@ function Div(el)
     end
     pre.classes = el.classes
     return pre
+  elseif el.classes[1] == "transclude" then
+    io.input(pandoc.utils.stringify(el.content))
+    local div = pandoc.CodeBlock( io.read('a'))
+    div.classes = el.classes
+    return div
   else
     return el
   end
