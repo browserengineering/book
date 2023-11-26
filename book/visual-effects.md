@@ -883,8 +883,18 @@ of transparency. For example, the
 color `#00000080` is 50% transparent black. Over a white background,
 that looks gray, but over an orange background it looks like this:
 
+::: {.web-only}
+
 <div style="font-size: 50px; padding: 15px; text-align: center;
     background: orange; color: #00000080">Test</div>
+
+:::
+
+::: {.print-only}
+
+![Example of black semi-transparent text blending into an orange background](examples/example11-opacity-blend.png)
+
+:::
 
 Note that the text is a kind of dark orange, because its color is
 a mix of 50% black and 50% orange.
@@ -924,9 +934,20 @@ However, there's another, subtle different way to create transparency
 with CSS. Here, 50% transparency is applied to the whole element using
 the `opacity` property:
 
+::: {.web-only}
+
 <div style="font-size: 50px; padding: 15px; text-align: center;
     background: orange; color: black; opacity: .5">Test</div>
+
+:::
+
+::: {.print-only}
+
+![Example of black text on an orange background, then blended semi-transparently into its ancestor](examples/example11-text-blending.png)
+
+:::
     
+
 Now the opacity applies to both the background and the text, so the
 background is now a little lighter. But note that the text
 is now gray, not dark orange. The black and orange pixels are no
@@ -1265,11 +1286,22 @@ the [`mix-blend-mode` property][mix-blend-mode-def], like this:
 
 This HTML will look like:
 
+::: {.web-only}
+
 <div style="background-color:orange">
 Parent
 <div style="background-color:blue;mix-blend-mode:difference">Child</div>
 Parent
 </div>
+
+:::
+
+::: {.print-only}
+
+![Example of the `difference` value for `mix-blend-mode` with a blue child and orange parent, resulting in pink](examples/example11-difference-blend-mode.png)
+
+:::
+
 
 Here, when blue overlaps with orange, we see pink: blue has (red,
 green, blue) color channels of `(0, 0, 1)`, and orange has `(1, .65,
@@ -1414,10 +1446,20 @@ example:
 
 That HTML looks like this:
 
+::: {.web-only}
+
 <div style="border-radius:30px;background-color:lightblue;overflow:clip">
 This test text exists here to ensure that the "div" element is
 large enough that the border radius is obvious.
 </div>
+
+:::
+
+::: {.print-only}
+
+![An example of overflow from text children of a div with `overflow:clip` and `border-radius` being clipped out](examples/example11-overflow-clip.png)
+
+:::
 
 Observe that the letters near the corner are cut off to maintain a sharp rounded
 edge. That's clipping; without the `overflow: clip` property these letters
