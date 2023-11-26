@@ -7,6 +7,7 @@ www/widgets/lab*.js
 www/widgets/server*.js
 www/widgets/rt-module.js
 www/rss.xml
+www/im/im
 .DS_Store
 slides
 class/
