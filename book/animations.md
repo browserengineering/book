@@ -2063,6 +2063,11 @@ should now look something like this:
     python3 infra/outlines.py --html src/lab13.py
 :::
 
+::: {.print-only .cmd .python .outline}
+    python3 infra/outlines.py src/lab13.py
+:::
+
+
 Exercises
 =========
 
