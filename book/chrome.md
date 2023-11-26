@@ -1325,11 +1325,19 @@ should now look something like this:
     python3 infra/outlines.py --html src/lab7.py
 :::
 
-If you run it, it should look something like this:
+And if you run it, it should look like this:
+
+::: {.web-only}
 
 ::: {.widget height=605}
     lab7-browser.html
 :::
+
+:::
+
+<div class="print-only center">
+![The chapter 7 browser rendering chapter 7](examples/example7-chapter-7.png)
+</div>
 
 Exercises
 =========
