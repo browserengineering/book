@@ -1303,9 +1303,7 @@ all the loading and navigation logic that `Tab` used to have, it just
 works without any more changes!
 
 You should now be able to load [this
-example](examples/example15-iframe.html).
-
-It should look like this:
+example](examples/example15-iframe.html). It should look like this:
 
 ![Rendering of an iframe](examples/example15-iframe.png)
 
