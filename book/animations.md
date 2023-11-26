@@ -963,9 +963,36 @@ reason---like from changing its style attribute---the browser smoothly
 interpolates between the old and new values for two seconds. Here is
 an example:
 
+::: {.web-only}
+
 <iframe src="examples/example13-opacity-transition.html"></iframe>
 (click [here](examples/example13-opacity-transition.html) to load the example in
 your browser)
+
+:::
+
+::: {.print-only}
+
+HTML:
+
+::: {.transclude .html}
+www/examples/example13-opacity-transition.html
+:::
+
+CSS:
+
+::: {.transclude .css}
+www/examples/example13-opacity-transition.css
+:::
+
+JS:
+
+::: {.transclude .javascript}
+www/examples/example13-opacity-transition.js
+:::
+
+:::
+
 
 Visually, it looks more or less identical[^animation-curve] to the
 JavaScript animation. But since the browser *understands* the
@@ -1239,8 +1266,14 @@ JavaScript with a [CSS animation][css-animations].
 
 [css-animations]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Animations/Using_CSS_animations
 
+::: {.web-only}
+
 You can see the CSS animation variant of the opacity demo
-[here](examples/example13-opacity-animation.html). Implementing this feature
+[here](examples/example13-opacity-animation.html).
+
+:::
+
+Implementing this feature
 requires parsing a new `@keyframes` syntax and the `animation` CSS property.
 Notice how `@keyframes` defines the start and end point declaratively, which
 allows us to make the animation alternate infinitely
@@ -1656,7 +1689,19 @@ class CompositedLayer:
             DrawOutline(border_rect, "red", 1).execute(canvas)
 ```
 
+::: {.web-only}
+
 Here is how [this example](examples/example13-opacity-transition.html)'s composited layers should look (notice how there are two layers):
+
+:::
+
+
+::: {.web-only}
+
+Here is how the opacity transition example's composited layers should look
+(notice how there are two layers):
+
+:::
 
 <img src="examples/example13-opacity-layers.png">
 
@@ -1969,11 +2014,27 @@ def local_to_absolute(display_item, rect):
     return rect
 ```
 
+::: {.web-only}
+
 The blue square should now be underneath the green square, so overlap
 testing is now complete. You should now be able to render
 [this example][overlap-example] correctly.
 
 [overlap-example]: examples/example13-transform-overlap.html
+
+:::
+
+::: {.print-only}
+
+The blue square should now be underneath the green square, so overlap
+testing is now complete. You should now be able to render
+this example correctly:
+
+::: {.transclude .html}
+www/examples/example13-transform-overlap.html
+:::
+
+:::
 
 There's one more situation worth thinking about, though. Suppose we have a huge composited layer, containing a lot of text, except that only a small
 part of that layer is shown on the screen, the rest being clipped out. Then the `absolute_bounds`
@@ -2118,7 +2179,8 @@ and transform transition animations are not supported. Implement these.
 `handle_down`.) [This simultaneous transform and opacity animation][tr-example] should now work, without any raster, and scrolling on that page should not
 raster either.
 
- [tr-example]: examples/example13-transform-transition.html
+[tr-example]: examples/example13-transform-transition.html
+
 
 *Width animations*: Implement the CSS `width` and `height` properties; when
 `width` is set to some number of pixels on an element, the element should be
@@ -2130,6 +2192,7 @@ animating them sets `needs_layout`. Check that animating width in your
 browser changes line breaks.
 [This example](examples/example13-width-transition.html) should work once
 you've implemented width animations.[^note-layout-animations]
+
 
 [^note-layout-animations]: Width animations can't be composited because
 width affects the layout tree, not just different display lists,
