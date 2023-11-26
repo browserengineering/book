@@ -1536,7 +1536,8 @@ with destination-in blending:
 def paint_visual_effects(node, cmds, rect):
     # ...
     if node.style.get("overflow", "visible") == "clip":
-        border_radius = float(node.style.get("border-radius", "0px")[:-2])
+        border_radius = float(node.style.get(
+            "border-radius", "0px")[:-2])
         cmds.append(Blend("destination-in", [
             DrawRRect(rect, border_radius, "white")
         ]))

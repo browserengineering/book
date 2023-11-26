@@ -386,7 +386,8 @@ def paint_visual_effects(node, cmds, rect):
     blend_mode = node.style.get("mix-blend-mode", "normal")
 
     if node.style.get("overflow", "visible") == "clip":
-        border_radius = float(node.style.get("border-radius", "0px")[:-2])
+        border_radius = float(node.style.get(
+            "border-radius", "0px")[:-2])
         if not blend_mode:
             blend_mode = "source-over"
         cmds.append(Blend(1.0, "destination-in", [
