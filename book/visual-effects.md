@@ -623,8 +623,24 @@ class BlockLayout:
                 self.self_rect(), radius, bgcolor))
 ```
 
+::: {.web-only}
 With that, [this example](examples/example11-longword.html) will round
 the corners of its background (notice that it does not round the text though:
+:::
+
+
+::: {.print-only}
+With that, this example:
+
+::: {.transclude .html}
+www/examples/example11-longword.html
+:::
+
+will round the corners of its background (notice that it does not round the text
+though:
+
+:::
+
 
 <div class=center>
 ![Example of a long word with rounded background](examples/example11-longword.png)
