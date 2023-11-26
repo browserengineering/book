@@ -1321,9 +1321,14 @@ Outline
 The complete set of functions, classes, and methods in our browser 
 should now look something like this:
 
-::: {.cmd .python .outline html=True}
+::: {.web-only .cmd .python .outline html=True}
     python3 infra/outlines.py --html src/lab7.py
 :::
+
+::: {.print-only .cmd .python .outline}
+    python3 infra/outlines.py src/lab7.py
+:::
+
 
 If you run it, it should look something like this:
 
