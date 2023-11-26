@@ -1696,7 +1696,7 @@ Here is how [this example](examples/example13-opacity-transition.html)'s composi
 :::
 
 
-::: {.web-only}
+::: {.print-only}
 
 Here is how the opacity transition example's composited layers should look
 (notice how there are two layers):
@@ -2169,7 +2169,7 @@ start and end values, but there are many other [easing functions][easing]
 `cubic-bezier(0.25, 0.1, 0.25, 1.0)`, not linear). Implement this easing
 function, and one or two others.
 
- [easing]: https://developer.mozilla.org/en-US/docs/Web/CSS/easing-function
+[easing]: https://developer.mozilla.org/en-US/docs/Web/CSS/easing-function
 
 *Composited & threaded transform and scroll animations*: Our browser supports
 transfoms and scrolling, but they are not fully composited or threaded,
@@ -2181,7 +2181,6 @@ raster either.
 
 [tr-example]: examples/example13-transform-transition.html
 
-
 *Width animations*: Implement the CSS `width` and `height` properties; when
 `width` is set to some number of pixels on an element, the element should be
 that many pixels wide, regardless of how its width would normally be computed;
@@ -2192,7 +2191,6 @@ animating them sets `needs_layout`. Check that animating width in your
 browser changes line breaks.
 [This example](examples/example13-width-transition.html) should work once
 you've implemented width animations.[^note-layout-animations]
-
 
 [^note-layout-animations]: Width animations can't be composited because
 width affects the layout tree, not just different display lists,
