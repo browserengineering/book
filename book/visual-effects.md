@@ -636,7 +636,7 @@ www/examples/example11-rounded-background.html
 :::
 
 will round the corners of its background (notice that it does not round the text
-though:
+though):
 
 :::
 
