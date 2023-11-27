@@ -263,7 +263,7 @@ class Blend(VisualEffect):
         args = ""
         if self.opacity < 1:
             args += ", opacity={}".format(self.opacity)
-        if self.blend_mode != "normal":
+        if self.blend_mode:
             args += ", blend_mode={}".format(self.blend_mode)
         if not args:
             args = ", <no-op>"

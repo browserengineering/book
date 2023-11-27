@@ -1367,7 +1367,7 @@ to `paint_visual_effects`:
 ``` {.python expected=False}
 def paint_visual_effects(node, cmds, rect):
     # ...
-    blend_mode = node.style.get("mix-blend-mode", "normal")
+    blend_mode = node.style.get("mix-blend-mode")
     
     return [
         Blend(blend_mode, [
@@ -1660,7 +1660,7 @@ class Blend:
     def __init__(self, opacity, blend_mode, children):
         self.opacity = opacity
         self.blend_mode = blend_mode
-        self.should_save = self.blend_mode != "normal" or self.opacity < 1
+        self.should_save = self.blend_mode or self.opacity < 1
 
         self.children = children
         self.rect = skia.Rect.MakeEmpty()
