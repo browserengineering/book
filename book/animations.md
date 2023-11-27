@@ -671,7 +671,7 @@ moment). Then, walk up the display list, wrapping that
 `DrawCompositedLayer` in each visual effect that applies to that
 composited layer:
 
-``` {.python replace=parent.clone(/self.clone_latest(parent%2c%20}
+``` {.python}
 class Browser:
     def __init__(self):
         # ...
@@ -1459,22 +1459,19 @@ If we just try re-running `paint_draw_list`, we'll get the old draw
 display list! We need to update `draw_list` to take into account the
 new display list based on the `composited_updates`.
 
-To do so, define a method `clone_latest` that clones an updated visual
-effect from `composited_updates` if there is one, and otherwise clones
-the original:
+To do so, define a method `get_latest` that gets an updated visual
+effect from `composited_updates` if there is one:
 
 ``` {.python}
 class Browser:
     # ...
-    def clone_latest(self, parent_effect, child_effect):
+    def get_latest(self, parent_effect):
         node = parent_effect.node
-        if not node in self.composited_updates:
-            return parent_effect.clone(child_effect)
-
-        if type(parent_effect) is Blend:
-            return self.composited_updates[node].clone(
-                child_effect)
-        return parent_effect.clone(child_effect)
+        if node not in self.composited_updates:
+            return parent_effect
+        if not isinstance(parent_effect, Blend):
+            return parent_effect
+        return self.composited_updates[node]
 ```
 
 Using `clone_latest` in `paint_draw_list` is a one-liner:
@@ -1484,8 +1481,7 @@ class Browser:
     def paint_draw_list(self):
         for composited_layer in self.composited_layers:
             while parent:
-                current_effect = \
-                    self.clone_latest(parent, current_effect)
+                parent = self.get_latest(parent)
                 # ...
 ```
 

@@ -1311,15 +1311,13 @@ class Browser:
                 max(self.active_tab_height,
                     layer.absolute_bounds().bottom())
 
-    def clone_latest(self, parent_effect, child_effect):
+    def get_latest(self, parent_effect):
         node = parent_effect.node
-        if not node in self.composited_updates:
-            return parent_effect.clone(child_effect)
-
-        if type(parent_effect) is Blend:
-            return self.composited_updates[node].clone(
-                child_effect)
-        return parent_effect.clone(child_effect)
+        if node not in self.composited_updates:
+            return parent_effect
+        if not isinstance(parent_effect, Blend):
+            return parent_effect
+        return self.composited_updates[node]
 
     def paint_draw_list(self):
         self.draw_list = []
@@ -1329,8 +1327,9 @@ class Browser:
             if not composited_layer.display_items: continue
             parent = composited_layer.display_items[0].parent
             while parent:
+                parent = self.get_latest(parent)
                 current_effect = \
-                    self.clone_latest(parent, current_effect)
+                    parent.clone(current_effect)
                 parent = parent.parent
             self.draw_list.append(current_effect)
 
