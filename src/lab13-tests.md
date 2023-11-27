@@ -42,17 +42,11 @@ Testing CSS transtions
      Transform(<no-op>)
        Blend(<no-op>)
          DrawCompositedLayer()
-     Transform(<no-op>)
-       Blend(<no-op>)
          Transform(<no-op>)
            Blend(<no-op>)
              Transform(<no-op>)
                Blend(opacity=0.5)
                  DrawCompositedLayer()
-     Transform(<no-op>)
-       Blend(<no-op>)
-         Transform(<no-op>)
-           Blend(<no-op>)
              DrawCompositedLayer()
     >>> tab = browser.active_tab
     >>> div = tab.nodes.children[1].children[0]
