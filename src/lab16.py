@@ -1281,8 +1281,10 @@ class Tab:
     def zoom_by(self, increment):
         if increment > 0:
             self.zoom *= 1.1
+            self.scroll *= 1.1
         else:
             self.zoom *= 1 / 1.1
+            self.scroll *= 1 / 1.1
         for id, frame in self.window_id_to_frame.items():
             frame.document.zoom.mark()
         self.set_needs_render_all_frames()
