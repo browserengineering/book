@@ -671,7 +671,7 @@ moment). Then, walk up the display list, wrapping that
 `DrawCompositedLayer` in each visual effect that applies to that
 composited layer:
 
-``` {.python}
+``` {.python replace=parent.clone/new_parent.clone}
 class Browser:
     def __init__(self):
         # ...
@@ -1474,14 +1474,16 @@ class Browser:
         return self.composited_updates[node]
 ```
 
-Using `clone_latest` in `paint_draw_list` is a one-liner:
+Using `get_latest` in `paint_draw_list` is a one-liner:
 
 ``` {.python}
 class Browser:
     def paint_draw_list(self):
         for composited_layer in self.composited_layers:
             while parent:
-                parent = self.get_latest(parent)
+                new_parent = self.get_latest(parent)
+                current_effect = \
+                    new_parent.clone(current_effect)
                 # ...
 ```
 
