@@ -659,9 +659,25 @@ class ImageLayout(EmbedLayout):
         # ...
 ```
 
+::: {.web-only}
+
 Your browser should now be able to render <a
 href="/examples/example15-img.html">this example page</a> correctly. It
 should look like this:
+
+:::
+
+::: {.print-only}
+
+Your browser should now be able to render this example page correctly:
+
+::: {.transclude .html}
+www/examples/example15-img.html
+:::
+
+It should look like this:
+
+:::
 
 ![Rendering of an example with images](examples/example15-img.png)
 
@@ -1287,7 +1303,7 @@ all the loading and navigation logic that `Tab` used to have, it just
 works without any more changes!
 
 You should now be able to load [this
-example](examples/example15-iframe.html).  It should look like this:
+example](examples/example15-iframe.html). It should look like this:
 
 ![Rendering of an iframe](examples/example15-iframe.png)
 
