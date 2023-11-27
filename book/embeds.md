@@ -1495,9 +1495,10 @@ class FrameAccessibilityNode(AccessibilityNode):
         self.zoom = self.node.layout_object.zoom
 
     def hit_test(self, x, y):
-        if not self.bounds.contains(x, y): return
-        new_x = x - self.bounds.x() - dpx(1, self.zoom)
-        new_y = y - self.bounds.y() - dpx(1, self.zoom) + self.scroll
+        bounds = self.bounds[0]
+        if not bounds.contains(x, y): return
+        new_x = x - bounds.x() - dpx(1, self.zoom)
+        new_y = y - bounds.y() - dpx(1, self.zoom) + self.scroll
         node = self
         for child in self.children:
             res = child.hit_test(new_x, new_y)
@@ -1523,24 +1524,31 @@ class AccessibilityNode:
             child = AccessibilityNode(child_node, self)
 ```
 
-And now the method to map to absolute coordinates:
+And now we're ready for the method to map to absolute coordinates. This
+loops over all bounds rects and maps them up to the root. Note that there is
+a specal case for `FrameAccessibilityNode`, because its self-bounds are in
+the coordinate space of the frame containing the iframe.
 
 ``` {.python}
 class AccessibilityNode:
     def absolute_bounds(self):
-        rect = skia.Rect.MakeXYWH(
-            self.bounds.x(), self.bounds.y(),
-            self.bounds.width(), self.bounds.height())
-        obj = self
-        while obj:
-            obj.map_to_parent(rect)
-            obj = obj.parent
-        return rect
+        abs_bounds = []
+        for bound in self.bounds:
+            abs_bound = bound.makeOffset(0.0, 0.0)
+            if isinstance(self, FrameAccessibilityNode):
+                obj = self.parent
+            else:
+                obj = self
+            while obj:
+                obj.map_to_parent(abs_bound)
+                obj = obj.parent
+            abs_bounds.append(abs_bound)
+        return abs_bounds
 ```
 
-This method calls `map_to_parent` to adjust the bounds. For
-most accessibility nodes we don't need to do anything, because they are in the same
-coordinate space as their parent:
+This method calls `map_to_parent` to adjust the bounds. For most accessibility
+nodes we don't need to do anything, because they are in the same coordinate
+space as their parent:
 
 ``` {.python}
 class AccessibilityNode:
@@ -1548,12 +1556,15 @@ class AccessibilityNode:
         pass
 ```
 
-A `FrameAccessibilityNode`, on the other hand, adjusts for the iframe's position:
+A `FrameAccessibilityNode`, on the other hand, adjusts for the iframe's
+postion and clipping:
 
 ``` {.python}
 class FrameAccessibilityNode(AccessibilityNode):
     def map_to_parent(self, rect):
-        rect.offset(self.bounds.x(), self.bounds.y() - self.scroll)
+        bounds = self.bounds[0]
+        rect.offset(bounds.x(), bounds.y() - self.scroll)
+        rect.intersect(bounds)
 ```
 
 You should now be able to hover on nodes and have them read out by our

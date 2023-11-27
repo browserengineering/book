@@ -512,11 +512,7 @@ class AccessibilityNode:
         self.node = node
         self.children = []
         self.text = ""
-
-        if node.layout_object:
-            self.bounds = absolute_bounds_for_obj(node.layout_object)
-        else:
-            self.bounds = None
+        self.bounds = self.compute_bounds()
 
         if isinstance(node, Text):
             if is_focusable(node.parent):
@@ -538,6 +534,23 @@ class AccessibilityNode:
                 self.role = "focusable"
             else:
                 self.role = "none"
+
+    def compute_bounds(self):
+        if self.node.layout_object:
+            return [absolute_bounds_for_obj(self.node.layout_object)]
+        if isinstance(self.node, Text):
+            return []
+        inline = self.node.parent
+        bounds = []
+        while not inline.layout_object: inline = inline.parent
+        for line in inline.layout_object.children:
+            line_bounds = skia.Rect.MakeEmpty()
+            for child in line.children:
+                if child.node.parent == self.node:
+                    line_bounds.join(skia.Rect.MakeXYWH(
+                        child.x, child.y, child.width, child.height))
+            bounds.append(line_bounds)
+        return bounds
 
     def build(self):
         for child_node in self.node.children:
@@ -580,8 +593,9 @@ class AccessibilityNode:
                 self.build_internal(grandchild_node)
 
     def intersects(self, x, y):
-        if self.bounds:
-            return self.bounds.contains(x, y)
+        for bound in self.bounds:
+            if bound.contains(x, y):
+                return True
         return False
 
     def hit_test(self, x, y):
@@ -594,8 +608,8 @@ class AccessibilityNode:
         return node
 
     def __repr__(self):
-        return "AccessibilityNode(node={} role={} text={}".format(
-            str(self.node), self.role, self.text)
+        return "AccessibilityNode(node={} role={} text={} bounds={}".format(
+            str(self.node), self.role, self.text, self.bounds)
 
 SPEECH_FILE = "/tmp/speech-fragment.mp3"
 
@@ -1338,9 +1352,10 @@ class Browser:
         self.pending_hover = None
 
         if self.hovered_a11y_node:
-            self.draw_list.append(DrawOutline(
-                self.hovered_a11y_node.bounds,
-                "white" if self.dark_mode else "black", 2))
+            for bound in self.hovered_a11y_node.bounds:
+                self.draw_list.append(DrawOutline(
+                    bound,
+                    "white" if self.dark_mode else "black", 2))
 
     def update_accessibility(self):
         if not self.accessibility_tree: return
