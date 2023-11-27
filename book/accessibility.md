@@ -251,7 +251,7 @@ navigate to a new page:
     not only changes the height of individual lines of text, but also
     changes line breaking, meaning more or fewer lines of text. This
     means there's no easy correspondence between old and new scroll
-    positions.
+    positions. Most real browsers implement a much more general algorithm called [scroll anchoring](https://drafts.csswg.org/css-scroll-anchoring-1/) that handles all kinds of changes beyond just zoom.
 
 ``` {.python}
 class Tab:
