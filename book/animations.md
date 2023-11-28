@@ -691,6 +691,37 @@ class Browser:
             self.draw_list.append(current_effect)
 ```
 
+The code in `paint_draw_list` just walks up from each composited
+layer, recreating all of the effects applied to it. This will
+work---mostly---but if one effect applies to more than one composited
+layer, it'll turn into multiple identical effects, applied separately
+to each composited layer. That's not right, because as we discussed in
+[Chapter 11](visual-effects.md), the order of operations matters.
+
+Let's fix that by reusing cloned effects:
+
+``` {.python expected=False}
+class Browser:
+    def paint_draw_list(self):
+        new_effects = {}
+        self.draw_list = []
+        for composited_layer in self.composited_layers:
+            # ...
+            while parent:
+                if parent in new_effects:
+                    new_parent = new_effects[parent]
+                    new_parent.children.append(current_effect)
+                    break
+                else:
+                    current_effect = \
+                        parent.clone(current_effect)
+                    new_effects[parent] = current_effect
+                    parent = parent.parent
+            if not parent:
+                self.draw_list.append(current_effect)
+
+```
+
 That's it! Now that we've split the display list into composited layers and a
 draw display list, we need to update the rest of the browser to use them for
 raster and draw.
@@ -843,72 +874,7 @@ layout and raster steps if the display list didn't change much between frames.
 
 ::: {.further}
 
-::: {.web-only}
-
-The implementation of `Browser.draw` in this section is incorrect for the case
-of nested visual effects, because it's not correct to draw every paint command
-individually; visual effects have to apply *atomically* (i.e., all at once) to
-all the content at once. Consider [this example][nested-op] of nested opacity
-effects. Its draw display list looks like this:^[Once no-ops are removed;
-there are three composited layers because there is one for the background color
-of the page.]
-
-[nested-op]: examples/example13-nested-opacity.html
-
-:::
-
-::: {.print-only}
-
-The implementation of `Browser.draw` in this section is incorrect for the case
-of nested visual effects, because it's not correct to draw every paint command
-individually; visual effects have to apply *atomically* (i.e., all at once) to
-all the content at once. Consider [this example][nested-op] of nested opacity
-effects:
-
-::: {.transclude .html}
-www/examples/example13-nested-opacity.html
-:::
-
- Its draw display list looks like this:^[Once no-ops are removed;
-there are three composited layers because there is one for the background color
-of the page.]
-
-:::
-
-     DrawCompositedLayer()
-     Blend(alpha=0.999)
-       DrawCompositedLayer()
-     Blend(alpha=0.999)
-       Blend(alpha=0.5)
-         DrawCompositedLayer()
-
-
-Notice how there are two `Blend(alpha=0.999)` commands, when there should be
-one. This will cause incorrect results if the two pieces of text overlap. Fixing
-this problem requires some post-processing of the draw display list to merge
-common intermediate visual effects, and allocating temporary surfaces for them.
-In general, we'd end up with a tree of such temporary surfaces. These are
-called *render surfaces*.^["Render", since they are a transient and internal
-artifact of the rendering pipeline.]
-
-A naive implementation of this tree (allocating one node for each visual effect)
-is not too hard to implement---and there is an exercise at the end of this
-chapter for it---but each additional render surface requires more memory and
-slows down draw a bit more. So real browsers analyze the visual effect tree to
-determine which ones really need render surfaces, and which don't. Opacity, for
-example, often doesn't need a render surface, but opacity with at least
-two "descendant" `CompositedLayer`s does.[^only-overlapping]
-
-[^only-overlapping]: Actually, only if there are at least two descendants,
-*and* some of them overlap each other visually. Can you see why we can
-avoid the render surface for opacity if there is no overlap?
-
-You might think that all this means I chose badly with the "paint commands"
-compositing algorithm presented here, but that is not the case. Render surface
-optimizations are just as necessary (and complicated to get right!) with
-a "layer tree" approach, because it's so important to optimize GPU memory.
-
-In addition, the algorithm presented here is a simplified version of what
+The algorithm presented here is a simplified version of what
 Chromium actually implements. For more details and information on how Chromium
 implements these concepts see [here][renderingng-dl] and
 [here][rendersurface]; other browsers do something broadly similar. Chromium's
@@ -1482,10 +1448,12 @@ class Browser:
         for composited_layer in self.composited_layers:
             while parent:
                 new_parent = self.get_latest(parent)
-                current_effect = \
-                    new_parent.clone(current_effect)
                 # ...
 ```
+
+Update the rest of the `while` loop in `paint_draw_list` to refer to
+`new_parent` instead of `parent` when creating new effects (but not
+when walking up from the composited layer).
 
 Now the draw display list will be based on the new display list, and
 animations that only require the draw step, like our example opacity
