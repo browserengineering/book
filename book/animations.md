@@ -95,9 +95,13 @@ function animate() {
 }
 ```
 
+::: {.web-only}
+
 Here's how it looks; click the buttons to start a fade:
 
 <iframe src="examples/example13-opacity-raf.html"></iframe>
+
+:::
 
 This animation *almost* runs in our browser, except that we need to
 add support for changing an element's `style` attribute from
@@ -424,7 +428,7 @@ class Blend:
         args = ""
         if self.opacity < 1:
             args += ", opacity={}".format(self.opacity)
-        if self.blend_mode != "normal":
+        if self.blend_mode:
             args += ", blend_mode={}".format(self.blend_mode)
         if not args:
             args = ", <no-op>"
@@ -667,7 +671,7 @@ moment). Then, walk up the display list, wrapping that
 `DrawCompositedLayer` in each visual effect that applies to that
 composited layer:
 
-``` {.python replace=parent.clone(/self.clone_latest(parent%2c%20}
+``` {.python replace=parent.clone/new_parent.clone}
 class Browser:
     def __init__(self):
         # ...
@@ -839,6 +843,8 @@ layout and raster steps if the display list didn't change much between frames.
 
 ::: {.further}
 
+::: {.web-only}
+
 The implementation of `Browser.draw` in this section is incorrect for the case
 of nested visual effects, because it's not correct to draw every paint command
 individually; visual effects have to apply *atomically* (i.e., all at once) to
@@ -847,6 +853,28 @@ effects. Its draw display list looks like this:^[Once no-ops are removed;
 there are three composited layers because there is one for the background color
 of the page.]
 
+[nested-op]: examples/example13-nested-opacity.html
+
+:::
+
+::: {.print-only}
+
+The implementation of `Browser.draw` in this section is incorrect for the case
+of nested visual effects, because it's not correct to draw every paint command
+individually; visual effects have to apply *atomically* (i.e., all at once) to
+all the content at once. Consider [this example][nested-op] of nested opacity
+effects:
+
+::: {.transclude .html}
+www/examples/example13-nested-opacity.html
+:::
+
+ Its draw display list looks like this:^[Once no-ops are removed;
+there are three composited layers because there is one for the background color
+of the page.]
+
+:::
+
      DrawCompositedLayer()
      Blend(alpha=0.999)
        DrawCompositedLayer()
@@ -854,7 +882,6 @@ of the page.]
        Blend(alpha=0.5)
          DrawCompositedLayer()
 
-[nested-op]: examples/example13-nested-opacity.html
 
 Notice how there are two `Blend(alpha=0.999)` commands, when there should be
 one. This will cause incorrect results if the two pieces of text overlap. Fixing
@@ -936,9 +963,36 @@ reason---like from changing its style attribute---the browser smoothly
 interpolates between the old and new values for two seconds. Here is
 an example:
 
+::: {.web-only}
+
 <iframe src="examples/example13-opacity-transition.html"></iframe>
 (click [here](examples/example13-opacity-transition.html) to load the example in
 your browser)
+
+:::
+
+::: {.print-only}
+
+HTML:
+
+::: {.transclude .html}
+www/examples/example13-opacity-transition.html
+:::
+
+CSS:
+
+::: {.transclude .css}
+www/examples/example13-opacity-transition.css
+:::
+
+JS:
+
+::: {.transclude .javascript}
+www/examples/example13-opacity-transition.js
+:::
+
+:::
+
 
 Visually, it looks more or less identical[^animation-curve] to the
 JavaScript animation. But since the browser *understands* the
@@ -1212,8 +1266,14 @@ JavaScript with a [CSS animation][css-animations].
 
 [css-animations]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Animations/Using_CSS_animations
 
+::: {.web-only}
+
 You can see the CSS animation variant of the opacity demo
-[here](examples/example13-opacity-animation.html). Implementing this feature
+[here](examples/example13-opacity-animation.html).
+
+:::
+
+Implementing this feature
 requires parsing a new `@keyframes` syntax and the `animation` CSS property.
 Notice how `@keyframes` defines the start and end point declaratively, which
 allows us to make the animation alternate infinitely
@@ -1399,33 +1459,31 @@ If we just try re-running `paint_draw_list`, we'll get the old draw
 display list! We need to update `draw_list` to take into account the
 new display list based on the `composited_updates`.
 
-To do so, define a method `clone_latest` that clones an updated visual
-effect from `composited_updates` if there is one, and otherwise clones
-the original:
+To do so, define a method `get_latest` that gets an updated visual
+effect from `composited_updates` if there is one:
 
 ``` {.python}
 class Browser:
     # ...
-    def clone_latest(self, parent_effect, child_effect):
-        node = parent_effect.node
-        if not node in self.composited_updates:
-            return parent_effect.clone(child_effect)
-
-        if type(parent_effect) is Blend:
-            return self.composited_updates[node].clone(
-                child_effect)
-        return parent_effect.clone(child_effect)
+    def get_latest(self, effect):
+        node = effect.node
+        if node not in self.composited_updates:
+            return effect
+        if not isinstance(effect, Blend):
+            return effect
+        return self.composited_updates[node]
 ```
 
-Using `clone_latest` in `paint_draw_list` is a one-liner:
+Using `get_latest` in `paint_draw_list` is a one-liner:
 
 ``` {.python}
 class Browser:
     def paint_draw_list(self):
         for composited_layer in self.composited_layers:
             while parent:
+                new_parent = self.get_latest(parent)
                 current_effect = \
-                    self.clone_latest(parent, current_effect)
+                    new_parent.clone(current_effect)
                 # ...
 ```
 
@@ -1629,9 +1687,21 @@ class CompositedLayer:
             DrawOutline(border_rect, "red", 1).execute(canvas)
 ```
 
+::: {.web-only}
+
 Here is how [this example](examples/example13-opacity-transition.html)'s composited layers should look (notice how there are two layers):
 
-<img src="examples/example13-opacity-layers.png">
+:::
+
+
+::: {.print-only}
+
+Here is how the opacity transition example's composited layers should look
+(notice how there are two layers):
+
+:::
+
+![Example of composited layers for an opacity transition](examples/example13-opacity-layers.png)<br>
 
 [flag]: https://docs.python.org/3/library/argparse.html
 
@@ -1939,11 +2009,27 @@ def local_to_absolute(display_item, rect):
     return rect
 ```
 
+::: {.web-only}
+
 The blue square should now be underneath the green square, so overlap
 testing is now complete. You should now be able to render
 [this example][overlap-example] correctly.
 
 [overlap-example]: examples/example13-transform-overlap.html
+
+:::
+
+::: {.print-only}
+
+The blue square should now be underneath the green square, so overlap
+testing is now complete. You should now be able to render
+this example correctly:
+
+::: {.transclude .html}
+www/examples/example13-transform-overlap.html
+:::
+
+:::
 
 There's one more situation worth thinking about, though. Suppose we have a huge composited layer, containing a lot of text, except that only a small
 part of that layer is shown on the screen, the rest being clipped out. Then the `absolute_bounds`
@@ -2060,6 +2146,11 @@ should now look something like this:
     python3 infra/outlines.py --html src/lab13.py
 :::
 
+::: {.print-only .cmd .python .outline}
+    python3 infra/outlines.py src/lab13.py
+:::
+
+
 Exercises
 =========
 
@@ -2073,7 +2164,7 @@ start and end values, but there are many other [easing functions][easing]
 `cubic-bezier(0.25, 0.1, 0.25, 1.0)`, not linear). Implement this easing
 function, and one or two others.
 
- [easing]: https://developer.mozilla.org/en-US/docs/Web/CSS/easing-function
+[easing]: https://developer.mozilla.org/en-US/docs/Web/CSS/easing-function
 
 *Composited & threaded transform and scroll animations*: Our browser supports
 transfoms and scrolling, but they are not fully composited or threaded,
@@ -2083,7 +2174,7 @@ and transform transition animations are not supported. Implement these.
 `handle_down`.) [This simultaneous transform and opacity animation][tr-example] should now work, without any raster, and scrolling on that page should not
 raster either.
 
- [tr-example]: examples/example13-transform-transition.html
+[tr-example]: examples/example13-transform-transition.html
 
 *Width animations*: Implement the CSS `width` and `height` properties; when
 `width` is set to some number of pixels on an element, the element should be

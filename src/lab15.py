@@ -1060,11 +1060,7 @@ class AccessibilityNode:
         self.children = []
         self.parent = parent
         self.text = ""
-
-        if node.layout_object:
-            self.bounds = absolute_bounds_for_obj(node.layout_object)
-        else:
-            self.bounds = None
+        self.bounds = self.compute_bounds()
 
         if isinstance(node, Text):
             if is_focusable(node.parent):
@@ -1147,18 +1143,18 @@ class AccessibilityNode:
         pass
 
     def absolute_bounds(self):
-        rect = skia.Rect.MakeXYWH(
-            self.bounds.x(), self.bounds.y(),
-            self.bounds.width(), self.bounds.height())
-        obj = self
-        while obj:
-            obj.map_to_parent(rect)
-            obj = obj.parent
-        return rect
-
-    def __repr__(self):
-        return "AccessibilityNode(node={} role={} text={}".format(
-            str(self.node), self.role, self.text)
+        abs_bounds = []
+        for bound in self.bounds:
+            abs_bound = bound.makeOffset(0.0, 0.0)
+            if isinstance(self, FrameAccessibilityNode):
+                obj = self.parent
+            else:
+                obj = self
+            while obj:
+                obj.map_to_parent(abs_bound)
+                obj = obj.parent
+            abs_bounds.append(abs_bound)
+        return abs_bounds
 
 class FrameAccessibilityNode(AccessibilityNode):
     def __init__(self, node, parent = None):
@@ -1170,9 +1166,10 @@ class FrameAccessibilityNode(AccessibilityNode):
         self.build_internal(self.node.frame.nodes)
 
     def hit_test(self, x, y):
-        if not self.bounds.contains(x, y): return
-        new_x = x - self.bounds.x() - dpx(1, self.zoom)
-        new_y = y - self.bounds.y() - dpx(1, self.zoom) + self.scroll
+        bounds = self.bounds[0]
+        if not bounds.contains(x, y): return
+        new_x = x - bounds.x() - dpx(1, self.zoom)
+        new_y = y - bounds.y() - dpx(1, self.zoom) + self.scroll
         node = self
         for child in self.children:
             res = child.hit_test(new_x, new_y)
@@ -1180,7 +1177,9 @@ class FrameAccessibilityNode(AccessibilityNode):
         return node
 
     def map_to_parent(self, rect):
-        rect.offset(self.bounds.x(), self.bounds.y() - self.scroll)
+        bounds = self.bounds[0]
+        rect.offset(bounds.x(), bounds.y() - self.scroll)
+        rect.intersect(bounds)
 
     def __repr__(self):
         return "FrameAccessibilityNode(node={} role={} text={}".format(
@@ -1833,7 +1832,39 @@ class Browser:
         task = Task(self.active_tab.scrolldown)
         self.active_tab.task_runner.schedule_task(task)
         self.needs_animation_frame = True
-        self.lock.release()        
+        self.lock.release()
+
+    def paint_draw_list(self):
+        self.draw_list = []
+        for composited_layer in self.composited_layers:
+            current_effect = \
+                DrawCompositedLayer(composited_layer)
+            if not composited_layer.display_items: continue
+            parent = composited_layer.display_items[0].parent
+            while parent:
+                new_parent = self.get_latest(parent)
+                current_effect = \
+                    new_parent.clone(current_effect)
+                parent = parent.parent
+            self.draw_list.append(current_effect)
+
+        if self.pending_hover:
+            (x, y) = self.pending_hover
+            y += self.active_tab_scroll
+            a11y_node = self.accessibility_tree.hit_test(x, y)
+            if a11y_node:
+                if not self.hovered_a11y_node or \
+                    a11y_node.node != self.hovered_a11y_node.node:
+                    self.needs_speak_hovered_node = True
+                self.hovered_a11y_node = a11y_node
+        self.pending_hover = None
+
+        if self.hovered_a11y_node:
+            for bound in self.hovered_a11y_node.absolute_bounds():
+                self.draw_list.append(DrawOutline(
+                    bound,
+                    "white" if self.dark_mode else "black", 2))
+     
 
 if __name__ == "__main__":
     wbetools.parse_flags()

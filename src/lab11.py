@@ -98,7 +98,7 @@ class Blend:
         self.opacity = opacity
         self.blend_mode = blend_mode
         self.mask = mask
-        self.should_save = self.blend_mode != "normal" or self.mask \
+        self.should_save = self.blend_mode or self.mask \
             or self.opacity < 1
 
         self.children = children
@@ -388,7 +388,7 @@ class InputLayout:
 
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
-    blend_mode = node.style.get("mix-blend-mode", "normal")
+    blend_mode = node.style.get("mix-blend-mode")
 
     mask = None
     if node.style.get("overflow", "visible") == "clip":

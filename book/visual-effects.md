@@ -623,6 +623,27 @@ class BlockLayout:
                 self.self_rect(), radius, bgcolor))
 ```
 
+::: {.web-only}
+With that, [this example](examples/example11-rounded-background.html) will round
+the corners of its background (notice that it does not round the text, though):
+:::
+
+::: {.print-only}
+With that, this example:
+
+::: {.transclude .html}
+www/examples/example11-rounded-background.html
+:::
+
+will round the corners of its background (notice that it does not round the text,
+though):
+
+:::
+
+<div class=center>
+![Example of a long word with rounded background](examples/example11-rounded-background.png)<br>
+</div>
+
 Similar changes should be made to `InputLayout`. New shapes, like
 rounded rectangles, is one way that Skia is a more advanced
 rasterization library than Tk. More broadly, since Skia is also used
@@ -883,8 +904,18 @@ of transparency. For example, the
 color `#00000080` is 50% transparent black. Over a white background,
 that looks gray, but over an orange background it looks like this:
 
+::: {.web-only}
+
 <div style="font-size: 50px; padding: 15px; text-align: center;
     background: orange; color: #00000080">Test</div>
+
+:::
+
+::: {.print-only}
+
+![Example of black semi-transparent text blending into an orange background](examples/example11-opacity-blend.png)
+
+:::
 
 Note that the text is a kind of dark orange, because its color is
 a mix of 50% black and 50% orange.
@@ -924,9 +955,20 @@ However, there's another, subtle different way to create transparency
 with CSS. Here, 50% transparency is applied to the whole element using
 the `opacity` property:
 
+::: {.web-only}
+
 <div style="font-size: 50px; padding: 15px; text-align: center;
     background: orange; color: black; opacity: .5">Test</div>
+
+:::
+
+::: {.print-only}
+
+![Example of black text on an orange background, then blended semi-transparently into its ancestor](examples/example11-text-blending.png)
+
+:::
     
+
 Now the opacity applies to both the background and the text, so the
 background is now a little lighter. But note that the text
 is now gray, not dark orange. The black and orange pixels are no
@@ -1265,11 +1307,22 @@ the [`mix-blend-mode` property][mix-blend-mode-def], like this:
 
 This HTML will look like:
 
+::: {.web-only}
+
 <div style="background-color:orange">
 Parent
 <div style="background-color:blue;mix-blend-mode:difference">Child</div>
 Parent
 </div>
+
+:::
+
+::: {.print-only}
+
+![Example of the `difference` value for `mix-blend-mode` with a blue child and orange parent, resulting in pink](examples/example11-difference-blend-mode.png)
+
+:::
+
 
 Here, when blue overlaps with orange, we see pink: blue has (red,
 green, blue) color channels of `(0, 0, 1)`, and orange has `(1, .65,
@@ -1335,7 +1388,7 @@ to `paint_visual_effects`:
 ``` {.python expected=False}
 def paint_visual_effects(node, cmds, rect):
     # ...
-    blend_mode = node.style.get("mix-blend-mode", "normal")
+    blend_mode = node.style.get("mix-blend-mode")
     
     return [
         Blend(blend_mode, [
@@ -1394,6 +1447,8 @@ property][mdn-mask] lets you instead specify a image URL for the mask.
 
 [mdn-clip-path]: https://developer.mozilla.org/en-US/docs/Web/CSS/clip-path
 
+::: {.web-only}
+
 Usually, `overflow: clip` is used with properties like `height` or
 `rotate` which can make an element's children poke outside their
 parent. Our browser doesn't support these, but there is one edge case
@@ -1403,6 +1458,25 @@ than the browser window's width. [Here][longword] is an example.] Consider
 [this example](examples/example11-overflow-clip.html):
 
 [longword]: examples/example11-longword.html
+
+:::
+
+::: {.print-only}
+
+Usually, `overflow: clip` is used with properties like `height` or
+`rotate` which can make an element's children poke outside their
+parent. Our browser doesn't support these, but there is one edge case
+where `overflow: clip` is relevant: rounded corners.^[Technically,
+clipping is also relevant for our browser with single words that are longer
+than the browser window's width. See figure \ref{longword-example} for
+an example.] Consider this
+example:
+
+[longword]: examples/example11-longword.html
+
+![An example of overflowing text not being clipped by rounded corners \label{longword-example}](examples/example11-longword.png)
+
+:::
 
 ``` {.html .example}
 <div 
@@ -1414,10 +1488,20 @@ than the browser window's width. [Here][longword] is an example.] Consider
 
 That HTML looks like this:
 
+::: {.web-only}
+
 <div style="border-radius:30px;background-color:lightblue;overflow:clip">
 This test text exists here to ensure that the "div" element is
 large enough that the border radius is obvious.
 </div>
+
+:::
+
+::: {.print-only}
+
+![An example of overflow from text children of a div with `overflow:clip` and `border-radius` being clipped out](examples/example11-overflow-clip.png)
+
+:::
 
 Observe that the letters near the corner are cut off to maintain a sharp rounded
 edge. That's clipping; without the `overflow: clip` property these letters
@@ -1612,7 +1696,7 @@ class Blend:
         self.opacity = opacity
         self.blend_mode = blend_mode
         self.mask = mask
-        self.should_save = self.blend_mode != "normal" or self.mask \
+        self.should_save = self.blend_mode or self.mask \
             or self.opacity < 1
 
         self.children = children
@@ -1689,9 +1773,14 @@ Outline
 The complete set of functions, classes, and methods in our browser 
 should now look something like this:
 
-::: {.cmd .python .outline html=True}
+::: {.web-only .cmd .python .outline html=True}
     python3 infra/outlines.py --html src/lab11.py
 :::
+
+::: {.print-only .cmd .python .outline}
+    python3 infra/outlines.py src/lab11.py
+:::
+
 
 If you run it, it should look something like [this
 page](widgets/lab11-browser.html); due to the browser sandbox, you

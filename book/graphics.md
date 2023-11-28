@@ -317,10 +317,10 @@ Here's an widget demonstrating that concept:
 At this point you should be able to load up [this page][ex-monkey] in your
 browser and have it look about like this:
 
-<figure>
-<img src="examples/example2-text-screenshot.png"
-     alt="Screenshot of Chinese text of 'Journey to the West'">
-</figure>
+<div class=center>
+![Screenshot of Chinese text of 'Journey to the West'](examples/example2-text-screenshot.png)
+<br>
+</div>
 
 [ex-monkey]: examples/xiyouji.html
 
@@ -585,8 +585,12 @@ Outline
 The complete set of functions, classes, and methods in our browser 
 should look something like this:
 
-::: {.cmd .python .outline html=True}
+::: {.web-only .cmd .python .outline html=True}
     python3 infra/outlines.py --html src/lab2.py
+:::
+
+::: {.print-only .cmd .python .outline}
+    python3 infra/outlines.py src/lab2.py
 :::
 
 Exercises

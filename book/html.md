@@ -786,10 +786,10 @@ loaded in our own browser:^[To be fair, it actually looks about the same with
 the Chapter 3 browser, but significantly better than with
 [the Chapter 2 browser](examples/example2-browserengineering-screenshot.png).]
 
-<figure>
-<img src="examples/example4-browserengineering-screenshot.png"
-     alt="Screenshot of the browser.engineering website with this chapter's browser.">
-</figure>
+<div class=center>
+![Screenshot of the browser.engineering website with this chapter's browser](examples/example4-browserengineering-screenshot.png)
+<br>
+</div>
 
 ::: {.further}
 Thanks to implicit tags, you can mostly skip the `<html>`, `<body>`,
@@ -828,9 +828,14 @@ Outline
 The complete set of functions, classes, and methods in our browser 
 should look something like this:
 
-::: {.cmd .python .outline html=True}
+::: {.web-only .cmd .python .outline html=True}
     python3 infra/outlines.py --html src/lab4.py
 :::
+
+::: {.print-only .cmd .python .outline}
+    python3 infra/outlines.py src/lab4.py
+:::
+
 
 Exercises
 =========

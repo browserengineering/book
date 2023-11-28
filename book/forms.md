@@ -1090,9 +1090,14 @@ Outline
 The complete set of functions, classes, and methods in our browser 
 should now look something like this:
 
-::: {.cmd .python .outline html=True}
+::: {.web-only .cmd .python .outline html=True}
     python3 infra/outlines.py --html src/lab8.py
 :::
+
+::: {.print-only .cmd .python .outline}
+    python3 infra/outlines.py src/lab8.py
+:::
+
 
 There's also a server now, but it's much simpler:
 
@@ -1100,10 +1105,14 @@ There's also a server now, but it's much simpler:
     python3 infra/outlines.py --html src/server8.py
 :::
 
+::: {.web-only}
+
 If you run it, it should look something like this:
 
 ::: {.widget height=605}
     lab8-browser.html
+:::
+
 :::
 
 Exercises

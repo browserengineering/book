@@ -382,9 +382,26 @@ bigger text should still wrap appropriately at the edge of the screen,
 and CSS lengths should be scaled just like the text is. This is great
 for reading text more easily.
 
+::: {.print-only}
+Here is an example of some
+text before zoom:^[No book on the web would be complete without some
+good old [Lorem ipsum][lorem-ipsum]!]
+
+::: {.transclude .html}
+www/examples/example14-line-breaking.html
+:::
+
+And here is a screenshot of how it should render:
+
+:::
+
+::: {.web-only}
+
 Here is an [example](examples/example14-line-breaking.html) of some
 text before zoom:^[No book on the web would be complete without some
 good old [Lorem ipsum][lorem-ipsum]!]
+
+:::
 
 [lorem-ipsum]: https://en.wikipedia.org/wiki/Lorem_ipsum
 
@@ -727,10 +744,30 @@ def style(node, rules, tab):
 
 [mediaquery]: https://developer.mozilla.org/en-US/docs/Web/CSS/Media_Queries/Using_media_queries
 
-Try your browser on a [web page](examples/example14-focus.html) with
-lots of links, text entries, and buttons, and you should now see that
+::: {.web-only}
+
+Try your browser on this
+[example web page with lots of links, text entries and buttons](examples/example14-focus.html)^[I'll use it throughout the chapter as the
+"focus example".], and you should now see that in dark mode they also change
+color to have a darker background and lighter foreground. It should look like
+this in dark mode:
+
+:::
+
+::: {.print-only}
+
+Try your browser on this web page with
+lots of links, text entries, and buttons:
+
+::: {.transclude .html}
+www/examples/example14-focus.html
+:::
+
+You should now see that
 in dark mode they also change color to have a darker background and
 lighter foreground. It should look like this in dark mode:
+
+:::
 
 <center>
     <img src="examples/example14-dark-mode-forms.png">
@@ -1077,6 +1114,19 @@ def is_focusable(node):
         return node.tag in ["input", "button", "a"]
 ```
 
+If you print out `focusable_nodes` for the
+[focus example](examples/example14-focus.html), you should
+get this:
+
+``` {.python .example}
+[<a tabindex="1" href="/">,
+ <button tabindex="2">,
+ <div tabindex="3">,
+ <div tabindex="12">,
+ <input>,
+ <a href="http://browser.engineering">]
+```
+
 We also need to make sure to send a `click` event when an element is
 activated. Note that just like clicking on an element, activating an
 element can be canceled from JavaScript using `preventDefault`.
@@ -1272,9 +1322,16 @@ Here I'm shifting the scroll position to ensure that the object is
 will likely use different logic for scrolling up versus down.
 
 Focus outlines now basically work, and will even scroll on-screen if you try
-examples like [this](examples/example14-focus.html). But ideally, the focus
-indicator should be customizable, so that the web page author can make sure the
-focused element stands out. In CSS, that's done with what's called the
+it on the [focus example](examples/example14-focus.html). Here's what it looks
+like after I pressed tab to focus the "this is a link" element:
+
+<center>
+    <img src="examples/example14-focus-outline.png">
+</center>
+
+But ideally, the focus indicator should be customizable, so that the web page
+author can make sure the focused element stands out. In CSS, that's done with
+what's called the
 "`:focus` [pseudo-class][pseudoclass]". Basically, this means you can
 write a selector like this:
 
@@ -1452,6 +1509,13 @@ class LineLayout:
                 outline_node = child.node.parent
 ```
 
+For the [focus example](examples/example14-focus.html), the focus outline
+of an `<a>` element becomes red:
+
+<center>
+    <img src="examples/example14-focus-outline-custom.png">
+</center>
+
 As with dark mode, focus outlines are a case where adding an
 accessibility feature meant generalizing existing browser features to
 make them more powerful. And once they were generalized, this
@@ -1509,13 +1573,13 @@ screen reader to re-read it.
 You can see an example[^imagine] of screen reader navigation in this
 talk, specifically the segment from 2:36--3:54:[^whole-talk]
 
-::: {.web-only}
+<div class="web-only center">
 <iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/qi0tY60Hd6M?start=159" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-:::
+</div>
 
-::: {.print-only}
-    https://www.youtube.com/watch?v=qi0tY60Hd6M&t=159s
-:::
+<div class="print-only center">
+![https://www.youtube.com/watch?v=qi0tY60Hd6M&t=159s](examples/example14-a11y-video-still.png)
+</div>
 
 [^whole-talk]: The whole talk is recommended; it has great examples of
     using accessibility technology.
@@ -1648,8 +1712,50 @@ class AccessibilityNode:
                 self.build_internal(grandchild_node)
 ```
 
+Here is the accessibility tree for the
+[focus example](examples/example14-focus.html):
+
+``` {.text}
+ role=document
+   role=button
+     role=focusable text
+   role=StaticText
+   role=textbox
+   role=StaticText
+   role=link
+     role=focusable text
+   role=StaticText
+   role=textbox
+     role=StaticText
+   role=focusable
+     role=focusable text
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=StaticText
+   role=focusable
+     role=focusable text
+   role=link
+     role=focusable text
+```
+
 The user can now direct the screen reader to walk up or down this
-accessibility tree and describe each node or trigger actions on it. 
+accessibility tree and describe each node or trigger actions on it. Let's
+implement that.
 
 ::: {.further}
 
@@ -1846,7 +1952,7 @@ class AccessibilityNode:
             self.build_internal(child_node)
 
         if self.role == "StaticText":
-            self.text = self.node.text
+            self.text = repr(self.node.text)
         elif self.role == "focusable text":
             self.text = "Focusable text: " + self.node.text
         elif self.role == "focusable":
@@ -1874,7 +1980,46 @@ class AccessibilityNode:
 ```
 
 This text construction logic is, of course, pretty naive, but it's
-enough to demonstrate the idea.
+enough to demonstrate the idea. Here is how it works out for the
+[focus example](examples/example14-focus.html):
+
+``` {.text}
+ role=document text=Document
+   role=button text=Button
+     role=focusable text text=Focusable text: This is a button
+   role=StaticText text='\nThis is an input element: '
+   role=textbox text=Input box: 
+   role=StaticText text=' and\n'
+   role=link text=Link
+     role=focusable text text=Focusable text: this is a link.
+   role=StaticText text='Not focusable'
+   role=textbox text=Input box: custom contents
+     role=StaticText text='custom contents'
+   role=focusable text=Focusable element
+     role=focusable text text=Focusable text: Tabbable element
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=StaticText text='\n.\n'
+   role=focusable text=Focusable element
+     role=focusable text text=Focusable text: Offscreen
+   role=link text=Link
+     role=focusable text text=Focusable text: browser.engineering
+```
 
 The screen reader can then read the whole document by speaking the
 `text` field on each `AccessibilityNode`.
@@ -1949,7 +2094,6 @@ class Browser:
 
 Then, if `tab_focus` isn't equal to `last_tab_focus`, we know focus
 has moved and it's time to speak the focused node. The change looks like this:
-
 
 ``` {.python}
 class Browser:
@@ -2130,10 +2274,25 @@ will be spoken again. This sounds like an edge case, but having a
 single element for all of your alerts (and just changing its class,
 say, from hidden to visible) is a common pattern.
 
+::: {.web-only}
+
 You should now be able to load up [this example][alert-example] and
 hear alert text once the button is clicked.
 
 [alert-example]: examples/example14-alert-role.html
+
+:::
+
+::: {.print-only}
+
+You should now be able to load up this example and
+hear alert text once the button is clicked:
+
+::: {.transclude .html}
+www/examples/example14-alert-role.html
+:::
+
+:::
 
 [role]: https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Roles
 
@@ -2211,15 +2370,45 @@ bounds:
 class AccessibilityNode:
     def __init__(self, node):
         # ...
-        if node.layout_object:
-            self.bounds = absolute_bounds_for_obj(node.layout_object)
-        else:
-            self.bounds = None
+        self.bounds = self.compute_bounds()
+
+    def compute_bounds(self):
+        if self.node.layout_object:
+            return [absolute_bounds_for_obj(self.node.layout_object)]
+        # ...
 ```
 
-Note that I'm using `absolute_bounds_for_obj` here, because the bounds
-we're interested in are the absolute coordinates on the screen, after
-any transformations like `translate`.
+Note that I'm using `absolute_bounds_for_obj` here, because the bounds we're
+interested in are the absolute coordinates on the screen, after any
+transformations like `translate`.
+
+However, there is another complication: it may not be that `node.layout_object`
+is set; for example, text nodes do not have one.^[And that's ok, because I
+chose not to set bounds at all for these nodes, as they are not focusable.]
+Likewise, nodes with inline layout generally do not. So we need to walk up the
+tree to find the parent with a `BlockLayout` and union all text nodes in all
+`LineLayouts` that are children of the current `node`. And because there can be
+multiple `LineLayouts` and text nodes, the bounds needs to be an array of
+`skia.Rect` objects:
+
+``` {.python}
+class AccessibilityNode:
+    def compute_bounds(self):
+        # ...
+        if isinstance(self.node, Text):
+            return []
+        inline = self.node.parent
+        bounds = []
+        while not inline.layout_object: inline = inline.parent
+        for line in inline.layout_object.children:
+            line_bounds = skia.Rect.MakeEmpty()
+            for child in line.children:
+                if child.node.parent == self.node:
+                    line_bounds.join(skia.Rect.MakeXYWH(
+                        child.x, child.y, child.width, child.height))
+            bounds.append(line_bounds)
+        return bounds
+```
 
 So let's implement the read-on-hover feature. First we need to listen for mouse
 move events in the event loop, which in SDL are called `MOUSEMOTION`:
@@ -2284,8 +2473,9 @@ of course that it's searching a different tree:
 ``` {.python}
 class AccessibilityNode:
     def intersects(self, x, y):
-        if self.bounds:
-            return self.bounds.contains(x, y)
+        for bound in self.bounds:
+            if bound.contains(x, y):
+                return True
         return False
 
     def hit_test(self, x, y):
@@ -2319,9 +2509,11 @@ class Browser:
     def paint_draw_list(self):
         # ...
         if self.hovered_a11y_node:
-            self.draw_list.append(DrawOutline(
-                self.hovered_a11y_node.bounds,
-                "white" if self.dark_mode else "black", 2))
+            for bound in self.hovered_a11y_node.bounds:
+                self.draw_list.append(DrawOutline(
+                    bound,
+                    "white" if self.dark_mode else "black", 2))
+
 ```
 
 Note that the color of the outline depends on whether or not dark mode
@@ -2389,8 +2581,6 @@ new [fully-styleable][selectmenu] input elements.
 [openui]: https://open-ui.org/#proposals
 [selectmenu]: https://blogs.windows.com/msedgedev/2022/05/05/styling-select-elements-for-real/
 
-
-
 Summary
 =======
 
@@ -2414,9 +2604,14 @@ Outline
 The complete set of functions, classes, and methods in our browser 
 should now look something like this:
 
-::: {.cmd .python .outline html=True}
+::: {.web-only .cmd .python .outline html=True}
     python3 infra/outlines.py --html src/lab14.py
 :::
+
+::: {.print-only .cmd .python .outline}
+    python3 infra/outlines.py src/lab14.py
+:::
+
 
 Exercises
 =========
@@ -2462,6 +2657,29 @@ and can be viewed as a kind of accessibility.
 
 [responsive-design]: https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Responsive_Design
 
+::: {.web-only}
+After completng the exercise,
+[this example](examples/example14-maxwidth-media.html) should have green text
+on narrow screens.
+:::
+
+
+::: {.print-only}
+
+After completing the exercise, the following example should have green text on
+narrow screens. HTML:
+
+::: {.transclude .html}
+www/examples/example14-maxwidth-media.html
+:::
+
+CSS:
+
+::: {.transclude .css}
+www/examples/example14-maxwidth-media.css
+:::
+:::
+
 *Mixed inlines*: Make the focus ring work correctly on nested inline
 elements. For example in `<a>a <b>bold</b> link</a>`, the focus ring
 should cover all three words together when the user is focused on the
@@ -2486,7 +2704,7 @@ show a focus indicator, but if the user clicked on it, most browsers
 don't---the user knows where the focused element is! And a redundant
 focus indicator could be ugly, or distracting. Implement a similar
 heuristic. Clicking on a button should focus it, but not show a focus
-indicator. (Test this on [a page with](examples/example14-focus.html)
+indicator. (Test this on the [focus example](examples/example14-focus.html)
 a button placed outside a form, so clicking the button doesn't
 navigate to a new page.) But both clicking on and tabbing to an input
 element should show a focus ring. Also add support for the

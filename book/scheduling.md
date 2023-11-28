@@ -1149,6 +1149,8 @@ might help me debug---are already safely on disk.[^invalid-json]
 accept invalid JSON files, in case the trace comes from a browser
 crash.
 
+::: {.web-only}
+
 Fire up the server, open our timer script, wait for it to finish
 counting, and then exit the browser. Then open up Chrome tracing or
 one of the other tracing tools named above and load the trace.
@@ -1156,10 +1158,22 @@ If you don't want to do it yourself,
 [here](examples/example12-count-single-threaded.trace) is a sample trace file
 from my computer. You should see something like this:
 
-<figure>
-  <img src="examples/example12-trace-count-single-threaded.png"
-    alt="Screenshot of Chrome Tracing for the timer script in single-threaded mode">
-</figure>
+:::
+
+::: {.print-only}
+
+Fire up the server, open our timer script, wait for it to finish
+counting, and then exit the browser. Then open up Chrome tracing or
+one of the other tracing tools named above and load the trace.
+You should see something like this:
+
+:::
+
+
+<div class=center>
+![Screenshot of Chrome Tracing for the timer script in single-threaded mode](examples/example12-trace-count-single-threaded.png)
+<br>
+</div>
 
 In Chrome tracing, you can choose the cursor icon from the toolbar and
 drag a selection around a set of trace events. That will show counts
@@ -1168,10 +1182,10 @@ of the screen. On my computer, my browser spent about 23ms in `render`
 and about 62ms in `raster_and_draw` on average, as you can see in the zoomed-in
 view below. That clearly blows through our 33ms budget. So, what can we do?
 
-<figure>
-  <img src="examples/example12-trace-count-render-raster.png"
-    alt="Screenshot of Chrome Tracing for render and raster of one frame of the timer script">
-</figure>
+<div class=center>
+![Screenshot of Chrome Tracing for render and raster of one frame of the timer script](examples/example12-trace-count-render-raster.png)
+<br>
+</div>
 
 ::: {.further}
 
@@ -1651,15 +1665,25 @@ class MeasureTime:
         # ...
 ```
 
+::: {.web-only}
+
 Now, if you make a new trace from the counting animation and load it
 into one of the tracing tools, you should see something like this (
 click [here](examples/example12-count-two-threads.trace) to download an example trace):
 
-<figure>
-  <img src="examples/example12-trace-count-two-threads.png"
-    alt="Screenshot of Chrome Tracing for the timer script in two-threads mode">
-</figure>
+:::
 
+::: {.print-only}
+
+Now, if you make a new trace from the counting animation and load it
+into one of the tracing tools, you should see something like this:
+
+:::
+
+<div class=center>
+![Screenshot of Chrome Tracing for the timer script in two-threads mode](examples/example12-trace-count-two-threads.png)
+<br>
+</div>
 
 You can see how the render and raster tasks now happen on different
 threads, and how our multi-threaded architecture allows them to happen
@@ -1876,16 +1900,29 @@ class Browser:
                 self.active_tab_scroll = data.scroll
 ```
 
+::: {.web-only}
+
 That's it! If you try the counting demo now, you'll be able to scroll
 even during the artificial pauses.
 [Here](examples/example12-count-with-scroll.trace) is a trace that
 shows threaded scrolling at work (notice how raster and draw now
 sometimes happen at the same time as main-thread work):
 
-<figure>
-    <img src="examples/example12-count-with-scroll.png">
-</figure>
+:::
 
+::: {.print-only}
+
+That's it! If you try the counting demo now, you'll be able to scroll even
+during the artificial pauses. Here is a trace screenshot that shows threaded
+scrolling at work (notice how raster and draw now sometimes happen at the same
+time as main-thread work):
+
+:::
+
+<div class=center>
+![Trace output of threaded scrolling on the counting demo](examples/example12-count-with-scroll.png)
+<br>
+</div>
 
 As you've seen, moving tasks to the
 browser thread can be challenging, but can also lead to a much more
@@ -2068,9 +2105,14 @@ Outline
 The complete set of functions, classes, and methods in our browser 
 should now look something like this:
 
-::: {.cmd .python .outline html=True}
+::: {.web-only .cmd .python .outline html=True}
     python3 infra/outlines.py --html src/lab12.py
 :::
+
+::: {.print-only .cmd .python .outline}
+    python3 infra/outlines.py src/lab12.py
+:::
+
 
 If you run it, it should look something like [this
 page](widgets/lab12-browser.html); due to the browser sandbox, you

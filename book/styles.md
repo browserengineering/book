@@ -994,10 +994,10 @@ But of course our chapter also has the nice benefit of even better rendering
 of this book's homepage. Notice how the background is no longer gray, and the
 links have colors.
 
-<figure>
-<img src="examples/example6-browserengineering-screenshot.png"
-     alt="Screenshot of the browser.engineering website with this chapter's browser.">
-</figure>
+<div class=center>
+![Screenshot of the browser.engineering website with this chapter's browser](examples/example6-browserengineering-screenshot.png)
+<br>
+</div>
 
 ::: {.further}
 Usually a point is one 72^nd^ of an inch while pixel size depends on
@@ -1038,9 +1038,14 @@ Outline
 The complete set of functions, classes, and methods in our browser 
 should now look something like this:
 
-::: {.cmd .python .outline html=True}
+::: {.web-only .cmd .python .outline html=True}
     python3 infra/outlines.py --html src/lab6.py
 :::
+
+::: {.print-only .cmd .python .outline}
+    python3 infra/outlines.py src/lab6.py
+:::
+
 
 Exercises
 =========
