@@ -557,7 +557,7 @@ class AccessibilityNode:
             self.build_internal(child_node)
 
         if self.role == "StaticText":
-            self.text = self.node.text
+            self.text = repr(self.node.text)
         elif self.role == "focusable text":
             self.text = "Focusable text: " + self.node.text
         elif self.role == "focusable":
