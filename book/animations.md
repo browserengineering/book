@@ -2009,13 +2009,13 @@ Which should look like this:
 Notice how this example exhibits *two* interesting features we had
 to get right when implementing compositing:
 
-* Overlap testing (without it, the elements would paint in the wrong order).
-Without that, it would (incorrectly!) look like this:
+* Overlap testing (without it, the elements would paint in the wrong order);
+if this code were missing it would incorrectly render like this:
 
 ![Wrong rendering because overlap testing is missing](examples/example13-transform-overlap-wrong1.png)<br>
 
-* Reusing cloned effects (without it, blending and clipping would be wrong).
-Without that, it would (incorrectly!) look like this:
+* Reusing cloned effects (without it, blending and clipping would be wrong);
+if this code were missing it would incorrectly render like this:
 
 ![Wrong rendering because of incorrect blending](examples/example13-transform-overlap-wrong2.png)<br>
 
