@@ -1311,12 +1311,12 @@ class Browser:
                 max(self.active_tab_height,
                     layer.absolute_bounds().bottom())
 
-    def get_latest(self, parent_effect):
-        node = parent_effect.node
+    def get_latest(self, effect):
+        node = effect.node
         if node not in self.composited_updates:
-            return parent_effect
-        if not isinstance(parent_effect, Blend):
-            return parent_effect
+            return effect
+        if not isinstance(effect, Blend):
+            return effect
         return self.composited_updates[node]
 
     def paint_draw_list(self):
