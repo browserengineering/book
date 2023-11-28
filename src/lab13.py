@@ -1294,7 +1294,7 @@ class Browser:
                     layer.add(cmd)
                     did_break = True
                     break
-                elif False and skia.Rect.Intersects(
+                elif skia.Rect.Intersects(
                     layer.absolute_bounds(),
                     local_to_absolute(cmd, cmd.rect)):
                     layer = CompositedLayer(self.skia_context, cmd)
