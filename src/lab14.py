@@ -557,7 +557,7 @@ class AccessibilityNode:
             self.build_internal(child_node)
 
         if self.role == "StaticText":
-            self.text = self.node.text
+            self.text = repr(self.node.text)
         elif self.role == "focusable text":
             self.text = "Focusable text: " + self.node.text
         elif self.role == "focusable":
@@ -1328,6 +1328,7 @@ class Browser:
                     layer.absolute_bounds().bottom())
 
     def paint_draw_list(self):
+        new_effects = {}
         self.draw_list = []
         for composited_layer in self.composited_layers:
             current_effect = \
@@ -1336,10 +1337,17 @@ class Browser:
             parent = composited_layer.display_items[0].parent
             while parent:
                 new_parent = self.get_latest(parent)
-                current_effect = \
-                    new_parent.clone(current_effect)
-                parent = parent.parent
-            self.draw_list.append(current_effect)
+                if new_parent in new_effects:
+                    new_effects[new_parent].children.append(
+                        current_effect)
+                    break
+                else:
+                    current_effect = \
+                        new_parent.clone(current_effect)
+                    new_effects[new_parent] = current_effect
+                    parent = parent.parent
+            if not parent:
+                self.draw_list.append(current_effect)
 
         if self.pending_hover:
             (x, y) = self.pending_hover
