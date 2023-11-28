@@ -2002,6 +2002,25 @@ www/examples/example13-transform-overlap.html
 
 :::
 
+Which should look like this:
+
+![Example of transformed overlap, clipping and blending](examples/example13-transform-overlap.png)
+
+Notice how this example exhibits *two* interesting features we had
+to get right when implementing compositing:
+
+* Testing for overlap (without it, the elements would paint in the wrong order)
+* Reusing cloned effects (without it, blending and clipping would be wrong)
+
+Without the first, it would incorrectly render like this:
+
+![Example of transformed overlap, clipping and blending](examples/example13-transform-overlap-wrong1.png)
+
+And without the second, it would incorrectly render like this:
+
+![Example of transformed overlap, clipping and blending](examples/example13-transform-overlap-wrong2.png)
+
+
 There's one more situation worth thinking about, though. Suppose we have a huge composited layer, containing a lot of text, except that only a small
 part of that layer is shown on the screen, the rest being clipped out. Then the `absolute_bounds`
 consider the clip operations and the `composited_bounds` don't, meaning that
