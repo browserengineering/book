@@ -233,10 +233,13 @@ class Tab:
         else:
             self.zoom *= 1/1.1
             self.scroll *= 1/1.1
+        self.scroll_changed_in_tab = True
         self.set_needs_render()
 
     def reset_zoom(self):
+        self.scroll /= self.zoom
         self.zoom = 1
+        self.scroll_changed_in_tab = True
         self.set_needs_render()
 ```
 

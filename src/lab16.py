@@ -1287,12 +1287,15 @@ class Tab:
             self.scroll *= 1 / 1.1
         for id, frame in self.window_id_to_frame.items():
             frame.document.zoom.mark()
+        self.scroll_changed_in_tab = True
         self.set_needs_render_all_frames()
 
     def reset_zoom(self):
+        self.scroll /= self.zoom
         self.zoom = 1
         for id, frame in self.window_id_to_frame.items():
             frame.document.zoom.mark()
+        self.scroll_changed_in_tab = True
         self.set_needs_render_all_frames()
 
     def run_animation_frame(self, scroll):
