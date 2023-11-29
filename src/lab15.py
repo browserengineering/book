@@ -884,6 +884,7 @@ class JSContext:
             self.interp.evaljs(code)
             self.tab.browser.measure.stop('script-load')
         except dukpy.JSRuntimeError as e:
+            self.tab.browser.measure.stop('script-load')
             print("Script", script, "crashed", e)
 
     def dispatch_event(self, type, elt, window_id):

@@ -34,7 +34,23 @@ input box:
 
 <input style="width:100%"/>
 
-You'll find that it is *much* too slow.
+::: {.web-only}
+
+You'll find that it is *much* too slow---1.7 seconds just in `render`!
+^[Trace [here](examples/example16-input-no-optimizations.trace).]
+
+:::
+
+::: {.print-only}
+
+You'll find that it is *much* too slow---1.7 seconds just in `render`!
+
+:::
+
+<center>
+![Example of typing without any invalidation optimizations](examples/example16-input-no-optimizations.png)<br>
+</center>
+
 
 Typing into `input` elements could be special-cased,[^no-resize] but
 there are other text editing APIs that can't be. For example, the
