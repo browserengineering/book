@@ -1103,13 +1103,17 @@ class Tab:
     def zoom_by(self, increment):
         if increment:
             self.zoom *= 1.1
+            self.scroll *= 1.1
         else:
             self.zoom *= 1/1.1
-        print(self.zoom)
+            self.scroll *= 1/1.1
+        self.scroll_changed_in_tab = True
         self.set_needs_render()
 
     def reset_zoom(self):
+        self.scroll /= self.zoom
         self.zoom = 1
+        self.scroll_changed_in_tab = True
         self.set_needs_render()
 
     def set_dark_mode(self, val):
