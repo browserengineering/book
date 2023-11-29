@@ -160,7 +160,7 @@ GPU acceleration
 Try the fade animation in your browser, and you'll probably notice
 that it's not particularly smooth. And that shouldn't be surprising;
 after all, [last chapter](scheduling.md#profiling-rendering) showed
-that raster and draw was about `66ms` for simple pages, and render
+that raster and draw was about `62ms` for simple pages, and render
 was `23ms`.
 
 Even with just 66ms per frame, our browser is barely doing fifteen frames per
@@ -353,11 +353,15 @@ for GPU mode.
 Thanks to SDL's and Skia's thorough support for GPU rendering, that should be
 all that's necessary for our browser to raster and draw on the GPU. And as
 expected, speed is much improved. I found that raster and draw improved to
-`24ms` on average. That's about three times faster, almost fast enough to hit
-sixty frames per second. (And on your computer, you'll likely see even more
-speedup than I did, so for you it might already be fast enough in this
-example.) But if we want to go faster yet, we'll need to find ways to reduce
-the total amount of work in rendering, raster and draw.
+`7ms` on average:
+
+![Raster and draw times from a trace using GPU raster](examples/example13-trace-count-gpu-raster.png)<br>
+
+That's about ten times faster, and enough to hit 30 frames per second. (And on
+your computer, you'll likely see even more speedup than I did, so for you it
+might already be fast enough in this example.) But if we want to go faster yet,
+we'll need to find ways to reduce the total amount of work in rendering, raster
+and draw.
 
 ::: {.further}
 
@@ -1222,6 +1226,46 @@ Well---with all that done, our browser now supports animations with
 just CSS. And importantly, we can have the browser optimize opacity
 animations to avoid layout and re-rastering composited layers.
 
+::: {.web-only}
+
+Here is a screenshot of a rendered frame of an opacity transition that only
+spends a bit more than a millisecond in each `composite_raster_and_draw` call
+(source trace [here](examples/example13-opacity-transition.trace)):
+
+:::
+
+::: {.print-only}
+
+Here is a screenshot of a rendered frame of an opacity transition that only
+spends a bit more than a millisecond in each `composite_raster_and_draw` call:
+
+:::
+
+<center>
+![Example trace of an opacity transition optimized by compositing](examples/example13-trace-opacity-transition.png)<br>
+</center>
+
+::: {.web-only}
+
+This can be compared to the same with compositing disabled, which spends
+about double that time (source
+[here](examples/example13-opacity-transition-no-compositing.trace)):^[And
+it would be much slower for a more complex example.]
+
+:::
+
+::: {.print-only}
+
+This can be compared to the same with compositing disabled, which spends about
+double that time:^[And it would be much slower for a more complex
+example.]
+
+:::
+
+<center>
+![Example trace of an opacity transition optimized by compositing](examples/example13-trace-opacity-transition-no-compositing.png)<br>
+</center>
+
 ::: {.further}
 
 CSS transitions are great for adding animations triggered by DOM updates from
@@ -1374,8 +1418,8 @@ class Browser:
 
     def composite_raster_and_draw(self):
         if not self.needs_composite and \
-            len(self.composited_updates) == 0 \
-            and not self.needs_raster and not self.needs_draw:
+            not self.needs_raster and \
+            not self.needs_draw:
             self.lock.release()
             return
         
