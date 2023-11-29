@@ -43,7 +43,7 @@ Start by installing [Skia][skia-python] and [SDL][sdl-python]:
 [skia-python]: https://kyamagu.github.io/skia-python/
 [sdl-python]: https://pypi.org/project/PySDL2/
 
-::: {.install}
+::: {.installation}
 As elsewhere in this book, you may need to install the `pip` package
 first, or use your IDE's package installer. If you're on Linux, you'll
 need to install additional dependencies, like OpenGL and fontconfig.
