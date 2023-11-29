@@ -246,7 +246,7 @@ class Tab:
 Note that we need to set the `needs_render` flag when we zoom to
 redraw the screen after zooming is complete. Also note that when we
 zoom the page we also need to adjust the scroll
-position.[^zoom-scroll] We also need to reset the zoom level when we
+position,[^zoom-scroll] and reset the zoom level when we
 navigate to a new page:
 
 [^zoom-scroll]: In a real browser, adjusting the scroll position when
