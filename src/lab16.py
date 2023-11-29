@@ -1373,7 +1373,9 @@ class Tab:
 
         if self.needs_paint:
             self.display_list = []
+            self.browser.measure.time('paint')
             paint_tree(self.root_frame.document, self.display_list)
+            self.browser.measure.stop('paint')
             self.needs_paint = False
 
         self.browser.measure.stop('render')

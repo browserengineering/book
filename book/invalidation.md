@@ -2072,8 +2072,8 @@ class Tab:
 ::: {.web-only}
 
 Skipping unneeded `layout` methods should provide a noticable speed
-bump, with small edits now taking less than a millisecond to update
-layout and editing now much smoother.[^other-phases]^[Trace
+bump, with small layouts now taking about 7ms to update
+layout and editing now substantially smoother.[^other-phases]^[Trace
 [here](examples/example16-input-skip-traverse.trace).]
 
 :::
@@ -2081,8 +2081,8 @@ layout and editing now much smoother.[^other-phases]^[Trace
 ::: {.print-only}
 
 Skipping unneeded `layout` methods should provide a noticable speed
-bump, with small edits now taking less than a millisecond to update
-layout and editing now much smoother.[^other-phases]
+bump, with small layouts now taking about 7ms to update
+layout and editing now substantially smoother.[^other-phases]
 
 :::
 
@@ -2090,9 +2090,14 @@ layout and editing now much smoother.[^other-phases]
 ![Example after skipping layout traversal](examples/example16-input-skip-traverse.png)<br>
 </center>
 
-[^other-phases]: It might still be pretty laggy on large pages due to
-    the composite-raster-draw cycle being fairly slow, depending on
-    which exercises you implemented in [Chapter 13](animations.md#exercises).
+However, in this screenshot I also traced paint, to show you why `render`
+overall is still about 230ms. (Making a browser fast requires optimizing
+everything! I won't implement it, paint could be made a lot faster too---see
+the exercises.)
+
+[^other-phases]:  It might still be pretty laggy on large pages due to the
+composite-raster-draw cycle being fairly slow, depending on which exercises you
+implemented in [Chapter 13](animations.md#exercises).
 
 ::: {.further}
 `ProtectedField` is similar to the [observer
@@ -2805,3 +2810,8 @@ objects entirely. Depending on the language you're using to implement
 your browser, you might have compile-time macros available to help;
 in Python, this might require refactoring to change the API shape
 of `ProtectedField` to be functional rather than object-oriented.
+
+*Optimizing paint* Even after making layout fast for text input, paint is
+still painfully slow. Fix that by storing the display list between frames,
+dirty bits for whether paint is needed for each layout object, and mutating
+the display list rather than re-creating it every time.
