@@ -623,6 +623,27 @@ class BlockLayout:
                 self.self_rect(), radius, bgcolor))
 ```
 
+::: {.web-only}
+With that, [this example](examples/example11-rounded-background.html) will round
+the corners of its background (notice that it does not round the text, though):
+:::
+
+::: {.print-only}
+With that, this example:
+
+::: {.transclude .html}
+www/examples/example11-rounded-background.html
+:::
+
+will round the corners of its background (notice that it does not round the text,
+though):
+
+:::
+
+<div class=center>
+![Example of a long word with rounded background](examples/example11-rounded-background.png)<br>
+</div>
+
 Similar changes should be made to `InputLayout`. New shapes, like
 rounded rectangles, is one way that Skia is a more advanced
 rasterization library than Tk. More broadly, since Skia is also used
@@ -1367,7 +1388,7 @@ to `paint_visual_effects`:
 ``` {.python expected=False}
 def paint_visual_effects(node, cmds, rect):
     # ...
-    blend_mode = node.style.get("mix-blend-mode", "normal")
+    blend_mode = node.style.get("mix-blend-mode")
     
     return [
         Blend(blend_mode, [
@@ -1426,6 +1447,8 @@ property][mdn-mask] lets you instead specify a image URL for the mask.
 
 [mdn-clip-path]: https://developer.mozilla.org/en-US/docs/Web/CSS/clip-path
 
+::: {.web-only}
+
 Usually, `overflow: clip` is used with properties like `height` or
 `rotate` which can make an element's children poke outside their
 parent. Our browser doesn't support these, but there is one edge case
@@ -1435,6 +1458,25 @@ than the browser window's width. [Here][longword] is an example.] Consider this
 example:
 
 [longword]: examples/example11-longword.html
+
+:::
+
+::: {.print-only}
+
+Usually, `overflow: clip` is used with properties like `height` or
+`rotate` which can make an element's children poke outside their
+parent. Our browser doesn't support these, but there is one edge case
+where `overflow: clip` is relevant: rounded corners.^[Technically,
+clipping is also relevant for our browser with single words that are longer
+than the browser window's width. See figure \ref{longword-example} for
+an example.] Consider this
+example:
+
+[longword]: examples/example11-longword.html
+
+![An example of overflowing text not being clipped by rounded corners \label{longword-example}](examples/example11-longword.png)
+
+:::
 
 ``` {.html .example}
 <div 
@@ -1494,7 +1536,8 @@ with destination-in blending:
 def paint_visual_effects(node, cmds, rect):
     # ...
     if node.style.get("overflow", "visible") == "clip":
-        border_radius = float(node.style.get("border-radius", "0px")[:-2])
+        border_radius = float(node.style.get(
+            "border-radius", "0px")[:-2])
         cmds.append(Blend("destination-in", [
             DrawRRect(rect, border_radius, "white")
         ]))
@@ -1660,7 +1703,7 @@ class Blend:
     def __init__(self, opacity, blend_mode, children):
         self.opacity = opacity
         self.blend_mode = blend_mode
-        self.should_save = self.blend_mode != "normal" or self.opacity < 1
+        self.should_save = self.blend_mode or self.opacity < 1
 
         self.children = children
         self.rect = skia.Rect.MakeEmpty()

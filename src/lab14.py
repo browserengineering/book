@@ -512,11 +512,7 @@ class AccessibilityNode:
         self.node = node
         self.children = []
         self.text = ""
-
-        if node.layout_object:
-            self.bounds = absolute_bounds_for_obj(node.layout_object)
-        else:
-            self.bounds = None
+        self.bounds = self.compute_bounds()
 
         if isinstance(node, Text):
             if is_focusable(node.parent):
@@ -539,12 +535,29 @@ class AccessibilityNode:
             else:
                 self.role = "none"
 
+    def compute_bounds(self):
+        if self.node.layout_object:
+            return [absolute_bounds_for_obj(self.node.layout_object)]
+        if isinstance(self.node, Text):
+            return []
+        inline = self.node.parent
+        bounds = []
+        while not inline.layout_object: inline = inline.parent
+        for line in inline.layout_object.children:
+            line_bounds = skia.Rect.MakeEmpty()
+            for child in line.children:
+                if child.node.parent == self.node:
+                    line_bounds.join(skia.Rect.MakeXYWH(
+                        child.x, child.y, child.width, child.height))
+            bounds.append(line_bounds)
+        return bounds
+
     def build(self):
         for child_node in self.node.children:
             self.build_internal(child_node)
 
         if self.role == "StaticText":
-            self.text = self.node.text
+            self.text = repr(self.node.text)
         elif self.role == "focusable text":
             self.text = "Focusable text: " + self.node.text
         elif self.role == "focusable":
@@ -580,8 +593,9 @@ class AccessibilityNode:
                 self.build_internal(grandchild_node)
 
     def intersects(self, x, y):
-        if self.bounds:
-            return self.bounds.contains(x, y)
+        for bound in self.bounds:
+            if bound.contains(x, y):
+                return True
         return False
 
     def hit_test(self, x, y):
@@ -594,8 +608,8 @@ class AccessibilityNode:
         return node
 
     def __repr__(self):
-        return "AccessibilityNode(node={} role={} text={}".format(
-            str(self.node), self.role, self.text)
+        return "AccessibilityNode(node={} role={} text={} bounds={}".format(
+            str(self.node), self.role, self.text, self.bounds)
 
 SPEECH_FILE = "/tmp/speech-fragment.mp3"
 
@@ -1089,13 +1103,17 @@ class Tab:
     def zoom_by(self, increment):
         if increment:
             self.zoom *= 1.1
+            self.scroll *= 1.1
         else:
             self.zoom *= 1/1.1
-        print(self.zoom)
+            self.scroll *= 1/1.1
+        self.scroll_changed_in_tab = True
         self.set_needs_render()
 
     def reset_zoom(self):
+        self.scroll /= self.zoom
         self.zoom = 1
+        self.scroll_changed_in_tab = True
         self.set_needs_render()
 
     def set_dark_mode(self, val):
@@ -1314,6 +1332,7 @@ class Browser:
                     layer.absolute_bounds().bottom())
 
     def paint_draw_list(self):
+        new_effects = {}
         self.draw_list = []
         for composited_layer in self.composited_layers:
             current_effect = \
@@ -1321,10 +1340,18 @@ class Browser:
             if not composited_layer.display_items: continue
             parent = composited_layer.display_items[0].parent
             while parent:
-                current_effect = \
-                    self.clone_latest(parent, current_effect)
-                parent = parent.parent
-            self.draw_list.append(current_effect)
+                new_parent = self.get_latest(parent)
+                if new_parent in new_effects:
+                    new_effects[new_parent].children.append(
+                        current_effect)
+                    break
+                else:
+                    current_effect = \
+                        new_parent.clone(current_effect)
+                    new_effects[new_parent] = current_effect
+                    parent = parent.parent
+            if not parent:
+                self.draw_list.append(current_effect)
 
         if self.pending_hover:
             (x, y) = self.pending_hover
@@ -1338,9 +1365,10 @@ class Browser:
         self.pending_hover = None
 
         if self.hovered_a11y_node:
-            self.draw_list.append(DrawOutline(
-                self.hovered_a11y_node.bounds,
-                "white" if self.dark_mode else "black", 2))
+            for bound in self.hovered_a11y_node.bounds:
+                self.draw_list.append(DrawOutline(
+                    bound,
+                    "white" if self.dark_mode else "black", 2))
 
     def update_accessibility(self):
         if not self.accessibility_tree: return

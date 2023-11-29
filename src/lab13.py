@@ -221,7 +221,7 @@ class Blend(VisualEffect):
         super().__init__(skia.Rect.MakeEmpty(), children, node)
         self.opacity = opacity
         self.blend_mode = blend_mode
-        self.should_save = self.blend_mode != "normal" or self.opacity < 1
+        self.should_save = self.blend_mode or self.opacity < 1
 
         if wbetools.USE_COMPOSITING and self.should_save:
             self.needs_compositing = True
@@ -263,7 +263,7 @@ class Blend(VisualEffect):
         args = ""
         if self.opacity < 1:
             args += ", opacity={}".format(self.opacity)
-        if self.blend_mode != "normal":
+        if self.blend_mode:
             args += ", blend_mode={}".format(self.blend_mode)
         if not args:
             args = ", <no-op>"
@@ -732,7 +732,7 @@ class InputLayout:
 
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
-    blend_mode = node.style.get("mix-blend-mode", "normal")
+    blend_mode = node.style.get("mix-blend-mode")
     translation = parse_transform(
         node.style.get("transform", ""))
 
@@ -741,7 +741,7 @@ def paint_visual_effects(node, cmds, rect):
         if not blend_mode:
             blend_mode = "source-over"
         cmds.append(Blend(1.0, "destination-in", None, [
-            DrawRRect(rect, border_radius, cmds)
+            DrawRRect(rect, border_radius, "white")
         ]))
 
     blend_op = Blend(opacity, blend_mode, node, cmds)
@@ -1311,17 +1311,16 @@ class Browser:
                 max(self.active_tab_height,
                     layer.absolute_bounds().bottom())
 
-    def clone_latest(self, parent_effect, child_effect):
-        node = parent_effect.node
-        if not node in self.composited_updates:
-            return parent_effect.clone(child_effect)
-
-        if type(parent_effect) is Blend:
-            return self.composited_updates[node].clone(
-                child_effect)
-        return parent_effect.clone(child_effect)
+    def get_latest(self, effect):
+        node = effect.node
+        if node not in self.composited_updates:
+            return effect
+        if not isinstance(effect, Blend):
+            return effect
+        return self.composited_updates[node]
 
     def paint_draw_list(self):
+        new_effects = {}
         self.draw_list = []
         for composited_layer in self.composited_layers:
             current_effect = \
@@ -1329,10 +1328,18 @@ class Browser:
             if not composited_layer.display_items: continue
             parent = composited_layer.display_items[0].parent
             while parent:
-                current_effect = \
-                    self.clone_latest(parent, current_effect)
-                parent = parent.parent
-            self.draw_list.append(current_effect)
+                new_parent = self.get_latest(parent)
+                if new_parent in new_effects:
+                    new_effects[new_parent].children.append(
+                        current_effect)
+                    break
+                else:
+                    current_effect = \
+                        new_parent.clone(current_effect)
+                    new_effects[new_parent] = current_effect
+                    parent = parent.parent
+            if not parent:
+                self.draw_list.append(current_effect)
 
     def composite_raster_and_draw(self):
         self.lock.acquire(blocking=True)

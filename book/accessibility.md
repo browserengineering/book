@@ -229,18 +229,32 @@ class Tab:
     def zoom_by(self, increment):
         if increment:
             self.zoom *= 1.1
+            self.scroll *= 1.1
         else:
             self.zoom *= 1/1.1
+            self.scroll *= 1/1.1
+        self.scroll_changed_in_tab = True
         self.set_needs_render()
 
     def reset_zoom(self):
+        self.scroll /= self.zoom
         self.zoom = 1
+        self.scroll_changed_in_tab = True
         self.set_needs_render()
 ```
 
 Note that we need to set the `needs_render` flag when we zoom to
-redraw the screen after zooming is complete. We also need to reset the
-zoom level when we navigate to a new page:
+redraw the screen after zooming is complete. Also note that when we
+zoom the page we also need to adjust the scroll
+position,[^zoom-scroll] and reset the zoom level when we
+navigate to a new page:
+
+[^zoom-scroll]: In a real browser, adjusting the scroll position when
+    zooming is more complex than just multiplying. That's because zoom
+    not only changes the height of individual lines of text, but also
+    changes line breaking, meaning more or fewer lines of text. This
+    means there's no easy correspondence between old and new scroll
+    positions. Most real browsers implement a much more general algorithm called [scroll anchoring](https://drafts.csswg.org/css-scroll-anchoring-1/) that handles all kinds of changes beyond just zoom.
 
 ``` {.python}
 class Tab:
@@ -2370,15 +2384,45 @@ bounds:
 class AccessibilityNode:
     def __init__(self, node):
         # ...
-        if node.layout_object:
-            self.bounds = absolute_bounds_for_obj(node.layout_object)
-        else:
-            self.bounds = None
+        self.bounds = self.compute_bounds()
+
+    def compute_bounds(self):
+        if self.node.layout_object:
+            return [absolute_bounds_for_obj(self.node.layout_object)]
+        # ...
 ```
 
-Note that I'm using `absolute_bounds_for_obj` here, because the bounds
-we're interested in are the absolute coordinates on the screen, after
-any transformations like `translate`.
+Note that I'm using `absolute_bounds_for_obj` here, because the bounds we're
+interested in are the absolute coordinates on the screen, after any
+transformations like `translate`.
+
+However, there is another complication: it may not be that `node.layout_object`
+is set; for example, text nodes do not have one.^[And that's ok, because I
+chose not to set bounds at all for these nodes, as they are not focusable.]
+Likewise, nodes with inline layout generally do not. So we need to walk up the
+tree to find the parent with a `BlockLayout` and union all text nodes in all
+`LineLayouts` that are children of the current `node`. And because there can be
+multiple `LineLayouts` and text nodes, the bounds needs to be an array of
+`skia.Rect` objects:
+
+``` {.python}
+class AccessibilityNode:
+    def compute_bounds(self):
+        # ...
+        if isinstance(self.node, Text):
+            return []
+        inline = self.node.parent
+        bounds = []
+        while not inline.layout_object: inline = inline.parent
+        for line in inline.layout_object.children:
+            line_bounds = skia.Rect.MakeEmpty()
+            for child in line.children:
+                if child.node.parent == self.node:
+                    line_bounds.join(skia.Rect.MakeXYWH(
+                        child.x, child.y, child.width, child.height))
+            bounds.append(line_bounds)
+        return bounds
+```
 
 So let's implement the read-on-hover feature. First we need to listen for mouse
 move events in the event loop, which in SDL are called `MOUSEMOTION`:
@@ -2443,8 +2487,9 @@ of course that it's searching a different tree:
 ``` {.python}
 class AccessibilityNode:
     def intersects(self, x, y):
-        if self.bounds:
-            return self.bounds.contains(x, y)
+        for bound in self.bounds:
+            if bound.contains(x, y):
+                return True
         return False
 
     def hit_test(self, x, y):
@@ -2478,9 +2523,11 @@ class Browser:
     def paint_draw_list(self):
         # ...
         if self.hovered_a11y_node:
-            self.draw_list.append(DrawOutline(
-                self.hovered_a11y_node.bounds,
-                "white" if self.dark_mode else "black", 2))
+            for bound in self.hovered_a11y_node.bounds:
+                self.draw_list.append(DrawOutline(
+                    bound,
+                    "white" if self.dark_mode else "black", 2))
+
 ```
 
 Note that the color of the outline depends on whether or not dark mode

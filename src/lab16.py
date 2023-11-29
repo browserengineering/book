@@ -229,7 +229,7 @@ CSS_PROPERTIES = {
     "font-size": "inherit", "font-weight": "inherit",
     "font-style": "inherit", "color": "inherit",
     "opacity": "1.0", "transition": "",
-    "transform": "none", "mix-blend-mode": "normal",
+    "transform": "none", "mix-blend-mode": None,
     "border-radius": "0px", "overflow": "visible",
     "outline": "none", "background-color": "transparent",
     "image-rendering": "auto",
@@ -924,7 +924,9 @@ class IframeLayout(EmbedLayout):
             self.y.get() + self.height.get())
         bgcolor = self.node.style["background-color"].get()
         if bgcolor != 'transparent':
-            radius = dpx(float(self.node.style["border-radius"].get()[:-2]), self.zoom.get())
+            radius = dpx(float(
+                self.node.style["border-radius"].get()[:-2]),
+                self.zoom.get())
             cmds.append(DrawRRect(rect, radius, bgcolor))
         return cmds
 
@@ -936,7 +938,10 @@ class IframeLayout(EmbedLayout):
         diff = dpx(1, self.zoom.get())
         offset = (self.x.get() + diff, self.y.get() + diff)
         cmds = [Transform(offset, rect, self.node, cmds)]
-        inner_rect = skia.Rect.MakeLTRB(self.x.get() + diff, self.y.get() + diff, self.x.get() + self.width.get() - diff, self.y.get() + self.height.get() - diff)
+        inner_rect = skia.Rect.MakeLTRB(
+            self.x.get() + diff, self.y.get() + diff,
+            self.x.get() + self.width.get() - diff,
+            self.y.get() + self.height.get() - diff)
         cmds = [Blend(1.0, "source-over", self.node,
                       cmds + [Blend(1.0, "destination-in", None, [
                           DrawRRect(inner_rect, 0, "white")])])]
@@ -1281,16 +1286,21 @@ class Tab:
     def zoom_by(self, increment):
         if increment > 0:
             self.zoom *= 1.1
+            self.scroll *= 1.1
         else:
             self.zoom *= 1 / 1.1
+            self.scroll *= 1 / 1.1
         for id, frame in self.window_id_to_frame.items():
             frame.document.zoom.mark()
+        self.scroll_changed_in_tab = True
         self.set_needs_render_all_frames()
 
     def reset_zoom(self):
+        self.scroll /= self.zoom
         self.zoom = 1
         for id, frame in self.window_id_to_frame.items():
             frame.document.zoom.mark()
+        self.scroll_changed_in_tab = True
         self.set_needs_render_all_frames()
 
     def run_animation_frame(self, scroll):
@@ -1363,7 +1373,9 @@ class Tab:
 
         if self.needs_paint:
             self.display_list = []
+            self.browser.measure.time('paint')
             paint_tree(self.root_frame.document, self.display_list)
+            self.browser.measure.stop('paint')
             self.needs_paint = False
 
         self.browser.measure.stop('render')
