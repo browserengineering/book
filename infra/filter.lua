@@ -16,6 +16,7 @@ function LoadMeta(meta)
   meta.rel = config.rel
   meta.base = config.base
   meta.draft = config.draft
+  meta.colorlinks = true
 
   if meta.main then
     main = true
