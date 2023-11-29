@@ -229,7 +229,7 @@ CSS_PROPERTIES = {
     "font-size": "inherit", "font-weight": "inherit",
     "font-style": "inherit", "color": "inherit",
     "opacity": "1.0", "transition": "",
-    "transform": "none", "mix-blend-mode": "normal",
+    "transform": "none", "mix-blend-mode": None,
     "border-radius": "0px", "overflow": "visible",
     "outline": "none", "background-color": "transparent",
     "image-rendering": "auto",
@@ -924,7 +924,9 @@ class IframeLayout(EmbedLayout):
             self.y.get() + self.height.get())
         bgcolor = self.node.style["background-color"].get()
         if bgcolor != 'transparent':
-            radius = dpx(float(self.node.style["border-radius"].get()[:-2]), self.zoom.get())
+            radius = dpx(float(
+                self.node.style["border-radius"].get()[:-2]),
+                self.zoom.get())
             cmds.append(DrawRRect(rect, radius, bgcolor))
         return cmds
 
@@ -936,7 +938,10 @@ class IframeLayout(EmbedLayout):
         diff = dpx(1, self.zoom.get())
         offset = (self.x.get() + diff, self.y.get() + diff)
         cmds = [Transform(offset, rect, self.node, cmds)]
-        inner_rect = skia.Rect.MakeLTRB(self.x.get() + diff, self.y.get() + diff, self.x.get() + self.width.get() - diff, self.y.get() + self.height.get() - diff)
+        inner_rect = skia.Rect.MakeLTRB(
+            self.x.get() + diff, self.y.get() + diff,
+            self.x.get() + self.width.get() - diff,
+            self.y.get() + self.height.get() - diff)
         cmds = [Blend(1.0, "source-over", self.node,
                       cmds + [Blend(1.0, "destination-in", None, [
                           DrawRRect(inner_rect, 0, "white")])])]
