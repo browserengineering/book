@@ -1867,8 +1867,22 @@ minimum:
 All that's happening here is recreating the `contenteditable`
 element's `children` (which we have to do, to incorporate the new
 text) and checking that its `height` didn't change (necessary in case
-we wrapped onto more lines). Editing should also now feel snappier---about
+we wrapped onto more lines).
+
+::: {.web-only}
+
+Editing should also now feel snappier---about
 0.6 seconds instead of the original 1.7. Better, but still not good:
+^[Trace [here](examples/example16-input-reuse-layout-tree.trace)]
+
+:::
+
+::: {.print-only}
+
+Editing should also now feel snappier---about
+0.6 seconds instead of the original 1.7. Better, but still not good:
+
+:::
 
 <center>
 ![Snappier rendering due to reusing the layout tree](examples/example16-input-reuse-layout-tree.png)<br>
@@ -2055,9 +2069,26 @@ class Tab:
             frame.document.zoom.mark()
 ```
 
+::: {.web-only}
+
+Skipping unneeded `layout` methods should provide a noticable speed
+bump, with small edits now taking less than a millisecond to update
+layout and editing now much smoother.[^other-phases]^[Trace
+[here](examples/example16-input-skip-traverse.trace).]
+
+:::
+
+::: {.print-only}
+
 Skipping unneeded `layout` methods should provide a noticable speed
 bump, with small edits now taking less than a millisecond to update
 layout and editing now much smoother.[^other-phases]
+
+:::
+
+<center>
+![Example after skipping layout traversal](examples/example16-input-skip-traverse.png)<br>
+</center>
 
 [^other-phases]: It might still be pretty laggy on large pages due to
     the composite-raster-draw cycle being fairly slow, depending on
