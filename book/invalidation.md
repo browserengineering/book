@@ -1867,7 +1867,12 @@ minimum:
 All that's happening here is recreating the `contenteditable`
 element's `children` (which we have to do, to incorporate the new
 text) and checking that its `height` didn't change (necessary in case
-we wrapped onto more lines). Editing should also now feel snappier.
+we wrapped onto more lines). Editing should also now feel snappier---about
+0.6 seconds instead of the original 1.7. Better, but still not good:
+
+<center>
+![Snappier rendering due to reusing the layout tree](examples/example16-input-reuse-layout-tree.png)<br>
+</center>
 
 ::: {.further}
 
