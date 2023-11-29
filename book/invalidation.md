@@ -2095,7 +2095,7 @@ overall is still about 230ms. (Making a browser fast requires optimizing
 everything! I won't implement it, paint could be made a lot faster too---see
 the exercises.)
 
-[^other-phases]:  It might still be pretty laggy on large pages due to the
+[^other-phases]:  It might also be pretty laggy on large pages due to the
 composite-raster-draw cycle being fairly slow, depending on which exercises you
 implemented in [Chapter 13](animations.md#exercises).
 
