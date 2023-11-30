@@ -69,18 +69,30 @@ function Note(el)
 end
 
 function Div(el)
+  if el.classes:includes("print-only", 0) then
+     if config.print then
+        local _, idx = el.classes:find("print-only", 0)
+        el.classes:remove(idx)
+     else
+        return {}
+     end
+  elseif el.classes:includes("web-only", 0) then
+     if not config.print then
+        local _, idx = el.classes:find("web-only", 0)
+        el.classes:remove(idx)
+     else
+        return {}
+     end
+  end
+
   if not config.show_todos and el.classes[1] == "todo" then
     return pandoc.RawBlock("html", "")
-  elseif el.classes[1] == "print-only" then
-    if config.print then return el end
-  elseif el.classes[1] == "web-only" then
-    if not config.print then return el end
-  elseif el.classes[1] == "signup" then
+  elseif el.classes:includes("signup") then
     if config.show_signup then
        local signup = assert(io.open("infra/signup.html")):read("*all")
        return pandoc.RawBlock("html", signup)
     end
-  elseif el.classes[1] == "widget" then
+  elseif el.classes:includes("widget") then
     if #el.content ~= 1 or
        el.content[1].t ~= "CodeBlock" then
       error("`widget` block does not contain a code block")
@@ -98,7 +110,7 @@ function Div(el)
     end
     src = src .. "></iframe>"
     return pandoc.RawBlock("html", src)
-  elseif el.classes[1] == "cmd" or el.classes[2] == "cmd" then
+  elseif el.classes:includes("cmd") then
     if #el.content ~= 1 or
        el.content[1].t ~= "CodeBlock" then
       error("`cmd` block does not contain a code block")
@@ -114,21 +126,36 @@ function Div(el)
     end
     pre.classes = el.classes
     return pre
-  elseif el.classes[1] == "transclude" then
+  elseif el.classes:includes("transclude") then
     io.input(pandoc.utils.stringify(el.content))
     local div = pandoc.CodeBlock( io.read('a'))
     div.classes = el.classes
     return div
-  elseif config.print and #el.classes > 0 and el.classes[1] ~= "center" then
-     -- Suggestion from https://tex.stackexchange.com/questions/525924/with-pandoc-how-to-apply-a-style-to-a-fenced-div-block
-     return pandoc.Div({
-           pandoc.RawBlock("latex", "\\begin{bookblock}{" .. table.concat(el.classes, ",") .. "}"),
-           el,
-           pandoc.RawBlock("latex", "\\end{bookblock}"),
-     })
+  elseif el.classes:includes("center") then
+     if config.print then
+        return latex_wrap(el, "center", nil)
+     else
+        return el
+     end
+  elseif #el.classes >= 1 then
+     if config.print then
+        return latex_wrap(el, "bookblock", table.concat(el.classes, ","))
+     else
+        return el
+     end
   else
-    return el
+     return el
   end
+end
+
+function latex_wrap(el, env, args)
+   -- Suggestion from https://tex.stackexchange.com/questions/525924/with-pandoc-how-to-apply-a-style-to-a-fenced-div-block
+   local latex_args = args and ("{" .. args .. "}") or ""
+   return {
+         pandoc.RawBlock("latex", "\\begin{" .. env .. "}" .. latex_args),
+         el,
+         pandoc.RawBlock("latex", "\\end{" .. env .. "}"),
+   }
 end
 
 -- Pass 3: Collect and insert a table of contents
