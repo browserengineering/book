@@ -79,7 +79,6 @@ aesthetics, you'll need to use old-school JavaScript from the turn of
 the century.
 :::
 
-
 Running JavaScript code
 =======================
 
@@ -1124,7 +1123,6 @@ is added to dehydrated food to make it edible again.
 :::
 
 [crawling]: https://en.wikipedia.org/wiki/Web_crawler
-
 
 Summary
 =======
