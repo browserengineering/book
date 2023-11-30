@@ -1344,8 +1344,8 @@ class Browser:
     def composite_raster_and_draw(self):
         self.lock.acquire(blocking=True)
         if not self.needs_composite and \
-            len(self.composited_updates) == 0 \
-            and not self.needs_raster and not self.needs_draw:
+            not self.needs_raster and \
+            not self.needs_draw:
             self.lock.release()
             return
 
