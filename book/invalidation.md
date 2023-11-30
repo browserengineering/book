@@ -47,10 +47,9 @@ You'll find that it is *much* too slow---1.7 seconds just in `render`!
 
 :::
 
-<center>
+<div class="center">
 ![Example of typing without any invalidation optimizations](examples/example16-input-no-optimizations.png)<br>
-</center>
-
+</div>
 
 Typing into `input` elements could be special-cased,[^no-resize] but
 there are other text editing APIs that can't be. For example, the
@@ -1884,9 +1883,9 @@ Editing should also now feel snappier---about
 
 :::
 
-<center>
+<div class="center">
 ![Snappier rendering due to reusing the layout tree](examples/example16-input-reuse-layout-tree.png)<br>
-</center>
+</div>
 
 ::: {.further}
 
@@ -2086,9 +2085,9 @@ layout and editing now substantially smoother.[^other-phases]
 
 :::
 
-<center>
+<div class="center">
 ![Example after skipping layout traversal](examples/example16-input-skip-traverse.png)<br>
-</center>
+</div>
 
 However, in this screenshot I also traced paint, to show you why `render`
 overall is still about 230ms. (Making a browser fast requires optimizing

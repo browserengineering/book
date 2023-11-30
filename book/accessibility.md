@@ -419,16 +419,16 @@ good old [Lorem ipsum][lorem-ipsum]!]
 
 [lorem-ipsum]: https://en.wikipedia.org/wiki/Lorem_ipsum
 
-<center>
-    <img src="examples/example14-line-breaking-unzoomed.png">
-</center>
+<div class=".center">
+![Example of line breaking before zoom](examples/example14-line-breaking-unzoomed.png)<br>
+</div>
 
 And here it is with 2x zoom. Note how not only are the words twice
 as big, but the lines wrap at different words, just as desired:
 
-<center>
-    <img src="examples/example14-line-breaking-zoomed.png">
-</center>
+<div class=".center">
+![Example of line breaking after zoom](examples/example14-line-breaking-zoomed.png)<br>
+</div>
 
 ::: {.further}
 On high-resolution screens, CSS pixels are scaled by both zoom and a
@@ -620,9 +620,9 @@ class Browser:
 Now if you open the browser and switch to dark mode, you should see
 white text on a black background, like this:
 
-<center>
-    <img src="examples/example14-dark-mode.png">
-</center>
+<div class="center">
+![Example of dark mode rendering of text](examples/example14-dark-mode.png)<br>
+</div>
 
 ::: {.further}
 
@@ -783,9 +783,9 @@ lighter foreground. It should look like this in dark mode:
 
 :::
 
-<center>
-    <img src="examples/example14-dark-mode-forms.png">
-</center>
+<div class="center">
+![Example of dark mode with forms](examples/example14-dark-mode-forms.png)<br>
+</div>
 
 ::: {.further}
 
@@ -1339,9 +1339,9 @@ Focus outlines now basically work, and will even scroll on-screen if you try
 it on the [focus example](examples/example14-focus.html). Here's what it looks
 like after I pressed tab to focus the "this is a link" element:
 
-<center>
-    <img src="examples/example14-focus-outline.png">
-</center>
+<div class="center">
+![Example of focuse outline](examples/example14-focus-outline.png)<br>
+</div>
 
 But ideally, the focus indicator should be customizable, so that the web page
 author can make sure the focused element stands out. In CSS, that's done with
@@ -1526,9 +1526,9 @@ class LineLayout:
 For the [focus example](examples/example14-focus.html), the focus outline
 of an `<a>` element becomes red:
 
-<center>
-    <img src="examples/example14-focus-outline-custom.png">
-</center>
+<div class="center">
+![Example of a customized red focuse outline](examples/example14-focus-outline-custom.png)<br>
+</div>
 
 As with dark mode, focus outlines are a case where adding an
 accessibility feature meant generalizing existing browser features to
