@@ -419,14 +419,14 @@ good old [Lorem ipsum][lorem-ipsum]!]
 
 [lorem-ipsum]: https://en.wikipedia.org/wiki/Lorem_ipsum
 
-<div class=".center">
+<div class="center">
 ![Example of line breaking before zoom](examples/example14-line-breaking-unzoomed.png)<br>
 </div>
 
 And here it is with 2x zoom. Note how not only are the words twice
 as big, but the lines wrap at different words, just as desired:
 
-<div class=".center">
+<div class="center">
 ![Example of line breaking after zoom](examples/example14-line-breaking-zoomed.png)<br>
 </div>
 
