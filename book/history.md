@@ -100,7 +100,7 @@ papers were heavily motivated by this use case.
 
 <div class=center>
 ![A computer operator using a hypertext editing system in 1969](im/hes.jpg)
-^[Hypertext Editing System <br/> (Gregory Lloyd from <a href="https://commons.wikimedia.org/wiki/File:HypertextEditingSystemConsoleBrownUniv1969.jpg">Wikipedia</a>, <a href="https://creativecommons.org/licenses/by/2.0/legalcode" rel="license">CC BY 2.0</a>.]
+^[Hypertext Editing System <br/> (Gregory Lloyd from <a href="https://commons.wikimedia.org/wiki/File:HES_IBM_2250_Console_grlloyd_Oct1969.png">Wikipedia</a>, <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.en" rel="license">CC BY-SA 4.0 International</a>.)]
 </div>
 
 Independently of Project Xanadu, the first hyperlink system appeared for
