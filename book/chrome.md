@@ -653,6 +653,8 @@ have two rows:
 * Underneath, the URL of of the current web page, and a "`<`" button to
   represent the browser back-button.
 
+![The intended appearance of the browser chrome](im/chrome-chrome.png)
+
 A lot of this design involves text, so let's start by picking a font:
 
 ``` {.python}
@@ -1159,6 +1161,10 @@ Take a moment to notice the complex ritual of typing in an address:
 - The address bar updates as you type, but the browser doesn't yet
   navigate to the new page.
 - Finally, you type the "Enter" key which navigates to a new page.
+
+::: {.print-only .center}
+![Screenshots of editing in the address bar in Apple Safari 16.6](im/chrome-editing.png)
+:::
 
 These steps suggest that the browser stores the contents of the
 address bar separately from the `url` field, and also that there's

@@ -19,7 +19,7 @@ HTML forms have a couple of moving pieces.
 
 First, in HTML, there is a `form` element, which contains `input`
 elements,[^or-others] which in turn can be edited by the user. So a
-form might look like this:
+form might be written like this:
 
 [^or-others]: There are other elements similar to `input`, such as
     `select` and `textarea`. They work similarly enough; they just
@@ -33,6 +33,10 @@ form might look like this:
     <p><button>Submit!</button></p>
 </form>
 ```
+
+And look like this:
+
+![The example form in our browser](im/forms-screenshot.png)
 
 This form contains two text entry boxes called `name` and `comment`.
 When the user goes to this page, they can click on those boxes to edit

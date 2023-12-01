@@ -287,9 +287,7 @@ apply to.[^media-queries] The combination of the two is called a
     across many devices, like reading this book on a phone. We'll meet
     them in [Chapter 14](accessibility.md).
 
-``` {.css .example}
-selector { property-1: value-1; property-2: value-2; }
-```
+![An annotated CSS rule](im/styles-syntax.png)
 
 Let's add support for CSS to our browser. We'll need to parse
 CSS files into selectors and property/value pairs; figure out which

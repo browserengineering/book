@@ -21,10 +21,14 @@ looks like this:
     (resources\index{web resource}) and
     also that it describes how to access those files (locator).
 
-::: {.cmd html=True}
+::: {.cmd .web-only html=True}
     python3 infra/annotate_code.py <<EOF
     [http][tl|Scheme]://[example.org][bl|Hostname][/index.html][tl|Path]
     EOF
+:::
+
+::: {.print-only}
+![The syntax of URLs](im/http-url.png)
 :::
 
 This URL has three parts: the scheme\index{scheme} explains *how* to get the
@@ -125,12 +129,16 @@ by giving its *path*, the path being the part of a URL that comes
 after the host name, like `/index.html`. The request looks like this;
 type it into `telnet`:
 
-::: {.cmd html=True}
+::: {.cmd .web-only html=True}
     python3 infra/annotate_code.py <<EOF
     [GET][tl|Method] [/index.html][tr|Path] [HTTP/1.0][tl|HTTP Version]
     [Host][bl|Header]: [example.org][bl|Value]
 
     EOF
+:::
+
+::: {.print-only}
+![An annotated HTTP GET request](im/http-get.png)
 :::
 
 Make sure to type a blank line after the `Host` line.
@@ -191,10 +199,14 @@ The server's response
 
 The server's response starts with this line:
 
-::: {.cmd html=True}
+::: {.cmd .web-only html=True}
     python3 infra/annotate_code.py <<EOF
     [HTTP/1.0][tr|HTTP Version] [200][bl|Response Code] [OK][tl|Response Description]
     EOF
+:::
+
+::: {.print-only}
+![An annotated first line of an HTTP response](im/http-status.png)
 :::
 
 That tells you that the host confirms that it, too, speaks `HTTP/1.0`,
@@ -803,10 +815,14 @@ Your browser should now be able to connect to HTTPS sites.
 While we're at it, let's add support for custom ports, which are
 specified in a URL by putting a colon after the host name:
 
-::: {.cmd html=True}
+::: {.cmd .web-only html=True}
     python3 infra/annotate_code.py <<EOF
     http://example.org:[8080][tl|Port]/index.html
     EOF
+:::
+
+::: {.print-only}
+![Where the port goes in a URL](im/http-port.png)
 :::
 
 If the URL has a port we can parse it out and use it:

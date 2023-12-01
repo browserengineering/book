@@ -39,6 +39,23 @@ typing. Variations—like bold or italic letters—were called that type's
 
 [^2]: The word is related to *foundry*, which would create the little
     metal shapes.
+    
+::: {.center}
+![A drawing of printing press workers](im/text-old.jpeg)
+^[An 18^th^-century drawing
+by <a href="https://en.wikipedia.org/wiki/Daniel_Chodowiecki">Daniel
+Nikolaus Chodowiecki</a>
+of workers in a printing press,
+initially intended as part of a children's encyclopedia.
+<a href="https://commons.wikimedia.org/wiki/File:Chodowiecki_Basedow_Tafel_21_c.jpg">Wikipedia</a>,
+public domain]
+
+![Metal types in a composing stick.](im/text-metal.png)
+^[Metal types in letter cases and a composing stick.<br/>
+(Willi Heidelbach from
+<a href="https://en.wikipedia.org/wiki/File:Metal_movable_type.jpg">Wikipedia</a>,
+<a href="https://creativecommons.org/licenses/by/2.5/deed.en">CC BY 2.5</a>.)]
+:::
 
 This nomenclature reflects the world of the printing press: metal
 shapes in boxes in cases from different foundries. Our modern world
@@ -141,6 +158,13 @@ line", not along their tops or bottoms.
 
 [^8]: The `fixed` parameter is actually a boolean and tells you whether
     all letters are the same *width*, so it doesn't really fit here.
+    
+::: {.print-only .center}
+![Diagram of font metrics](im/text-metrics.png)
+^[The various vertical metrics of a font. All glyphs in a font share
+the same ascent, x-height, and descent, and are laid out on a shared
+baseline. However, the measure (or advance) of glyphs can differ.]
+:::
 
 Let's dig deeper. Remember that `bi_times` is size-16 Times: why does
 `font.metrics` report that it is actually 22 pixels tall? Well, first
@@ -634,6 +658,15 @@ comes through the loop first, we need a *two-pass* algorithm for lines
 of text: the first pass identifies what words go in the line and
 computes their *x* positions, while the second pass vertically aligns
 the words and computes their *y* positions.
+
+::: {.print-only .center}
+![Diagram of line layout](im/text-line.png)
+^[How lines are laid out when multiple fonts are involved.
+All words are drawn using a shared baseline. The ascent and descent
+of the whole line is then determined by the maximum ascent and descent
+of all words in the line, and leading is added before and after the
+line.]
+:::
 
 Let's start with phase one. Since one line contains text from many
 tags, we need a field on `Layout` to store the line-to-be. That
