@@ -1446,6 +1446,10 @@ field, then iterate over the list of children and `read` each of their
 fields, depends on the children's fields, not the parent's, and that's
 how we correctly iterate over children.
 
+::: {.print-only}
+![The dependencies of widths and heights in the layou tree point in opposite directions](protected-field-dependencies-top.jpg)
+:::
+
 So that's all the layout fields on `BlockLayout` and `DocumentLayout`.
 Do go through and fix up these layout types' `paint` methods (and also
 the `DrawCursor` helper)---but note that the browser won't quite run
@@ -2382,6 +2386,11 @@ that graph. That will [harden][hardening] our browser against
 accidental bugs in the future and also improve performance.
 
 [hardening]: https://en.wikipedia.org/wiki/Hardening_(computing)
+
+::: {.print-only}
+![A dependency diagram for the layout fields in our browser.
+Simplified though it is, the dependency diagram is already quite complex](protected-field-dependencies-bottom.jpg)
+:::
 
 An easy first step is explicitly listing the dependencies of each
 `ProtectedField`. We can make this an optional constructor parameter:
