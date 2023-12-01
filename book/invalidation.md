@@ -27,7 +27,7 @@ interactions that change the layout tree need to be responsive.
 One good example is editing text. People type pretty quickly, so even
 a few frames' delay is distracting. But editing changes the HTML tree
 and therefore the layout tree. Rebuilding the layout tree from
-scratch, which our browser currently does, can drop multiple frames on
+scratch, which our browser currently does, can be very slow on
 complex pages. Try, for example, loading [this
 chapter](invalidation.md) in our browser and typing into this
 input box:
@@ -163,7 +163,7 @@ class InputLayout(EmbedLayout):
 ```
 
 You can now edit the examples on this page in your browser---but
-each key stroke will take hundreds of milliseconds, making for a
+each key stroke will take more than a second, making for a
 frustrating editing experience. So let's work on speeding that up.
 
 ::: {.further}
@@ -1710,7 +1710,7 @@ offsets.
 ::: {.further}
 
 Just before writing this section, I^[This is Chris speaking.] spent
-*weeks* weeding out a under-invalidation bugs in Chrome's
+*weeks* weeding out some under-invalidation bugs in Chrome's
 accessibility code. At first, the bugs would only occur on certain
 overloaded automated test machines! It turns out that on those
 machines, the HTML parser would yield[^parser-yield] more often,
@@ -1872,7 +1872,7 @@ we wrapped onto more lines).
 
 Editing should also now feel snappier---about
 0.6 seconds instead of the original 1.7. Better, but still not good:
-^[Trace [here](examples/example16-input-reuse-layout-tree.trace)]
+^[Trace [here](examples/example16-input-reuse-layout-tree.trace).]
 
 :::
 
@@ -2091,8 +2091,8 @@ layout and editing now substantially smoother.[^other-phases]
 
 However, in this screenshot I also traced paint, to show you why `render`
 overall is still about 230ms. (Making a browser fast requires optimizing
-everything! I won't implement it, paint could be made a lot faster too---see
-the exercises.)
+everything! I won't implement it, but paint could be made a lot faster
+too---see the exercises.)
 
 [^other-phases]:  It might also be pretty laggy on large pages due to the
 composite-raster-draw cycle being fairly slow, depending on which exercises you
@@ -2337,10 +2337,9 @@ class Tab:
                         # ...
 ```
 
-When a property like `opacity`^[Or `transform`, if you completed that
-exercise.] is changed, it won't invalidate any layout fields (because
-these properties don't affect any layout fields) and so animations will
-once again skip layout entirely.
+When a property like `opacity` or `transform` is changed, it won't invalidate
+any layout fields (because these properties don't affect any layout fields) and
+so animations will once again skip layout entirely.
 
 
 ::: {.further}
