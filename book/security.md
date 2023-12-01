@@ -62,7 +62,7 @@ core principle.
 ::: {.print-only}
 ![The server assigns cookies to the browser with the `Set-Cookie`
 header, and the browser thereafter identifies itself with the `Cookie`
-header](im/security-cookie.png)
+header](im/security-cookies.png)
 :::
 
 Let's use cookies to write a login system for our guest book. Each
