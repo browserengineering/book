@@ -256,6 +256,11 @@ server (`Server`, `X-Cache`), about how long the browser should cache
 this information (`Cache-Control`, `Expires`, `Etag`), about all sorts
 of other stuff. Let's move on for now.
 
+::: {.print-only}
+![An HTTP request and response pair are how a web browser gets web
+pages from a web server](im/http-request.png)
+:::
+
 After the headers there is a blank line followed by a bunch of
 [HTML]\index{HTML} code. This is called the *body* of the server's
 response, and your browser knows that it is HTML because of the
@@ -729,6 +734,10 @@ which encryption algorithms are used, how a common encryption key is agreed
 to, and of course how to make sure that the browser is connecting to
 the correct host.
 
+::: {.print-only}
+![The difference between HTTP and HTTPS is the addition of a TLS layer](im/http-tls.png)
+:::
+
 Luckily, the Python `ssl` library implements all of these details for
 us, so making an encrypted connection is almost as easy as making a
 regular connection. That ease of use comes with accepting some default
@@ -822,7 +831,7 @@ specified in a URL by putting a colon after the host name:
 :::
 
 ::: {.print-only}
-![Where the port goes in a URL](im/http-port.png)
+![Where the port goes in a URL](im/http-ports.png)
 :::
 
 If the URL has a port we can parse it out and use it:

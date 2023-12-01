@@ -244,6 +244,11 @@ with the property `log`, whose value is a function that calls
 
 [mdn-js]: https://developer.mozilla.org/en-US/docs/Learn/JavaScript/First_steps/A_first_splash
 
+::: {.print-only}
+![The browser can evaluate JavaScript and JavaScript code can call
+back into the browser](im/scripts-calls.png)
+:::
+
 We can call that JavaScript code our "JavaScript runtime"; we run it
 before we run any user code, so let's stick it in a `runtime.js` file
 and execute it when the `JSContext` is created, before we run any user
@@ -469,6 +474,11 @@ indirection. I'll use simple numeric identifier, which I'll call a
 [^8]: Note the similarity to file descriptors, which give user-level
     applications access to kernel data structures.
 
+::: {.print-only}
+![The relationship between `Node` objects in JavaScript and `Element`/`Text` objects in the
+browser is maintained through handles](im/scripts-handles.png)
+:::
+
 We'll need to keep track of the handle to node mapping. Let's create a
 `node_to_handle` data structure to map nodes to handles, and a
 `handle_to_node` map that goes the other way:
@@ -628,6 +638,10 @@ browser generates *events*.\index{event} Each event has a type, like
 `node.addEventListener('click', func)` sets `func` to run every
 time the element corresponding to `node` generates a `click` event.
 It's basically Tk's `bind`, but in the browser. Let's implement it.
+
+::: {.print-only}
+![The browser calls into JavaScript when events happen](im/scripts-events.png)
+:::
 
 Let's start with generating events. I'll create a `dispatch_event`
 method and call it whenever an event is generated. That includes,

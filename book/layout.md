@@ -305,9 +305,10 @@ complex layout trees!
 
 :::
 
-<div class="print-only center">
-![An example of block layout](examples/example5-block-layout.png)
-</div>
+
+::: {.print-only}
+![An example of an HTML tree and the corresponding layout tree](im/layout-tree.png)
+:::
 
 Oh, and you might also notice that the text on these web pages is now
 totally unreadable, because it's all overlapping at the top of the

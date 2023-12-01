@@ -59,6 +59,12 @@ Servers can also set multiple cookies and also set parameters like
 expiration dates, but this `Set-Cookie` / `Cookie` mechanism is the
 core principle.
 
+::: {.print-only}
+![The server assigns cookies to the browser with the `Set-Cookie`
+header, and the browser thereafter identifies itself with the `Cookie`
+header](im/security-cookies.png)
+:::
+
 Let's use cookies to write a login system for our guest book. Each
 user will be identified by a long random number stored in the `token`
 cookie.[^secure-random] The server will either extract a token from
@@ -528,6 +534,11 @@ analogs like [`fetch`][mdn-fetch], are how websites allow you to like a
 post, see hover previews, or submit a form without reloading.
 
 [mdn-fetch]: https://developer.mozilla.org/en-US/docs/Web/API/fetch
+
+::: {.print-only}
+![The architecture of a single-page application leveraging
+`XMLHttpRequest`](im/security-spa.png)
+:::
 
 ::: {.further}
 `XMLHttpRequest` objects have [`setRequestHeader`][xhr-srh] and

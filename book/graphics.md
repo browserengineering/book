@@ -69,6 +69,10 @@ while True:
     drawScreen()
 ```
 
+::: {.print-only}
+![A flowchart of event handling cycle](im/graphics-cycle.png)
+:::
+
 Here, `pendingEvent` first asks the desktop environment for recent
 mouse clicks or key presses, then `handleEvent` calls your application
 to update state, and then `drawScreen` redraws the window. This *event
@@ -190,7 +194,7 @@ You ought to see: a rectangle, starting near the top-left corner of
 the canvas and ending at its center; then a circle inside that
 rectangle; and then the text "Hi!" next to the circle:
 
-![The expected example output with a rectangle, oval, and text](graphics-example.png)
+![The expected example output with a rectangle, oval, and text](im/graphics-example.png)
 
 Coordinates in Tk refer to X positions from left to right and to Y
 positions from top to bottom. In other words, the bottom of the screen
@@ -304,6 +308,10 @@ Here's an widget demonstrating that concept:
 
 :::
 
+::: {.print-only}
+![A flow-chart of how characters the cursor moves as each character is drawn](im/graphics-cursor.png)
+:::
+
 [^crlf]: In the olden days of typewriters, increasing *y* meant
     *feed*ing in a new *line*, and resetting *x* meant *return*ing the
     *carriage* that printed letters to the left edge of the page. So
@@ -361,6 +369,10 @@ page---draws everything---in terms of screen coordinates.[^screen-coordinates]
 first drawn into a bitmap or GPU texture, then that bitmap/texture is shifted
 according to the scroll, and the result is rendered to the screen. [Chapter 12](visual-effects.md)
 will have more on this topic.
+
+::: {.print-only}
+![The difference between page and screen coordinates](im/graphics-coords.png)
+:::
 
 Our browser will have the same split. Right now `load` computes
 both the position of each character and draws it: layout\index{layout}
@@ -646,7 +658,8 @@ the line breaks must change, so you will need to call `layout` again.
 display list entry.[^not-quite-right] At the right edge of the screen,
 draw a blue, rectangular scrollbar. Make sure the size and position of
 the scrollbar reflects what part of the full document the browser can
-see. Hide the scrollbar if the whole document fits onscreen.
+see, as in the figure showing page and screen coordinates. Hide the
+scrollbar if the whole document fits onscreen.
 
 [^not-quite-right]: This is not quite right in a real browser; the
     browser needs to account for extra whitespace at the bottom of the
