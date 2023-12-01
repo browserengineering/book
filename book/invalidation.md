@@ -1447,7 +1447,7 @@ fields, depends on the children's fields, not the parent's, and that's
 how we correctly iterate over children.
 
 ::: {.print-only}
-![The dependencies of widths and heights in the layou tree point in opposite directions](protected-field-dependencies-top.jpg)
+![The dependencies of widths and heights in the layou tree point in opposite directions](im/protected-field-dependencies-top.jpg)
 :::
 
 So that's all the layout fields on `BlockLayout` and `DocumentLayout`.
@@ -2389,7 +2389,7 @@ accidental bugs in the future and also improve performance.
 
 ::: {.print-only}
 ![A dependency diagram for the layout fields in our browser.
-Simplified though it is, the dependency diagram is already quite complex](protected-field-dependencies-bottom.jpg)
+Simplified though it is, the dependency diagram is already quite complex](im/protected-field-dependencies-bottom.jpg)
 :::
 
 An easy first step is explicitly listing the dependencies of each

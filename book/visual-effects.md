@@ -1029,7 +1029,7 @@ contents need to be blended together into the parent.[^stacking-context-disc]
     
 ::: {.print-only}
 ![A rendered web page is actually the result of stacking and blending
-a series of different surfaces](visual-effects-surfaces.jpg)
+a series of different surfaces](im/visual-effects-surfaces.jpg)
 :::
 
 [^stacking-context-disc]: This tree of surfaces is an implementation strategy

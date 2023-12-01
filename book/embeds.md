@@ -1604,7 +1604,7 @@ should be able to access each other's globals, call each other's
 functions, and modify each other's DOMs. Let's implement that.
 
 ::: {.print-only}
-![Multiple frames within the same tab can share a single `JSContext`](browser-tab-frame-jscontext.jpg)
+![Multiple frames within the same tab can share a single `JSContext`](im/browser-tab-frame-jscontext.jpg)
 :::
 
 For two frames' JavaScript environments to interact, we'll need to put
