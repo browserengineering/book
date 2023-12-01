@@ -57,7 +57,7 @@ latex/book.tex: latex/book-skeleton.tex latex-chapters
 	rm latex/book-contents.tex
 	sed -i.bak '/---Contents---/d' latex/book.tex
 
-latex/book.pdf: latex/book.tex
+latex/book.pdf: latex/book.tex latex/macros.tex
 	(cd latex && ln -f -s ../www/examples/ examples)
 	(cd latex && ln -f -s ../www/im/ im)
 	(cd latex && pdflatex book.tex)

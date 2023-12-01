@@ -1,0 +1,43 @@
+% Colored boxes like "Go further" or whatever
+% The actual boxes are drawn by tcolorbox
+\usepackage{tcolorbox}
+
+% First we define a little hash table library by storing things as
+% global variables (ugh, but standard)
+\newcommand{\defprop}[3]{
+  \expandafter\def\csname @val@#1@#2\endcsname{#3}
+}
+
+\newcommand{\getprop}[2]{%
+  \ifcsname @val@#1@#2\endcsname%
+  \csname @val@#1@#2\endcsname%
+  \fi
+}
+
+% Next, here, we define the different types of boxes
+% The colors here are chosen to match the look of the website
+\newcommand{\defbox}[3]{
+  \defprop{#1}{title}{#2}
+  \defprop{#1}{color}{#3}
+}
+
+\defbox{quirk}{Quirk}{RoyalPurple}
+\defbox{warning}{Warning}{red}
+\defbox{installation}{Installation}{blue}
+\defbox{demo}{Demonstration}{gray}
+\defbox{further}{Go Further}{ForestGreen}
+
+% Finally we define the actual "bookblock" environment that our
+% Markdown will expand divs into
+\newenvironment{bookblock}[1]{
+  \ifcsname @val@#1@color\endcsname
+  \begin{tcolorbox}[colback=\getprop{#1}{color}!5!white,
+                    colframe=\getprop{#1}{color}!75!white,
+                    title={\getprop{#1}{title}}]
+  \else
+  \PackageError{bookblock}{Unknown book block '#1'}{}
+  \fi
+}{
+\end{tcolorbox}
+}
+
