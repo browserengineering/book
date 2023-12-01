@@ -236,7 +236,7 @@ channels.
 
 Defining colors via red, green, and blue components is fairly
 standard[^other-spaces] and corresponds to how computer screens
-work[^lcd-design]. For example, in CSS, we refer to arbitrary colors
+work.[^lcd-design] For example, in CSS, we refer to arbitrary colors
 with a hash character and six hex digits, like `#ffd700`, with two
 digits each for red, green, and blue:[^opaque]
 
@@ -1170,17 +1170,8 @@ technique for representing opacity.
 When a pixel with alpha overlaps another pixel, the final color is a
 mix of their two colors. How exactly the colors are mixed is defined
 by Skia's `Paint` objects. Of course, Skia is pretty complex, but we
-can sketch these paint operations in Python as methods on an imaginary
-`Pixel` class.
-
-``` {.python file=examples}
-class Pixel:
-    def __init__(self, r, g, b, a):
-        self.r = r
-        self.g = g
-        self.b = b
-        self.a = a
-```
+can sketch these paint operations in Python as methods on the
+conceptual `Pixel` class I introducd earlier.
 
 When we apply a `Paint` with an `Alphaf` parameter, the first thing
 Skia does is add the requested opacity to each pixel:
@@ -1436,7 +1427,7 @@ let's focus here on `overflow: clip`, which cuts off contents of an
 element that are outside the element's bounds.
 
 [^like-clip-path]: The CSS [`clip-path` property][mdn-clip-path] lets
-specify a mask shape using a curve, while the [`mask`
+you specify a mask shape using a curve, while the [`mask`
 property][mdn-mask] lets you instead specify a image URL for the mask.
 
 [^like-scroll]: For example, `overflow: scroll` adds scroll bars and
@@ -1572,10 +1563,7 @@ which means nothing is clipped out.
 Notice how similar this masking technique is to the physical analogy
 with scissors described earlier, with the two layers playing the role
 of two sheets of paper and destination-in compositing playing the role
-of the scissors. This implementation technique for clipping is called
-*masking*, and it is very general---you can use it with arbitrarily
-complex mask shapes, like text, bitmap images, or anything else you
-can imagine.[^cliprrect]
+of the scissors.[^cliprrect]
 
 [^cliprrect]: If all our browser wanted to clip were rounded
     rectangles, Skia actually provides a specialized `clipRRect`
@@ -1594,10 +1582,10 @@ hardware floating-point arithmetic. Even when floating-point hardware
 and eventually GPUs became standard, the `border-radius` CSS property
 didn't appear in browsers until around 2010.[^didnt-stop] More
 recently, the introduction of animations, visual effects, multi-process
-compositing, and [hardware overlays][hardware-overlays] have again
-rounded corners pretty complex. The `clipRRect` fast path, for example,
-can fail to apply for cases such as hardware video overlays and nested
-rounded corner clips.
+compositing, and [hardware overlays][hardware-overlays] have made
+rounded corners pretty complex to implement. The `clipRRect` fast path,
+for example, can fail to apply for cases such as hardware video overlays
+and nested rounded corner clips.
 :::
 
 [^didnt-stop]: The lack of support didn't stop web developers from
