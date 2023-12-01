@@ -1134,6 +1134,10 @@ dirty bit requiring rendering later.^[We also need to
 schedule an animation frame for the next frame of the animation, but
 `set_needs_render` already does that for us.]
 
+::: {.print-only}
+![The rendering cycle between the browser and main threads](multi-threaded-rendering-loop.jpg)
+:::
+
 However, it's not as simple as just setting `needs_render` any time an
 animation is active. Setting `needs_render` means re-running `style`,
 which would notice that the animation changed a property value and
