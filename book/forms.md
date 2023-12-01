@@ -750,6 +750,10 @@ message board state. The server then needs the browser to update what
 the user sees; with forms, the server sends a new HTML page in its
 response to the POST request.
 
+::: {.print-only}
+![The cycle of request and response for a multi-page application](im/forms-mpa.png)
+:::
+
 Forms are a simple, minimal introduction to this cycle of request and
 response and make a good introduction to how browser applications
 work. They're also implemented in every browser and have been around
@@ -928,6 +932,10 @@ This is all pretty bare-bones: our server doesn't check that the
 browser is using HTTP 1.0 to talk to it, it doesn't send back any
 headers at all except `Content-Length`, it doesn't support TLS, and so
 on. Again: this is a web *browser* book---it'll do.
+
+::: {.print-only}
+![The architecture of the simple web server in this chapter](im/forms-server.png)
+:::
 
 ::: {.further}
 Ilya Grigorik's [*High Performance Browser Networking*][hpbn] is an

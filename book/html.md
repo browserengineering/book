@@ -76,6 +76,10 @@ other nodes are unfinished: more children can be added to the
 `<html>`, `<section>`, and `<h1>` nodes, depending on what HTML comes
 next.
 
+::: {.print-only}
+![The finished and unfinished nodes while parsing some HTML](im/html-lr.png)
+:::
+
 Since the parser reads the HTML file from beginning to end, these
 unfinished tags are always in a certain part of the tree. The
 unfinished tags have always been *opened* but not yet closed; they are

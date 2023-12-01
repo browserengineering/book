@@ -547,6 +547,10 @@ sheet[^like-canonical] and the `href` attribute has the style sheet
 URL. We need to find all these links, download their style sheets, and
 apply them.
 
+::: {.print-only}
+![A browser loading related assets, like a stylesheet, for a web page](im/styles-http.png)
+:::
+
 Since we'll be doing similar tasks in the next few chapters, let's
 generalize a bit and write a recursive function that turns a tree into
 a list of nodes:
