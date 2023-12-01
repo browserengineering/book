@@ -500,6 +500,13 @@ You can see these steps in action in this widget:
 
 :::
 
+::: {.print-only}
+![A flowchart of layout](im/layout-order.png)
+^[A flowchart showing how widths are computed top-down,
+from parent to child, while heights are computed bottom-up,
+from child to parent.]
+:::
+
 This kind of dependency reasoning is crucial to layout and more
 broadly to any kind of computation on trees. If you get the order of
 operations wrong, some layout object will try to read a value that

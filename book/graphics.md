@@ -188,7 +188,9 @@ if __name__ == "__main__":
 
 You ought to see: a rectangle, starting near the top-left corner of
 the canvas and ending at its center; then a circle inside that
-rectangle; and then the text "Hi!" next to the circle.
+rectangle; and then the text "Hi!" next to the circle:
+
+![The expected example output with a rectangle, oval, and text](graphics-example.png)
 
 Coordinates in Tk refer to X positions from left to right and to Y
 positions from top to bottom. In other words, the bottom of the screen

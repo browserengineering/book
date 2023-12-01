@@ -16,7 +16,18 @@ A tree of nodes
 ===============
 
 The HTML tree[^dom] has one node\index{node} for each open and close tag pair
-and for each span of text.[^1] So for our browser to use a tree, tokens need to
+and for each span of text.[^1]
+
+[^1]: In reality there are other types of nodes too, like comments,
+    doctypes, and `CDATA` sections, and processing instructions. There
+    are even some deprecated types!
+
+::: {.print-only .center}
+![An annotated HTML document](im/html-syntax.png)
+^[An HTML document, showing tags, text, and the nesting structure.]
+:::
+
+For our browser to use a tree, tokens need to
 evolve into nodes. That means adding a list of children and a parent
 pointer to each one. Here's the new `Text` class, representing text at the leaf
 of the tree:
@@ -25,10 +36,6 @@ of the tree:
 DOM\index{DOM}\index{document} tree, for
 [Document Object Model](https://en.wikipedia.org/wiki/Document_Object_Model).
 I'll keep calling it the HTML tree for now.
-
-[^1]: In reality there are other types of nodes too, like comments,
-    doctypes, and `CDATA` sections, and processing instructions. There
-    are even some deprecated types!
 
 
 ``` {.python}
