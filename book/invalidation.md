@@ -2091,7 +2091,7 @@ layout and editing now substantially smoother.[^other-phases]
 
 However, in this screenshot I also traced paint, to show you why `render`
 overall is still about 230ms. (Making a browser fast requires optimizing
-everything! I won't implement it, but paint could be made a lot faster
+everything! I won't implement it, but paint can be made a lot faster
 too---see the exercises.)
 
 [^other-phases]:  It might also be pretty laggy on large pages due to the
