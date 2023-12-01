@@ -40,7 +40,7 @@ typing. Variations—like bold or italic letters—were called that type's
 [^2]: The word is related to *foundry*, which would create the little
     metal shapes.
     
-::: center
+::: {.center}
 ![A drawing of printing press workers](im/text-old.jpeg)
 ^[An 18^th^-century drawing
 by <a href="https://en.wikipedia.org/wiki/Daniel_Chodowiecki">Daniel
