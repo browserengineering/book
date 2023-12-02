@@ -194,7 +194,9 @@ You ought to see: a rectangle, starting near the top-left corner of
 the canvas and ending at its center; then a circle inside that
 rectangle; and then the text "Hi!" next to the circle:
 
+::: {.center}
 ![The expected example output with a rectangle, oval, and text](im/graphics-example.png)
+:::
 
 Coordinates in Tk refer to X positions from left to right and to Y
 positions from top to bottom. In other words, the bottom of the screen
@@ -573,7 +575,6 @@ it, and understand its result.
 
 [100ms]: https://www.nngroup.com/articles/response-times-3-important-limits/
 
-
 Summary
 =======
 
@@ -585,6 +586,21 @@ now:
 - Lays out the text and draws it to that window
 - Listens for keyboard commands
 - Scrolls the window in response
+
+::: {.web-only}
+
+And here is our browser rendering this very web page (it's fullly
+interactive---after clicking on it to focus you should be able to scroll with
+the down arrow):^[This is the full browser source code, cross-compiled to
+JavaScript and running in an iframe. Click "restart" to choose a new web page
+to render, then "start" to render it. Subsequent chapters will include one of
+these at the end of the chapter, so you can see how it improves.]
+
+::: {.widget height=400}
+    lab2-browser.html
+:::
+
+:::
 
 Next, we'll make this browser work on English text, with all its
 complexities of variable width characters, line layout, and

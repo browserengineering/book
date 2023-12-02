@@ -287,7 +287,9 @@ apply to.[^media-queries] The combination of the two is called a
     across many devices, like reading this book on a phone. We'll meet
     them in [Chapter 14](accessibility.md).
 
+::: {.center}
 ![An annotated CSS rule](im/styles-syntax.png)
+:::
 
 Let's add support for CSS to our browser. We'll need to parse
 CSS files into selectors and property/value pairs; figure out which
@@ -996,10 +998,9 @@ But of course our chapter also has the nice benefit of even better rendering
 of this book's homepage. Notice how the background is no longer gray, and the
 links have colors.
 
-<div class=center>
+::: {.center}
 ![Screenshot of the browser.engineering website with this chapter's browser](examples/example6-browserengineering-screenshot.png)
 <br>
-</div>
 
 ::: {.further}
 Usually a point is one 72^nd^ of an inch while pixel size depends on
@@ -1030,6 +1031,10 @@ files. That means we:
 
 Our styling engine is also relatively easy to extend with properties
 and selectors.
+
+::: {.web-only .widget height=400}
+    lab6-browser.html
+:::
 
 ::: {.signup}
 :::

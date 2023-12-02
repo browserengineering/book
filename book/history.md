@@ -17,12 +17,13 @@ other predecessors to HTML. (Except in this footnote!)
 The Memex concept
 =================
 
-<div class=center>
-![A photograph of the first few lines of As You May Think](im/memex.jpg)
-^[<a href="https://www.flickr.com/people/79255326@N00">Dunkoman</a>
+::: {.center}
+![The original publication of *As You May Think*[^memex]](im/memex.jpg)
+:::
+
+[^memex]: <a href="https://www.flickr.com/people/79255326@N00">Dunkoman</a>
     from <a href="https://commons.wikimedia.org/wiki/File:The_Memex_(3002477109).jpg">Wikipedia</a>,
-    <a href="https://creativecommons.org/licenses/by/2.0/legalcode" rel="license">CC BY 2.0</a>.]
-</div>
+    <a href="https://creativecommons.org/licenses/by/2.0/legalcode" rel="license">CC BY 2.0</a>.
 
 An influential early exploration of how computers might revolutionize
 information is a 1945 essay by Vannevar Bush entitled [As We May
@@ -98,10 +99,11 @@ Protocol.
 criticism in academic and literary communities. The Project Xanadu research
 papers were heavily motivated by this use case.
 
-<div class=center>
-![A computer operator using a hypertext editing system in 1969](im/hes.jpg)
-^[Hypertext Editing System <br/> (Gregory Lloyd from <a href="https://commons.wikimedia.org/wiki/File:HES_IBM_2250_Console_grlloyd_Oct1969.png">Wikipedia</a>, <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.en" rel="license">CC BY-SA 4.0 International</a>.)]
-</div>
+::: {.center}
+![A computer operator using a hypertext editing system in 1969[^hypertext-editing]](im/hes.jpg)
+:::
+
+[^hypertext-editing]: Gregory Lloyd from <a href="https://commons.wikimedia.org/wiki/File:HES_IBM_2250_Console_grlloyd_Oct1969.png">Wikipedia</a>, <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.en" rel="license">CC BY-SA 4.0 International</a>.
 
 Independently of Project Xanadu, the first hyperlink system appeared for
 scrolling within a single document; it was later generalized to linking between
@@ -110,9 +112,8 @@ within documents as well as between them. For example, the URL:
 
   http://browser.engineering/history.html#the-web-emerges
 
-refers to a
-document called "`history.html`" and specifically to the element in it
-with the name "`the-web-emerges`": this section. Visiting that URL
+refers to a document called "`history.html`" and specifically to the element
+in it with the name "`the-web-emerges`": this section. Visiting that URL
 will load this chapter and scroll to this section.
 
 This work also formed and inspired one of the key parts of Douglas Engelbart's
@@ -122,10 +123,12 @@ computing. That demo not only showcased the key concepts of the web, but also
 introduced the computer mouse and graphical user interface, both of which are of
 course central components of a browser UI.[^even-more]
 
-<div class=center>
-![A picture of Doug Engelbart presenting the mother of all demos](im/engelbart.jpg)
-^[The mother of all demos, 1968. SRI International, via the
-<a href="https://www.dougengelbart.org/content/view/374/464/">Doug Engelbart Institute</a>.]
+::: {.center}
+![Doug Engelbart presenting the mother of all demos[^engelbart]](im/engelbart.jpg)
+:::
+
+[^engelbart]: SRI International, via the
+<a href="https://www.dougengelbart.org/content/view/374/464/">Doug Engelbart Institute</a>.
 </div>
 
 [^even-more]: That demo went beyond even this. There are some parts of it that
@@ -176,10 +179,13 @@ even today.[^original-aesthetics] In 1991, Berners-Lee advertised his browser
 and the concept on the [alt.hypertext Usenet
 group](https://www.w3.org/People/Berners-Lee/1991/08/art-6484.txt).
 
-![A screenshot of the WorldWideWeb browser](im/worldwideweb.png)
-^[WorldWideWeb, the first web browser. <a
+::: {.center}
+![Screenshot of the WorldWideWeb browser[^worldwideweb]](im/worldwideweb.png)
+:::
+
+[^worldwideweb]: <a
 	href="https://dl.acm.org/doi/10.1145/179606.179671">Communications of the
-	ACM</a>, August 1994.]
+	ACM</a>, August 1994.
 
 [^no-css]: No CSS! No JS! Not even images!
 
@@ -247,21 +253,30 @@ Explorer in 1995 and soon bundled it with Windows 95.
 
 [internet-tidal-wave]: https://lettersofnote.com/2011/07/22/the-internet-tidal-wave/
 
-<div class=center>
-![A screenshot of the Mosaic browser](im/mosaic.png)
-^[Mosaic. <a href="https://commons.wikimedia.org/wiki/File:NCSA_Mosaic_Browser_Screenshot.png">Wikipedia</a>, <a href="https://creativecommons.org/publicdomain/zero/1.0/legalcode" rel="license">CC0 1.0</a>.]
+::: {.center}
+![Mosaic[^mosaic]](im/mosaic.png)
+:::
 
-![A screenshot of the ViolaWWW browser](im/violawww.png)
-^[ViolaWWW. <a href="https://web.archive.org/web/20200706084621/http://viola.org/viola/book/preface.html">Viola in a Nutshell</a>.]
+::: {.center}
+![ViolaWWW[^violawww]](im/violawww.png)
+:::
 
-![A screenshot of the Netscape browser](im/netscape.png)
-^[Netscape Navigator (<a href="https://en.wikipedia.org/wiki/File:Navigator_1-22.png#filehistory">Wikipedia</a>.]
+::: {.center}
+![Netscape Navigator 1.22[^netscape]](im/netscape.png)
+:::
 
-![A screenshot of the IE 1.0 browser](im/ie1.png)
-^[Microsoft Internet Explorer 1.0.
-<a href="https://en.wikipedia.org/wiki/File:Internet_Explorer_1.0.png">Wikipedia</a>,
-used <a href="https://www.microsoft.com/en-us/legal/copyright/permissions">with permission from Microsoft</a>.]
-</div>
+::: {.center}
+![Internet Explorer 1.0[^ie]](im/ie1.png)
+:::
+
+[^mosaic]: <a href="https://commons.wikimedia.org/wiki/File:NCSA_Mosaic_Browser_Screenshot.png">Wikipedia</a>, <a href="https://creativecommons.org/publicdomain/zero/1.0/legalcode" rel="license">CC0 1.0</a>
+
+[^violawww]: <a href="https://web.archive.org/web/20200706084621/http://viola.org/viola/book/preface.html">Viola in a Nutshell</a>
+
+[^netscape]: <a href="https://en.wikipedia.org/wiki/File:Navigator_1-22.png#filehistory">Wikipedia</a>
+
+[^ie]: <a href="https://en.wikipedia.org/wiki/File:Internet_Explorer_1.0.png">Wikipedia</a>,
+used <a href="https://www.microsoft.com/en-us/legal/copyright/permissions">with permission from Microsoft</a>
 
 The era of the ["first browser
 war"](https://en.wikipedia.org/wiki/Browser_wars#First_Browser_War_(1995%E2%80%932001))

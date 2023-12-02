@@ -653,7 +653,9 @@ have two rows:
 * Underneath, the URL of of the current web page, and a "`<`" button to
   represent the browser back-button.
 
+::: {.center}
 ![The intended appearance of the browser chrome](im/chrome-chrome.png)
+:::
 
 A lot of this design involves text, so let's start by picking a font:
 
@@ -1318,6 +1320,17 @@ It's been a lot of work just to handle links! We had to:
 
 Now just imagine all the features you can add to your browser!
 
+::: {.web-only}
+
+And here's the lab 7 browser. Try using the browser chrome---it works! Our
+browser is starting to look like a real one:
+
+::: {.widget height=400}
+    lab7-browser.html
+:::
+
+:::
+
 ::: {.signup}
 :::
 
@@ -1334,21 +1347,6 @@ should now look something like this:
 ::: {.print-only .cmd .python .outline}
     python3 infra/outlines.py src/lab7.py
 :::
-
-
-And if you run it, it should look like this:
-
-::: {.web-only}
-
-::: {.widget height=605}
-    lab7-browser.html
-:::
-
-:::
-
-<div class="print-only center">
-![The chapter 7 browser rendering chapter 7](examples/example7-chapter-7.png)
-</div>
 
 Exercises
 =========

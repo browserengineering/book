@@ -8,10 +8,10 @@ next: html
 In the last chapter, our browser created a graphical window and
 drew a grid of characters to it. That's OK for Chinese, but English
 text features characters of different widths grouped into words that
-you can't break across lines.[^1] In this chapter, we'll add those
+you can't break across lines.[^lotsoflang] In this chapter, we'll add those
 capabilities. You'll even be able to read this page!
 
-[^1]: There are lots of languages in the world, and lots of
+[^lotsoflang]: There are lots of languages in the world, and lots of
     typographic conventions. A real web browser supports every
     language from Arabic to Zulu, but this book focuses on English.
     Text is near-infinitely complex, but this book cannot be
@@ -31,52 +31,53 @@ to a sheet of paper, creating a printed page. The metal shapes came in
 boxes, one per letter, so you'd have a (large) box of e's, a (small)
 box of x's, and so on. The boxes came in cases (one for upper*case*
 and one for lower*case* letters). The set of cases was called a
-font.[^2] Naturally, if you wanted to print larger text, you needed
+font.[^fontname] Naturally, if you wanted to print larger text, you needed
 different (bigger) shapes, so those were a different font; a
 collection of fonts was called a *type*, which is why we call it
 typing. Variations—like bold or italic letters—were called that type's
 "faces".
 
-[^2]: The word is related to *foundry*, which would create the little
+[^fontname]: The word is related to *foundry*, which would create the little
     metal shapes.
     
 ::: {.center}
-![A drawing of printing press workers](im/text-old.jpeg)
-^[An 18^th^-century drawing
-by <a href="https://en.wikipedia.org/wiki/Daniel_Chodowiecki">Daniel
-Nikolaus Chodowiecki</a>
-of workers in a printing press,
-initially intended as part of a children's encyclopedia.
-<a href="https://commons.wikimedia.org/wiki/File:Chodowiecki_Basedow_Tafel_21_c.jpg">Wikipedia</a>,
-public domain]
-
-![Metal types in a composing stick.](im/text-metal.png)
-^[Metal types in letter cases and a composing stick.<br/>
-(Willi Heidelbach from
-<a href="https://en.wikipedia.org/wiki/File:Metal_movable_type.jpg">Wikipedia</a>,
-<a href="https://creativecommons.org/licenses/by/2.5/deed.en">CC BY 2.5</a>.)]
+![A drawing of printing press workers[^printingpress]](im/text-old.jpeg)
 :::
+
+[^printingpress]:By
+<a href="https://en.wikipedia.org/wiki/Daniel_Chodowiecki">Daniel
+Nikolaus Chodowiecki</a>.
+<a href="https://commons.wikimedia.org/wiki/File:Chodowiecki_Basedow_Tafel_21_c.jpg">Wikipedia</a>,
+public domain
+
+::: {.center}
+![Metal types in letter cases and a composing stick[^metaltype]](im/text-metal.png)
+:::
+
+[^metaltype]: Willi Heidelbach from
+<a href="https://en.wikipedia.org/wiki/File:Metal_movable_type.jpg">Wikipedia</a>,
+<a href="https://creativecommons.org/licenses/by/2.5/deed.en">CC BY 2.5</a>
 
 This nomenclature reflects the world of the printing press: metal
 shapes in boxes in cases from different foundries. Our modern world
 instead has dropdown menus, and the old words no longer match it.
-"Font" can now mean font, typeface, or type,[^3] and we say a font
-contains several different *weights* (like "bold" and "normal"),[^4]
+"Font" can now mean font, typeface, or type,[^family] and we say a font
+contains several different *weights* (like "bold" and "normal"),[^manyweight]
 several different *styles* (like "italic" and "roman", which is what
-not-italic is called),[^5] and arbitrary *sizes*.[^6] Welcome to the
+not-italic is called),[^options] and arbitrary *sizes*.[^sizes] Welcome to the
 world of magic ink.[^magic-ink]
 
-[^3]: Let alone "font family", which can refer to larger or smaller
+[^family]: Let alone "font family", which can refer to larger or smaller
     collections of types.
 
-[^4]: But sometimes other weights as well, like "light", "semibold",
+[^manyweight]: But sometimes other weights as well, like "light", "semibold",
     "black", and "condensed". Good fonts tend to come in many weights.
 
-[^5]: Sometimes there are other options as well, like maybe there's a
+[^options]: Sometimes there are other options as well, like maybe there's a
     small-caps version; these are sometimes called *options* as well.
     And don't get me started on automatic versus manual italics.
 
-[^6]: Font looks especially good at certain sizes where *hints* tell
+[^sizes]: Font looks especially good at certain sizes where *hints* tell
     the computer how to best to align it to the pixel grid.
     
 [^magic-ink]: This term comes from an [essay by Bret
@@ -133,16 +134,16 @@ Measuring text
 ==============
 
 Text takes up space vertically and horizontally, and the font object's
-`metrics` and `measure` methods measure that space:[^7]
+`metrics` and `measure` methods measure that space:[^spacing]
 
-``` {.python expected=False}
+``` {.example}
 >>> bi_times.metrics()
 {'ascent': 15, 'descent': 4, 'linespace': 19, 'fixed': 0}
 >>> bi_times.measure("Hi!")
 31
 ```
 
-[^7]: On your computer, you might get different numbers. That's
+[^spacing]: On your computer, you might get different numbers. That's
     right---text rendering is OS-dependent, because it is complex
     enough that everyone uses one of a few libraries to do it, usually
     libraries that ship with the OS. That's why macOS fonts tend to be
@@ -152,11 +153,11 @@ Text takes up space vertically and horizontally, and the font object's
 The `metrics` call yields information about the vertical dimensions of
 the text: the `linespace` is how tall the text is, which includes an
 `ascent` which goes "above the line" and a `descent` that goes "below
-the line".[^8] The `ascent` and `descent` matter when words in
+the line".[^fixed] The `ascent` and `descent` matter when words in
 different sizes sit on the same line: they ought to line up "along the
 line", not along their tops or bottoms.
 
-[^8]: The `fixed` parameter is actually a boolean and tells you whether
+[^fixed]: The `fixed` parameter is actually a boolean and tells you whether
     all letters are the same *width*, so it doesn't really fit here.
     
 ::: {.print-only .center}
@@ -190,7 +191,7 @@ varying heights:
     supposed to use pixels if you pass it a negative number, but that
     doesn't appear to work.
 
-``` {.python expected=False}
+``` {.example}
 >>> tkinter.font.Font(family="Courier", size=16).metrics()
 {'fixed': 1, 'ascent': 13, 'descent': 4, 'linespace': 17}
 >>> tkinter.font.Font(family="Times", size=16).metrics()
@@ -201,9 +202,9 @@ varying heights:
 
 The `measure()` method is more direct: it tells you how much
 *horizontal* space text takes up, in pixels. This depends on the text,
-of course, since different letters have different widths:[^9]
+of course, since different letters have different widths:[^widths]
 
-``` {.python expected=False}
+``` {.example}
 >>> bi_times.measure("Hi!")
 31
 >>> bi_times.measure("H")
@@ -216,7 +217,7 @@ of course, since different letters have different widths:[^9]
 31
 ```
 
-[^9]: It's a bit of a coincidence that in this example the sum of the
+[^widths]: It's a bit of a coincidence that in this example the sum of the
     individual letters' lengths is the length of the word. Tk uses
     fractional pixels internally, but rounds up to return whole pixels
     in the `measure` call. Plus, some fonts use something called
@@ -289,9 +290,9 @@ character-by-character and moved to the next line whenever we ran out
 of space. That's appropriate in Chinese, where each character more or
 less *is* a word. But in English you can't move to the next line in
 the middle of a word. Instead, we need to lay out the text one word at
-a time:[^10]
+a time:[^whitespace]
 
-[^10]: This code splits words on whitespace. It'll thus break on
+[^whitespace]: This code splits words on whitespace. It'll thus break on
     Chinese, since there won't be whitespace between words. Real
     browsers use language-dependent rules for laying out text,
     including for identifying word boundaries.
@@ -323,13 +324,13 @@ space after the last word on a line.
 
 Finally, note that I multiply the linespace by 1.25 when incrementing
 `y`. Try removing the multiplier: you'll see that the text is harder
-to read because the lines are too close together.[^11] Instead, it is
-common to add "line spacing" or "leading"[^12] between lines. The 25%
+to read because the lines are too close together.[^tight] Instead, it is
+common to add "line spacing" or "leading"[^leading] between lines. The 25%
 line spacing is a typical amount.
 
-[^11]: Designers say the text is too "tight".
+[^tight]: Designers say the text is too "tight".
 
-[^12]: So named because in metal type days, thin pieces of lead were
+[^leading]: So named because in metal type days, thin pieces of lead were
     placed between the lines to space them out. Lead is a softer metal
     than what the actual letter pieces were made of, so it could
     compress a little to keep pressure on the other pieces. Pronounce
@@ -362,9 +363,9 @@ as input, and so has no idea where the bold and italics tags are.
 Let's change `lex` to return a list of *tokens*, where a token is
 either a `Text` object (for a run of characters outside a tag) or a
 `Tag` object (for the contents of a tag). You'll need to write the
-`Text` and `Tag` classes:[^13]
+`Text` and `Tag` classes:[^dataclass]
     
-[^13]: If you're familiar with Python, you might want to use the
+[^dataclass]: If you're familiar with Python, you might want to use the
     `dataclass` library, which makes it easier to define these sorts
     of utility classes.
 
@@ -378,9 +379,9 @@ class Tag:
         self.tag = tag
 ```
 
-`lex` must now gather text into `Text` and `Tag` objects:[^14]
+`lex` must now gather text into `Text` and `Tag` objects:[^exercises]
 
-[^14]: If you've done exercises in prior chapters, your code will look
+[^exercises]: If you've done exercises in prior chapters, your code will look
     different. Code snippets in the book always assume you haven't
     done the exercises, so you'll need to port your modifications.
 
@@ -412,9 +413,9 @@ reminds us that, at the end of the loop, we need to check whether
 there's buffered text and what we should do with it. Here, `lex` dumps
 any accumulated text as a `Text` object. Otherwise, if you never saw
 an angle bracket, you'd return an empty list of tokens. But unfinished
-tags, like in `Hi!<hr`, are thrown out.[^15]
+tags, like in `Hi!<hr`, are thrown out.[^errortag]
 
-[^15]: This may strike you as an odd decision: why not raise an error,
+[^errortag]: This may strike you as an odd decision: why not raise an error,
     or finish up the tag for the author? I don't know, but dropping
     the tag is what browsers do.
 
@@ -724,9 +725,9 @@ Here's what it looks like, step by step:
 
 :::
 
-<div class="print-only center">
+::: {.print-only .center}
 ![Aligning the words on a line](examples/example3-words-align.png)
-</div>
+:::
 
 Since we want words to line up "on the line", let's start by computing
 where that line should be. That depends on the tallest word on the
@@ -815,10 +816,9 @@ paragraphs.
 By this point you should be able to load up your browser and display
 [this page](examples/example3-sizes.html). It should look about like this:
 
-<div class=center>
-![Screenshot of a web page demonstrating different text sizes](examples/example3-sizes-screenshot.png)
-<br>
-</div>
+::: {.center}
+![Screenshot of a web page demonstrating different text sizes](examples/example3-sizes-screenshot.png)<br>
+:::
 
 ::: {.further}
 Actually, browsers support not only *horizontal* but also [*vertical*
@@ -931,6 +931,10 @@ grid. Now it does standard English text layout:
 
 You can now use our browser to read an essay, a blog post, or even a
 book!
+
+::: {.web-only .widget height=400}
+    lab3-browser.html
+:::
 
 ::: {.signup}
 :::

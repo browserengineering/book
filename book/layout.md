@@ -766,10 +766,10 @@ the browser. But before we get to that, we need to add some styling
 capabilities to our browser. However, even with layout the `browser.engineering`
 homepage looks a bit better:
 
-<div class=center>
+::: {.center}
 ![Screenshot of the browser.engineering website with this chapter's browser](examples/example5-browserengineering-screenshot.png)
 <br>
-</div>
+:::
 
 ::: {.further}
 The draft CSS [Painting API][mdn-houdini] allows pages to extend the
@@ -794,6 +794,10 @@ This chapter was a dramatic rewrite of our browser's layout engine:
 Tree-based layout makes it possible to dramatically expand our
 browser's styling capabilities. We'll work on that in the [next
 chapter](styles.md).
+
+::: {.web-only .widget height=400}
+    lab5-browser.html
+:::
 
 ::: {.signup}
 :::
