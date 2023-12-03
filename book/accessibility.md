@@ -419,16 +419,16 @@ good old [Lorem ipsum][lorem-ipsum]!]
 
 [lorem-ipsum]: https://en.wikipedia.org/wiki/Lorem_ipsum
 
-<div class="center">
+::: {.center}
 ![Example of line breaking before zoom](examples/example14-line-breaking-unzoomed.png)<br>
-</div>
+:::
 
 And here it is with 2x zoom. Note how not only are the words twice
 as big, but the lines wrap at different words, just as desired:
 
-<div class="center">
+::: {.center}
 ![Example of line breaking after zoom](examples/example14-line-breaking-zoomed.png)<br>
-</div>
+:::
 
 ::: {.further}
 On high-resolution screens, CSS pixels are scaled by both zoom and a
@@ -620,9 +620,9 @@ class Browser:
 Now if you open the browser and switch to dark mode, you should see
 white text on a black background, like this:
 
-<div class="center">
+::: {.center}
 ![Example of dark mode rendering of text](examples/example14-dark-mode.png)<br>
-</div>
+:::
 
 ::: {.further}
 
@@ -783,9 +783,9 @@ lighter foreground. It should look like this in dark mode:
 
 :::
 
-<div class="center">
+::: {.center}
 ![Example of dark mode with forms](examples/example14-dark-mode-forms.png)<br>
-</div>
+:::
 
 ::: {.further}
 
@@ -1339,9 +1339,9 @@ Focus outlines now basically work, and will even scroll on-screen if you try
 it on the [focus example](examples/example14-focus.html). Here's what it looks
 like after I pressed tab to focus the "this is a link" element:
 
-<div class="center">
-![Example of focuse outline](examples/example14-focus-outline.png)<br>
-</div>
+::: {.center}
+![Example of focus outline](examples/example14-focus-outline.png)
+:::
 
 But ideally, the focus indicator should be customizable, so that the web page
 author can make sure the focused element stands out. In CSS, that's done with
@@ -1526,9 +1526,9 @@ class LineLayout:
 For the [focus example](examples/example14-focus.html), the focus outline
 of an `<a>` element becomes red:
 
-<div class="center">
-![Example of a customized red focuse outline](examples/example14-focus-outline-custom.png)<br>
-</div>
+::: {.center}
+![Example of a customized red focuse outline](examples/example14-focus-outline-custom.png)
+:::
 
 As with dark mode, focus outlines are a case where adding an
 accessibility feature meant generalizing existing browser features to
@@ -1587,13 +1587,13 @@ screen reader to re-read it.
 You can see an example[^imagine] of screen reader navigation in this
 talk, specifically the segment from 2:36--3:54:[^whole-talk]
 
-<div class="web-only center">
+::: {.web-only .center}
 <iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/qi0tY60Hd6M?start=159" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-</div>
+:::
 
-<div class="print-only center">
+::: {.print-only .center}
 ![https://www.youtube.com/watch?v=qi0tY60Hd6M&t=159s](examples/example14-a11y-video-still.png)
-</div>
+:::
 
 [^whole-talk]: The whole talk is recommended; it has great examples of
     using accessibility technology.
@@ -1729,7 +1729,7 @@ class AccessibilityNode:
 Here is the accessibility tree for the
 [focus example](examples/example14-focus.html):
 
-``` {.text}
+``` {.text .example}
  role=document
    role=button
      role=focusable text
@@ -1997,7 +1997,7 @@ This text construction logic is, of course, pretty naive, but it's
 enough to demonstrate the idea. Here is how it works out for the
 [focus example](examples/example14-focus.html):
 
-``` {.text}
+``` {.text .example}
  role=document text=Document
    role=button text=Button
      role=focusable text text=Focusable text: This is a button
