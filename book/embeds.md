@@ -1680,7 +1680,7 @@ window.Node = function(handle) { this.handle = handle; }
 Do the same for every function or variable in the `runtime.js` file.
 If you miss one, you'll get errors like this:
 
-::: {.text .example}
+::: {.example}
     dukpy.JSRuntimeError: ReferenceError: identifier 'Node'
         undefined
     	duk_js_var.c:1258
