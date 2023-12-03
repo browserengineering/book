@@ -1776,7 +1776,6 @@ Click [here](widgets/lab11-browser.html) to try this chapter's browser.
 
 :::
 
-
 Outline
 =======
 
