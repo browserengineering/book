@@ -1361,7 +1361,9 @@ class Browser:
     def new_tab(self, url):
         # ...
         self.schedule_load(url)
+```
 
+``` {.python}
 class Chrome:
     def enter(self):
         if self.focus == "address bar":
