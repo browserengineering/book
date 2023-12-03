@@ -2096,7 +2096,8 @@ the rendering pipeline from JavaScript.
 
 ::: {.web-only}
 
-Click [here](widgets/lab12-browser.html) to try this chapter's browser.
+Click [here](widgets/lab12-browser.html) to try this chapter's
+browser.
 
 :::
 

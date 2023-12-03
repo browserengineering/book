@@ -525,7 +525,8 @@ class Chrome:
                 self.address_rect.bottom(),
                 "red", 1))
         else:
-            url = str(self.browser.url if self.browser.url else "")
+            url = str(self.browser.active_tab_url) if \
+                self.browser.active_tab_url else ""
             cmds.append(DrawText(
                 self.address_rect.left() + self.padding,
                 self.address_rect.top(),
@@ -733,92 +734,9 @@ class Browser:
             tab.task_runner.set_needs_quit()
         sdl2.SDL_DestroyWindow(self.sdl_window)
 
-@wbetools.patch(Chrome)
-class Chrome:
-    def paint(self):
-        cmds = []
-        cmds.append(DrawLine(
-            0, self.bottom, WIDTH,
-            self.bottom, "black", 1))
 
-        cmds.append(DrawOutline(self.newtab_rect, "black", 1))
-        cmds.append(DrawText(
-            self.newtab_rect.left() + self.padding,
-            self.newtab_rect.top(),
-            "+", self.font, "black"))
 
-        for i, tab in enumerate(self.browser.tabs):
-            bounds = self.tab_rect(i)
-            cmds.append(DrawLine(
-                bounds.left(), 0, bounds.left(), bounds.bottom(),
-                "black", 1))
-            cmds.append(DrawLine(
-                bounds.right(), 0, bounds.right(), bounds.bottom(),
-                "black", 1))
-            cmds.append(DrawText(
-                bounds.left() + self.padding, bounds.top() + self.padding,
-                "Tab {}".format(i), self.font, "black"))
 
-            if tab == self.browser.active_tab:
-                cmds.append(DrawLine(
-                    0, bounds.bottom(), bounds.left(), bounds.bottom(),
-                    "black", 1))
-                cmds.append(DrawLine(
-                    bounds.right(), bounds.bottom(), WIDTH, bounds.bottom(),
-                    "black", 1))
-
-        cmds.append(DrawOutline(self.back_rect, "black", 1))
-        cmds.append(DrawText(
-            self.back_rect.left() + self.padding,
-            self.back_rect.top(),
-            "<", self.font, "black"))
-
-        cmds.append(DrawOutline(self.address_rect, "black", 1))
-        if self.focus == "address bar":
-            cmds.append(DrawText(
-                self.address_rect.left() + self.padding,
-                self.address_rect.top(),
-                self.address_bar, self.font, "black"))
-            w = self.font.measureText(self.address_bar)
-            cmds.append(DrawLine(
-                self.address_rect.left() + self.padding + w,
-                self.address_rect.top(),
-                self.address_rect.left() + self.padding + w,
-                self.address_rect.bottom(),
-                "red", 1))
-        else:
-            url = str(self.browser.active_tab_url if \
-                self.browser.active_tab_url else "")
-            cmds.append(DrawText(
-                self.address_rect.left() + self.padding,
-                self.address_rect.top(),
-                url, self.font, "black"))
-
-        return cmds
-
-    def click(self, x, y):
-        if self.newtab_rect.contains(x, y):
-            self.browser.new_tab_internal(URL("https://browser.engineering/"))
-        elif self.back_rect.contains(x, y):
-            task = Task(self.browser.active_tab.go_back)
-            self.browser.active_tab.task_runner.schedule_task(task)
-        elif self.address_rect.contains(x, y):
-            self.focus = "address bar"
-            self.address_bar = ""
-        else:
-            for i, tab in enumerate(self.browser.tabs):
-                if self.tab_rect(i).contains(x, y):
-                    self.browser.set_active_tab(tab)
-                    active_tab = self.browser.active_tab
-                    task = Task(active_tab.set_needs_render)
-                    active_tab.task_runner.schedule_task(task)
-                    break
-
-    def enter(self):
-        if self.focus == "address bar":
-            self.browser.schedule_load(URL(self.address_bar))
-            self.focus = None
-            self.browser.focus = None
 
 def mainloop(browser):
     event = sdl2.SDL_Event()
