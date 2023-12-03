@@ -662,7 +662,8 @@ In cross-site request forgery, instead of using `XMLHttpRequest,` the
 attacker uses a form that submits to the guest book:
 
 ``` {.example}
-<form action="my-server.com/add" method=post>
+<form action="http://localhost:8000gs
+/add" method=post>
   <p><input name=guest></p>
   <p><button>Sign the book!</button></p>
 </form>
