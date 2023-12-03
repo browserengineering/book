@@ -817,7 +817,7 @@ By this point you should be able to load up your browser and display
 [this page](examples/example3-sizes.html). It should look about like this:
 
 ::: {.center}
-![Screenshot of a web page demonstrating different text sizes](examples/example3-sizes-screenshot.png)<br>
+![Screenshot of a web page demonstrating different text sizes](examples/example3-sizes-screenshot.png)
 :::
 
 ::: {.further}

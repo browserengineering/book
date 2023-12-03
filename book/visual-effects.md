@@ -641,7 +641,7 @@ though):
 :::
 
 <div class=center>
-![Example of a long word with rounded background](examples/example11-rounded-background.png)<br>
+![Example of a long word with rounded background](examples/example11-rounded-background.png)
 </div>
 
 Similar changes should be made to `InputLayout`. New shapes, like

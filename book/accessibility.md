@@ -420,14 +420,14 @@ good old [Lorem ipsum][lorem-ipsum]!]
 [lorem-ipsum]: https://en.wikipedia.org/wiki/Lorem_ipsum
 
 ::: {.center}
-![Example of line breaking before zoom](examples/example14-line-breaking-unzoomed.png)<br>
+![Example of line breaking before zoom](examples/example14-line-breaking-unzoomed.png)
 :::
 
 And here it is with 2x zoom. Note how not only are the words twice
 as big, but the lines wrap at different words, just as desired:
 
 ::: {.center}
-![Example of line breaking after zoom](examples/example14-line-breaking-zoomed.png)<br>
+![Example of line breaking after zoom](examples/example14-line-breaking-zoomed.png)
 :::
 
 ::: {.further}
@@ -621,7 +621,7 @@ Now if you open the browser and switch to dark mode, you should see
 white text on a black background, like this:
 
 ::: {.center}
-![Example of dark mode rendering of text](examples/example14-dark-mode.png)<br>
+![Example of dark mode rendering of text](examples/example14-dark-mode.png)
 :::
 
 ::: {.further}
@@ -784,7 +784,7 @@ lighter foreground. It should look like this in dark mode:
 :::
 
 ::: {.center}
-![Example of dark mode with forms](examples/example14-dark-mode-forms.png)<br>
+![Example of dark mode with forms](examples/example14-dark-mode-forms.png)
 :::
 
 ::: {.further}
