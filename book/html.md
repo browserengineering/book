@@ -797,10 +797,10 @@ loaded in our own browser:^[To be fair, it actually looks about the same with
 the Chapter 3 browser, but significantly better than with
 [the Chapter 2 browser](examples/example2-browserengineering-screenshot.png).]
 
-<div class=center>
+::: {.center}
 ![Screenshot of the browser.engineering website with this chapter's browser](examples/example4-browserengineering-screenshot.png)
 <br>
-</div>
+:::
 
 ::: {.further}
 Thanks to implicit tags, you can mostly skip the `<html>`, `<body>`,
@@ -829,6 +829,10 @@ list of tokens. We added:
 
 The tree structure of HTML is essential to display visually complex
 web pages, as we will see in the [next chapter](layout.md).
+
+::: {.web-only .widget height=400}
+    lab4-browser.html
+:::
 
 ::: {.signup}
 :::

@@ -317,7 +317,8 @@ class BlockLayout:
 
     def should_paint(self):
         return isinstance(self.node, Text) or \
-            (self.node.tag not in {"input", "button", "img", "iframe"})
+            (self.node.tag not in \
+                {"input", "button", "img", "iframe"})
 
     def paint(self):
         cmds = []

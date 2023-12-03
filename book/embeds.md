@@ -37,8 +37,11 @@ wait for the introduction of Skia.
 
 And which renders something like this:
 
-![A computer operator using a hypertext editing system in 1969](im/hes.jpg)
-^[Hypertext Editing System <br/> (Gregory Lloyd from <a href="https://commons.wikimedia.org/wiki/File:HypertextEditingSystemConsoleBrownUniv1969.jpg">Wikipedia</a>, <a href="https://creativecommons.org/licenses/by/2.0/legalcode" rel="license">CC BY 2.0</a>).]
+::: {.center}
+![A computer operator using a hypertext editing system in 1969[^hes]](im/hes.jpg)
+:::
+
+[^hes]: Gregory Lloyd from <a href="https://commons.wikimedia.org/wiki/File:HypertextEditingSystemConsoleBrownUniv1969.jpg">Wikipedia</a>, <a href="https://creativecommons.org/licenses/by/2.0/legalcode" rel="license">CC BY 2.0</a>.
 
 Luckily, implementing images isn't too hard, so let's just get
 started. There are four steps to displaying images in our browser:
@@ -527,7 +530,8 @@ class BlockLayout:
 
     def should_paint(self):
         return isinstance(self.node, Text) or \
-            (self.node.tag not in {"input", "button", "img"})
+            (self.node.tag not in \
+                {"input", "button", "img"})
 ```
 
 
@@ -679,16 +683,22 @@ It should look like this:
 
 :::
 
+::: {.center}
 ![Rendering of an example with images](examples/example15-img.png)
+:::
 
 When it's scrolled down a bit you should see this (notice the different aspect
 ratios):
 
+::: {.center}
 ![Rendering of an example with images after scrolling to aspect-ratio differences](examples/example15-img-scroll1.png)
+:::
 
 And scrolled to the end will show this, including the "broken image" icon:
 
+::: {.center}
 ![Rendering of an example with images after scrolling to a broken image icon](examples/example15-img-scroll2.png)
+:::
 
 ::: {.further}
 Our browser computes an aspect ratio from the loaded image dimensions,
@@ -1034,7 +1044,8 @@ class BlockLayout:
 
     def should_paint(self):
         return isinstance(self.node, Text) or \
-            (self.node.tag not in {"input", "button", "img", "iframe"})
+            (self.node.tag not in \
+                {"input", "button", "img", "iframe"})
 
 ```
 
@@ -1305,12 +1316,16 @@ works without any more changes!
 You should now be able to load [this
 example](examples/example15-iframe.html). It should look like this:
 
+::: {.center}
 ![Rendering of an iframe](examples/example15-iframe.png)
+:::
 
 Repeatedly clicking on the link will add another recursive iframe. After
 clicking twice it should look like this:
 
-![Rendering of an iframe](examples/example15-iframe.png)
+::: {.center}
+![Rendering of an iframe](examples/example15-iframe-clicked.png)
+:::
 
 Let's get the other interactions working as well, starting with
 focusing an element. You can focus on *only one element per tab*, so we
@@ -1652,7 +1667,6 @@ write `window` everywhere!
 
 [shadowrealm]: https://github.com/tc39/proposal-shadowrealm
 
-
 ``` {.js}
 window.console = { log: function(x) { call_python("log", x); } }
 
@@ -1666,9 +1680,12 @@ window.Node = function(handle) { this.handle = handle; }
 Do the same for every function or variable in the `runtime.js` file.
 If you miss one, you'll get errors like this:
 
-    _dukpy.JSRuntimeError: ReferenceError: identifier 'Node' undefined
+::: {.example}
+    dukpy.JSRuntimeError: ReferenceError: identifier 'Node'
+        undefined
     	duk_js_var.c:1258
     	eval src/pyduktape.c:1 preventsyield
+:::
 
 If you see this error, this means you need to go find where you need
 to write `window.Node` instead of `Node`. You'll also need to modify `EVENT_DISPATCH_JS` to prefix
@@ -2225,7 +2242,7 @@ reader](scripts.html#outline) to open a new browser window.
 [js-blog]: https://browserbook.substack.com/p/javascript-in-javascript
 
 Summary
-=======
+=======p
 
 This chapter introduced how the browser handles embedded content use cases like
 images and iframes. Reiterating the main points:
@@ -2249,6 +2266,8 @@ images and iframes. Reiterating the main points:
 And as we hope you saw in this chapter, none of these features are too
 difficult to implement, though---as you'll see in the exercises
 below---implementing them well requires a lot of attention to detail
+
+(Note: there is not yet an embeddable browser widget for this chapter.)
 
 Outline
 =======

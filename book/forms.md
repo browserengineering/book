@@ -36,7 +36,9 @@ form might be written like this:
 
 And look like this:
 
+::: {.center}
 ![The example form in our browser](im/forms-screenshot.png)
+:::
 
 This form contains two text entry boxes called `name` and `comment`.
 When the user goes to this page, they can click on those boxes to edit
@@ -1092,6 +1094,19 @@ application platform. We've added:
 
 Plus, our browser now has a little web server friend. That's going to
 be handy as we add more interactive features to the browser.
+
+::: {.web-only}
+
+Since this chapter introduces a server, I've also added support for that
+in the browser widget below, by cross-compiling this chapter's server
+code to JavaScript. Try submitting a comment through the form,
+it should work!
+
+::: {.widget height=400}
+    lab8-browser.html
+:::
+
+:::
 
 ::: {.signup}
 :::

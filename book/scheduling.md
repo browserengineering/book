@@ -1169,11 +1169,9 @@ You should see something like this:
 
 :::
 
-
-<div class=center>
-![Screenshot of Chrome Tracing for the timer script in single-threaded mode](examples/example12-trace-count-single-threaded.png)
-<br>
-</div>
+::: {.center}
+![Tracing for the timer script in single-threaded mode](examples/example12-trace-count-single-threaded.png)
+:::
 
 In Chrome tracing, you can choose the cursor icon from the toolbar and
 drag a selection around a set of trace events. That will show counts
@@ -1182,10 +1180,9 @@ of the screen. On my computer, my browser spent about 23ms in `render`
 and about 62ms in `raster_and_draw` on average, as you can see in the zoomed-in
 view below. That clearly blows through our 33ms budget. So, what can we do?
 
-<div class=center>
-![Screenshot of Chrome Tracing for render and raster of one frame of the timer script](examples/example12-trace-count-render-raster.png)
-<br>
-</div>
+::: {.center}
+![Tracing for render and raster of one frame of the timer script](examples/example12-trace-count-render-raster.png)
+:::
 
 ::: {.further}
 
@@ -1364,7 +1361,9 @@ class Browser:
     def new_tab(self, url):
         # ...
         self.schedule_load(url)
+```
 
+``` {.python}
 class Chrome:
     def enter(self):
         if self.focus == "address bar":
@@ -1680,10 +1679,9 @@ into one of the tracing tools, you should see something like this:
 
 :::
 
-<div class=center>
-![Screenshot of Chrome Tracing for the timer script in two-threads mode](examples/example12-trace-count-two-threads.png)
-<br>
-</div>
+::: {.center}
+![Tracing for the timer script in two-threads mode](examples/example12-trace-count-two-threads.png)
+:::
 
 You can see how the render and raster tasks now happen on different
 threads, and how our multi-threaded architecture allows them to happen
@@ -1712,7 +1710,7 @@ much. But it's still possible for really slow JavaScript to slow the
 browser down. For example, imagine our counter adds the following
 artificial slowdown:
 
-``` {.javascript file=eventloop}
+``` {.javascript file=eventloop .example}
 function callback() {
     for (var i = 0; i < 5e6; i++);
     // ...
@@ -1919,10 +1917,9 @@ time as main-thread work):
 
 :::
 
-<div class=center>
+::: {.center}
 ![Trace output of threaded scrolling on the counting demo](examples/example12-count-with-scroll.png)
-<br>
-</div>
+:::
 
 As you've seen, moving tasks to the
 browser thread can be challenging, but can also lead to a much more
@@ -2098,6 +2095,13 @@ Additionally, you've seen how hard it is to move tasks between the two
 threads, such as the challenges involved in scrolling on the browser
 thread, or how forced style and layout makes it hard to fully isolate
 the rendering pipeline from JavaScript.
+
+::: {.web-only}
+
+Click [here](widgets/lab12-browser.html) to try this chapter's
+browser.
+
+:::
 
 Outline
 =======

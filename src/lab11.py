@@ -20,9 +20,9 @@ from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import DrawText, tree_to_list
 from lab7 import DrawLine, DrawOutline, DrawRect
-from lab8 import Text, Element, BlockLayout, InputLayout, INPUT_WIDTH_PX
+from lab8 import Text, Element, BlockLayout, InputLayout
 from lab8 import Browser, LineLayout, TextLayout, DocumentLayout, Chrome
-from lab8 import DEFAULT_STYLE_SHEET
+from lab8 import DEFAULT_STYLE_SHEET, INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL, JSContext, Tab
 import wbetools
