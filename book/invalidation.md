@@ -47,13 +47,13 @@ You'll find that it is *much* too slow---1.7 seconds just in `render`!
 
 :::
 
-<div class="center">
-![Example of typing without any invalidation optimizations](examples/example16-input-no-optimizations.png)<br>
-</div>
+::: {.center}
+![Example of typing without any invalidation optimizations](examples/example16-input-no-optimizations.png)
+:::
 
 Typing into `input` elements could be special-cased,[^no-resize] but
 there are other text editing APIs that can't be. For example, the
-`contenteditable` attribute makes any element editable:[^amazing-ce]
+`contenteditable` attribute makes any element editable.[^amazing-ce]
 
 [^no-resize]: The `input` element doesn't change size as you type, and
     the text in the `input` element doesn't get its own layout object,
@@ -66,7 +66,7 @@ there are other text editing APIs that can't be. For example, the
     it on. The source code is [here](/feedback.js); see the
     `typo_mode` function for the `contenteditable` attribute.
 
-::: {.demo contenteditable=true}
+::: {.web-only .demo contenteditable=true}
 Click on this <i>formatted</i> <b>text</b> to edit it, including rich text!
 :::
 
@@ -850,7 +850,7 @@ the `children` field. Since a child's `zoom` field depends on its
 parents' `zoom` field, we need to mark all the children when the
 `zoom` field changes. So in `DocumentLayout`, we have to do:
 
-``` {.python .example}
+``` {.python expected=False}
 class DocumentLayout:
     def layout(self, width, zoom):
         # ...
@@ -861,7 +861,7 @@ class DocumentLayout:
 
 Similarly, in `BlockLayout`, which has multiple children, we must do:
 
-``` {.python .example}
+``` {.python expected=False}
 class BlockLayout:
     def layout(self):
         # ...
@@ -886,7 +886,7 @@ class ProtectedField:
 For example, we can add the child's `zoom` field to its parent's
 `zoom` field's `invalidations`:
 
-``` {.python .example}
+``` {.python expected=False}
 class BlockLayout:
     def __init__(self, node, parent, previous, frame):
         # ...
@@ -1794,6 +1794,7 @@ class DocumentLayout:
 If you look at your output again, you should now see two phases.
 First, there's a lot of `style` re-computation:
     
+::: {.example}
     Change ProtectedField(<body>, style)
     Change ProtectedField(<header>, style)
     Change ProtectedField(<h1 class="title">, style)
@@ -1802,9 +1803,11 @@ First, there's a lot of `style` re-computation:
     Change ProtectedField('Twitter', style)
     Change ProtectedField(' ·\n', style)
     ...
+:::
 
 Then, we recompute four layout fields repeatedly:
 
+::: {.example}
     Change ProtectedField(<html lang="en-US" xml:lang="en-US">, zoom)
     Change ProtectedField(<html lang="en-US" xml:lang="en-US">, zoom)
     Change ProtectedField(<head>, zoom)
@@ -1815,6 +1818,7 @@ Then, we recompute four layout fields repeatedly:
     Change ProtectedField(<header>, zoom)
     Change ProtectedField(<header>, y)
     ...
+:::
 
 Let's fix these. First, let's tackle `style`. The reason `style` is
 being recomputed repeatedly is just that we recompute it even if
@@ -1863,9 +1867,11 @@ value, any downstream computations don't actually need to change. This
 small tweak should reduce the number of field changes down to the
 minimum:
 
+::: {.example}
     Change ProtectedField(<html lang="en-US" xml:lang="en-US">, zoom)
     Change ProtectedField(<div class="demo" ...>, children)
     Change ProtectedField(<div class="demo" ...>, height)
+:::
 
 All that's happening here is recreating the `contenteditable`
 element's `children` (which we have to do, to incorporate the new
@@ -1887,9 +1893,9 @@ Editing should also now feel snappier---about
 
 :::
 
-<div class="center">
-![Snappier rendering due to reusing the layout tree](examples/example16-input-reuse-layout-tree.png)<br>
-</div>
+::: {.center}
+![Snappier rendering due to reusing the layout tree](examples/example16-input-reuse-layout-tree.png)
+:::
 
 ::: {.further}
 
@@ -2089,9 +2095,9 @@ layout and editing now substantially smoother.[^other-phases]
 
 :::
 
-<div class="center">
-![Example after skipping layout traversal](examples/example16-input-skip-traverse.png)<br>
-</div>
+::: {.center}
+![Example after skipping layout traversal](examples/example16-input-skip-traverse.png)
+:::
 
 However, in this screenshot I also traced paint, to show you why `render`
 overall is still about 230ms. (Making a browser fast requires optimizing
@@ -2722,6 +2728,8 @@ through optimized cache invalidation. The main takeaways are:
 
 - Invalidation can be used to skip allocation, computation, and
   even traversals of objects
+
+(Note: there is not yet an embeddable browser widget for this chapter.)
 
 Outline
 =======

@@ -2612,6 +2612,8 @@ the most common accessibility problems in browsers. The key takeaways are:
 - New features like dark mode, keyboard navigation, and outlines need
   to be customizable by web page authors to be maximally usable
 
+(Note: there is not yet an embeddable browser widget for this chapter.)
+
 Outline
 =======
 
