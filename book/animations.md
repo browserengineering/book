@@ -1793,6 +1793,10 @@ white background behind them:
 </center>
 :::
 
+::: {.print-only .center}
+![Example of overlap that can lead to compositing draw errors](examples/example13-overlap.png)
+:::
+
 Now suppose we want to animate opacity on the blue square, but not the
 green square. So the blue square goes in its own composited
 layer---but what about the green square? It has the same ancestor
@@ -1867,10 +1871,12 @@ mostly a historical artifact.)
 
 [transform-def]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform
 
+::: {.example}
     <div style="background-color:lightblue;
                 transform:translate(50px, 50px)">Underneath</div>
     <div style="background-color:lightgreen;
                 transform:translate(0px, 0px)">On top</div>
+:::
 
 Supporting these transforms is simple. First let's parse the property
 values:[^space-separated]
@@ -2202,6 +2208,13 @@ remember are:
 
 - Overlap testing can cause additional GPU memory use and needs to be
   implemented with care
+
+::: {.web-only}
+
+Click [here](widgets/lab13-browser.html) to try this chapter's
+browser.
+
+:::
 
 Outline
 =======
