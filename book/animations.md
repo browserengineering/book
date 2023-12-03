@@ -218,14 +218,9 @@ and draw a given page can be quite complex.
 
 [gpu]: https://en.wikipedia.org/wiki/Graphics_processing_unit
 
-::: {.installation}
-
 First, we'll need to install the OpenGL library:
 
     pip3 install PyOpenGL
-
-
-:::
 
 and import it:
 
