@@ -47,7 +47,7 @@ method requests that some JavaScript code run on the next frame; to
 run repeatedly over many frames, we can just have that JavaScript code
 call `requestAnimationFrame` itself:
 
-``` {.javascript file=example-opacity-js replace=animate/fade_out,animation_frame/fade_out}
+``` {.javascript file=example-opacity-js replace=animate/fade_out,animation_frame/fade_out .example}
 function run_animation_frame() {
     if (animate())
         requestAnimationFrame(run_animation_frame);
@@ -76,13 +76,13 @@ visual difference from 1.0 is imperceptible.
 
 So let's take this `div` containing some text:
 
-``` {.html file=example-opacity-html}
+``` {.html file=example-opacity-html .example}
 <div>This text fades</div>
 ```
 
 And write an `animate` function to incrementally change its `opacity`:
 
-``` {.javascript file=example-opacity-js replace=animate/fade_in}
+``` {.javascript file=example-opacity-js replace=animate/fade_in .example}
 var div = document.querySelectorAll("div")[0];
 var total_frames = 120;
 var current_frame = 0;
@@ -218,9 +218,14 @@ and draw a given page can be quite complex.
 
 [gpu]: https://en.wikipedia.org/wiki/Graphics_processing_unit
 
+::: {.installation}
+
 First, we'll need to install the OpenGL library:
 
     pip3 install PyOpenGL
+
+
+:::
 
 and import it:
 
@@ -269,7 +274,9 @@ browser is using; this will help you verify that it's actually using
 your GPU. I'm using a Chromebook to write this chapter, so for me it
 says:[^virgl]
 
+::: {.example}
     OpenGL initialized: vendor=b'Red Hat', renderer=b'virgl'
+:::
 
 [^virgl]: The `virgl` renderer stands for "virtual GL", a way of
 hardware-accelerating the Linux subsystem of ChromeOS that works with
@@ -355,7 +362,9 @@ all that's necessary for our browser to raster and draw on the GPU. And as
 expected, speed is much improved. I found that raster and draw improved to
 `7ms` on average:
 
-![Raster and draw times from a trace using GPU raster](examples/example13-trace-count-gpu-raster.png)<br>
+::: {.center}
+![Raster and draw times from a trace using GPU raster](examples/example13-trace-count-gpu-raster.png)
+:::
 
 That's about ten times faster, and enough to hit 30 frames per second. (And on
 your computer, you'll likely see even more speedup than I did, so for you it
@@ -454,17 +463,21 @@ class Tab:
 For our opacity example, the (key part of) the display list one one frame
 might look like this:
 
+::: {.example}
     Blend(alpha=0.112375)
       DrawText(text=This)
       DrawText(text=text)
       DrawText(text=fades)
+:::
 
 On the next frame, it instead might like this:
 
+::: {.example}
     Blend(alpha=0.119866666667)
       DrawText(text=This)
       DrawText(text=text)
       DrawText(text=fades)
+:::
 
 In each case, rastering this display list means first rastering the three words
 to a Skia surface created by `Blend`, and then copying that to the root
@@ -475,23 +488,29 @@ The idea is to first raster the three words to a separate surface (but this time
 owned by us, not Skia), which we'll call a *composited layer*, that is saved
 for future use:
 
+::: {.example}
     Composited Layer:
       DrawText(text=This)
       DrawText(text=text)
       DrawText(text=fades)
+:::
 
 Now instead of rastering those three words, we can just copy over the
 composited layer with a `DrawCompositedLayer` command:
 
+::: {.example}
     Blend(alpha=0.112375)
       DrawCompositedLayer()
+:::
 
 Importantly, on the next frame, the `Blend` changes but the
 `DrawText`s don't, so on that frame all we need to do is rerun the
 `Blend`:
 
+::: {.example}
     Blend(alpha=0.119866666667)
       DrawCompositedLayer()
+:::
 
 In other words, the idea behind compositing is to split the display
 list into two pieces: a set of composited layers, which are rastered
@@ -924,7 +943,7 @@ how to say opacity changes to a `div` should animate for two seconds:
 
 [css-transitions]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Transitions/Using_CSS_transitions
 
-``` {.css}
+``` {.css .example}
 div { transition: opacity 2s; }
 ```
 
@@ -1245,9 +1264,9 @@ spends a bit more than a millisecond in each `composite_raster_and_draw` call:
 
 :::
 
-<center>
-![Example trace of an opacity transition optimized by compositing](examples/example13-trace-opacity-transition.png)<br>
-</center>
+::: {.center}
+![Example trace of an opacity transition optimized by compositing](examples/example13-trace-opacity-transition.png)
+:::
 
 ::: {.web-only}
 
@@ -1266,9 +1285,9 @@ example.]
 
 :::
 
-<center>
-![Example trace of an opacity transition optimized by compositing](examples/example13-trace-opacity-transition-no-compositing.png)<br>
-</center>
+::: {.center}
+![Example trace of an opacity transition optimized by compositing](examples/example13-trace-opacity-transition-no-compositing.png)
+:::
 
 ::: {.further}
 
@@ -1717,7 +1736,9 @@ Here is how the opacity transition example's composited layers should look
 
 :::
 
-![Example of composited layers for an opacity transition](examples/example13-opacity-layers.png)<br>
+::: {.center}
+![Example of composited layers for an opacity transition](examples/example13-opacity-layers.png)
+:::
 
 [flag]: https://docs.python.org/3/library/argparse.html
 
@@ -1765,8 +1786,12 @@ that *overlap* each other. Let me explain why with an example.
 Consider a light blue square overlapped by a light green one, with a
 white background behind them:
 
+::: {.web-only}
+<center>
 <div style="width:200px;height:200px;background-color:lightblue;transform:translate(50px,50px)"></div>
 <div style="width:200px;height:200px;background-color:lightgreen; transform:translate(0px,0px)"></div>
+</center>
+:::
 
 Now suppose we want to animate opacity on the blue square, but not the
 green square. So the blue square goes in its own composited
@@ -2052,7 +2077,9 @@ www/examples/example13-transform-overlap.html
 
 Which should look like this:
 
-![Example of transformed overlap, clipping and blending](examples/example13-transform-overlap.png)<br>
+::: {.center}
+![Example of transformed overlap, clipping and blending](examples/example13-transform-overlap.png)
+:::
 
 Notice how this example exhibits *two* interesting features we had
 to get right when implementing compositing:
@@ -2060,12 +2087,16 @@ to get right when implementing compositing:
 * Overlap testing (without it, the elements would paint in the wrong order);
 if this code were missing it would incorrectly render like this:
 
-![Wrong rendering because overlap testing is missing](examples/example13-transform-overlap-wrong1.png)<br>
+::: {.center}
+![Wrong rendering because overlap testing is missing](examples/example13-transform-overlap-wrong1.png)
+:::
 
 * Reusing cloned effects (without it, blending and clipping would be wrong);
 if this code were missing it would incorrectly render like this:
 
-![Wrong rendering because of incorrect blending](examples/example13-transform-overlap-wrong2.png)<br>
+::: {.center}
+![Wrong rendering because of incorrect blending](examples/example13-transform-overlap-wrong2.png)
+:::
 
 There's one more situation worth thinking about, though. Suppose we have a huge composited layer, containing a lot of text, except that only a small
 part of that layer is shown on the screen, the rest being clipped out. Then the `absolute_bounds`
