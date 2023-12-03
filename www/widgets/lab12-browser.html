@@ -38,7 +38,7 @@ Promise.all([ckLoaded, loadFont]).then(([CanvasKit, robotoData]) => {
         if (interval)
           clearInterval(interval)
         constants.WIDTH = window.innerWidth;
-        let url = "https://localhost:8000/";
+        let url = "http://browser.engineering/";
         let b = await (new Browser()).init();
         init_window(b);
         await b.new_tab(await (new URL().init(url)));
