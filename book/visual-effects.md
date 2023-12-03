@@ -36,14 +36,11 @@ and rasterization at a lower level.
 Tkinter uses, dates from the early 90s, before high-performance
 graphics cards and GPUs became widespread.
 
+::: {.installation}
 Start by installing [Skia][skia-python] and [SDL][sdl-python]:
 
     python3 -m pip install skia-python pysdl2 pysdl2-dll
 
-[skia-python]: https://kyamagu.github.io/skia-python/
-[sdl-python]: https://pypi.org/project/PySDL2/
-
-::: {.installation}
 As elsewhere in this book, you may need to install the `pip` package
 first, or use your IDE's package installer. If you're on Linux, you'll
 need to install additional dependencies, like OpenGL and fontconfig.
@@ -52,6 +49,9 @@ to find SDL in your system package manager instead. Consult the
 [`skia-python`][skia-python] and [`pysdl2`][sdl-python] web pages for
 more details.
 :::
+
+[skia-python]: https://kyamagu.github.io/skia-python/
+[sdl-python]: https://pypi.org/project/PySDL2/
 
 Once installed, remove the `tkinter` imports from browser and replace
 them with these:
@@ -215,7 +215,7 @@ each pixel of this surface should be represented as *r*ed, *g*reen,
 *b*lue, and *a*lpha values, each of which should take up 8 bits. In
 other words, pixels are basically defined like so:
 
-``` {.python file=examples}
+``` {.python file=examples .example}
 class Pixel:
     def __init__(self, r, g, b, a):
         self.r = r
@@ -224,9 +224,9 @@ class Pixel:
         self.a = a
 ```
 
-This `Pixel` definition is an illustrative example, not actual code in
-our browser. It's standing in for somewhat more complex code within
-SDL and Skia themselves.[^skia-color]
+This `Pixel` definition is an illustrative example, not actual code in our
+browser (that's also why it has a gray border around it). It's standing in for
+somewhat more complex code within SDL and Skia themselves.[^skia-color]
 
 [^skia-color]: Skia actually represents colors
 as 32-bit integers, with the most significant byte representing
@@ -1181,7 +1181,7 @@ conceptual `Pixel` class I introducd earlier.
 When we apply a `Paint` with an `Alphaf` parameter, the first thing
 Skia does is add the requested opacity to each pixel:
 
-``` {.python file=examples}
+``` {.python file=examples .example}
 class Pixel:
     def alphaf(self, opacity):
         self.a = self.a * opacity
@@ -1211,7 +1211,7 @@ generally does not use premultiplied representations, and the code below
 doesn't either. (Skia does represent colors internally in a premultiplied form,
 however.)
 
-``` {.python file=examples}
+``` {.python file=examples .example}
 class Pixel:
     def source_over(self, source):
         new_a = source.a + self.a * (1 - source.a)
@@ -1244,7 +1244,7 @@ manipulate them like this is slow. So libraries such as Skia don't
 make it convenient to do so. (Skia canvases do have `peekPixels` and
 `readPixels` methods that are sometimes used, but not for this.)
 
-``` {.python file=examples}
+``` {.python file=examples .example}
 for (x, y) in destination.coordinates():
     source[x, y].alphaf(opacity)
     destination[x, y].source_over(source[x, y])
@@ -1257,7 +1257,7 @@ produce interesting effects are traditionally called "multiply" and
 "difference" and use simple mathematical operations. "Multiply"
 multiplies the color values:
 
-``` {.python file=examples}
+``` {.python file=examples .example}
 class Pixel:
     def multiply(self, source):
         self.r = self.r * source.r
@@ -1267,7 +1267,7 @@ class Pixel:
 
 And "difference" computes their absolute differences:
 
-``` {.python file=examples}
+``` {.python file=examples .example}
 class Pixel:
     def difference(self, source):
         self.r = abs(self.r - source.r)
@@ -1326,7 +1326,7 @@ green, blue) color channels of `(0, 0, 1)`, and orange has `(1, .65,
 0.65, 1)`, which is pink. On a pixel level, what's happening is
 something like this:
 
-``` {.python file=examples}
+``` {.python file=examples .example}
 for (x, y) in destination.coordinates():
     source[x, y].alphaf(opacity)
     source[x, y].difference(destination[x, y])
@@ -1518,7 +1518,7 @@ fits perfectly. In code, destination-in looks like this:
 
 [dst-in]: https://drafts.fxtf.org/compositing-1/#porterduffcompositingoperators_dstin
 
-``` {.python file=examples}
+``` {.python file=examples .example}
 class Pixel:
     def destination_in(self, source):
         self.a = self.a * source.a
@@ -1754,8 +1754,6 @@ few lines of Python.
 [rtr-book]: https://www.realtimerendering.com/
 [classic]: https://en.wikipedia.org/wiki/Computer_Graphics:_Principles_and_Practice
 
-
-
 Summary
 =======
 
@@ -1772,6 +1770,12 @@ Besides the new features, we've upgraded from Tkinter to SDL and Skia,
 which makes our browser faster and more responsive, and also sets a
 foundation for more work on browser performance to come.
 
+::: {.web-only}
+
+Click [here](widgets/lab11-browser.html) to try this chapter's browser.
+
+:::
+
 
 Outline
 =======
@@ -1787,10 +1791,8 @@ should now look something like this:
     python3 infra/outlines.py src/lab11.py
 :::
 
-
-If you run it, it should look something like [this
-page](widgets/lab11-browser.html); due to the browser sandbox, you
-will need to open that page in a new tab.
+::: {.signup}
+:::
 
 Exercises
 =========

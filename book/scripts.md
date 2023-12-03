@@ -1154,6 +1154,18 @@ A web page can now add functionality via a clever script, instead of waiting for
 a browser developer to add it into the browser itself. And as a side-benefit,
 a web page can now earn the lofty title of "web application".
 
+::: {.web-only}
+
+Starting with this chapter, I won't be able to inline the chapter's browser into
+an iframe, due to security restrictions related to the way I'm communicating
+with scripts within the web page. But you can still load it in a new browser
+tab by clicking [here](widgets/lab9-browser.html).
+
+:::
+
+::: {.signup}
+:::
+
 Outline
 =======
 
@@ -1174,10 +1186,6 @@ The server's outline is unchanged from the last chapter:
 ::: {.cmd .python .outline html=True}
     python3 infra/outlines.py --html src/server9.py
 :::
-
-If you run it, it should look something like [this
-page](widgets/lab9-browser.html); due to the browser sandbox, you will
-need to open that page in a new tab.
 
 Exercises
 =========
