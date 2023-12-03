@@ -2,7 +2,7 @@
 
 export {
     breakpoint, filesystem, ctypes, math,
-    socket, ssl, tkinter, dukpy, urllib, html, random, wbetools,
+    socket, ssl, sys, tkinter, dukpy, urllib, html, random, wbetools,
     truthy, comparator, pysplit, pyrsplit, asyncfilter,
     rt_constants, Widget, http_textarea, skia, sdl2, init_skia,
     init_window, threading, time, OpenGL, patch_class
@@ -162,6 +162,9 @@ class ssl {
             return s;
         }
     })
+}
+
+class sys {
 }
 
 class tkinter { 
@@ -565,6 +568,10 @@ function patch_canvas(canvas) {
 }
 
 class skia {
+    static Color = function(red, green, blue, alpha) {
+        return CanvasKit.Color(red, green, blue, alpha);
+    };
+
     static Surface = wrap_class(class {
         constructor(width, height, is_root=false) {
             if (is_root) {
