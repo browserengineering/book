@@ -126,7 +126,7 @@ def compare_files(book, code, language, file):
                 print(f"{block.loc}:", error)
                 failure += 1
             continue
-        if "example" in block.classes: continue
+        if "example" in block.classes and not block.file: continue
         if language and language not in block.classes: continue
         if block.file != file: continue
         cng = find_block(block, src)
