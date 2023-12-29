@@ -38,7 +38,7 @@ you're familiar with the core technologies.
 [websurfing]: https://www.pcmag.com/encyclopedia/term/web-surfing
 
 [^bbs]: For me, [BBS](https://en.wikipedia.org/wiki/Bulletin_board_system)
-systems over a dial-up modem connection. A BBS, like a browser is a
+systems over a dial-up modem connection. A BBS, like a browser, is a
 window into dynamic content somewhere else on the internet.
 
 In my freshman year at college, I attended a presentation by a RedHat salesman.

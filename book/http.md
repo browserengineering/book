@@ -113,7 +113,7 @@ now talk to `example.org`.
 The URL syntax is defined in [RFC
 3987](https://tools.ietf.org/html/rfc3986), whose first author is Tim
 Berners-Lee---no surprise there! The second author is Roy Fielding, a
-key contributor to the design HTTP and also well-known for describing
+key contributor to the design of HTTP and also well-known for describing
 the "REST" architecture of the web in his [PhD thesis][rest-thesis],
 which explains how REST allowed the web to grow in a decentralized
 way. Today, many services provide "RESTful APIs" that also follow these

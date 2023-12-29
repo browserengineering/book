@@ -2242,7 +2242,7 @@ reader](scripts.html#outline) to open a new browser window.
 [js-blog]: https://browserbook.substack.com/p/javascript-in-javascript
 
 Summary
-=======p
+=======
 
 This chapter introduced how the browser handles embedded content use cases like
 images and iframes. Reiterating the main points:
