@@ -812,7 +812,7 @@ Chromium, for example, [only recently][renderingng] finished 100% of the work
 to leverage this model, though of course work (always) remains to be done.
 :::
 
-[renderingng]: https://developer.chrome.com/blog/renderingng/
+[renderingng]: https://developer.chrome.com/docs/chromium/renderingng
 
 Animating frames
 ================
