@@ -4,6 +4,7 @@
  {"code": "MeasureTime()", "js": "new MeasureTime()"},
  {"code": "print", "js": "console.log"},
  {"code": "elt not in self.node_to_handle", "type": "map"},
+ {"code": "self.node_to_handle = {}", "js": "    this.node_to_handle = new Map();"},
  {"code": "self.node_to_handle.get(elt, -1)", "js": "this.node_to_handle.get(elt) ?? -1"},
  {"code": "self.node_to_handle[elt]", "js": "this.node_to_handle.get(elt)"},
  {"code": "len(self.node_to_handle)", "js": "this.node_to_handle.size"},
