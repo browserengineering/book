@@ -17,8 +17,8 @@ const loadFont = fetch(
 
 Promise.all([ckLoaded, loadFont]).then(([CanvasKit, robotoData]) => {
     let font_manager = CanvasKit.FontMgr.FromData([robotoData]);
-    let typeface = font_manager.MakeTypefaceFromData(
-            robotoData);
+    let typeface = font_manager.matchFamilyStyle(
+      font_manager.getFamilyName(0), {})
 
   Promise.all([import("./rt.js"), import("./lab8.js"), import("./lab12.js"),
     import("./server10.js")]).then(

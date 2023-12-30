@@ -25,3 +25,4 @@ videos/
 src/*.full.py
 latex/*
 browser.trace
+package.json

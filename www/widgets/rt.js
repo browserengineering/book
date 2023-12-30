@@ -809,7 +809,8 @@ function init_skia(canvasKit, robotoData) {
     skia.Font = wrap_class(class {
         constructor(ignored_typeface, size) {
             this.font = new CanvasKit.Font(
-                fontManager.MakeTypefaceFromData(robotoData));
+                fontManager.matchFamilyStyle(
+                    fontManager.getFamilyName(0), {}));
             this.font.setSize(size / 1.333);
         }
 
@@ -825,7 +826,13 @@ function init_skia(canvasKit, robotoData) {
         }
 
         measureText(t) {
-            return this.font.measureText(t);
+            let glyphIds = this.font.getGlyphIDs(t);
+            let glyphWidths = this.font.getGlyphWidths(glyphIds);
+            let sum = 0;
+            for (let i = 0; i < glyphWidths.length; i++) {
+                sum += glyphWidths[i];
+            }
+            return sum;
         }
     });
 
