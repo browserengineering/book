@@ -584,11 +584,11 @@ class skia {
             } else {
                 this.surface = CanvasKit.MakeSurface(width, height);
             }
+            this.canvas = this.surface.getCanvas();
+            patch_canvas(this.canvas);
         }
 
         getCanvas() {
-            this.canvas = this.surface.getCanvas();
-            patch_canvas(this.canvas);
             return this.canvas;
         }
 
