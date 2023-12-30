@@ -529,6 +529,9 @@ class Chrome:
             self.browser.new_tab(URL("https://browser.engineering/"))
         elif self.back_rect.contains(x, y):
             self.browser.active_tab.go_back()
+            self.browser.raster_chrome()
+            self.browser.raster_tab()
+            self.browser.draw()
         elif self.address_rect.contains(x, y):
             self.focus = "address bar"
             self.address_bar = ""
