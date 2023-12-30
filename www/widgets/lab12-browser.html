@@ -44,7 +44,10 @@ Promise.all([ckLoaded, loadFont]).then(([CanvasKit, robotoData]) => {
         await b.new_tab(await (new URL().init(url)));
         await b.render();
         interval = setInterval(async function() {
-          await b.render();
+          if (b.needs_animation_frame) {
+            await b.render();
+            b.needs_animation_frame = false;
+          }
           await b.raster_and_draw();
           await b.schedule_animation_frame();
         }, 20);
