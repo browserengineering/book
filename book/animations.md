@@ -1400,7 +1400,7 @@ animated.]
 class Tab:
     def run_animation_frame(self, scroll):
         # ...
-        needs_composite = self.needs_render or self.needs_layout
+        needs_composite = self.needs_style or self.needs_layout
 
         self.render()
 
@@ -1408,13 +1408,12 @@ class Tab:
         if not needs_composite:
             composited_updates = {}
             for node in self.composited_updates:
-                composited_updates[node] = \
-                    (node, node.blend_op))
-        self.composited_updates.clear()
+                composited_updates[node] = node.blend_op
+        self.composited_updates = []
 
         commit_data = CommitData(
             # ...
-            composited_updates=composited_updates,
+            composited_updates,
         )
 ```
 

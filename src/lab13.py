@@ -1067,7 +1067,8 @@ class Tab:
         document_height = math.ceil(self.document.height + 2*VSTEP)
         commit_data = CommitData(
             self.url, scroll, document_height,
-            self.display_list, composited_updates,
+            self.display_list,
+            composited_updates,
         )
         self.display_list = None
         self.scroll_changed_in_tab = False
