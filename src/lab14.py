@@ -953,8 +953,9 @@ class Tab:
         if self.scroll_changed_in_tab:
             scroll = self.scroll
 
-        composited_updates = {}
+        composited_updates = None
         if not needs_composite:
+            composited_updates = {}
             for node in self.composited_updates:
                 composited_updates[node] = node.blend_op
         self.composited_updates.clear()
@@ -1312,7 +1313,7 @@ class Browser:
             if self.accessibility_tree:
                 self.set_needs_accessibility()
             self.tab_focus = data.focus
-            if not self.composited_updates:
+            if self.composited_updates == None:
                 self.composited_updates = {}
                 self.set_needs_composite()
             else:

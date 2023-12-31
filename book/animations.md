@@ -1389,9 +1389,14 @@ class CommitData:
         self.composited_updates = composited_updates
 ```
 
-And finally, commit the new information:
+And finally, commit the new information.^[Note the distinction between `None`
+and `{}` for `composited_updates`. `None` means that the compositing step is
+needed, whereas `{}` means that it is not---the dictionary just happens to be
+empty, because there aren't any composited animations running. A good example
+of the latter is changes to scroll, which don't affect compositing, yet are not
+animated.]
 
-``` {.python expected=False}
+``` {.python}
 class Tab:
     def run_animation_frame(self, scroll):
         # ...
@@ -1399,8 +1404,9 @@ class Tab:
 
         self.render()
 
-        composited_updates = {}
+        composited_updates = None
         if not needs_composite:
+            composited_updates = {}
             for node in self.composited_updates:
                 composited_updates[node] = \
                     (node, node.blend_op))
@@ -1473,7 +1479,7 @@ class Browser:
         if tab == self.active_tab:
             # ...
             self.composited_updates = data.composited_updates
-            if not self.composited_updates:
+            if self.composited_updates == None:
                 self.composited_updates = {}
                 self.set_needs_composite()
             else:

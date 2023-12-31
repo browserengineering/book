@@ -1057,8 +1057,9 @@ class Tab:
         scroll = None
         if self.scroll_changed_in_tab:
             scroll = self.scroll
-        composited_updates = {}
+        composited_updates = None
         if not needs_composite:
+            composited_updates = {}
             for node in self.composited_updates:
                 composited_updates[node] = node.blend_op
         self.composited_updates = []
@@ -1255,7 +1256,7 @@ class Browser:
                 self.active_tab_display_list = data.display_list
             self.animation_timer = None
             self.composited_updates = data.composited_updates
-            if not self.composited_updates:
+            if self.composited_updates == None:
                 self.composited_updates = {}
                 self.set_needs_composite()
             else:
