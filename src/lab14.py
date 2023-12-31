@@ -1504,7 +1504,7 @@ class Browser:
 
     def cycle_tabs(self):
         self.lock.acquire(blocking=True)
-        active_ids = self.tabs.index(self.active_tab)
+        active_idx = self.tabs.index(self.active_tab)
         new_active_idx = (active_idx + 1) % len(self.tabs)
         self.set_active_tab(self.tabs[new_active_idx])
         self.lock.release()
