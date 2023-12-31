@@ -199,6 +199,7 @@ LIBRARY_METHODS = [
     "setStrokeWidth",
     "clipRect",
     "clipRRect",
+    "drawImageRect",
     "drawPath",
     "drawString",
     "drawRect",

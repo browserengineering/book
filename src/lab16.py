@@ -92,9 +92,10 @@ def paint_outline(node, cmds, rect, zoom):
 def font(css_style, zoom, notify):
     weight = css_style['font-weight'].read(notify)
     style = css_style['font-style'].read(notify)
+    size = None
     try:
         size = float(css_style['font-size'].read(notify)[:-2])
-    except ValueError:
+    except:
         size = 16
     font_size = dpx(size, zoom)
     return get_font(font_size, weight, style)

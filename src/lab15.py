@@ -189,9 +189,10 @@ class DocumentLayout:
 def font(style, zoom):
     weight = style["font-weight"]
     variant = style["font-style"]
+    size = None
     try:
         size = float(style["font-size"][:-2])
-    except ValueError:
+    except:
         size = 16
     font_size = dpx(size, zoom)
     return get_font(font_size, weight, variant)
@@ -244,7 +245,7 @@ class BlockLayout:
                 if child.tag in BLOCK_ELEMENTS:
                     return "block"
             return "inline"
-        elif self.node.tag in {"input", "img", "iframe"}:
+        elif self.node.tag in ["input", "img", "iframe"]:
             return "inline"
         else:
             return "block"
@@ -318,7 +319,7 @@ class BlockLayout:
     def should_paint(self):
         return isinstance(self.node, Text) or \
             (self.node.tag not in \
-                {"input", "button", "img", "iframe"})
+                ["input", "button", "img", "iframe"])
 
     def paint(self):
         cmds = []
@@ -536,7 +537,7 @@ class TextLayout:
     def paint_effects(self, cmds):
         return cmds
 
-    def rect(self):
+    def self_rect(self):
         return skia.Rect.MakeLTRB(
             self.x, self.y, self.x + self.width,
             self.y + self.height)
@@ -1463,8 +1464,8 @@ class Frame:
                 abs_bounds = \
                     absolute_bounds_for_obj(elt.layout_object)
                 border = dpx(1, elt.layout_object.zoom)
-                new_x = x - abs_bounds.x() - border
-                new_y = y - abs_bounds.y() - border
+                new_x = x - abs_bounds.left() - border
+                new_y = y - abs_bounds.top() - border
                 elt.frame.click(new_x, new_y)
                 return
             elif is_focusable(elt):
@@ -1603,7 +1604,7 @@ class Tab:
             composited_updates = {}
             for node in self.composited_updates:
                 composited_updates[node] = node.blend_op
-        self.composited_updates.clear()
+        self.composited_updates = []
 
         root_frame_focused = not self.focused_frame or \
                 self.focused_frame == self.root_frame
