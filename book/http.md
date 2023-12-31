@@ -790,7 +790,7 @@ itself what you need to replace.)
 
 Encrypted HTTP connections usually use port 443 instead of port 80:
 
-``` {.python}
+``` {.python expected=False}
 class URL:
     def __init__(self, url):
         # ...
