@@ -28,6 +28,8 @@ class URL:
                 self.host, port = self.host.split(":", 1)
                 self.port = int(port)
         except:
+            print("Malformed URL found, falling back to the WBE home page.")
+            print("  URL was: " + url)
             self.__init__("https://browser.engineering")
 
     def request(self):
