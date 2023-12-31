@@ -105,6 +105,7 @@ RENAME_METHODS = {
     "startswith": "startsWith",
     "endswith": "endsWith",
     "find": "indexOf",
+    "index": "indexOf",
     "copy": "slice",
 }
 
