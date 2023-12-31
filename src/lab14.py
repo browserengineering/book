@@ -1313,7 +1313,7 @@ class Browser:
             if self.accessibility_tree:
                 self.set_needs_accessibility()
             self.tab_focus = data.focus
-            if not self.composited_updates:
+            if self.composited_updates == None:
                 self.composited_updates = {}
                 self.set_needs_composite()
             else:

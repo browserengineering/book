@@ -1808,7 +1808,7 @@ class Browser:
             self.accessibility_tree = data.accessibility_tree
             if self.accessibility_tree:
                 self.set_needs_accessibility()
-            if not self.composited_updates:
+            if self.composited_updates == None:
                 self.composited_updates = {}
                 self.set_needs_composite()
             else:
