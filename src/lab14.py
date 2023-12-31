@@ -593,7 +593,7 @@ class AccessibilityNode:
 
     def contains_point(self, x, y):
         for bound in self.bounds:
-            if bound.intersects(x, y):
+            if bound.contains(x, y):
                 return True
         return False
 

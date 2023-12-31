@@ -873,7 +873,7 @@ class Browser:
 
     def cycle_tabs(self):
         self.lock.acquire(blocking=True)
-        active_ids = self.tabs.index(self.active_tab)
+        active_idx = self.tabs.index(self.active_tab)
         new_active_idx = (active_idx + 1) % len(self.tabs)
         self.set_active_tab(self.tabs[new_active_idx])
         self.lock.release()
@@ -2486,7 +2486,7 @@ of course that it's searching a different tree:
 
 ``` {.python}
 class AccessibilityNode:
-    def intersects(self, x, y):
+    def contains_point(self, x, y):
         for bound in self.bounds:
             if bound.contains(x, y):
                 return True
@@ -2494,7 +2494,7 @@ class AccessibilityNode:
 
     def hit_test(self, x, y):
         node = None
-        if self.intersects(x, y):
+        if self.contains_point(x, y):
             node = self
         for child in self.children:
             res = child.hit_test(x, y)
