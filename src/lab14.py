@@ -592,15 +592,15 @@ class AccessibilityNode:
             for grandchild_node in child_node.children:
                 self.build_internal(grandchild_node)
 
-    def intersects(self, x, y):
+    def contains_point(self, x, y):
         for bound in self.bounds:
-            if bound.contains(x, y):
+            if bound.intersects(x, y):
                 return True
         return False
 
     def hit_test(self, x, y):
         node = None
-        if self.intersects(x, y):
+        if self.contains_point(x, y):
             node = self
         for child in self.children:
             res = child.hit_test(x, y)

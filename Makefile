@@ -30,7 +30,8 @@ widgets: \
 	www/widgets/lab10-browser.html www/widgets/lab10.js www/widgets/server10.js \
 	www/widgets/lab11-browser.html www/widgets/lab11.js \
 	www/widgets/lab12-browser.html www/widgets/lab12.js \
-	www/widgets/lab13-browser.html www/widgets/lab13.js
+	www/widgets/lab13-browser.html www/widgets/lab13.js \
+	www/widgets/lab14-browser.html www/widgets/lab14.js
 
 src/lab%.full.py: src/lab%.py infra/inline.py infra/asttools.py
 	python3 infra/inline.py $< > $@
