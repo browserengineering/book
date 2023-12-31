@@ -1598,8 +1598,9 @@ class Tab:
         if self.root_frame.scroll_changed_in_frame:
             scroll = self.root_frame.scroll
 
-        composited_updates = {}
+        composited_updates = None
         if not needs_composite:
+            composited_updates = {}
             for node in self.composited_updates:
                 composited_updates[node] = node.blend_op
         self.composited_updates.clear()
