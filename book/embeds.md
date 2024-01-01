@@ -2268,7 +2268,12 @@ And as we hope you saw in this chapter, none of these features are too
 difficult to implement, though---as you'll see in the exercises
 below---implementing them well requires a lot of attention to detail
 
-(Note: there is not yet an embeddable browser widget for this chapter.)
+::: {.web-only}
+
+Click [here](widgets/lab15-browser.html) to try this chapter's
+browser.
+
+:::
 
 Outline
 =======
