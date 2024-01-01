@@ -34,9 +34,9 @@ from lab6 import tree_to_list
 from lab8 import INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL
-from lab11 import FONTS, get_font, parse_blend_mode, linespace, paint_tree
-from lab11 import parse_color, NAMED_COLORS
-from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
+from lab11 import FONTS, NAMED_COLORS, get_font, linespace, paint_tree
+from lab11 import parse_color, parse_blend_mode
+from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner, Chrome
 from lab12 import Task, REFRESH_RATE_SEC
 from lab13 import JSContext, diff_styles, add_parent_pointers
 from lab13 import local_to_absolute, absolute_bounds_for_obj
@@ -45,8 +45,7 @@ from lab13 import map_translation, parse_transform
 from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import PaintCommand, DrawText, DrawCompositedLayer, DrawOutline, \
     DrawLine, DrawRRect
-from lab13 import VisualEffect, Blend, Transform, Chrome, \
-    Tab, Browser
+from lab13 import VisualEffect, Blend, Transform, Tab, Browser
 
 @wbetools.patch(Element)
 class Element:
@@ -592,7 +591,7 @@ class AccessibilityNode:
             for grandchild_node in child_node.children:
                 self.build_internal(grandchild_node)
 
-    def intersects(self, x, y):
+    def contains_point(self, x, y):
         for bound in self.bounds:
             if bound.contains(x, y):
                 return True
@@ -600,7 +599,7 @@ class AccessibilityNode:
 
     def hit_test(self, x, y):
         node = None
-        if self.intersects(x, y):
+        if self.contains_point(x, y):
             node = self
         for child in self.children:
             res = child.hit_test(x, y)
@@ -958,7 +957,7 @@ class Tab:
             composited_updates = {}
             for node in self.composited_updates:
                 composited_updates[node] = node.blend_op
-        self.composited_updates.clear()
+        self.composited_updates = []
         document_height = math.ceil(self.document.height + 2*VSTEP)
         commit_data = CommitData(
             self.url, scroll, document_height, self.display_list,
@@ -1504,7 +1503,7 @@ class Browser:
 
     def cycle_tabs(self):
         self.lock.acquire(blocking=True)
-        active_ids = self.tabs.index(self.active_tab)
+        active_idx = self.tabs.index(self.active_tab)
         new_active_idx = (active_idx + 1) % len(self.tabs)
         self.set_active_tab(self.tabs[new_active_idx])
         self.lock.release()
