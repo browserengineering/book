@@ -17,7 +17,7 @@ addEventListener("message", (e) => {
         } catch (e) {
             console.log('Script crashed');
         }
-        if (val instanceof Function) val = null;
+        if (val instanceof Function || val instanceof Object) val = null;
         $$POSTMESSAGE({"type": "return", "data": val});
         break;
 

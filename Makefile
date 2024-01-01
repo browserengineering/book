@@ -73,7 +73,7 @@ www/draft/%.html: book/%.md infra/template.html infra/signup.html infra/filter.l
 www/rss.xml: news.yaml infra/rss-template.xml
 	pandoc --template infra/rss-template.xml  -f markdown -t html $< -o $@
 
-www/widgets/lab%.js: src/lab%.py src/lab%.hints infra/compile.py infra/asttools.py
+www/widgets/lab%.js: src/lab%.py src/lab%.hints infra/compile.py infra/asttools.py src/runtime*.js
 	python3 infra/compile.py $< $@ --hints src/lab$*.hints
 
 www/widgets/server%.js: src/server%.py src/server%.hints infra/compile.py infra/asttools.py

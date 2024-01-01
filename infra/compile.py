@@ -752,10 +752,10 @@ def compile(tree, ctx, indent=0, patches=[]):
     elif isinstance(tree, ast.FunctionDef):
         if tree.name in SKIPPED_FNS:
             return ""
-
         if has_js_hide(tree.decorator_list):
             return ""
-        assert not tree.decorator_list
+        if tree.decorator_list:
+            assert tree.decorator_list[0].func.value.id == "wbetools"
         assert not tree.returns
         args = check_args(tree.args, ctx)
 
@@ -783,10 +783,13 @@ def compile(tree, ctx, indent=0, patches=[]):
             last_line = "\n" + " " * indent + "}"
             return def_line + body + last_line
         else:
+            fn_name = tree.name
+            if fn_name in patches:
+                fn_name = tree.name + "_patch"
             if ctx.type == "module":
                 EXPORTS.append(tree.name)
             kw = "" if ctx.type == "class" else "function "
-            def_line = kw + tree.name + "(" + ", ".join(args) + ") {\n"
+            def_line = kw + fn_name + "(" + ", ".join(args) + ") {\n"
             if ctx.type != "class" or tree.name not in OUR_SYNC_METHODS:
                 def_line = "async " + def_line
             last_line = "\n" + " " * indent + "}"
@@ -969,9 +972,14 @@ def compile_module(tree, patches):
 
     for (name, patch) in patches.items():
         items.append(compile(patch[0], indent=0, ctx=ctx, patches=patches))
-        items.append(
-            "patch_class({cls}, {cls}Patch)\n".format(
-            cls=name))
+        if name[0].isupper():
+            items.append(
+                "patch_class({cls}, {cls}Patch)\n".format(
+                cls=name))
+        else:
+            items.append(
+                "patch_function({cls}, {cls}_patch)\n".format(
+                cls=name))
         # Layout is renamed to BlockLayout in lab5. The Layout class is patched,
         # but we also need to declare BLockLayout an alias of this patched
         # class.
@@ -987,7 +995,8 @@ def compile_module(tree, patches):
 
     imports_str = "import {{ {} }} from \"./{}.js\";"
 
-    rt_imports_arr = [ 'breakpoint', 'comparator', 'asyncfilter', 'pysplit', 'pyrsplit', 'truthy', 'patch_class' ]
+    rt_imports_arr = [ 'breakpoint', 'comparator', 'asyncfilter', 'pysplit', 
+        'pyrsplit', 'truthy', 'patch_class', 'patch_function' ]
     rt_imports_arr += set([ mod.split(".")[0] for mod in RT_IMPORTS])
     rt_imports = imports_str.format(", ".join(sorted(rt_imports_arr)), "rt")
 

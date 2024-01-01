@@ -5,13 +5,18 @@ export {
     socket, ssl, sys, tkinter, dukpy, urllib, html, random, wbetools,
     truthy, comparator, pysplit, pyrsplit, asyncfilter,
     rt_constants, Widget, http_textarea, skia, sdl2, init_skia,
-    init_window, threading, time, OpenGL, patch_class, gtts, os, playsound
+    init_window, threading, time, OpenGL, patch_class, patch_function,
+    gtts, os, playsound
     };
 
 function patch_class(cls, patched_cls) {
     for (let val of Object.getOwnPropertyNames(patched_cls.prototype)) {
         cls.prototype[val] = patched_cls.prototype[val]
     }
+}
+
+function patch_function(f, patched_f) {
+    f = patched_f
 }
 
 function wrap_class(cls, fn) {
@@ -125,7 +130,10 @@ class socket {
                 this.idx = 0;
                 return this;
             } else {
-                throw new WidgetXHRError(this.host);               
+                this.output = "HTTP/1.0 " + 404 + "\r\n";
+                this.output += "\r\n";
+                this.closed = false;
+                this.idx = 0;                
             }
             return this;
         }
@@ -625,6 +633,21 @@ class skia {
         }
     });
 
+    static Image = {
+        open: (image_file) => {
+            // TODO
+        },
+        MakeFromEncoded: (data) => {
+            // TODO
+        }
+    };
+
+    static Data = {
+        MakeWithoutCopy: (payload) => {
+            // TODO
+        }
+    };
+
     static Rect = {
         fill_in: (rect) => {
             rect.left = () => rect[0];
@@ -846,7 +869,8 @@ function init_skia(canvasKit, robotoData) {
     skia.BlendMode = {
         kSrcOver: CanvasKit.BlendMode.SrcOver,
         kMultiply: CanvasKit.BlendMode.Multiply,
-        kDifference: CanvasKit.BlendMode.Multiply
+        kDifference: CanvasKit.BlendMode.Multiply,
+        kDstIn: CanvasKit.BlendMode.Difference
     }
     skia.FontStyle = wrap_class(class {
         constructor(weight, width, style) {}
