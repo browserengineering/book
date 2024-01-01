@@ -976,7 +976,7 @@ class JSContext:
     def dispatch_xhr_onload(self, out, handle, window_id):
         code = self.wrap(XHR_ONLOAD_JS, window_id)
         self.tab.browser.measure.time('script-xhr')
-        do_default = self.interp.evaljs(code, out=out, handle=handle)
+        do_default = self.interpp.evaljs(code, out=out, handle=handle)
         self.tab.browser.measure.stop('script-xhr')
 
     def XMLHttpRequest_send(
@@ -1171,8 +1171,8 @@ class FrameAccessibilityNode(AccessibilityNode):
     def hit_test(self, x, y):
         bounds = self.bounds[0]
         if not bounds.contains(x, y): return
-        new_x = x - bounds.x() - dpx(1, self.zoom)
-        new_y = y - bounds.y() - dpx(1, self.zoom) + self.scroll
+        new_x = x - bounds.left() - dpx(1, self.zoom)
+        new_y = y - bounds.top() - dpx(1, self.zoom) + self.scroll
         node = self
         for child in self.children:
             res = child.hit_test(new_x, new_y)
@@ -1181,7 +1181,7 @@ class FrameAccessibilityNode(AccessibilityNode):
 
     def map_to_parent(self, rect):
         bounds = self.bounds[0]
-        rect.offset(bounds.x(), bounds.y() - self.scroll)
+        rect.offset(bounds.left(), bounds.top() - self.scroll)
         rect.intersect(bounds)
 
     def __repr__(self):

@@ -176,6 +176,7 @@ LIBRARY_METHODS = [
     "width",
     "height",
     "isEmpty",
+    "offset",
     "roundOut",
     "rect",
     "intersect",
@@ -209,6 +210,9 @@ LIBRARY_METHODS = [
     # skia.ColorSpace
     "MakeSRGB",
 
+    # skia.Data
+    "MakeWithoutCopy",
+
     # skia.GrDirectContext
     "MakeGL",
 
@@ -236,6 +240,8 @@ LIBRARY_METHODS = [
 
     # skia.Image
     "tobytes",
+    "open",
+    "MakeFromEncoded",
 
     # skia.Matrix
     "setTranslate",
