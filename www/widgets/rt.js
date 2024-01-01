@@ -545,6 +545,7 @@ function patch_canvas(canvas) {
     var oldSaveLayer = canvas.saveLayer;
     var oldClipRect = canvas.clipRRect;
     var oldClipRRect = canvas.clipRRect;
+    var oldDrawImageRect = canvas.drawImageRect;
 
     canvas.drawPath = (path, paint) => {
         oldDrawPath.call(canvas, path, paint.getPaint());
@@ -572,7 +573,11 @@ function patch_canvas(canvas) {
 
     canvas.clipRRect = (rect) => {
         oldClipRRect.call(canvas, rect, CanvasKit.ClipOp.Intersect, false);
-    }
+    };
+
+    canvas.drawImageRect = (image, rect, paint) => {
+        oldDrawImageRect.call(canvas, image, rect, paint);
+    };
 }
 
 class skia {
@@ -638,15 +643,15 @@ class skia {
             // TODO
         },
         MakeFromEncoded: (data) => {
-            // TODO
+            return CanvasKit.MakeImageFromEncoded(data);
         }
     };
 
     static Data = {
-        MakeWithoutCopy: (payload) => {
-            // TODO
+        MakeWithoutCopy: (body) => {
+            return body;
         }
-    };
+    }
 
     static Rect = {
         fill_in: (rect) => {
@@ -663,6 +668,15 @@ class skia {
                 rect[1] = Math.min(rect.top(), other_rect.top());
                 rect[2] = Math.max(rect.right(), other_rect.right());
                 rect[3] = Math.max(rect.bottom(), other_rect.bottom());
+            };
+            rect.intersect = (other_rect) => {
+                rect[0] = Math.max(rect.left(), other_rect.left());
+                rect[1] = Math.max(rect.top(), other_rect.top());
+                rect[2] = Math.min(rect.right(), other_rect.right());
+                rect[3] = Math.min(rect.bottom(), other_rect.bottom());
+                if (rect[0] > rect[2] || rect[1] > rect[3]) {
+                    rect[0] = rect[1] = rect[2] = rect[3] = 0;
+                }
             };
             rect.roundOut = () => {
                 return skia.Rect.MakeLTRB(
@@ -699,6 +713,9 @@ class skia {
                     rect.top() + y,
                     rect.right() + x,
                     rect.bottom() + y);
+            };
+            rect.offset = (x, y) => {
+                rect = rect.makeOffset(x, y);
             };
             rect.contains = (x, y) => {
                 let other = skia.Rect.MakeXYWH(x, y, 1, 1);
