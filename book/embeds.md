@@ -525,13 +525,13 @@ And of course, images also get the same inline layout mode as input elements:
 class BlockLayout:
     def layout_mode(self):
         # ...
-        elif self.node.tag in {"input", "img"}:
+        elif self.node.tag in ["input", "img"]:
             return "inline"
 
     def should_paint(self):
         return isinstance(self.node, Text) or \
             (self.node.tag not in \
-                {"input", "button", "img"})
+                ["input", "button", "img"])
 ```
 
 
@@ -1025,7 +1025,7 @@ class BlockLayout:
 
     def layout_mode(self):
         # ...
-        elif self.node.tag in {"input", "img", "iframe"}:
+        elif self.node.tag in ["input", "img", "iframe"]:
             return "inline"
 
     def recurse(self, node):
@@ -1045,7 +1045,7 @@ class BlockLayout:
     def should_paint(self):
         return isinstance(self.node, Text) or \
             (self.node.tag not in \
-                {"input", "button", "img", "iframe"})
+                ["input", "button", "img", "iframe"])
 
 ```
 
@@ -1203,9 +1203,10 @@ class IframeLayout(EmbedLayout):
         inner_rect = skia.Rect.MakeLTRB(
             self.x + diff, self.y + diff,
             self.x + self.width - diff, self.y + self.height - diff)
-        cmds = [Blend(1.0, "source-over", self.node,
-                      cmds + [Blend(1.0, "destination-in", None, [
-                          DrawRRect(inner_rect, 0, "white")])])]
+        internal_cmds = cmds
+        internal_cmds.extend([Blend(1.0, "destination-in", None, [
+                          DrawRRect(inner_rect, 0, "white")])])
+        cmds = [Blend(1.0, "source-over", self.node, internal_cmds)]
         paint_outline(self.node, cmds, rect, self.zoom)
         cmds = paint_visual_effects(self.node, cmds, rect)
         return cmds
@@ -1302,8 +1303,8 @@ class Frame:
                 abs_bounds = \
                     absolute_bounds_for_obj(elt.layout_object)
                 border = dpx(1, elt.layout_object.zoom)
-                new_x = x - abs_bounds.x() - border
-                new_y = y - abs_bounds.y() - border
+                new_x = x - abs_bounds.left() - border
+                new_y = y - abs_bounds.top() - border
                 elt.frame.click(new_x, new_y)
                 return
 ```
@@ -1512,8 +1513,8 @@ class FrameAccessibilityNode(AccessibilityNode):
     def hit_test(self, x, y):
         bounds = self.bounds[0]
         if not bounds.contains(x, y): return
-        new_x = x - bounds.x() - dpx(1, self.zoom)
-        new_y = y - bounds.y() - dpx(1, self.zoom) + self.scroll
+        new_x = x - bounds.left() - dpx(1, self.zoom)
+        new_y = y - bounds.top() - dpx(1, self.zoom) + self.scroll
         node = self
         for child in self.children:
             res = child.hit_test(new_x, new_y)
@@ -1578,7 +1579,7 @@ postion and clipping:
 class FrameAccessibilityNode(AccessibilityNode):
     def map_to_parent(self, rect):
         bounds = self.bounds[0]
-        rect.offset(bounds.x(), bounds.y() - self.scroll)
+        rect.offset(bounds.left(), bounds.top() - self.scroll)
         rect.intersect(bounds)
 ```
 
@@ -2267,7 +2268,12 @@ And as we hope you saw in this chapter, none of these features are too
 difficult to implement, though---as you'll see in the exercises
 below---implementing them well requires a lot of attention to detail
 
-(Note: there is not yet an embeddable browser widget for this chapter.)
+::: {.web-only}
+
+Click [here](widgets/lab15-browser.html) to try this chapter's
+browser.
+
+:::
 
 Outline
 =======

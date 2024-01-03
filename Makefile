@@ -31,7 +31,8 @@ widgets: \
 	www/widgets/lab11-browser.html www/widgets/lab11.js \
 	www/widgets/lab12-browser.html www/widgets/lab12.js \
 	www/widgets/lab13-browser.html www/widgets/lab13.js \
-	www/widgets/lab14-browser.html www/widgets/lab14.js
+	www/widgets/lab14-browser.html www/widgets/lab14.js \
+	www/widgets/lab14-browser.html www/widgets/lab15.js
 
 src/lab%.full.py: src/lab%.py infra/inline.py infra/asttools.py
 	python3 infra/inline.py $< > $@
@@ -72,7 +73,7 @@ www/draft/%.html: book/%.md infra/template.html infra/signup.html infra/filter.l
 www/rss.xml: news.yaml infra/rss-template.xml
 	pandoc --template infra/rss-template.xml  -f markdown -t html $< -o $@
 
-www/widgets/lab%.js: src/lab%.py src/lab%.hints infra/compile.py infra/asttools.py
+www/widgets/lab%.js: src/lab%.py src/lab%.hints infra/compile.py infra/asttools.py src/runtime*.js
 	python3 infra/compile.py $< $@ --hints src/lab$*.hints
 
 www/widgets/server%.js: src/server%.py src/server%.hints infra/compile.py infra/asttools.py

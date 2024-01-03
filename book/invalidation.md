@@ -2299,7 +2299,7 @@ def font(css_style, zoom, notify):
     style = css_style['font-style'].read(notify)
     try:
         size = float(css_style['font-size'].read(notify)[:-2])
-    except ValueError:
+    except:
         size = 16
     font_size = dpx(size, zoom)
     return get_font(font_size, weight, style)

@@ -5,13 +5,18 @@ export {
     socket, ssl, sys, tkinter, dukpy, urllib, html, random, wbetools,
     truthy, comparator, pysplit, pyrsplit, asyncfilter,
     rt_constants, Widget, http_textarea, skia, sdl2, init_skia,
-    init_window, threading, time, OpenGL, patch_class, gtts, os, playsound
+    init_window, threading, time, OpenGL, patch_class, patch_function,
+    gtts, os, playsound
     };
 
 function patch_class(cls, patched_cls) {
     for (let val of Object.getOwnPropertyNames(patched_cls.prototype)) {
         cls.prototype[val] = patched_cls.prototype[val]
     }
+}
+
+function patch_function(f, patched_f) {
+    f = patched_f
 }
 
 function wrap_class(cls, fn) {
@@ -125,7 +130,10 @@ class socket {
                 this.idx = 0;
                 return this;
             } else {
-                throw new WidgetXHRError(this.host);               
+                this.output = "HTTP/1.0 " + 404 + "\r\n";
+                this.output += "\r\n";
+                this.closed = false;
+                this.idx = 0;                
             }
             return this;
         }
@@ -537,6 +545,7 @@ function patch_canvas(canvas) {
     var oldSaveLayer = canvas.saveLayer;
     var oldClipRect = canvas.clipRRect;
     var oldClipRRect = canvas.clipRRect;
+    var oldDrawImageRect = canvas.drawImageRect;
 
     canvas.drawPath = (path, paint) => {
         oldDrawPath.call(canvas, path, paint.getPaint());
@@ -564,7 +573,11 @@ function patch_canvas(canvas) {
 
     canvas.clipRRect = (rect) => {
         oldClipRRect.call(canvas, rect, CanvasKit.ClipOp.Intersect, false);
-    }
+    };
+
+    canvas.drawImageRect = (image, rect, paint) => {
+        oldDrawImageRect.call(canvas, image, rect, paint);
+    };
 }
 
 class skia {
@@ -625,6 +638,21 @@ class skia {
         }
     });
 
+    static Image = {
+        open: (image_file) => {
+            // TODO
+        },
+        MakeFromEncoded: (data) => {
+            return CanvasKit.MakeImageFromEncoded(data);
+        }
+    };
+
+    static Data = {
+        MakeWithoutCopy: (body) => {
+            return body;
+        }
+    }
+
     static Rect = {
         fill_in: (rect) => {
             rect.left = () => rect[0];
@@ -640,6 +668,15 @@ class skia {
                 rect[1] = Math.min(rect.top(), other_rect.top());
                 rect[2] = Math.max(rect.right(), other_rect.right());
                 rect[3] = Math.max(rect.bottom(), other_rect.bottom());
+            };
+            rect.intersect = (other_rect) => {
+                rect[0] = Math.max(rect.left(), other_rect.left());
+                rect[1] = Math.max(rect.top(), other_rect.top());
+                rect[2] = Math.min(rect.right(), other_rect.right());
+                rect[3] = Math.min(rect.bottom(), other_rect.bottom());
+                if (rect[0] > rect[2] || rect[1] > rect[3]) {
+                    rect[0] = rect[1] = rect[2] = rect[3] = 0;
+                }
             };
             rect.roundOut = () => {
                 return skia.Rect.MakeLTRB(
@@ -676,6 +713,9 @@ class skia {
                     rect.top() + y,
                     rect.right() + x,
                     rect.bottom() + y);
+            };
+            rect.offset = (x, y) => {
+                rect = rect.makeOffset(x, y);
             };
             rect.contains = (x, y) => {
                 let other = skia.Rect.MakeXYWH(x, y, 1, 1);
@@ -846,7 +886,8 @@ function init_skia(canvasKit, robotoData) {
     skia.BlendMode = {
         kSrcOver: CanvasKit.BlendMode.SrcOver,
         kMultiply: CanvasKit.BlendMode.Multiply,
-        kDifference: CanvasKit.BlendMode.Multiply
+        kDifference: CanvasKit.BlendMode.Multiply,
+        kDstIn: CanvasKit.BlendMode.Difference
     }
     skia.FontStyle = wrap_class(class {
         constructor(weight, width, style) {}
