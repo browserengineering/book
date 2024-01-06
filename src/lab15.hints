@@ -44,5 +44,6 @@
 {"code": "('TextLayout(x={}, y={}, width={}, height={}, ' + 'node={}, word={})').format(self.x, self.y, self.width, self.height, self.node, self.word)", "js": ""},
  {"code": "('ImageLayout(src={}, x={}, y={}, width={},' + 'height={})').format(self.node.attributes['src'], self.x, self.y, self.width, self.height)", "js": ""},
 {"code": "MeasureTime()", "js": "new MeasureTime()"},
-{"code": "len(self.tab.window_id_to_frame)", "js": "Object.keys(this.tab.window_id_to_frame).length"}
+{"code": "len(self.tab.window_id_to_frame)", "js": "Object.keys(this.tab.window_id_to_frame).length"},
+{"code": "self.default_style_sheet.copy()", "js": "self.default_style_sheet.slice()"}
 ]
