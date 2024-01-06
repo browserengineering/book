@@ -12,5 +12,6 @@
  {"code": "run_load", "js": "run_load"},
  {"code": "def __init__(self, task_code, *args):\n    self.task_code = task_code\n    self.args = args", "js": "  async init(task_code) {\n    this.task_code = task_code;\n    this.args = Array.prototype.slice.call(arguments, 1);\n    return this;\n  }"},
  {"code": "callback", "js": "callback"},
- {"code": "self.node_to_handle = {}", "js": "    this.node_to_handle = new Map();"}
+ {"code": "self.node_to_handle = {}", "js": "    this.node_to_handle = new Map();"},
+ {"code": "self.default_style_sheet.copy()", "js": "self.default_style_sheet.slice()"}
 ]

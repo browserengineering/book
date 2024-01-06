@@ -106,7 +106,6 @@ RENAME_METHODS = {
     "endswith": "endsWith",
     "find": "indexOf",
     "index": "indexOf",
-    "copy": "slice",
 }
 
 RENAME_FNS = {
@@ -1024,6 +1023,7 @@ if __name__ == "__main__":
 
     name = os.path.basename(args.python.name)
     assert name.endswith(".py")
+
     if args.hints: read_hints(args.hints)
     INDENT = args.indent
     tree = asttools.parse(args.python.read(), args.python.name)

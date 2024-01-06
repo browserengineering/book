@@ -4,5 +4,6 @@
  {"code": "'href' in node.attributes", "type": "dict"},
  {"code": "'action' in elt.attributes", "type": "dict"},
  {"code": "'href' in elt.attributes", "type": "dict"},
- {"code": "'name' in node.attributes", "type": "dict"}
+ {"code": "'name' in node.attributes", "type": "dict"},
+ {"code": "self.default_style_sheet.copy()", "js": "self.default_style_sheet.slice()"}
 ]

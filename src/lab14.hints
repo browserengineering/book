@@ -20,5 +20,6 @@
 {"code": "focusable_nodes.sort(key=get_tabindex)", "js": "focusable_nodes.sort(get_tabindex)"},
 {"code": "self.focus in focusable_nodes", "type": "list"},
 {"code": "(active_idx + 1) % len(self.tabs)", "js": "(active_idx + 1) % self.tabs.length"},
- {"code": "MeasureTime()", "js": "new MeasureTime()"}
+{"code": "MeasureTime()", "js": "new MeasureTime()"},
+{"code": "self.default_style_sheet.copy()", "js": "self.default_style_sheet.slice()"}
 ]
