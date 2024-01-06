@@ -131,7 +131,7 @@ LIBRARY_METHODS = [
     "wrap_socket",
     "send",
     "readline",
-    "read",
+#    "read",
     "close",
     
     # files

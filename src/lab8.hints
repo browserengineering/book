@@ -5,5 +5,8 @@
  {"code": "'action' in elt.attributes", "type": "dict"},
  {"code": "'href' in elt.attributes", "type": "dict"},
  {"code": "'name' in node.attributes", "type": "dict"},
- {"code": "self.default_style_sheet.copy()", "js": "self.default_style_sheet.slice()"}
+ {"code": "self.default_style_sheet.copy()", "js": "self.default_style_sheet.slice()"},
+ {"code": "open('browser8.css').read()", "js": "filesystem.open('browser8.css').read()"},
+ {"code": "response.read()", "js": "response.read()"},
+ {"code": "f.read()", "js": "f.read()"}
 ]
