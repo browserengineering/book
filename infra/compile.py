@@ -112,7 +112,8 @@ RENAME_FNS = {
     "int": "parseInt",
     "float": "parseFloat",
     "print": "console.log",
-    "AnimationClass": "AnimationClass"
+    "AnimationClass": "AnimationClass",
+    "dict": "dict",
 }
 
 SKIPPED_FNS = []
@@ -253,7 +254,7 @@ LIBRARY_METHODS = [
     "wait",
     # threading.Lock
     "acquire",
-    "release"
+    "release",
 ]
 
 OUR_FNS = []
@@ -328,6 +329,9 @@ def compile_method(base, name, args, ctx):
     elif name == "keys":
         assert len(args) == 0
         return "Object.keys(" + base_js + ")"
+    elif name == "values":
+        assert len(args) == 0
+        return "Object.values(" + base_js + ")"
     elif name == "format":
         assert isinstance(base, ast.Constant)
         assert isinstance(base.value, str)
@@ -453,6 +457,9 @@ def compile_function(name, args, ctx):
         return args_js[0] + ".constructor"
     elif name == "range":
         return "[...Array(" + args_js[1] + ").keys()]"
+    elif name == "hasattr":
+        assert len(args) == 2
+        return args_js[0] + ".hasOwnProperty(" + args_js[1] + ")"
     else:
         raise UnsupportedConstruct()
 

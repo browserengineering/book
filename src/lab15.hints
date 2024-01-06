@@ -45,7 +45,7 @@
  {"code": "('ImageLayout(src={}, x={}, y={}, width={},' + 'height={})').format(self.node.attributes['src'], self.x, self.y, self.width, self.height)", "js": ""},
 {"code": "MeasureTime()", "js": "new MeasureTime()"},
 {"code": "len(self.tab.window_id_to_frame)", "js": "Object.keys(this.tab.window_id_to_frame).length"},
-{"code": "self.default_style_sheet.copy()", "js": "self.default_style_sheet.slice()"},
+{"code": "self.default_style_sheet.copy()", "js": "this.default_style_sheet.slice()"},
 {"code": "f.read()", "js": "f.read()"},
 {"code": "open('runtime15.js').read()", "js": "filesystem.open('runtime15.js').read()"},
 {"code": "open('browser15.css').read()", "js": "filesystem.open('browser15.css').read()"},

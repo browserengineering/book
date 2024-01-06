@@ -27,6 +27,9 @@ function wrap_class(cls, fn) {
     return f;
 }
 
+function dict(args) {
+    debugger;
+}
 
 function http_ok(body, headers) {
     let text = "HTTP/1.0 200 OK\r\n";
