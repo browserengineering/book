@@ -10,5 +10,12 @@
 {"code": "'width' in node.attributes", "type": "dict"},
 {"code": "'width' in self.node.attributes", "type": "dict"},
 {"code": "'contenteditable' in self.tab.focus.attributes", "type": "dict"},
-{"code": "'contenteditable' in self.node.attributes", "type": "dict"}
+{"code": "'contenteditable' in self.node.attributes", "type": "dict"},
+{"code": "'contenteditable' in node.attributes", "type": "dict"},
+{"code": "'tabindex' in node.attributes", "type": "dict"},
+{"code": "child_class(node, line, self.previous_word, word)", "js": "await (new child_class()).init(node, line, this.previous_word, word)"},
+{"code": "child_class(node, line, self.previous_word, frame)", "js": "await (new child_class()).init(node, line, this.previous_word, frame)"},
+{"code": "property in INHERITED_PROPERTIES", "type": "dict"},
+{"code": "notify in self.invalidations", "type": "set"},
+{"code": "self.name in CSS_PROPERTIES", "type": "dict"}
 ]

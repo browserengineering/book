@@ -606,7 +606,7 @@ def compile_expr(tree, ctx):
                     conjuncts.append("(" + (" && " if negate else " || ").join(parts) + ")")
                 else:
                     t = find_hint(tree, "type")
-                    assert t in ["str", "dict", "list", "map"]
+                    assert t in ["str", "dict", "list", "map", "set"]
                     cmp = "===" if negate else "!=="
                     if t in ["str", "list"]:
                         conjuncts.append("(" + rhs + ".indexOf(" + lhs + ") " + cmp + " -1)")
@@ -614,6 +614,8 @@ def compile_expr(tree, ctx):
                         conjuncts.append("(typeof " + rhs + "[" + lhs + "] " + cmp + " \"undefined\")")
                     elif t == "map":
                         conjuncts.append("(" + rhs + ".get(" + lhs + ") " + cmp + " \"undefined\")")
+                    elif t == "map":
+                        conjuncts.append("(" + rhs + ".contains(" + lhs + ") ")
             elif isinstance(op, ast.Eq) and \
                  (isinstance(comp, ast.List) or isinstance(tree.left, ast.List)):
                 conjuncts.append("(JSON.stringify(" + lhs + ") === JSON.stringify(" + rhs + "))")
@@ -665,6 +667,8 @@ def compile_expr(tree, ctx):
             return tree.id
         elif tree.id == "Exception":
             return "Error"
+        elif tree.id == "list":
+            return "Array"
         elif tree.id in OUR_CONSTANTS:
             return "constants.{}".format(tree.id)
         elif tree.id in ctx:
