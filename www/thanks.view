@@ -52,7 +52,7 @@ advice on how to implement JavaScript global namespaces in Chapter 15.
 <p>Thanks to Ian Kilpatrick for finding a workaround for
 a <a href="https://bugs.chromium.org/p/chromium/issues/detail?id=1499290"
 alt="Chromium bug #1499290">Chromium bug</a> affecting margin notes on
-this website.</p>
+this website and to Koji Ishii for fixing it.</p>
 
 <p>Credit to Fredrik Lundh for the hack that makes <code>get_font</code> fast.
 </p>
