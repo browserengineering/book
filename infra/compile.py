@@ -647,7 +647,13 @@ def compile_expr(tree, ctx):
         e = compile_expr(tree.elt, ctx2)
         if e != arg:
             if "await" in e:
-                out = "(await Promise.all(" + out + ".map(async (" + arg + ") => " + e + ")))"
+                try:
+                    t = find_hint(gen.iter, "type")
+                    out = 'Object.keys(' + out + ')'
+                    assert t == "map"
+                except:
+                    pass
+                    out = "(await Promise.all(" + out + ".map(async (" + arg + ") => " + e + ")))"
             else:
                 out = out + ".map((" + arg + ") => " + e + ")"
         return out
@@ -708,7 +714,7 @@ def has_js_hide(decorator_list):
     ])
 
 @catch_issues
-def compile(tree, ctx, indent=0, patches=[]):
+def compile(tree, ctx, indent=0, patches=[], patchables=[]):
     if isinstance(tree, ast.Import):
         assert len(tree.names) == 1
         assert not tree.names[0].asname
@@ -732,6 +738,8 @@ def compile(tree, ctx, indent=0, patches=[]):
                 to_import.append(name)
             else: # Function
                 to_import.append(name)
+            if name in patches.keys() and not name[0].isupper():
+                to_import.append("patch_{}".format(name))
 
         import_line = "import {{ {} }} from \"./{}.js\";".format(", ".join(sorted(set(to_import))), tree.module)
         out = " " * indent + import_line
@@ -971,29 +979,41 @@ def compile(tree, ctx, indent=0, patches=[]):
     else:
         raise UnsupportedConstruct()
     
-def compile_module(tree, patches):
+def compile_module(tree, patches, patchables):
     assert isinstance(tree, ast.Module)
     ctx = Context("module", {})
 
-    items = \
-        [compile(item, indent=0, ctx=ctx, patches=patches) \
-        for item in tree.body]
+    items = []
+
+    items.extend(
+        [compile(item, indent=0, ctx=ctx, patches=patches,
+            patchables=patchables) \
+        for item in tree.body])
 
     for (name, patch) in patches.items():
-        items.append(compile(patch[0], indent=0, ctx=ctx, patches=patches))
+        items.append(compile(patch[0], indent=0, ctx=ctx, patches=patches,
+            patchables=patchables))
         if name[0].isupper():
             items.append(
                 "patch_class({cls}, {cls}Patch)\n".format(
                 cls=name))
         else:
             items.append(
-                "patch_function({cls}, {cls}_patch)\n".format(
-                cls=name))
+                "patch_{fun}({fun}_patch)\n".format(
+                fun=name))
         # Layout is renamed to BlockLayout in lab5. The Layout class is patched,
         # but we also need to declare BLockLayout an alias of this patched
         # class.
         if name == "Layout":
             items.append("var BlockLayout = Layout")
+
+
+    for (name, patchable) in patchables.items():
+        assert not name[0].isupper()
+        items.append(
+            "function patch_{fun}(patch) {{\n  {fun} == patch\n}}".format(
+                fun=name))
+        EXPORTS.append("patch_{}".format(name))
 
     exports = ""
     rt_imports = ""
@@ -1005,7 +1025,7 @@ def compile_module(tree, patches):
     imports_str = "import {{ {} }} from \"./{}.js\";"
 
     rt_imports_arr = [ 'breakpoint', 'comparator', 'asyncfilter', 'pysplit', 
-        'pyrsplit', 'truthy', 'patch_class', 'patch_function' ]
+        'pyrsplit', 'truthy', 'patch_class', 'patch_function', 'dict' ]
     rt_imports_arr += set([ mod.split(".")[0] for mod in RT_IMPORTS])
     rt_imports = imports_str.format(", ".join(sorted(rt_imports_arr)), "rt")
 
@@ -1038,8 +1058,8 @@ if __name__ == "__main__":
     INDENT = args.indent
     tree = asttools.parse(args.python.read(), args.python.name)
     load_outline(asttools.inline(tree))
-    tree, patches = asttools.resolve_patches_and_return_them(tree)
-    module_js = compile_module(tree, patches)
+    tree, patches, patchables = asttools.resolve_patches_and_return_them(tree)
+    module_js = compile_module(tree, patches, patchables)
 
     js = 'import { filesystem } from "./rt.js";\n'
 

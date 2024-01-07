@@ -23,6 +23,15 @@ def is_patch_decorator(cmd):
         len(cmd.args) == 1 and \
         isinstance(cmd.args[0], ast.Name)
 
+def is_patchable_decorator(cmd):
+    return isinstance(cmd, ast.Call) and \
+        isinstance(cmd.func, ast.Attribute) and \
+        isinstance(cmd.func.value, ast.Name) and \
+        cmd.func.value.id == "wbetools" and cmd.func.attr == "patchable" and \
+        not cmd.keywords and \
+        len(cmd.args) == 1 and \
+        isinstance(cmd.args[0], ast.Name)
+
 def is_if_main(cmd):
     return isinstance(cmd, ast.If) and isinstance(cmd.test, ast.Compare) and \
         isinstance(cmd.test.left, ast.Name) and cmd.test.left.id == "__name__" and \
@@ -99,6 +108,8 @@ class ResolveImports(ast.NodeTransformer):
         subast = load(filename)
 
         for name in names:
+            if name.find("patch_") == 0:
+                continue
             defns = [item for item_name, item in iter_defs(subast) if item_name == name]
             if len(defns) > 1:
                 raise ValueError(f"Multiple definitions for {name} in {filename}\n" + 
@@ -113,9 +124,14 @@ class ResolveImports(ast.NodeTransformer):
 class ResolvePatches(ast.NodeTransformer):
     def __init__(self):
         self.patches = {}
+        self.patchables = {}
 
     def visit_FunctionDef(self, cmd):
-        if not cmd.decorator_list:
+        if not cmd.decorator_list or not is_patch_decorator(cmd.decorator_list[0]):
+            if cmd.decorator_list:
+                assert is_patchable_decorator(cmd.decorator_list[0])
+                self.patchables.setdefault(cmd.name, []).append(cmd)
+
             patches = self.patches.get(cmd.name, [])
             if patches:
                 args2 = patches[-1].args
@@ -125,8 +141,8 @@ class ResolvePatches(ast.NodeTransformer):
                 return cmd
         else:
             assert len(cmd.decorator_list) == 1
-            assert is_patch_decorator(cmd.decorator_list[0])
             assert cmd.decorator_list[0].args[0].id == cmd.name
+            assert is_patch_decorator(cmd.decorator_list[0])
             self.patches.setdefault(cmd.name, []).append(cmd)
             return None
 
@@ -208,7 +224,7 @@ def inline(tree):
 def resolve_patches_and_return_them(tree):
     r = ResolvePatches()
     tree2 = r.double_visit(tree)
-    return (ast.fix_missing_locations(tree2), r.patches)
+    return (ast.fix_missing_locations(tree2), r.patches, r.patchables)
 
 def unparse(tree, explain=False):
     return AST39.unparse(tree, explain=explain)

@@ -34,7 +34,7 @@ class URL:
             return URL(self.scheme + "://" + self.host + \
                        ":" + str(self.port) + url)
 
-
+@wbetools.patchable(tree_to_list)
 def tree_to_list(tree, list):
     list.append(tree)
     for child in tree.children:

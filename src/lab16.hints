@@ -19,5 +19,7 @@
 {"code": "notify in self.invalidations", "type": "set"},
 {"code": "self.name in CSS_PROPERTIES", "type": "dict"},
 {"code": "self.default_style_sheet.copy()", "js": "this.default_style_sheet.slice()"},
-{"code": "node.attributes.get('rel') == 'stylesheet'", "js": "node.attributes['rel'] == 'stylesheet'"}
+{"code": "CSS_PROPERTIES.copy()", "js": "Object.assign({}, constants.CSS_PROPERTIES)"},
+{"code": "node.attributes.get('rel') == 'stylesheet'", "js": "node.attributes['rel'] == 'stylesheet'"},
+{"code": "CSS_PROPERTIES", "type": "dict"}
 ]

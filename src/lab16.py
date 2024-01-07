@@ -37,14 +37,14 @@ from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import PaintCommand, DrawText, DrawCompositedLayer, \
     DrawLine, DrawRRect
 from lab13 import VisualEffect, Blend, Transform, DrawOutline
-from lab14 import parse_outline, \
+from lab14 import parse_outline, style, \
     paint_outline, dpx, cascade_priority, \
     is_focusable, get_tabindex, speak_text, \
     CSSParser, mainloop
 from lab15 import URL, HTMLParser, AttributeParser, DrawImage, \
     DocumentLayout, BlockLayout, \
     EmbedLayout, InputLayout, LineLayout, TextLayout, ImageLayout, \
-    IframeLayout, JSContext, style, AccessibilityNode, Frame, Tab, \
+    IframeLayout, JSContext, AccessibilityNode, Frame, Tab, \
     CommitData, Browser, BROKEN_IMAGE, font, \
     IFRAME_WIDTH_PX, IFRAME_HEIGHT_PX, parse_image_rendering, DEFAULT_STYLE_SHEET
 import wbetools
