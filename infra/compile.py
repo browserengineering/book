@@ -1011,7 +1011,7 @@ def compile_module(tree, patches, patchables):
     for (name, patchable) in patchables.items():
         assert not name[0].isupper()
         items.append(
-            "function patch_{fun}(patch) {{\n  {fun} == patch\n}}".format(
+            "function patch_{fun}(patch) {{\n  {fun} = patch\n}}".format(
                 fun=name))
         EXPORTS.append("patch_{}".format(name))
 
