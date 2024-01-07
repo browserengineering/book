@@ -25,8 +25,8 @@ from lab6 import tree_to_list, INHERITED_PROPERTIES
 from lab8 import INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR
-from lab11 import FONTS, get_font, linespace, parse_blend_mode
-from lab11 import parse_color, NAMED_COLORS
+from lab11 import FONTS, NAMED_COLORS, get_font, linespace
+from lab11 import parse_color, parse_blend_mode
 from lab12 import MeasureTime, REFRESH_RATE_SEC
 from lab12 import Task, TaskRunner, SingleThreadedTaskRunner
 from lab13 import diff_styles, parse_transition, add_parent_pointers
@@ -34,14 +34,13 @@ from lab13 import local_to_absolute, absolute_bounds_for_obj
 from lab13 import NumericAnimation
 from lab13 import map_translation, parse_transform
 from lab13 import CompositedLayer, paint_visual_effects
-from lab13 import PaintCommand, DrawText, DrawCompositedLayer, DrawOutline, \
+from lab13 import PaintCommand, DrawText, DrawCompositedLayer, \
     DrawLine, DrawRRect
-from lab13 import VisualEffect, Blend, Transform
-from lab14 import parse_outline, DrawRRect, \
-    paint_outline, \
-    dpx, cascade_priority, \
+from lab13 import VisualEffect, Blend, Transform, DrawOutline
+from lab14 import parse_outline, \
+    paint_outline, dpx, cascade_priority, \
     is_focusable, get_tabindex, speak_text, \
-    CSSParser, mainloop, DrawOutline
+    CSSParser, mainloop
 from lab15 import URL, HTMLParser, AttributeParser, DrawImage, \
     DocumentLayout, BlockLayout, \
     EmbedLayout, InputLayout, LineLayout, TextLayout, ImageLayout, \

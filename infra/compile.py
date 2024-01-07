@@ -254,7 +254,7 @@ LIBRARY_METHODS = [
     "wait",
     # threading.Lock
     "acquire",
-    "release",
+    "release"
 ]
 
 OUR_FNS = []
@@ -614,8 +614,8 @@ def compile_expr(tree, ctx):
                         conjuncts.append("(typeof " + rhs + "[" + lhs + "] " + cmp + " \"undefined\")")
                     elif t == "map":
                         conjuncts.append("(" + rhs + ".get(" + lhs + ") " + cmp + " \"undefined\")")
-                    elif t == "map":
-                        conjuncts.append("(" + rhs + ".contains(" + lhs + ") ")
+                    elif t == "set":
+                        conjuncts.append("(" + rhs + ".contains(" + lhs + "))")
             elif isinstance(op, ast.Eq) and \
                  (isinstance(comp, ast.List) or isinstance(tree.left, ast.List)):
                 conjuncts.append("(JSON.stringify(" + lhs + ") === JSON.stringify(" + rhs + "))")
@@ -667,12 +667,12 @@ def compile_expr(tree, ctx):
             return tree.id
         elif tree.id == "Exception":
             return "Error"
-        elif tree.id == "list":
-            return "Array"
         elif tree.id in OUR_CONSTANTS:
             return "constants.{}".format(tree.id)
         elif tree.id in ctx:
             return tree.id
+        elif tree.id == "list":
+            return "Array"
         else:
             raise AssertionError(f"Could not find variable {tree.id}")
     elif isinstance(tree, ast.Constant):

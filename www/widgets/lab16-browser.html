@@ -18,14 +18,15 @@ const loadFont = fetch(
 Promise.all([ckLoaded, loadFont]).then(([CanvasKit, robotoData]) => {
     let font_manager = CanvasKit.FontMgr.FromData([robotoData]);
     let typeface = font_manager.matchFamilyStyle(
-      font_manager.getFamilyName(0), {})p
+      font_manager.getFamilyName(0), {})
 
-  Promise.all([import("./rt.js"), import("./lab10.js"), import("./lab16.js"),
-    import("./server10.js")]).then(
-  ([rt, lab10, lab16, server10]) => {
+  Promise.all([import("./rt.js"), import("./lab10.js"), import("./lab15.js"),
+    import("./lab16.js"), import("./server10.js")]).then(
+  ([rt, lab10, lab15, lab16, server10]) => {
     let { init_skia, init_window, socket, Widget, rt_constants} = rt;
     let { URL } = lab10;
-    let { Browser, constants } = lab16;
+    let { Browser } = lab15;
+    let { constants } = lab16;
     let { handle_connection } = server10;
 
     init_skia(CanvasKit, robotoData)

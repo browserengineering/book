@@ -17,5 +17,7 @@
 {"code": "child_class(node, line, self.previous_word, frame)", "js": "await (new child_class()).init(node, line, this.previous_word, frame)"},
 {"code": "property in INHERITED_PROPERTIES", "type": "dict"},
 {"code": "notify in self.invalidations", "type": "set"},
-{"code": "self.name in CSS_PROPERTIES", "type": "dict"}
+{"code": "self.name in CSS_PROPERTIES", "type": "dict"},
+{"code": "self.default_style_sheet.copy()", "js": "this.default_style_sheet.slice()"},
+{"code": "node.attributes.get('rel') == 'stylesheet'", "js": "node.attributes['rel'] == 'stylesheet'"}
 ]
