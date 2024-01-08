@@ -54,7 +54,7 @@ def patch(existing_cls):
     return decorator
 
 def patchable(f):
-    return f
+    return f;
 
 def js_hide(f):
     return f

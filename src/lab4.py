@@ -36,7 +36,7 @@ class Element:
             attr_str += attr
         return "<" + self.tag + attr_str + ">"
 
-@wbetools.patchable(print_tree)
+@wbetools.patchable
 def print_tree(node, indent=0):
     print(" " * indent, node)
     for child in node.children:

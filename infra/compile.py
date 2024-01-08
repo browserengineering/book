@@ -615,7 +615,7 @@ def compile_expr(tree, ctx):
                     elif t == "map":
                         conjuncts.append("(" + rhs + ".get(" + lhs + ") " + cmp + " \"undefined\")")
                     elif t == "set":
-                        conjuncts.append("(" + rhs + ".contains(" + lhs + "))")
+                        conjuncts.append("(" + rhs + ".has(" + lhs + "))")
             elif isinstance(op, ast.Eq) and \
                  (isinstance(comp, ast.List) or isinstance(tree.left, ast.List)):
                 conjuncts.append("(JSON.stringify(" + lhs + ") === JSON.stringify(" + rhs + "))")
@@ -772,7 +772,10 @@ def compile(tree, ctx, indent=0, patches=[], patchables=[]):
         if has_js_hide(tree.decorator_list):
             return ""
         if tree.decorator_list:
-            assert tree.decorator_list[0].func.value.id == "wbetools"
+            if isinstance(tree.decorator_list[0], ast.Call):
+                assert tree.decorator_list[0].func.value.id == "wbetools"
+            else:
+                assert tree.decorator_list[0].value.id == "wbetools"
         assert not tree.returns
         args = check_args(tree.args, ctx)
 

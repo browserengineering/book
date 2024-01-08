@@ -185,7 +185,7 @@ class DocumentLayout:
     def __repr__(self):
         return "DocumentLayout()"
 
-@wbetools.patchable(font)
+@wbetools.patchable
 def font(style, zoom):
     weight = style["font-weight"]
     variant = style["font-style"]

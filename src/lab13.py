@@ -730,7 +730,7 @@ class InputLayout:
         return "InputLayout(x={}, y={}, width={}, height={} {})".format(
             self.x, self.y, self.width, self.height, extra)
 
-@wbetools.patchable(paint_visual_effects)
+@wbetools.patchable
 def paint_visual_effects(node, cmds, rect):
     opacity = float(node.style.get("opacity", "1.0"))
     blend_mode = node.style.get("mix-blend-mode")
@@ -893,7 +893,7 @@ def style(node, rules, tab):
     for child in node.children:
         style(child, rules, tab)
 
-@wbetools.patchable(absolute_bounds_for_obj)
+@wbetools.patchable
 def absolute_bounds_for_obj(obj):
     rect = skia.Rect.MakeXYWH(
         obj.x, obj.y, obj.width, obj.height)

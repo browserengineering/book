@@ -24,13 +24,9 @@ def is_patch_decorator(cmd):
         isinstance(cmd.args[0], ast.Name)
 
 def is_patchable_decorator(cmd):
-    return isinstance(cmd, ast.Call) and \
-        isinstance(cmd.func, ast.Attribute) and \
-        isinstance(cmd.func.value, ast.Name) and \
-        cmd.func.value.id == "wbetools" and cmd.func.attr == "patchable" and \
-        not cmd.keywords and \
-        len(cmd.args) == 1 and \
-        isinstance(cmd.args[0], ast.Name)
+    return  isinstance(cmd, ast.Attribute) and \
+        isinstance(cmd.value, ast.Name) and \
+        cmd.value.id == "wbetools" and cmd.attr == "patchable"
 
 def is_if_main(cmd):
     return isinstance(cmd, ast.If) and isinstance(cmd.test, ast.Compare) and \
@@ -129,7 +125,10 @@ class ResolvePatches(ast.NodeTransformer):
     def visit_FunctionDef(self, cmd):
         if not cmd.decorator_list or not is_patch_decorator(cmd.decorator_list[0]):
             if cmd.decorator_list:
-                assert is_patchable_decorator(cmd.decorator_list[0])
+                if not is_patchable_decorator(cmd.decorator_list[0]):
+                    print(cmd.decorator_list)
+                    print(isinstance(cmd, ast.Call))
+                    raise Exception()
                 self.patchables.setdefault(cmd.name, []).append(cmd)
 
             patches = self.patches.get(cmd.name, [])
