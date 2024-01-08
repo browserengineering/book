@@ -27,8 +27,14 @@ function wrap_class(cls, fn) {
     return f;
 }
 
+class Dict {
+    async get(key) {
+        return this[key];
+    }
+}
+
 function dict(args) {
-    let d = {}
+    let d = new Dict();
     args.forEach((arg) => {
         d[arg[0]] = arg[1]
     });

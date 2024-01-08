@@ -301,7 +301,6 @@ def compile_method(base, name, args, ctx):
     args_js = [compile_expr(arg, ctx) for arg in args]
     needs_call = False
     if base_js[0].isupper():
-        print(base_js)
         base_js = base_js + ".prototype"
         needs_call = True
     if name == "bind": # Needs special handling due to "this"
@@ -325,9 +324,7 @@ def compile_method(base, name, args, ctx):
             if name == "__init__":
                 name = "init"
             if needs_call:
-                retval = "await " + base_js + "." + name + ".call(" + ", ".join(args_js) + ")"
-                print(retval)
-                return retval
+                return "await " + base_js + "." + name + ".call(" + ", ".join(args_js) + ")"
             else:
                 return "await " + base_js + "." + name + "(" + ", ".join(args_js) + ")"
     elif name in RENAME_METHODS:
