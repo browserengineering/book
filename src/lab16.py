@@ -189,6 +189,7 @@ class ProtectedField:
         assert not self.dirty
         return self.value
 
+    @wbetools.named_params
     def read(self, notify):
         if notify.frozen_dependencies or self.frozen_invalidations:
             assert notify in self.invalidations
@@ -892,7 +893,7 @@ class IframeLayout(EmbedLayout):
         EmbedLayout.layout(self)
         width_attr = self.node.attributes.get('width')
         height_attr = self.node.attributes.get('height')
-        
+
         w_zoom = self.zoom.read(notify=self.width)
         if width_attr:
             self.width.set(dpx(int(width_attr) + 2, w_zoom))

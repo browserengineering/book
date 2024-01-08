@@ -299,6 +299,11 @@ def load_outline(module):
 def compile_method(base, name, args, ctx):
     base_js = compile_expr(base, ctx)
     args_js = [compile_expr(arg, ctx) for arg in args]
+    needs_call = False
+    if base_js[0].isupper():
+        print(base_js)
+        base_js = base_js + ".prototype"
+        needs_call = True
     if name == "bind": # Needs special handling due to "this"
         assert len(args) == 2
         return base_js + ".bind(" + args_js[0] + ", (e) => " + args_js[1] + "(e))"
@@ -319,7 +324,12 @@ def compile_method(base, name, args, ctx):
         else:
             if name == "__init__":
                 name = "init"
-            return "await " + base_js + "." + name + "(" + ", ".join(args_js) + ")"
+            if needs_call:
+                retval = "await " + base_js + "." + name + ".call(" + ", ".join(args_js) + ")"
+                print(retval)
+                return retval
+            else:
+                return "await " + base_js + "." + name + "(" + ", ".join(args_js) + ")"
     elif name in RENAME_METHODS:
         return base_js + "." + RENAME_METHODS[name] + "(" + ", ".join(args_js) + ")"
     elif isinstance(base, ast.Name) and base.id == "self":
@@ -713,6 +723,14 @@ def has_js_hide(decorator_list):
         for dec in decorator_list
     ])
 
+def has_named_params(decorator_list):
+    return any([
+        isinstance(dec, ast.Attribute) and dec.attr == "named_params"
+        and isinstance(dec.value, ast.Name) and dec.value.id == "wbetools"
+        for dec in decorator_list
+    ])
+
+
 @catch_issues
 def compile(tree, ctx, indent=0, patches=[], patchables=[]):
     if isinstance(tree, ast.Import):
@@ -804,6 +822,14 @@ def compile(tree, ctx, indent=0, patches=[], patchables=[]):
             return def_line + body + last_line
         else:
             fn_name = tree.name
+            if fn_name == 'read':
+                if has_named_params(tree.decorator_list):
+                    destructure = ''
+                    for arg in args:
+                        destructure += " " * (indent + 2) + 'let {arg} = args["{arg}"];\n'.format(arg=arg)
+                    args = ['args']
+                    body = destructure + body
+
             if fn_name in patches:
                 fn_name = tree.name + "_patch"
             if ctx.type == "module":
