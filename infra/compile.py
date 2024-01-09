@@ -738,7 +738,7 @@ def has_named_params(decorator_list):
 
 
 @catch_issues
-def compile(tree, ctx, indent=0, patches=[], patchables=[]):
+def compile(tree, ctx, indent=0, patches={}, patchables={}):
     if isinstance(tree, ast.Import):
         assert len(tree.names) == 1
         assert not tree.names[0].asname
