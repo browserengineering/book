@@ -828,13 +828,12 @@ def compile(tree, ctx, indent=0, patches={}, patchables={}):
             return def_line + body + last_line
         else:
             fn_name = tree.name
-            if fn_name == 'read':
-                if has_named_params(tree.decorator_list):
-                    destructure = ''
-                    for arg in args:
-                        destructure += " " * (indent + 2) + 'let {arg} = args["{arg}"];\n'.format(arg=arg)
-                    args = ['args']
-                    body = destructure + body
+            if has_named_params(tree.decorator_list):
+                destructure = ''
+                for arg in args:
+                    destructure += " " * (indent + 2) + 'let {arg} = args["{arg}"];\n'.format(arg=arg)
+                args = ['args']
+                body = destructure + body
 
             if fn_name in patches:
                 fn_name = tree.name + "_patch"
