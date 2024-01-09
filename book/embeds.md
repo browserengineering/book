@@ -1204,8 +1204,8 @@ class IframeLayout(EmbedLayout):
             self.x + diff, self.y + diff,
             self.x + self.width - diff, self.y + self.height - diff)
         internal_cmds = cmds
-        internal_cmds.extend([Blend(1.0, "destination-in", None, [
-                          DrawRRect(inner_rect, 0, "white")])])
+        internal_cmds.append(Blend(1.0, "destination-in", None, [
+                          DrawRRect(inner_rect, 0, "white")]))
         cmds = [Blend(1.0, "source-over", self.node, internal_cmds)]
         paint_outline(self.node, cmds, rect, self.zoom)
         cmds = paint_visual_effects(self.node, cmds, rect)
