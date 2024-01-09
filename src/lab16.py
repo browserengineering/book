@@ -1346,7 +1346,7 @@ class Tab:
             composited_updates = {}
             for node in self.composited_updates:
                 composited_updates[node] = node.blend_op
-        self.composited_updates.clear()
+        self.composited_updates = []
 
         root_frame_focused = not self.focused_frame or \
                 self.focused_frame == self.root_frame
