@@ -2729,7 +2729,12 @@ through optimized cache invalidation. The main takeaways are:
 - Invalidation can be used to skip allocation, computation, and
   even traversals of objects
 
-(Note: there is not yet an embeddable browser widget for this chapter.)
+::: {.web-only}
+
+Click [here](widgets/lab16-browser.html) to try this chapter's
+browser.
+
+:::
 
 Outline
 =======
