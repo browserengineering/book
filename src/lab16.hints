@@ -21,5 +21,6 @@
 {"code": "self.default_style_sheet.copy()", "js": "this.default_style_sheet.slice()"},
 {"code": "CSS_PROPERTIES.copy()", "js": "Object.assign({}, constants.CSS_PROPERTIES)"},
 {"code": "node.attributes.get('rel') == 'stylesheet'", "js": "node.attributes['rel'] == 'stylesheet'"},
-{"code": "CSS_PROPERTIES", "type": "dict"}
+{"code": "CSS_PROPERTIES", "type": "dict"},
+{"code": "self.node.attributes", "type": "dict"}
 ]

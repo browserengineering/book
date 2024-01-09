@@ -326,6 +326,15 @@ def compile_method(base, name, args, ctx):
             if needs_call:
                 return "await " + base_js + "." + name + ".call(" + ", ".join(args_js) + ")"
             else:
+                try:
+                    t = find_hint(base, "type")
+                except:
+                    t = "unknown"
+                if t == "dict":
+                    assert 1 <= len(args) <= 2
+                    assert name == "get"
+                    default = args_js[1] if len(args) == 2 else "null"
+                    return "(" + base_js + "?.[" + args_js[0] + "] ?? " + default + ")"
                 return "await " + base_js + "." + name + "(" + ", ".join(args_js) + ")"
     elif name in RENAME_METHODS:
         return base_js + "." + RENAME_METHODS[name] + "(" + ", ".join(args_js) + ")"
