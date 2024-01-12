@@ -9,5 +9,8 @@
  {"code": "url.origin() in self.allowed_origins", "type": "dict"},
  {"code": "print", "js": "console.log"},
  {"code": "'src' in node.attributes", "type": "dict"},
- {"code": "self.node_to_handle = {}", "js": "    this.node_to_handle = new Map();"}
+ {"code": "self.node_to_handle = {}", "js": "    this.node_to_handle = new Map();"},
+ {"code": "self.default_style_sheet.copy()", "js": "this.default_style_sheet.slice()"},
+ {"code": "f.read()", "js": "f.read()"},
+ {"code": "response.read()", "js": "response.read()"}
 ]

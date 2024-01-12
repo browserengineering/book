@@ -81,6 +81,7 @@ def parse_outline(outline_str):
     if values[1] != "solid": return None
     return int(values[0][:-2]), values[2]
 
+@wbetools.patchable
 def paint_outline(node, cmds, rect, zoom):
     outline = parse_outline(node.style.get("outline"))
     if not outline: return
@@ -295,6 +296,7 @@ def cascade_priority(rule):
     media, selector, body = rule
     return selector.priority
 
+@wbetools.patchable
 def style(node, rules, tab):
     old_style = node.style
 
@@ -498,6 +500,7 @@ class InputLayout:
         return "InputLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
 
+@wbetools.patchable
 def is_focusable(node):
     if get_tabindex(node) < 0:
         return False

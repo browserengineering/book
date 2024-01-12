@@ -53,7 +53,13 @@ def patch(existing_cls):
         return existing_cls
     return decorator
 
+def patchable(f):
+    return f;
+
 def js_hide(f):
+    return f
+
+def named_params(f):
     return f
 
 SHOW_COMPOSITED_LAYER_BORDERS = False

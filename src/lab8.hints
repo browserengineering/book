@@ -4,5 +4,9 @@
  {"code": "'href' in node.attributes", "type": "dict"},
  {"code": "'action' in elt.attributes", "type": "dict"},
  {"code": "'href' in elt.attributes", "type": "dict"},
- {"code": "'name' in node.attributes", "type": "dict"}
+ {"code": "'name' in node.attributes", "type": "dict"},
+ {"code": "self.default_style_sheet.copy()", "js": "this.default_style_sheet.slice()"},
+ {"code": "browser8.read()", "js": "constants.browser8.read()"},
+ {"code": "response.read()", "js": "response.read()"},
+ {"code": "f.read()", "js": "f.read()"}
 ]

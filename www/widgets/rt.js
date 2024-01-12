@@ -5,7 +5,7 @@ export {
     socket, ssl, sys, tkinter, dukpy, urllib, html, random, wbetools,
     truthy, comparator, pysplit, pyrsplit, asyncfilter,
     rt_constants, Widget, http_textarea, skia, sdl2, init_skia,
-    init_window, threading, time, OpenGL, patch_class, patch_function,
+    init_window, threading, time, OpenGL, patch_class, patch_function, dict,
     gtts, os, playsound
     };
 
@@ -27,6 +27,19 @@ function wrap_class(cls, fn) {
     return f;
 }
 
+class Dict {
+    async get(key) {
+        return this[key];
+    }
+}
+
+function dict(args) {
+    let d = new Dict();
+    args.forEach((arg) => {
+        d[arg[0]] = arg[1]
+    });
+    return d;
+}
 
 function http_ok(body, headers) {
     let text = "HTTP/1.0 200 OK\r\n";

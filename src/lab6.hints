@@ -3,5 +3,7 @@
 {"code": "self.s[self.i] in chars", "type": "list"},
 {"code": "'style' in node.attributes", "type": "dict"},
 {"code": "'href' in node.attributes", "type": "dict"},
-{"code": "'/' in dir", "type": "str"}
+{"code": "'/' in dir", "type": "str"},
+{"code": "DEFAULT_STYLE_SHEET.copy()", "js": "constants.DEFAULT_STYLE_SHEET.slice()"},
+{"code": "browser6.read()", "js": "constants.browser6.read()"}
 ]
