@@ -665,11 +665,10 @@ def compile_expr(tree, ctx):
         if e != arg:
             if "await" in e:
                 t = find_hint(gen.iter, "type", None, "list")
-                assert t == "map" or t == "list"
-                if t == "map":
+                assert t == "dict" or t == "list"
+                if t == "dict":
                     out = 'Object.keys(' + out + ')'
-                else:
-                    out = "(await Promise.all(" + out + ".map(async (" + arg + ") => " + e + ")))"
+                out = "(await Promise.all(" + out + ".map(async (" + arg + ") => " + e + ")))"
             else:
                 out = out + ".map((" + arg + ") => " + e + ")"
         return out
