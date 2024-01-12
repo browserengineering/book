@@ -65,13 +65,15 @@ def read_hints(f):
         h["used"] = False
     HINTS = hints
     
-def find_hint(t, key, error=None):
+def find_hint(t, key, error=None, default=None):
     for h in HINTS:
         if "line" in h and h["line"] != t.lineno: continue
         if ast.dump(h["ast"]) != ast.dump(t): continue
         if key not in h: continue
         break
     else:
+        if default != None:
+            return default
         ln = t.lineno if hasattr(t, "lineno") else -1
         hint = {"code": asttools.unparse(t, explain=True), key: "???"}
         raise MissingHint(t, key, hint, ln, error=error)
@@ -112,7 +114,6 @@ RENAME_FNS = {
     "int": "parseInt",
     "float": "parseFloat",
     "print": "console.log",
-    "AnimationClass": "AnimationClass",
     "dict": "dict",
 }
 
@@ -663,12 +664,11 @@ def compile_expr(tree, ctx):
         e = compile_expr(tree.elt, ctx2)
         if e != arg:
             if "await" in e:
-                try:
-                    t = find_hint(gen.iter, "type")
+                t = find_hint(gen.iter, "type", None, "list")
+                assert t == "map" or t == "list"
+                if t == "map":
                     out = 'Object.keys(' + out + ')'
-                    assert t == "map"
-                except:
-                    pass
+                else:
                     out = "(await Promise.all(" + out + ".map(async (" + arg + ") => " + e + ")))"
             else:
                 out = out + ".map((" + arg + ") => " + e + ")"

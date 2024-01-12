@@ -126,8 +126,6 @@ class ResolvePatches(ast.NodeTransformer):
         if not cmd.decorator_list or not is_patch_decorator(cmd.decorator_list[0]):
             if cmd.decorator_list:
                 if not is_patchable_decorator(cmd.decorator_list[0]):
-                    print(cmd.decorator_list)
-                    print(isinstance(cmd, ast.Call))
                     raise Exception()
                 self.patchables.setdefault(cmd.name, []).append(cmd)
 
