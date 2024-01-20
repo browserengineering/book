@@ -503,7 +503,7 @@ types to text and to bytes:
 If you see an error about `str` versus `bytes`, it's because you
 forgot to call `encode` or `decode` somewhere.
 
-To read the server's response, you could use the `read` function on
+To read the server's response, you could use the `recv` function on
 sockets, which gives whatever bits of the response have already
 arrived. Then you write a loop to collect those bits as they arrive.
 However, in Python you can use the `makefile` helper function, which
