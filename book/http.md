@@ -756,7 +756,7 @@ context to *wrap* the socket `s`:
 ``` {.python .example}
 import ssl
 ctx = ssl.create_default_context()
-s = ctx.wrap_socket(s, server_hostname=host)
+s = ctx.wrap_socket(s, server_hostname=self.host)
 ```
 
 Note that `wrap_socket` returns a new socket, which I save back into
