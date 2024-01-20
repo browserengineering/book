@@ -784,8 +784,8 @@ class URL:
         # ...
 ```
 
-(Note that here you're supposed to replace the existing scheme parsing
-code with this new code. It's usually clear from context and the code
+(Note that here you're supposed to replace the existing scheme checking
+assertion with this new one. It's usually clear from context and the code
 itself what you need to replace.)
 
 Encrypted HTTP connections usually use port 443 instead of port 80:
