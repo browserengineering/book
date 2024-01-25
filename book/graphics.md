@@ -369,12 +369,10 @@ page---draws everything---in terms of screen coordinates.[^screen-coordinates]
 
 [^screen-coordinates]: Sort of. What actually happens is that the page is
 first drawn into a bitmap or GPU texture, then that bitmap/texture is shifted
-according to the scroll, and the result is rendered to the screen. [Chapter 12](visual-effects.md)
+according to the scroll, and the result is rendered to the screen. [Chapter 11](visual-effects.md)
 will have more on this topic.
 
-::: {.print-only}
 ![The difference between page and screen coordinates](im/graphics-coords.png)
-:::
 
 Our browser will have the same split. Right now `load` computes
 both the position of each character and draws it: layout\index{layout}
