@@ -65,13 +65,15 @@ def read_hints(f):
         h["used"] = False
     HINTS = hints
     
-def find_hint(t, key, error=None):
+def find_hint(t, key, error=None, default=None):
     for h in HINTS:
         if "line" in h and h["line"] != t.lineno: continue
         if ast.dump(h["ast"]) != ast.dump(t): continue
         if key not in h: continue
         break
     else:
+        if default != None:
+            return default
         ln = t.lineno if hasattr(t, "lineno") else -1
         hint = {"code": asttools.unparse(t, explain=True), key: "???"}
         raise MissingHint(t, key, hint, ln, error=error)
@@ -106,14 +108,13 @@ RENAME_METHODS = {
     "endswith": "endsWith",
     "find": "indexOf",
     "index": "indexOf",
-    "copy": "slice",
 }
 
 RENAME_FNS = {
     "int": "parseInt",
     "float": "parseFloat",
     "print": "console.log",
-    "AnimationClass": "AnimationClass"
+    "dict": "dict",
 }
 
 SKIPPED_FNS = []
@@ -132,7 +133,6 @@ LIBRARY_METHODS = [
     "wrap_socket",
     "send",
     "readline",
-    "read",
     "close",
     
     # files
@@ -300,6 +300,10 @@ def load_outline(module):
 def compile_method(base, name, args, ctx):
     base_js = compile_expr(base, ctx)
     args_js = [compile_expr(arg, ctx) for arg in args]
+    needs_call = False
+    if base_js[0].isupper():
+        base_js = base_js + ".prototype"
+        needs_call = True
     if name == "bind": # Needs special handling due to "this"
         assert len(args) == 2
         return base_js + ".bind(" + args_js[0] + ", (e) => " + args_js[1] + "(e))"
@@ -320,7 +324,19 @@ def compile_method(base, name, args, ctx):
         else:
             if name == "__init__":
                 name = "init"
-            return "await " + base_js + "." + name + "(" + ", ".join(args_js) + ")"
+            if needs_call:
+                return "await " + base_js + "." + name + ".call(" + ", ".join(args_js) + ")"
+            else:
+                try:
+                    t = find_hint(base, "type")
+                except:
+                    t = "unknown"
+                if t == "dict":
+                    assert 1 <= len(args) <= 2
+                    assert name == "get"
+                    default = args_js[1] if len(args) == 2 else "null"
+                    return "(" + base_js + "?.[" + args_js[0] + "] ?? " + default + ")"
+                return "await " + base_js + "." + name + "(" + ", ".join(args_js) + ")"
     elif name in RENAME_METHODS:
         return base_js + "." + RENAME_METHODS[name] + "(" + ", ".join(args_js) + ")"
     elif isinstance(base, ast.Name) and base.id == "self":
@@ -330,6 +346,9 @@ def compile_method(base, name, args, ctx):
     elif name == "keys":
         assert len(args) == 0
         return "Object.keys(" + base_js + ")"
+    elif name == "values":
+        assert len(args) == 0
+        return "Object.values(" + base_js + ")"
     elif name == "format":
         assert isinstance(base, ast.Constant)
         assert isinstance(base.value, str)
@@ -455,6 +474,9 @@ def compile_function(name, args, ctx):
         return args_js[0] + ".constructor"
     elif name == "range":
         return "[...Array(" + args_js[1] + ").keys()]"
+    elif name == "hasattr":
+        assert len(args) == 2
+        return args_js[0] + ".hasOwnProperty(" + args_js[1] + ")"
     else:
         raise UnsupportedConstruct()
 
@@ -601,7 +623,7 @@ def compile_expr(tree, ctx):
                     conjuncts.append("(" + (" && " if negate else " || ").join(parts) + ")")
                 else:
                     t = find_hint(tree, "type")
-                    assert t in ["str", "dict", "list", "map"]
+                    assert t in ["str", "dict", "list", "map", "set"]
                     cmp = "===" if negate else "!=="
                     if t in ["str", "list"]:
                         conjuncts.append("(" + rhs + ".indexOf(" + lhs + ") " + cmp + " -1)")
@@ -609,6 +631,8 @@ def compile_expr(tree, ctx):
                         conjuncts.append("(typeof " + rhs + "[" + lhs + "] " + cmp + " \"undefined\")")
                     elif t == "map":
                         conjuncts.append("(" + rhs + ".get(" + lhs + ") " + cmp + " \"undefined\")")
+                    elif t == "set":
+                        conjuncts.append("(" + rhs + ".has(" + lhs + "))")
             elif isinstance(op, ast.Eq) and \
                  (isinstance(comp, ast.List) or isinstance(tree.left, ast.List)):
                 conjuncts.append("(JSON.stringify(" + lhs + ") === JSON.stringify(" + rhs + "))")
@@ -640,6 +664,10 @@ def compile_expr(tree, ctx):
         e = compile_expr(tree.elt, ctx2)
         if e != arg:
             if "await" in e:
+                t = find_hint(gen.iter, "type", None, "list")
+                assert t == "dict" or t == "list"
+                if t == "dict":
+                    out = 'Object.keys(' + out + ')'
                 out = "(await Promise.all(" + out + ".map(async (" + arg + ") => " + e + ")))"
             else:
                 out = out + ".map((" + arg + ") => " + e + ")"
@@ -664,6 +692,8 @@ def compile_expr(tree, ctx):
             return "constants.{}".format(tree.id)
         elif tree.id in ctx:
             return tree.id
+        elif tree.id == "list":
+            return "Array"
         else:
             raise AssertionError(f"Could not find variable {tree.id}")
     elif isinstance(tree, ast.Constant):
@@ -698,8 +728,16 @@ def has_js_hide(decorator_list):
         for dec in decorator_list
     ])
 
+def has_named_params(decorator_list):
+    return any([
+        isinstance(dec, ast.Attribute) and dec.attr == "named_params"
+        and isinstance(dec.value, ast.Name) and dec.value.id == "wbetools"
+        for dec in decorator_list
+    ])
+
+
 @catch_issues
-def compile(tree, ctx, indent=0, patches=[]):
+def compile(tree, ctx, indent=0, patches={}, patchables={}):
     if isinstance(tree, ast.Import):
         assert len(tree.names) == 1
         assert not tree.names[0].asname
@@ -723,6 +761,8 @@ def compile(tree, ctx, indent=0, patches=[]):
                 to_import.append(name)
             else: # Function
                 to_import.append(name)
+            if name in patches.keys() and not name[0].isupper():
+                to_import.append("patch_{}".format(name))
 
         import_line = "import {{ {} }} from \"./{}.js\";".format(", ".join(sorted(set(to_import))), tree.module)
         out = " " * indent + import_line
@@ -755,7 +795,10 @@ def compile(tree, ctx, indent=0, patches=[]):
         if has_js_hide(tree.decorator_list):
             return ""
         if tree.decorator_list:
-            assert tree.decorator_list[0].func.value.id == "wbetools"
+            if isinstance(tree.decorator_list[0], ast.Call):
+                assert tree.decorator_list[0].func.value.id == "wbetools"
+            else:
+                assert tree.decorator_list[0].value.id == "wbetools"
         assert not tree.returns
         args = check_args(tree.args, ctx)
 
@@ -784,6 +827,13 @@ def compile(tree, ctx, indent=0, patches=[]):
             return def_line + body + last_line
         else:
             fn_name = tree.name
+            if has_named_params(tree.decorator_list):
+                destructure = ''
+                for arg in args:
+                    destructure += " " * (indent + 2) + 'let {arg} = args["{arg}"];\n'.format(arg=arg)
+                args = ['args']
+                body = destructure + body
+
             if fn_name in patches:
                 fn_name = tree.name + "_patch"
             if ctx.type == "module":
@@ -962,29 +1012,41 @@ def compile(tree, ctx, indent=0, patches=[]):
     else:
         raise UnsupportedConstruct()
     
-def compile_module(tree, patches):
+def compile_module(tree, patches, patchables):
     assert isinstance(tree, ast.Module)
     ctx = Context("module", {})
 
-    items = \
-        [compile(item, indent=0, ctx=ctx, patches=patches) \
-        for item in tree.body]
+    items = []
+
+    items.extend(
+        [compile(item, indent=0, ctx=ctx, patches=patches,
+            patchables=patchables) \
+        for item in tree.body])
 
     for (name, patch) in patches.items():
-        items.append(compile(patch[0], indent=0, ctx=ctx, patches=patches))
+        items.append(compile(patch[0], indent=0, ctx=ctx, patches=patches,
+            patchables=patchables))
         if name[0].isupper():
             items.append(
                 "patch_class({cls}, {cls}Patch)\n".format(
                 cls=name))
         else:
             items.append(
-                "patch_function({cls}, {cls}_patch)\n".format(
-                cls=name))
+                "patch_{fun}({fun}_patch)\n".format(
+                fun=name))
         # Layout is renamed to BlockLayout in lab5. The Layout class is patched,
         # but we also need to declare BLockLayout an alias of this patched
         # class.
         if name == "Layout":
             items.append("var BlockLayout = Layout")
+
+
+    for (name, patchable) in patchables.items():
+        assert not name[0].isupper()
+        items.append(
+            "function patch_{fun}(patch) {{\n  {fun} = patch\n}}".format(
+                fun=name))
+        EXPORTS.append("patch_{}".format(name))
 
     exports = ""
     rt_imports = ""
@@ -996,7 +1058,7 @@ def compile_module(tree, patches):
     imports_str = "import {{ {} }} from \"./{}.js\";"
 
     rt_imports_arr = [ 'breakpoint', 'comparator', 'asyncfilter', 'pysplit', 
-        'pyrsplit', 'truthy', 'patch_class', 'patch_function' ]
+        'pyrsplit', 'truthy', 'patch_class', 'patch_function', 'dict' ]
     rt_imports_arr += set([ mod.split(".")[0] for mod in RT_IMPORTS])
     rt_imports = imports_str.format(", ".join(sorted(rt_imports_arr)), "rt")
 
@@ -1024,12 +1086,13 @@ if __name__ == "__main__":
 
     name = os.path.basename(args.python.name)
     assert name.endswith(".py")
+
     if args.hints: read_hints(args.hints)
     INDENT = args.indent
     tree = asttools.parse(args.python.read(), args.python.name)
     load_outline(asttools.inline(tree))
-    tree, patches = asttools.resolve_patches_and_return_them(tree)
-    module_js = compile_module(tree, patches)
+    tree, patches, patchables = asttools.resolve_patches_and_return_them(tree)
+    module_js = compile_module(tree, patches, patchables)
 
     js = 'import { filesystem } from "./rt.js";\n'
 

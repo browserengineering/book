@@ -20,5 +20,9 @@
 {"code": "focusable_nodes.sort(key=get_tabindex)", "js": "focusable_nodes.sort(get_tabindex)"},
 {"code": "self.focus in focusable_nodes", "type": "list"},
 {"code": "(active_idx + 1) % len(self.tabs)", "js": "(active_idx + 1) % self.tabs.length"},
- {"code": "MeasureTime()", "js": "new MeasureTime()"}
+{"code": "MeasureTime()", "js": "new MeasureTime()"},
+{"code": "self.default_style_sheet.copy()", "js": "this.default_style_sheet.slice()"},
+{"code": "f.read()", "js": "f.read()"},
+{"code": "open('runtime14.js').read()", "js": "filesystem.open('runtime14.js').read()"},
+{"code": "open('browser14.css').read()", "js": "filesystem.open('browser14.css').read()"}
 ]

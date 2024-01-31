@@ -9,5 +9,7 @@
   {"code": "'nonce' not in session", "type": "dict"},
   {"code": "'nonce' not in params", "type": "dict"},
   {"code": "template.format(token)", "js": "template.replace('{}', token)"},
-  {"code": "SESSIONS.setdefault(token, {})", "js": "(constants.SESSIONS[token] = constants.SESSIONS[token] || {})"}
+  {"code": "SESSIONS.setdefault(token, {})", "js": "(constants.SESSIONS[token] = constants.SESSIONS[token] || {})"},
+  {"code": "req.read(length)", "js": "req.read(length)"},
+  {"code": "f.read()", "js": "f.read()"}
 ]

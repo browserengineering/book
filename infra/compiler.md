@@ -420,9 +420,9 @@ The `with` statement in Python has no analog in JS (which also has a
 `with` statement but one that does something unrelated) so we just
 compile it into `open` and `close` statements:
 
-    >>> Test.stmt("with open('browser.css') as f:\n f.read()")
+    >>> Test.stmt("with open('browser.css') as f:\n f.open()")
     let f = (filesystem.open("browser.css"));
-    (f.read());
+    (f.open());
     f.close();
 
 But `if` statements are weird. First, there's the top-level `if`

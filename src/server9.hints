@@ -1,4 +1,6 @@
 [
   {"code": "'content-length' in headers", "type": "dict"},
-  {"code": "'guest' in params", "type": "dict"}
+  {"code": "'guest' in params", "type": "dict"},
+  {"code": "req.read(length)", "js": "req.read(length)"},
+  {"code": "f.read()", "js": "f.read()"}
 ]

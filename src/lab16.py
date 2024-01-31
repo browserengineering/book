@@ -25,8 +25,8 @@ from lab6 import tree_to_list, INHERITED_PROPERTIES
 from lab8 import INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR
-from lab11 import FONTS, get_font, linespace, parse_blend_mode
-from lab11 import parse_color, NAMED_COLORS
+from lab11 import FONTS, NAMED_COLORS, get_font, linespace
+from lab11 import parse_color, parse_blend_mode
 from lab12 import MeasureTime, REFRESH_RATE_SEC
 from lab12 import Task, TaskRunner, SingleThreadedTaskRunner
 from lab13 import diff_styles, parse_transition, add_parent_pointers
@@ -34,18 +34,17 @@ from lab13 import local_to_absolute, absolute_bounds_for_obj
 from lab13 import NumericAnimation
 from lab13 import map_translation, parse_transform
 from lab13 import CompositedLayer, paint_visual_effects
-from lab13 import PaintCommand, DrawText, DrawCompositedLayer, DrawOutline, \
+from lab13 import PaintCommand, DrawText, DrawCompositedLayer, \
     DrawLine, DrawRRect
-from lab13 import VisualEffect, Blend, Transform
-from lab14 import parse_outline, DrawRRect, \
-    paint_outline, \
-    dpx, cascade_priority, \
+from lab13 import VisualEffect, Blend, Transform, DrawOutline
+from lab14 import parse_outline, style, \
+    paint_outline, dpx, cascade_priority, \
     is_focusable, get_tabindex, speak_text, \
-    CSSParser, mainloop, DrawOutline
+    CSSParser, mainloop
 from lab15 import URL, HTMLParser, AttributeParser, DrawImage, \
     DocumentLayout, BlockLayout, \
     EmbedLayout, InputLayout, LineLayout, TextLayout, ImageLayout, \
-    IframeLayout, JSContext, style, AccessibilityNode, Frame, Tab, \
+    IframeLayout, JSContext, AccessibilityNode, Frame, Tab, \
     CommitData, Browser, BROKEN_IMAGE, font, \
     IFRAME_WIDTH_PX, IFRAME_HEIGHT_PX, parse_image_rendering, DEFAULT_STYLE_SHEET
 import wbetools
@@ -190,6 +189,7 @@ class ProtectedField:
         assert not self.dirty
         return self.value
 
+    @wbetools.named_params
     def read(self, notify):
         if notify.frozen_dependencies or self.frozen_invalidations:
             assert notify in self.invalidations
@@ -893,7 +893,7 @@ class IframeLayout(EmbedLayout):
         EmbedLayout.layout(self)
         width_attr = self.node.attributes.get('width')
         height_attr = self.node.attributes.get('height')
-        
+
         w_zoom = self.zoom.read(notify=self.width)
         if width_attr:
             self.width.set(dpx(int(width_attr) + 2, w_zoom))
@@ -943,9 +943,11 @@ class IframeLayout(EmbedLayout):
             self.x.get() + diff, self.y.get() + diff,
             self.x.get() + self.width.get() - diff,
             self.y.get() + self.height.get() - diff)
-        cmds = [Blend(1.0, "source-over", self.node,
-                      cmds + [Blend(1.0, "destination-in", None, [
-                          DrawRRect(inner_rect, 0, "white")])])]
+        internal_cmds = cmds
+        internal_cmds.append(
+            Blend(1.0, "destination-in", None, [
+                          DrawRRect(inner_rect, 0, "white")]))
+        cmds = [Blend(1.0, "source-over", self.node, internal_cmds)]
         paint_outline(self.node, cmds, rect, self.zoom.get())
         cmds = paint_visual_effects(self.node, cmds, inner_rect)
         return cmds
@@ -1344,7 +1346,7 @@ class Tab:
             composited_updates = {}
             for node in self.composited_updates:
                 composited_updates[node] = node.blend_op
-        self.composited_updates.clear()
+        self.composited_updates = []
 
         root_frame_focused = not self.focused_frame or \
                 self.focused_frame == self.root_frame
