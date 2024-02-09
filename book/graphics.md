@@ -668,12 +668,13 @@ scrollbar if the whole document fits onscreen.
     screen or the possibility of objects purposefully drawn offscreen.
     In [Chapter 5](layout.md), we'll implement this correctly.
 
-*Emoji*: Add support for emoji to your browser `😀`{=html}`\smiley`{=latex}. Emoji are
+*Emoji*: Add support for emoji to your browser
+`😀`{=html}`\smiley`{=latex}. Emoji are
 characters, and you can call `create_text` to draw them, but the
 results aren't very good. Instead, head to [the OpenMoji
 project](https://openmoji.org), download the emoji for ["grinning
 face"](https://openmoji.org/library/#emoji=1F600)
-as a PNG file, convert to GIF, resize it to 16×16 pixels, and save it
+as a PNG file, resize it to 16×16 pixels, and save it
 to the same folder as the browser. Use Tk's `PhotoImage` class to load
 the image and then the `create_image` method to draw it to the canvas.
 In fact, download the whole OpenMoji library (look for the "Get
