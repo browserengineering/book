@@ -426,7 +426,7 @@ This talks to `example.org` to set up the connection and ready both
 computers to exchange data.
 
 ::: {.quirk}
-Naturally this won't work if you're offline. It also might not work if
+Naturally, this won't work if you're offline. It also might not work if
 you're behind a proxy, or in a variety of more complex networking
 environments. The workaround will depend on your setup---it might be
 as simple as disabling your proxy, or it could be much more complex.
@@ -471,9 +471,9 @@ you send that blank line at the end of the request. If you forget
 that, the other computer will keep waiting on you to send that
 newline, and you'll keep waiting on its response.[^literal]
 
-[^send-return]: `send` actually returns a number, in this case `47`.
-    That tells you how many bytes of data you sent to the other
-    computer; if, say, your network connection failed midway through
+[^send-return]: `send` actually returns a number (`47` in this case)
+    that tells you how many bytes of data you sent to the other
+    computer. If, say, your network connection failed midway through
     sending the data, you might want to know how much you sent before
     the connection failed.
 
@@ -487,7 +487,7 @@ there's a corresponding `decode` method that goes the other
 way.[^charset] Python reminds you to be careful by giving different
 types to text and to bytes:
 
-[^charset]: When you call `encode` and `decode` you need to tell the
+[^charset]: When you call `encode` and `decode`, you need to tell the
     computer what *character encoding* you want it to use. This is a
     complicated topic. I'm using `utf8` here, which is a common
     character encoding and will work on many pages, but in the real
@@ -554,7 +554,7 @@ class URL:
 ```
 
 Note that I do *not* check that the server's version of HTTP is the
-same as mine; this might sound like a good idea, but there are a lot
+same as mine. This might sound like a good idea, but there are a lot
 of misconfigured servers out there that respond in HTTP 1.1 even when
 you talk to them in HTTP 1.0.^[Luckily the protocols are similar
 enough to not cause confusion.]
@@ -575,11 +575,11 @@ class URL:
 
 For the headers, I split each line at the first colon and fill in a map of
 header names to header values. Headers are case-insensitive, so I normalize
-them to lower case.[^casefold] Also, white-space is insignificant in HTTP
+them to lower case.[^casefold] Also, whitespace is insignificant in HTTP
 header values, so I strip off extra whitespace at the beginning and end.
 
 [^casefold]: I used [`casefold`][casefold] instead of `lower`, because it works
-better for more languages.
+better in more languages.
 
 [casefold]: https://docs.python.org/3/library/stdtypes.html#str.casefold
 
@@ -610,7 +610,7 @@ class URL:
         s.close()
 ```
 
-It's that body that we're going to display, so let's return that:
+It's the body that we're going to display, so let's return that:
 
 ``` {.python}
 class URL:
@@ -644,7 +644,6 @@ talking much, much more about HTML in future chapters, but for now let
 me keep it very simple.
 
 In HTML, there are *tags* and *text*. Each tag starts with a `<` and
-ends with a `>`; generally speaking, tags tell you what kind of thing
 some content is, while text is the actual content.[^content-tag] Most tags come
 in pairs of a start and an end tag; for example, the title of the page
 is enclosed in a pair of tags: `<title>` and `</title>`. Each tag, inside
@@ -657,7 +656,8 @@ followed by the tag name (and no attributes).
 
 So, to create our very, very simple web browser, let's take the page
 HTML and print all the text, but not the tags, in it.[^python2] I'll do
-this in a new function, `show`:
+this in a new function, `show`:^[Note that this is a global function and
+not really part of the browser proper.]
 
 [^python2]: If this example causes Python to produce a `SyntaxError` pointing to
 the `end` on the last line, it is likely because you are running Python 2
@@ -686,7 +686,7 @@ normal characters, not inside a tag, are printed.[^python-newline]
 the character, which it otherwise would.
 
 We can now load a web page just by stringing together `request` and
-`show`:
+`show`:^[Like `show`, this is a global function.]
 
 ``` {.python}
 def load(url):
@@ -927,11 +927,11 @@ make it so that, if your browser is started without a URL being given,
 some specific file on your computer is opened. You can use that file
 for quick testing.
 
-*Alternate encodings:* read the encoding from the `Content-Type`
+*Alternate encodings:* Read the encoding from the `Content-Type`
 header instead of always using `utf8`. Test it on a real site that
 doesn't use `utf8`, like `google.com`.
 
-*data:* Yet another scheme is *data*, which
+*Data:* Yet another scheme is *data*, which
 allows inlining HTML content into the URL itself. Try navigating to
 `data:text/html,Hello world!` in a real browser to see what happens. Add
 support for this scheme to your browser. The *data* scheme is especially
@@ -965,13 +965,13 @@ full URL, but sometimes it skips the host and scheme and just starts
 with a `/` (meaning the same host and scheme as the original request).
 The new URL might itself be a redirect, so make sure to handle that
 case. You don't, however, want to get stuck in a redirect loop, so
-make sure limit how many redirects your browser can follow in a row.
+make sure to limit how many redirects your browser can follow in a row.
 You can test this with the URL
 <http://browser.engineering/redirect>, which redirects back to this
 page, and its `/redirect2` and `/redirect3` cousins which do more
 complicated redirect chains.
 
-*Caching:* Typically the same images, styles, and scripts are used on
+*Caching:* Typically, the same images, styles, and scripts are used on
 multiple pages; downloading them repeatedly is a waste. It's generally
 valid to cache any HTTP response, as long as it was requested with
 `GET` and received a `200` response.^[Some other status codes like
@@ -982,7 +982,7 @@ header, specifically for `no-store` and `max-age` values. If the
 `Cache-Control` header contains any other value than these two, it's best not
 to cache the response.
 
-*Compression:* Add support for HTTP compression, in which the browser
+*Compression:* Add support for HTTP compression. In HTTP compression the browser
 [informs the server][negotiate] that compressed data is acceptable.
 Your browser must send the `Accept-Encoding` header with the value
 `gzip`. If the server supports compression, its response will have a

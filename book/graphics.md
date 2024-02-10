@@ -138,7 +138,7 @@ canvas.pack()
 ```
 
 The first line creates the window, as above; the second creates the
-`Canvas` inside that window. We pass the window as an argument, so
+`Canvas` inside that window. We pass the window as an argument so
 that Tk knows where to display the canvas. The other arguments define
 the canvas's size; I chose 800×600 because that was a common old-timey
 monitor size.[^svga] The third line is a Tk peculiarity, which positions
@@ -153,7 +153,7 @@ finer-grained control over appearance, which a canvas provides.[^widgets]
 [^svga]: This size, called Super Video Graphics Array (SVGA), was standardized
 in 1987, and probably did seem super back then.
 
-To keep it all organized let's put this code in a class:
+To keep it all organized, let's put this code in a class:
 
 ``` {.python}
 class Browser:
@@ -213,8 +213,8 @@ The Tk canvas widget is quite a bit more powerful than what we're
 using it for here. As you can see from [the
 tutorial](https://tkdocs.com/tutorial/canvas.html), you can move
 the individual things you've drawn to the canvas, listen to click
-events on each one, and so on. In this book, I'm not using those
-features, because I want to teach you how to implement them.
+events on each one, and so on. I'm not using those
+features in this book because I want to teach you how to implement them.
 :::
 
 Laying out text
@@ -302,7 +302,7 @@ makes it possible to read more than a single line.
 
 ::: {.web-only}
 
-Here's an widget demonstrating that concept:
+Here's a widget demonstrating that concept:
 
 ::: {.widget height=204}
     lab2-render.html
@@ -385,7 +385,7 @@ position. This way, `layout` can operate with page coordinates and
 only `draw` needs to think about screen coordinates.
 
 Let's start with `layout`. Instead of calling `canvas.create_text` on
-each character let's add it to a list, together with its position.
+each character, let's add it to a list, together with its position.
 Since `layout` doesn't need to access anything in `Browser`, it can be
 a standalone function:
 
@@ -400,12 +400,12 @@ def layout(text):
 ```
 
 The resulting list of things to display is called a *display
-list*^[The term is standard.] Since `layout` is all about page
+list*.^[The term "display list" is standard.] Since `layout` is all about page
 coordinates, we don't need to change anything else about it to support
 scrolling.
 
-Once the display list is computed, `draw` needs to loop through the
-display list and draw each character. Since `draw` does need access to
+Once the display list is computed, `draw` needs to loop through it
+and draw each character. Since `draw` does need access to
 the canvas, we make it a method on `Browser`:
 
 ``` {.python expected=False}
@@ -426,7 +426,7 @@ class Browser:
         self.draw()
 ```
 
-Now we can add scrolling. Let's have a field for how far you've
+Now we can add scrolling. Let's add a field for how far you've
 scrolled:
 
 ``` {.python}
@@ -467,7 +467,7 @@ to do is increment `y` and re-draw the canvas:
 
 [^event-arg]: `scrolldown` is passed an *event object* as an argument
     by Tk, but since scrolling down doesn't require any information
-    about the key press, besides the fact that it happened,
+    about the key press besides the fact that it happened,
     `scrolldown` ignores that event object.
 
 ``` {.python}
@@ -530,8 +530,8 @@ redraw their window contents, though, to change what is displayed.
 
 
 But this scrolling is pretty slow.[^slow-scroll] Why? It turns out
-that loading information about the shape of a character, inside
-`create_text`, takes a while. To speed up scrolling we need to make
+that loading information about the shape of a character inside
+`create_text`, takes a while. To speed up scrolling, we need to make
 sure to do it only when necessary (while at the same time ensuring the
 pixels on the screen are always correct).
 
@@ -562,7 +562,7 @@ this optimization.
 
 ::: {.further}
 You should also keep in mind that not all web page interactions are
-animations---there are also discrete actions such as mouse clicks.
+animations---there are also discrete actions, such as mouse clicks.
 Research has shown that it usually suffices to respond to a discrete
 action in [100ms]---below that threshold, most humans are not
 sensitive to discrete action speed. This is very different than
@@ -590,11 +590,11 @@ now:
 ::: {.web-only}
 
 And here is our browser rendering this very web page (it's fullly
-interactive---after clicking on it to focus you should be able to scroll with
+interactive---after clicking on it to focus, you should be able to scroll with
 the down arrow):^[This is the full browser source code, cross-compiled to
 JavaScript and running in an iframe. Click "restart" to choose a new web page
 to render, then "start" to render it. Subsequent chapters will include one of
-these at the end of the chapter, so you can see how it improves.]
+these at the end of the chapter so you can see how it improves.]
 
 ::: {.widget height=400}
     lab2-browser.html
@@ -629,7 +629,7 @@ Exercises
 *Line breaks*: Change `layout` to end the current line and start a new
 one when it sees a newline character. Increment *y* by more than
 `VSTEP` to give the illusion of paragraph breaks. There are poems
-embedded in "Journey to the West"; you'll now be able to make them
+embedded in "Journey to the West"; now you'll be able to make them
 out.
 
 *Mouse wheel*: Add support for scrolling up when you hit the up arrow.
