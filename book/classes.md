@@ -2,17 +2,28 @@
 title: Classes Using This Book
 ...
 
-The courses below use [Web Browser Engineering](index.md) as a
-textbook. If you are teaching or planning to teach from this book,
-please [let us know][contact].
+If you are teaching or planning to teach a class from this book, we
+would be happy to provide you with teaching materials, including:
+
+- Lecture slides for roughly 2 hours per chapter of lecture, split
+  into 6-8 modules per chapter, for chapters 1-10
+- Recorded lectures of same slides, for flipped classroom settings
+- Multiple-choice comprehension for all lectures
+- An "autograder" for 4 selected exercises per chapter 1-10
+- Data on lecture difficulty, time required, and expected grades
+
+[Write to us][contact] if you'd like a copy. We're also happy to
+advise on course design, syllabus, grading, and so on, and share
+experiences from teaching the course multiple times. The courses below
+have used [Web Browser Engineering](index.md) as a textbook.
 
 [contact]: mailto:author@browser.engineering
 
 # University of Washington
 
-CSE 490 Web Browser Engineering is an undergraduate-level course at
-the University of Washington first and most recently taught in
-Spring 2022. The most recent course description reads,
+CSE 493X Web Browser Engineering is an undergraduate-level course at
+the University of Washington most recently taught in Spring 2023. The
+most recent course description reads,
 
 > We live in a world completely permeated by the internet and the web.
 > It's time to think of the web browser as a critical piece of systems
@@ -29,6 +40,12 @@ Spring 2022. The most recent course description reads,
 > interactive pages. Weekly assignments will primarily involve
 > implementing features in your browser. Previous experience with web
 > technologies is not required.
+
+In Spring 2024, it will be taught by [Gilbert
+Bernstein](http://www.gilbertbernstein.com/).
+
+In Spring 2023, it was taught by [James R. Wilcox](https://jamesrwilcox.com).
+Course materials can be found [online](https://courses.cs.washington.edu/courses/cse493x/23sp/).
 
 In Spring 2022, it was taught by [James R. Wilcox](https://jamesrwilcox.com).
 Course materials can be found [online](https://courses.cs.washington.edu/courses/cse490x/22sp/).
@@ -47,21 +64,25 @@ in Fall 2021. The most recent course description reads,
 > follows a textbook and is taught in a "flipped" format, allowing a
 > lot of student interaction.
 
+
+In Spring 2024, it was taught by [Pavel
+Panchekha](https://pavpanchekha.com) under course number CS 4560.
+
 In Fall 2021, it was taught by [Pavel
 Panchekha](https://pavpanchekha.com) assisted by Ian Briggs under
 course number CS 4962.
 [Syllabus](https://pavpanchekha.com/teach/wbe-fa21-syllabus.pdf)
-available. Contact instructor for teaching materials.
+available.
 
 In Fall 2020, it was taught by [Pavel
 Panchekha](https://pavpanchekha.com) under course number CS 6968.
 [Syllabus](https://pavpanchekha.com/teach/wbe-fa20-syllabus.pdf)
-available. Contact instructor for teaching materials.
+available.
 
 In Fall 2019, it was taught by [Pavel
 Panchekha](https://pavpanchekha.com) under course number CS 6968.
 [Syllabus](https://pavpanchekha.com/teach/wbe-fa19-syllabus.pdf)
-available. Contact instructor for teaching materials.
+available.
 
 # HAW Hamburg
 
