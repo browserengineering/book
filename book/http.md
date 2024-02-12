@@ -983,7 +983,7 @@ header, specifically for `no-store` and `max-age` values. If the
 to cache the response.
 
 *Compression:* Add support for HTTP compression. In HTTP compression the browser
-[informs the server][negotiate] that compressed data is acceptable.
+first [informs the server][negotiate] that compressed data is acceptable.
 Your browser must send the `Accept-Encoding` header with the value
 `gzip`. If the server supports compression, its response will have a
 `Content-Encoding` header with value `gzip`. The body is then
