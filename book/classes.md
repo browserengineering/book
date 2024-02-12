@@ -19,37 +19,6 @@ have used [Web Browser Engineering](index.md) as a textbook.
 
 [contact]: mailto:author@browser.engineering
 
-# University of Washington
-
-CSE 493X Web Browser Engineering is an undergraduate-level course at
-the University of Washington most recently taught in Spring 2023. The
-most recent course description reads,
-
-> We live in a world completely permeated by the internet and the web.
-> It's time to think of the web browser as a critical piece of systems
-> infrastructure, alongside compilers and operating systems. While
-> industrial strength browsers are massive and complex systems with
-> many features, the basic structure of a browser can be expressed in
-> just a thousand lines of code. In this class we will study browser
-> internals and build our own web browsers from scratch. By the end of
-> the first week, you will have a working "browser" that does nothing
-> more than download the webpage and print it as text to the console.
-> From there, each week we will extend the browser with a new feature.
-> By the end of the quarter, you will have your own graphical browser
-> supporting text layout, CSS for styling, and JavaScript for building
-> interactive pages. Weekly assignments will primarily involve
-> implementing features in your browser. Previous experience with web
-> technologies is not required.
-
-In Spring 2024, it will be taught by [Gilbert
-Bernstein](http://www.gilbertbernstein.com/).
-
-In Spring 2023, it was taught by [James R. Wilcox](https://jamesrwilcox.com).
-Course materials can be found [online](https://courses.cs.washington.edu/courses/cse493x/23sp/).
-
-In Spring 2022, it was taught by [James R. Wilcox](https://jamesrwilcox.com).
-Course materials can be found [online](https://courses.cs.washington.edu/courses/cse490x/22sp/).
-
 # University of Utah
 
 CS 4560 Web Browser Internals is an undergraduate-level course at the
@@ -84,12 +53,43 @@ Panchekha](https://pavpanchekha.com) under course number CS 6968.
 [Syllabus](https://pavpanchekha.com/teach/wbe-fa19-syllabus.pdf)
 available.
 
+# University of Washington
+
+CSE 493X Web Browser Engineering is an undergraduate-level course at
+the University of Washington most recently taught in Spring 2023. The
+most recent course description reads,
+
+> We live in a world completely permeated by the internet and the web.
+> It's time to think of the web browser as a critical piece of systems
+> infrastructure, alongside compilers and operating systems. While
+> industrial strength browsers are massive and complex systems with
+> many features, the basic structure of a browser can be expressed in
+> just a thousand lines of code. In this class we will study browser
+> internals and build our own web browsers from scratch. By the end of
+> the first week, you will have a working "browser" that does nothing
+> more than download the webpage and print it as text to the console.
+> From there, each week we will extend the browser with a new feature.
+> By the end of the quarter, you will have your own graphical browser
+> supporting text layout, CSS for styling, and JavaScript for building
+> interactive pages. Weekly assignments will primarily involve
+> implementing features in your browser. Previous experience with web
+> technologies is not required.
+
+In Spring 2024, it will be taught by [Gilbert
+Bernstein](http://www.gilbertbernstein.com/).
+
+In Spring 2023, it was taught by [James R. Wilcox](https://jamesrwilcox.com).
+Course materials can be found [online](https://courses.cs.washington.edu/courses/cse493x/23sp/).
+
+In Spring 2022, it was taught by [James R. Wilcox](https://jamesrwilcox.com).
+Course materials can be found [online](https://courses.cs.washington.edu/courses/cse490x/22sp/).
+
 # HAW Hamburg
 
 Web Browser Technology (“Technik von Webbrowsern”) is an
 undergraduate-level course at Hamburg University of Applied Sciences.
-It has been taught three times so far over the past 1.5 years (up to
-fall 2023). A course description reads (translation via Google Translate):
+It has been taught four times so far over the past 1.5 years (up to
+spring 2024). A course description reads (translation via Google Translate):
 
 > Every day we come into contact with web browsers, consciously or
 > unconsciously. Be it because we explicitly use an available browser
