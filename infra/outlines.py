@@ -10,7 +10,7 @@ class Item: pass
 
 @dataclass
 class Function(Item):
-name: str
+    name: str
     args: List[str]
     
     def str(self):
