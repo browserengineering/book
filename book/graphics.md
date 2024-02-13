@@ -104,7 +104,6 @@ important to take advantage of GPU hardware, and the slow CPU makes
 good performance harder to achieve. Mobile browsers are challenging!
 :::
 
-
 [^same-code-on-mobile]: For example, most real browsers have both desktop and
 mobile editions, and the rendering engine code is almost exactly the same for
 both.
@@ -124,13 +123,12 @@ Drawing to the window
 
 Our browser will draw the web page text to a *canvas*,\index{canvas} a
 rectangular Tk widget that you can draw circles, lines, and text
-on:[^canvas]
+on. For example, you can create a canvas with Tk like this:[^canvas]
 
 [^canvas]: You may be familiar with the HTML `<canvas>` element, which is a
     similar idea: a 2D rectangle in which you can draw shapes.
 
-
-``` {.python expected=False}
+``` {.python .example}
 WIDTH, HEIGHT = 800, 600
 window = tkinter.Tk()
 canvas = tkinter.Canvas(window, width=WIDTH, height=HEIGHT)
