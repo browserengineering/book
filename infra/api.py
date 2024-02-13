@@ -194,6 +194,7 @@ def thanks():
     return {"patreon": patreon_names, "contribute": contributor_names,}
 
 def splitword(text):
+    if not text: return []
     out = [[]]
     ws = text[0].isspace()
     for c in text:

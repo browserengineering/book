@@ -928,10 +928,6 @@ make it so that, if your browser is started without a URL being given,
 some specific file on your computer is opened. You can use that file
 for quick testing.
 
-*Alternate encodings:* Read the encoding from the `Content-Type`
-header instead of always using `utf8`. Test it on a real site that
-doesn't use `utf8`, like `google.com`.
-
 *data: scheme:* Yet another scheme is *data*, which
 allows inlining HTML content into the URL itself. Try navigating to
 `data:text/html,Hello world!` in a real browser to see what happens. Add

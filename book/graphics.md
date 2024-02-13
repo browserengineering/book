@@ -369,12 +369,10 @@ page---draws everything---in terms of screen coordinates.[^screen-coordinates]
 
 [^screen-coordinates]: Sort of. What actually happens is that the page is
 first drawn into a bitmap or GPU texture, then that bitmap/texture is shifted
-according to the scroll, and the result is rendered to the screen. [Chapter 12](visual-effects.md)
+according to the scroll, and the result is rendered to the screen. [Chapter 11](visual-effects.md)
 will have more on this topic.
 
-::: {.print-only}
 ![The difference between page and screen coordinates](im/graphics-coords.png)
-:::
 
 Our browser will have the same split. Right now `load` computes
 both the position of each character and draws it: layout\index{layout}
@@ -651,18 +649,6 @@ events.[^more-mousewheel]
 
 [tk-mousewheel]: https://wiki.tcl-lang.org/page/mousewheel
 
-*Emoji*: Add support for emoji to your browser. Emoji are
-characters, and you can call `create_text` to draw them, but the
-results aren't very good. Instead, head to [the OpenMoji
-project](https://openmoji.org), download the emoji for ["grinning
-face"](https://openmoji.org/library/#emoji=1F600)
-as a PNG file, convert to GIF, resize it to 16×16 pixels, and save it
-to the same folder as the browser. Use Tk's `PhotoImage` class to load
-the image and then the `create_image` method to draw it to the canvas.
-In fact, download the whole OpenMoji library (look for the "Get
-OpenMojis" button at the top right)---then your browser can look up
-whatever emoji is used in the page.
-
 *Resizing*: Make the browser resizable. To do so, [pass the `fill` and
 `expand` arguments][fill-expand] to `canvas.pack`, call and bind to
 the `<Configure>` event, which happens when the window is resized. The
@@ -681,6 +667,19 @@ scrollbar if the whole document fits onscreen.
     browser needs to account for extra whitespace at the bottom of the
     screen or the possibility of objects purposefully drawn offscreen.
     In [Chapter 5](layout.md), we'll implement this correctly.
+
+*Emoji*: Add support for emoji to your browser
+`😀`{=html}`\smiley`{=latex}. Emoji are
+characters, and you can call `create_text` to draw them, but the
+results aren't very good. Instead, head to [the OpenMoji
+project](https://openmoji.org), download the emoji for ["grinning
+face"](https://openmoji.org/library/#emoji=1F600)
+as a PNG file, resize it to 16×16 pixels, and save it
+to the same folder as the browser. Use Tk's `PhotoImage` class to load
+the image and then the `create_image` method to draw it to the canvas.
+In fact, download the whole OpenMoji library (look for the "Get
+OpenMojis" button at the top right)---then your browser can look up
+whatever emoji is used in the page.
 
 *about:blank:* Currently, a malformed URL causes the browser to crash.
 It would be much better to have error recovery for that, and instead
