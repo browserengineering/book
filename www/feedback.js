@@ -298,7 +298,9 @@ function setup_chapter_feedback() {
     }
     
     function do_cancel(e) {
-        previous_comment = this.querySelector("textarea").value;
+        let result = this.querySelector("textarea");
+        if (result)
+            previous_comment = result.value;
         chapter_overlay.remove();
     }
 
