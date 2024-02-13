@@ -15,8 +15,8 @@ title: More resources
 * [Inside look at modern web browsers](https://developers.google.com/web/updates/2018/09/inside-browser-part1) - Mariko Kosaka
 * [Let's build a browser engine](https://limpet.net/mbrubeck/2014/08/08/toy-layout-engine-1.html) - Matt Brubeck
  * [A Reference Architecture for Web Browsers](https://grosskurth.ca/papers/browser-refarch.pdf) - Alan Grosskurth and Michael W. Godfrey
-* [RenderingNG](https://developer.chrome.com/blog/renderingng/) (overview of Chromium) - Chris Harrelson
+* [RenderingNG](https://developer.chrome.com/docs/chromium/renderingng) (overview of Chromium) - Chris Harrelson
 * [Real-Time Rendering](https://www.realtimerendering.com/) - Tomas Akenine-Möller, Eric Haines, Naty Hoffman, Angelo Pesce, Michał Iwanicki, and Sébastien Hillaire
-* [Viola](http://viola.org) - Pei-Yuan Wei
+* [Viola](https://archive.is/EOPyw) - Pei-Yuan Wei
 * [Weaving the web](https://www.w3.org/People/Berners-Lee/Weaving/Overview.html) - Tim Berners-Lee with Mark Fischetti
 * [Web History](https://css-tricks.com/chapter-1-birth/) - Jay Hoffmann

@@ -424,7 +424,7 @@ Note that `Text` and `Tag` are asymmetric: `lex` avoids empty
 `Tag` object represents the HTML code `<>`, while an empty `Text`
 object with empty text represents no content at all.
 
-Since we've modified `lex` we are now passing `layout` not just the
+Since we've modified `lex`, we are now passing `layout` not just the
 text of the page, but also the tags in it. So `layout` must loop over
 tokens, not text:
 
@@ -578,7 +578,7 @@ class Browser:
 ```
 
 When you do big refactors like this, it's important to work
-incrementally. It might seem more efficient to change everything at
+incrementally. While it might seem more efficient to change everything at
 once, that efficiency brings with it a risk of failure: trying to do
 so much that you get confused and have to abandon the whole refactor.
 So take a moment to test that your browser still works before you move
@@ -896,7 +896,7 @@ documentation][metrics-doc].
 
 [metrics-doc]: https://github.com/python/cpython/blob/main/Lib/tkinter/font.py#L163
 
-Then the `text` method can call `get_font` instead of creating a `Font`
+Then the `word` method can call `get_font` instead of creating a `Font`
 object directly:
 
 ``` {.python}
