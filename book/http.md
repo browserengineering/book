@@ -644,6 +644,7 @@ talking much, much more about HTML in future chapters, but for now let
 me keep it very simple.
 
 In HTML, there are *tags* and *text*. Each tag starts with a `<` and
+ends with a `>`; generally speaking, tags tell you what kind of thing
 some content is, while text is the actual content.[^content-tag] Most tags come
 in pairs of a start and an end tag; for example, the title of the page
 is enclosed in a pair of tags: `<title>` and `</title>`. Each tag, inside
@@ -657,7 +658,7 @@ followed by the tag name (and no attributes).
 So, to create our very, very simple web browser, let's take the page
 HTML and print all the text, but not the tags, in it.[^python2] I'll do
 this in a new function, `show`:^[Note that this is a global function and
-not really part of the browser proper.]
+not the `URL` class.]
 
 [^python2]: If this example causes Python to produce a `SyntaxError` pointing to
 the `end` on the last line, it is likely because you are running Python 2
@@ -931,7 +932,7 @@ for quick testing.
 header instead of always using `utf8`. Test it on a real site that
 doesn't use `utf8`, like `google.com`.
 
-*Data:* Yet another scheme is *data*, which
+*data: scheme:* Yet another scheme is *data*, which
 allows inlining HTML content into the URL itself. Try navigating to
 `data:text/html,Hello world!` in a real browser to see what happens. Add
 support for this scheme to your browser. The *data* scheme is especially
