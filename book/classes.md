@@ -8,7 +8,7 @@ would be happy to provide you with teaching materials, including:
 - Lecture slides for roughly 2 hours per chapter of lecture, split
   into 6-8 modules per chapter, for chapters 1-10
 - Recorded lectures of same slides, for flipped classroom settings
-- Multiple-choice comprehension for all lectures
+- Multiple-choice comprehension quizzes for all lectures
 - An "autograder" for 4 selected exercises per chapter 1-10
 - Data on lecture difficulty, time required, and expected grades
 
