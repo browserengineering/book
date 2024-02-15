@@ -275,8 +275,8 @@ class DrawText:
     def __repr__(self):
         return "DrawText(text={})".format(self.text)
 
-browser6 = open("browser6.css")
-DEFAULT_STYLE_SHEET = CSSParser(browser6.read()).parse()
+browser6_styles = open("browser6.css")
+DEFAULT_STYLE_SHEET = CSSParser(browser6_styles.read()).parse()
 
 @wbetools.patch(Browser)
 class Browser:
