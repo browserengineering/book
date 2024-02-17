@@ -598,7 +598,7 @@ size is the `<small>` tag and its deprecated sister tag
     we're stuck using them here.
 
 Our experience with font styles and weights suggests a simple
-approach. First, a field in `Layout` to track font size:
+approach that customizes the `size` field in `Layout`. It starts out as:
 
 ``` {.python}
 self.size = 16
@@ -614,7 +614,8 @@ font = tkinter.font.Font(
 )
 ```
 
-Finally, the `<big>` and `<small>` tags change the value of `size`:
+And so we can change the sizes of `<big>` and `<small>` tags by updating this
+variable:
 
 ``` {.python}
 def token(self, tok):
