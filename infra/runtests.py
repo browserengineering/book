@@ -79,6 +79,7 @@ if __name__ == "__main__":
 
     t = Terminal()
     results = {}
+    failures = 0
     for chapter, metadata in data["chapters"].items():
         if args.chapter and args.chapter != "all" and chapter != args.chapter: continue
         print(f"{t.bold(chapter)}: Running comparisons and tests")
@@ -117,6 +118,7 @@ if __name__ == "__main__":
                 print(f"  {t.bold(value)}: Comparing {chapter}'s {fn}...", end=" ")
                 results[value] = test_compare(chapter, value, "css", fn)
                 if not results[value][0]: print(t.green("pass"))
+        failures += sum([failures for failures, count in results.values()])
 
     if not results:
         if args.chapter:
@@ -142,7 +144,6 @@ if __name__ == "__main__":
                 print("\t", file)
             sys.exit(-1)
             
-    failures = sum([failures for failures, count in results.values()])
     total = sum([count for failures, count in results.values()])
     if failures:
         print(f"Failed {failures} of {total} tests")
