@@ -501,6 +501,7 @@ def style(node, rules):
         if not selector.matches(node): continue
         for property, value in body.items():
             node.style[property] = value
+    # ...
 ```
 
 Make sure to put this loop before the one that parses the `style`
