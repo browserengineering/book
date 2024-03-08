@@ -298,35 +298,47 @@ a time:[^whitespace]
     including for identifying word boundaries.
 
 ``` {.python expected=False}
-w = font.measure(word)
-if cursor_x + w > WIDTH - HSTEP:
-    cursor_y += font.metrics("linespace") * 1.25
-    cursor_x = HSTEP
-self.display_list.append((cursor_x, cursor_y, word))
-cursor_x += w + font.measure(" ")
+def layout(text):
+    # ...
+    for word in text.split():
+        # ...
+    return display_list
 ```
 
-There's a lot of moving parts to this code. First, we measure the
-width of the text, and store it in `w`. We'd normally draw the text at
-`cursor_x`, so its right end would be at `cursor_x + w`, so we check
-if that's past the edge of the page. If it is, we make space by
-wrapping to the next line. Now we have the location to *start* drawing
-the word, so we add to the display list; and finally we update
-`cursor_x` to point to the end of the word.
+Unlike Chinese characters, words are different sizes, so we need to
+measure the width of each word:
 
-There are a few surprises in this code. One is that I call `metrics`
-with an argument; that just returns the named metric directly. Also, I
-increment `cursor_x` by `w + font.measure(" ")` instead of `w`. That's
-because I want to have spaces between the words: the call to `split()`
-removed all of the whitespace, and this adds it back. I don't add the
-space to `w` on the second line, though, because you don't need a
-space after the last word on a line.
+``` {.python expected=False }
+def layout(text):
+    font = tkinter.font.Font()
+    # ...
+    for word in text.split():
+        w = font.measure(word)
+    # ...
+```
 
-Finally, note that I multiply the linespace by 1.25 when incrementing
-`y`. Try removing the multiplier: you'll see that the text is harder
-to read because the lines are too close together.[^tight] Instead, it is
-common to add "line spacing" or "leading"[^leading] between lines. The 25%
-line spacing is a typical amount.
+Here I've chosen to use Tk's default font. Now, if we draw the text at
+`cursor_x`, its right end would be at `cursor_x + w`. That might be
+past the right edge of the page, and in this case we need to make
+space by wrapping to the next line:
+
+``` {.python expected=False}
+def layout(text):
+    for word in text.split():
+        # ...
+        if cursor_x + w > WIDTH - HSTEP:
+            cursor_y += font.metrics("linespace") * 1.25
+            cursor_x = HSTEP
+```
+
+Note that this code block only shows the insides of the `for` loop.
+The rest of `layout` should be left alone. Also, I call `metrics` with
+an argument; that just returns the named metric directly. Finally,
+note that I multiply the linespace by 1.25 when incrementing `y`. Try
+removing the multiplier: you'll see that the text is harder to read
+because the lines are too close together.[^tight] Instead, it is
+common to add "line spacing" or "leading"[^leading] between lines. The
+25% line spacing is a typical amount.
 
 [^tight]: Designers say the text is too "tight".
 
@@ -335,6 +347,24 @@ line spacing is a typical amount.
     than what the actual letter pieces were made of, so it could
     compress a little to keep pressure on the other pieces. Pronounce
     it "led-ing" not "leed-ing".
+
+So now `cursor_x` and `cursor_y` have the location to *start* drawing
+the word, so we add to the display list, and finally we update
+`cursor_x` to point to the end of the word:
+
+``` {.python expected=False}
+def layout(text):
+    for word in text.split():
+        # ...
+        display_list.append((cursor_x, cursor_y, word))
+        self.cursor_x += w + font.measure(" ")
+```
+
+I increment `cursor_x` by `w + font.measure(" ")` instead of `w`
+because I want to have spaces between the words: the call to `split()`
+removed all of the whitespace, and this adds it back. I don't add the
+space to `w` in the `if` condition, though, because you don't need a
+space after the last word on a line.
 
 ::: {.further}
 Breaking lines in the middle of a word is called hyphenation, and can
@@ -473,7 +503,6 @@ text.[^even-misnested]
     [a later chapter](styles.md).
 
 The `bold` and `italic` variables are used to select the font:
-
 
 ``` {.python expected=False}
 if isinstance(tok, Text):
