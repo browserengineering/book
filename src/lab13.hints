@@ -23,7 +23,5 @@
  {"code": "child.tag in BLOCK_ELEMENTS", "type": "list"},
  {"code": "rect.outset(1, 1)", "js": "rect.outset(1, 1)"},
  {"code": "sys.exit()", "js": ""},
- {"code": "f.read()", "js": "f.read()"},
  {"code": "open('runtime13.js').read()", "js": "filesystem.open('runtime13.js').read()"}
-
 ]

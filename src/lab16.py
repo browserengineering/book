@@ -1116,7 +1116,7 @@ class Frame:
                 self.window_id)
             self.tab.task_runner.schedule_task(task)
 
-        self.rules = self.default_style_sheet.copy()
+        self.rules = DEFAULT_STYLE_SHEET.copy()
         links = [node.attributes["href"]
                  for node in tree_to_list(self.nodes, [])
                  if isinstance(node, Element)
