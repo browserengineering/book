@@ -111,16 +111,14 @@ class Layout:
         wbetools.record("initial_y", self.cursor_y, self.line);
         metrics = [font.metrics() for x, word, font in self.line]
         wbetools.record("metrics", metrics)
-        max_ascent = max([font.metrics("ascent")
-            for x, word, font in self.line])
+        max_ascent = max([metric["ascent"] for metric in metrics])
         baseline = self.cursor_y + 1.25 * max_ascent
         wbetools.record("max_ascent", max_ascent);
         for x, word, font in self.line:
             y = baseline - font.metrics("ascent")
             self.display_list.append((x, y, word, font))
             wbetools.record("aligned", self.display_list);
-        max_descent = max([font.metrics("descent")
-            for x, word, font in self.line])
+        max_descent = max([metric["descent"] for metric in metrics])
         wbetools.record("max_descent", max_descent);
         self.cursor_y = baseline + 1.25 * max_descent
         self.cursor_x = HSTEP

@@ -737,8 +737,8 @@ line:
 ``` {.python indent=4}
 def flush(self):
     if not self.line: return
-    max_ascent = max([font.metrics("ascent")
-        for x, word, font in self.line])
+    metrics = [font.metrics() for x, word, font in self.line]
+    max_ascent = max([metric["ascent"] for metric in metrics])
 ```
 
 The line is then `max_ascent` below `self.y`—or actually a little more
@@ -770,8 +770,7 @@ accomodate that word's ascent. Now `y` must move far enough down below
 `baseline` to account for the deepest descender:
 
 ``` {.python}
-max_descent = max([font.metrics("descent")
-    for x, word, font in self.line])
+max_descent = max([metric["descent"] for metric in metrics])
 self.cursor_y = baseline + 1.25 * max_descent
 ```
 
