@@ -18,7 +18,7 @@ The Memex concept
 =================
 
 ::: {.center}
-![The original publication of *As You May Think*[^memex]](im/memex.jpg)
+![The original publication of *As We May Think*[^memex]](im/memex.jpg)
 :::
 
 [^memex]: <a href="https://www.flickr.com/people/79255326@N00">Dunkoman</a>
