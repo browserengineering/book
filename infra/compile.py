@@ -4,6 +4,7 @@ import ast, asttools
 import json
 import warnings
 import outlines
+import platform
 
 INDENT = 2
 
@@ -48,6 +49,24 @@ def catch_issues(f):
     return wrapped
 
 HINTS = []
+
+def is_str_ast(comp):
+    """Python 3.10 introduced ast.Constant nodes and 3.14 removes the
+    old ast.Str nodes; this function bridges the gap."""
+    is_str = False
+    if platform.python_version_tuple() < ("3", "12", "0") and hasattr(ast, "Str"):
+        is_str = is_str or isinstance(comp, ast.Str)
+    elif hasattr(ast, "Constant"):
+        is_str = is_str or isinstance(comp, ast.Constant) and isinstance(comp.value, str)
+    return is_str
+
+def str_value(node):
+    if hasattr(ast, "Constant") and isinstance(node, ast.Constant):
+        return node.value
+    elif hasattr(ast, "Str") and isinstance(node, ast.Str):
+        return node.s
+    else:
+        raise TypeError("Not a string value: {!r}".format(node))
 
 def read_hints(f):
     global HINTS
@@ -378,10 +397,10 @@ def compile_method(base, name, args, ctx):
         return args_js[0] + ".join(" + base_js + ")"
     elif name == "isspace":
         assert len(args) == 0
-        return "/^\s*$/.test(" + base_js + ")"
+        return r"/^\s*$/.test(" + base_js + ")"
     elif name == "isalnum":
         assert len(args) == 0
-        return "/^[a-zA-Z0-9]+$/.test(" + base_js + ")"
+        return r"/^[a-zA-Z0-9]+$/.test(" + base_js + ")"
     elif name == "items":
         assert len(args) == 0
         return "Object.entries(" + base_js + ")"
@@ -392,7 +411,7 @@ def compile_method(base, name, args, ctx):
     elif name == "split":
         assert 0 <= len(args) <= 2
         if len(args) == 0:
-            return base_js + ".trim().split(/\s+/)"
+            return base_js + r".trim().split(/\s+/)"
         elif len(args) == 1:
             return base_js + ".split(" + args_js[0] + ")"
         else:
@@ -456,11 +475,11 @@ def compile_function(name, args, ctx):
         assert len(args) == 1
         return args_js[0] + ".toString()"
     elif name == "open":
-        assert isinstance(args[0], ast.Str)
+        assert is_str_ast(args[0])
         if len(args) == 1:
-            FILES.append(args[0].s)
+            FILES.append(str_value(args[0]))
         else:
-            assert isinstance(args[1], ast.Str)
+            assert is_str_ast(args[1])
         return "filesystem.open(" + args_js[0] + ")"
     elif name == "enumerate":
         assert len(args) == 1
@@ -609,7 +628,7 @@ def compile_expr(tree, ctx):
             rhs = compile_expr(comp, ctx)
             if (isinstance(op, ast.In) or isinstance(op, ast.NotIn)):
                 negate = isinstance(op, ast.NotIn)
-                if isinstance(comp, ast.Str):
+                if is_str_ast(comp):
                     cmp = "===" if negate else "!=="
                     conjuncts.append("(" + rhs + ".indexOf(" + lhs + ") " + cmp + " -1)")
                 elif isinstance(comp, ast.List):
@@ -676,7 +695,7 @@ def compile_expr(tree, ctx):
         base = compile_expr(tree.value, ctx)
         return base + "." + tree.attr
     elif isinstance(tree, ast.Dict):
-        assert all(isinstance(k, ast.Str) for k in tree.keys)
+        assert all(is_str_ast(k) for k in tree.keys)
         pairs = [compile_expr(k, ctx) + ": " + compile_expr(v, ctx) for k, v in zip(tree.keys, tree.values)]
         return "{" + ", ".join(pairs) + "}"
     elif isinstance(tree, ast.Tuple) or isinstance(tree, ast.List):
@@ -910,8 +929,8 @@ def compile(tree, ctx, indent=0, patches={}, patchables={}):
         assert isinstance(test.left, ast.Name)
         assert test.left.id == "__name__"
         assert len(test.comparators) == 1
-        if isinstance(test.comparators[0], ast.Str):
-            s = test.comparators[0].s
+        if is_str_ast(test.comparators[0]):
+            s = str_value(test.comparators[0])
         else:
             assert isinstance(test.comparators[0], ast.Constant)
             assert isinstance(test.comparators[0].value, str)
