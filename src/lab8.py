@@ -243,6 +243,12 @@ def paint_tree(layout_object, display_list):
 
 @wbetools.patch(Tab)
 class Tab:
+    def __init__(self, tab_height):
+        self.url = None
+        self.history = []
+        self.tab_height = tab_height
+        self.focus = None
+
     def load(self, url, payload=None):
         self.scroll = 0
         self.url = url
