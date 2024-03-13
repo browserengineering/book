@@ -1215,10 +1215,6 @@ class Frame:
         self.window_id = len(self.tab.window_id_to_frame)
         self.tab.window_id_to_frame[self.window_id] = self
 
-        with open("browser15.css") as f:
-            self.default_style_sheet = \
-                CSSParser(f.read(), internal=True).parse()
-
     def set_needs_render(self):
         self.needs_style = True
         self.tab.set_needs_accessibility()
@@ -1271,7 +1267,7 @@ class Frame:
                 self.window_id)
             self.tab.task_runner.schedule_task(task)
 
-        self.rules = self.default_style_sheet.copy()
+        self.rules = DEFAULT_STYLE_SHEET.copy()
         links = [node.attributes["href"]
                  for node in tree_to_list(self.nodes, [])
                  if isinstance(node, Element)

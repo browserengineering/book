@@ -1014,9 +1014,6 @@ class Tab:
 
         self.composited_updates = []
 
-        with open("browser8.css") as f:
-            self.default_style_sheet = CSSParser(f.read()).parse()
-
     def set_needs_render(self):
         self.needs_style = True
         self.browser.set_needs_animation_frame(self)

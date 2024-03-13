@@ -198,9 +198,6 @@ class Tab:
             self.task_runner = SingleThreadedTaskRunner(self)
         self.task_runner.start_thread()
 
-        with open("browser8.css") as f:
-            self.default_style_sheet = CSSParser(f.read()).parse()
-
     def load(self, url, payload=None):
         self.loaded = False
         self.scroll = 0
@@ -235,7 +232,7 @@ class Tab:
             task = Task(self.js.run, script_url, body)
             self.task_runner.schedule_task(task)
 
-        self.rules = self.default_style_sheet.copy()
+        self.rules = DEFAULT_STYLE_SHEET.copy()
         links = [node.attributes["href"]
                  for node in tree_to_list(self.nodes, [])
                  if isinstance(node, Element)

@@ -244,13 +244,10 @@ def paint_tree(layout_object, display_list):
 @wbetools.patch(Tab)
 class Tab:
     def __init__(self, tab_height):
-        self.history = []
         self.url = None
-        self.focus = None
+        self.history = []
         self.tab_height = tab_height
- 
-        with open("browser8.css") as f:
-            self.default_style_sheet = CSSParser(f.read()).parse()
+        self.focus = None
 
     def load(self, url, payload=None):
         self.scroll = 0
@@ -259,7 +256,7 @@ class Tab:
         body = url.request(payload)
         self.nodes = HTMLParser(body).parse()
 
-        self.rules = self.default_style_sheet.copy()
+        self.rules = DEFAULT_STYLE_SHEET.copy()
         links = [node.attributes["href"]
                  for node in tree_to_list(self.nodes, [])
                  if isinstance(node, Element)
@@ -280,12 +277,6 @@ class Tab:
         self.document.layout()
         self.display_list = []
         paint_tree(self.document, self.display_list)
-
-    def draw(self, canvas, offset):
-        for cmd in self.display_list:
-            if cmd.rect.top > self.scroll + self.tab_height: continue
-            if cmd.rect.bottom < self.scroll: continue
-            cmd.execute(self.scroll - offset, canvas)
 
     def click(self, x, y):
         self.focus = None
@@ -369,7 +360,6 @@ class Browser:
         self.tabs = []
         self.active_tab = None
         self.focus = None
-        self.address_bar = ""
         self.chrome = Chrome(self)
 
     def handle_click(self, e):

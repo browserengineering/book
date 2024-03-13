@@ -641,10 +641,9 @@ class PseudoclassSelector:
         return "PseudoclassSelector({}, {})".format(self.pseudoclass, self.base)
 
 class CSSParser:
-    def __init__(self, s, internal=False):
+    def __init__(self, s):
         self.s = s
         self.i = 0
-        self.is_internal = internal
 
     def whitespace(self):
         while self.i < len(self.s) and self.s[self.i].isspace():
@@ -859,10 +858,6 @@ class Tab:
         self.composited_updates = []
         self.zoom = 1.0
 
-        with open("browser14.css") as f:
-            self.default_style_sheet = \
-                CSSParser(f.read(), internal=True).parse()
-
     def load(self, url, payload=None):
         self.loaded = False
         self.focus_element(None)
@@ -900,7 +895,7 @@ class Tab:
             task = Task(self.js.run, script_url, body)
             self.task_runner.schedule_task(task)
 
-        self.rules = self.default_style_sheet.copy()
+        self.rules = DEFAULT_STYLE_SHEET.copy()
         links = [node.attributes["href"]
                  for node in tree_to_list(self.nodes, [])
                  if isinstance(node, Element)

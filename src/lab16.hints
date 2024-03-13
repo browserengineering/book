@@ -18,8 +18,8 @@
 {"code": "property in INHERITED_PROPERTIES", "type": "dict"},
 {"code": "notify in self.invalidations", "type": "set"},
 {"code": "self.name in CSS_PROPERTIES", "type": "dict"},
-{"code": "self.default_style_sheet.copy()", "js": "this.default_style_sheet.slice()"},
 {"code": "CSS_PROPERTIES.copy()", "js": "Object.assign({}, constants.CSS_PROPERTIES)"},
+{"code": "DEFAULT_STYLE_SHEET.copy()", "js": "constants.DEFAULT_STYLE_SHEET.slice()"},
 {"code": "node.attributes.get('rel') == 'stylesheet'", "js": "node.attributes['rel'] == 'stylesheet'"},
 {"code": "CSS_PROPERTIES", "type": "dict"},
 {"code": "self.node.attributes", "type": "dict"}
