@@ -58,6 +58,14 @@ The trailing slash is also optional:
     >>> test.socket.last_request(url_no_slash + '/')
     b'GET / HTTP/1.0\r\nHost: test.test\r\nCookie: foo=baz\r\n\r\n'
 
+Cookie parameters are parsed correctly:
+
+    >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n" + \
+    ...   b"Set-Cookie: foo=baz; HttpOnly; SameSite=Lax; Secure\r\n\r\n")
+    >>> browser.new_tab(lab10.URL(url))
+    >>> lab10.COOKIE_JAR["test.test"]
+    ('foo=baz', {'httponly': 'true', 'samesite': 'lax', 'secure': 'true'})
+
 Testing XMLHttpRequest
 ======================
 
