@@ -738,7 +738,7 @@ letter X is typically as wide as the widest number.
 To actually draw the UI, we'll first have the browser chrome paint a
 display list, which the `Browser` will then draw to the screen:
 
-``` {.python}
+``` {.python expected=False}
 class Chrome:
     def paint(self):
         cmds = []
