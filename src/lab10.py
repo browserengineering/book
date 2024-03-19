@@ -73,10 +73,10 @@ class URL:
                 cookie, rest = cookie.split(";", 1)
                 for param in rest.split(";"):
                     if '=' in param:
-                        param, value = param.strip().split("=", 1)
+                        param, value = param.split("=", 1)
                     else:
                         value = "true"
-                    params[param.casefold()] = value.casefold()
+                    params[param.strip().casefold()] = value.casefold()
             COOKIE_JAR[self.host] = (cookie, params)
     
         assert "transfer-encoding" not in response_headers
