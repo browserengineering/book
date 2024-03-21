@@ -503,35 +503,46 @@ The canvas the browser draws to, for example, is shared by all web pages,
 but the layout tree and display list are specific to one page. We need to
 tease tabs and browsers apart.
 
-Here's the plan: the `Browser` class will store the window and canvas,
-plus a list of `Tab` objects, one per browser tab. Everything else
-goes into a new `Tab` class. Since the `Browser` stores the window and
-canvas, it handles all events and forwards them to the active tab. The
-`load`, `scrolldown`, `click`, and `draw` methods, meanwhile, move to
-`Tab`, since that's now where all web-page-specific data lives.
+Here's the plan: the `Browser` class will own the window and canvas,
+and all related methods, such as event handling. And it'll also
+contain a list of `Tab` objects and the page chrome. But the web page
+itself its associated methods will live in a new `Tab` class.
 
-Let's start with the `Browser` class. It has to store a list of tabs
+To start, rename your existing `Browser` class to be just `Tab`, since
+until now we've only handled a single web page:
+
+``` {.python}
+class Tab:
+    # ...
+```
+
+Then we'll need a new `Browser` class. It has to store a list of tabs
 and also which one is active:
 
 ``` {.python}
 class Browser:
     def __init__(self):
-        # ...
         self.tabs = []
         self.active_tab = None
 ```
 
-Since the `Browser` owns the window, it handles all events:
+It also owns the window and handles all events:
 
 ``` {.python}
 class Browser:
     def __init__(self):
+        self.window = tkinter.Tk()
+        self.canvas = tkinter.Canvas(
+            # ...
+        )
+        self.canvas.pack()
         self.window.bind("<Down>", self.handle_down)
         self.window.bind("<Button-1>", self.handle_click)
 ```
 
-Since these events need page-specific information to resolve, these
-handler methods just forward the event to the active tab:
+The `handle_down` and `handle_click` methods need page-specific
+information, so these handler methods just forward the event to the
+active tab:
 
 ``` {.python replace=e.y/tab_y}
 class Browser:
@@ -588,6 +599,15 @@ class Browser:
         self.active_tab = new_tab
         self.tabs.append(new_tab)
         self.draw()
+```
+
+On startup, you should now create a `Browser` with one tab:
+
+``` {.python}
+if __name__ == "__main__":
+    import sys
+    Browser().new_tab(URL(sys.argv[1]))
+    tkinter.mainloop()
 ```
 
 Of course, we need a way for *the user* to switch tabs, create new
