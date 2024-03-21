@@ -736,17 +736,28 @@ wider than numbers like 1---but it is close enough, and anyway, the
 letter X is typically as wide as the widest number.
 
 To actually draw the UI, we'll first have the browser chrome paint a
-display list, which the `Browser` will then draw to the screen. Let's
-start by first painting the new-tab button:
+display list, which the `Browser` will then draw to the screen:
+
+``` {.python expected=False}
+class Chrome:
+    def paint(self):
+        cmds = []
+        # ...
+        return cmds
+```
+
+Let's start by first painting the new-tab button:
 
 ``` {.python}
 class Chrome:
     def paint(self):
+        # ...
         cmds.append(DrawOutline(self.newtab_rect, "black", 1))
         cmds.append(DrawText(
             self.newtab_rect.left + self.padding,
             self.newtab_rect.top,
             "+", self.font, "black"))
+        # ...
 ```
 
 The `DrawOutline` command draws a rectangular border:
@@ -785,6 +796,7 @@ class Chrome:
             cmds.append(DrawText(
                 bounds.left + self.padding, bounds.top + self.padding,
                 "Tab {}".format(i), self.font, "black"))
+        # ...
 ```
 
 Finally, to identify which tab is the active tab, we've got to make
@@ -793,7 +805,6 @@ that file folder shape with the current tab sticking up:
 ``` {.python}
 class Chrome:
     def paint(self):
-        # ...
         for i, tab in enumerate(self.browser.tabs):
             # ...
             if tab == self.browser.active_tab:
@@ -833,18 +844,20 @@ class Chrome:
         self.bottom = self.tabbar_bottom
 
     def paint(self):
-        cmds = []
+        # ...
         cmds.append(DrawRect(
             Rect(0, 0, WIDTH, self.bottom),
             "white"))
         cmds.append(DrawLine(
             0, self.bottom, WIDTH,
             self.bottom, "black", 1))
+        # ...
 ```
 
+Make sure the background is drawn before any other part of the chrome.
 I also added a line at the bottom of the chrome to separate it from
-the page. Note how I also changed `DrawRect` to pass a `Rect` instead of the
-four corners; this requires a change to `BlockLayout`:
+the page. Note how I also changed `DrawRect` to pass a `Rect` instead
+of the four corners; this requires a change to `BlockLayout`:
 
 ``` {.python}
 class BlockLayout:
@@ -861,7 +874,7 @@ class BlockLayout:
 
 ```
 
-Do the same for `DrawText` and `DrawLine`.
+Add a `rect` field to `DrawText` and `DrawLine` too.
 
 Drawing this chrome display list is now straightforward:
 
