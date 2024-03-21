@@ -854,10 +854,10 @@ class Chrome:
         # ...
 ```
 
-Make the background is drawn before any other part of the chrome. I
-also added a line at the bottom of the chrome to separate it from the
-page. Note how I also changed `DrawRect` to pass a `Rect` instead of
-the four corners; this requires a change to `BlockLayout`:
+Make sure the background is drawn before any other part of the chrome.
+I also added a line at the bottom of the chrome to separate it from
+the page. Note how I also changed `DrawRect` to pass a `Rect` instead
+of the four corners; this requires a change to `BlockLayout`:
 
 ``` {.python}
 class BlockLayout:
