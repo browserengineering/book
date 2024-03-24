@@ -89,7 +89,7 @@ and most other things discussed in this book.[^same-code-on-mobile]
 
 But there are several differences worth noting. Applications are usually
 full-screen, with only one application drawing to the screen at a time. There's
-no mouse and only a virtual keyboard, so the main form of iteraction is touch.
+no mouse and only a virtual keyboard, so the main form of interaction is touch.
 There is a concept of a "visual viewport" not present on desktop, to
 accommodate "desktop-only" and "mobile-ready" sites, as well as pinch zoom.
 [^meta-viewport] And screen pixel density is much higher, but the total screen
