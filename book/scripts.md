@@ -96,12 +96,12 @@ hard to avoid less than and greater than signs in JavaScript code.]
 Finding and downloading those scripts is similar to what we did for
 CSS. First, we need to find all of the scripts:
 
-``` {.python replace=nodes/self.nodes}
+``` {.python}
 class Tab:
     def load(self, url, payload=None):
         # ...
         scripts = [node.attributes["src"] for node
-                   in tree_to_list(nodes, [])
+                   in tree_to_list(self.nodes, [])
                    if isinstance(node, Element)
                    and node.tag == "script"
                    and "src" in node.attributes]
