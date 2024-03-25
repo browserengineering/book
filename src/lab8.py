@@ -54,14 +54,14 @@ class URL:
             s = ctx.wrap_socket(s, server_hostname=self.host)
     
         method = "POST" if payload else "GET"
-        
-        body = "{} {} HTTP/1.0\r\n".format(method, self.path)
+        request = "{} {} HTTP/1.0\r\n".format(method, self.path)
         if payload:
             length = len(payload.encode("utf8"))
-            body += "Content-Length: {}\r\n".format(length)
-        body += "Host: {}\r\n".format(self.host)
-        body += "\r\n" + (payload if payload else "")
-        s.send(body.encode("utf8"))
+            request += "Content-Length: {}\r\n".format(length)
+        request += "Host: {}\r\n".format(self.host)
+        request += "\r\n"
+        if payload: request += payload
+        s.send(request.encode("utf8"))
         response = s.makefile("r", encoding="utf8", newline="\r\n")
     
         statusline = response.readline()
@@ -77,9 +77,9 @@ class URL:
         assert "transfer-encoding" not in response_headers
         assert "content-encoding" not in response_headers
     
-        body = response.read()
+        content = response.read()
         s.close()
-        return body
+        return content
 
 browser8 = open("browser8.css")
 DEFAULT_STYLE_SHEET = CSSParser(browser8.read()).parse()
