@@ -271,6 +271,10 @@ class BlockLayout:
             (self.node.tag != "input" and self.node.tag !=  "button")
 ```
 
+Add a trivial `should_paint` method that just returns `True` to all of
+the other layout object types. Now we can skip painting objects based
+on `should_paint`:
+
 ``` {.python}
 def paint_tree(layout_object, display_list):
     if layout_object.should_paint():
