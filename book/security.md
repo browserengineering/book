@@ -385,7 +385,7 @@ class URL:
         # ...
         if self.host in COOKIE_JAR:
             cookie = COOKIE_JAR[self.host]
-            body += "Cookie: {}\r\n".format(cookie)
+            request += "Cookie: {}\r\n".format(cookie)
         # ...
 ```
 
@@ -832,7 +832,7 @@ cookie value, not the parameters:
 def request(self, payload=None):
     if self.host in COOKIE_JAR:
         cookie, params = COOKIE_JAR[self.host]
-        body += "Cookie: {}\r\n".format(cookie)
+        request += "Cookie: {}\r\n".format(cookie)
 ```
 
 This stores the `SameSite` parameter of a cookie. But to actually use
@@ -920,7 +920,7 @@ def request(self, top_level_url, payload=None):
             if method != "GET":
                 allow_cookie = self.host == top_level_url.host
         if allow_cookie:
-            body += "Cookie: {}\r\n".format(cookie)
+            request += "Cookie: {}\r\n".format(cookie)
         # ...
 ```
 
@@ -1084,7 +1084,7 @@ to return the response headers:
 class URL:
     def request(self, top_level_url, payload=None):
         # ...
-        return response_headers, body
+        return response_headers, content
 ```
 
 Make sure to update all existing uses of `request` to ignore the

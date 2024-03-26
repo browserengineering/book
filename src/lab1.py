@@ -43,10 +43,12 @@ class URL:
         if self.scheme == "https":
             ctx = ssl.create_default_context()
             s = ctx.wrap_socket(s, server_hostname=self.host)
-    
-        s.send(("GET {} HTTP/1.0\r\n".format(self.path) + \
-                "Host: {}\r\n\r\n".format(self.host)) \
-               .encode("utf8"))
+
+        request = "GET {} HTTP/1.0\r\n".format(self.path)
+        request += "Host: {}\r\n".format(self.host)
+        request += "\r\n"
+
+        s.send(request.encode("utf8"))
         response = s.makefile("r", encoding="utf8", newline="\r\n")
     
         statusline = response.readline()
@@ -62,10 +64,10 @@ class URL:
         assert "transfer-encoding" not in response_headers
         assert "content-encoding" not in response_headers
     
-        body = response.read()
+        content = response.read()
         s.close()
     
-        return body
+        return content
 
     @wbetools.js_hide
     def __repr__(self):

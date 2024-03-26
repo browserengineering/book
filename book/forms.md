@@ -672,7 +672,7 @@ class URL:
         # ...
         method = "POST" if payload else "GET"
         # ...
-        body = "{} {} HTTP/1.0\r\n".format(method, self.path)
+        request = "{} {} HTTP/1.0\r\n".format(method, self.path)
         # ...
 ```
 
@@ -684,7 +684,7 @@ class URL:
         # ...
         if payload:
             length = len(payload.encode("utf8"))
-            body += "Content-Length: {}\r\n".format(length)
+            request += "Content-Length: {}\r\n".format(length)
         # ...
 ```
 
@@ -696,8 +696,8 @@ after the headers, we send the payload itself:
 class URL:
     def request(self, payload=None):
         # ...
-        body += "\r\n" + (payload if payload else "")
-        s.send(body.encode("utf8"))
+        if payload: request += payload
+        s.send(request.encode("utf8"))
         # ...
 ```
 

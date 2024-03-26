@@ -459,9 +459,10 @@ To do so, we send it some data using the `send` method:
 class URL:
     def request(self):
         # ...
-        s.send(("GET {} HTTP/1.0\r\n".format(self.path) + \
-                "Host: {}\r\n\r\n".format(self.host)) \
-               .encode("utf8"))
+        request = "GET {} HTTP/1.0\r\n".format(self.path)
+        request += "Host: {}\r\n".format(self.host)
+        request += "\r\n"
+        s.send(request.encode("utf8"))
 ```
 The `send` method just sends the request to the server.[^send-return]
 There are a few things in this code that have to be exactly right. First,
@@ -606,7 +607,7 @@ The usual way to send the data, then, is everything after the headers:
 class URL:
     def request(self):
         # ...
-        body = response.read()
+        content = response.read()
         s.close()
 ```
 
@@ -616,7 +617,7 @@ It's the body that we're going to display, so let's return that:
 class URL:
     def request(self):
         # ...
-        return body
+        return content
 ```
 
 Now let's actually display the text in the response body.
