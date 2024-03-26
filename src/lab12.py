@@ -428,7 +428,7 @@ class TaskRunner:
                 task.run()
 
             self.condition.acquire(blocking=True)
-            if len(self.tasks) == 0 or self.needs_quit:
+            if len(self.tasks) == 0 and not self.needs_quit:
                 self.condition.wait()
             self.condition.release()
 
@@ -730,10 +730,6 @@ class Browser:
         for tab in self.tabs:
             tab.task_runner.set_needs_quit()
         sdl2.SDL_DestroyWindow(self.sdl_window)
-
-
-
-
 
 def mainloop(browser):
     event = sdl2.SDL_Event()
