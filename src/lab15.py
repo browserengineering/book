@@ -1822,6 +1822,7 @@ class Browser:
 
         self.clear_data()
         self.needs_animation_frame = True
+        self.animation_timer = None
 
     def handle_down(self):
         self.lock.acquire(blocking=True)
