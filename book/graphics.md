@@ -231,12 +231,12 @@ textual content of an HTML document without printing it:
 
 ``` {.python}
 def lex(body):
-  text = ""
-  # ...
-  for c in body:
-      # ...
-      elif not in_tag:
-          text += c
+    text = ""
+    # ...
+    for c in body:
+        # ...
+        elif not in_tag:
+            text += c
     return text
 ```
 
