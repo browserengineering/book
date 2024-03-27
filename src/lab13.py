@@ -1481,7 +1481,8 @@ class Browser:
 
     def handle_quit(self):
         self.measure.finish()
-        self.active_tab.task_runner.set_needs_quit()
+        for tab in self.tabs:
+            tab.task_runner.set_needs_quit()
         if wbetools.USE_GPU:
             sdl2.SDL_GL_DeleteContext(self.gl_context)
         sdl2.SDL_DestroyWindow(self.sdl_window)
