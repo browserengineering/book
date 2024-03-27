@@ -1394,6 +1394,7 @@ class Browser:
         self.active_tab = tab
         self.clear_data()
         self.needs_animation_frame = True
+        self.animation_timer = None
 
     def handle_click(self, e):
         self.lock.acquire(blocking=True)

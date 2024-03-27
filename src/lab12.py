@@ -663,6 +663,7 @@ class Browser:
         self.active_tab_scroll = 0
         self.active_tab_url = None
         self.needs_animation_frame = True
+        self.animation_timer = None
 
     def handle_click(self, e):
         self.lock.acquire(blocking=True)

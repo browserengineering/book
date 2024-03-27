@@ -1493,6 +1493,7 @@ class Browser:
 
         self.clear_data()
         self.needs_animation_frame = True
+        self.animation_timer = None
 
     def go_back(self):
         task = Task(self.active_tab.go_back)

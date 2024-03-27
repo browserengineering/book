@@ -1790,6 +1790,7 @@ class Browser:
         self.active_tab_scroll = 0
         self.active_tab_url = None
         self.needs_animation_frame = True
+        self.animation_timer = None
 ```
 
 So far, this is only updating the scroll offset on the browser thread.
