@@ -2353,23 +2353,6 @@ elements][stacking-context] with `z-index` properties.
 
 [stacking-context]:  https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
 
-*Atomic effects*: Our browser currently uses a simplistic algorithm for building
-the draw list which doesn't handle nested, composited visual effects
-correctly, especially when there are overlapping elements on the page.
-Fix this. You can still walk up the display list from each composited layer,
-but you'll need to avoid making two clones of the same visual effect node. You should end up with the following draw display list for
-[this example][nested-op], with one (probably internal-to-Skia)
-render surface:[^see-render-surface]
-    
-     DrawCompositedLayer()
-     Blend(alpha=0.999)
-       DrawCompositedLayer()
-       Blend(alpha=0.5)
-         DrawCompositedLayer()
-
-[^see-render-surface]: See the Go Further block about render surfaces for more
-information.
-
 *Animated scrolling*: Real browsers have many kinds of animations during scroll.
 For example, pressing the down key or the down-arrow in a scrollbar causes a
 pleasant animated scroll, rather than the immediate scroll our browser current
