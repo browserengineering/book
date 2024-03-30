@@ -228,11 +228,11 @@ and they have a pretty neat organization scheme:^[The status text like
 `OK` can actually be anything and is just there for humans, not for
 machines.]
 
- - the 100s are informational messages
- - the 200s mean you were successful
- - the 300s request follow-up action (usually a redirect)
- - the 400s mean you sent a bad request
- - the 500s mean the server handled the request badly
+ - the 100s are informational messages;
+ - the 200s mean you were successful;
+ - the 300s request follow-up action (usually a redirect);
+ - the 400s mean you sent a bad request;
+ - the 500s mean the server handled the request badly.
 
 Note the genius of having two sets of error codes (400s and 500s)
 to tell you who is at fault, the server or the browser.^[More
