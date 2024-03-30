@@ -357,7 +357,7 @@ def layout(text):
     for word in text.split():
         # ...
         display_list.append((cursor_x, cursor_y, word))
-        self.cursor_x += w + font.measure(" ")
+        cursor_x += w + font.measure(" ")
 ```
 
 I increment `cursor_x` by `w + font.measure(" ")` instead of `w`
@@ -379,7 +379,7 @@ incompatible][css-hyphen] with this algorithm, but the recent
 [liang]: http://www.tug.org/docs/liang/liang-thesis.pdf
 [hyphens]: https://drafts.csswg.org/css-text-3/#hyphens-property
 [css-hyphen]: https://news.ycombinator.com/item?id=19472922
-[css4-test]: https://drafts.csswg.org/css-text-4/#propdef-text-wrap-style
+[css4-text]: https://drafts.csswg.org/css-text-4/#propdef-text-wrap-style
 
 Styling text
 ============
@@ -559,7 +559,6 @@ self.cursor_x = HSTEP
 self.cursor_y = VSTEP
 self.weight = "normal"
 self.style = "roman"
-self.size = 16
 ```
 
 The core of the old `layout` is a loop over tokens, and we can move
