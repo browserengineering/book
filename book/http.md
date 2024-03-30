@@ -16,7 +16,7 @@ Browsing the internet starts with a URL\index{URL},[^url] a short string that
 identifies a particular web page that the browser should visit. A URL
 looks like this:
 
-[^url]: "URL" stands for "Uniform Resource Locator", meaning that it
+[^url]: "URL" stands for "uniform resource locator", meaning that it
     is a portable (uniform) way to identify web pages
     (resources\index{web resource}) and
     also that it describes how to access those files (locator).
@@ -31,14 +31,15 @@ looks like this:
 ![The syntax of URLs](im/http-url.png)
 :::
 
-This URL has three parts: the scheme\index{scheme} explains *how* to get the
-information; the host explains *where* to get it; and the path\index{path}
+A URL has three parts: the scheme\index{scheme} explains *how* to get the
+information; the host name explains *where* to get it; and the path\index{path}
 explains *what* information to get. There are also optional parts to
 the URL, like ports, queries, and fragments, which we'll see later.
 
 From a URL, the browser can start the process of downloading the web
-page. The browser first asks the OS to put it in touch with the
+page. The browser first asks the local operating system (OS) to put it in touch with the
 *server* described by the *host name*. The OS then talks to a *DNS*
+(Domain Name System)
 server which converts[^dns] a host name like `example.org` into a
 *destination IP address* like `93.184.216.34`.[^ipv6] Then the OS decides
 which hardware is best for communicating with that destination IP
@@ -55,9 +56,9 @@ with `example.org`”, and it does.
     [nslookup.io](https://nslookup.io) or the `dig` command to do this
     conversion yourself.
 
-[^ipv6]: Today there are two versions of IP: IPv4 and IPv6. IPv6 addresses
-    are a lot longer and are usually in hex, but otherwise the
-    differences don't matter here.
+[^ipv6]: Today there are two versions of IP (Internet Protocol): IPv4
+    and IPv6. IPv6 addresses are a lot longer and are usually written
+    in hexadecimal, but otherwise the differences don't matter here.
 
 [^skipped-steps]: I'm skipping steps here. On wires you first have to wrap
     communications in ethernet frames, on wireless you have to do even
@@ -67,7 +68,7 @@ with `example.org`”, and it does.
 but eventually there is a router.
 
 [^network-tracing]: They may also record where the message came from so they can
-forward the reply back, especially in the case of NATs.
+forward the reply back.
 
 On many systems, you can set up this kind of connection using the
 `telnet` program, like this:^[The "80" is the port, discussed below.]
@@ -76,14 +77,21 @@ On many systems, you can set up this kind of connection using the
 telnet example.org 80
 ```
 
-(Note: when you see a gray outline, it means that the code in question is
+::: {.web-only}
+(Note: When you see a gray outline, it means that the code in question is
 an example only, and *not* actually part of our browser's code.)
+:::
+
+::: {.print-only}
+(Note: When you see a black frame, it means that the code in question is
+an example only, and *not* actually part of our browser's code.)
+:::
 
 ::: {.installation}
 You might need to install `telnet`; it is often disabled by default.
 On Windows, [go to Programs and Features / Turn Windows features on or
 off](https://www.lifewire.com/what-is-telnet-2626026) in the Control
-panel; you'll need to reboot. When you run it, it'll clear the screen
+Panel; you'll need to reboot. When you run it, it'll clear the screen
 instead of printing something, but other than that works normally. On
 macOS, you can use the `nc -v` command as a replacement for `telnet`:
 
@@ -113,8 +121,8 @@ now talk to `example.org`.
 The URL syntax is defined in [RFC
 3987](https://tools.ietf.org/html/rfc3986), whose first author is Tim
 Berners-Lee---no surprise there! The second author is Roy Fielding, a
-key contributor to the design of HTTP and also well-known for describing
-the "REST" architecture of the web in his [PhD thesis][rest-thesis],
+key contributor to the design of HTTP and also well known for describing
+the Representational State Transfer (REST) architecture of the web in his [Ph.D. thesis][rest-thesis],
 which explains how REST allowed the web to grow in a decentralized
 way. Today, many services provide "RESTful APIs" that also follow these
 principles, though there does seem to be [some
@@ -129,8 +137,8 @@ Requesting information
 
 Once it's connected, the browser requests information from the server
 by giving its *path*, the path being the part of a URL that comes
-after the host name, like `/index.html`. The request looks like this;
-type it into `telnet`:
+after the host name, like `/index.html`. The structure of the request
+is shown below. You can type it into `telnet` (make sure to type a blank line after the `Host` line):
 
 ::: {.cmd .web-only html=True}
     python3 infra/annotate_code.py <<EOF
@@ -144,8 +152,6 @@ type it into `telnet`:
 ![An annotated HTTP GET request](im/http-get.png)
 :::
 
-Make sure to type a blank line after the `Host` line.
-
 Here, the word `GET`\index{GET} means that the browser would like to receive
 information,[^11] then comes the path, and finally there is the word
 `HTTP/1.0` which tells the host that the browser speaks version 1.0 of
@@ -153,7 +159,7 @@ information,[^11] then comes the path, and finally there is the word
 2.0, and 3.0](https://medium.com/platform-engineer/evolution-of-http-69cfe6531ba0)).
 The HTTP 1.1 standard adds a variety of useful features, like
 keep-alive, but in the interest of simplicity our browser won't use
-them. We're also not implementing HTTP 2.0; HTTP 2.0 is much more
+them. We're also not implementing HTTP 2.0; it is much more
 complex than the 1.X series, and is intended for large and complex web
 applications, which our browser can't run anyway.
 
@@ -167,11 +173,11 @@ but let's stick to just `Host` for now.
 
 Finally, after the headers comes a single blank line; that tells the
 host that you are done with headers. So type a blank line into
-`telnet` (hit Enter twice after typing the two lines of request above)
+`telnet` (hit Enter twice after typing the two lines of the request)
 and you should get a response from `example.org`.
 
 [^11]: It could say `POST` if it intended to send information, plus
-    there are some other, more obscure options.
+    there are some other, more obscure, options.
 
 [^13]: This is useful when the same IP address corresponds to multiple
     host names and hosts multiple websites (for example, `example.com`
@@ -189,9 +195,9 @@ HTTP was designed to be simple to understand and implement, making it
 easy for any kind of computer to adopt it. It's no coincidence that
 you can type HTTP directly into `telnet`! Nor is it an accident that
 HTTP is a "line-based protocol", using plain text and newlines,
-similar to [SMTP] for email. Ultimately, the whole pattern derives
+similar to [Simple Mail Transfer Protocol (SMTP)] for email. Ultimately, the whole pattern derives
 from early computers only having line-based text input. In
-fact, one of the first two browsers had a [line mode UI][line-mode].
+fact, one of the first two browsers had a [line-mode UI][line-mode].
 :::
 
 [SMTP]: https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol
@@ -200,7 +206,7 @@ fact, one of the first two browsers had a [line mode UI][line-mode].
 The server's response
 =====================
 
-The server's response starts with this line:
+The server's response starts with the line below:
 
 ::: {.cmd .web-only html=True}
     python3 infra/annotate_code.py <<EOF
@@ -209,27 +215,27 @@ The server's response starts with this line:
 :::
 
 ::: {.print-only}
-![An annotated first line of an HTTP response](im/http-status.png)
+![Annotated first line of an HTTP response](im/http-status.png)
 :::
 
-That tells you that the host confirms that it, too, speaks `HTTP/1.0`,
+This tells you that the host confirms that it, too, speaks `HTTP/1.0`,
 and that it found your request to be "OK" (which has a numeric code of
 200). You may be familiar with `404 Not Found`; that's another numeric
 code and response, as are `403 Forbidden` or `500 Server Error`. There
-are lots of these codes,^[As any look at a [flow
-chart](https://github.com/for-GET/http-decision-diagram) will show.]
+are lots of these codes,^[As [this flow
+chart](https://github.com/for-GET/http-decision-diagram) shows.]
 and they have a pretty neat organization scheme:^[The status text like
 `OK` can actually be anything and is just there for humans, not for
 machines.]
 
--   The 100s are informational messages
--   The 200s mean you were successful
--   The 300s request follow-up action (usually a redirect)
--   The 400s mean you sent a bad request
--   The 500s mean the server handled the request badly
+ - the 100s are informational messages;
+ - the 200s mean you were successful;
+ - the 300s request follow-up action (usually a redirect);
+ - the 400s mean you sent a bad request;
+ - the 500s mean the server handled the request badly.
 
-Note the genius of having two sets of error codes (400s and 500s),
-which tells you who is at fault, the server or the browser.^[More
+Note the genius of having two sets of error codes (400s and 500s)
+to tell you who is at fault, the server or the browser.^[More
 precisely, who the server thinks is at fault.] You can find a full
 list of the different codes [on
 Wikipedia](https://en.wikipedia.org/wiki/List_of_HTTP_status_codes),
@@ -256,13 +262,8 @@ Connection: close
 There is *a lot* here, about the information you are requesting
 (`Content-Type`, `Content-Length`, and `Last-Modified`), about the
 server (`Server`, `X-Cache`), about how long the browser should cache
-this information (`Cache-Control`, `Expires`, `Etag`), about all sorts
+this information (`Cache-Control`, `Expires`, `Etag`), and about all sorts
 of other stuff. Let's move on for now.
-
-::: {.print-only}
-![An HTTP request and response pair are how a web browser gets web
-pages from a web server](im/http-request.png)
-:::
 
 After the headers there is a blank line followed by a bunch of
 [HTML]\index{HTML} code. This is called the *body* of the server's
@@ -272,7 +273,11 @@ code that contains the content of the web page itself.
 
 [html]:  https://developer.mozilla.org/en-US/docs/Web/HTML
 
-Let's now switch gears from manual connections to Python.
+The HTTP request/response transaction is summarized below. Let's now
+switch gears from manual connections to Python.
+
+![An HTTP request and response pair are how a web browser gets web
+pages from a web server](im/http-request.png)
 
 ::: {.further}
 Wikipedia has nice lists of HTTP [headers][headers] and [response codes][codes].
@@ -297,7 +302,7 @@ Telnet in Python
 
 So far we've communicated with another computer using `telnet`. But it
 turns out that `telnet` is quite a simple program, and we can do the
-same programmatically. It'll require extracting host name and path
+same programmatically. It'll require extracting the host name and path
 from the URL, creating a *socket*, sending a request, and receiving a
 response.[^why-not-parse]
 
@@ -377,13 +382,13 @@ multiple ways to talk to other computers:
 -   A socket has a *type*, which describes the sort of conversation
     that's going to happen. Types have names that begin with `SOCK`. We
     want `SOCK_STREAM`, which means each computer can send arbitrary
-    amounts of data over, but there's also `SOCK_DGRAM`, in which case
+    amounts of data, but there's also `SOCK_DGRAM`, in which case
     they send each other packets of some fixed size.[^dgram]
 -   A socket has a *protocol*, which describes the steps by which the
     two computers will establish a connection. Protocols have names that
     depend on the address family, but we want `IPPROTO_TCP`.[^quic]
 
-[^dgram]: The `DGRAM` stands for "datagram", which I imagine to be like a
+[^dgram]: `DGRAM` stands for "datagram", which I imagine to be like a
 postcard.
 
 [^quic]: Newer versions of HTTP use something called
@@ -441,7 +446,7 @@ numbers of arguments.
 The "sockets" API, which Python more or less implements directly,
 derives from the original "[Berkeley sockets][bsd-sockets]" API design
 for 4.2 BSD Unix in 1983. Of course, Windows and Linux merely
-re-implement the API, but macOS and iOS actually do [still
+reimplement the API, but macOS and iOS actually do [still
 use][mac-bsd] large amounts of code descended from BSD Unix.
 :::
 
@@ -531,7 +536,7 @@ endings.
 [^utf8]: Hard-coding `utf8` is not correct, but it's a shortcut that
     will work alright on most English-language websites. In fact, the
     `Content-Type` header usually contains a `charset` declaration
-    that specifies encoding of the body. If it's absent, browsers
+    that specifies the encoding of the body. If it's absent, browsers
     still won't default to `utf8`; they'll guess, based on letter
     frequencies, and you see ugly � strange áççêñ£ß when they guess
     wrong. Incorrect-but-common `utf8` skips all that complexity.
@@ -627,7 +632,7 @@ The [`Content-Encoding`][ce-header] header lets the server compress
 web pages before sending them. Large, text-heavy web pages compress
 well, and as a result the page loads faster. The browser needs to send
 an [`Accept-Encoding` header][ae-header] in its request to list
-compression algorithms it supports. [`Transfer-Encoding`][te-header]
+the compression algorithms it supports. [`Transfer-Encoding`][te-header]
 is similar and also allows the data to be "chunked", which many
 servers seem to use together with compression.
 :::
@@ -712,7 +717,7 @@ Try running this code on the URL `http://example.org/`:
     python3 browser.py http://example.org/
 
 You should see some short text welcoming you to the official example
-web page. You can also try using it on this chapter!
+web page. You can also try using it on [this chapter](https://browser.engineering/http.html)!
 
 ::: {.further}
 HTML, just like URLs and HTTP, is designed to be very easy to parse and
@@ -720,7 +725,7 @@ display at a basic level. And in the beginning, there were very few features
 of HTML, so it was possible to code up something not so much more fancy than
 what you see here, yet still display the content in a usable way. Even our
 super simple and basic HTML parser can already print out the text of the
-`browser.engineering` website.
+[browser.engineering](https://browser.engineering/) website.
 :::
 
 Encrypted connections
@@ -732,16 +737,14 @@ scheme. But more and more, websites are migrating to the
 
 The difference between `http` and `https` is that `https` is more
 secure---but let's be a little more specific. The `https` scheme, or
-more formally HTTP over TLS\index{TLS}\index{SSL}, is identical to the
+more formally HTTP over TLS\index{TLS}\index{SSL} (Transport Layer Security), is identical to the
 normal `http` scheme, except that all communication between the browser
 and the host is encrypted. There are quite a few details to how this works:
 which encryption algorithms are used, how a common encryption key is agreed
 to, and of course how to make sure that the browser is connecting to
-the correct host.
+the correct host. The difference in the protocol layers is shown below:
 
-::: {.print-only}
-![The difference between HTTP and HTTPS is the addition of a TLS layer](im/http-tls.png)
-:::
+![The difference between HTTP and HTTPS is the addition of a TLS layer.](im/http-tls.png)
 
 Luckily, the Python `ssl` library implements all of these details for
 us, so making an encrypted connection is almost as easy as making a
@@ -866,7 +869,7 @@ implementation that is not only correct but secure.
 :::
 
 At this point you should be able to run your program on any web page.
-Here is what it should output for [this example][example-simple]:
+Here is what it should output for [a simple example][example-simple]:
 
 [example-simple]: examples/example1-simple.html
 
@@ -886,11 +889,11 @@ Summary
 This chapter went from an empty file to a rudimentary web browser that
 can:
 
--   Parse a URL into a scheme, host, port and path
--   Connect to that host using the `sockets` and `ssl` libraries
--   Send an HTTP request to that host, including a `Host` header
--   Split the HTTP response into a status line, headers, and a body
--   Print the text (and not the tags) in the body
+-   parse a URL into a scheme, host, port, and path;
+-   connect to that host using the `sockets` and `ssl` libraries;
+-   send an HTTP request to that host, including a `Host` header;
+-   split the HTTP response into a status line, headers, and a body;
+-   print the text (and not the tags) in the body.
 
 Yes, this is still more of a command-line tool than a web browser, but
 it already has some of the core capabilities of a browser.
@@ -916,39 +919,40 @@ should look something like this:
 Exercises
 =========
 
-*HTTP/1.1:* Along with `Host`, send the `Connection` header in the
+*HTTP/1.1*. Along with `Host`, send the `Connection` header in the
 `request` function with the value `close`. Your browser can now
 declare that it is using `HTTP/1.1`. Also add a `User-Agent` header.
 Its value can be whatever you want---it identifies your browser to the
 host. Make it easy to add further headers in the future.
 
-*File URLs*: Add support for the `file` scheme, which allows the browser
+*File URLs*. Add support for the `file` scheme, which allows the browser
 to open local files. For example, `file:///path/goes/here` should
 refer to the file on your computer at location `/path/goes/here`. Also
 make it so that, if your browser is started without a URL being given,
 some specific file on your computer is opened. You can use that file
 for quick testing.
 
-*data: scheme:* Yet another scheme is *data*, which
-allows inlining HTML content into the URL itself. Try navigating to
-`data:text/html,Hello world!` in a real browser to see what happens. Add
-support for this scheme to your browser. The *data* scheme is especially
-convenient for making tests without having to put them in separate files.
+*`data:` scheme*. Yet another scheme is `data`, which allows inlining
+HTML content into the URL itself. Try navigating to
+`data:text/html,Hello world!` in a real browser to see what happens.
+Add support for this scheme to your browser. The `data` scheme is
+especially convenient for making tests without having to put them in
+separate files.
 
-*Entities:* Implement support for the less-than (`&lt;`) and
+*Entities*. Implement support for the less-than (`&lt;`) and
 greater-than (`&gt;`) entities. These should be printed as `<` and
 `>`, respectively. For example, if the HTML response was
 `&lt;div&gt;`, the `show` method of your browser should print `<div>`.
 Entities allow web pages to include these special characters without
 the browser interpreting them as tags.
 
-*view-source:* Add support for the `view-source` scheme; navigating to
-`view-source:http://example.org/` should shows HTML source instead of
+*view-source*. Add support for the `view-source` scheme; navigating to
+`view-source:http://example.org/` should show the HTML source instead of
 the rendered page. Add support for this scheme. Your browser should
 print the entire HTML file as if it was text. You'll want to have also
 implemented the entities exercise.
 
-*Keep-alive:* Implement the HTTP/1.1 exercise; however, do not send
+*Keep-alive*. Implement the HTTP/1.1 exercise; however, do not send
 the `Connection: close` header. Instead, when reading the body from
 the socket, only read as many bytes as given in the `Content-Length`
 header and don't close the socket afterwards. Instead, save the
@@ -956,7 +960,7 @@ socket, and if another request is made to the same socket reuse the
 same socket instead of creating a new one. This will speed up repeated
 requests to the same server, which is common.
 
-*Redirects:* Error codes in the 300 range request a redirect. When
+*Redirects*. Error codes in the 300 range request a redirect. When
 your browser encounters one, it should make a new request to the URL
 given in the `Location` header. Sometimes the `Location` header is a
 full URL, but sometimes it skips the host and scheme and just starts
@@ -966,22 +970,23 @@ case. You don't, however, want to get stuck in a redirect loop, so
 make sure to limit how many redirects your browser can follow in a row.
 You can test this with the URL
 <http://browser.engineering/redirect>, which redirects back to this
-page, and its `/redirect2` and `/redirect3` cousins which do more
+page, and its [/redirect2](http://browser.engineering/redirect2) and
+[/redirect3](http://browser.engineering/redirect3) cousins which do more
 complicated redirect chains.
 
-*Caching:* Typically, the same images, styles, and scripts are used on
+*Caching*. Typically, the same images, styles, and scripts are used on
 multiple pages; downloading them repeatedly is a waste. It's generally
 valid to cache any HTTP response, as long as it was requested with
 `GET` and received a `200` response.^[Some other status codes like
 `301` and `404` can also be cached.] Implement a cache in your browser
 and test it by requesting the same file multiple times. Servers
 control caches using the `Cache-Control` header. Add support for this
-header, specifically for `no-store` and `max-age` values. If the
-`Cache-Control` header contains any other value than these two, it's best not
+header, specifically for the `no-store` and `max-age` values. If the
+`Cache-Control` header contains any value other than these two, it's best not
 to cache the response.
 
-*Compression:* Add support for HTTP compression. In HTTP compression the browser
-first [informs the server][negotiate] that compressed data is acceptable.
+*Compression*. Add support for HTTP compression. In HTTP compression the browser
+[informs the server][negotiate] that compressed data is acceptable.
 Your browser must send the `Accept-Encoding` header with the value
 `gzip`. If the server supports compression, its response will have a
 `Content-Encoding` header with value `gzip`. The body is then
@@ -996,5 +1001,5 @@ support for that, too.[^te-gzip]
 
 [chunked]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding
 
-[^te-gzip]: There's also a couple of `Transfer-Encoding`s that
-    compress the data. Those aren't commonly used.
+[^te-gzip]: There are also a couple of `Transfer-Encoding`s that
+    compress the data. They aren't commonly used.
