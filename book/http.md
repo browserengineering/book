@@ -138,7 +138,7 @@ Requesting information
 Once it's connected, the browser requests information from the server
 by giving its *path*, the path being the part of a URL that comes
 after the host name, like `/index.html`. The structure of the request
-is shown below. You can type it into `telnet`:
+is shown below. You can type it into `telnet` (make sure to type a blank line after the `Host` line):
 
 ::: {.cmd .web-only html=True}
     python3 infra/annotate_code.py <<EOF
