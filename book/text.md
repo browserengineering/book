@@ -140,7 +140,7 @@ Text takes up space vertically and horizontally, and the font object's
 >>> bi_times.metrics()
 {'ascent': 15, 'descent': 4, 'linespace': 19, 'fixed': 0}
 >>> bi_times.measure("Hi!")
-31
+24
 ```
 
 [^spacing]: On your computer, you might get different numbers. That's
@@ -168,14 +168,14 @@ baseline. However, the measure (or advance) of glyphs can differ.]
 :::
 
 Let's dig deeper. Remember that `bi_times` is size-16 Times: why does
-`font.metrics` report that it is actually 22 pixels tall? Well, first
+`font.metrics` report that it is actually 19 pixels tall? Well, first
 of all, size-16 meant sixteen *points*, which are defined as 72^nd^s
 of an inch, not sixteen *pixels*,[^french-pts] which your monitor
 probably has around 100 of per inch.[^pt-for-fonts] Those sixteen
 points measure not the individual letters but the metal blocks the
 letters were once carved from, so the letters themselves must be *less
 than* sixteen points. In fact, different size-16 fonts have letters of
-varying heights:
+varying heights:[^varying-times]
 
 [^french-pts]: Actually, the definition of a "point" is a total mess,
     with many different length units all called "point" around the
@@ -190,6 +190,11 @@ varying heights:
 [^pt-for-fonts]: Tk doesn't use points anywhere else in its API. It's
     supposed to use pixels if you pass it a negative number, but that
     doesn't appear to work.
+    
+[^varying-times]: You might even notice that Times has different
+    metrics in this code block than in the earlier one where we
+    specified a bold, italic Times font. The bold, italic Times font
+    is taller, at least on my current macOS system!
 
 ``` {.example}
 >>> tkinter.font.Font(family="Courier", size=16).metrics()
@@ -206,24 +211,23 @@ of course, since different letters have different widths:[^widths]
 
 ``` {.example}
 >>> bi_times.measure("Hi!")
-31
+24
 >>> bi_times.measure("H")
-17
+13
 >>> bi_times.measure("i")
-6
+5
 >>> bi_times.measure("!")
-8
->>> 17 + 8 + 6
-31
+7
+>>> 13 + 5 + 7
+25
 ```
 
-[^widths]: It's a bit of a coincidence that in this example the sum of the
-    individual letters' lengths is the length of the word. Tk uses
-    fractional pixels internally, but rounds up to return whole pixels
-    in the `measure` call. Plus, some fonts use something called
-    *kerning* to shift letters a little bit when particular pairs of
-    letters are next to one another, or even *shaping* to make two
-    letters look one glyph.
+[^widths]: Note that the sum of the individual letters' lengths is not
+    the length of the word. Tk uses fractional pixels internally, but
+    rounds up to return whole pixels in the `measure` call. Plus, some
+    fonts use something called *kerning* to shift letters a little bit
+    when particular pairs of letters are next to one another, or even
+    *shaping* to make two letters look one glyph.
 
 
 You can use this information to lay text out on the page. For example,
