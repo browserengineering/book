@@ -44,9 +44,9 @@ src/lab%.full.py: src/lab%.py infra/inline.py infra/asttools.py
 
 CHAPTER=all
 
-PANDOC=pandoc --from markdown --to html --lua-filter=infra/filter.lua --fail-if-warnings --metadata-file=config.json $(FLAGS)
+PANDOC=pandoc --from markdown --to html --lua-filter=infra/filter.lua --fail-if-warnings --metadata-file=config.json --highlight-style=infra/python-nobuiltin.theme $(FLAGS)
 
-PANDOC_LATEX=pandoc --standalone --from markdown --to latex --fail-if-warnings --metadata-file=config.json --lua-filter=infra/filter.lua $(FLAGS)
+PANDOC_LATEX=pandoc --standalone --from markdown --to latex --fail-if-warnings --metadata-file=config.json --lua-filter=infra/filter.lua --highlight-style=infra/python-nobuiltin.theme $(FLAGS)
 
 # Generates a simple chapter latex rendering meant to be inserted into the larger book skeleton.
 latex-chapters: $(patsubst %,latex/%-chapter.tex,$(CHAPTERS))
