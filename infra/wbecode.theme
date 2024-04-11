@@ -19,14 +19,14 @@
             "underline": false
         },
         "Attribute": {
-            "text-color": theme,
+            "text-color": null,
             "background-color": null,
             "bold": false,
             "italic": false,
             "underline": false
         },
         "BaseN": {
-            "text-color": theme,
+            "text-color": null,
             "background-color": null,
             "bold": false,
             "italic": false,
@@ -40,7 +40,7 @@
             "underline": false
         },
         "Char": {
-            "text-color": theme,
+            "text-color": null,
             "background-color": null,
             "bold": false,
             "italic": false,
@@ -54,14 +54,14 @@
             "underline": false
         },
         "CommentVar": {
-            "text-color": theme,
+            "text-color": null,
             "background-color": null,
             "bold": true,
             "italic": true,
             "underline": false
         },
         "Constant": {
-            "text-color": theme,
+            "text-color": null,
             "background-color": null,
             "bold": false,
             "italic": false,
@@ -75,28 +75,28 @@
             "underline": false
         },
         "DataType": {
-            "text-color": theme,
+            "text-color": null,
             "background-color": null,
             "bold": false,
             "italic": false,
             "underline": false
         },
         "DecVal": {
-            "text-color": theme,
+            "text-color": null,
             "background-color": null,
             "bold": false,
             "italic": false,
             "underline": false
         },
         "Documentation": {
-            "text-color": theme,
+            "text-color": null,
             "background-color": null,
             "bold": false,
             "italic": true,
             "underline": false
         },
         "Error": {
-            "text-color": theme,
+            "text-color": null,
             "background-color": null,
             "bold": true,
             "italic": false,
@@ -110,14 +110,14 @@
             "underline": false
         },
         "Float": {
-            "text-color": theme,
+            "text-color": null,
             "background-color": null,
             "bold": false,
             "italic": false,
             "underline": false
         },
         "Function": {
-            "text-color": theme,
+            "text-color": null,
             "background-color": null,
             "bold": false,
             "italic": false,
@@ -131,7 +131,7 @@
             "underline": false
         },
         "Information": {
-            "text-color": theme,
+            "text-color": null,
             "background-color": null,
             "bold": true,
             "italic": true,
