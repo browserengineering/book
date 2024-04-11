@@ -155,7 +155,10 @@ class Tab:
             if not self.allowed_request(script_url):
                 print("Blocked script", script, "due to CSP")
                 continue
-            header, body = script_url.request(url)
+            try:
+                header, body = script_url.request(url)
+            except:
+                continue
             try:
                 self.js.run(body)
             except dukpy.JSRuntimeError as e:

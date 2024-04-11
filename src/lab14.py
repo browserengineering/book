@@ -891,7 +891,10 @@ class Tab:
                 print("Blocked script", script, "due to CSP")
                 continue
 
-            header, body = script_url.request(url)
+            try:
+                header, body = script_url.request(url)
+            except:
+                continue
             task = Task(self.js.run, script_url, body)
             self.task_runner.schedule_task(task)
 

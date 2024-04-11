@@ -306,8 +306,9 @@ class Browser:
                  and node.attributes.get("rel") == "stylesheet"
                  and "href" in node.attributes]
         for link in links:
+            style_url = url.resolve(link)
             try:
-                body = url.resolve(link).request()
+                body = style_url.request()
             except:
                 continue
             rules.extend(CSSParser(body).parse())
