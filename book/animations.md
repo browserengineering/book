@@ -483,7 +483,7 @@ The idea is to first raster the three words to a separate surface (but this time
 owned by us, not Skia), which we'll call a *composited layer*, that is saved
 for future use:
 
-::: {.output}
+``` {.output}
 Composited Layer:
   DrawText(text=This)
   DrawText(text=text)
