@@ -1584,8 +1584,7 @@ class FrameAccessibilityNode(AccessibilityNode):
 ```
 
 You should now be able to hover on nodes and have them read out by our
-accessibility subsystem.^[Note that this doesn't fully account for transforms.
-See the exercises.]
+accessibility subsystem.
 
 Alright, we've now got all of our browser's forms of user interaction
 properly recursing through the frame tree. It's time to add more
