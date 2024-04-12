@@ -1794,31 +1794,31 @@ class DocumentLayout:
 If you look at your output again, you should now see two phases.
 First, there's a lot of `style` re-computation:
     
-::: {.example}
-    Change ProtectedField(<body>, style)
-    Change ProtectedField(<header>, style)
-    Change ProtectedField(<h1 class="title">, style)
-    Change ProtectedField('Reusing Previous Computations', style)
-    Change ProtectedField(<a href="...">, style)
-    Change ProtectedField('Twitter', style)
-    Change ProtectedField(' ·\n', style)
-    ...
-:::
+``` {.output}
+Change ProtectedField(<body>, style)
+Change ProtectedField(<header>, style)
+Change ProtectedField(<h1 class="title">, style)
+Change ProtectedField('Reusing Previous Computations', style)
+Change ProtectedField(<a href="...">, style)
+Change ProtectedField('Twitter', style)
+Change ProtectedField(' ·\n', style)
+...
+```
 
 Then, we recompute four layout fields repeatedly:
 
-::: {.example}
-    Change ProtectedField(<html lang="en-US" xml:lang="en-US">, zoom)
-    Change ProtectedField(<html lang="en-US" xml:lang="en-US">, zoom)
-    Change ProtectedField(<head>, zoom)
-    Change ProtectedField(<head>, children)
-    Change ProtectedField(<head>, height)
-    Change ProtectedField(<body>, zoom)
-    Change ProtectedField(<body>, y)
-    Change ProtectedField(<header>, zoom)
-    Change ProtectedField(<header>, y)
-    ...
-:::
+``` {.output}
+Change ProtectedField(<html lang="en-US" xml:lang="en-US">, zoom)
+Change ProtectedField(<html lang="en-US" xml:lang="en-US">, zoom)
+Change ProtectedField(<head>, zoom)
+Change ProtectedField(<head>, children)
+Change ProtectedField(<head>, height)
+Change ProtectedField(<body>, zoom)
+Change ProtectedField(<body>, y)
+Change ProtectedField(<header>, zoom)
+Change ProtectedField(<header>, y)
+...
+```
 
 Let's fix these. First, let's tackle `style`. The reason `style` is
 being recomputed repeatedly is just that we recompute it even if
@@ -1867,11 +1867,11 @@ value, any downstream computations don't actually need to change. This
 small tweak should reduce the number of field changes down to the
 minimum:
 
-::: {.example}
-    Change ProtectedField(<html lang="en-US" xml:lang="en-US">, zoom)
-    Change ProtectedField(<div class="demo" ...>, children)
-    Change ProtectedField(<div class="demo" ...>, height)
-:::
+``` {.output}
+Change ProtectedField(<html lang="en-US" xml:lang="en-US">, zoom)
+Change ProtectedField(<div class="demo" ...>, children)
+Change ProtectedField(<div class="demo" ...>, height)
+```
 
 All that's happening here is recreating the `contenteditable`
 element's `children` (which we have to do, to incorporate the new

@@ -1681,12 +1681,12 @@ window.Node = function(handle) { this.handle = handle; }
 Do the same for every function or variable in the `runtime.js` file.
 If you miss one, you'll get errors like this:
 
-::: {.example}
-    dukpy.JSRuntimeError: ReferenceError: identifier 'Node'
-        undefined
-    	duk_js_var.c:1258
-    	eval src/pyduktape.c:1 preventsyield
-:::
+``` {.output}
+dukpy.JSRuntimeError: ReferenceError: identifier 'Node'
+    undefined
+	duk_js_var.c:1258
+	eval src/pyduktape.c:1 preventsyield
+```
 
 If you see this error, this means you need to go find where you need
 to write `window.Node` instead of `Node`. You'll also need to modify `EVENT_DISPATCH_JS` to prefix

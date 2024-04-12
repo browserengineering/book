@@ -269,9 +269,9 @@ browser is using; this will help you verify that it's actually using
 your GPU. I'm using a Chromebook to write this chapter, so for me it
 says:[^virgl]
 
-::: {.example}
-    OpenGL initialized: vendor=b'Red Hat', renderer=b'virgl'
-:::
+``` {.output}
+OpenGL initialized: vendor=b'Red Hat', renderer=b'virgl'
+```
 
 [^virgl]: The `virgl` renderer stands for "virtual GL", a way of
 hardware-accelerating the Linux subsystem of ChromeOS that works with
@@ -458,21 +458,21 @@ class Tab:
 For our opacity example, the (key part of) the display list one one frame
 might look like this:
 
-::: {.example}
-    Blend(alpha=0.112375)
-      DrawText(text=This)
-      DrawText(text=text)
-      DrawText(text=fades)
-:::
+``` {.output}
+Blend(alpha=0.112375)
+  DrawText(text=This)
+  DrawText(text=text)
+  DrawText(text=fades)
+```
 
 On the next frame, it instead might like this:
 
-::: {.example}
-    Blend(alpha=0.119866666667)
-      DrawText(text=This)
-      DrawText(text=text)
-      DrawText(text=fades)
-:::
+``` {.output}
+Blend(alpha=0.119866666667)
+  DrawText(text=This)
+  DrawText(text=text)
+  DrawText(text=fades)
+```
 
 In each case, rastering this display list means first rastering the three words
 to a Skia surface created by `Blend`, and then copying that to the root
@@ -483,29 +483,29 @@ The idea is to first raster the three words to a separate surface (but this time
 owned by us, not Skia), which we'll call a *composited layer*, that is saved
 for future use:
 
-::: {.example}
-    Composited Layer:
-      DrawText(text=This)
-      DrawText(text=text)
-      DrawText(text=fades)
-:::
+::: {.output}
+Composited Layer:
+  DrawText(text=This)
+  DrawText(text=text)
+  DrawText(text=fades)
+```
 
 Now instead of rastering those three words, we can just copy over the
 composited layer with a `DrawCompositedLayer` command:
 
-::: {.example}
-    Blend(alpha=0.112375)
-      DrawCompositedLayer()
-:::
+``` {.example}
+Blend(alpha=0.112375)
+  DrawCompositedLayer()
+```
 
 Importantly, on the next frame, the `Blend` changes but the
 `DrawText`s don't, so on that frame all we need to do is rerun the
 `Blend`:
 
-::: {.example}
-    Blend(alpha=0.119866666667)
-      DrawCompositedLayer()
-:::
+``` {.example}
+Blend(alpha=0.119866666667)
+  DrawCompositedLayer()
+```
 
 In other words, the idea behind compositing is to split the display
 list into two pieces: a set of composited layers, which are rastered
@@ -1871,12 +1871,12 @@ mostly a historical artifact.)
 
 [transform-def]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform
 
-::: {.example}
-    <div style="background-color:lightblue;
-                transform:translate(50px, 50px)">Underneath</div>
-    <div style="background-color:lightgreen;
-                transform:translate(0px, 0px)">On top</div>
-:::
+``` {.html .example}
+<div style="background-color:lightblue;
+            transform:translate(50px, 50px)">Underneath</div>
+<div style="background-color:lightgreen;
+            transform:translate(0px, 0px)">On top</div>
+```
 
 Supporting these transforms is simple. First let's parse the property
 values:[^space-separated]

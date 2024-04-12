@@ -454,9 +454,11 @@ def querySelectorAll(self, selector_text):
 
 However, this throws an error:[^7]
 
-    _dukpy.JSRuntimeError: EvalError:
-    Error while calling Python Function:
-    TypeError('Object of type Element is not JSON serializable')
+``` {.output}
+_dukpy.JSRuntimeError: EvalError:
+Error while calling Python Function:
+TypeError('Object of type Element is not JSON serializable')
+```
 
 [^7]: Yes, that's a confusing error message. Is it a `JSRuntimeError`,
     an `EvalError`, or a `TypeError`? The confusion is a consequence
