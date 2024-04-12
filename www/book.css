@@ -163,7 +163,7 @@ body.main { padding: 0 4ex; }
   .note form { display: inline; }
 }
 
-.todo, .quirk, .warning, .installation, .further, .demo, .example { padding: 1em 1em 0; margin: 1em 0; }
+.todo, .quirk, .warning, .installation, .further, .demo { padding: 1em 1em 0; margin: 1em 0; }
 .quirk:before, .warning:before, .installation:before {
     font-weight: bold; font-family: 'Vollkorn', 'Garamond', serif;
     text-align: center;
@@ -185,7 +185,6 @@ img { max-width: 100%; }
 .further > :first-child:before { content: "Go further: "; font-weight: bold; color: green; }
 .widget { width: 100%; border: 2px solid navy; }
 .center { text-align: center }
-.example { border: 2px solid lightgray; padding: 1em }
 
 @media (prefers-color-scheme: dark) {
 .quirk { border: 2px solid #CBC3E3; }
@@ -212,6 +211,28 @@ code .kw { color: #a0a; }
 code .im { color: #a0a; }
 code .co { color: #C4A484; }
 }
+
+/* Tagging code blocks with where they go */
+pre.example::after, pre.output::after, .sourceCode[data-file]::after {
+    position: absolute; top: 0; right: 0; color: #888;
+    font: bold 83% 'Vollkorn', 'Garamond', serif;
+    padding: 1px 1ex; border: 2px solid #aaa;
+    pointer-events: none; /* So you can select / scroll under tag */
+}
+
+/* Note that ::after:hover is not supported in CSS so this is best we can do */
+pre.example:hover::after, pre.output:hover::after, .sourceCode[data-file]:hover::after {
+    opacity: 30%; /* In case it covers some code */
+}
+
+pre.example::after { content: "Example code"; }
+pre.output::after { content: "Example output"; }
+.sourceCode[data-file=server]::after { content: "server.py" }
+.sourceCode[data-file=runtime]::after { content: "runtime.js" }
+.sourceCode[data-file=comment]::after { content: "comment.js" }
+.sourceCode[data-file=eventloop]::after { content: "eventloop.js" } /* Named in a code block! */
+.sourceCode[data-file^=lab]::after { } /* Not tagged because still browser */
+.sourceCode[data-file^=example]::after { content: "Example code"; } /* All examples */
 
 .todo { background: darkred; color: white; padding-bottom: 1em; }
 .todo:before { content: "This book is a work in progress:"; }

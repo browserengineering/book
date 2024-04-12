@@ -76,8 +76,8 @@ On many systems, you can set up this kind of connection using the
 telnet example.org 80
 ```
 
-(Note: when you see a gray outline, it means that the code in question is
-an example only, and *not* actually part of our browser's code.)
+(Note: when a code block has an "Example Code" tag, that means that
+the code in question is *not* actually part of our browser.)
 
 ::: {.installation}
 You might need to install `telnet`; it is often disabled by default.
