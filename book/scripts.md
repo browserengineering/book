@@ -114,7 +114,11 @@ Next we run all of the scripts:
 def load(self, url, payload=None):
     # ...
     for script in scripts:
-        body = url.resolve(script).request()
+        script_url = url.resolve(script)
+        try:
+            body = script_url.request()
+        except:
+            continue
         print("Script returned: ", dukpy.evaljs(body))
     # ...
 ```

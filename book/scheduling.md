@@ -129,7 +129,10 @@ class Tab:
         # ...
         for script in scripts:
             # ...
-            header, body = script_url.request(url)
+            try:
+                header, body = script_url.request(url)
+            except:
+                continue
             task = Task(self.js.run, script_url, body)
             self.task_runner.schedule_task(task)
 ```
@@ -1342,7 +1345,7 @@ class TaskRunner:
             # ...
     
             self.condition.acquire(blocking=True)
-            if len(self.tasks) == 0 or self.needs_quit:
+            if len(self.tasks) == 0 and not self.needs_quit:
                 self.condition.wait()
             self.condition.release()
 ```

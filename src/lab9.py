@@ -100,7 +100,11 @@ class Tab:
                    and node.tag == "script"
                    and "src" in node.attributes]
         for script in scripts:
-            body = url.resolve(script).request()
+            script_url = url.resolve(script)
+            try:
+                body = script_url.request()
+            except:
+                continue
             try:
                 self.js.run(body)
             except dukpy.JSRuntimeError as e:

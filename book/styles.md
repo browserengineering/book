@@ -646,8 +646,9 @@ to the `rules` list:
 def load(self, url):
     # ...
     for link in links:
+        style_url = url.resolve(link)
         try:
-            body = url.resolve(link).request()
+            body = style_url.request()
         except:
             continue
         rules.extend(CSSParser(body).parse())

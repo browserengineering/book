@@ -1261,7 +1261,10 @@ class Frame:
                 print("Blocked script", script, "due to CSP")
                 continue
 
-            header, body = script_url.request(url)
+            try:
+                header, body = script_url.request(url)
+            except:
+                continue
             body = body.decode("utf8", "replace")
             task = Task(self.js.run, script_url, body,
                 self.window_id)
