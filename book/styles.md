@@ -134,7 +134,7 @@ doesn't support a feature some other browser does. So we should skip
 property-value pairs that don't parse, but keep the ones that do.
 
 We can skip things with this little function; it stops at any one of a
-set of characters and returns that character (or `None` if it was
+set of characters, and returns that character (or `None` if it was
 stopped by the end of the file):
 
 ``` {.python indent=4}
@@ -147,7 +147,7 @@ def ignore_until(self, chars):
     return None
 ```
 
-When we fail to parse a property-value pair, we skip either to the
+When we fail to parse a property-value pair, we either skip to the
 next semicolon or to the end of the string:
 
 ``` {.python indent=4 expected=False}
@@ -267,7 +267,7 @@ So this is one way web pages can change their appearance. And in the
 early days of the web,^[I'm talking Netscape 3. The late 90s.]
 something like this was the *only* way. But honestly, it's a
 pain---you need to set a `style` attribute on each element, and if you
-change the style, that's a lot of attributes to edit. CSS\index{CSS}
+change the style that's a lot of attributes to edit. CSS\index{CSS}
 was invented to improve on this state of affairs:
 
 - One CSS file can consistently style many web pages at once
@@ -292,8 +292,8 @@ apply to.[^media-queries] The combination of the two is called a
 :::
 
 Let's add support for CSS to our browser. We'll need to parse
-CSS files into selectors and property/value pairs, figure out which
-elements on the page match each selector, and copy those property
+CSS files into selectors and property/value pairs; figure out which
+elements on the page match each selector; and then copy those property
 values to the elements' `style` fields.
 
 ::: {.further}
@@ -350,7 +350,7 @@ class DescendantSelector:
         self.descendant = descendant
 ```
 
-Then the `matches` method is recursive:
+Then the `match` method is recursive:
 
 ``` {.python}
 class DescendantSelector:
@@ -421,7 +421,7 @@ def body(self):
     # ...
 ```
 
-Second, there might also be a parse error while parsing a selector.
+Second, there might also be an parse error while parsing a selector.
 In that case, we want to skip the whole rule:
 
 ``` {.python indent=4}

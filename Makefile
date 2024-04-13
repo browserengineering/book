@@ -69,7 +69,7 @@ latex/book.pdf: latex/book.tex latex/macros.tex
 	(cd latex && ln -f -s ../www/im/ im)
 	(cd latex && pdflatex book.tex)
 
-www/%.html: book/%.md infra/template.html infra/signup.html infra/filter.lua config.json src/lab*.py
+www/%.html: book/%.md infra/template.html infra/signup.html infra/filter.lua config.json
 	$(PANDOC) --toc --metadata=mode:book --template infra/template.html -c book.css $< -o $@
 
 www/draft/%.html: book/%.md infra/template.html infra/signup.html infra/filter.lua config.json

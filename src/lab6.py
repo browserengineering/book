@@ -252,14 +252,6 @@ class BlockLayout:
         return cmds
 
     @wbetools.js_hide
-    def open_tag(self, tag):
-        pass
-
-    @wbetools.js_hide
-    def close_tag(self, tag):
-        pass
-
-    @wbetools.js_hide
     def __repr__(self):
         return "BlockLayout[{}](x={}, y={}, width={}, height={})".format(
             self.layout_mode(), self.x, self.y, self.width, self.height)
