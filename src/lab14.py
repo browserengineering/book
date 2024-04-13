@@ -216,6 +216,7 @@ class BlockLayout:
 
         return cmds
 
+    @wbetools.js_hide
     def __repr__(self):
         return "BlockLayout[{}](x={}, y={}, width={}, height={}, node={})".format(
             self.layout_mode(), self.x, self.y, self.width, self.height, self.node)
@@ -281,6 +282,7 @@ class LineLayout:
     def role(self):
         return "none"
 
+    @wbetools.js_hide
     def __repr__(self):
         return "LineLayout(x={}, y={}, width={}, height={}, node={})".format(
             self.x, self.y, self.width, self.height, self.node)
@@ -367,6 +369,7 @@ class DocumentLayout:
     def paint_effects(self, cmds):
         return cmds
 
+    @wbetools.js_hide
     def __repr__(self):
         return "DocumentLayout()"
 
@@ -419,6 +422,7 @@ class TextLayout:
     def paint_effects(self, cmds):
         return cmds
     
+    @wbetools.js_hide
     def __repr__(self):
         return ("TextLayout(x={}, y={}, width={}, height={}, " +
             "node={}, word={})").format(
@@ -496,6 +500,7 @@ class InputLayout:
         paint_outline(self.node, cmds, self.self_rect(), self.zoom)
         return cmds 
 
+    @wbetools.js_hide
     def __repr__(self):
         return "InputLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
@@ -609,6 +614,7 @@ class AccessibilityNode:
             if res: node = res
         return node
 
+    @wbetools.js_hide
     def __repr__(self):
         return "AccessibilityNode(node={} role={} text={} bounds={}".format(
             str(self.node), self.role, self.text, self.bounds)
@@ -637,6 +643,7 @@ class PseudoclassSelector:
         else:
             return False
 
+    @wbetools.js_hide
     def __repr__(self):
         return "PseudoclassSelector({}, {})".format(self.pseudoclass, self.base)
 

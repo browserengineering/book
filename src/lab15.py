@@ -130,6 +130,7 @@ class DrawImage(PaintCommand):
         paint = skia.Paint(FilterQuality=self.quality)
         canvas.drawImageRect(self.image, self.rect, paint)
 
+    @wbetools.js_hide
     def __repr__(self):
         return "DrawImage(rect={})".format(
             self.rect)
@@ -182,6 +183,7 @@ class DocumentLayout:
             cmds = [Transform((0, - self.frame.scroll), rect, self.node, cmds)]
         return cmds
 
+    @wbetools.js_hide
     def __repr__(self):
         return "DocumentLayout()"
 
@@ -337,6 +339,7 @@ class BlockLayout:
         cmds = paint_visual_effects(self.node, cmds, self.self_rect())
         return cmds
 
+    @wbetools.js_hide
     def __repr__(self):
         return "BlockLayout(x={}, y={}, width={}, height={}, node={})".format(
             self.x, self.x, self.width, self.height, self.node)
@@ -422,6 +425,7 @@ class InputLayout(EmbedLayout):
         paint_outline(self.node, cmds, self.self_rect(), self.zoom)
         return cmds
 
+    @wbetools.js_hide
     def __repr__(self):
         return "InputLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
@@ -489,6 +493,7 @@ class LineLayout:
     def role(self):
         return "none"
 
+    @wbetools.js_hide
     def __repr__(self):
         return "LineLayout(x={}, y={}, width={}, height={}, node={})".format(
             self.x, self.y, self.width, self.height, self.node)
@@ -542,6 +547,7 @@ class TextLayout:
             self.x, self.y, self.x + self.width,
             self.y + self.height)
     
+    @wbetools.js_hide
     def __repr__(self):
         return ("TextLayout(x={}, y={}, width={}, height={}, " +
             "node={}, word={})").format(
@@ -599,6 +605,7 @@ class ImageLayout(EmbedLayout):
     def paint_effects(self, cmds):
         return cmds
 
+    @wbetools.js_hide
     def __repr__(self):
         return ("ImageLayout(src={}, x={}, y={}, width={}," +
             "height={})").format(self.node.attributes["src"],
@@ -669,6 +676,7 @@ class IframeLayout(EmbedLayout):
         cmds = paint_visual_effects(self.node, cmds, rect)
         return cmds
 
+    @wbetools.js_hide
     def __repr__(self):
         return "IframeLayout(src={}, x={}, y={}, width={}, height={})".format(
             self.node.attributes["src"], self.x, self.y, self.width, self.height)
@@ -1185,6 +1193,7 @@ class FrameAccessibilityNode(AccessibilityNode):
         rect.offset(bounds.left(), bounds.top() - self.scroll)
         rect.intersect(bounds)
 
+    @wbetools.js_hide
     def __repr__(self):
         return "FrameAccessibilityNode(node={} role={} text={}".format(
             str(self.node), self.role, self.text)

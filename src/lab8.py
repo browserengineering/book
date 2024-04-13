@@ -150,6 +150,7 @@ class InputLayout:
                 cx, self.y, cx, self.y + self.height, "black", 1))
         return cmds
 
+    @wbetools.js_hide
     def __repr__(self):
         if self.node.tag == "input":
             extra = "type=input"
@@ -230,6 +231,7 @@ class BlockLayout:
             cmds.append(draw_rect)
         return cmds
 
+    @wbetools.js_hide
     def __repr__(self):
         return "BlockLayout[{}](x={}, y={}, width={}, height={}, node={})".format(
             self.layout_mode(), self.x, self.y, self.width, self.height, self.node)
