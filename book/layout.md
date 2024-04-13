@@ -110,9 +110,9 @@ class DocumentLayout:
 ```
 
 Note an interesting thing about this new `layout` method: its role is
-to _create_ the child layout objects, and then _recursively_ call
+to _create_ the child layout objects and then _recursively_ call
 their `layout` methods. This is a common pattern for constructing
-trees, and we'll be seeing it a lot throughout this book.
+trees; we'll be seeing it a lot throughout this book.
 
 Now when we construct a `DocumentLayout` object inside `load`, we'll
 be building a tree; a very short tree, more of a stump (just the "document"
@@ -341,6 +341,7 @@ object type:
 ``` {.python}
 class BlockLayout:
     def __init__(self, node, parent, previous):
+        # ...
         self.x = None
         self.y = None
         self.width = None
