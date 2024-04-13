@@ -69,7 +69,7 @@ latex/book.pdf: latex/book.tex latex/macros.tex
 	(cd latex && ln -f -s ../www/im/ im)
 	(cd latex && pdflatex book.tex)
 
-www/%.html: book/%.md infra/template.html infra/signup.html infra/filter.lua config.json
+www/%.html: book/%.md infra/template.html infra/signup.html infra/filter.lua config.json src/lab*.py
 	$(PANDOC) --toc --metadata=mode:book --template infra/template.html -c book.css $< -o $@
 
 www/draft/%.html: book/%.md infra/template.html infra/signup.html infra/filter.lua config.json
@@ -84,7 +84,7 @@ www/widgets/lab%.js: src/lab%.py src/lab%.hints infra/compile.py infra/asttools.
 www/widgets/server%.js: src/server%.py src/server%.hints infra/compile.py infra/asttools.py
 	python3 infra/compile.py $< $@ --hints src/server$*.hints
 
-www/onepage/%.html: book/%.md infra/chapter.html infra/filter.lua config.json
+www/onepage/%.html: book/%.md infra/chapter.html infra/filter.lua config.json src/lab*.py
 	$(PANDOC) --toc --metadata=mode:onepage --variable=cur:$* --template infra/chapter.html $< -o $@
 www/onepage/onepage.html: ;
 www/onepage.html: $(patsubst %,www/onepage/%.html,$(CHAPTERS))
