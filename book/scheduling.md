@@ -377,7 +377,7 @@ are still possible.[^i-hit-them]
 
 [^i-hit-them]: In fact, while debugging the code for this chapter, I
 often encountered this kind of race condition when I forgot to add a
-lock. Remove some of locks from your browser and you can see for
+lock. Remove some of the locks from your browser and you can see for
 yourself!
 
 Long-lived threads
