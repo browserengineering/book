@@ -921,7 +921,7 @@ class Tab:
         self.tab_height = tab_height
 ```
 
-We can pass it in in `new_tab`:
+We can pass it to `new_tab`:
 
 ``` {.python}
 class Browser:
@@ -981,7 +981,7 @@ class Browser:
         self.draw()
 ```
 
-Note that we need to subtract out the the chrome size when clicking on
+Note that we need to subtract out the chrome size when clicking on
 tab contents. As for clicks on the browser chrome, inside `Chrome` we
 need to figure out what the user clicked on. To make that easier,
 let's add a quick method to test whether a point is contained in a
@@ -1086,7 +1086,7 @@ class Chrome:
             cmds.append(DrawText(
                 self.address_rect.left + self.padding,
                 self.address_rect.top,
-                self.address_bar, self.font, "black"))
+                url, self.font, "black"))
 ```
 
 Here `str` is a built-in Python function that we can override to
