@@ -11,7 +11,6 @@
 {"code": "'src' in node.attributes", "type": "dict"},
 {"code": "'style' in node.attributes", "type": "dict"},
 {"code": "child.tag in BLOCK_ELEMENTS", "type": "list"},
-{"code": "('TextLayout(x={}, y={}, width={}, height={}, ' + 'node={}, word={})').format(self.x, self.y, self.width, self.height, self.node, self.word)", "js": ""},
 {"code": "'role' in node.attributes", "type": "dict"},
 {"code": "print", "js": "console.log"},
 {"code": "'href' in node.attributes", "type": "dict"},

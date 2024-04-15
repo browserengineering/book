@@ -67,6 +67,7 @@ class LineLayout:
     def paint(self):
         return []
 
+    @wbetools.js_hide
     def __repr__(self):
         return "LineLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
@@ -188,6 +189,7 @@ class BlockLayout:
             cmds.append(rect)
         return cmds
 
+    @wbetools.js_hide
     def __repr__(self):
         return "BlockLayout[{}](x={}, y={}, width={}, height={})".format(
             self.layout_mode(), self.x, self.y, self.width, self.height)
@@ -204,6 +206,7 @@ class DrawLine:
             self.rect.right, self.rect.bottom - scroll,
             fill=self.color, width=self.thickness)
 
+    @wbetools.js_hide
     def __repr__(self):
         return "DrawLine({}, {}, {}, {}, color={}, thickness={})".format(
             self.rect.left, self.rect.top, self.rect.right, self.rect.bottom,
@@ -222,6 +225,7 @@ class DrawOutline:
             width=self.thickness,
             outline=self.color)
 
+    @wbetools.js_hide
     def __repr__(self):
         return "DrawOutline({}, {}, {}, {}, color={}, thickness={})".format(
             self.left, self.top, self.right, self.bottom,
@@ -244,6 +248,7 @@ class DrawText:
             anchor='nw',
             fill=self.color)
 
+    @wbetools.js_hide
     def __repr__(self):
         return "DrawText(text={})".format(self.text)
 
@@ -313,6 +318,7 @@ class Tab:
             back = self.history.pop()
             self.load(back)
 
+    @wbetools.js_hide
     def __repr__(self):
         return "Tab(history={})".format(self.history)
 
@@ -339,6 +345,7 @@ class DrawRect:
             width=0,
             fill=self.color)
 
+    @wbetools.js_hide
     def __repr__(self):
         return "DrawRect(top={} left={} bottom={} right={} color={})".format(
             self.rect.top, self.rect.left, self.rect.bottom,
