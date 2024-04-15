@@ -498,11 +498,12 @@ class Element:
 ```
 
 That means we'll need to call `get_attributes` at the top of
-`add_tag`, to get the `attributes` we need to construct an `Element`.
+`add_tag` to get the `attributes` we need to construct an `Element`.
 
 ``` {.python indent=4}
 def add_tag(self, tag):
     tag, attributes = self.get_attributes(tag)
+    # ...
 ```
 
 Remember to use `tag` and `attribute` instead of `text` in `add_tag`,
@@ -744,7 +745,7 @@ Note that if both the `<html>` and `<head>` tags are omitted,
 `implicit_tags` is going to insert both of them by going around the
 loop twice. In the first iteration `open_tags` is `[]`, so the code
 adds an `<html>` tag; then, in the second iteration, `open_tags` is
-`["html"]` so it adds a `<head>` tag.[^no-infinite-loop]
+`["html"]`, so it adds a `<head>` tag.[^no-infinite-loop]
 
 [^no-infinite-loop]: These `add_tag` methods themselves call
     `implicit_tags`, which means you can get into an infinite loop if
@@ -752,7 +753,7 @@ adds an `<html>` tag; then, in the second iteration, `open_tags` is
     added by `implicit_tags` doesn't itself trigger more implicit
     tags.
 
-Finally, the `</head>` tag can also be implicit, if the parser is
+Finally, the `</head>` tag can also be implicit if the parser is
 inside the `<head>` and sees an element that's supposed to go in the
 `<body>`:
 
