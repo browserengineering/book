@@ -138,6 +138,7 @@ class TagSelector:
     def matches(self, node):
         return isinstance(node, Element) and self.tag == node.tag
 
+    @wbetools.js_hide
     def __repr__(self):
         return "TagSelector(tag={}, priority={})".format(
             self.tag, self.priority)
@@ -155,6 +156,7 @@ class DescendantSelector:
             node = node.parent
         return False
 
+    @wbetools.js_hide
     def __repr__(self):
         return ("DescendantSelector(ancestor={}, descendant={}, priority={})") \
             .format(self.ancestor, self.descendant, self.priority)
@@ -257,6 +259,7 @@ class BlockLayout:
     def close_tag(self, tag):
         pass
 
+    @wbetools.js_hide
     def __repr__(self):
         return "BlockLayout[{}](x={}, y={}, width={}, height={})".format(
             self.layout_mode(), self.x, self.y, self.width, self.height)
@@ -280,6 +283,7 @@ class DrawText:
             anchor='nw',
             fill=self.color)
 
+    @wbetools.js_hide
     def __repr__(self):
         return "DrawText(text={})".format(self.text)
 

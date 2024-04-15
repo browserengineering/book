@@ -573,7 +573,7 @@ class Tab:
             # ...
 ```
 
-Once we've found the button, we need to find the form that it's in, by
+Once we've found the button, we need to find the form that it's in by
 walking up the HTML tree:
 
 

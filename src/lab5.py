@@ -149,6 +149,7 @@ class DocumentLayout:
     def paint(self):
         return []
 
+    @wbetools.js_hide
     def __repr__(self):
         return "DocumentLayout()"
 
@@ -168,6 +169,7 @@ class DrawText:
             font=self.font,
             anchor='nw')
 
+    @wbetools.js_hide
     def __repr__(self):
         return "DrawText(top={} left={} bottom={} text={} font={})".format(
             self.top, self.left, self.bottom, self.text, self.font)
@@ -187,6 +189,7 @@ class DrawRect:
             width=0,
             fill=self.color)
 
+    @wbetools.js_hide
     def __repr__(self):
         return "DrawRect(top={} left={} bottom={} right={} color={})".format(
             self.top, self.left, self.bottom, self.right, self.color)

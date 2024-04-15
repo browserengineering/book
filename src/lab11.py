@@ -126,6 +126,7 @@ class DrawRect:
         paint.setColor(parse_color(self.color))
         canvas.drawRect(self.rect, paint)
 
+    @wbetools.js_hide
     def __repr__(self):
         return "DrawRect(top={} left={} bottom={} right={} color={})".format(
             self.rect.top(), self.rect.left(), self.rect.bottom(),
