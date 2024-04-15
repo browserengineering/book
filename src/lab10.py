@@ -26,7 +26,7 @@ import wbetools
 
 @wbetools.patch(URL)
 class URL:
-    def request(self, top_level_url, payload=None):
+    def request(self, referrer, payload=None):
         s = socket.socket(
             family=socket.AF_INET,
             type=socket.SOCK_STREAM,
@@ -44,9 +44,9 @@ class URL:
         if self.host in COOKIE_JAR:
             cookie, params = COOKIE_JAR[self.host]
             allow_cookie = True
-            if top_level_url and params.get("samesite", "none") == "lax":
+            if referrer and params.get("samesite", "none") == "lax":
                 if method != "GET":
-                    allow_cookie = self.host == top_level_url.host
+                    allow_cookie = self.host == referrer.host
             if allow_cookie:
                 request += "Cookie: {}\r\n".format(cookie)
         if payload:

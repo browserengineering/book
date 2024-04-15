@@ -62,7 +62,7 @@ The change is pretty minimal: instead of passing the `"r"` flag to
 
 ``` {.python}
 class URL:
-    def request(self, top_level_url, payload=None):
+    def request(self, referrer, payload=None):
         # ...
         response = s.makefile("b")
         # ...
@@ -74,7 +74,7 @@ parser code to explicitly `decode` the data:
 
 ``` {.python}
 class URL:
-    def request(self, top_level_url, payload=None):
+    def request(self, referrer, payload=None):
         # ...
         statusline = response.readline().decode("utf8")
         # ...
