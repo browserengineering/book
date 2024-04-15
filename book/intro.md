@@ -47,7 +47,7 @@ it the "operating system of the future" and speculating about the "year of the
 Linux desktop". But when asked about challenges RedHat faced, the salesman
 mentioned not Linux but _the web_: he said that someone "needs to make a good
 browser for Linux."[^netscape-linux] Even back then, in the first
-first years of the web, the browser was already a necessary component
+years of the web, the browser was already a necessary component
 of every computer.
 He even threw out a challenge: "how hard could it be to build a better browser?"
 Indeed, how hard could it be? What makes it so hard? That question stuck with me
