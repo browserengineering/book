@@ -281,7 +281,7 @@ complexity here!
 
 ::: {.further}
 If a script runs for a long time, or has an infinite loop, our browser
-locks up and become completely unresponsive to the user. This is a
+locks up and becomes completely unresponsive to the user. This is a
 consequence of JavaScript's single-threaded semantics and its task-based,
 [run-to-completion scheduling][rtc]. Some APIs like [Web
 Workers][webworkers] allow limited multithreading, but those threads

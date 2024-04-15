@@ -1176,7 +1176,7 @@ When a pixel with alpha overlaps another pixel, the final color is a
 mix of their two colors. How exactly the colors are mixed is defined
 by Skia's `Paint` objects. Of course, Skia is pretty complex, but we
 can sketch these paint operations in Python as methods on the
-conceptual `Pixel` class I introducd earlier.
+conceptual `Pixel` class I introduced earlier.
 
 When we apply a `Paint` with an `Alphaf` parameter, the first thing
 Skia does is add the requested opacity to each pixel:
