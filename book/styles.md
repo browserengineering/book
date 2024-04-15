@@ -17,7 +17,7 @@ Parsing with functions
 One way a web page can change its appearance is with the `style`\index{style}
 attribute. For example, this changes an element's background color:
 
-``` {.example}
+``` {.html .example style=background-color:lightblue}
 <div style="background-color:lightblue"></div>
 ```
 
@@ -254,14 +254,9 @@ class BlockLayout:
 ```
 
 I've removed the default gray background from `pre` elements for now,
-but we'll put it back soon.
-
-Open this chapter up in your browser to test your code: the code block
-right after this paragraph should now have a light blue background.
-
-``` {.example style=background-color:lightblue}
-<div style="background-color:lightblue"> ... </div>
-```
+but we'll put it back soon. Open this chapter up in your browser to
+test your code: the code block at the start of the chapter should now
+have a light blue background.
 
 So this is one way web pages can change their appearance. And in the
 early days of the web,^[I'm talking Netscape 3. The late 90s.]
@@ -1003,7 +998,7 @@ links have colors.
 
 ::: {.center}
 ![Screenshot of the browser.engineering website with this chapter's browser](examples/example6-browserengineering-screenshot.png)
-<br>
+:::
 
 ::: {.further}
 Usually a point is one 72^nd^ of an inch while pixel size depends on

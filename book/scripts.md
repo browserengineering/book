@@ -41,7 +41,7 @@ The first step to using DukPy is installing it. On most machines,
 including on Windows, macOS, and Linux systems, you should be able to
 do this with:
 
-``` {.example}
+``` {.sh}
 python3 -m pip install dukpy
 ```
 
@@ -59,7 +59,7 @@ the `duktape` library that `dukpy` uses.
 
 To test whether you installed DukPy correctly, execute this:
 
-``` {.python expected=False}
+``` {.python .example}
 import dukpy
 dukpy.evaljs("2 + 2")
 ```
@@ -126,7 +126,7 @@ def load(self, url, payload=None):
 This should run before styling and layout. To try it out, create a
 simple web page with a `script` tag:
 
-``` {.html}
+``` {.html .example}
 <script src=test.js></script>
 ```
 
@@ -139,7 +139,9 @@ x + x
 
 Point your browser at that page, and you should see:
 
-    Script returned: 4
+``` {.output}
+Script returned: 4
+```
 
 That's your browser running its first bit of JavaScript!
 
@@ -195,7 +197,7 @@ As a side benefit of using one `JSContext` for all scripts, it is now
 possible to run two scripts and have one of them define a variable
 that the other uses, say on a page like this:
 
-``` {.html}
+``` {.html .example}
 <script src=a.js></script>
 <script src=b.js></script>
 ```
@@ -327,7 +329,7 @@ Here's a few tips to help with these crashes. First, if you get a
 crash inside some JavaScript function, wrap the body of the function
 like this:
 
-``` {.javascript expected=False}
+``` {.javascript .example}
 function foo() {
     try {
         // ...
@@ -342,7 +344,7 @@ This code catches all exceptions and prints a stack trace before
 re-raising them. If you instead are getting crashes inside an exported
 function you will need to wrap that function, on the Python side:
 
-``` {.python expected=False}
+``` {.python .example}
 class JSContext:
     def foo(self, arg):
         try:

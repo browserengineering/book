@@ -106,9 +106,11 @@ manager, usually from packages called `telnet` and `netcat`.
 
 You'll get output that looks like this:
 
-    Trying 93.184.216.34...
-    Connected to example.org.
-    Escape character is '^]'.
+``` {.output}
+Trying 93.184.216.34...
+Connected to example.org.
+Escape character is '^]'.
+```
 
 This means that the OS converted the host name `example.org` into the
 IP address `93.184.216.34` and was able to connect to it.[^10] You can
@@ -499,7 +501,7 @@ types to text and to bytes:
     character encoding and will work on many pages, but in the real
     world you would need to be more careful.
 
-``` {.python .example}
+``` {.python .output}
 >>> type("text")
 <class 'str'>
 >>> type("text".encode("utf8"))
@@ -714,7 +716,9 @@ executing this script from the command line. The code reads the first
 argument (`sys.argv[1]`) from the command line and uses it as a URL.
 Try running this code on the URL `http://example.org/`:
 
-    python3 browser.py http://example.org/
+``` {.sh}
+python3 browser.py http://example.org/
+```
 
 You should see some short text welcoming you to the official example
 web page. You can also try using it on [this chapter](https://browser.engineering/http.html)!
@@ -856,7 +860,9 @@ class URL:
 Custom ports are handy for debugging. Python has a built-in web server
 you can use to serve files on your computer. For example, if you run
 
-    python3 -m http.server 8000 -d /some/directory
+``` {.sh}
+python3 -m http.server 8000 -d /some/directory
+```
 
 then going to `http://localhost:8000/` should show you all the files
 in that directory. This is a good way to test your browser.
@@ -873,7 +879,7 @@ Here is what it should output for [a simple example][example-simple]:
 
 [example-simple]: examples/example1-simple.html
 
-``` {.example}
+``` {.output}
 
   
     This is a simple

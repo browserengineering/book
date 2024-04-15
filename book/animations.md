@@ -47,7 +47,7 @@ method requests that some JavaScript code run on the next frame; to
 run repeatedly over many frames, we can just have that JavaScript code
 call `requestAnimationFrame` itself:
 
-``` {.javascript file=example-opacity-js replace=animate/fade_out,animation_frame/fade_out .example}
+``` {.javascript file=example-opacity-js replace=animate/fade_out,animation_frame/fade_out}
 function run_animation_frame() {
     if (animate())
         requestAnimationFrame(run_animation_frame);
@@ -76,13 +76,13 @@ visual difference from 1.0 is imperceptible.
 
 So let's take this `div` containing some text:
 
-``` {.html file=example-opacity-html .example}
+``` {.html file=example-opacity-html}
 <div>This text fades</div>
 ```
 
 And write an `animate` function to incrementally change its `opacity`:
 
-``` {.javascript file=example-opacity-js replace=animate/fade_in .example}
+``` {.javascript file=example-opacity-js replace=animate/fade_in}
 var div = document.querySelectorAll("div")[0];
 var total_frames = 120;
 var current_frame = 0;
@@ -493,7 +493,7 @@ Composited Layer:
 Now instead of rastering those three words, we can just copy over the
 composited layer with a `DrawCompositedLayer` command:
 
-``` {.example}
+``` {.output}
 Blend(alpha=0.112375)
   DrawCompositedLayer()
 ```
@@ -502,7 +502,7 @@ Importantly, on the next frame, the `Blend` changes but the
 `DrawText`s don't, so on that frame all we need to do is rerun the
 `Blend`:
 
-``` {.example}
+``` {.output}
 Blend(alpha=0.119866666667)
   DrawCompositedLayer()
 ```

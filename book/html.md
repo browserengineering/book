@@ -66,7 +66,9 @@ parser builds a tree one element or text node at a time. But that
 means the parser needs to store an *incomplete* tree as it goes. For example,
 suppose the parser has so far read this bit of HTML:
 
-    <html><video></video><section><h1>This is my webpage
+``` {.html .example}
+<html><video></video><section><h1>This is my webpage
+```
 
 The parser has seen five tags (and one text node). The rest of the
 HTML will contain more open tags, close tags, and text; but no matter
@@ -307,7 +309,7 @@ print_tree(nodes)
 
 Run it on this web page, and you'll see something like this at the beginning:
 
-``` {.example}
+``` {.output}
  <!doctype html>
    '\n'
    <html lang="en-US" xml:lang="en-US">
@@ -363,7 +365,7 @@ def add_text(self, text):
 The first part of the parsed HTML tree for the `browser.engineering` home page now
 looks something like this:
 
-``` {.example}
+``` {.output}
  <html lang="en-US" xml:lang="en-US">
    <head>
      <meta charset="utf-8" /="">
@@ -508,7 +510,7 @@ def add_tag(self, tag):
 Remember to use `tag` and `attribute` instead of `text` in `add_tag`,
 and try your parser again:
 
-``` {.example}
+``` {.output}
 <html>
    <head>
      <meta>
@@ -643,7 +645,7 @@ with dozens of ever-more-special cases forming a taxonomy of human
 error, but one of its nicer features is *implicit* tags. Normally, an
 HTML document starts with a familiar boilerplate:
 
-``` {.html}
+``` {.html .example}
 <!doctype html>
 <html>
   <head>

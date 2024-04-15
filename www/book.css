@@ -13,7 +13,8 @@ body {
 }
 
 pre, code { hyphens: none; -webkit-hyphens: none; }
-pre { font-size: 18px; overflow: auto; padding-left: 2ex; }
+/* 2px adds room for code tags (see below) */
+pre { font-size: 18px; overflow: auto; padding: 2px 0 2px 2ex; }
 
 dt { margin-top: 1em; }
 dd { margin-bottom: 1em; }
@@ -213,6 +214,8 @@ code .co { color: #C4A484; }
 }
 
 /* Tagging code blocks with where they go */
+pre.example, pre.output, .sourceCode { position: relative; }
+
 pre.example::after, pre.output::after, .sourceCode[data-file]::after {
     position: absolute; top: 0; right: 0; color: #888;
     font: bold 83% 'Vollkorn', 'Garamond', serif;
@@ -229,7 +232,9 @@ pre.example::after { content: "Example code"; }
 pre.output::after { content: "Example output"; }
 .sourceCode[data-file=server]::after { content: "server.py" }
 .sourceCode[data-file=runtime]::after { content: "runtime.js" }
+.sourceCode[data-file=browser]::after { content: "browser.css" }
 .sourceCode[data-file=comment]::after { content: "comment.js" }
+.sourceCode[data-file=comment]:has(.css)::after { content: "comment.css" }
 .sourceCode[data-file=eventloop]::after { content: "eventloop.js" } /* Named in a code block! */
 .sourceCode[data-file^=lab]::after { } /* Not tagged because still browser */
 .sourceCode[data-file^=example]::after { content: "Example code"; } /* All examples */

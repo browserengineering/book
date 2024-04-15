@@ -215,7 +215,7 @@ each pixel of this surface should be represented as *r*ed, *g*reen,
 *b*lue, and *a*lpha values, each of which should take up 8 bits. In
 other words, pixels are basically defined like so:
 
-``` {.python file=examples .example}
+``` {.python file=examples}
 class Pixel:
     def __init__(self, r, g, b, a):
         self.r = r
@@ -1082,7 +1082,7 @@ in our display list, let's handle `opacity` with an `Alpha`
 command that takes a sequence of other drawing commands as an
 argument:
 
-``` {.python file=examples11.py}
+``` {.python file=removed11.py expected=False}
 class Opacity:
     def __init__(self, opacity, children):
         self.opacity = opacity
@@ -1181,7 +1181,7 @@ conceptual `Pixel` class I introducd earlier.
 When we apply a `Paint` with an `Alphaf` parameter, the first thing
 Skia does is add the requested opacity to each pixel:
 
-``` {.python file=examples .example}
+``` {.python file=examples}
 class Pixel:
     def alphaf(self, opacity):
         self.a = self.a * opacity
@@ -1211,7 +1211,7 @@ generally does not use premultiplied representations, and the code below
 doesn't either. (Skia does represent colors internally in a premultiplied form,
 however.)
 
-``` {.python file=examples .example}
+``` {.python file=examples}
 class Pixel:
     def source_over(self, source):
         new_a = source.a + self.a * (1 - source.a)
@@ -1244,7 +1244,7 @@ manipulate them like this is slow. So libraries such as Skia don't
 make it convenient to do so. (Skia canvases do have `peekPixels` and
 `readPixels` methods that are sometimes used, but not for this.)
 
-``` {.python file=examples .example}
+``` {.python file=examples}
 for (x, y) in destination.coordinates():
     source[x, y].alphaf(opacity)
     destination[x, y].source_over(source[x, y])
@@ -1257,7 +1257,7 @@ produce interesting effects are traditionally called "multiply" and
 "difference" and use simple mathematical operations. "Multiply"
 multiplies the color values:
 
-``` {.python file=examples .example}
+``` {.python file=examples}
 class Pixel:
     def multiply(self, source):
         self.r = self.r * source.r
@@ -1267,7 +1267,7 @@ class Pixel:
 
 And "difference" computes their absolute differences:
 
-``` {.python file=examples .example}
+``` {.python file=examples}
 class Pixel:
     def difference(self, source):
         self.r = abs(self.r - source.r)
@@ -1326,7 +1326,7 @@ green, blue) color channels of `(0, 0, 1)`, and orange has `(1, .65,
 0.65, 1)`, which is pink. On a pixel level, what's happening is
 something like this:
 
-``` {.python file=examples .example}
+``` {.python file=examples}
 for (x, y) in destination.coordinates():
     source[x, y].alphaf(opacity)
     source[x, y].difference(destination[x, y])
@@ -1518,7 +1518,7 @@ fits perfectly. In code, destination-in looks like this:
 
 [dst-in]: https://drafts.fxtf.org/compositing-1/#porterduffcompositingoperators_dstin
 
-``` {.python file=examples .example}
+``` {.python file=examples}
 class Pixel:
     def destination_in(self, source):
         self.a = self.a * source.a
@@ -1624,7 +1624,7 @@ and we could skip creating those surfaces most of the time. For
 example, there's no reason to create a surface in `Opacity` if no
 opacity is actually applied:
 
-``` {.python file=examples11.py}
+``` {.python file=removed11.py}
 class Opacity:
     def execute(self, canvas):
         paint = skia.Paint(Alphaf=self.opacity)

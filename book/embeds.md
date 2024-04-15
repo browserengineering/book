@@ -20,7 +20,9 @@ content on the web,[^img-late] dating back to [early
 1993][img-email].[^img-history] They're included on web pages via the
 `<img>` tag, which looks like this:
 
-    <img src="https://browser.engineering/im/hes.jpg">
+``` {.html .example}
+<img src="https://browser.engineering/im/hes.jpg">
+```
 
 [img-email]: http://1997.webhistory.org/www.lists/www-talk.1993q1/0182.html
 
@@ -542,8 +544,10 @@ image on the screen!
 But what about our second output modality, screen readers? That's what
 the `alt` attribute is for. It works like this:
 
-    <img src="https://browser.engineering/im/hes.jpg"
-    alt="An operator using a hypertext editing system in 1969">
+``` {.html .example}
+<img src="https://browser.engineering/im/hes.jpg"
+alt="An operator using a hypertext editing system in 1969">
+```
 
 Implementing this in `AccessibilityNode` is very easy:
 

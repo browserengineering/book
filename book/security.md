@@ -662,8 +662,7 @@ In cross-site request forgery, instead of using `XMLHttpRequest,` the
 attacker uses a form that submits to the guest book:
 
 ``` {.example}
-<form action="http://localhost:8000gs
-/add" method=post>
+<form action="http://localhost:8000/add" method=post>
   <p><input name=guest></p>
   <p><button>Sign the book!</button></p>
 </form>
@@ -993,7 +992,7 @@ Hi! <script src="http://my-server/evil.js"></script>
 
 The server would then output this HTML:
 
-``` {.html .example}
+``` {.html .output}
 <p>Hi! <script src="http://my-server/evil.js"></script>
 <i>by crashoverride</i></p>
 ```
