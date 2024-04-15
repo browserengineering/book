@@ -379,7 +379,7 @@ well.[^multiple-resources]
 When the browser visits a page, it needs to send the cookie for that
 site:
 
-``` {.python replace=(self/(self%2c%20top_level_url,cookie%20%3d/cookie%2c%20params%20%3d}
+``` {.python replace=(self/(self%2c%20referrer,cookie%20%3d/cookie%2c%20params%20%3d}
 class URL:
     def request(self, payload=None):
         # ...
@@ -396,7 +396,7 @@ Symmetrically, the browser has to update the cookie jar when it sees a
     `Set-Cookie` headers to set multiple cookies in one request,
     though our browser won't handle that correctly.
 
-``` {.python replace=(self/(self%2c%20top_level_url,%3d%20cookie/%3d%20(cookie%2c%20params)}
+``` {.python replace=(self/(self%2c%20referrer,%3d%20cookie/%3d%20(cookie%2c%20params)}
 class URL:
     def request(self, payload=None):
         # ...
@@ -809,7 +809,7 @@ requests.[^iow-links]
 First, let's modify `COOKIE_JAR` to store cookie/parameter pairs, and
 then parse those parameters out of `Set-Cookie` headers:
 
-``` {.python indent=4 replace=(self/(self%2c%20top_level_url}
+``` {.python indent=4 replace=(self/(self%2c%20referrer}
 def request(self, payload=None):
     if "set-cookie" in response_headers:
         cookie = response_headers["set-cookie"]
@@ -828,7 +828,7 @@ def request(self, payload=None):
 When sending a cookie in an HTTP request, the browser only sends the
 cookie value, not the parameters:
 
-``` {.python indent=4 replace=(self/(self%2c%20top_level_url}
+``` {.python indent=4 replace=(self/(self%2c%20referrer}
 def request(self, payload=None):
     if self.host in COOKIE_JAR:
         cookie, params = COOKIE_JAR[self.host]
@@ -837,11 +837,19 @@ def request(self, payload=None):
 
 This stores the `SameSite` parameter of a cookie. But to actually use
 it, we need to know which site an HTTP request is being made from.
-Let's add a new `top_level_url` parameter to `request` to track that:
+Let's add a new `referrer` parameter to `request` to track that:[^not-referrer]
+
+[^not-referrer]: The "referrer" is the web page that "referred" our
+    browser to make the current request. `SameSite` cookies are
+    actually supposed to [use the "top-level site"][samesite-def], not
+    the referrer, to determine if the cookies should be sent, but the
+    differences are subtle and I'm skipping them for simplicity.
+    
+[samesite-def]: https://datatracker.ietf.org/doc/html/draft-ietf-httpbis-cookie-same-site-00#section-2.1
 
 ``` {.python}
 class URL:
-    def request(self, top_level_url, payload=None):
+    def request(self, referrer, payload=None):
         # ...
 ```
 
@@ -900,7 +908,7 @@ class JSContext:
         # ...
 ```
 
-The `request` function can now check the `top_level_url` argument
+The `request` function can now check the `referrer` argument
 before sending `SameSite` cookies. Remember that `SameSite` cookies
 are only sent for `GET` requests or if the new URL and the top-level
 URL have the same host name:[^schemeful]
@@ -917,20 +925,20 @@ URL have the same host name:[^schemeful]
 [origin-bound-cookies]: https://github.com/sbingler/Origin-Bound-Cookies
 
 ``` {.python indent=4}
-def request(self, top_level_url, payload=None):
+def request(self, referrer, payload=None):
     if self.host in COOKIE_JAR:
         # ...
         cookie, params = COOKIE_JAR[self.host]
         allow_cookie = True
-        if top_level_url and params.get("samesite", "none") == "lax":
+        if referrer and params.get("samesite", "none") == "lax":
             if method != "GET":
-                allow_cookie = self.host == top_level_url.host
+                allow_cookie = self.host == referrer.host
         if allow_cookie:
             request += "Cookie: {}\r\n".format(cookie)
         # ...
 ```
 
-Note that we check whether the `top_level_url` is set---it won't be
+Note that we check whether the `referrer` is set---it won't be
 when we're loading the first web page in a new tab.
 
 Our guest book can now mark its cookies `SameSite`:
@@ -1088,7 +1096,7 @@ to return the response headers:
 
 ``` {.python}
 class URL:
-    def request(self, top_level_url, payload=None):
+    def request(self, referrer, payload=None):
         # ...
         return response_headers, content
 ```
