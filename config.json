@@ -60,6 +60,7 @@
         "visual-effects.md": {
             "lab": "lab11.py",
             "examples": "examples11.py",
+            "removed11.py": "removed11.py",
             "tests": "lab11-tests.md"
         },
         "scheduling.md": {
