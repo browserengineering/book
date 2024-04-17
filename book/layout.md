@@ -55,7 +55,6 @@ class Browser:
         # ...
         self.document = Layout(self.nodes)
         self.document.layout()
-        self.display_list = self.document.display_list
         #...
 ```
 
@@ -95,7 +94,7 @@ call it `DocumentLayout`:
 the root layout object also computes its size and position
 differently, as we'll see later in this chapter.
 
-``` {.python replace=%20Layout/%20BlockLayout dropline=display_list}
+``` {.python replace=%20Layout/%20BlockLayout}
 class DocumentLayout:
     def __init__(self, node):
         self.node = node
@@ -106,7 +105,6 @@ class DocumentLayout:
         child = Layout(self.node, self, None)
         self.children.append(child)
         child.layout()
-        self.display_list = child.display_list
 ```
 
 Note an interesting thing about this new `layout` method: its role is
@@ -281,17 +279,6 @@ class BlockLayout:
             child.layout()
 ```
 
-We also need to gather their `display_list` fields into a single
-array:
-
-``` {.python expected=False}
-class BlockLayout:
-    def layout(self):
-        # ...
-        for child in self.children:
-            self.display_list.extend(child.display_list)
-```
-
 Our browser is now constructing a whole tree of `BlockLayout` objects;
 you can use `print_tree` to see this tree in the `Browser`'s `load` method.
 You'll see that large web pages like this chapter produce large and
@@ -310,9 +297,8 @@ complex layout trees!
 ![An example of an HTML tree and the corresponding layout tree](im/layout-tree.png)
 :::
 
-Oh, and you might also notice that the text on these web pages is now
-totally unreadable, because it's all overlapping at the top of the
-page. Let's fix that next.
+Now we need each of these `BlockLayout` objects to have a size and
+position somewhere on the page.
 
 ::: {.further}
 In CSS, the layout mode is set by the [`display`
@@ -570,8 +556,7 @@ def paint_tree(layout_object, display_list):
         paint_tree(child, display_list)
 ```
 
-For `DocumentLayout`, there is
-nothing to paint:
+For `DocumentLayout`, there is nothing to paint:
 
 ``` {.python}
 class DocumentLayout:
