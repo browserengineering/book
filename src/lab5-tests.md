@@ -97,18 +97,20 @@ Testing the layout tree
 
     >>> lab5.print_tree(browser.document)
      DocumentLayout()
-       BlockLayout[block](x=13, y=18, width=774, height=60.0, node=<html>)
-         BlockLayout[block](x=13, y=18, width=774, height=60.0, node=<body>)
+       BlockLayout[block](x=13, y=18, width=774, height=45.0, node=<html>)
+         BlockLayout[block](x=13, y=18, width=774, height=45.0, node=<body>)
            BlockLayout[block](x=13, y=18, width=774, height=0, node=<div>)
-           BlockLayout[inline](x=13, y=18, width=774, height=20.0, node=<div>)
-           BlockLayout[block](x=13, y=38.0, width=774, height=20.0, node=<div>)
-             BlockLayout[block](x=13, y=38.0, width=774, height=0, node=<div>)
-             BlockLayout[inline](x=13, y=38.0, width=774, height=20.0, node='text')
-           BlockLayout[block](x=13, y=58.0, width=774, height=0, node=<span>)
-           BlockLayout[inline](x=13, y=58.0, width=774, height=20.0, node=<span>)
+           BlockLayout[inline](x=13, y=18, width=774, height=15.0, node=<div>)
+           BlockLayout[block](x=13, y=33.0, width=774, height=15.0, node=<div>)
+             BlockLayout[block](x=13, y=33.0, width=774, height=0, node=<div>)
+             BlockLayout[inline](x=13, y=33.0, width=774, height=15.0, node='text')
+           BlockLayout[block](x=13, y=48.0, width=774, height=0, node=<span>)
+           BlockLayout[inline](x=13, y=48.0, width=774, height=15.0, node=<span>)
 
-    >>> browser.display_list #doctest
-    [DrawText(top=21.0 left=13 bottom=37.0 text=text font=Font size=16 weight=normal slant=roman style=None), DrawText(top=41.0 left=13 bottom=57.0 text=text font=Font size=16 weight=normal slant=roman style=None), DrawText(top=61.0 left=13 bottom=77.0 text=text font=Font size=16 weight=normal slant=roman style=None)]
+    >>> browser.display_list #doctest: +NORMALIZE_WHITESPACE
+    [DrawText(top=20.25 left=13 bottom=32.25 text=text font=Font size=12 weight=normal slant=roman style=None),
+     DrawText(top=35.25 left=13 bottom=47.25 text=text font=Font size=12 weight=normal slant=roman style=None),
+     DrawText(top=50.25 left=13 bottom=62.25 text=text font=Font size=12 weight=normal slant=roman style=None)]
 
 Testing background painting
 ===========================
@@ -126,14 +128,14 @@ Testing background painting
 
     >>> lab5.print_tree(browser.document)
      DocumentLayout()
-       BlockLayout[block](x=13, y=18, width=774, height=20.0, node=<html>)
-         BlockLayout[block](x=13, y=18, width=774, height=20.0, node=<body>)
-           BlockLayout[inline](x=13, y=18, width=774, height=20.0, node=<pre>)
+       BlockLayout[block](x=13, y=18, width=774, height=15.0, node=<html>)
+         BlockLayout[block](x=13, y=18, width=774, height=15.0, node=<body>)
+           BlockLayout[inline](x=13, y=18, width=774, height=15.0, node=<pre>)
 
 The first display list entry is now a gray rect, since it's for a `<pre>` element:
 
     >>> browser.display_list[0]
-    DrawRect(top=18 left=13 bottom=38.0 right=787 color=gray)
+    DrawRect(top=18 left=13 bottom=33.0 right=787 color=gray)
 
 
 Testing breakpoints in layout
@@ -149,7 +151,7 @@ Tree-based layout also supports debugging breakpoints.
     breakpoint(name='layout_pre', 'BlockLayout[block](x=None, y=None, width=None, height=None, node=<html>)')
     breakpoint(name='layout_pre', 'BlockLayout[block](x=None, y=None, width=None, height=None, node=<body>)')
     breakpoint(name='layout_pre', 'BlockLayout[inline](x=None, y=None, width=None, height=None, node=<pre>)')
-    breakpoint(name='layout_post', 'BlockLayout[inline](x=13, y=18, width=774, height=20.0, node=<pre>)')
-    breakpoint(name='layout_post', 'BlockLayout[block](x=13, y=18, width=774, height=20.0, node=<body>)')
-    breakpoint(name='layout_post', 'BlockLayout[block](x=13, y=18, width=774, height=20.0, node=<html>)')
+    breakpoint(name='layout_post', 'BlockLayout[inline](x=13, y=18, width=774, height=15.0, node=<pre>)')
+    breakpoint(name='layout_post', 'BlockLayout[block](x=13, y=18, width=774, height=15.0, node=<body>)')
+    breakpoint(name='layout_post', 'BlockLayout[block](x=13, y=18, width=774, height=15.0, node=<html>)')
     breakpoint(name='layout_post', 'DocumentLayout()')

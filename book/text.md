@@ -633,7 +633,7 @@ Our experience with font styles and weights suggests a simple
 approach that customizes the `size` field in `Layout`. It starts out as:
 
 ``` {.python}
-self.size = 16
+self.size = 12
 ```
 
 That variable is used to create the font object:
@@ -649,7 +649,7 @@ font = tkinter.font.Font(
 And so we can change the sizes of `<big>` and `<small>` tags by updating this
 variable:
 
-``` {.python}
+``` {.python indent=4}
 def token(self, tok):
     # ...
     elif tok.tag == "small":

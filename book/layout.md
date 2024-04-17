@@ -260,7 +260,7 @@ class BlockLayout:
             self.cursor_y = 0
             self.weight = "normal"
             self.style = "roman"
-            self.size = 16
+            self.size = 12
 
             self.line = []
             self.recurse(self.node)
