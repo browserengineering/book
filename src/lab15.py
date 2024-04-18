@@ -193,7 +193,7 @@ def font(style, zoom):
     variant = style["font-style"]
     size = None
     try:
-        size = float(style["font-size"][:-2])
+        size = float(style["font-size"][:-2]) * 0.75
     except:
         size = 16
     font_size = dpx(size, zoom)

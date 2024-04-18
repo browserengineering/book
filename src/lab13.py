@@ -469,7 +469,7 @@ class BlockLayout:
     def word(self, node, word):
         weight = node.style["font-weight"]
         style = node.style["font-style"]
-        size = float(node.style["font-size"][:-2])
+        size = float(node.style["font-size"][:-2]) * 0.75
         font = get_font(size, weight, size)
         w = font.measureText(word)
         if self.cursor_x + w > self.width:
@@ -622,7 +622,7 @@ class TextLayout:
     def layout(self):
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
-        size = float(self.node.style["font-size"][:-2])
+        size = float(self.node.style["font-size"][:-2]) * 0.75
         self.font = get_font(size, weight, style)
 
         # Do not set self.y!!!
@@ -669,7 +669,7 @@ class InputLayout:
     def layout(self):
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
-        size = float(self.node.style["font-size"][:-2])
+        size = float(self.node.style["font-size"][:-2]) * 0.75
         self.font = get_font(size, weight, style)
 
         self.width = INPUT_WIDTH_PX

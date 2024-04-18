@@ -93,7 +93,7 @@ def font(css_style, zoom, notify):
     style = css_style['font-style'].read(notify)
     size = None
     try:
-        size = float(css_style['font-size'].read(notify)[:-2])
+        size = float(css_style['font-size'].read(notify)[:-2]) * 0.75
     except:
         size = 16
     font_size = dpx(size, zoom)
