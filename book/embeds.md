@@ -465,7 +465,7 @@ let's make a function for that:
 def font(style, zoom):
     weight = style["font-weight"]
     variant = style["font-style"]
-    size = float(style["font-size"][:-2])
+    size = float(style["font-size"][:-2]) * 0.75
     font_size = dpx(size, zoom)
     return get_font(font_size, weight, variant)
 ```

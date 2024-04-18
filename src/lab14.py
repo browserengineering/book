@@ -163,7 +163,7 @@ class BlockLayout:
     def word(self, node, word):
         weight = node.style["font-weight"]
         style = node.style["font-style"]
-        size = dpx(float(node.style["font-size"][:-2]),
+        size = dpx(float(node.style["font-size"][:-2]) * 0.75,
             self.zoom)
         font = get_font(size, weight, size)
         w = font.measureText(word)
@@ -185,7 +185,7 @@ class BlockLayout:
         self.previous_word = input
         weight = node.style["font-weight"]
         style = node.style["font-style"]
-        size = dpx(float(node.style["font-size"][:-2]),
+        size = dpx(float(node.style["font-size"][:-2]) * 0.75,
             self.zoom)
         font = get_font(size, weight, size)
         self.cursor_x += w + font.measureText(" ")
@@ -390,7 +390,7 @@ class TextLayout:
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
         size = dpx(
-            float(self.node.style["font-size"][:-2]), self.zoom)
+            float(self.node.style["font-size"][:-2]) * 0.75, self.zoom)
         self.font = get_font(size, weight, style)
 
         # Do not set self.y!!!
@@ -444,7 +444,7 @@ class InputLayout:
         self.zoom = self.parent.zoom
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
-        size = dpx(float(self.node.style["font-size"][:-2]),
+        size = dpx(float(self.node.style["font-size"][:-2]) * 0.75,
             self.zoom)
         self.font = get_font(size, weight, style)
 

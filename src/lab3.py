@@ -67,7 +67,7 @@ class Layout:
         self.cursor_y = VSTEP
         self.weight = "normal"
         self.style = "roman"
-        self.size = 16
+        self.size = 12
 
         self.line = []
         for tok in tokens:

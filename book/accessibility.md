@@ -322,12 +322,12 @@ class BlockLayout:
 	# ....
     def word(self, node, word):
     	# ...
-        size = dpx(float(node.style["font-size"][:-2]),
+        size = dpx(float(node.style["font-size"][:-2]) * 0.75,
             self.zoom)
 
     def input(self, node):
 	    # ...
-        size = dpx(float(node.style["font-size"][:-2]),
+        size = dpx(float(node.style["font-size"][:-2]) * 0.75,
             self.zoom)
 ```
 
@@ -337,7 +337,7 @@ class InputLayout:
     # ....
     def layout(self):
         # ...
-        size = dpx(float(self.node.style["font-size"][:-2]),
+        size = dpx(float(self.node.style["font-size"][:-2]) * 0.75,
             self.zoom)
 ```
 
@@ -359,7 +359,7 @@ class TextLayout:
     def layout(self):
     	# ...
         size = dpx(
-        	float(self.node.style["font-size"][:-2]), self.zoom)
+        	float(self.node.style["font-size"][:-2]) * 0.75, self.zoom)
 ```
 
 And the fixed `INPUT_WIDTH_PX` for text boxes:

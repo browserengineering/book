@@ -60,7 +60,7 @@ Now let's make sure it actually renders:
     >>> browser.tabs[0].advance_tab()
     >>> browser.render()
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
-     DrawImage(rect=Rect(13, 29, 18, 34))
+     DrawImage(rect=Rect(13, 25, 18, 30))
 
 Now let's test setting a different width and height:
 
@@ -99,7 +99,7 @@ Let's load the original image in an iframe.
     >>> test.print_display_list_skip_noops(browser.active_tab_display_list)
      Blend(blend_mode=source-over)
        Transform(translate(14.0, 19.0))
-         DrawImage(rect=Rect(13, 29, 18, 34))
+         DrawImage(rect=Rect(13, 25, 18, 30))
        Blend(blend_mode=destination-in)
          DrawRRect(rect=RRect(14, 19, 314, 169, 1), color=white)
      DrawOutline(top=18.0 left=13.0 bottom=170.0 right=315.0 border_color=black thickness=1.0)
@@ -135,6 +135,7 @@ Iframes can be sized too:
     >>> test.socket.respond(sized_iframe_url, b'HTTP/1.0 200 OK\r\n' +
     ... b'content-type: text/html\r\n\r\n' +
     ... b'.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.' +
+    ... b'<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.' +
     ... b'<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.' +
     ... b'<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.<br>.' +
     ... b'<iframe width=50 height=30 src="http://test.test/">')
@@ -179,12 +180,22 @@ Iframes can be sized too:
      DrawText(text=.)
      DrawText(text=.)
      DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
+     DrawText(text=.)
      Blend(blend_mode=source-over)
-       Transform(translate(46.0, 679.0))
-         DrawImage(rect=Rect(13, 29, 18, 34))
+       Transform(translate(38.0, 664.0))
+         DrawImage(rect=Rect(13, 25, 18, 30))
        Blend(blend_mode=destination-in)
-         DrawRRect(rect=RRect(46, 679, 96, 709, 1), color=white)
-     DrawOutline(top=678.0 left=45.0 bottom=710.0 right=97.0 border_color=black thickness=1.0)
+         DrawRRect(rect=RRect(38, 664, 88, 694, 1), color=white)
+     DrawOutline(top=663.0 left=37.0 bottom=695.0 right=89.0 border_color=black thickness=1.0)
 
 Now let's test scrolling of the root frame:
 
@@ -201,10 +212,10 @@ Clicking the sub-frame focuses it:
     >>> browser.render()
     >>> browser.tabs[0].advance_tab()
     >>> browser.render()
-    >>> e = Event(50, browser.chrome.bottom + 700)
+    >>> e = Event(50, browser.chrome.bottom + 670)
     >>> browser.handle_click(e)
     >>> browser.render()
-    >>> child_frame = browser.tabs[0].root_frame.nodes.children[0].children[67].frame
+    >>> child_frame = browser.tabs[0].root_frame.nodes.children[0].children[-1].frame
     >>> browser.tabs[0].focused_frame == child_frame
     True
     >>> browser.root_frame_focused
@@ -212,14 +223,14 @@ Clicking the sub-frame focuses it:
 
 And now scrolling affects just the child frame:
 
-    >>> browser.tabs[0].root_frame.nodes.children[0].children[67].frame.scroll
+    >>> browser.tabs[0].root_frame.nodes.children[0].children[-1].frame.scroll
     0
     >>> browser.handle_down()
     >>> browser.render()
     >>> browser.active_tab_scroll > 0
     False
-    >>> browser.tabs[0].root_frame.nodes.children[0].children[67].frame.scroll
-    22.0
+    >>> browser.tabs[0].root_frame.nodes.children[0].children[-1].frame.scroll
+    18.0
 
 Accessibility
 =============
@@ -313,19 +324,19 @@ resizing is dramatic:
          BlockLayout(x=13.0, y=13.0, width=774.0, height=152.0, node=<body>)
            LineLayout(x=13.0, y=18.0, width=774.0, height=152.0, node=<body>)
              IframeLayout(src=http://test/0, x=13.0, y=18.0, width=52.0, height=152.0)
-    >>> lab15.print_tree(frame2.document)
+    >>> lab15.print_tree(frame2.document) #doctest: +REPORT_NDIFF
      DocumentLayout()
-       BlockLayout(x=13.0, y=13.0, width=24.0, height=80.0, node=<html>)
-         BlockLayout(x=13.0, y=13.0, width=24.0, height=80.0, node=<body>)
-           BlockLayout(x=13.0, y=13.0, width=24.0, height=80.0, node=<p>)
-             LineLayout(x=13.0, y=18.0, width=24.0, height=20.0, node=<p>)
-               TextLayout(x=13.0, y=21.0, width=16.0, height=16.0, node='A B C D', word=A)
-             LineLayout(x=13.0, y=38.0, width=24.0, height=20.0, node=<p>)
-               TextLayout(x=13.0, y=41.0, width=16.0, height=16.0, node='A B C D', word=B)
-             LineLayout(x=13.0, y=58.0, width=24.0, height=20.0, node=<p>)
-               TextLayout(x=13.0, y=61.0, width=16.0, height=16.0, node='A B C D', word=C)
-             LineLayout(x=13.0, y=78.0, width=24.0, height=20.0, node=<p>)
-               TextLayout(x=13.0, y=81.0, width=16.0, height=16.0, node='A B C D', word=D)
+       BlockLayout(x=13.0, y=13.0, width=24.0, height=60.0, node=<html>)
+         BlockLayout(x=13.0, y=13.0, width=24.0, height=60.0, node=<body>)
+           BlockLayout(x=13.0, y=13.0, width=24.0, height=60.0, node=<p>)
+             LineLayout(x=13.0, y=18.0, width=24.0, height=15.0, node=<p>)
+               TextLayout(x=13.0, y=20.25, width=12.0, height=12.0, node='A B C D', word=A)
+             LineLayout(x=13.0, y=33.0, width=24.0, height=15.0, node=<p>)
+               TextLayout(x=13.0, y=35.25, width=12.0, height=12.0, node='A B C D', word=B)
+             LineLayout(x=13.0, y=48.0, width=24.0, height=15.0, node=<p>)
+               TextLayout(x=13.0, y=50.25, width=12.0, height=12.0, node='A B C D', word=C)
+             LineLayout(x=13.0, y=63.0, width=24.0, height=15.0, node=<p>)
+               TextLayout(x=13.0, y=65.25, width=12.0, height=12.0, node='A B C D', word=D)
 
 Now, let's resize it:
 
@@ -349,12 +360,12 @@ But also the child frame should have resized as well:
 
     >>> lab15.print_tree(frame2.document)
      DocumentLayout()
-       BlockLayout(x=13.0, y=13.0, width=74.0, height=40.0, node=<html>)
-         BlockLayout(x=13.0, y=13.0, width=74.0, height=40.0, node=<body>)
-           BlockLayout(x=13.0, y=13.0, width=74.0, height=40.0, node=<p>)
-             LineLayout(x=13.0, y=18.0, width=74.0, height=20.0, node=<p>)
-               TextLayout(x=13.0, y=21.0, width=16.0, height=16.0, node='A B C D', word=A)
-               TextLayout(x=45.0, y=21.0, width=16.0, height=16.0, node='A B C D', word=B)
-             LineLayout(x=13.0, y=38.0, width=74.0, height=20.0, node=<p>)
-               TextLayout(x=13.0, y=41.0, width=16.0, height=16.0, node='A B C D', word=C)
-               TextLayout(x=45.0, y=41.0, width=16.0, height=16.0, node='A B C D', word=D)
+       BlockLayout(x=13.0, y=13.0, width=74.0, height=30.0, node=<html>)
+         BlockLayout(x=13.0, y=13.0, width=74.0, height=30.0, node=<body>)
+           BlockLayout(x=13.0, y=13.0, width=74.0, height=30.0, node=<p>)
+             LineLayout(x=13.0, y=18.0, width=74.0, height=15.0, node=<p>)
+               TextLayout(x=13.0, y=20.25, width=12.0, height=12.0, node='A B C D', word=A)
+               TextLayout(x=37.0, y=20.25, width=12.0, height=12.0, node='A B C D', word=B)
+               TextLayout(x=61.0, y=20.25, width=12.0, height=12.0, node='A B C D', word=C)
+             LineLayout(x=13.0, y=33.0, width=74.0, height=15.0, node=<p>)
+               TextLayout(x=13.0, y=35.25, width=12.0, height=12.0, node='A B C D', word=D)

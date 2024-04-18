@@ -77,7 +77,7 @@ First, let's test that basic layout works as expected:
 	>>> tree = parser.parse()
     >>> lo = lab4.Layout(tree)
     >>> lo.display_list
-    [(13, 21.0, 'text', Font size=16 weight=normal slant=roman style=None)]
+    [(13, 20.25, 'text', Font size=12 weight=normal slant=roman style=None)]
 
 Moreover, layout should work even if we don't use the
 explicitly-supported tags like `p`:
@@ -86,4 +86,4 @@ explicitly-supported tags like `p`:
 	>>> tree = parser.parse()
     >>> lo = lab4.Layout(tree)
     >>> lo.display_list
-    [(13, 21.0, 'text', Font size=16 weight=normal slant=roman style=None)]
+    [(13, 20.25, 'text', Font size=12 weight=normal slant=roman style=None)]
