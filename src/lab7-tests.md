@@ -37,18 +37,18 @@ Here is how the lines are represented in chapter 7:
          BlockLayout[block](x=13, y=18, width=774, height=45.0)
            BlockLayout[inline](x=13, y=18, width=774, height=45.0)
              LineLayout(x=13, y=18, width=774, height=15.0)
-               TextLayout(x=13, y=20.25, width=48, height=12, node='This is a test', word=This)
-               TextLayout(x=73, y=20.25, width=24, height=12, node='This is a test', word=is)
-               TextLayout(x=109, y=20.25, width=12, height=12, node='This is a test', word=a)
-               TextLayout(x=133, y=20.25, width=48, height=12, node='This is a test', word=test)
+               TextLayout(x=13, y=20.25, width=48, height=12, word=This)
+               TextLayout(x=73, y=20.25, width=24, height=12, word=is)
+               TextLayout(x=109, y=20.25, width=12, height=12, word=a)
+               TextLayout(x=133, y=20.25, width=48, height=12, word=test)
              LineLayout(x=13, y=33.0, width=774, height=15.0)
-               TextLayout(x=13, y=35.25, width=48, height=12, node='Also a test', word=Also)
-               TextLayout(x=73, y=35.25, width=12, height=12, node='Also a test', word=a)
-               TextLayout(x=97, y=35.25, width=48, height=12, node='Also a test', word=test)
+               TextLayout(x=13, y=35.25, width=48, height=12, word=Also)
+               TextLayout(x=73, y=35.25, width=12, height=12, word=a)
+               TextLayout(x=97, y=35.25, width=48, height=12, word=test)
              LineLayout(x=13, y=48.0, width=774, height=15.0)
-               TextLayout(x=13, y=50.25, width=36, height=12, node='And this too', word=And)
-               TextLayout(x=61, y=50.25, width=48, height=12, node='And this too', word=this)
-               TextLayout(x=121, y=50.25, width=36, height=12, node='And this too', word=too)
+               TextLayout(x=13, y=50.25, width=36, height=12, word=And)
+               TextLayout(x=61, y=50.25, width=48, height=12, word=this)
+               TextLayout(x=121, y=50.25, width=36, height=12, word=too)
 
 Whereas in chapter 6 there is no direct layout tree representation of text.
 
@@ -76,8 +76,8 @@ The browser can have multiple tabs:
        BlockLayout[block](x=13, y=18, width=774, height=15.0)
          BlockLayout[inline](x=13, y=18, width=774, height=15.0)
            LineLayout(x=13, y=18, width=774, height=15.0)
-             TextLayout(x=13, y=20.25, width=60, height=12, node='Click me', word=Click)
-             TextLayout(x=85, y=20.25, width=24, height=12, node='Click me', word=me)
+             TextLayout(x=13, y=20.25, width=60, height=12, word=Click)
+             TextLayout(x=85, y=20.25, width=24, height=12, word=me)
 
 Tabs supports navigation---clicking on a link to navigate a tab to a new site:
 

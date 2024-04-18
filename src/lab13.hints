@@ -10,7 +10,6 @@
  {"code": "len(self.node_to_handle)", "js": "this.node_to_handle.size"},
  {"code": "self.node_to_handle[elt] = handle", "js": "      this.node_to_handle.set(elt, handle);"},
  {"code": "('DrawRect(top={} left={} ' + 'bottom={} right={} color={})').format(self.top, self.left, self.bottom, self.right, self.color)", "js": ""},
- {"code": "('TextLayout(x={}, y={}, width={}, height={}, ' + 'node={}, word={})').format(self.x, self.y, self.width, self.height, self.node, self.word)", "js": ""},
  {"code": "('NumericAnimation(' + 'old_value={old_value}, change_per_frame={change_per_frame}, ' + 'num_frames={num_frames})').format(old_value=self.old_value, change_per_frame=self.change_per_frame, num_frames=self.num_frames)", "js": ""},
  {"code": "('layer: composited_bounds={} ' + 'absolute_bounds={} first_chunk={}').format(self.composited_bounds(), self.absolute_bounds(), self.display_items if len(self.display_items) > 0 else 'None')", "js": ""},
  {"code": "('OpenGL initialized: vendor={},' + 'renderer={}').format(OpenGL.GL.glGetString(OpenGL.GL.GL_VENDOR), OpenGL.GL.glGetString(OpenGL.GL.GL_RENDERER))", "js": ""},

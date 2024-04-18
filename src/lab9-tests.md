@@ -145,14 +145,14 @@ Once we've changed the page, the browser should re-render:
            BlockLayout[block](x=13, y=18, width=774, height=30.0, node=<div>)
              BlockLayout[inline](x=13, y=18, width=774, height=15.0, node=<p id="blah">)
                LineLayout(x=13, y=18, width=774, height=15.0)
-                 TextLayout(x=13, y=20.25, width=48, height=12, node='This is a ', word=This)
-                 TextLayout(x=73, y=20.25, width=24, height=12, node='This is a ', word=is)
-                 TextLayout(x=109, y=20.25, width=12, height=12, node='This is a ', word=a)
-                 TextLayout(x=133, y=20.25, width=36, height=12, node='new', word=new)
-                 TextLayout(x=181, y=20.25, width=96, height=12, node=' element!', word=element!)
+                 TextLayout(x=13, y=20.25, width=48, height=12, word=This)
+                 TextLayout(x=73, y=20.25, width=24, height=12, word=is)
+                 TextLayout(x=109, y=20.25, width=12, height=12, word=a)
+                 TextLayout(x=133, y=20.25, width=36, height=12, word=new)
+                 TextLayout(x=181, y=20.25, width=96, height=12, word=element!)
              BlockLayout[inline](x=13, y=33.0, width=774, height=15.0, node=<p class="ipsum">)
                LineLayout(x=13, y=33.0, width=774, height=15.0)
-                 TextLayout(x=13, y=35.25, width=60, height=12, node='Ipsum', word=Ipsum)
+                 TextLayout(x=13, y=35.25, width=60, height=12, word=Ipsum)
 
 Note that there's now many `TextLayout`s inside the first `LineLayout`, one per
 new word.
@@ -178,10 +178,10 @@ The page is rer-endered again:
            BlockLayout[block](x=13, y=18, width=774, height=30.0, node=<div>)
              BlockLayout[inline](x=13, y=18, width=774, height=15.0, node=<p id="blah">)
                LineLayout(x=13, y=18, width=774, height=15.0)
-                 TextLayout(x=13, y=20.25, width=60, height=12, node='Lorem', word=Lorem)
+                 TextLayout(x=13, y=20.25, width=60, height=12, word=Lorem)
              BlockLayout[inline](x=13, y=33.0, width=774, height=15.0, node=<p class="ipsum">)
                LineLayout(x=13, y=33.0, width=774, height=15.0)
-                 TextLayout(x=13, y=35.25, width=60, height=12, node='Ipsum', word=Ipsum)
+                 TextLayout(x=13, y=35.25, width=60, height=12, word=Ipsum)
 
 Despite this, the old nodes should stick around:
 
@@ -262,8 +262,8 @@ events. The display list gives us coordinates for clicking.
          BlockLayout[block](x=13, y=18, width=774, height=30.0, node=<body>)
            BlockLayout[inline](x=13, y=18, width=774, height=15.0, node=<a href="page2">)
              LineLayout(x=13, y=18, width=774, height=15.0)
-               TextLayout(x=13, y=20.25, width=60, height=12, node='Click me!', word=Click)
-               TextLayout(x=85, y=20.25, width=36, height=12, node='Click me!', word=me!)
+               TextLayout(x=13, y=20.25, width=60, height=12, word=Click)
+               TextLayout(x=85, y=20.25, width=36, height=12, word=me!)
            BlockLayout[inline](x=13, y=33.0, width=774, height=15.0, node=<form action="/post">)
              LineLayout(x=13, y=33.0, width=774, height=15.0)
                InputLayout(x=13, y=35.25, width=200, height=12, type=input)
