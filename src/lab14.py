@@ -424,9 +424,8 @@ class TextLayout:
     
     @wbetools.js_hide
     def __repr__(self):
-        return ("TextLayout(x={}, y={}, width={}, height={}, " +
-            "node={}, word={})").format(
-            self.x, self.y, self.width, self.height, self.node, self.word)
+        return ("TextLayout(x={}, y={}, width={}, height={}, word={})").format(
+            self.x, self.y, self.width, self.height, self.word)
 
 class InputLayout:
     def __init__(self, node, parent, previous):
