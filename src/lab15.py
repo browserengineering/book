@@ -495,8 +495,8 @@ class LineLayout:
 
     @wbetools.js_hide
     def __repr__(self):
-        return "LineLayout(x={}, y={}, width={}, height={}, node={})".format(
-            self.x, self.y, self.width, self.height, self.node)
+        return "LineLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
 
 class TextLayout:
     def __init__(self, node, parent, previous, word):
