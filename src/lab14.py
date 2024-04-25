@@ -284,8 +284,8 @@ class LineLayout:
 
     @wbetools.js_hide
     def __repr__(self):
-        return "LineLayout(x={}, y={}, width={}, height={}, node={})".format(
-            self.x, self.y, self.width, self.height, self.node)
+        return "LineLayout(x={}, y={}, width={}, height={})".format(
+            self.x, self.y, self.width, self.height)
 
 def dpx(css_px, zoom):
     return css_px * zoom
