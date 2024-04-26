@@ -44,7 +44,7 @@ graphical toolkit called Tk\index{Tk} using the Python package
 language called Tcl. Python contains an interface to it, hence the name.
 
 
-``` {.python expected=False}
+``` {.python .example}
 import tkinter
 window = tkinter.Tk()
 tkinter.mainloop()
@@ -62,7 +62,7 @@ loop to respond to.
 
 <a name="eventloop"></a>
 
-``` {.python expected=False}
+``` {.python .example}
 while True:
     for evt in pendingEvents():
         handleEvent(evt)

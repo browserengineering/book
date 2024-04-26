@@ -159,39 +159,39 @@ keys; using the `Ctrl` modifier key means you can type a `+`, `-`, or
 To handle modifier keys, we'll need to listen to both "key down" and
 "key up" events in the event loop, and store whether the `Ctrl` key is pressed:
 
-``` {.python}
-    ctrl_down = False
-    while True:
-		if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-			# ...
-            elif event.type == sdl2.SDL_KEYDOWN:
-                # ...
-                 elif event.key.keysym.sym == sdl2.SDLK_RCTRL or \
-                     event.key.keysym.sym == sdl2.SDLK_LCTRL:
-                     ctrl_down = True            	
-             elif event.type == sdl2.SDL_KEYUP:
-                 if event.key.keysym.sym == sdl2.SDLK_RCTRL or \
-                     event.key.keysym.sym == sdl2.SDLK_LCTRL:
-                     ctrl_down = False
-             	# ...
+``` {.python indent=4}
+ctrl_down = False
+while True:
+	if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+		# ...
+        elif event.type == sdl2.SDL_KEYDOWN:
+            # ...
+             elif event.key.keysym.sym == sdl2.SDLK_RCTRL or \
+                 event.key.keysym.sym == sdl2.SDLK_LCTRL:
+                 ctrl_down = True            	
+         elif event.type == sdl2.SDL_KEYUP:
+             if event.key.keysym.sym == sdl2.SDLK_RCTRL or \
+                 event.key.keysym.sym == sdl2.SDLK_LCTRL:
+                 ctrl_down = False
+         	# ...
 ```
 
 Now we can have a case in the key handling code for "key down" events
 while the `Ctrl` key is held:
 
-``` {.python}
-    ctrl_down = False
-    while True:
-		if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            elif event.type == sdl2.SDL_KEYDOWN:
-                if ctrl_down:
-                     if event.key.keysym.sym == sdl2.SDLK_EQUALS:
-                         browser.increment_zoom(True)
-                     elif event.key.keysym.sym == sdl2.SDLK_MINUS:
-                         browser.increment_zoom(False)
-                     elif event.key.keysym.sym == sdl2.SDLK_0:
-                         browser.reset_zoom()
-                # ...
+``` {.python indent=4}
+ctrl_down = False
+while True:
+	if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+        elif event.type == sdl2.SDL_KEYDOWN:
+            if ctrl_down:
+                 if event.key.keysym.sym == sdl2.SDLK_EQUALS:
+                     browser.increment_zoom(True)
+                 elif event.key.keysym.sym == sdl2.SDLK_MINUS:
+                     browser.increment_zoom(False)
+                 elif event.key.keysym.sym == sdl2.SDLK_0:
+                     browser.reset_zoom()
+            # ...
 ```
 
 Here the argument to `increment_zoom` is whether we should increment
@@ -484,14 +484,14 @@ before becoming widely-used.
 
 We'll trigger dark mode in the event loop with `Ctrl-d`:
 
-``` {.python}
-    while True:
-        if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            # ...
-                if ctrl_down:
-                    # ...
-                    elif event.key.keysym.sym == sdl2.SDLK_d:
-                        browser.toggle_dark_mode()
+``` {.python indent=4}
+while True:
+    if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+        # ...
+            if ctrl_down:
+                # ...
+                elif event.key.keysym.sym == sdl2.SDLK_d:
+                    browser.toggle_dark_mode()
 ```
 
 When dark mode is active, we need to draw both the browser chrome and
@@ -578,6 +578,7 @@ we also need to set dark mode when changing tabs, since all tabs should
 be either dark or light:
 
 ``` {.python}
+class Browser:
    def set_active_tab(self, tab):
         # ...
         task = Task(self.active_tab.set_dark_mode, self.dark_mode)
@@ -833,26 +834,26 @@ next tab, and `Ctrl-q` to exit the browser:
 minimizing or maximizing the browser window. Those require calling
 specialized OS APIs, so I won't implement them.
 
-``` {.python}
-    while True:
-        if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            elif event.type == sdl2.SDL_KEYDOWN:
-                if ctrl_down:
-                    # ...
-                    elif event.key.keysym.sym == sdl2.SDLK_LEFT:
-                        browser.go_back()
-                    elif event.key.keysym.sym == sdl2.SDLK_l:
-                        browser.focus_addressbar()
-                    elif event.key.keysym.sym == sdl2.SDLK_t:
-                        browser.new_tab(
-                            "https://browser.engineering/")
-                    elif event.key.keysym.sym == sdl2.SDLK_TAB:
-                        browser.cycle_tabs()
-                    elif event.key.keysym.sym == sdl2.SDLK_q:
-                        browser.handle_quit()
-                        sdl2.SDL_Quit()
-                        sys.exit()
-                        break
+``` {.python indent=4}
+while True:
+    if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+        elif event.type == sdl2.SDL_KEYDOWN:
+            if ctrl_down:
+                # ...
+                elif event.key.keysym.sym == sdl2.SDLK_LEFT:
+                    browser.go_back()
+                elif event.key.keysym.sym == sdl2.SDLK_l:
+                    browser.focus_addressbar()
+                elif event.key.keysym.sym == sdl2.SDLK_t:
+                    browser.new_tab(
+                        "https://browser.engineering/")
+                elif event.key.keysym.sym == sdl2.SDLK_TAB:
+                    browser.cycle_tabs()
+                elif event.key.keysym.sym == sdl2.SDLK_q:
+                    browser.handle_quit()
+                    sdl2.SDL_Quit()
+                    sys.exit()
+                    break
 ```
 
 Here the `focus_addressbar` and `cycle_tabs` methods are new, but
@@ -903,14 +904,14 @@ the link.
 
 We'll start by binding those keys in the event loop:
 
-``` {.python}
-    while True:
-        if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            elif event.type == sdl2.SDL_KEYDOWN:
-                # ...
-                elif event.key.keysym.sym == sdl2.SDLK_RETURN:
-                    browser.handle_enter()
-                elif event.key.keysym.sym == sdl2.SDLK_TAB:
+``` {.python indent=4}
+while True:
+    if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+        elif event.type == sdl2.SDL_KEYDOWN:
+            # ...
+            elif event.key.keysym.sym == sdl2.SDLK_RETURN:
+                browser.handle_enter()
+            elif event.key.keysym.sym == sdl2.SDLK_TAB:
                     browser.handle_tab()
 ```
 
@@ -1132,7 +1133,7 @@ If you print out `focusable_nodes` for the
 [focus example](examples/example14-focus.html), you should
 get this:
 
-``` {.python .example}
+``` {.output}
 [<a tabindex="1" href="/">,
  <button tabindex="2">,
  <div tabindex="3">,
@@ -1351,7 +1352,9 @@ write a selector like this:
 
 [pseudoclass]: https://developer.mozilla.org/en-US/docs/Web/CSS/Pseudo-classes
 
-    div:focus { ... }
+``` {.css .example}
+div:focus { ... }
+```
 
 And then that selector applies only to `<div>` elements that are
 currently focused.[^why-pseudoclass]
@@ -1418,9 +1421,11 @@ Unknown pseudoclasses simply never match anything.
 The focused element can now be styled. But ideally we'd also be able to
 customize the focus outline itself and not just the element. That can be done
 by adding support for the CSS [`outline` property][outline], which looks like
-this to show a 3px red outline:[^outline-syntax]
+this to show a 3 pixel wide red outline:[^outline-syntax]
 
-    outline: 3px solid red;
+``` {.css .example}
+outline: 3px solid red;
+```
 
 [outline]: https://developer.mozilla.org/en-US/docs/Web/CSS/outline
 
@@ -1729,7 +1734,7 @@ class AccessibilityNode:
 Here is the accessibility tree for the
 [focus example](examples/example14-focus.html):
 
-``` {.text .example}
+``` {.output}
  role=document
    role=button
      role=focusable text
@@ -1896,14 +1901,14 @@ To start with, we'll want a key binding that turns the screen reader
 on and off. While real operating systems typically use more obscure
 shortcuts, I'll use `Ctrl-a` to turn on the screen reader in the event loop:
 
-``` {.python}
-    while True:
-        if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            # ...
-                if ctrl_down:
-                    # ...
-                    elif event.key.keysym.sym == sdl2.SDLK_a:
-                        browser.toggle_accessibility()            
+``` {.python indent=4}
+while True:
+    if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+        # ...
+            if ctrl_down:
+                # ...
+                elif event.key.keysym.sym == sdl2.SDLK_a:
+                    browser.toggle_accessibility()            
 ```
 
 The `toggle_accessibility` method tells the `Tab` that accessibility
@@ -1997,7 +2002,7 @@ This text construction logic is, of course, pretty naive, but it's
 enough to demonstrate the idea. Here is how it works out for the
 [focus example](examples/example14-focus.html):
 
-``` {.text .example}
+``` {.output}
  role=document text=Document
    role=button text=Button
      role=focusable text text=Focusable text: This is a button
@@ -2427,12 +2432,12 @@ class AccessibilityNode:
 So let's implement the read-on-hover feature. First we need to listen for mouse
 move events in the event loop, which in SDL are called `MOUSEMOTION`:
 
-``` {.python}
-    while True:
-        if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            # ...
-            elif event.type == sdl2.SDL_MOUSEMOTION:
-                browser.handle_hover(event.motion)
+``` {.python indent=4}
+while True:
+    if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+        # ...
+        elif event.type == sdl2.SDL_MOUSEMOTION:
+            browser.handle_hover(event.motion)
 ```
 
 The browser should listen to the hovered position, determine if

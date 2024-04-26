@@ -93,10 +93,7 @@ function requestAnimationFrame(fn) {
 }
 
 function __runRAFHandlers() {
-    var handlers_copy = [];
-    for (var i = 0; i < RAF_LISTENERS.length; i++) {
-        handlers_copy.push(RAF_LISTENERS[i]);
-    }
+    var handlers_copy = RAF_LISTENERS;
     RAF_LISTENERS = [];
     for (var i = 0; i < handlers_copy.length; i++) {
         handlers_copy[i]();

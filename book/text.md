@@ -116,7 +116,7 @@ else.
 
 Font objects can be passed to `create_text`'s `font` argument:
 
-``` {.python expected=False}
+``` {.python .example}
 canvas.create_text(200, 100, text="Hi!", font=bi_times)
 ```
 
@@ -136,7 +136,7 @@ Measuring text
 Text takes up space vertically and horizontally, and the font object's
 `metrics` and `measure` methods measure that space:[^spacing]
 
-``` {.example}
+``` {.python .output}
 >>> bi_times.metrics()
 {'ascent': 15, 'descent': 4, 'linespace': 19, 'fixed': 0}
 >>> bi_times.measure("Hi!")
@@ -196,7 +196,7 @@ varying heights:[^varying-times]
     specified a bold, italic Times font. The bold, italic Times font
     is taller, at least on my current macOS system!
 
-``` {.example}
+``` {.python .output}
 >>> tkinter.font.Font(family="Courier", size=16).metrics()
 {'fixed': 1, 'ascent': 13, 'descent': 4, 'linespace': 17}
 >>> tkinter.font.Font(family="Times", size=16).metrics()
@@ -209,7 +209,7 @@ The `measure()` method is more direct: it tells you how much
 *horizontal* space text takes up, in pixels. This depends on the text,
 of course, since different letters have different widths:[^widths]
 
-``` {.example}
+``` {.python .output}
 >>> bi_times.measure("Hi!")
 24
 >>> bi_times.measure("H")
@@ -234,14 +234,14 @@ You can use this information to lay text out on the page. For example,
 suppose you want to draw the text "Hello, world!" in two pieces, so that
 "world!" is italic. Let's use two fonts:
 
-``` {.python expected=False}
+``` {.python .example}
 font1 = tkinter.font.Font(family="Times", size=16)
 font2 = tkinter.font.Font(family="Times", size=16, slant='italic')
 ```
 
 We can now lay out the text, starting at `(200, 200)`:
 
-``` {.python expected=False}
+``` {.python .example}
 x, y = 200, 200
 canvas.create_text(x, y, text="Hello, ", font=font1)
 x += font1.measure("Hello, ")
@@ -263,7 +263,7 @@ can instruct Tk to treat the coordinate we gave as the top-left corner
 of the text by setting the `anchor` argument to `"nw"`, meaning the
 "northwest" corner of the text:
 
-``` {.python expected=False}
+``` {.python .example}
 x, y = 200, 225
 canvas.create_text(x, y, text="Hello, ", font=font1, anchor='nw')
 x += font1.measure("Hello, ")
@@ -312,7 +312,7 @@ def layout(text):
 Unlike Chinese characters, words are different sizes, so we need to
 measure the width of each word:
 
-``` {.python expected=False }
+``` {.python expected=False}
 def layout(text):
     font = tkinter.font.Font()
     # ...
