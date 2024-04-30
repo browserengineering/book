@@ -127,7 +127,9 @@ class DrawImage(PaintCommand):
         self.quality = parse_image_rendering(quality)
 
     def execute(self, canvas):
-        paint = skia.Paint(FilterQuality=self.quality)
+        paint = skia.Paint(
+            FilterQuality=self.quality,
+        )
         canvas.drawImageRect(self.image, self.rect, paint)
 
     @wbetools.js_hide

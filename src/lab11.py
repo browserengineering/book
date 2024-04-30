@@ -107,9 +107,10 @@ class Blend:
     def execute(self, canvas):
         paint = skia.Paint(
             Alphaf=self.opacity,
-            BlendMode=parse_blend_mode(self.blend_mode))
+            BlendMode=parse_blend_mode(self.blend_mode)
+        )
         if self.should_save:
-            canvas.saveLayer(paint=paint)
+            canvas.saveLayer(paint)
         for cmd in self.children:
             cmd.execute(canvas)
         if self.should_save:
@@ -122,8 +123,9 @@ class DrawRect:
         self.color = color
 
     def execute(self, canvas):
-        paint = skia.Paint()
-        paint.setColor(parse_color(self.color))
+        paint = skia.Paint(
+            Color=parse_color(self.color)
+        )
         canvas.drawRect(self.rect, paint)
 
     @wbetools.js_hide
@@ -147,7 +149,9 @@ class DrawText:
 
     def execute(self, canvas):
         paint = skia.Paint(
-            AntiAlias=True, Color=parse_color(self.color))
+            AntiAlias=True,
+            Color=parse_color(self.color)
+        )
         baseline = self.top - self.font.getMetrics().fAscent
         canvas.drawString(self.text, float(self.left), baseline,
             self.font, paint)
@@ -160,10 +164,11 @@ class DrawOutline:
         self.thickness = thickness
 
     def execute(self, canvas):
-        paint = skia.Paint()
-        paint.setStyle(skia.Paint.kStroke_Style)
-        paint.setStrokeWidth(self.thickness)
-        paint.setColor(parse_color(self.color))
+        paint = skia.Paint(
+            Style=skia.Paint.kStroke_Style,
+            StrokeWidth=self.thickness,
+            Color=self.color,
+        )
         canvas.drawRect(self.rect, paint)
 
 @wbetools.patch(DrawLine)
@@ -180,9 +185,11 @@ class DrawLine:
     def execute(self, canvas):
         path = skia.Path().moveTo(self.x1, self.y1) \
                           .lineTo(self.x2, self.y2)
-        paint = skia.Paint(Color=parse_color(self.color))
-        paint.setStyle(skia.Paint.kStroke_Style)
-        paint.setStrokeWidth(self.thickness)
+        paint = skia.Paint(
+            Style=skia.Paint.kStrokeStyle,
+            StrokeWidth=self.thickness,
+            Color=parse_color(self.color),
+        )
         canvas.drawPath(path, paint)
 
 class DrawRRect:
@@ -192,9 +199,10 @@ class DrawRRect:
         self.color = color
 
     def execute(self, canvas):
-        sk_color = parse_color(self.color)
-        canvas.drawRRect(self.rrect,
-            paint=skia.Paint(Color=sk_color))
+        paint = skia.Paint(
+            Color=parse_color(self.color),
+        )
+        canvas.drawRRect(self.rrect, paint)
 
 def paint_tree(layout_object, display_list):
     cmds = []
