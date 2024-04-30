@@ -128,7 +128,7 @@ class DrawLine(PaintCommand):
         path = skia.Path().moveTo(self.x1, self.y1) \
                           .lineTo(self.x2, self.y2)
         paint = skia.Paint(
-            Style=skia.Paint.kStrokeStyle,
+            Style=skia.Paint.kStroke_Style,
             StrokeWidth=self.thickness,
             Color=parse_color(self.color),
         )

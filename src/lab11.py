@@ -107,7 +107,7 @@ class Blend:
     def execute(self, canvas):
         paint = skia.Paint(
             Alphaf=self.opacity,
-            BlendMode=parse_blend_mode(self.blend_mode)
+            BlendMode=parse_blend_mode(self.blend_mode),
         )
         if self.should_save:
             canvas.saveLayer(paint)
@@ -124,7 +124,7 @@ class DrawRect:
 
     def execute(self, canvas):
         paint = skia.Paint(
-            Color=parse_color(self.color)
+            Color=parse_color(self.color),
         )
         canvas.drawRect(self.rect, paint)
 
@@ -150,7 +150,7 @@ class DrawText:
     def execute(self, canvas):
         paint = skia.Paint(
             AntiAlias=True,
-            Color=parse_color(self.color)
+            Color=parse_color(self.color),
         )
         baseline = self.top - self.font.getMetrics().fAscent
         canvas.drawString(self.text, float(self.left), baseline,
@@ -167,7 +167,7 @@ class DrawOutline:
         paint = skia.Paint(
             Style=skia.Paint.kStroke_Style,
             StrokeWidth=self.thickness,
-            Color=self.color,
+            Color=parse_color(self.color),
         )
         canvas.drawRect(self.rect, paint)
 
@@ -186,7 +186,7 @@ class DrawLine:
         path = skia.Path().moveTo(self.x1, self.y1) \
                           .lineTo(self.x2, self.y2)
         paint = skia.Paint(
-            Style=skia.Paint.kStrokeStyle,
+            Style=skia.Paint.kStroke_Style,
             StrokeWidth=self.thickness,
             Color=parse_color(self.color),
         )

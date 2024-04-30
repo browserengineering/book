@@ -433,9 +433,11 @@ class DrawLine:
     def execute(self, canvas, scroll):
         path = skia.Path().moveTo(self.x1 - scroll, self.y1) \
                           .lineTo(self.x2 - scroll, self.y2)
-        paint = skia.Paint(Color=parse_color(self.color))
-        paint.setStyle(skia.Paint.kStroke_Style)
-        paint.setStrokeWidth(self.thickness)
+        paint = skia.Paint(
+            Style=skia.Paint.kStroke_Style,
+            StrokeWidth=self.thickness,
+            Color=parse_color(self.color),
+        )
         canvas.drawPath(path, paint)
 ```
 
@@ -457,7 +459,9 @@ We do something similar to draw text using `drawString`:
 class DrawText:
     def execute(self, canvas, scroll):
         paint = skia.Paint(
-            AntiAlias=True, Color=parse_color(self.color))
+            AntiAlias=True,
+            Color=parse_color(self.color),
+        )
         baseline = self.top - scroll - self.font.getMetrics().fAscent
         canvas.drawString(self.text, float(self.left), baseline,
             self.font, paint)
@@ -478,8 +482,9 @@ Finally, for drawing rectangles you use `drawRect`:
 ``` {.python replace=%2c%20scroll/,rect.makeOffset(0%2c%20-scroll)/rect}
 class DrawRect:
     def execute(self, canvas, scroll):
-        paint = skia.Paint()
-        paint.setColor(parse_color(self.color))
+        paint = skia.Paint(
+            Color=parse_color(self.color),
+        )
         canvas.drawRect(self.rect.makeOffset(0, -scroll), paint)
 ```
 
@@ -517,10 +522,11 @@ the `Paint` to `Stroke_Style`:
 ``` {.python replace=%2c%20scroll/,rect.makeOffset(0%2c%20-scroll)/rect}
 class DrawOutline:
     def execute(self, scroll, canvas):
-        paint = skia.Paint()
-        paint.setStyle(skia.Paint.kStroke_Style)
-        paint.setStrokeWidth(self.thickness)
-        paint.setColor(parse_color(self.color))
+        paint = skia.Paint(
+            Style=skia.Paint.kStroke_Style,
+            StrokeWidth=self.thickness,
+            Color=parse_color(self.color),
+        )
         canvas.drawRect(self.rect.makeOffset(0, -scroll), paint)
 ```
 
@@ -605,9 +611,10 @@ class DrawRRect:
         self.color = color
 
     def execute(self, scroll, canvas):
-        sk_color = parse_color(self.color)
-        canvas.drawRRect(self.rrect,
-            paint=skia.Paint(Color=sk_color))
+        paint = skia.Paint(
+            Color=parse_color(self.color),
+        )
+        canvas.drawRRect(self.rrect, paint)
 ```
 
 Then we can draw these rounded rectangles for backgrounds:
@@ -859,8 +866,9 @@ command's `execute` method:
 ``` {.python}
 class DrawRect:
     def execute(self, canvas):
-        paint = skia.Paint()
-        paint.setColor(parse_color(self.color))
+        paint = skia.Paint(
+            Color=parse_color(self.color),
+        )
         canvas.drawRect(self.rect, paint)
 ```
 
@@ -1055,7 +1063,7 @@ that that effect will be applied to, like this:
 
 ``` {.python .example}
 # draw parent
-canvas.saveLayer(paint=skia.Paint(Alphaf=0.5))
+canvas.saveLayer(skia.Paint(Alphaf=0.5))
 # draw children
 canvas.restore()
 ```
@@ -1092,8 +1100,10 @@ class Opacity:
             self.rect.join(cmd.rect)
 
     def execute(self, canvas):
-        paint = skia.Paint(Alphaf=self.opacity)
-        canvas.saveLayer(paint=paint)
+        paint = skia.Paint(
+            Alphaf=self.opacity
+        )
+        canvas.saveLayer(paint)
         for cmd in self.children:
             cmd.execute(canvas)
         canvas.restore()
@@ -1371,8 +1381,9 @@ class Blend:
 
     def execute(self, canvas):
         paint = skia.Paint(
-            BlendMode=parse_blend_mode(self.blend_mode))
-        canvas.saveLayer(paint=paint)
+            BlendMode=parse_blend_mode(self.blend_mode),
+        )
+        canvas.saveLayer(paint)
         for cmd in self.children:
             cmd.execute(canvas)
         canvas.restore()
@@ -1627,9 +1638,11 @@ opacity is actually applied:
 ``` {.python file=examples11.py}
 class Opacity:
     def execute(self, canvas):
-        paint = skia.Paint(Alphaf=self.opacity)
+        paint = skia.Paint(
+            Alphaf=self.opacity,
+        )
         if self.opacity < 1:
-            canvas.saveLayer(paint=paint)
+            canvas.saveLayer(paint)
         for cmd in self.children:
             cmd.execute(canvas)
         if self.opacity < 1:
@@ -1670,9 +1683,10 @@ Anyway, now `Blend` can skip `saveLayer` if no blend mode is passed:
 class Blend:
     def execute(self, canvas):
         paint = skia.Paint(
-            BlendMode=parse_blend_mode(self.blend_mode))
+            BlendMode=parse_blend_mode(self.blend_mode),
+        )
         if self.blend_mode:
-            canvas.saveLayer(paint=paint)
+            canvas.saveLayer(paint)
         for cmd in self.children:
             cmd.execute(canvas)
         if self.blend_mode:
@@ -1706,9 +1720,10 @@ class Blend:
     def execute(self, canvas):
         paint = skia.Paint(
             Alphaf=self.opacity,
-            BlendMode=parse_blend_mode(self.blend_mode))
+            BlendMode=parse_blend_mode(self.blend_mode),
+        )
         if self.should_save:
-            canvas.saveLayer(paint=paint)
+            canvas.saveLayer(paint)
         for cmd in self.children:
             cmd.execute(canvas)
         if self.should_save:
