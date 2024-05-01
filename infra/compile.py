@@ -235,11 +235,6 @@ LIBRARY_METHODS = [
     # skia.GrDirectContext
     "MakeGL",
 
-    # skia.Paint
-    "setStyle",
-    "setColor",
-    "getAlphaf",
-
     # skia.Surface
     "makeImageSnapshot",
     "height",

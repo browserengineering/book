@@ -128,9 +128,9 @@ class DrawLine(PaintCommand):
         path = skia.Path().moveTo(self.x1, self.y1) \
                           .lineTo(self.x2, self.y2)
         paint = skia.Paint(
-            Style=skia.Paint.kStroke_Style,
-            StrokeWidth=self.thickness,
             Color=parse_color(self.color),
+            StrokeWidth=self.thickness,
+            Style=skia.Paint.kStroke_Style,
         )
         canvas.drawPath(path, paint)
 
@@ -210,9 +210,9 @@ class DrawOutline(PaintCommand):
 
     def execute(self, canvas):
         paint = skia.Paint(
-            Style=skia.Paint.kStroke_Style,
-            StrokeWidth=self.thickness,
             Color=parse_color(self.color),
+            StrokeWidth=self.thickness,
+            Style=skia.Paint.kStroke_Style,
         )
         canvas.drawRect(self.rect, paint)
 
