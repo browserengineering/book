@@ -125,10 +125,13 @@ class DrawLine(PaintCommand):
         self.thickness = thickness
 
     def execute(self, canvas):
-        path = skia.Path().moveTo(self.x1, self.y1).lineTo(self.x2, self.y2)
-        paint = skia.Paint(Color=parse_color(self.color))
-        paint.setStyle(skia.Paint.kStroke_Style)
-        paint.setStrokeWidth(self.thickness)
+        path = skia.Path().moveTo(self.x1, self.y1) \
+                          .lineTo(self.x2, self.y2)
+        paint = skia.Paint(
+            Color=parse_color(self.color),
+            StrokeWidth=self.thickness,
+            Style=skia.Paint.kStroke_Style,
+        )
         canvas.drawPath(path, paint)
 
     def __repr__(self):
@@ -142,9 +145,10 @@ class DrawRRect(PaintCommand):
         self.color = color
 
     def execute(self, canvas):
-        sk_color = parse_color(self.color)
-        canvas.drawRRect(self.rrect,
-            paint=skia.Paint(Color=sk_color))
+        paint = skia.Paint(
+            Color=parse_color(self.color),
+        )
+        canvas.drawRRect(self.rrect, paint)
 
     def print(self, indent=0):
         return " " * indent + self.__repr__()
@@ -166,7 +170,10 @@ class DrawText(PaintCommand):
             self.right, self.bottom))
 
     def execute(self, canvas):
-        paint = skia.Paint(AntiAlias=True, Color=parse_color(self.color))
+        paint = skia.Paint(
+            AntiAlias=True,
+            Color=parse_color(self.color)
+        )
         baseline = self.top - self.font.getMetrics().fAscent
         canvas.drawString(self.text, float(self.left), baseline,
             self.font, paint)
@@ -184,8 +191,9 @@ class DrawRect(PaintCommand):
         self.color = color
 
     def execute(self, canvas):
-        paint = skia.Paint()
-        paint.setColor(parse_color(self.color))
+        paint = skia.Paint(
+            Color=parse_color(self.color),
+        )
         canvas.drawRect(self.rect, paint)
 
     def __repr__(self):
@@ -201,10 +209,11 @@ class DrawOutline(PaintCommand):
         self.thickness = thickness
 
     def execute(self, canvas):
-        paint = skia.Paint()
-        paint.setStyle(skia.Paint.kStroke_Style)
-        paint.setStrokeWidth(self.thickness)
-        paint.setColor(parse_color(self.color))
+        paint = skia.Paint(
+            Color=parse_color(self.color),
+            StrokeWidth=self.thickness,
+            Style=skia.Paint.kStroke_Style,
+        )
         canvas.drawRect(self.rect, paint)
 
     @wbetools.js_hide
@@ -234,9 +243,10 @@ class Blend(VisualEffect):
     def execute(self, canvas):
         paint = skia.Paint(
             Alphaf=self.opacity,
-            BlendMode=parse_blend_mode(self.blend_mode))
+            BlendMode=parse_blend_mode(self.blend_mode)
+        )
         if self.should_save:
-            canvas.saveLayer(paint=paint)
+            canvas.saveLayer(paint)
         for cmd in self.children:
             cmd.execute(canvas)
         if self.should_save:

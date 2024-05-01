@@ -68,9 +68,11 @@ class Opacity:
             self.rect.join(cmd.rect)
 
     def execute(self, canvas):
-        paint = skia.Paint(Alphaf=self.opacity)
+        paint = skia.Paint(
+            Alphaf=self.opacity,
+        )
         if self.opacity < 1:
-            canvas.saveLayer(paint=paint)
+            canvas.saveLayer(paint)
         for cmd in self.children:
             cmd.execute(canvas)
         if self.opacity < 1:

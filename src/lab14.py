@@ -1127,14 +1127,6 @@ class Tab:
         self.dark_mode = val
         self.set_needs_render()
 
-def draw_line(canvas, x1, y1, x2, y2, color):
-    sk_color = parse_color(color)
-    path = skia.Path().moveTo(x1, y1).lineTo(x2, y2)
-    paint = skia.Paint(Color=sk_color)
-    paint.setStyle(skia.Paint.kStroke_Style)
-    paint.setStrokeWidth(1)
-    canvas.drawPath(path, paint)
-
 @wbetools.patch(Chrome)
 class Chrome:
     def paint(self):
