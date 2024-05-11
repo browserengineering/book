@@ -130,7 +130,7 @@ and clearing the `line` field. We don't want to do all that---we just
 want to create a new `LineLayout` object. So let's use a different
 method for that:
 
-``` {.python indent=4}
+``` {.python}
 class BlockLayout:
     def word(self, node, word):
         if self.cursor_x + w > self.width:
@@ -294,13 +294,13 @@ baseline = self.y + 1.25 * max_ascent
 for word in self.children:
     word.y = baseline - word.font.metrics("ascent")
 max_descent = max([word.font.metrics("descent")
-               for word in self.children])
+            for word in self.children])
 ```
 
 Note that this code is reading from a `font` field on each word and
 writing to each word's `y` field. That means that inside
-`TextLayout`'s `layout` method, we need to compute `x`, `width`,
-and `height`, but also `font`, and not `y`.
+`TextLayout`'s `layout` method, which is why it's good we computed `x`, `width`,
+`height` , and `font`, but not `y`.
 
 Finally, since each line is now a standalone layout object, it needs
 to have a height. We compute it from the maximum ascent and descent:
