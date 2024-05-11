@@ -70,7 +70,7 @@ class Layout:
 ```
 
 So far, we still don't have a tree---we just have a single `Layout`
-object. To make it into a tree, we'll need add child and parent
+object. To make it into a tree, we'll need to add child and parent
 pointers. I'm also going to add a pointer to the previous sibling,
 because that'll be useful for computing sizes and positions later:
 

@@ -115,11 +115,13 @@ we want to create `TextLayout` objects and add them to `LineLayout`
 objects. The `LineLayout`s are children of the `BlockLayout`, so the
 current line can be found at the end of the `children` array:
 
-``` {.python indent=12}
-line = self.children[-1]
-previous_word = line.children[-1] if line.children else None
-text = TextLayout(node, word, line, previous_word)
-line.children.append(text)
+``` {.python}
+class BlockLayout:
+    def word(self, node, word):
+        line = self.children[-1]
+        previous_word = line.children[-1] if line.children else None
+        text = TextLayout(node, word, line, previous_word)
+        line.children.append(text)
 ```
 
 Now let's think about what happens when we reach the end of the line.
@@ -129,19 +131,21 @@ want to create a new `LineLayout` object. So let's use a different
 method for that:
 
 ``` {.python indent=4}
-def word(self, node, word):
-    if self.cursor_x + w > self.width:
-        self.new_line()
+class BlockLayout:
+    def word(self, node, word):
+        if self.cursor_x + w > self.width:
+            self.new_line()
 ```
 
 This `new_line` method just creates a new line and resets some fields:
 
-``` {.python indent=4}
-def new_line(self):
-    self.cursor_x = 0
-    last_line = self.children[-1] if self.children else None
-    new_line = LineLayout(self.node, self, last_line)
-    self.children.append(new_line)
+``` {.python}
+class BlockLayout:
+    def new_line(self):
+        self.cursor_x = 0
+        last_line = self.children[-1] if self.children else None
+        new_line = LineLayout(self.node, self, last_line)
+        self.children.append(new_line)
 ```
 
 Now there's a lot of fields we're not using. Let's clean them up. In
@@ -150,12 +154,13 @@ the core `layout` method, we don't need to initialize the
 any of those any more. Instead, we just need to call `new_line` and
 `recurse`:
 
-``` {.python indent=4 replace=layout_inline/layout}
-def layout(self):
-    # ...
-    else:
-        self.new_line()
-        self.recurse(self.node)
+``` {.python replace=layout_inline/layout}
+class BlockLayout:
+    def layout(self):
+        # ...
+        else:
+            self.new_line()
+            self.recurse(self.node)
 ```
 
 The `layout` method already recurses into its children to lay them
@@ -164,10 +169,11 @@ compute the height of a paragraph of text by summing the height of its
 lines, so this part of the code no longer needs to be different
 depending on the layout mode:
 
-``` {.python indent=4}
-def layout(self):
-    # ...
-    self.height = sum([child.height for child in self.children])
+``` {.python}
+class BlockLayout:
+    def layout(self):
+        # ...
+        self.height = sum([child.height for child in self.children])
 ```
 
 You might also be tempted to delete the `flush` method, since it's no
@@ -288,13 +294,13 @@ baseline = self.y + 1.25 * max_ascent
 for word in self.children:
     word.y = baseline - word.font.metrics("ascent")
 max_descent = max([word.font.metrics("descent")
-                   for word in self.children])
+               for word in self.children])
 ```
 
 Note that this code is reading from a `font` field on each word and
 writing to each word's `y` field. That means that inside
 `TextLayout`'s `layout` method, we need to compute `x`, `width`,
-and `height`, but also `font`, and not `y`. Remember that for later.
+and `height`, but also `font`, and not `y`.
 
 Finally, since each line is now a standalone layout object, it needs
 to have a height. We compute it from the maximum ascent and descent:
