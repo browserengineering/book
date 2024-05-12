@@ -893,7 +893,7 @@ can:
 -   connect to that host using the `sockets` and `ssl` libraries;
 -   send an HTTP request to that host, including a `Host` header;
 -   split the HTTP response into a status line, headers, and a body;
--   print the text (and not the tags) in the body.
+-   and print the text (and not the tags) in the body.
 
 Yes, this is still more of a command-line tool than a web browser, but
 it already has some of the core capabilities of a browser.
@@ -919,40 +919,40 @@ should look something like this:
 Exercises
 =========
 
-*HTTP/1.1*. Along with `Host`, send the `Connection` header in the
+1-1 *HTTP/1.1*. Along with `Host`, send the `Connection` header in the
 `request` function with the value `close`. Your browser can now
 declare that it is using `HTTP/1.1`. Also add a `User-Agent` header.
 Its value can be whatever you want---it identifies your browser to the
 host. Make it easy to add further headers in the future.
 
-*File URLs*. Add support for the `file` scheme, which allows the browser
+1-2 *File URLs*. Add support for the `file` scheme, which allows the browser
 to open local files. For example, `file:///path/goes/here` should
 refer to the file on your computer at location `/path/goes/here`. Also
 make it so that, if your browser is started without a URL being given,
 some specific file on your computer is opened. You can use that file
 for quick testing.
 
-*`data:` scheme*. Yet another scheme is `data`, which allows inlining
+1-3 *`data:` scheme*. Yet another scheme is `data`, which allows inlining
 HTML content into the URL itself. Try navigating to
 `data:text/html,Hello world!` in a real browser to see what happens.
 Add support for this scheme to your browser. The `data` scheme is
 especially convenient for making tests without having to put them in
 separate files.
 
-*Entities*. Implement support for the less-than (`&lt;`) and
+1-4 *Entities*. Implement support for the less-than (`&lt;`) and
 greater-than (`&gt;`) entities. These should be printed as `<` and
 `>`, respectively. For example, if the HTML response was
 `&lt;div&gt;`, the `show` method of your browser should print `<div>`.
 Entities allow web pages to include these special characters without
 the browser interpreting them as tags.
 
-*view-source*. Add support for the `view-source` scheme; navigating to
+1-5 *view-source*. Add support for the `view-source` scheme; navigating to
 `view-source:http://example.org/` should show the HTML source instead of
 the rendered page. Add support for this scheme. Your browser should
 print the entire HTML file as if it was text. You'll want to have also
 implemented the entities exercise.
 
-*Keep-alive*. Implement the HTTP/1.1 exercise; however, do not send
+1-6 *Keep-alive*. Implement the HTTP/1.1 exercise; however, do not send
 the `Connection: close` header. Instead, when reading the body from
 the socket, only read as many bytes as given in the `Content-Length`
 header and don't close the socket afterwards. Instead, save the
@@ -960,7 +960,7 @@ socket, and if another request is made to the same socket reuse the
 same socket instead of creating a new one. This will speed up repeated
 requests to the same server, which is common.
 
-*Redirects*. Error codes in the 300 range request a redirect. When
+1-7 *Redirects*. Error codes in the 300 range request a redirect. When
 your browser encounters one, it should make a new request to the URL
 given in the `Location` header. Sometimes the `Location` header is a
 full URL, but sometimes it skips the host and scheme and just starts
@@ -974,7 +974,7 @@ page, and its [/redirect2](http://browser.engineering/redirect2) and
 [/redirect3](http://browser.engineering/redirect3) cousins which do more
 complicated redirect chains.
 
-*Caching*. Typically, the same images, styles, and scripts are used on
+1-8 *Caching*. Typically, the same images, styles, and scripts are used on
 multiple pages; downloading them repeatedly is a waste. It's generally
 valid to cache any HTTP response, as long as it was requested with
 `GET` and received a `200` response.^[Some other status codes like
@@ -985,7 +985,7 @@ header, specifically for the `no-store` and `max-age` values. If the
 `Cache-Control` header contains any value other than these two, it's best not
 to cache the response.
 
-*Compression*. Add support for HTTP compression. In HTTP compression the browser
+1-9 *Compression*. Add support for HTTP compression. In HTTP compression the browser
 [informs the server][negotiate] that compressed data is acceptable.
 Your browser must send the `Accept-Encoding` header with the value
 `gzip`. If the server supports compression, its response will have a
