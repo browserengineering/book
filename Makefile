@@ -44,7 +44,7 @@ src/lab%.full.py: src/lab%.py infra/inline.py infra/asttools.py
 
 CHAPTER=all
 
-PANDOC=pandoc --from markdown --to html --lua-filter=infra/filter.lua --fail-if-warnings --metadata-file=config.json --highlight-style=infra/wbecode.theme $(FLAGS)
+PANDOC=pandoc --number-sections --from markdown --to html --lua-filter=infra/filter.lua --fail-if-warnings --metadata-file=config.json --highlight-style=infra/wbecode.theme $(FLAGS)
 
 PANDOC_LATEX=pandoc --standalone --from markdown --to latex --fail-if-warnings --metadata-file=config.json --lua-filter=infra/filter.lua --highlight-style=infra/wbecode.theme $(FLAGS)
 
