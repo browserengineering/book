@@ -1197,7 +1197,7 @@ Take a moment to notice the complex ritual of typing in an address:
 - Finally, you type the "Enter" key which navigates to a new page.
 
 ::: {.print-only .center}
-![Screenshots of editing in the address bar in Apple Safari 16.6](im/chrome-editing.png).
+![Screenshots of editing in the address bar in Apple Safari 16.6.](im/chrome-editing.png)
 :::
 
 These steps suggest that the browser stores the contents of the
