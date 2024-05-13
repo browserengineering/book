@@ -2713,20 +2713,16 @@ Summary
 This chapter introduces the concept of partial style and layout
 through optimized cache invalidation. The main takeaways are:
 
-- Caching and invalidation is a powerful way to speed up key browser
-  interactions, and is therefore an essential technique in real browsers
-
-- Making rendering idempotent allows us skip redundant work
-  while guaranteeing that the page will look the same
-
-- A good browser aims for the principle of incremental performance:
+- caching and invalidation is a powerful way to speed up key browser
+  interactions, and is therefore an essential technique in real browsers;
+- making rendering idempotent allows us skip redundant work
+  while guaranteeing that the page will look the same;
+- a good browser aims for the principle of incremental performance:
   the cost of an change should be proportional to size of the change,
-  not the size of the page as a whole
-
-- Cache invalidation is difficult and error-prone,
-  and justifies careful abstractions like `ProtectedField`
-
-- Invalidation can be used to skip allocation, computation, and
+  not the size of the page as a whole;
+- cache invalidation is difficult and error-prone,
+  and justifies careful abstractions like `ProtectedField`;
+- and invalidation can be used to skip allocation, computation, and
   even traversals of objects
 
 ::: {.web-only}
@@ -2753,18 +2749,18 @@ should now look something like this:
 Exercises
 =========
 
-*Emptying an element*: Implement the [`replaceChildren` DOM
+16-1 *Emptying an element*. Implement the [`replaceChildren` DOM
 method][replacechildren-mdn] when called with no arguments. This
 method should delete all the children of a given element. Make sure to
 handle invalidation properly.
 
-*Protecting layout phases*: Replace the `needs_style` and
+16-2 *Protecting layout phases*. Replace the `needs_style` and
 `needs_layout` dirty flags by making the `document` field on `Frame`s a
 `ProtectedField`. Make sure animations still work correctly:
 animations of `opacity` or `transform` shouldn't trigger layout, while
 animations of other properties should.
 
-*Transferring children*: Implement the [`replaceChildren` DOM
+16-3 *Transferring children*. Implement the [`replaceChildren` DOM
 method][replacechildren-mdn] when called with multiple arguments. Here
 the arguments are elements from elsewhere in the
 document,[^unless-createelement] which are then removed from their
@@ -2777,11 +2773,11 @@ invalidation properly.
     or "removeChild" exercises [in Chapter 9](scripts.md#exercises),
     in which case they can also be "detached" elements.
 
-*Descendant bits for style*: Add descendant dirty flags for `style`
+16-4 *Descendant bits for style*. Add descendant dirty flags for `style`
 information, so that the `style` phase doesn't need to traverse nodes
 whose styles are unchanged.
 
-*Resizing the browser*: Perhaps, back in [Chapter
+16-5 *Resizing the browser*. Perhaps, back in [Chapter
 2](graphics.md#exercises), you implemented support for resizing the
 browser. (And most likely, you dropped support for it when we switched
 to SDL.) Reimplement support for resizing your browser; you'll need to
@@ -2790,7 +2786,7 @@ for `SDL_WINDOWEVENT_RESIZED` events. Make sure invalidation works:
 resizing the window show resize the page. How much does invalidation
 help make resizing fast? Test both vertical and horizontal resizing.
 
-*Matching children*: Add support for [the `appendChild`
+16-6 *Matching children*. Add support for [the `appendChild`
 method][appendchild-mdn] if you [haven't
 already](scripts.md#exercises). What's interesting about `appendChild`
 is that, while it *does* change a layout object's `children` field, it
@@ -2800,7 +2796,7 @@ optimization, at least in the case of block-mode `BlockLayout`s.
 
 [appendchild-mdn]: https://developer.mozilla.org/en-US/docs/Web/API/Node/appendChild
 
-*Invalidating `previous`*: Add support for [the `insertBefore`
+16-7 *Invalidating `previous`*. Add support for [the `insertBefore`
 method][insertbefore-mdn] if you [haven't
 already](scripts.md#exercises). Like with `appendChild`, we want to
 skip rebuilding layout objects if we can. However, this method can
@@ -2810,7 +2806,7 @@ the layout tree as possible.
 
 [insertbefore-mdn]: https://developer.mozilla.org/en-US/docs/Web/API/Node/insertBefore
 
-*`:hover` pseudo-class*: There is a `:hover` pseudo-class that
+16-8 *`:hover` pseudo-class*. There is a `:hover` pseudo-class that
 identifies elements the mouse is [hovering over][hover-pseudo].
 Implement it by sending mouse hover events to the active `Tab` and hit
 testing to find out which element is hovered. Try to avoid [forcing a
@@ -2823,7 +2819,7 @@ invalidate the hovered element's style.
 
 [hover-pseudo]: https://developer.mozilla.org/en-US/docs/Web/CSS/:hover
 
-*Optimizing away `ProtectedField`*: as mentioned in the last section
+16-9 *Optimizing away `ProtectedField`*. as mentioned in the last section
 of this chapter, creating all these `ProtectedField` objects is way too expensive for
 a real browser. See if you can find a way to avoid creating the
 objects entirely. Depending on the language you're using to implement
@@ -2831,7 +2827,7 @@ your browser, you might have compile-time macros available to help;
 in Python, this might require refactoring to change the API shape
 of `ProtectedField` to be functional rather than object-oriented.
 
-*Optimizing paint* Even after making layout fast for text input, paint is
+16-10 *Optimizing paint*. Even after making layout fast for text input, paint is
 still painfully slow. Fix that by storing the display list between frames,
 dirty bits for whether paint is needed for each layout object, and mutating
 the display list rather than re-creating it every time.

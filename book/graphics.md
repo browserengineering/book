@@ -578,10 +578,10 @@ This chapter went from a rudimentary command-line browser to a
 graphical user interface with text that can be scrolled. The browser
 now:
 
-- Talks to your operating system to create a window
-- Lays out the text and draws it to that window
-- Listens for keyboard commands
-- Scrolls the window in response
+- talks to your operating system to create a window;
+- lays out the text and draws it to that window;
+- listens for keyboard commands;
+- and scrolls the window in response.
 
 ::: {.web-only}
 
@@ -622,13 +622,13 @@ should look something like this:
 Exercises
 =========
 
-*Line breaks*: Change `layout` to end the current line and start a new
+2-1 *Line breaks*. Change `layout` to end the current line and start a new
 one when it sees a newline character. Increment *y* by more than
 `VSTEP` to give the illusion of paragraph breaks. There are poems
 embedded in "Journey to the West"; now you'll be able to make them
 out.
 
-*Mouse wheel*: Add support for scrolling up when you hit the up arrow.
+2-2 *Mouse wheel*. Add support for scrolling up when you hit the up arrow.
 Make sure you can't scroll past the top of the page.
 Then bind the `<MouseWheel>` event, which triggers when you scroll
 with the mouse wheel.[^laptop-mousewheel] The associated event object
@@ -647,14 +647,14 @@ events.[^more-mousewheel]
 
 [tk-mousewheel]: https://wiki.tcl-lang.org/page/mousewheel
 
-*Resizing*: Make the browser resizable. To do so, [pass the `fill` and
+2-3 *Resizing*. Make the browser resizable. To do so, [pass the `fill` and
 `expand` arguments][fill-expand] to `canvas.pack`, call and bind to
 the `<Configure>` event, which happens when the window is resized. The
 window's new width and height can be found in the `width` and `height`
 fields on the event object. Remember that when the window is resized,
 the line breaks must change, so you will need to call `layout` again.
 
-*Scrollbar*: Stop your browser from scrolling down past the last
+2-4 *Scrollbar*. Stop your browser from scrolling down past the last
 display list entry.[^not-quite-right] At the right edge of the screen,
 draw a blue, rectangular scrollbar. Make sure the size and position of
 the scrollbar reflects what part of the full document the browser can
@@ -666,7 +666,7 @@ scrollbar if the whole document fits onscreen.
     screen or the possibility of objects purposefully drawn offscreen.
     In [Chapter 5](layout.md), we'll implement this correctly.
 
-*Emoji*: Add support for emoji to your browser
+2-5 *Emoji*. Add support for emoji to your browser
 `😀`{=html}`\smiley`{=latex}. Emoji are
 characters, and you can call `create_text` to draw them, but the
 results aren't very good. Instead, head to [the OpenMoji
@@ -679,7 +679,7 @@ In fact, download the whole OpenMoji library (look for the "Get
 OpenMojis" button at the top right)---then your browser can look up
 whatever emoji is used in the page.
 
-*about:blank:* Currently, a malformed URL causes the browser to crash.
+2-6 *about:blank*. Currently, a malformed URL causes the browser to crash.
 It would be much better to have error recovery for that, and instead
 show a blank page, so that the user can fix the error. To do this, add
 support for the special `about:blank` URL, which should just render
@@ -688,7 +688,7 @@ were `about:blank`.
 
 [fill-expand]: https://web.archive.org/web/20201111222645id_/http://effbot.org/tkinterbook/pack.htm
 
-*Alternate text direction*: Not all languages read and lay out from left
+2-7 *Alternate text direction*. Not all languages read and lay out from left
 to right. Arabic, Persian and Hebrew are good examples of right-to-left
 languages. Implement basic support for this with a command-line flag to your
 browser.^[Once we get to [Chapter 4](html.md) you could write it in terms of

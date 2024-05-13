@@ -2084,16 +2084,16 @@ Summary
 This chapter demonstrated the two-thread rendering system at the core
 of modern browsers. The main points to remember are:
 
-- The browser organizes work into task queues, with tasks for things
-  like running JavaScript, handling user input, and rendering the page
-- The goal is to consistently generate frames to the screen at a 60Hz
-  cadence, which means a 33ms budget to draw each animation frame
-- The browser has two key threads involved in rendering
-- The main thread runs JavaScript and the special rendering task
-- The browser thread draws the display list to the screen,
-  handles/dispatches input events, and performs scrolling
-- The main thread communicates with the browser thread via `commit`,
-  which synchronizes the two threads
+- the browser organizes work into task queues, with tasks for things
+  like running JavaScript, handling user input, and rendering the page;
+- the goal is to consistently generate frames to the screen at a 60Hz
+  cadence, which means a 33ms budget to draw each animation frame;
+- the browser has two key threads involved in rendering;
+- the main thread runs JavaScript and the special rendering task;
+- the browser thread draws the display list to the screen,
+  handles/dispatches input events, and performs scrolling;
+- and the main thread communicates with the browser thread via `commit`,
+  which synchronizes the two threads.
 
 Additionally, you've seen how hard it is to move tasks between the two
 threads, such as the challenges involved in scrolling on the browser
@@ -2129,7 +2129,7 @@ will need to open that page in a new tab.
 Exercises
 =========
 
-*setInterval*: [`setInterval`][setInterval] is similar to `setTimeout`
+12-1 *setInterval*. [`setInterval`][setInterval] is similar to `setTimeout`
 but runs repeatedly at a given cadence until
 [`clearInterval`][clearInterval] is called. Implement these APIs. Make
 sure to test `setInterval` with various cadences in a page that also
@@ -2140,12 +2140,12 @@ consistent is the cadence?
 [setInterval]: https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/setInterval
 [clearInterval]: https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/clearInterval
 
-*Task timing*: Modify `Task` to add trace events every time a task
+12-2 *Task timing*. Modify `Task` to add trace events every time a task
 executes. You'll want to provide a good name for these trace events.
 One option is to use the `__name__` field of `task_code`, which will
 get the name of the Python function run by the task.
 
-*Clock-based frame timing*: Right now our browser schedules each
+12-3 *Clock-based frame timing*. Right now our browser schedules each
 animation frame exactly 33ms after the previous one completes. This
 actually leads to a slower animation frame rate cadence than 33ms. Fix
 this in our browser by using the absolute time to schedule animation
@@ -2153,7 +2153,7 @@ frames, instead of a fixed delay between frames. Also implement main-thread
 animation frame scheduling that happens *before* raster and draw, not after,
 allowing both threads to do animation work simultaneously.
 
-*Scheduling*: As more types of complex tasks end up on the event
+12-4 *Scheduling*. As more types of complex tasks end up on the event
 queue, there comes a greater need to carefully schedule them to ensure
 the rendering cadence is as close to 33ms as possible, and also to
 avoid task starvation. Implement a task scheduler with a priority
@@ -2162,7 +2162,7 @@ input handling, and deprioritize (but don't completely starve) tasks that
 ultimately come from JavaScript APIs like `setTimeout`. Test it out on a
 web page that taxes the system with a lot of `setTimeout`-based tasks.
 
-*Threaded loading*: When loading a page, our browser currently waits
+12-5 *Threaded loading*. When loading a page, our browser currently waits
 for each style sheet or script resource to load in turn. This is
 unnecessarily slow, especially on a bad network. Instead, make your
 browser sending off all the network requests in parallel. You must
@@ -2170,12 +2170,12 @@ still process resources like styles in source order, however. It may
 be convenient to use the `join` method on a `Thread`, which will block
 the thread calling `join` until the thread being `join`ed completes.
 
-*Networking thread*: Real browsers usually have a separate thread for
+12-6 *Networking thread*. Real browsers usually have a separate thread for
 networking (and other I/O). Tasks are added to this thread in a
 similar fashion to the main thread. Implement a third *networking*
 thread and put all networking tasks on it.
 
-*Optimized scheduling*: On a complicated web page, the browser may not
+12-7 *Optimized scheduling*. On a complicated web page, the browser may not
 be able to keep up with the desired cadence. Instead of constantly
 pegging the CPU in a futile attempt to keep up, implement a *frame
 time estimator* that estimates the true cadence of the browser based
@@ -2183,7 +2183,7 @@ on previous frames, and adjust `schedule_animation_frame` to match.
 This way complicated pages get consistently slower, instead of having
 random slowdowns.
 
-*Raster-and-draw thread*: Right now, if an input event arrives while
+12-8 *Raster-and-draw thread*. Right now, if an input event arrives while
 the browser thread is rastering or drawing, that input event won't be
 handled immediately. This is especially a problem because [raster and
 draw are slow](#profiling-rendering). Fix this by adding a separate

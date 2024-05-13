@@ -823,10 +823,10 @@ Summary
 This chapter taught our browser that HTML is a tree, not just a flat
 list of tokens. We added:
 
-- A parser to transform HTML tokens to a tree
-- Code to recognize and handle attributes on elements
-- Automatic fixes for some malformed HTML documents
-- A recursive layout algorithm to lay out an HTML tree
+- a parser to transform HTML tokens to a tree;
+- code to recognize and handle attributes on elements.
+- automatic fixes for some malformed HTML documents;
+- and a recursive layout algorithm to lay out an HTML tree.
 
 The tree structure of HTML is essential to display visually complex
 web pages, as we will see in the [next chapter](layout.md).
@@ -856,19 +856,19 @@ should look something like this:
 Exercises
 =========
 
-*Comments:* Update the HTML lexer to support comments. Comments in
+4-1 *Comments*. Update the HTML lexer to support comments. Comments in
 HTML begin with `<!--` and end with `-->`. However, comments aren't
 the same as tags: they can contain any text, including left and right
 angle brackets. The lexer should skip comments, not generating any
 token at all. Check: is `<!-->` a comment, or does it just start one?
 
-*Paragraphs:* It's not clear what it would mean for one paragraph to
+4-2 *Paragraphs*. It's not clear what it would mean for one paragraph to
 contain another. Change the parser so that a document like
 `<p>hello<p>world</p>` results in two sibling paragraphs instead of
 one paragraph inside another; real browsers do this too. Do the same
 for `<li>` elements, but make sure nested lists are still possible.
 
-*Scripts:* JavaScript code embedded in a `<script>` tag uses the left
+4-3 *Scripts*. JavaScript code embedded in a `<script>` tag uses the left
 angle bracket to mean less-than. Modify your lexer so that the
 contents of `<script>` tags are treated specially: no tags are allowed
 inside `<script>`, except the `</script>` close tag.[^or-space]
@@ -880,19 +880,19 @@ inside `<script>`, except the `</script>` close tag.[^or-space]
 
 [script-end-state]: https://html.spec.whatwg.org/multipage/parsing.html#script-data-end-tag-name-state
 
-*Quoted attributes:* Quoted attributes can contain spaces and right
+4-4*Quoted attributes*. Quoted attributes can contain spaces and right
 angle brackets. Fix the lexer so that this is supported properly.
 Hint: the current lexer is a finite state machine, with two states
 (determined by `in_tag`). You'll need more states.
 
-*Syntax Highlighting:* Implement the `view-source:` protocol as in
+4-5 *Syntax Highlighting*. Implement the `view-source:` protocol as in
 [Chapter 1](http.md#exercises), but make it syntax-highlight the
 source code of HTML pages. Keep source code for HTML tags in a normal
 font, but make text contents bold. If you've implemented it, wrap text
 in `<pre>` tags as well to preserve line breaks. Hint: subclass the
 HTML parser and use it to implement your syntax highlighter.
 
-*Mis-nested formatting tags*: Extend your HTML parser to support
+4-6 *Mis-nested formatting tags*. Extend your HTML parser to support
 markup like `<b>Bold <i>both</b> italic</i>`. This requires keeping
 track of the set of open text formatting elements and inserting
 implicit open and close tags when text formatting elements are closed

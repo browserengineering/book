@@ -2195,19 +2195,15 @@ Summary
 =======
 
 This chapter introduces animations. The key takeaways you should
-remember are:
+remember are that:
 
-- Animations come in DOM-based, input-driven and video-like varieties
-
-- GPU acceleration is necessary for smooth animations
-
-- Compositing is usually necessary for smooth and threaded visual effect
-  animations
-
-- It's important to optimize the number of composited layers
-
-- Overlap testing can cause additional GPU memory use and needs to be
-  implemented with care
+- animations come in DOM-based, input-driven and video-like varieties;
+- GPU acceleration is necessary for smooth animations;
+- compositing is usually necessary for smooth and threaded visual effect
+  animations;
+- it's important to optimize the number of composited layers;
+- and overlap testing can cause additional GPU memory use and needs to be
+  implemented with care.
 
 ::: {.web-only}
 
@@ -2234,11 +2230,11 @@ should now look something like this:
 Exercises
 =========
 
-*Background-color*: Implement animations of the `background-color` CSS property.
+13-1 *Background-color*. Implement animations of the `background-color` CSS property.
 You'll have to define a new kind of interpolation that applies to all the
 color channels.
 
-*Easing functions*: Our browser only implements a linear interpolation between
+13-2 *Easing functions*. Our browser only implements a linear interpolation between
 start and end values, but there are many other [easing functions][easing] 
 (in fact, the default one in real browsers is
 `cubic-bezier(0.25, 0.1, 0.25, 1.0)`, not linear). Implement this easing
@@ -2246,7 +2242,7 @@ function, and one or two others.
 
 [easing]: https://developer.mozilla.org/en-US/docs/Web/CSS/easing-function
 
-*Composited & threaded transform and scroll animations*: Our browser supports
+13-3 *Composited & threaded transform and scroll animations*. Our browser supports
 transfoms and scrolling, but they are not fully composited or threaded,
 and transform transition animations are not supported. Implement these.
 (Hint: for transforms, it just requires following the same pattern as for
@@ -2256,7 +2252,7 @@ raster either.
 
 [tr-example]: examples/example13-transform-transition.html
 
-*Width animations*: Implement the CSS `width` and `height` properties; when
+13-4 *Width animations*. Implement the CSS `width` and `height` properties; when
 `width` is set to some number of pixels on an element, the element should be
 that many pixels wide, regardless of how its width would normally be computed;
 the same goes for `height`. Make them animatable; you'll need a variant of
@@ -2281,13 +2277,13 @@ as the window size changes. Modern browsers are fast enough to do this, but it
 used to be that they'd only redraw the screen every couple of frames, leaving a
 visual *gutter* between content and the edge of the window.
 
-*CSS animations*: Implement the basics of the
+13-5 *CSS animations*. Implement the basics of the
 [CSS animations][css-animations] API, in particular enough of the `animation`
 CSS property and parsing of `@keyframe` to implement the demos
 [here](examples/example13-opacity-animation.html) and
 [here](examples/example13-width-animation.html).
 
-*Overlap testing w/transform animations*: (If you've already done the
+13-6 *Overlap testing w/transform animations*. (If you've already done the
 transform animations exercise.) Our
 browser currently does not overlap test correctly in the presence of transform
 animations that cause overlap to come and go. First create a demo that
@@ -2305,7 +2301,7 @@ a transform animation is defined in terms of a CSS animation, you can
 analytically determine the bounding box of the animation, and use that for
 overlap instead.
 
-*Avoiding sparse composited layers*: Our browser's algorithm currently always
+13-7 *Avoiding sparse composited layers*. Our browser's algorithm currently always
 merges paint chunks that have compatible ancestor effects. But this can lead
 to inefficient situations, such as where two paint chunks that are visually
 very far away on the web page (e.g. one at the very top and one thousands of
@@ -2318,7 +2314,7 @@ that.[^tiling-helps]
  [^tiling-helps]: Another way is via surface tiling (this technique was briefly
  discussed in a Go Further block in Chapter 11).
 
-*Short display lists*: it's relatively common in real browsers to encounter
+13-8 *Short display lists*. it's relatively common in real browsers to encounter
 `CompositedLayer`s that are only a single solid color, or only a few
 simple paint commands.[^real-browser-simple] Implement an optimization that
 skips storing a `skia.Surface` on a `CompositedLayer` with less than a fixed
@@ -2331,7 +2327,7 @@ whether the time to raster the provided display items is low enough to not
 justify a GPU texture. This will be true for solid colors, but
 probably not for complex shapes or text.
 
-*Hit testing*: Right now, when handling clicks, we convert each layout
+13-9 *Hit testing*. Right now, when handling clicks, we convert each layout
 object's bounds to absolute coordinates (via
 `absolute_bounds_for_obj`) to compare to the click location. But we
 could instead convert the click location to local coordinates as we
@@ -2342,7 +2338,7 @@ calls child `hit_test` methods.^[In real browsers hit testing is used
 for more than just clicking. The name comes from thinking whether an
 arrow shot at that location would "hit" the object.]
 
-*Z-index*: Right now, elements later in the HTML document are drawn
+13-10 *Z-index*. Right now, elements later in the HTML document are drawn
 "on top" of earlier ones. The `z-index` CSS property changes that
 order: an element with the larger `z-index` draws on top (with ties
 broken by the current order, and with the default `z-index` being 0).
@@ -2353,7 +2349,7 @@ elements][stacking-context] with `z-index` properties.
 
 [stacking-context]:  https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
 
-*Animated scrolling*: Real browsers have many kinds of animations during scroll.
+13-11 *Animated scrolling*. Real browsers have many kinds of animations during scroll.
 For example, pressing the down key or the down-arrow in a scrollbar causes a
 pleasant animated scroll, rather than the immediate scroll our browser current
 implements. Or on mobile, a touch interaction often causes a "fling" scroll
@@ -2388,7 +2384,7 @@ opacity fade on an element that advances as the user scrolls down the page
 animations that start once an element has scrolled to a certain point on the
 screen, or when scroll changes direction.
 
-*Opacity-plus-draw*: If a `DrawCompositedLayer` is inside of a
+13-12 *Opacity-plus-draw*. If a `DrawCompositedLayer` is inside of a
 `Blend(alpha=0.5)` then right now there might be two surface copies:
 first copying the composited layer's raster buffer into a temporary buffer,
 then applying opacity to it and copying it into the root surface. This is not necessary, and in fact Skia's [`draw`][draw-api] API on a `Surface` allows

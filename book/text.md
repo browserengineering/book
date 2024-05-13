@@ -954,12 +954,12 @@ Summary
 =======
 
 The last chapter introduced a browser that laid out characters in a
-grid. Now it does standard English text layout:
+grid. Now it does standard English text layout, so:
 
-- Text is laid out word-by-word
-- Lines are split at word boundaries
-- Text can be bold or italic
-- Text of different sizes can be mixed
+- text is laid out word-by-word;
+- lines are split at word boundaries;
+- text can be bold or italic;
+- and text of different sizes can be mixed.
 
 You can now use our browser to read an essay, a blog post, or even a
 book!
@@ -989,7 +989,7 @@ should look something like this:
 Exercises
 =========
 
-*Centered Text:* This book's page titles are centered; make your
+3-1 *Centered text*. This book's page titles are centered; make your
 browser do the same for text between `<h1 class="title">` and `</h1>`.
 Each line has to be centered individually, because different lines
 will have different lengths.[^center-tag]
@@ -998,12 +998,12 @@ will have different lengths.[^center-tag]
     this, but nowadays centering is typically done in CSS, through the
     `text-align` property. The approach in this exercise is of course non-standard, and just for learning purposes.
 
-*Superscripts:* Add support for the `<sup>` tag. Text in this tag
+3-2 *Superscripts*. Add support for the `<sup>` tag. Text in this tag
 should be smaller (perhaps half the normal text size) and be placed so
 that the top of a superscript lines up with the top of a normal
 letter.
 
-*Soft hyphens:* The soft hyphen character, written `\N{soft hyphen}`
+3-3 *Soft hyphens*. The soft hyphen character, written `\N{soft hyphen}`
 in Python, represents a place where the text renderer can, but doesn't
 have to, insert a hyphen and break the word across lines. Add support
 for it.[^entity] If a word doesn't fit at the end of a line, check if
@@ -1017,12 +1017,12 @@ is a good test case.
     HTML entities, you might also want to add support for the `&shy;`
     entity, which expands to a soft hyphen.
 
-*Small caps:* Make the `<abbr>` element render text in small caps,
+3-4 *Small caps*. Make the `<abbr>` element render text in small caps,
 <abbr>like this</abbr>. Inside an `<abbr>` tag, lower-case letters
 should be small, capitalized, and bold, while all other characters
 (upper case, numbers, etc) should be drawn in the normal font.
 
-*Preformatted text:* Add support for the `<pre>` tag. Unlike normal
+3-5 *Preformatted text*. Add support for the `<pre>` tag. Unlike normal
 paragraphs, text inside `<pre>` tags doesn't automatically break
 lines, and whitespace like spaces and newlines are preserved. Use a
 fixed-width font like `Courier New` or `SFMono` as well. Make sure

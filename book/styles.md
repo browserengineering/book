@@ -1026,11 +1026,11 @@ This chapter implemented a rudimentary but complete styling engine,
 including downloading, parsing, matching, sorting, and applying CSS
 files. That means we:
 
-- Wrote a CSS parser
-- Added support for both `style` attributes and `link`ed CSS files
-- Implemented cascading and inheritance
-- Refactored `BlockLayout` to move the font properties to CSS
-- Moved most tag-specific reasoning to a browser style sheet
+- wrote a CSS parser;
+- added support for both `style` attributes and `link`ed CSS files;
+- implemented cascading and inheritance;
+- refactored `BlockLayout` to move the font properties to CSS;
+- and moved most tag-specific reasoning to a browser style sheet.
 
 Our styling engine is also relatively easy to extend with properties
 and selectors.
@@ -1060,37 +1060,37 @@ should now look something like this:
 Exercises
 =========
 
-*Fonts*: Implement the `font-family` property, an inheritable property
+6-1 *Fonts*. Implement the `font-family` property, an inheritable property
 that names which font should be used in an element. Make text inside
 `<code>` elements use a nice monospaced font like `Courier`. Beware
 the font cache.
 
-*Width/Height*: Add support for the `width` and `height` properties to
+6-2 *Width/height*. Add support for the `width` and `height` properties to
 block layout. These can either be a pixel value, which directly sets
 the width or height of the layout object, or the word `auto`, in which
 case the existing layout algorithm is used.
 
-*Class Selectors*: Any HTML element can have a `class` attribute,
+6-3 *Class selectors*. Any HTML element can have a `class` attribute,
 whose value is a space-separated list of that element's classes. A CSS
 class selector, like `.main`, affects all elements with the `main`
 class. Implement class selectors; give them priority 10. If you've
 implemented them correctly, you should see syntax highlighting for the
 code blocks in this book.
 
-*Display*: Right now, the `layout_mode` function relies on a
+6-4 *Display*. Right now, the `layout_mode` function relies on a
 hard-coded list of block elements. In a real browser, the `display`
 property controls this. Implement `display` with a default value of
 `inline`, and move the list of block elements to the browser style
 sheet.
 
-*Shorthand Properties*: CSS "shorthand properties" set multiple
+6-5 *Shorthand Properties* CSS "shorthand properties" set multiple
 related CSS properties at the same time; for example, `font: italic
 bold 100% Times` sets the `font-style`, `font-weight`, `font-size`,
 and `font-family` properties all at once. Add shorthand properties to
 your parser. (If you haven't implemented `font-family`, just ignore
 that part.)
 
-*Inline Style Sheets*: The `link rel=stylesheet` syntax allows importing an
+6-6 *Inline style sheets*. The `link rel=stylesheet` syntax allows importing an
  external style sheet (meaning one loaded via its own HTTP request). There is
  also a way to provide a style sheet inline, as part of the HTML, via the
  `<style>` tag---everything up to the following `</style>` tag is interpreted
@@ -1104,14 +1104,14 @@ that part.)
     their appearance in the HTML, though it might be easier to first
     implement inline style sheets applying after external ones.
 
-*Fast Descendant Selectors*: Right now, matching a selector like `div
+6-7 *Fast descendant selectors*. Right now, matching a selector like `div
 div div div div` can take a long time---it's *O(nd)* in the worst
 case, where *n* is the length of the selector and *d* is the depth of
 the layout tree. Modify the descendant-selector matching code to run
 in *O(n)* time. It may help to have `DescendantSelector` store a list
 of base selectors instead of just two.
 
-*Selector Sequences*: Sometimes you want to select an element by tag *and*
+6-8 *Selector sequences*. Sometimes you want to select an element by tag *and*
 class. You do this by concatenating the selectors without anything in
 between.[^no-ws] For example, `span.announce` selects elements that match both
 `span` and `.announce`. Implement a new `SelectorSequence` class to represent
@@ -1125,7 +1125,7 @@ these and modify the parser to parse them. Sum priorities.[^lexicographic]
     in the sequence will work fine as long as no one strings more than
     10 selectors together.
 
-*Important*: a CSS property-value pair can be marked "important" using
+6-9 *Important*. a CSS property-value pair can be marked "important" using
 the `!important` syntax, like this:
 
     #banner a { color: black !important; }
@@ -1135,7 +1135,7 @@ higher priority than any other selector (except for other `!important`
 selector). Parse and implement `!important`, giving any property-value pairs
 marked this way a priority 10000 higher than normal property-value pairs.
 
-*`:has` Selectors*: The [`:has` selector][has-selector] is the inverse of a
+6-10 *`:has` selectors*. The [`:has` selector][has-selector] is the inverse of a
 descendant selector---it styles an ancestor according to the presence
 of a descendant. Implement `:has` selectors. Analyze
 the asymptotic speed of your implementation. There is a clever

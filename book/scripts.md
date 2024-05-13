@@ -1149,10 +1149,10 @@ Our browser now runs JavaScript applications on behalf of websites.
 Granted, it supports just four methods from the vast DOM API, but even
 those demonstrate:
 
-- Generating handles to allow scripts to refer to page elements
-- Reading attribute values from page elements
-- Writing and modifying page elements
-- Attaching event listeners so that scripts can respond to page events
+- generating handles to allow scripts to refer to page elements;
+- reading attribute values from page elements;
+- writing and modifying page elements;
+- and attaching event listeners so that scripts can respond to page events.
 
 A web page can now add functionality via a clever script, instead of waiting for
 a browser developer to add it into the browser itself. And as a side-benefit,
@@ -1194,7 +1194,7 @@ The server's outline is unchanged from the last chapter:
 Exercises
 =========
 
-*Node.children*: Add support for the [`children`][children] property
+9-1 *Node.children*. Add support for the [`children`][children] property
 on JavaScript `Node`s. `Node.children` returns the immediate `Element`
 children of a node, as an array. `Text` children are not
 included.[^text-children]
@@ -1204,7 +1204,7 @@ included.[^text-children]
 [^text-children]: The DOM method `childNodes` gives access to both elements and
     text.
 
-*createElement*: The [`document.createElement`][createElement] method
+9-2 *createElement*. The [`document.createElement`][createElement] method
 creates a new element, which can be *attached* to the document with the
 [`appendChild`][appendChild] and [`insertBefore`][insertBefore]
 methods on `Node`s; unlike `innerHTML`, there's no parsing involved.
@@ -1216,7 +1216,7 @@ Implement all three methods.
 
 [insertBefore]: https://developer.mozilla.org/en-US/docs/Web/API/Node/insertBefore
 
-*removeChild*: The [`removeChild`][removeChild] method on `Node`s
+9-3 *removeChild*. The [`removeChild`][removeChild] method on `Node`s
 detaches the provided child and returns it, bringing that child---and
 its subtree---back into an *detached* state. (It can then be
 *re-attached* elsewhere, with `appendChild` and `insertBefore`, or
@@ -1226,7 +1226,7 @@ Python side.
 
 [removeChild]: https://developer.mozilla.org/en-US/docs/Web/API/Node/removeChild
 
-*IDs*: When an HTML element has an `id` attribute, a JavaScript
+9-4 *IDs*. When an HTML element has an `id` attribute, a JavaScript
 variable pointing to that element is predefined. So, if a page has a
 `<div id="foo"></div>`, then there's a variable `foo` referring to that
 node.[^standard] Implement this in your browser. Make sure to handle
@@ -1236,7 +1236,7 @@ the case of nodes being added and removed (such as with `innerHTML`).
 
 [html5-varnames]: http://www.whatwg.org/specs/web-apps/current-work/#named-access-on-the-window-object
 
-*Event Bubbling*: Right now, you can attach a `click` handler to `a`
+9-5 *Event Bubbling*. Right now, you can attach a `click` handler to `a`
 (anchor) elements, but not to anything else. Fix this. One challenge you'll
 face is that when you click on an element, you also click on all its
 ancestors. On the web, this sort of quirk is handled by [*event
@@ -1250,7 +1250,7 @@ from actually following the link.
 
 [eventBubbling]: https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Building_blocks/Events#event_bubbling
 
-*Serializing HTML*: Reading from [`innerHTML`][innerHTML] should
+9-6 *Serializing HTML*. Reading from [`innerHTML`][innerHTML] should
 return a string containing HTML source code. That source code should
 reflect the *current* attributes of the element; for example:
 
@@ -1267,7 +1267,7 @@ element itself, not just its children.
 
 [innerHTML]: https://developer.mozilla.org/en-US/docs/Web/API/Element/innerHTML
 
-*Script-added scripts and style sheets*: The `innerHTML` API could cause
+9-7 *Script-added scripts and style sheets*. The `innerHTML` API could cause
 `<script>` or `<link>`  elements to be added to the document, but currently
 our browser does not load them when this happens. Fix this.
 Likewise, when a `<link>` element is removed from the document, its style

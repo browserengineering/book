@@ -2602,15 +2602,15 @@ This chapter introduces accessibility---features to ensure *all* users can
 access and interact with websites---and shows how to solve several of
 the most common accessibility problems in browsers. The key takeaways are:
 
-- The semantic and declarative nature of HTML makes accessibility
-  features natural extensions
-- Accessibility features often serve multiple needs, and almost
-  everyone benefits from these features in one way or another
-- The accessibility tree is similar to the display list and drives
+- the semantic and declarative nature of HTML makes accessibility
+  features natural extensions;
+- accessibility features often serve multiple needs, and almost
+  everyone benefits from these features in one way or another;
+- the accessibility tree is similar to the display list and drives
   the browser's interaction with screen readers and other assistive
-  technologies
-- New features like dark mode, keyboard navigation, and outlines need
-  to be customizable by web page authors to be maximally usable
+  technologies;
+- and new features like dark mode, keyboard navigation, and outlines need
+  to be customizable by web page authors to be maximally usable.
 
 ::: {.web-only}
 
@@ -2637,26 +2637,26 @@ should now look something like this:
 Exercises
 =========
 
-*Focus ring with good contrast*: Improve the contrast of the focus
+14-1 *Focus ring with good contrast*. Improve the contrast of the focus
 indicator by using two outlines, a thicker white one and a thinner
 black one, to ensure that there is contrast between the focus ring and
 surrounding content.
 
-*`Element.focus`*: Implement the JavaScript [`focus`][focus-el]
+14-2 *`Element.focus`*. Implement the JavaScript [`focus`][focus-el]
 method, which lets JavaScript focus a particular element. Make sure
 that the option to prevent scrolling works properly. Be careful:
 before reading an element's position, make sure that layout is up-to-date.
 
 [focus-el]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/focus
 
-*Highlighting elements during read*: The method to read the document
+14-3 *Highlighting elements during read*. The method to read the document
 works, but it'd be nice to also highlight the elements being read as
 it happens, in a similar way to how we did it for mouse hover.
 Implement that. You may want to replace the `speak_document` method
 with an `advance_accessibility` method that moves the accessibility
 focus by one node and speaks it.
 
-*Width media queries*: Zooming in or out causes the width of the page
+14-4 *Width media queries*. Zooming in or out causes the width of the page
 in CSS pixels to change. That means that sometimes elements that used
 to fit comfortably on the page no longer do, and if the page becomes
 narrow enough, a different layout may be more appropriate. The
@@ -2701,7 +2701,7 @@ www/examples/example14-maxwidth-media.css
 :::
 :::
 
-*Mixed inlines*: Make the focus ring work correctly on nested inline
+14-5 *Mixed inlines*. Make the focus ring work correctly on nested inline
 elements. For example in `<a>a <b>bold</b> link</a>`, the focus ring
 should cover all three words together when the user is focused on the
 link, and with multiple rectangles if the inline crosses lines.
@@ -2709,18 +2709,18 @@ However, if the user focuses on a block-level element, such as in
 `<div tabindex=2>many<br>lines</div>`, there shouldn't be a focus ring
 around each line, but instead the block as a whole.
 
-*Threaded accessibility*: The accessibility code currently speaks text
+14-6 *Threaded accessibility*. The accessibility code currently speaks text
 on the browser thread, and blocks the browser thread while it speaks.
 That's frustrating to use. Solve this by moving the speaking to a new
 accessibility thread.
 
-*High-contrast mode*: Implement high-contrast [forced-colors] mode.
+14-7 *High-contrast mode*. Implement high-contrast [forced-colors] mode.
 This should replace all colors with one of a small set of
 [high-contrast][contrast] colors.
 
 [forced-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/@media/forced-colors
 
-*focus-visible*: When the user tabs to a link, we probably want to
+14-8 *focus-visible*. When the user tabs to a link, we probably want to
 show a focus indicator, but if the user clicked on it, most browsers
 don't---the user knows where the focused element is! And a redundant
 focus indicator could be ugly, or distracting. Implement a similar
@@ -2737,7 +2737,7 @@ browser heuristics I mentioned above.
 
 [focus-visible]: https://developer.mozilla.org/en-US/docs/Web/CSS/:focus-visible
 
-*OS integration*: Add the [`accessible_output`][os-integ] Python
+14-9 *OS integration*. Add the [`accessible_output`][os-integ] Python
 library and use it to integrate directly with your OS's built-in
 screen reader. Try out some of the examples in this chapter and
 compare behavior with a real browser.
