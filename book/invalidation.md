@@ -758,9 +758,9 @@ order to make layout faster.
 [Under-invalidation][under-invalidation] is the technical name for
 forgetting to set the dirty flag on a field when you change a
 dependency. It often causes a bug where a particular change needs to
-be happen multiple times to finally "take". In other words, this kind
+happen multiple times to finally "take". In other words, this kind
 of bug creates accidental non-idempotency! These bugs are [hard to
-find][hard-to-find], because they typically only show up if you make a
+find][hard-to-find] because they typically only show up if you make a
 very specific sequence of changes.
 :::
 
