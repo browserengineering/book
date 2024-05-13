@@ -26,6 +26,7 @@ class Span:
 class Block:
     def __init__(self, block):
         meta, self.content = block
+        self.book_content = self.content
         assert meta[0] == ""
         self.classes = meta[1]
 
@@ -152,12 +153,12 @@ def compare_files(book, code, language, file):
                     print(" ", l, end="")
             print()
 
-        for i, line in enumerate(block.content.split("\n")):
+        for i, line in enumerate(block.book_content.split("\n")):
             if len(line) > 60:
-                long_lines.append((block.loc + i + 1, len(line)))
+                long_lines.append((block.loc + i + 1, line))
     if long_lines:
         print()
         for loc, chars in long_lines:
-            print(f"  {loc}: Line too long ({chars} characters)")
+            print(f"  {loc}: Line too long ({len(chars)} characters)")
     return failure, count
     
