@@ -769,13 +769,13 @@ styling provided by a library.
 Summary
 =======
 
-This chapter was a dramatic rewrite of our browser's layout engine:
+This chapter was a dramatic rewrite of our browser's layout engine, so:
 
-- Layout is now tree-based and produces a *layout tree*
-- Each node in the tree has one of two different *layout modes*
-- Layout computes a size and position for each layout object
-- The display list now contains generic commands
-- Plus, source code snippets now have backgrounds
+- layout is now tree-based and produces a *layout tree*;
+- each node in the tree has one of two different *layout modes*;
+- layout computes a size and position for each layout object;
+- the display list now contains generic commands;
+- and source code snippets now have backgrounds.
 
 Tree-based layout makes it possible to dramatically expand our
 browser's styling capabilities. We'll work on that in the [next
@@ -806,28 +806,28 @@ should look something like this:
 Exercises
 =========
 
-*Links Bar*: At the top and bottom of each chapter of this book is a
+5-1 *Links bar*. At the top and bottom of each chapter of this book is a
 gray bar naming the chapter and offering back and forward links. It is
 enclosed in a `<nav class="links">` tag. Have your browser give this
 links bar the light gray background a real browser would.
 
-*Hidden Head*: There's a good chance your browser is still showing
+5-2 *Hidden head*. There's a good chance your browser is still showing
 scripts, styles, and page titles at the top of every page you visit.
 Make it so that the `<head>` element and its contents are never
 displayed. Those elements should still be in the HTML tree, but not in
 the layout tree.
 
-*Bullets*: Add bullets to list items, which in HTML are `<li>` tags.
+5-3 *Bullets*. Add bullets to list items, which in HTML are `<li>` tags.
 You can make them little squares, located to the left of the list item
 itself. Also indent `<li>` elements so the text inside the element is
 to the right of the bullet point.
 
-*Table of Contents*: This book has a table of contents at the top of
+5-4 *Table of contents*. This book has a table of contents at the top of
 each chapter, enclosed in a `<nav id="toc">` tag, which contains a
 list of links. Add the text "Table of Contents", with a gray
 background, above that list. Don't modify the lexer or parser.
 
-*Anonymous block boxes*: Sometimes, an element has a mix of text-like
+5-5 *Anonymous block boxes*. Sometimes, an element has a mix of text-like
 and container-like children. For example, in this HTML,
 
     <div><i>Hello, </i><b>world!</b><p>So it began...</p></div>
@@ -841,7 +841,7 @@ sibling nodes, instead of a single node. Then, modify the algorithm
 that constructs the layout tree so that any sequence of text-like
 elements gets made into a single `BlockLayout`.
 
-*Run-ins*: A "run-in heading" is a heading that is drawn as part of
+5-6 *Run-ins*. A "run-in heading" is a heading that is drawn as part of
 the next paragraph's text.[^like-these] Modify your browser to render
 `<h6>` elements as run-in headings. You'll need to implement the
 previous exercise on anonymous block boxes, and then add a special

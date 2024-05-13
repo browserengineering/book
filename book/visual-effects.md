@@ -1775,11 +1775,11 @@ Summary
 So there you have it: our browser can draw not only boring
 text and boxes but also:
 
-- Partial transparency via an alpha channel
-- User-configurable blending modes via `mix-blend-mode`
-- Rounded rectangle clipping via destination-in blending or direct clipping
-- Optimizations to avoid surfaces when possible
-- Browser compositing with extra surfaces for faster scrolling
+- partial transparency via an alpha channel;
+- user-configurable blending modes via `mix-blend-mode`;
+- rounded rectangle clipping via destination-in blending or direct clipping;
+- optimizations to avoid surfaces when possible;
+- and browser compositing with extra surfaces for faster scrolling
 
 Besides the new features, we've upgraded from Tkinter to SDL and Skia,
 which makes our browser faster and more responsive, and also sets a
@@ -1811,7 +1811,7 @@ should now look something like this:
 Exercises
 =========
 
-*Filters*: The `filter` CSS property allows specifying various kinds
+11-1 *Filters*. The `filter` CSS property allows specifying various kinds
 of more [complex effects][filter-css], such as grayscale or blur.
 These are fun to implement, and some, like `blur`, have built-in
 support in Skia. Implement `blur`. Think carefully about when blurring
@@ -1820,14 +1820,14 @@ blending.
 
 [filter-css]: https://developer.mozilla.org/en-US/docs/Web/CSS/filter
 
-*Hit testing*: If you have an element with a `border-radius`, it's
+11-2 *Hit testing*. If you have an element with a `border-radius`, it's
 possible to click outside the element but inside its containing
 rectangle, by clicking in the part of the corner that is "rounded
 off". This shouldn't result in clicking on the element, but in our
 browser it currently does. Modify the `click` method to take border
 radii into account.
 
-*Interest region*: Our browser now draws the whole web page to a
+11-3 *Interest region*. Our browser now draws the whole web page to a
 single surface, which means a very long web page (like this one!)
 creates a large surface, thereby using a lot of memory. Instead, only
 draw an "interest region" of limited height, say `4 * HEIGHT` pixels.
@@ -1836,7 +1836,7 @@ draw the correct part of it to the screen, and re-raster the interest
 region when the user attempts to scroll outside of it. Use Skia's
 `clipRect` operation to avoid drawing outside the interest region.
 
-*Overflow scrolling*: An element with the `overflow` property set to
+11-4 *Overflow scrolling*. An element with the `overflow` property set to
 `scroll` and a fixed pixel `height` is scrollable. (You'll want to
 implement the width/height exercise from [Chapter
 6](styles.md#exercises) so that `height` is supported.) Implement some
@@ -1849,7 +1849,7 @@ other scrollable elements.
 
  [overflow-doc]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Flow_Layout/Flow_Layout_and_Overflow
 
-*Touch input*: Many desktop (and all mobile, of course) screens these
+11-5 *Touch input*. Many desktop (and all mobile, of course) screens these
 days support touch and multitouch input. And SDL has [APIs][sdl-touch]
 to support it. Implement a touch-input variant of `click`.^[You might want
 to go back and look at a go-further block in [Chapter 7](chrome.md) for some

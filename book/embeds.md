@@ -2249,21 +2249,18 @@ Summary
 This chapter introduced how the browser handles embedded content use cases like
 images and iframes. Reiterating the main points:
 
-* Non-HTML *embedded content*---images, video, canvas, iframes, input elements,
-  and plugins---can be embedded in a web page
-
-* Embedded content comes with its own performance concerns---like
-  image decoding time---and necessitates custom optimizations
-
-* Iframes are a particularly important kind of embedded content,
+- non-HTML *embedded content*---images, video, canvas, iframes, input elements,
+  and plugins---can be embedded in a web page;
+- embedded content comes with its own performance concerns---like
+  image decoding time---and necessitates custom optimizations;
+- iframes are a particularly important kind of embedded content,
   having over time replaced browser plugins as the standard way to
-  easily embed complex content into a web page
-
-* Iframes introduce all the complexities of the web---rendering, event
+  easily embed complex content into a web page;
+- and iframes introduce all the complexities of the web---rendering, event
   handling, navigation, security---into the browser's handling of
   embedded content. However, this complexity is justified, because
   they enable important cross-origin use cases like ads, video, and
-  social media buttons
+  social media buttons.
 
 And as we hope you saw in this chapter, none of these features are too
 difficult to implement, though---as you'll see in the exercises
@@ -2294,7 +2291,7 @@ should now look something like this:
 Exercises
 =========
 
-*Canvas element*: Implement the [`<canvas>`][canvas-elt] element, the 2D aspect
+15-1 *Canvas element*. Implement the [`<canvas>`][canvas-elt] element, the 2D aspect
 of the [`getContext`][getcontext] API, and some of the drawing commands on
 [`CanvasRenderingContext2D`][crc2d]. Canvas layout is just like an iframe,
 including its default width and height. You should allocate a Skia surface of
@@ -2313,7 +2310,7 @@ rasterization time.
 
 [retained-mode]: https://en.wikipedia.org/wiki/Retained_mode
 
-*Background images*: Elements can have a [`background-image`][bg-img].
+15-2 *Background images*. Elements can have a [`background-image`][bg-img].
 Implement the basics of this CSS property: a `url(...)` value for the
 `background-image` property. Avoid loading the image if the
 `background-image` property does not actually end up used on any
@@ -2325,13 +2322,13 @@ property.
 
 [bg-size]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-size
 
-*Object-fit*: implement the [`object-fit`][obj-fit] CSS property. It determines
+15-3 *Object-fit*. implement the [`object-fit`][obj-fit] CSS property. It determines
 how the image within an `<img>` element is sized relative to its container
 element. This will require clipping images with a different aspect ratio.
 
 [obj-fit]: https://developer.mozilla.org/en-US/docs/Web/CSS/object-fit
 
-*Lazy loading*: Downloading images can use quite a bit of
+15-4 *Lazy loading*. Downloading images can use quite a bit of
 data.[^early-lazy-loading] While browsers default to download all
 images on the page immediately, the [`loading`
 attribute][img-loading] on `img` elements can instruct a browser to only
@@ -2348,14 +2345,14 @@ downloading of images until the user expressly asked for them.
 
 [img-loading]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/img#loading
 
-*Iframe aspect ratio*: Implement the [`aspect-ratio`][aspect-ratio] CSS
+15-5 *Iframe aspect ratio*. Implement the [`aspect-ratio`][aspect-ratio] CSS
 property and use it to provide an implicit sizing to iframes and images
 when only one of `width` or `height` is specified (or when the image is not
 yet loaded, if you do the lazy loading exercise).
 
 [aspect-ratio]: https://developer.mozilla.org/en-US/docs/Web/CSS/aspect-ratio
 
-*Image placeholders*: Building on top of lazy loading, implement placeholder
+15-6 *Image placeholders*. Building on top of lazy loading, implement placeholder
 styling of images that haven't loaded yet. This is done by setting a 0x0 sizing,
 unless `width` or `height` is specified. Also add support for hiding the
 "broken image" if the `alt` attribute is missing or empty.^[That's because
@@ -2364,24 +2361,24 @@ to the meaning of the website, and so it should tell the user that they
 are missing out on some of the content if it fails to load. But otherwise,
 the broken image icon is probably just ugly clutter.]
 
-*Media queries*: Implement the [`width`][width-mq] media query. Make
+15-7 *Media queries*. Implement the [`width`][width-mq] media query. Make
 sure it works inside iframes. Also make sure it works even when the
 width of an iframe is changed by its parent frame.
 
 [width-mq]: https://developer.mozilla.org/en-US/docs/Web/CSS/@media/width
 
-*Target origin for `postMessage`*: Implement the `targetOrigin`
+15-8 *Target origin for `postMessage`*. Implement the `targetOrigin`
 parameter to [`postMessage`][postmessage]. This parameter is a string
 which indicates the frame origins that are allowed to receive the
 message.
 
-*Multi-frame focus*: in our browser, pressing `Tab` cycles through
+15-9 *Multi-frame focus*. in our browser, pressing `Tab` cycles through
 the elements in the focused frame. But this means it's impossible to access
 focusable elements in other frames by keyboard alone. Fix it to move
 between frames after iterating through all focusable elements in one
 frame.
 
-*Iframe history*: Ensure that iframes affect browser history. For
+15-10 *Iframe history*. Ensure that iframes affect browser history. For
 example, if you click on a link inside an iframe, and then hit
 back button, it should go back inside the iframe. Make sure that this
 works even when the user clicks links in multiple frames in various
@@ -2389,12 +2386,12 @@ orders.^[It's debatable whether this is a good feature of iframes, as
 it causes a lot of confusion for web developers who embed iframes they
 don't plan on navigating.]
 
-*Iframes added or removed by script*: the `innerHTML` API can cause iframes
+15-11 *Iframes added or removed by script*. the `innerHTML` API can cause iframes
 to be added or removed, but our browser doesn't load or unload them
 when this happens. Fix this: new iframes should be loaded and old ones
 unloaded.
 
-*X-Frame-Options*: Implement [this header][xfo], which disallows a web page from
+15-12 *X-Frame-Options*. Implement [this header][xfo], which disallows a web page from
 appearing in an iframe.
 
 [xfo]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options

@@ -1225,11 +1225,11 @@ We've added user data, in the form of cookies, to our browser, and
 immediately had to bear the heavy burden of securing that data and
 ensuring it was not misused. That involved:
 
-- Mitigating cross-site `XMLHttpRequest`s with the same-origin policy
-- Mitigating cross-site request forgery with nonces and with
-  `SameSite` cookies
-- Mitigating cross-site scripting with escaping and with
-  `Content-Security-Policy`
+- mitigating cross-site `XMLHttpRequest`s with the same-origin policy;
+- mitigating cross-site request forgery with nonces and with
+  `SameSite` cookies;
+- and mitigating cross-site scripting with escaping and with
+  `Content-Security-Policy`.
 
 We've also seen the more general lesson that every increase in the
 capabilities of a web browser also leads to an increase in its
@@ -1279,18 +1279,18 @@ The server has also grown since last chapter:
 Exercises
 =========
 
-*New inputs*: Add support for hidden and password input elements.
+10-1 *New inputs*. Add support for hidden and password input elements.
 Hidden inputs shouldn't show up or take up space, while password input
 elements should show their contents as stars instead of characters.
 
-*Certificate errors*: When accessing an HTTPS page, the web server can
+10-2 *Certificate errors*. When accessing an HTTPS page, the web server can
 send an invalid certificate ([badssl.com](https://badssl.com) hosts
 various invalid certificates you can use for testing). In this case,
 the `wrap_socket` function will raise a certificate error; Catch these
 errors and show a warning message to the user. For all *other* HTTPS
 pages draw a padlock (spelled `\N{lock}`) in the address bar.
 
-*Script access*: Implement the [`document.cookie` JavaScript
+10-3 *Script access*. Implement the [`document.cookie` JavaScript
 API][mdn-doc-cookie]. Reading this field should return a string
 containing the cookie value and parameters, formatted similarly to the
 `Cookie` header. Writing to this field updates the cookie value and
@@ -1300,13 +1300,13 @@ implement the `HttpOnly` cookie parameter; cookies with this parameter
 
 [std-httponly]: https://datatracker.ietf.org/doc/html/rfc6265#section-5.3
 
-*Cookie Expiration*: Add support for cookie expiration. Cookie
+10-4 *Cookie expiration*. Add support for cookie expiration. Cookie
 expiration dates are set in the `Set-Cookie` header, and can be
 overwritten if the same cookie is set again with a later date. On the
 server side, save the expiration date in the `SESSIONS` variable and
 use it to delete old sessions to save memory.
 
-*CORS*: Web servers can [*opt in*][cors] to allowing cross-origin
+10-5 *CORS*. Web servers can [*opt in*][cors] to allowing cross-origin
 `XMLHttpRequest`s. The way it works is that on cross-origin HTTP
 requests, the browser makes the request and includes an `Origin`
 header with the origin of the requesting site; this request includes
@@ -1319,7 +1319,7 @@ be what the CORS standard calls "simple requests".
 
 [cors]: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
 
-*Referer*: When your browser visits a web page, or when it loads a CSS
+10-6 *Referer*. When your browser visits a web page, or when it loads a CSS
 or JavaScript file, it sends a `Referer` header[^referer] containing
 the URL it is coming from. Sites often use this for analytics.
 Implement this in your browser. However, some URLs contain personal

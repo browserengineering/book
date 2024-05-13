@@ -1091,10 +1091,10 @@ Summary
 With this chapter we're starting to transform our browser into an
 application platform. We've added:
 
-- Layout objects for input areas and buttons
-- Clicking on buttons and typing into input areas
-- Hierarchical focus handling
-- Form submission with HTTP POST
+- layout objects for input areas and buttons;
+- clicking on buttons and typing into input areas;
+- hierarchical focus handling;
+- and form submission with HTTP POST.
 
 Plus, our browser now has a little web server friend. That's going to
 be handy as we add more interactive features to the browser.
@@ -1149,22 +1149,22 @@ If you run it, it should look something like this:
 Exercises
 =========
 
-*Enter key*: In most browsers, if you hit the "Enter" or "Return" key
+8-1 *Enter key*. In most browsers, if you hit the "Enter" or "Return" key
 while inside a text entry, that submits the form that the text entry
 was in. Add this feature to your browser.
 
-*GET forms*: Forms can be submitted via GET requests as well as POST
+8-2 *GET forms*. Forms can be submitted via GET requests as well as POST
 requests. In GET requests, the form-encoded data is pasted onto the
 end of the URL, separated from the path by a question mark, like
 `/search?q=hi`; GET form submissions have no body. Implement GET form
 submissions.
 
-*Blurring*: Right now, if you click inside a text entry, and then
+8-3 *Blurring*. Right now, if you click inside a text entry, and then
 inside the address bar, two cursors will appear on the screen. To fix
 this, add a `blur` method to each `Tab` which unfocuses anything that
 is focused, and call it before changing focus.
 
-*Check boxes*: In HTML, `input` elements have a `type` attribute. When
+8-4 *Check boxes*. In HTML, `input` elements have a `type` attribute. When
 set to `checkbox`, the `input` element looks like a checkbox; it's
 checked if the `checked` attribute is set, and unchecked
 otherwise.[^checked-attr] When the form is submitted, a checkbox's
@@ -1178,7 +1178,7 @@ checkbox has no `value` attribute, the default is the string `on`.)
     
 [mdn-checked]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/checkbox#attr-checked
 
-*Resubmit requests*: One reason to separate GET and POST requests is
+8-5 *Resubmit requests*. One reason to separate GET and POST requests is
 that GET requests are supposed to be *idempotent* (read-only,
 basically) while POST requests are assumed to change the web server
 state. That means that going "back" to a GET request (making the
@@ -1189,7 +1189,7 @@ to a POST-ed URL, ask the user if they want to resubmit the form.
 Don't go back if they say no; if they say yes, submit a POST request
 with the same body as before.
 
-*Message board*: Right now our web server is a simple guest book.
+8-6 *Message board*. Right now our web server is a simple guest book.
 Extend it into a simple message board by adding support for topics.
 Each topic should have its own URL and its own list of messages. So,
 for example, `/cooking` should be a page of posts (about cooking) and
@@ -1198,17 +1198,17 @@ when you go to `/cooking`, not when you go to `/cars`. Make the home
 page, from `/`, list the available topics with a link to each topic's
 page. Make it possible for users to add new topics.
 
-*Persistence*: Back the server's list of guest book entries with a
+8-7 *Persistence*. Back the server's list of guest book entries with a
 file, so that when the server is restarted it doesn't lose data.
 
-*Rich buttons*: Make it possible for a button to contain arbitrary
+8-8 *Rich buttons*. Make it possible for a button to contain arbitrary
 elements as children, and render them correctly. The children should
 be contained inside button instead of spilling out---this can make a
 button really tall. Think about edge cases, like a button that
 contains another button, an input area, or a link, and test real
 browsers to see what they do.
 
-*HTML chrome*: Browser chrome is quite complicated in real browsers,
+8-9 *HTML chrome*. Browser chrome is quite complicated in real browsers,
 with tricky details such as font sizes, padding, outlines, shadows,
 icons and so on. This makes it tempting to try to reuse our layout
 engine for it. Implement this, using `<button>` elements for the new

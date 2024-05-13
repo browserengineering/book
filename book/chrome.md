@@ -1383,18 +1383,18 @@ should now look something like this:
 Exercises
 =========
 
-*Backspace*. Add support for the backspace key when typing in the
+7-1 *Backspace*. Add support for the backspace key when typing in the
 address bar. Honestly, do this exercise just for your sanity.
 
-*Middle-click*. Add support for middle-clicking on a link (`Button-2`)
+7-2 *Middle-click*. Add support for middle-clicking on a link (`Button-2`)
 to open it in a new tab. You might want to use a mouse when testing.
 
-*Window title*. Browsers set their window title to the contents of the
+7-3 *Window title*. Browsers set their window title to the contents of the
 current tab's `<title>` element. Make your browser do the same. You
 can call the `title` method of your browser's `window` field to change
 the window title.
 
-*Forward*. Add a forward button, which should undo the back button. If
+7-4 *Forward*. Add a forward button, which should undo the back button. If
 the most recent navigation action wasn't a back button, the forward
 button shouldn't do anything.^[To accomplish this, you'll need to keep
 around history items when clicking the back button, and store an index
@@ -1403,7 +1403,7 @@ array.] Draw it in gray in that case, so the user isn't stuck wondering
 why it doesn't work. Also draw the back button in gray if there's nowhere
 to go back to.
 
-*Fragments*. URLs can contain a *fragment*, which comes at the end of
+7-5 *Fragments*. URLs can contain a *fragment*, which comes at the end of
 a URL and is separated from the path by a hash sign `#`. When the
 browser navigates to a URL with a fragment, it should scroll the page
 so that the element with that identifier is at the top of the screen.
@@ -1412,7 +1412,7 @@ don't load a new page, but instead scroll the element with that
 identifier to the top of the screen. The table of contents on this
 page uses fragment links.
 
-*Search*. If the user types something that's *not* a URL into the
+7-6 *Search*. If the user types something that's *not* a URL into the
 address bar, make your browser automatically search for it with a
 search engine. This usually means going to a special URL. For example,
 you can search Google by going to `https://google.com/search?q=QUERY`,
@@ -1425,7 +1425,7 @@ orthogonal to this address bar search feature.
 
 [query-escape]: https://en.wikipedia.org/wiki/Query_string#URL_encoding
 
-*Visited links*. In real browsers, links you've visited before are
+7-7 *Visited links*. In real browsers, links you've visited before are
 usually purple. Implement that feature. You'll need to store the set
 of visited URLs, annotate the corresponding HTML elements, and check
 those annotations when drawing the text.[^pseudo-class]
@@ -1436,26 +1436,26 @@ you want.
 
 [pseudo-class]: https://developer.mozilla.org/en-US/docs/Web/CSS/Pseudo-classes
 
-*Bookmarks*. Implement basic *bookmarks*. Add a button to the browser
+7-8 *Bookmarks*. Implement basic *bookmarks*. Add a button to the browser
 chrome; clicking it should bookmark the page. When you're looking at a
 bookmarked page, that bookmark button should look different (maybe
 yellow?) to remind the user that the page is bookmarked, and clicking
 it should un-bookmark it. Add a special web page, `about:bookmarks`,
 for viewing the list of bookmarks.
 
-*Cursor*. Make the left and right arrow keys move the text cursor
+7-9 *Cursor*. Make the left and right arrow keys move the text cursor
 around the address bar when it is focused. Pressing the backspace key
 should delete the character before the cursor, and typing other keys
 should add characters at the cursor. (Remember that the cursor can be
 before the first character or after the last!)
 
-*Multiple windows*. Add support for multiple browser windows in
+7-10 *Multiple windows*. Add support for multiple browser windows in
 addition to tabs. This will require keeping track of multiple Tk
 windows and canvases and grouping tabs by their containing window.
 You'll also need some way to create a new window, perhaps with a
 keypress such as `Ctrl+N`.
 
-*Clicks via the display list*. At the moment, our browser converts
+7-11 *Clicks via the display list*. At the moment, our browser converts
 a click location to page coordinates and then finds the layout object
 at those coordinates. But you could instead first look up the draw
 command at that location, and then go from the draw command to the
