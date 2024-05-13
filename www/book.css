@@ -8,12 +8,14 @@ body {
     color:#333;
 }
 }
+pre, code { hyphens: none; -webkit-hyphens: none; }
+pre { font-size: 20.5px; overflow: auto; padding-left: 2ex; }
+
 @media (max-width: 800px) {
     html { font-size: 18px; }
+    pre { font-size: 15.5px; }
 }
 
-pre, code { hyphens: none; -webkit-hyphens: none; }
-pre { font-size: 18px; overflow: auto; padding-left: 2ex; }
 
 dt { margin-top: 1em; }
 dd { margin-bottom: 1em; }
