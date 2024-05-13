@@ -144,9 +144,9 @@ def new_line(self):
     self.children.append(new_line)
 ```
 
-Now there's a lot of fields we're not using. Let's clean them up. In
+Now there are a lot of fields we're not using. Let's clean them up. In
 the core `layout` method, we don't need to initialize the
-`display_list` or `cursor_y` or `line` fields, since we won't be using
+`display_list`, `cursor_y` or `line` fields, since we won't be using
 any of those any more. Instead, we just need to call `new_line` and
 `recurse`:
 
@@ -232,7 +232,7 @@ class TextLayout:
         self.font = get_font(size, weight, style)
 ```
 
-Next, we need to compute word's size and `x` position. We use the font
+Next, we need to compute the word's size and `x` position. We use the font
 metrics to compute size, and stack words left to right to compute
 position.
 
@@ -391,7 +391,7 @@ class Browser:
 More generally, handling events like clicks involves *reversing* the
 usual rendering pipeline. Normally, rendering goes from elements to
 layout objects to page coordinates to screen coordinates; click
-handling goes backwards, starting with screen coordinates, then
+handling goes backward, starting with screen coordinates, then
 converting to page coordinates, and so on. The correspondence isn't
 perfectly reversed in practice^[Though see some exercises in this
 chapter and future ones on making it a closer match.] but it's a
@@ -671,7 +671,7 @@ have two rows:
   button to add a new tab.
 
 * Underneath, the URL of of the current web page, and a "`<`" button to
-  represent the browser back-button.
+  represent the browser back button.
 
 ::: {.center}
 ![The intended appearance of the browser chrome](im/chrome-chrome.png)
@@ -994,9 +994,8 @@ class Rect:
             and y >= self.top and y < self.bottom
 ```
 
-We use this method to handle clicks inside `Chrome`:
-
-And then use it to choose between clicking to add a tab or select an open tab.
+We use this method to handle clicks inside `Chrome`, and then use it to choose
+between clicking to add a tab or select an open tab.
 
 ``` {.python}
 class Chrome:
@@ -1089,7 +1088,7 @@ class Chrome:
                 url, self.font, "black"))
 ```
 
-Here `str` is a built-in Python function that we can override to
+Here, `str` is a built-in Python function that we can override to
 correctly convert `URL` objects to strings:
 
 ``` {.python}
@@ -1185,7 +1184,7 @@ Editing the URL
 
 One way to go to another page is by clicking on a link. But most
 browsers also allow you to type into the address bar to visit a new
-URL, if you happen to know the URL off-hand.
+URL, if you happen to know the URL.
 
 Take a moment to notice the complex ritual of typing in an address:
 
@@ -1198,7 +1197,7 @@ Take a moment to notice the complex ritual of typing in an address:
 - Finally, you type the "Enter" key which navigates to a new page.
 
 ::: {.print-only .center}
-![Screenshots of editing in the address bar in Apple Safari 16.6](im/chrome-editing.png)
+![Screenshots of editing in the address bar in Apple Safari 16.6.](im/chrome-editing.png)
 :::
 
 These steps suggest that the browser stores the contents of the
@@ -1232,7 +1231,7 @@ contents. That's not quite what a browser does, but it's pretty close,
 and lets us skip adding text selection.
 
 Now, when we draw the address bar, we need to check whether to draw
-the current URL or the currently-typed text:
+the current URL or the currently typed text:
 
 ``` {.python}
 class Chrome:
@@ -1345,11 +1344,11 @@ Summary
 
 It's been a lot of work just to handle links! We had to:
 
-- Give each word an explicit size and position
-- Determine which piece of text a user clicked on
-- Split per-page from browser-wide information
-- Draw a tab bar, an address bar, and a back button
-- And even implement text editing!
+- give each word an explicit size and position;
+- determine which piece of text a user clicked on;
+- split per-page from browser-wide information;
+- draw a tab bar, an address bar, and a back button;
+- and even implement text editing!
 
 Now just imagine all the features you can add to your browser!
 
@@ -1384,18 +1383,18 @@ should now look something like this:
 Exercises
 =========
 
-*Backspace*: Add support for the backspace key when typing in the
+*Backspace*. Add support for the backspace key when typing in the
 address bar. Honestly, do this exercise just for your sanity.
 
-*Middle-click*: Add support for middle-clicking on a link (`Button-2`)
+*Middle-click*. Add support for middle-clicking on a link (`Button-2`)
 to open it in a new tab. You might want to use a mouse when testing.
 
-*Window title*: Browsers set their window title to the contents of the
+*Window title*. Browsers set their window title to the contents of the
 current tab's `<title>` element. Make your browser do the same. You
 can call the `title` method of your browser's `window` field to change
 the window title.
 
-*Forward*: Add a forward button, which should undo the back button. If
+*Forward*. Add a forward button, which should undo the back button. If
 the most recent navigation action wasn't a back button, the forward
 button shouldn't do anything.^[To accomplish this, you'll need to keep
 around history items when clicking the back button, and store an index
@@ -1404,7 +1403,7 @@ array.] Draw it in gray in that case, so the user isn't stuck wondering
 why it doesn't work. Also draw the back button in gray if there's nowhere
 to go back to.
 
-*Fragments*: URLs can contain a *fragment*, which comes at the end of
+*Fragments*. URLs can contain a *fragment*, which comes at the end of
 a URL and is separated from the path by a hash sign `#`. When the
 browser navigates to a URL with a fragment, it should scroll the page
 so that the element with that identifier is at the top of the screen.
@@ -1413,7 +1412,7 @@ don't load a new page, but instead scroll the element with that
 identifier to the top of the screen. The table of contents on this
 page uses fragment links.
 
-*Search*: If the user types something that's *not* a URL into the
+*Search*. If the user types something that's *not* a URL into the
 address bar, make your browser automatically search for it with a
 search engine. This usually means going to a special URL. For example,
 you can search Google by going to `https://google.com/search?q=QUERY`,
@@ -1426,7 +1425,7 @@ orthogonal to this address bar search feature.
 
 [query-escape]: https://en.wikipedia.org/wiki/Query_string#URL_encoding
 
-*Visited Links*: In real browsers, links you've visited before are
+*Visited links*. In real browsers, links you've visited before are
 usually purple. Implement that feature. You'll need to store the set
 of visited URLs, annotate the corresponding HTML elements, and check
 those annotations when drawing the text.[^pseudo-class]
@@ -1437,26 +1436,26 @@ you want.
 
 [pseudo-class]: https://developer.mozilla.org/en-US/docs/Web/CSS/Pseudo-classes
 
-*Bookmarks*: Implement basic *bookmarks*. Add a button to the browser
+*Bookmarks*. Implement basic *bookmarks*. Add a button to the browser
 chrome; clicking it should bookmark the page. When you're looking at a
 bookmarked page, that bookmark button should look different (maybe
 yellow?) to remind the user that the page is bookmarked, and clicking
 it should un-bookmark it. Add a special web page, `about:bookmarks`,
 for viewing the list of bookmarks.
 
-*Cursor*: Make the left and right arrow keys move the text cursor
+*Cursor*. Make the left and right arrow keys move the text cursor
 around the address bar when it is focused. Pressing the backspace key
 should delete the character before the cursor, and typing other keys
 should add characters at the cursor. (Remember that the cursor can be
 before the first character or after the last!)
 
-*Multiple windows*: Add support for multiple browser windows in
+*Multiple windows*. Add support for multiple browser windows in
 addition to tabs. This will require keeping track of multiple Tk
 windows and canvases and grouping tabs by their containing window.
 You'll also need some way to create a new window, perhaps with a
 keypress such as `Ctrl+N`.
 
-*Clicks via the display list*: At the moment, our browser converts
+*Clicks via the display list*. At the moment, our browser converts
 a click location to page coordinates and then finds the layout object
 at those coordinates. But you could instead first look up the draw
 command at that location, and then go from the draw command to the
