@@ -989,7 +989,7 @@ should look something like this:
 Exercises
 =========
 
-3-1 *Centered Text*. This book's page titles are centered; make your
+3-1 *Centered text*. This book's page titles are centered; make your
 browser do the same for text between `<h1 class="title">` and `</h1>`.
 Each line has to be centered individually, because different lines
 will have different lengths.[^center-tag]
