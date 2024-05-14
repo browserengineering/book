@@ -15,7 +15,7 @@ simplest way for a browser to send information to a server.
 How forms work
 ==============
 
-HTML forms have a couple of moving pieces.
+HTML forms have a couple of moving parts.
 
 First, in HTML, there is a `form` element, which contains `input`
 elements,[^or-others] which in turn can be edited by the user. So a
@@ -68,7 +68,7 @@ Implementing forms requires extending many parts of the browser, from
 implementing HTTP `POST` through new layout objects that draw `input`
 elements to handling buttons clicks. That makes it a great starting
 point for transforming our browser into an application platform,
-our goal for these next few chapters. Let's get started implementing
+our goal for the next few chapters. Let's get started implementing
 it all!
 
 ::: {.further}
@@ -174,7 +174,7 @@ not just a text node. That's too complicated for this chapter, so I'm
 having the browser print a warning and skip the text in that
 case.[^exercises] Finally, we draw that text:
 
-[^exercises]: There's an [exercise](#exercises) on this.
+[^exercises]: See Exercise 8-8.
 
 ``` {.python}
 class InputLayout:
@@ -326,7 +326,7 @@ class Tab:
 However, if you try this, you'll notice that clicking does not
 actually clear the `input` element. That's because the code above
 updates the HTML tree---but we need to update the layout tree and then
-the display list of the change to appear on the screen.
+the display list for the change to appear on the screen.
 
 Right now, the layout tree and display list are computed in `load`,
 but we don't want to reload the whole page; we just want to redo the
@@ -440,7 +440,7 @@ The `if` branch that corresponds to clicks in the browser chrome
 unsets `focus`, meaning focus is no longer on the page contents,
 and key presses will thus be sent to the `Chrome`.
 
-When a key press happens, the `Browser` sends it either to the address
+When a key press happens, the `Browser` either sends it to the address
 bar or calls the active tab's `keypress` method (or neither, if nothing is
 focused):
 
@@ -523,7 +523,7 @@ class Tab:
                 return self.render()
 ```
 
-Note that we have to un-focus[^blur] the currently-focused element,
+Note that we have to un-focus[^blur] the currently focused element,
 lest it keep drawing its cursor. Anyway, now we can draw a cursor if
 an `input` element is focused:
 
@@ -600,8 +600,8 @@ class Tab:
 ```
 
 For each of those `input` elements, we need to extract the `name`
-attribute and the `value` attribute, and _form-encode_ both of them.
-Form encoding is how the name/value pairs are formatted in the HTTP
+attribute and the `value` attribute, and _form encode_ both of them.
+Form encoding is how the name-value pairs are formatted in the HTTP
 `POST` request. Basically: name, then equal sign, then value; and
 name-value pairs are separated by ampersands:
 
@@ -617,7 +617,7 @@ class Tab:
         body = body[1:]
 ```
 
-Here `body` initially has an extra `&` tacked on to the front, which
+Here, `body` initially has an extra `&` tacked on to the front, which
 is removed on the last line.
 
 Now, any time you see special syntax like this, you've got to ask:
@@ -638,7 +638,7 @@ for input in inputs:
 
 [^why-use-library]: You can write your own `percent_encode` function
 using Python's `ord` and `hex` functions if you'd like. I'm using the
-standard function for expediency. [Earlier in the book](http.md),
+standard function for expediency. [In chapter 1](http.md),
 using these library functions would have obscured key concepts, but by
 this point percent encoding is necessary but not conceptually
 interesting.
@@ -676,7 +676,7 @@ class URL:
         # ...
 ```
 
-If there it's a `POST` request, the `Content-Length` header is mandatory:
+If it's a `POST` request, the `Content-Length` header is mandatory:
 
 ``` {.python}
 class URL:
@@ -709,7 +709,7 @@ with an HTML page and the browser will render it in the totally normal
 way.[^or-redirect] That's basically it for forms!
 
 [^or-redirect]: Actually, because browsers treat going "back" to a
-    `POST`-requested page specially (see the [exercises](#exercises)),
+    `POST`-requested page specially (see Exercise 8-5),
     it's common to respond to a `POST` request with a redirect.
 
 ::: {.further}
@@ -727,7 +727,7 @@ which even the standard warns against using.
 How web apps work
 =================
 
-So... How do web applications (a.k.a. web apps) use forms? When you
+So...how do web applications (web apps) use forms? When you
 use an application from your browser---whether you are registering to
 vote, looking at pictures of your baby cousin, or checking your
 email---there are typically[^exceptions] two programs involved: client
@@ -748,13 +748,13 @@ page---drawing the posts, letting the user enter new ones---happens in
 the browser. Both components are necessary.
 
 The browser and the server interact over HTTP. The browser first makes
-a GET request to the server to load the current message board. The
+a `GET` request to the server to load the current message board. The
 user interacts with the browser to type a new post, and submits it to
-the server (say, via a form). That causes the browser to make a POST
+the server (say, via a form). That causes the browser to make a `POST`
 request to the server, which instructs the server to update the
 message board state. The server then needs the browser to update what
 the user sees; with forms, the server sends a new HTML page in its
-response to the POST request.
+response to the `POST` request.
 
 ::: {.print-only}
 ![The cycle of request and response for a multi-page application](im/forms-mpa.png)
@@ -764,7 +764,7 @@ Forms are a simple, minimal introduction to this cycle of request and
 response and make a good introduction to how browser applications
 work. They're also implemented in every browser and have been around
 for decades. These days many web applications use the form elements,
-but replace synchronous POST requests with asynchronous ones driven by
+but replace synchronous `POST` requests with asynchronous ones driven by
 Javascript,[^ajax] which makes applications snappier by hiding the time
 to make the HTTP request. In return for that snappiness, that
 JavaScript code must now handle errors, validate inputs, and indicate
@@ -778,12 +778,12 @@ forms are based on the same principles of client and server code.
 [web20]: https://en.wikipedia.org/wiki/Web_2.0
 
 ::: {.further}
-There are request types besides GET and POST, like [PUT][put-req]
-(create if nonexistant) and [DELETE][del-req], or the more obscure
-CONNECT and TRACE. In 2010 the [PATCH method][patch-req] was
+There are request types besides `GET` and `POST`, like [`PUT`][put-req]
+(create if nonexistant) and [`DELETE`][del-req], or the more obscure
+`CONNECT` and `TRACE`. In 2010 the [`PATCH` method][patch-req] was
 standardized in [RFC 5789][rfc5789]. New methods were intended as a
 standard extension mechanism for HTTP, and some protocols were built
-this way (like [WebDav][webdav]'s PROPFIND, MOVE, and LOCK methods),
+this way (like [WebDav][webdav]'s `PROPFIND`, `MOVE`,` and `LOCK` methods),
 but this did not become an enduring way to extend the web itself, and
 HTTP 2.0 and 3.0 did not add any new methods.
 :::
@@ -799,7 +799,7 @@ Receiving POST requests
 
 To better understand the request/response cycle, let's write a simple
 web server. It'll implement an online guest book,^[They were very hip
-in the 90s---comment threads from before there was anything to comment
+in the 1990s---comment threads from before there was anything to comment
 on.] kind of like an open, anonymous comment thread. Now, this is a
 book on web *browser* engineering, so I won't discuss web server
 implementation that thoroughly. But I want you to see how the server
@@ -808,9 +808,9 @@ side of an application works.
 A web server is a separate program from the web browser, so let's
 start a new file. The server will need to:
 
--   Open a socket and listen for connections
--   Parse HTTP requests it receives
--   Respond to those requests with an HTML web page
+-   open a socket and listen for connections;
+-   parse HTTP requests it receivesl
+-   and respond to those requests with an HTML web page.
 
 Let's start by opening a socket. Like for the browser, we need to
 create an internet streaming socket using TCP:
@@ -872,7 +872,7 @@ little trickier in the server than in the browser, because the server
 can't just read from the socket until the connection closes---the
 browser is waiting for the server and won't close the connection.
 
-So we've got to read from the socket line-by-line. First, we read the
+So, we've got to read from the socket line by line. First, we read the
 request line:
 
 ``` {.python file=server}
@@ -934,7 +934,7 @@ def handle_connection(conx):
     conx.close()
 ```
 
-This is all pretty bare-bones: our server doesn't check that the
+Our implementation is all pretty bare-bones: our server doesn't check that the
 browser is using HTTP 1.0 to talk to it, it doesn't send back any
 headers at all except `Content-Length`, it doesn't support TLS, and so
 on. Again: this is a web *browser* book---it'll do.
@@ -1075,7 +1075,7 @@ browser, and update the guest book a few times. You should also be
 able to use the guest book from a real web browser.
 
 ::: {.further}
-Typically connection handling and request routing is handled by a web
+Typically, connection handling and request routing is handled by a web
 framework; this book, for example uses [bottle.py][bottle-py].
 Frameworks parse requests into convenient data structures, route
 requests to the right handler, and can also provide tools like HTML
@@ -1153,10 +1153,10 @@ Exercises
 while inside a text entry, that submits the form that the text entry
 was in. Add this feature to your browser.
 
-8-2 *GET forms*. Forms can be submitted via GET requests as well as POST
-requests. In GET requests, the form-encoded data is pasted onto the
+8-2 *`GET` forms*. Forms can be submitted via `GET` requests as well as `POST`
+requests. In `GET` requests, the form-encoded data is pasted onto the
 end of the URL, separated from the path by a question mark, like
-`/search?q=hi`; GET form submissions have no body. Implement GET form
+`/search?q=hi`; GET form submissions have no body. Implement `GET` form
 submissions.
 
 8-3 *Blurring*. Right now, if you click inside a text entry, and then
@@ -1178,15 +1178,15 @@ checkbox has no `value` attribute, the default is the string `on`.)
     
 [mdn-checked]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/checkbox#attr-checked
 
-8-5 *Resubmit requests*. One reason to separate GET and POST requests is
-that GET requests are supposed to be *idempotent* (read-only,
-basically) while POST requests are assumed to change the web server
-state. That means that going "back" to a GET request (making the
-request again) is safe, while going "back" to a POST request is a bad
+8-5 *Resubmit requests*. One reason to separate `GET` and `POST` requests is
+that `GET` requests are supposed to be *idempotent* (read-only,
+basically) while `POST` requests are assumed to change the web server
+state. That means that going "back" to a `GET` request (making the
+request again) is safe, while going "back" to a `POST` request is a bad
 idea. Change the browser history to record what method was used to
-access each URL, and the POST body if one was used. When you go back
-to a POST-ed URL, ask the user if they want to resubmit the form.
-Don't go back if they say no; if they say yes, submit a POST request
+access each URL, and the `POST` body if one was used. When you go back
+to a `POST`-ed URL, ask the user if they want to resubmit the form.
+Don't go back if they say no; if they say yes, submit a `POST` request
 with the same body as before.
 
 8-6 *Message board*. Right now our web server is a simple guest book.
