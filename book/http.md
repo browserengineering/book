@@ -21,14 +21,18 @@ looks like this:
     (resources\index{web resource}) and
     also that it describes how to access those files (locator).
 
-::: {.cmd .web-only html=True}
+::: {.cmd .web-only .center html=True}
     python3 infra/annotate_code.py <<EOF
     [http][tl|Scheme]://[example.org][bl|Hostname][/index.html][tl|Path]
     EOF
 :::
 
+::: {.center}
+Figure 1: The syntax of URLs
+:::
+
 ::: {.print-only}
-![The syntax of URLs](im/http-url.png)
+![Figure 1: The syntax of URLs](im/http-url.png)
 :::
 
 A URL has three parts: the scheme\index{scheme} explains *how* to get the
@@ -149,7 +153,7 @@ is shown below. You can type it into `telnet` (make sure to type a blank line af
 :::
 
 ::: {.print-only}
-![An annotated HTTP GET request](im/http-get.png)
+![Figure 2: An annotated HTTP GET request](im/http-get.png)
 :::
 
 Here, the word `GET`\index{GET} means that the browser would like to receive
@@ -215,7 +219,7 @@ The server's response starts with the line below:
 :::
 
 ::: {.print-only}
-![Annotated first line of an HTTP response](im/http-status.png)
+![Figure 3: Annotated first line of an HTTP response](im/http-status.png)
 :::
 
 This tells you that the host confirms that it, too, speaks `HTTP/1.0`,
@@ -276,7 +280,7 @@ code that contains the content of the web page itself.
 The HTTP request/response transaction is summarized below. Let's now
 switch gears from manual connections to Python.
 
-![An HTTP request and response pair are how a web browser gets web
+![Figure 4: An HTTP request and response pair are how a web browser gets web
 pages from a web server](im/http-request.png)
 
 ::: {.further}
@@ -744,7 +748,7 @@ which encryption algorithms are used, how a common encryption key is agreed
 to, and of course how to make sure that the browser is connecting to
 the correct host. The difference in the protocol layers is shown below:
 
-![The difference between HTTP and HTTPS is the addition of a TLS layer.](im/http-tls.png)
+![Figure 5: The difference between HTTP and HTTPS is the addition of a TLS layer.](im/http-tls.png)
 
 Luckily, the Python `ssl` library implements all of these details for
 us, so making an encrypted connection is almost as easy as making a
@@ -839,7 +843,7 @@ specified in a URL by putting a colon after the host name:
 :::
 
 ::: {.print-only}
-![Where the port goes in a URL](im/http-ports.png)
+![Figure 6: Where the port goes in a URL](im/http-ports.png)
 :::
 
 If the URL has a port we can parse it out and use it:
