@@ -18,7 +18,7 @@ The Memex concept
 =================
 
 ::: {.center}
-![The original publication of *As We May Think*[^memex]](im/memex.jpg)
+![Figure 1: The original publication of *As We May Think*[^memex]](im/memex.jpg)
 :::
 
 [^memex]: <a href="https://www.flickr.com/people/79255326@N00">Dunkoman</a>
@@ -100,7 +100,7 @@ criticism in academic and literary communities. The Project Xanadu research
 papers were heavily motivated by this use case.
 
 ::: {.center}
-![A computer operator using a hypertext editing system in 1969[^hypertext-editing]](im/hes.jpg)
+![Figure 2: A computer operator using a hypertext editing system in 1969[^hypertext-editing]](im/hes.jpg)
 :::
 
 [^hypertext-editing]: Gregory Lloyd from <a href="https://commons.wikimedia.org/wiki/File:HES_IBM_2250_Console_grlloyd_Oct1969.png">Wikipedia</a>, <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.en" rel="license">CC BY-SA 4.0 International</a>.
@@ -124,7 +124,7 @@ introduced the computer mouse and graphical user interface, both of which are of
 course central components of a browser UI.[^even-more]
 
 ::: {.center}
-![Doug Engelbart presenting the mother of all demos[^engelbart]](im/engelbart.jpg)
+![Figure 3: Doug Engelbart presenting the mother of all demos[^engelbart]](im/engelbart.jpg)
 :::
 
 [^engelbart]: SRI International, via the
@@ -180,7 +180,7 @@ and the concept on the [alt.hypertext Usenet
 group](https://www.w3.org/People/Berners-Lee/1991/08/art-6484.txt).
 
 ::: {.center}
-![Screenshot of the WorldWideWeb browser[^worldwideweb]](im/worldwideweb.png)
+![Figure 4: Screenshot of the WorldWideWeb browser[^worldwideweb]](im/worldwideweb.png)
 :::
 
 [^worldwideweb]: <a
@@ -254,19 +254,19 @@ Explorer in 1995 and soon bundled it with Windows 95.
 [internet-tidal-wave]: https://lettersofnote.com/2011/07/22/the-internet-tidal-wave/
 
 ::: {.center}
-![Mosaic[^mosaic]](im/mosaic.png)
+![Figure 5: ViolaWWW[^violawww]](im/violawww.png)
 :::
 
 ::: {.center}
-![ViolaWWW[^violawww]](im/violawww.png)
+![Figure 6: Mosaic[^mosaic]](im/mosaic.png)
 :::
 
 ::: {.center}
-![Netscape Navigator 1.22[^netscape]](im/netscape.png)
+![Figure 7: Netscape Navigator 1.22[^netscape]](im/netscape.png)
 :::
 
 ::: {.center}
-![Internet Explorer 1.0[^ie]](im/ie1.png)
+![Figure 8: Internet Explorer 1.0[^ie]](im/ie1.png)
 :::
 
 [^mosaic]: <a href="https://commons.wikimedia.org/wiki/File:NCSA_Mosaic_Browser_Screenshot.png">Wikipedia</a>, <a href="https://creativecommons.org/publicdomain/zero/1.0/legalcode" rel="license">CC0 1.0</a>
