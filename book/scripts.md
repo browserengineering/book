@@ -481,7 +481,7 @@ indirection. I'll use simple numeric identifier, which I'll call a
 [^8]: Note the similarity to file descriptors, which give user-level
     applications access to kernel data structures.
 
-::: {.print-only}
+::: {.center}
 ![Figure 2: The relationship between `Node` objects in JavaScript and
 `Element`/`Text` objects in the browser is maintained through
 handles](im/scripts-handles.png)
@@ -648,7 +648,7 @@ time the element corresponding to `node` generates a `click` event.
 It's basically Tk's `bind`, but in the browser---see Figure 3.
 Let's implement it.
 
-::: {.print-only}
+::: {.center}
 ![Figure 3: The browser calls into JavaScript when events happen](im/scripts-events.png)
 :::
 
@@ -881,7 +881,7 @@ class JSContext:
 JavaScript can now modify the web page!^[Note that while rendering will
 update to account for the new HTML, any added scripts or style sheets
 will not properly load, and removed style sheets will (incorrectly) still
-apply. I've left fixing that as Exercise 10-7.]
+apply. I've left fixing that as Exercise 9-7.]
 
 Let's try this out in our guest book. Say we want a 100-character
 limit on guest book entries to prevent long, incoherent rants from
