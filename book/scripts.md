@@ -5,7 +5,7 @@ prev: forms
 next: security
 ...
 
-The first web applications were like [last chapter's guest
+The first web applications were like [the previous chapter's guest
 book](forms.md), with the server generating new web pages for every
 user action. But in the early 2000s, JavaScript-enhanced web
 applications, which can update pages dynamically and respond
@@ -48,7 +48,8 @@ python3 -m pip install dukpy
 ::: {.installation}
 If you have a really old version of Python, you might need to install
 the `pip` package first, possibly using a command line `easy_install`.
-If you do your Python programming through an IDE, you may need to use
+If you do your Python programming through an integrated development
+environment (IDE), you may need to use
 your IDE's package installer. If nothing else works, you can build
 [from source](https://github.com/amol-/dukpy).
 
@@ -91,7 +92,7 @@ On the web, JavaScript is found in `<script>` tags. Normally, a
 to a JavaScript file, much like with CSS files. A `<script>` tag could
 also contain JavaScript source code between the start and end tag, but
 we won't implement that.^[It's a challenge for parsing, since it's
-hard to avoid less than and greater than signs in JavaScript code.]
+hard to avoid less-than and greater-than signs in JavaScript code.]
 
 Finding and downloading those scripts is similar to what we did for
 CSS. First, we need to find all of the scripts:
@@ -108,7 +109,7 @@ class Tab:
         # ...
 ```
 
-Next we run all of the scripts:
+Next, we run all of the scripts:
 
 ``` {.python expected=False}
 def load(self, url, payload=None):
@@ -242,14 +243,15 @@ console = { log: function(x) { call_python("log", x); } }
 In case you're not too familiar with JavaScript,[^brush-up] this
 defines a variable called `console`, whose value is an object literal
 with the property `log`, whose value is a function that calls
-`call_python`.
+`call_python`. The interaction between the browser and JavaScript is shown
+in Figure 1.
 
 [^brush-up]: Now's a good time to [brush up][mdn-js]!
 
 [mdn-js]: https://developer.mozilla.org/en-US/docs/Learn/JavaScript/First_steps/A_first_splash
 
 ::: {.print-only}
-![The browser can evaluate JavaScript and JavaScript code can call
+![Figure 1: The browser can evaluate JavaScript and JavaScript code can call
 back into the browser](im/scripts-calls.png)
 :::
 
@@ -273,7 +275,7 @@ terminal. You should also be able to call `console.log` multiple
 times.
 
 Taking a step back, when we run JavaScript in our browser, we're
-mixing: C code, which implements the JavaScript interpreter; Python
+mixing C code, which implements the JavaScript interpreter; Python
 code, which implements certain JavaScript functions; a JavaScript
 runtime, which wraps the Python API to look more like the JavaScript
 one; and of course some user code in JavaScript. There's a lot of
@@ -323,7 +325,7 @@ those, because that's our code. Debugging these crashes is a bear: by
 default DukPy won't show a backtrace, and if the runtime code calls
 into a exported function that crashes it gets even more confusing.
 
-Here's a few tips to help with these crashes. First, if you get a
+Here are a few tips to help with these crashes. First, if you get a
 crash inside some JavaScript function, wrap the body of the function
 like this:
 
@@ -368,7 +370,7 @@ browser's console output?) We need to allow JavaScript to modify the
 page.
 
 JavaScript manipulates a web page by calling any of a large set of
-methods collectively called the DOM API, for "Document Object Model".
+methods collectively called the DOM API.
 The DOM API is big, and it keeps getting bigger, so we won't be
 implementing all, or even most, of it. But a few core functions show
 key elements of the full API:
@@ -464,7 +466,8 @@ However, this throws an error:[^7]
 
 [^7]: Yes, that's a confusing error message. Is it a `JSRuntimeError`,
     an `EvalError`, or a `TypeError`? The confusion is a consequence
-    of the complex interaction of Python, JS, and C code.
+    of the complex interaction of Python, JS, and C code. (JSON, or
+    JavaScript Object Notation, is a language-independent data format.)
 
 What DukPy is trying to tell you is that it has no idea what to do
 with the `Element` objects that `querySelectorAll` returns. After
@@ -479,8 +482,9 @@ indirection. I'll use simple numeric identifier, which I'll call a
     applications access to kernel data structures.
 
 ::: {.print-only}
-![The relationship between `Node` objects in JavaScript and `Element`/`Text` objects in the
-browser is maintained through handles](im/scripts-handles.png)
+![Figure 2: The relationship between `Node` objects in JavaScript and
+`Element`/`Text` objects in the browser is maintained through
+handles](im/scripts-handles.png)
 :::
 
 We'll need to keep track of the handle to node mapping. Let's create a
@@ -529,7 +533,7 @@ objects.[^nodelist] So let's define a `Node` object in our runtime
 that wraps a handle:[^10]
 
 [^nodelist]: In a real browser, `querySelectorAll` actually returns a
-    [`NodeList` object][nodelist-mdn], for kind-of-abstruse reasons
+    [`NodeList` object][nodelist-mdn], for kind of abstruse reasons
     that aren't relevant here.
     
 [nodelist-mdn]: https://developer.mozilla.org/en-US/docs/Web/API/NodeList
@@ -620,7 +624,7 @@ attribute values automatically. For example, the `id` property on
 of the underlying `Element`. This is very convenient, and avoids
 calling `setAttribute` and `getAttribute` all over the place. But this
 reflection only applies to certain fields; setting made-up JavaScript
-properties won't create corresponding HTML attributes, nor vice-versa.
+properties won't create corresponding HTML attributes, nor vice versa.
 :::
 
 [idAttr]: https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/id
@@ -641,10 +645,11 @@ browser generates *events*.\index{event} Each event has a type, like
 `addEventListener` method allows JavaScript to react to those events:
 `node.addEventListener('click', func)` sets `func` to run every
 time the element corresponding to `node` generates a `click` event.
-It's basically Tk's `bind`, but in the browser. Let's implement it.
+It's basically Tk's `bind`, but in the browser---see Figure 3.
+Let's implement it.
 
 ::: {.print-only}
-![The browser calls into JavaScript when events happen](im/scripts-events.png)
+![Figure 3: The browser calls into JavaScript when events happen](im/scripts-events.png)
 :::
 
 Let's start with generating events. I'll create a `dispatch_event`
@@ -734,7 +739,7 @@ class JSContext:
             EVENT_DISPATCH_JS, type=type, handle=handle)
 ```
 
-Here the `EVENT_DISPATCH_JS` constant is a string of JavaScript code that
+Here, the `EVENT_DISPATCH_JS` constant is a string of JavaScript code that
 dispatches a new event:
 
 ``` {.python replace=dukpy.type/new%20Event(dukpy.type)}
@@ -876,7 +881,7 @@ class JSContext:
 JavaScript can now modify the web page!^[Note that while rendering will
 update to account for the new HTML, any added scripts or style sheets
 will not properly load, and removed style sheets will (incorrectly) still
-apply. I've left fixing that to an exercise.]
+apply. I've left fixing that as Exercise 10-7.]
 
 Let's try this out in our guest book. Say we want a 100-character
 limit on guest book entries to prevent long, incoherent rants from
@@ -934,7 +939,7 @@ for (var i = 0; i < inputs.length; i++) {
 ```
 
 Try it out: write a long comment and you should see the page warning
-you that the comment is too long. By the way, we might want to make it
+you when it grows too long. By the way, we might want to make it
 stand out more, so let's go ahead and add another URL to our web
 server, `/comment.css`, with the contents:
 
@@ -1087,7 +1092,7 @@ form.addEventListener("submit", function(e) {
 This way it's impossible to submit the form when the comment is too
 long!
 
-Well... Impossible in this browser. But since there are browsers that
+Well...impossible in this browser. But since there are browsers that
 don't run JavaScript (like ours, one chapter back), we should check
 the length on the server side too:
 
@@ -1110,7 +1115,7 @@ replicating in JavaScript what the browser can already do.
 A closing thought: while our guest book now has a little bit of
 JavaScript code, it's still mostly HTML, CSS, form elements, other
 standard web features. In this way JavaScript extends the web instead
-of replacing it. This is in contrast to the recently-departed [Adobe
+of replacing it. This is in contrast to the recently departed [Adobe
 Flash][flash], and before that [Java Applets][javaApplets], which were
 self-contained plug-ins that handled input and rendering on their own.
 
@@ -1127,7 +1132,7 @@ On such sites, before hydration happens, the information in the site is
 hidden inside of JavaScript data structures. For this reason, search
 engines need to not just parse HTML, but also run JavaScript (and load style
 sheets) during indexing. In other words, the indexing systems use browsers
-(such as for example [headless Chrome][headless])---one more place browsers
+(such as, for example, [headless Chrome][headless])---one more place browsers
 appear in the web ecosystem.
 
 [spa]: https://en.wikipedia.org/wiki/Single-page_application
@@ -1155,7 +1160,7 @@ those demonstrate:
 - and attaching event listeners so that scripts can respond to page events.
 
 A web page can now add functionality via a clever script, instead of waiting for
-a browser developer to add it into the browser itself. And as a side-benefit,
+a browser developer to add it into the browser itself. And as a side benefit,
 a web page can now earn the lofty title of "web application".
 
 ::: {.web-only}
@@ -1194,7 +1199,7 @@ The server's outline is unchanged from the last chapter:
 Exercises
 =========
 
-9-1 *Node.children*. Add support for the [`children`][children] property
+9-1 *`Node.children`*. Add support for the [`children`][children] property
 on JavaScript `Node`s. `Node.children` returns the immediate `Element`
 children of a node, as an array. `Text` children are not
 included.[^text-children]
@@ -1204,7 +1209,7 @@ included.[^text-children]
 [^text-children]: The DOM method `childNodes` gives access to both elements and
     text.
 
-9-2 *createElement*. The [`document.createElement`][createElement] method
+9-2 *`createElement`*. The [`document.createElement`][createElement] method
 creates a new element, which can be *attached* to the document with the
 [`appendChild`][appendChild] and [`insertBefore`][insertBefore]
 methods on `Node`s; unlike `innerHTML`, there's no parsing involved.
@@ -1216,7 +1221,7 @@ Implement all three methods.
 
 [insertBefore]: https://developer.mozilla.org/en-US/docs/Web/API/Node/insertBefore
 
-9-3 *removeChild*. The [`removeChild`][removeChild] method on `Node`s
+9-3 *`removeChild`*. The [`removeChild`][removeChild] method on `Node`s
 detaches the provided child and returns it, bringing that child---and
 its subtree---back into an *detached* state. (It can then be
 *re-attached* elsewhere, with `appendChild` and `insertBefore`, or
@@ -1236,7 +1241,7 @@ the case of nodes being added and removed (such as with `innerHTML`).
 
 [html5-varnames]: http://www.whatwg.org/specs/web-apps/current-work/#named-access-on-the-window-object
 
-9-5 *Event Bubbling*. Right now, you can attach a `click` handler to `a`
+9-5 *Event bubbling*. Right now, you can attach a `click` handler to `a`
 (anchor) elements, but not to anything else. Fix this. One challenge you'll
 face is that when you click on an element, you also click on all its
 ancestors. On the web, this sort of quirk is handled by [*event
