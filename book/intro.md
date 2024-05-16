@@ -217,7 +217,8 @@ And it's worth contributing, because working on web browsers is a lot of fun.
 Browser code concepts
 =====================
 
-HTML and CSS are meant to be black boxes---declarative languages---where one
+HTML and CSS are meant to be black boxes---declarative application
+programming interfaces (APIs)---where one
 specifies _what_ outcome to achieve, and the _browser itself_ is
 responsible for figuring out _how_ to achieve it. Web developers
 don't, and mostly can't, draw their web pages' pixels on their own.
