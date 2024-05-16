@@ -1052,7 +1052,7 @@ security bug. So browsers provide additional layers of defense.
 Since the CSS parser we implemented in Chapter 6 is very
 permissive, some HTML pages also parse as valid CSS. This leads to an attack:
 include an external HTML page as a style sheet and observe the styling it
-applies. A[similar attack][json-hijack] involves including external JSON files
+applies. A [similar attack][json-hijack] involves including external JSON files
 as scripts. Setting a `Content-Type` header can prevent this sort of attack
 thanks to browsers' [Cross-Origin Read Blocking][corb] policy.
 :::
