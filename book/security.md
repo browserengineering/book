@@ -60,8 +60,8 @@ echoes it back in the `Cookie` header:
 :::
 
 Servers can set multiple cookies and also set parameters like
-expiration dates, but this `Set-Cookie` / `Cookie` transaction is the
-as shown in Figure 1 core principle.
+expiration dates, but this `Set-Cookie` / `Cookie` transaction
+as shown in Figure 1 is the core principle.
 
 ::: {.center}
 ![Figure 1: The server assigns cookies to the browser with the `Set-Cookie`
@@ -531,7 +531,7 @@ post, see hover previews, or submit a form without reloading.
 [mdn-fetch]: https://developer.mozilla.org/en-US/docs/Web/API/fetch
 
 ::: {.print-only}
-![The architecture of a single-page application leveraging
+![Figure 2: The architecture of a single-page application leveraging
 `XMLHttpRequest`](im/security-spa.png)
 :::
 
