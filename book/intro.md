@@ -147,7 +147,7 @@ by some other protocol, or HTML by a successor. Yet the web will stay the web,
 because any successor format is sure to support a *superset* of functionality,
 and have the same fundamental structure.
 
-The key thing to understand is this grand experiment is not over.
+The key thing to understand is that this grand experiment is not over.
 The essence of the web will stay, but by building web browsers you have the
 chance to shape its future.
 
