@@ -242,7 +242,7 @@ specifying their values directly;[^constraints] the browser solves the
 constraints to find those values. The same idea applies for actions: web pages
 mostly require _that_ actions take place without specifying _when_ they do.
 This _declarative_ style means that from the point of view of a developer,
-changes "apply immediately," but under the hood, the browser can be
+changes "apply immediately", but under the hood, the browser can be
 [lazy] and delay applying the changes until they become externally visible,
 either due to subsequent API calls or because the page has to be displayed to
 the user.[^style-calculation]
