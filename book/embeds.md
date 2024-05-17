@@ -1301,7 +1301,7 @@ works without any more changes!
 
 You should now be able to load [this
 example](examples/example15-iframe.html). It should look like the image
-shown in in Figure 5.
+shown in Figure 5.
 
 ::: {.center}
 ![Figure 5: Rendering of an iframe.](examples/example15-iframe.png)
