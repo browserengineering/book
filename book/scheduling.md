@@ -173,7 +173,7 @@ setTimeout(callback, 1000);
 ```
 
 As with `addEventListener` in [Chapter 9](scripts.md#event-handling),
-we'll implement `setTimeout` by saving the callback in in a JavaScript
+we'll implement `setTimeout` by saving the callback in a JavaScript
 variable and creating a handle by which the Python-side code can call
 it:
 
