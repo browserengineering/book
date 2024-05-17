@@ -1906,7 +1906,7 @@ class Browser:
 
 That's it! If you try the counting demo now, you'll be able to scroll
 even during the artificial pauses.
-[here](examples/example12-count-with-scroll.trace) is a trace that
+[Here](examples/example12-count-with-scroll.trace) is a trace that
 shows threaded scrolling at work (notice how raster and draw now
 sometimes happen at the same time as main-thread work), and it's visualized
 in Figure 4.
