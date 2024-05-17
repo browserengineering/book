@@ -282,9 +282,9 @@ readable.[^font-metrics]
 numbers with font metrics.
 
 The text now forms a line from left to right. But with an
-800-pixel-wide canvas and 13 pixels per character, one line only fits
-about 60 characters. You need more than that to read a novel, so we
-also need to *wrap* the text once we reach the edge of the screen:
+800-pixel-wide canvas and 13 pixels per character, one line only fits about 60
+characters. You need more than that to read a novel, so we also need
+to *wrap* the text once we reach the edge of the screen:
 
 ``` {.python indent=8}
 for c in text:
@@ -327,7 +327,7 @@ Here's a widget demonstrating that concept:
 [^not-800]: Not 800, because we started at pixel 13 and I want to leave an
     even gap on both sides.
 
-At this point you should be able to load up [our example ][ex-monkey] in your
+At this point you should be able to load up [our example page][ex-monkey] in your
 browser and have it look something like Figure 4.
 
 <div class=center>
