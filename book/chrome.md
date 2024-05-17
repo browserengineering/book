@@ -320,7 +320,9 @@ And each `TextLayout` creates a single `DrawText` call:
 class TextLayout:
     def paint(self):
         color = self.node.style["color"]
-        return [DrawText(self.x, self.y, self.word, self.font, color)]
+        return [
+            DrawText(self.x, self.y, self.word, self.font, color)
+        ]
 ```
 
 Now we don't need a `display_list` field in `BlockLayout`, and we can
@@ -814,7 +816,8 @@ class Chrome:
                 bounds.right, 0, bounds.right, bounds.bottom,
                 "black", 1))
             cmds.append(DrawText(
-                bounds.left + self.padding, bounds.top + self.padding,
+                bounds.left + self.padding,
+                bounds.top + self.padding,
                 "Tab {}".format(i), self.font, "black"))
         # ...
 ```
@@ -829,10 +832,12 @@ class Chrome:
             # ...
             if tab == self.browser.active_tab:
                 cmds.append(DrawLine(
-                    0, bounds.bottom, bounds.left, bounds.bottom,
+                    0, bounds.bottom,
+                    bounds.left, bounds.bottom,
                     "black", 1))
                 cmds.append(DrawLine(
-                    bounds.right, bounds.bottom, WIDTH, bounds.bottom,
+                    bounds.right, bounds.bottom,
+                    WIDTH, bounds.bottom,
                     "black", 1))
 ```
 
@@ -1002,7 +1007,8 @@ And then use it to choose between clicking to add a tab or select an open tab.
 class Chrome:
     def click(self, x, y):
         if self.newtab_rect.containsPoint(x, y):
-            self.browser.new_tab(URL("https://browser.engineering/"))
+            self.browser.new_tab(
+                URL("https://browser.engineering/"))
         else:
             for i, tab in enumerate(self.browser.tabs):
                 if self.tab_rect(i).containsPoint(x, y):
@@ -1100,7 +1106,8 @@ class URL:
             port_part = ""
         if self.scheme == "http" and self.port == 80:
             port_part = ""
-        return self.scheme + "://" + self.host + port_part + self.path
+        return self.scheme + "://" + self.host + \
+            port_part + self.path
 ```
 
 I think the extra logic to hide port numbers is worth it to make the

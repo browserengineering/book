@@ -26,7 +26,8 @@ class URL:
             port_part = ""
         if self.scheme == "http" and self.port == 80:
             port_part = ""
-        return self.scheme + "://" + self.host + port_part + self.path
+        return self.scheme + "://" + self.host + \
+            port_part + self.path
 
 class LineLayout:
     def __init__(self, node, parent, previous):
@@ -105,7 +106,9 @@ class TextLayout:
 
     def paint(self):
         color = self.node.style["color"]
-        return [DrawText(self.x, self.y, self.word, self.font, color)]
+        return [
+            DrawText(self.x, self.y, self.word, self.font, color)
+        ]
     
     @wbetools.js_hide
     def __repr__(self):
@@ -419,15 +422,18 @@ class Chrome:
                 bounds.right, 0, bounds.right, bounds.bottom,
                 "black", 1))
             cmds.append(DrawText(
-                bounds.left + self.padding, bounds.top + self.padding,
+                bounds.left + self.padding,
+                bounds.top + self.padding,
                 "Tab {}".format(i), self.font, "black"))
 
             if tab == self.browser.active_tab:
                 cmds.append(DrawLine(
-                    0, bounds.bottom, bounds.left, bounds.bottom,
+                    0, bounds.bottom,
+                    bounds.left, bounds.bottom,
                     "black", 1))
                 cmds.append(DrawLine(
-                    bounds.right, bounds.bottom, WIDTH, bounds.bottom,
+                    bounds.right, bounds.bottom,
+                    WIDTH, bounds.bottom,
                     "black", 1))
 
         cmds.append(DrawOutline(self.back_rect, "black", 1))
@@ -461,7 +467,8 @@ class Chrome:
     def click(self, x, y):
         self.focus = None
         if self.newtab_rect.containsPoint(x, y):
-            self.browser.new_tab(URL("https://browser.engineering/"))
+            self.browser.new_tab(
+                URL("https://browser.engineering/"))
         elif self.back_rect.containsPoint(x, y):
             self.browser.active_tab.go_back()
         elif self.address_rect.containsPoint(x, y):

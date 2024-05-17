@@ -627,7 +627,8 @@ The `origin` function can just strip off the path from a URL:
 ``` {.python}
 class URL:
     def origin(self):
-        return self.scheme + "://" + self.host + ":" + str(self.port)
+        return self.scheme + "://" + self.host + \
+            ":" + str(self.port)
 ```
 
 Now an attacker can't read the guest book web page. But can they write

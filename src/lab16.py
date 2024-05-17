@@ -32,13 +32,13 @@ from lab12 import Task, TaskRunner, SingleThreadedTaskRunner
 from lab13 import diff_styles, parse_transition, add_parent_pointers
 from lab13 import local_to_absolute, absolute_bounds_for_obj
 from lab13 import NumericAnimation
-from lab13 import map_translation, parse_transform
+from lab13 import map_translation, parse_transform, absolute_to_local
 from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import PaintCommand, DrawText, DrawCompositedLayer, \
     DrawLine, DrawRRect
 from lab13 import VisualEffect, Blend, Transform, DrawOutline
 from lab14 import parse_outline, style, \
-    paint_outline, dpx, cascade_priority, \
+    paint_outline, dpx, Chrome, cascade_priority, \
     is_focusable, get_tabindex, speak_text, \
     CSSParser, mainloop
 from lab15 import URL, HTMLParser, AttributeParser, DrawImage, \
@@ -46,7 +46,8 @@ from lab15 import URL, HTMLParser, AttributeParser, DrawImage, \
     EmbedLayout, InputLayout, LineLayout, TextLayout, ImageLayout, \
     IframeLayout, JSContext, AccessibilityNode, Frame, Tab, \
     CommitData, Browser, BROKEN_IMAGE, font, \
-    IFRAME_WIDTH_PX, IFRAME_HEIGHT_PX, parse_image_rendering, DEFAULT_STYLE_SHEET
+    IFRAME_WIDTH_PX, IFRAME_HEIGHT_PX, parse_image_rendering, DEFAULT_STYLE_SHEET, \
+    RUNTIME_JS
 import wbetools
 
 @wbetools.patch(is_focusable)

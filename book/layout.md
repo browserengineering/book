@@ -664,7 +664,8 @@ a gray background to `pre` tags (which are used for code examples):
 class BlockLayout:
     def paint(self):
         # ...
-        if isinstance(self.node, Element) and self.node.tag == "pre":
+        if isinstance(self.node, Element) and \
+           self.node.tag == "pre":
             x2, y2 = self.x + self.width, self.y + self.height
             rect = DrawRect(self.x, self.y, x2, y2, "gray")
             cmds.append(rect)

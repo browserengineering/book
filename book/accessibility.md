@@ -358,8 +358,8 @@ class TextLayout:
 	# ...
     def layout(self):
     	# ...
-        size = dpx(
-        	float(self.node.style["font-size"][:-2]) * 0.75, self.zoom)
+        px_size = float(self.node.style["font-size"][:-2])
+        size = dpx(px_size * 0.75, self.zoom)
 ```
 
 And the fixed `INPUT_WIDTH_PX` for text boxes:

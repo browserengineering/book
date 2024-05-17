@@ -41,7 +41,7 @@ from lab12 import Task, REFRESH_RATE_SEC
 from lab13 import JSContext, diff_styles, add_parent_pointers
 from lab13 import local_to_absolute, absolute_bounds_for_obj
 from lab13 import NumericAnimation
-from lab13 import map_translation, parse_transform
+from lab13 import map_translation, parse_transform, absolute_to_local
 from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import PaintCommand, DrawText, DrawCompositedLayer, DrawOutline, \
     DrawLine, DrawRRect
@@ -163,8 +163,8 @@ class BlockLayout:
     def word(self, node, word):
         weight = node.style["font-weight"]
         style = node.style["font-style"]
-        size = dpx(float(node.style["font-size"][:-2]) * 0.75,
-            self.zoom)
+        px_size = float(node.style["font-size"][:-2])
+        size = dpx(px_size * 0.75, self.zoom)
         font = get_font(size, weight, size)
         w = font.measureText(word)
         if self.cursor_x + w > self.width:
@@ -185,8 +185,8 @@ class BlockLayout:
         self.previous_word = input
         weight = node.style["font-weight"]
         style = node.style["font-style"]
-        size = dpx(float(node.style["font-size"][:-2]) * 0.75,
-            self.zoom)
+        px_size = float(node.style["font-size"][:-2])
+        size = dpx(px_size * 0.75, self.zoom)
         font = get_font(size, weight, size)
         self.cursor_x += w + font.measureText(" ")
 
@@ -389,8 +389,8 @@ class TextLayout:
         self.zoom = self.parent.zoom
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
-        size = dpx(
-            float(self.node.style["font-size"][:-2]) * 0.75, self.zoom)
+        px_size = float(self.node.style["font-size"][:-2])
+        size = dpx(px_size * 0.75, self.zoom)
         self.font = get_font(size, weight, style)
 
         # Do not set self.y!!!
@@ -443,8 +443,8 @@ class InputLayout:
         self.zoom = self.parent.zoom
         weight = self.node.style["font-weight"]
         style = self.node.style["font-style"]
-        size = dpx(float(self.node.style["font-size"][:-2]) * 0.75,
-            self.zoom)
+        px_size = float(self.node.style["font-size"][:-2])
+        size = dpx(px_size * 0.75, self.zoom)
         self.font = get_font(size, weight, style)
 
         self.width = dpx(INPUT_WIDTH_PX, self.zoom)
