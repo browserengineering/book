@@ -264,11 +264,10 @@ of the text by setting the `anchor` argument to `"nw"`, meaning the
 "northwest" corner of the text:
 
 ``` {.python expected=False}
-text1, text2 = "Hello, ", "overlapping!"
 x, y = 200, 225
-canvas.create_text(x, y, text=text1, font=font1, anchor='nw')
-x += font1.measure(text1)
-canvas.create_text(x, y, text=text2, font=font2, anchor='nw')
+canvas.create_text(x, y, text="Hello, ", font=font1, anchor='nw')
+x += font1.measure("Hello, ")
+canvas.create_text(x, y, text="overlapping!", font=font2, anchor='nw')
 ```
 
 Modify the `draw` function to set `anchor` to `"nw"`; we didn't need
