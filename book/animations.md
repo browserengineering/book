@@ -163,8 +163,8 @@ after all, [the previous chapter](scheduling.md#profiling-rendering) showed
 that raster and draw was about 62 ms for simple pages, and render
 was 23 ms.
 
-Even with just 66 ms per frame, our browser is barely doing 15 frames per
-second; for smooth animations we want 60! So we need to speed up
+Even with just 62 ms per frame, our browser is barely doing 15 frames per
+second; for smooth animations we want 30! So we need to speed up
 raster and draw.
 
 The best way to do that is to move raster and draw to the [GPU][gpu].
@@ -1613,7 +1613,7 @@ class CompositedLayer:
 
 Now we want to use these methods in `composite`. Basically, instead of
 making a new composited layer for every single paint command, walk
-backwars[^why-backward] through the `composited_layers` trying to
+backward[^why-backward] through the `composited_layers` trying to
 find a composited layer to merge the command into:^[If you're not
 familiar with Python's `for ... else` syntax, the `else` block
 executes only if the loop never executed `break`.]
