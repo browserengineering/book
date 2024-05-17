@@ -24,7 +24,7 @@ What is accessibility?
 
 Accessibility\index{accessibility} means that the user can change or
 customize how they interact with a web page in order to make it easier to
-use.[^other-defs] The web's uniquely-flexible
+use.[^other-defs] The web's uniquely flexible
 core technologies mean that browsers offer a lot of accessibility
 features[^not-just-screen-reader] that allow a user to customize the
 rendering of a web page, as well as interact with a
@@ -44,7 +44,7 @@ software.
 
 The reasons for customizing, of course, are as diverse as the customizations
 themselves. MDN [reports][mdn-def] that the World Health Organization
-[found][who-fact-sheet] as much as 15% of the world population have some
+[found][who-fact-sheet] that as much as 15% of the world population have some
 form of disability, and many of them are severe or permanent. Nearly all of
 them can benefit greatly from the accessibility features described in this
 chapter. The more severe the disability for a particular person, the more
@@ -84,7 +84,7 @@ effectively, but are transformative for those who need them.
     
 [^for-now]: Perhaps software assistants will become more widespread as
 technology improves, mediating between the user and web pages, and
-will one day no longer primarily be a screen-reader accessibility
+will one day no longer primarily be a screen reader accessibility
 technology. Password managers and form autofill agents are already
 somewhat like this, and in many cases use the same browser APIs as
 screen readers.
@@ -106,7 +106,7 @@ batch mode.
     it.
 
 Moreover, accessibility derives from the same [principles](intro.md)
-that birthed the web: user control, multi-modal content, and
+that birthed the web: user control, multimodal content, and
 interoperability. These principles allowed the web to be accessible to
 all types of browsers and operating systems, and *these same
 principles* likewise make the web accessible to people of all types
@@ -194,7 +194,7 @@ while the `Ctrl` key is held:
                 # ...
 ```
 
-Here the argument to `increment_zoom` is whether we should increment
+Here, the argument to `increment_zoom` is whether we should increment
 (`True`) or decrement (`False`).
 
 The `Browser` code just delegates to the `Tab`, via a main thread task:
@@ -251,7 +251,7 @@ navigate to a new page:
 
 [^zoom-scroll]: In a real browser, adjusting the scroll position when
     zooming is more complex than just multiplying. That's because zoom
-    not only changes the height of individual lines of text, but also
+    not only changes the heights of individual lines of text, but also
     changes line breaking, meaning more or fewer lines of text. This
     means there's no easy correspondence between old and new scroll
     positions. Most real browsers implement a much more general algorithm called [scroll anchoring](https://drafts.csswg.org/css-scroll-anchoring-1/) that handles all kinds of changes beyond just zoom.
@@ -264,7 +264,7 @@ class Tab:
 ```
 
 The `zoom` factor is supposed to multiply all CSS sizes, so we'll need
-access to it during layout. There's a few ways to do this, but one easy way
+access to it during layout. There are a few ways to do this, but one easy way
 is just to pass it as a parameter to `layout` for `DocumentLayout`:
 
 ``` {.python}
@@ -308,7 +308,7 @@ def dpx(css_px, zoom):
 ```
 
 \index{device pixel ratio}
-Think about `dpx` not as a simple helper method, but as a unit
+Think of `dpx` not as a simple helper method, but as a unit
 conversion from a *CSS pixel* (the units specified in a CSS declaration)
 to a *device pixel* (what's actually drawn on the screen). In a real
 browser, this method could also account for differences like high-DPI
@@ -396,35 +396,33 @@ for reading text more easily.
 ::: {.print-only}
 Here is an example of some
 text before zoom:^[No book on the web would be complete without some
-good old [Lorem ipsum][lorem-ipsum]!]
-
-::: {.transclude .html}
-www/examples/example14-line-breaking.html
+good old [Lorem ipsum][lorem-ipsum]!] 
 :::
 
-And here is a screenshot of how it should render:
-
+::: {.transclude .html .print-only}
+www/examples/example14-line-breaking.html
 :::
 
 ::: {.web-only}
 
-Here is an [example](examples/example14-line-breaking.html) of some
-text before zoom:^[No book on the web would be complete without some
+[Here is an example](examples/example14-line-breaking.html) of some
+text before zoom.^[No book on the web would be complete without some
 good old [Lorem ipsum][lorem-ipsum]!]
 
 :::
 
+This should render as shown in Figure 1, while Figure 2 shows how it should
+look after a 2x zoom. Note how not only are the words twice
+as big, but the lines wrap at different words, just as desired:
+
 [lorem-ipsum]: https://en.wikipedia.org/wiki/Lorem_ipsum
 
 ::: {.center}
-![Example of line breaking before zoom](examples/example14-line-breaking-unzoomed.png)
+![Figure 1: Example of line breaking before zoom.](examples/example14-line-breaking-unzoomed.png)
 :::
 
-And here it is with 2x zoom. Note how not only are the words twice
-as big, but the lines wrap at different words, just as desired:
-
 ::: {.center}
-![Example of line breaking after zoom](examples/example14-line-breaking-zoomed.png)
+![Figure 2: Example of line breaking after zoom.](examples/example14-line-breaking-zoomed.png)
 :::
 
 ::: {.further}
@@ -464,7 +462,7 @@ Dark mode
 =========
 
 Another useful visual change is using darker colors to help users who
-are extra sensitive to light, use their device at night, or just
+are extra sensitive to light use their device at night, or who just
 prefer a darker color scheme. This browser *dark mode* feature should
 switch both the browser chrome and the web page itself to use white
 text on a black background, and otherwise adjust background colors to
@@ -475,9 +473,10 @@ supported by pretty much all operating systems, browsers, and popular
 apps, and many people enable it as a personal preference. But it was an
 accessibility feature, often called high contrast or color filtering
 mode, long before then.
-Many other technologies, including text-to-speech, OCR, on-screen
+Many other technologies, including text-to-speech, optical character
+recognition, on-screen
 keyboards, and voice control were also pioneered by accessibility engineers
-before becoming widely-used.
+before becoming widely used.
 
 We'll trigger dark mode in the event loop with `Ctrl-d`:
 
@@ -507,7 +506,7 @@ class Browser:
 ```
 
 Now we just need to flip all the colors in `raster_chrome` when
-`dark_mode` is set. Let's store the foreground and background color in
+`dark_mode` is set. Let's store the foreground and background colors in
 variables we can reuse:
 
 ``` {.python}
@@ -615,10 +614,10 @@ class Browser:
 ```
 
 Now if you open the browser and switch to dark mode, you should see
-white text on a black background, like this:
+white text on a black background, as in Figure 3.
 
 ::: {.center}
-![Example of dark mode rendering of text](examples/example14-dark-mode.png)
+![Figure 3: Example of dark mode rendering of text.](examples/example14-dark-mode.png)
 :::
 
 ::: {.further}
@@ -682,7 +681,7 @@ Here I chose very specific hexadecimal colors that preserve the general color
 scheme of blue and orange, but ensure maximum contrast with white foreground
 text so they are easy to read. It's important to choose colors that ensure
 maximum contrast (an ["AAA"][AAA] rating). [This tool][contrast-tool] is 
-handy for checking constrast of a foreground and background color.
+handy for checking the constrast of foreground and background colors.
 
 [AAA]: https://accessibleweb.com/rating/aaa/
 
@@ -741,7 +740,7 @@ class CSSParser:
 Note that I've modified the list of rules to store not just the
 selector and the body, but also the color scheme for those
 rules---`None` if it applies regardless of color scheme, `dark` for
-dark-mode only, and `light` for light-mode only. This way, the `style`
+dark mode only, and `light` for light mode only. This way, the `style`
 function can ignore rules that don't apply:
 
 ``` {.python}
@@ -757,31 +756,31 @@ def style(node, rules, tab):
 
 ::: {.web-only}
 
-Try your browser on this
-[example web page with lots of links, text entries and buttons](examples/example14-focus.html)^[I'll use it throughout the chapter as the
-"focus example".], and you should now see that in dark mode they also change
+Try your browser on [this](examples/example14-focus.html)^[I'll use it
+throughout the chapter as the "focus example".] example web page with lots
+of links, text entries and buttons,
+and you should now see that in dark mode they also change
 color to have a darker background and lighter foreground. It should look like
-this in dark mode:
+Figure 4 in dark mode.
 
 :::
 
 ::: {.print-only}
 
-Try your browser on this web page with
-lots of links, text entries, and buttons:
+Try your browser on [this](https://browser.engineering/examples/example14-focus.html)^[I'll use it throughout the chapter as the
+"focus example".] example web page with lots of links, text entries and buttons:
 
 ::: {.transclude .html}
 www/examples/example14-focus.html
 :::
 
-You should now see that
-in dark mode they also change color to have a darker background and
-lighter foreground. It should look like this in dark mode:
+You should now see that in dark mode they also change color to have a darker
+background and lighter foreground. It should look like Figure 4 in dark mode.
 
 :::
 
 ::: {.center}
-![Example of dark mode with forms](examples/example14-dark-mode-forms.png)
+![Figure 4: Example of dark mode with forms.](examples/example14-dark-mode-forms.png)
 :::
 
 ::: {.further}
@@ -808,7 +807,7 @@ Keyboard navigation
 ===================
 
 Right now, most browser features are triggered using the
-mouse,^[Except for scrolling, which is keyboard-only.] which is a
+mouse,^[Except for scrolling, which is keyboard only.] which is a
 problem for users with injuries or disabilities in their hand---and
 also a problem for power users that prefer their keyboards. So ideally
 every browser feature should be accessible via the keyboard as well as
@@ -852,7 +851,7 @@ specialized OS APIs, so I won't implement them.
                         break
 ```
 
-Here the `focus_addressbar` and `cycle_tabs` methods are new, but
+Here, the `focus_addressbar` and `cycle_tabs` methods are new, but
 their contents are just copied from `handle_click`:
 
 ``` {.python}
@@ -885,8 +884,8 @@ them.[^vimperator]
 
 [^vimperator]: Though it's not the only solution. The old
     [Vimperator][vimperator] browser extension for Firefox and its
-    successors instead show one- or two-letter codes next to each
-    clickable element, and let the user type those codes to activate
+    successors instead shows one- or two-letter codes next to each
+    clickable element, and lets the user type those codes to activate
     that element.
     
 [vimperator]: http://vimperator.org/
@@ -895,7 +894,7 @@ We'll implement this by expanding our implementation of *focus*.\index{focus}
 We already have a `focus` property on each `Tab` indicating which `input`
 element is capturing keyboard input. Let's allow buttons and links to
 be focused as well. Of course, they don't capture keyboard input, but
-when the user pressed `Enter` we'll press the button or navigate to
+when the user presses `Enter` we'll press the button or navigate to
 the link.
 
 We'll start by binding those keys in the event loop:
@@ -948,7 +947,7 @@ class Tab:
 ```
 
 Next, in `advance_tab`, we need to find out where the
-currently-focused element is in this list so we can move focus to the
+currently focused element is in this list so we can move focus to the
 next one.
 
 ``` {.python}
@@ -962,8 +961,8 @@ class Tab:
 ```
 
 Finally, we just need to focus on the chosen element. If we've reached
-the last the focusable node (or if there weren't any focusable nodes
-to begin with), we'll un-focus the page and move focus to the address
+the last focusable node (or if there weren't any focusable nodes
+to begin with), we'll unfocus the page and move focus to the address
 bar:
 
 ``` {.python replace=%20%3d%20focusable_nodes[idx]/_element(focusable_nodes[idx]),%20%3d%20None/_element(None)}
@@ -1011,8 +1010,8 @@ class Tab:
 All of this activation code is copied from the `click` method on
 `Tab`s. Note that hitting `Enter` when focused on a text entry clears
 the text entry; in most browsers, it submits the containing form
-instead. That quirk is a workaround for our browser [not
-implementing][clear-input] the `Backspace` key.
+instead. That quirk is a workaround for our browser
+[not implementing][clear-input] the `Backspace` key (Section 8.3).
 
 [clear-input]: forms.md#interacting-with-widgets
 
@@ -1152,7 +1151,7 @@ class Tab:
 
 We now have configurable keyboard navigation for both the browser and
 the web page content. And it involved writing barely any new code,
-instead mostly moving code from existing methods into new stand-alone
+instead mostly moving code from existing methods into new standalone
 ones. The fact that keyboard navigation simplified, not complicated,
 our browser implementation is a common outcome: improving accessibility
 often involves generalizing and refining existing concepts, leading to
@@ -1255,7 +1254,7 @@ users can make any element focusable with
 `tabindex`.[^wrong-for-nested]
 
 [^wrong-for-nested]: This code does not correctly handle the case of
-    of text inside an inline element inside another inline element,
+    text inside an inline element inside another inline element,
     with the outside one focused. You could fix this by walking from
     the `child` to the `LineLayout`'s `node`, checking the
     `is_focused` field along the way. I'm skipping that in the
@@ -1264,7 +1263,7 @@ users can make any element focusable with
 Now when you `Tab` through a page, you should see the focused element
 highlighted with a black outline. And if a link happens to cross
 multiple lines, you will see our browser use multiple focus
-rectangles to make crystal-clear what is being focused on.
+rectangles to make crystal clear what is being focused on.
 
 Except for one problem: if the focused element is scrolled offscreen,
 there is still no way to tell what's focused. To fix this we'll need
@@ -1328,16 +1327,16 @@ class Tab:
         self.scroll_changed_in_tab = True
 ```
 
-Here I'm shifting the scroll position to ensure that the object is
+Here, I'm shifting the scroll position to ensure that the object is
 `SCROLL_STEP` pixels from the top of the screen, though a real browser
 will likely use different logic for scrolling up versus down.
 
 Focus outlines now basically work, and will even scroll on-screen if you try
-it on the [focus example](examples/example14-focus.html). Here's what it looks
-like after I pressed tab to focus the "this is a link" element:
+it on the [focus example](examples/example14-focus.html). Figure 5 shows what
+it looks like after I pressed tab to focus the "this is a link" element.
 
 ::: {.center}
-![Example of focus outline](examples/example14-focus-outline.png)
+![Figure 5: Example of focus outline](examples/example14-focus-outline.png)
 :::
 
 But ideally, the focus indicator should be customizable, so that the web page
@@ -1521,10 +1520,10 @@ class LineLayout:
 ```
 
 For the [focus example](examples/example14-focus.html), the focus outline
-of an `<a>` element becomes red:
+of an `<a>` element becomes red, as in Figure 6.
 
 ::: {.center}
-![Example of a customized red focuse outline](examples/example14-focus-outline-custom.png)
+![Figure 6: Example of a customized red focuse outline](examples/example14-focus-outline-custom.png)
 :::
 
 As with dark mode, focus outlines are a case where adding an
@@ -1581,15 +1580,20 @@ of interest to them, they may want it read to them, and if some
 sentence or phrase is particularly complex, they may want the
 screen reader to re-read it.
 
-You can see an example[^imagine] of screen reader navigation in this
-talk, specifically the segment from 2:36--3:54:[^whole-talk]
+You can see an example[^imagine] of screen reader navigation in the
+talk presented in the video showin in Figure 7, specifically the segment
+from 2:36--3:54.[^whole-talk]
 
 ::: {.web-only .center}
 <iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/qi0tY60Hd6M?start=159" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 :::
 
+::: {.web-only .center}
+Figure 7: Accessibility talk.
+:::
+
 ::: {.print-only .center}
-![https://www.youtube.com/watch?v=qi0tY60Hd6M&t=159s](examples/example14-a11y-video-still.png)
+![Figure 7: Accessibility talk available [here](https://www.youtube.com/watch?v=qi0tY60Hd6M&t=159s).](examples/example14-a11y-video-still.png)
 :::
 
 [^whole-talk]: The whole talk is recommended; it has great examples of
@@ -1614,7 +1618,7 @@ OS APIs consume this tree like a data model, and the actual tree and data
 model exposed to the OS APIs is platform-specific.]
 
 This probably sounds a lot like HTML---and it is quite similar! But,
-just like the HTML tree does not exactly match the layout tree,
+just as the HTML tree does not exactly match the layout tree,
 there's not an exact match with this tree either. For example, some
 HTML elements (like `<div>`) group content for styling that is
 meaningless to screen reader users. Alternatively, some HTML elements
@@ -1704,7 +1708,7 @@ class AccessibilityNode:
 ```
 
 To build the accessibility tree, just recursively walk the HTML
-tree. along the way, skip nodes with a `none` role, but still recurse into
+tree. Along the way, skip nodes with a `none` role, but still recurse into
 their children:
 
 ``` {.python}
@@ -1777,7 +1781,7 @@ are synchronous, Chromium [stores two copies][chrome-mp-a11y] of the
 accessibility tree, one in the browser and one in each renderer, and
 only sends changes between the two. An alternative design, used by
 pre-Chromium Microsoft Edge and some other browsers, connects each render
-processto accessibility API requests from the operating system.
+process to accessibility API requests from the operating system.
 This removes the need to duplicate the accessibility tree, but exposing
 the operating system to individual tabs can lead to security issues.
 
@@ -1801,7 +1805,7 @@ screen reader integrated directly into the browser.
 But should our built-in screen reader live in the `Browser` or each `Tab`?
 Modern browsers generally talk to screen readers from  something like the
 `Browser`, so we'll do that too.^[And therefore the browser thread in our
-multi-threaded browser.] So the very first thing we need to do is send the
+multithreaded browser.] So the very first thing we need to do is send the
 tab's accessibility tree over to the browser thread. That'll be a
 straightforward extension of the commit concept introduced in
 [Chapter 12][ch12-commit]. First we'll add the tree to `CommitData`: 
@@ -1848,7 +1852,7 @@ and [`playsound`][playsound]. You can install them using `pip`:
 
 [^why-diff]: Screen readers need to help the user with operating
     system actions such as logging in, starting applications, and
-    switching between them. So it makes sense for the screen reader to
+    switching between them, so it makes sense for the screen reader to
     be outside any application and to integrate with them through the
     operating system.
 
@@ -1938,7 +1942,7 @@ class Browser:
 ```
 
 Now, what should the screen reader say? That's not really up to
-the browser---the screen reader is a stand-alone application, often
+the browser---the screen reader is a standalone application, often
 heavily configured by its user, and can decide on its own. But as a
 simple debugging aid, let's write a screen reader that speaks the
 whole web page once it's loaded; of course, a real screen reader is
@@ -2168,7 +2172,7 @@ Accessible alerts
 Scripts do not interact directly with the accessibility tree, much
 like they do not interact directly with the display list. However,
 sometimes scripts need to inform the screen reader about *why* they're
-making certain changes to the page to give screen-reader users a
+making certain changes to the page to give screen reader users a
 better experience. The most common example is an alert[^toast] telling
 you that some action you just did failed. A screen reader user needs
 the alert read to them immediately, no matter where in the document
@@ -2290,7 +2294,7 @@ say, from hidden to visible) is a common pattern.
 You should now be able to load up [this example][alert-example] and
 hear alert text once the button is clicked.
 
-[alert-example]: examples/example14-alert-role.html
+[alert-example]: https://browser.engineering/examples/example14-alert-role.html
 
 :::
 
@@ -2327,17 +2331,17 @@ Voice & visual interaction
 
 Thanks to our work in this chapter, our rendering pipeline now
 basically has two different outputs: a display list for visual
-interaction, and an accessibility tree for screen-reader interaction.
+interaction, and an accessibility tree for screen reader interaction.
 Many users will use just one or the other. However, it can also be
 valuable to use both together. For example, a user might have limited
 vision---able to make out the general items on a web page but unable to
 read the text. Such a user might use their mouse to navigate the page,
 but need the items under the mouse to be read to them by a
-screen-reader.
+screen reader.
 
 Let's try that. Implementing this particular feature requires each
 accessibility node to know about its geometry on the page. The user could then
-instruct the screen-reader to determine which object is under the mouse
+instruct the screen reader to determine which object is under the mouse
 (via [hit testing][hit-test]) and read it aloud.
 
 [hit-test]: https://chromium.googlesource.com/chromium/src/+/HEAD/docs/accessibility/browser/how_a11y_works_3.md#Hit-testing
@@ -2393,13 +2397,13 @@ Note that I'm using `absolute_bounds_for_obj` here, because the bounds we're
 interested in are the absolute coordinates on the screen, after any
 transformations like `translate`.
 
-However, there is another complication: it may not be that `node.layout_object`
-is set; for example, text nodes do not have one.^[And that's ok, because I
+However, there is another complication: it may be that `node.layout_object`
+is not set; for example, text nodes do not have one.^[And that's OK, because I
 chose not to set bounds at all for these nodes, as they are not focusable.]
 Likewise, nodes with inline layout generally do not. So we need to walk up the
 tree to find the parent with a `BlockLayout` and union all text nodes in all
 `LineLayouts` that are children of the current `node`. And because there can be
-multiple `LineLayouts` and text nodes, the bounds needs to be an array of
+multiple `LineLayouts` and text nodes, the bounds need to be in an array of
 `skia.Rect` objects:
 
 ``` {.python}
@@ -2474,8 +2478,8 @@ class Browser:
 
 By the way, the acronym `a11y` in `a11y_node`, with an "a", the number 11, and
 a "y", is a common shorthand for the word "accessibility".[^why-11] The
-`hit_test` function I'm calling is the same one we wrote earlier
-[earlier](chrome.md#click-handling) to handle clicks, except
+`hit_test` function I'm calling is the same one we wrote
+[earlier in Section 7.3](chrome.md#click-handling) to handle clicks, except
 of course that it's searching a different tree:
 
 [^why-11]: The number "11" refers to the number of letters we're
@@ -2570,19 +2574,19 @@ what you're hovering on!
 
 ::: {.further}
 
-A common accessibility issue is web page authors making custom input
+A common issue is web page authors making custom input
 elements and not thinking much about their accessibility. The reason
 for this is that built-in input elements are hard to style, so
-authors roll their own better-looking one.
+authors roll their own better-looking ones.
 
 Built-in input elements often involve
 several separate pieces, like the path and button in a `file` input,
 the check box in a `checkbox` element, or the pop-up menu in a
-`select` drop-down, and CSS isn't (yet) good at styling such
+`select` dropdown, and CSS isn't (yet) good at styling such
 "compound" elements, though [pseudo-elements][pseudoelts] such as
 `::backdrop` or `::file-selector-button` help.
 Perhaps the best solution is [standards][openui] for
-new [fully-styleable][selectmenu] input elements.
+new [fully styleable][selectmenu] input elements.
 
 :::
 
@@ -2642,12 +2646,12 @@ surrounding content.
 14-2 *`Element.focus`*. Implement the JavaScript [`focus`][focus-el]
 method, which lets JavaScript focus a particular element. Make sure
 that the option to prevent scrolling works properly. Be careful:
-before reading an element's position, make sure that layout is up-to-date.
+before reading an element's position, make sure that layout is up to date.
 
 [focus-el]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/focus
 
 14-3 *Highlighting elements during read*. The method to read the document
-works, but it'd be nice to also highlight the elements being read as
+works, but it would be nice to also highlight the element being read as
 it happens, in a similar way to how we did it for mouse hover.
 Implement that. You may want to replace the `speak_document` method
 with an `advance_accessibility` method that moves the accessibility
@@ -2684,8 +2688,9 @@ on narrow screens.
 
 ::: {.print-only}
 
-After completing the exercise, the following example should have green text on
-narrow screens. HTML:
+After completing the exercise, the
+[following example](https://browser.engineering/examples/example14-maxwidth-media.html)
+should have green text on narrow screens. HTML:
 
 ::: {.transclude .html}
 www/examples/example14-maxwidth-media.html
@@ -2717,13 +2722,13 @@ This should replace all colors with one of a small set of
 
 [forced-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/@media/forced-colors
 
-14-8 *focus-visible*. When the user tabs to a link, we probably want to
+14-8 *`focus-visible`*. When the user tabs to a link, we probably want to
 show a focus indicator, but if the user clicked on it, most browsers
 don't---the user knows where the focused element is! And a redundant
 focus indicator could be ugly, or distracting. Implement a similar
 heuristic. Clicking on a button should focus it, but not show a focus
 indicator. (Test this on the [focus example](examples/example14-focus.html)
-a button placed outside a form, so clicking the button doesn't
+with a button placed outside a form, so clicking the button doesn't
 navigate to a new page.) But both clicking on and tabbing to an input
 element should show a focus ring. Also add support for the
 [`:focus-visible` pseudo-class][focus-visible]. This applies only if
@@ -2737,7 +2742,7 @@ browser heuristics I mentioned above.
 14-9 *OS integration*. Add the [`accessible_output`][os-integ] Python
 library and use it to integrate directly with your OS's built-in
 screen reader. Try out some of the examples in this chapter and
-compare behavior with a real browser.
+compare the behavior with a real browser.
 
 [os-integ]: https://pypi.org/project/accessible_output/
 
