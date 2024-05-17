@@ -630,14 +630,11 @@ class BlockLayout:
                 self.self_rect(), radius, bgcolor))
 ```
 
-With that, [this example](https://browser.engineering/examples/example11-rounded-background.html) will round the corners of its background (notice that it does not round the text, though):
+With that, [this example](https://browser.engineering/examples/example11-rounded-background.html) will round the corners of its background (See Figure 1; notice that it does not round the text, though):
 
 ::: {.transclude .html}
 www/examples/example11-rounded-background.html
 :::
-
-will round the corners of its background (See Figure 1; notice that it does not
-round the text, though).
 
 ::: {.center}
 ![Figure 1: Example of a long word with rounded background](examples/example11-rounded-background.png)
@@ -909,7 +906,7 @@ that looks gray, but over an orange background it looks like Figure 2.
     background: orange; color: #00000080">Test</div>
 :::
 
-::: {.center .web-only}
+::: {.web-only}
 Figure 2: Example of black semi-transparent text blending into an orange background.
 :::
 
@@ -1030,8 +1027,8 @@ contents need to be blended together into the parent.[^stacking-context-disc]
     structure affects the final image, and how that impacted the CSS
     specifications, on [David Baron's blog](https://dbaron.org/log/20130306-compositing-blending).
     
-::: {.print-only}
-![A rendered web page is actually the result of stacking and blending
+::: {.center}
+![Figure 4: A rendered web page is actually the result of stacking and blending
 a series of different surfaces](im/visual-effects-surfaces.jpg)
 :::
 
@@ -1455,7 +1452,8 @@ Usually, `overflow: clip` is used with properties like `height` or
 parent. Our browser doesn't support these, but there is one edge case
 where `overflow: clip` is relevant: rounded corners.^[Technically,
 clipping is also relevant for our browser with single words that are longer
-than the browser window's width. [Here][longword] is an example.] Consider this
+than the browser window's width. [Here][longword] is an example; visually
+ it looks like Figure 6.] Consider this
 example:
 
 [longword]: examples/example11-longword.html
@@ -1476,7 +1474,7 @@ an example.] Consider this example:
 
 [longword]: examples/example11-longword.html
 
-::: {.center .print-only}
+::: {.center}
 ![Figure 6: An example of overflowing text not being clipped by rounded corners \label{longword-example}](examples/example11-longword.png)
 :::
 
