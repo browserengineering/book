@@ -97,7 +97,7 @@ if __name__ == "__main__":
 ```
 
 Next, we need to create an SDL window, instead of a Tkinter window,
-inside the Browser. Here's the SDL incantation:
+inside the `Browser`. Here's the SDL incantation:
 
 ``` {.python}
 class Browser:
@@ -212,7 +212,7 @@ class Browser:
 Each pixel has a color.
 Note the `ct` argument, meaning "color type", which indicates that
 each pixel of this surface should be represented as *r*ed, *g*reen,
-*b*lue, and *a*lpha values, each of which should take up 8 bits. In
+*b*lue, and *a*lpha values, each of which should take up eight bits. In
 other words, pixels are basically defined like so:
 
 ``` {.python file=examples .example}
@@ -225,7 +225,7 @@ class Pixel:
 ```
 
 This `Pixel` definition is an illustrative example, not actual code in our
-browser (that's also why it has a gray border around it). It's standing in for
+browser. It's standing in for
 somewhat more complex code within SDL and Skia themselves.[^skia-color]
 
 [^skia-color]: Skia actually represents colors
@@ -241,11 +241,11 @@ with a hash character and six hex digits, like `#ffd700`, with two
 digits each for red, green, and blue:[^opaque]
 
 [^other-spaces]: It's formally known as the [sRGB color space][srgb],
-and it dates back to [CRT displays][CRT], which had a pretty limited
-*gamut* of expressible colors. New technologies like LCD, LED, and
-OLED can display more colors, so CSS now includes [syntax][color-spec]
-for expressing these new colors. Still, all color spaces have a
-limited gamut of expressible colors.
+and it dates back to [CRT (cathode-ray tube) displays][CRT], which had
+a pretty limited *gamut* of expressible colors. New technologies like
+LCD, LED, and OLED can display more colors, so CSS now includes
+[syntax][color-spec] for expressing these new colors. Still, all color
+spaces have a limited gamut of expressible colors.
 
 [^lcd-design]: Actually, some screens contain [lights besides red,
     green, and blue][lcd-design], including white, cyan, or yellow.
@@ -322,7 +322,7 @@ class Browser:
 ```
 
 Next, we need to copy the data to an SDL surface. This requires
-telling SDL what order the pixels are stored in and on your computer's
+telling SDL what order the pixels are stored in and your computer's
 [endianness][wiki-endianness]:
 
 [wiki-endianness]: https://en.wikipedia.org/wiki/Endianness
@@ -374,7 +374,7 @@ class Browser:
 [^use-after-free]: Note that since Skia and SDL are C++ libraries, they are not
 always consistent with Python's garbage collection system. So the link between
 the output of `tobytes` and `sdl_window` is not guaranteed to be kept
-consistent when `skia_bytes` is garbage collected. The SDL surface
+consistent when `skia_bytes` is garbage-collected. The SDL surface
 could be left pointing at a bogus piece of memory, leading to memory
 corruption or a crash. The code here is correct because all of these are local
 variables that are garbage-collected together, but if not you need to be
@@ -389,7 +389,7 @@ but color standards like [CIELAB][cielab] derive from attempts to
 [reverse-engineer human vision][opponent-process].
 Screens use red, green, and blue color channels to match the three
 types of [cone cells][cones] in a human eye. These cone cells
-vary between people: some have [more][tetrachromats] or
+vary between people: some have [more][tetrachromats] and some
 [fewer][colorblind] (typically an inherited condition carried on the X
 chromosome). Moreover, different people have different ratios of cone
 types and those cone types use different protein structures that vary
@@ -488,14 +488,14 @@ class DrawRect:
         canvas.drawRect(self.rect.makeOffset(0, -scroll), paint)
 ```
 
-Here the `rect` field needs to become a Skia `Rect` object.
+Here, the `rect` field needs to become a Skia `Rect` object.
 
 Get rid of the old `Rect` class that was introduced in [Chapter
 7](chrome.md) in favor of `skia.Rect`. Everywhere that a `Rect` was
 constructed, instead put `skia.Rect.MakeLTRB` (for "make
 left-top-right-bottom") or `MakeXYWH` (for "make
 *x*-*y*-width-height"). Everywhere that the sides of the
-rectangle (e.g. `left`) where checked, replace them with the
+rectangle (e.g. `left`) were checked, replace them with the
 corresponding function on a Skia `Rect` (e.g. `left()`). Also replace
 calls to `containsPoint` with Skia's `contains`.
 
@@ -630,26 +630,18 @@ class BlockLayout:
                 self.self_rect(), radius, bgcolor))
 ```
 
-::: {.web-only}
-With that, [this example](examples/example11-rounded-background.html) will round
-the corners of its background (notice that it does not round the text, though):
-:::
-
-::: {.print-only}
-With that, this example:
+With that, [this example](https://browser.engineering/examples/example11-rounded-background.html) will round the corners of its background (notice that it does not round the text, though):
 
 ::: {.transclude .html}
 www/examples/example11-rounded-background.html
 :::
 
-will round the corners of its background (notice that it does not round the text,
-though):
+will round the corners of its background (See Figure 1; notice that it does not
+round the text, though).
 
+::: {.center}
+![Figure 1: Example of a long word with rounded background](examples/example11-rounded-background.png)
 :::
-
-<div class=center>
-![Example of a long word with rounded background](examples/example11-rounded-background.png)
-</div>
 
 Similar changes should be made to `InputLayout`. New shapes, like
 rounded rectangles, is one way that Skia is a more advanced
@@ -664,7 +656,7 @@ is surprisingly deep, with techniques such as
 and [hinting][font-hinting] used to make fonts look better on
 lower-resolution screens. These techniques are much less necessary on
 [high-pixel-density](https://en.wikipedia.org/wiki/Pixel_density)
-screens, though. It's likely that eventually, all screens will be
+screens, though. It's likely that all screens will eventually be
 high-density enough to retire these techniques.
 :::
 
@@ -716,12 +708,12 @@ to lay out the page contents to know how tall the surface needs to be.
 We'll also need to split the browser's `draw` method into three parts:
 
 - `raster_tab` will raster the page to the `tab_surface`;
-- `raster_chrome` will raster the browser chrome to the `chrome_surface`; and
+- `raster_chrome` will raster the browser chrome to the `chrome_surface`;
 - `draw` will composite the chrome and tab surfaces and copy the
   result from Skia to SDL.[^why-two-steps]
 
 [^why-two-steps]: It might seem wasteful to copy from the chrome and
-    tab surface to an intermediate Skia surface, instead of directly
+    tab surfaces to an intermediate Skia surface, instead of directly
     to the SDL surface. It is, but skipping that copy requires a lot
     of tricky low-level code. In [Chapter 13](animations.md) we'll
     avoid this copy in a different, better way.
@@ -778,7 +770,7 @@ the page's height changes.
 
 Next, `draw` should copy from the chrome and tab surfaces to the root
 surface. Moreover, we need to translate the `tab_surface` down by
-`chrome_bottom` and up by `scroll`, and clip it to only the area of
+`chrome_bottom` and up by `scroll`, and clip it to just the area of
 the window that doesn't overlap the browser chrome:
 
 ``` {.python}
@@ -906,28 +898,30 @@ of the top shape. But now we need more nuance.
 [^nor-subpixel]: It also hasn't considered subpixel geometry or
     anti-aliasing, which also rely on color mixing.
 
-Consider partially-transparent colors in CSS. These use a hex color
+Consider partially transparent colors in CSS. These use a hex color
 with eight hex digits, with the last two indicating the level
 of transparency. For example, the
 color `#00000080` is 50% transparent black. Over a white background,
-that looks gray, but over an orange background it looks like this:
+that looks gray, but over an orange background it looks like Figure 2.
 
 ::: {.web-only}
-
 <div style="font-size: 50px; padding: 15px; text-align: center;
     background: orange; color: #00000080">Test</div>
+:::
 
+::: {.center .web-only}
+Figure 2: Example of black semi-transparent text blending into an orange background.
 :::
 
 ::: {.print-only}
 
-![Example of black semi-transparent text blending into an orange background](examples/example11-opacity-blend.png)
+![Figure 2: Example of black semi-transparent text blending into an orange background](examples/example11-opacity-blend.png)
 
 :::
 
 Note that the text is a kind of dark orange, because its color is
 a mix of 50% black and 50% orange.
-Many objects in nature are partially transparent: frosted glass,
+Many objects in the real world are partially transparent: frosted glass,
 clouds, or colored paper, for example. Looking through one, you see
 multiple colors *blended* together. That's also why computer screens work:
 the red, green, and blue lights [blend together][mixing] and appear to
@@ -959,23 +953,24 @@ Check that your browser renders dark-orange text for the example
 above. That shows that it's actually mixing the black color with the
 existing orange color from the background.
 
-However, there's another, subtle different way to create transparency
+However, there's another, subtly different way to create transparency
 with CSS. Here, 50% transparency is applied to the whole element using
-the `opacity` property:
+the `opacity` property, as in Figure 3.
 
 ::: {.web-only}
-
 <div style="font-size: 50px; padding: 15px; text-align: center;
     background: orange; color: black; opacity: .5">Test</div>
+:::
 
+::: {.web-only}
+Figure 3: Example of black text on an orange background, then blended semi-transparently into its ancestor.
 :::
 
 ::: {.print-only}
 
-![Example of black text on an orange background, then blended semi-transparently into its ancestor](examples/example11-text-blending.png)
+![Figure 3: Example of black text on an orange background, then blended semi-transparently into its ancestor](examples/example11-text-blending.png)
 
-:::
-    
+:::    
 
 Now the opacity applies to both the background and the text, so the
 background is now a little lighter. But note that the text
@@ -1023,8 +1018,8 @@ Blending and stacking
 
 To handle the order of operations properly,
 browsers apply blending not to individual shapes but to
-a tree of surfaces. Conceptually, each shape is drawn to its own surface,
-and then blended into its parent surface. Different structures of
+a tree of surfaces (see Figure 4). Conceptually, each shape is drawn to its
+own surface, and then blended into its parent surface. Different structures of
 intermediate surfaces create different visual effects.[^tree-blog]
 Rastering a web page requires a
 bottom-up traversal of this conceptual tree: to raster a surface you first need to raster
@@ -1068,7 +1063,7 @@ canvas.saveLayer(skia.Paint(Alphaf=0.5))
 canvas.restore()
 ```
 
-Here the `saveLayer` asks Skia[^layer-surface] to draw all the
+Here, the `saveLayer` call asks Skia[^layer-surface] to draw all the
 children to a separate
 surface before blending them into the parent once
 `restore` is called.
@@ -1159,12 +1154,12 @@ commands to a surface, and *then* apply transparency to it when
 blending into the parent.
 
 ::: {.further}
-[This blog post](https://ciechanow.ski/alpha-compositing/) gives a really nice
-visual overview of many of the same concepts explored in this chapter,
-plus way more content about how a library such as Skia might implement features
-like raster sampling of vector graphics for lines and text, and interpolation
-of surfaces when their pixel arrays don't match resolution or orientation. I
-highly recommend it.
+I highly recommend [this blog post](https://ciechanow.ski/alpha-compositing/)
+gives a really nice visual overview of many of the same concepts explored in
+this chapter, plus way more content about how a library such as Skia might
+implement features like raster sampling of vector graphics for lines and text,
+and interpolation of surfaces when their pixel arrays don't match resolution
+or orientation.
 :::
 
 Compositing pixels
@@ -1174,7 +1169,7 @@ Now let's pause and explore how opacity actually works under the hood.
 Skia, SDL, and many other color libraries account for opacity with a
 fourth *alpha* value for each pixel.[^alpha-vs-opacity] An alpha of 0
 means the pixel is fully transparent (meaning, no matter what the
-colors are, you can't see them anyway), and an alpha of 1 means a
+colors are, you can't see them anyway), and an alpha of 1 means
 fully opaque.
 
 [^alpha-vs-opacity]: The difference between opacity and alpha can be
@@ -1205,7 +1200,7 @@ That `Alphaf` parameter applies to pixels in one surface. But with
 aligned, and therefore we will need to combine, or *blend*,
 corresponding pairs of pixels.
 
-Here the terminology can get confusing: we imagine that the pixels "on
+Here, the terminology can get confusing: we imagine that the pixels "on
 top" are blending into the pixels "below", so we call the top surface
 the *source surface*, with source pixels, and the bottom surface the
 *destination surface*, with destination pixels. When we combine them,
@@ -1217,7 +1212,7 @@ this:[^simple-alpha]
 [^simple-alpha]: The formula for this code can be found
 [here](https://www.w3.org/TR/SVG11/masking.html#SimpleAlphaBlending).
 Note that that page refers to *premultiplied* alpha colors, but Skia's API
-generally does not use premultiplied representations, and the code below
+generally does not use premultiplied representations, and this code
 doesn't either. (Skia does represent colors internally in a premultiplied form,
 however.)
 
@@ -1238,7 +1233,7 @@ class Pixel:
         self.a = new_a
 ```
 
-Here the destination pixel `self` is modified to blend in the source
+Here, the destination pixel `self` is modified to blend in the source
 pixel `source`. The mathematical expressions for the red, green, and
 blue color channels are identical, and basically average the source
 and destination colors, weighted by alpha.[^source-over-example] You
@@ -1250,7 +1245,7 @@ parameter as something like this:[^no-pixel-loop]
     the result is the backdrop pixel color.
     
 [^no-pixel-loop]: In reality, reading individual pixels into memory to
-manipulate them like this is slow. So libraries such as Skia don't
+manipulate them like this is slow, so libraries such as Skia don't
 make it convenient to do so. (Skia canvases do have `peekPixels` and
 `readPixels` methods that are sometimes used, but not for this.)
 
@@ -1311,24 +1306,23 @@ the [`mix-blend-mode` property][mix-blend-mode-def], like this:
 </div>
 ```
 
-This HTML will look like:
+This HTML will look like Figure 5.
 
 ::: {.web-only}
-
 <div style="background-color:orange">
 Parent
 <div style="background-color:blue;mix-blend-mode:difference">Child</div>
 Parent
 </div>
+:::
 
+::: {.web-only}
+Figure 5: Example of the `difference` value for `mix-blend-mode` with a blue child and orange parent, resulting in pink
 :::
 
 ::: {.print-only}
-
-![Example of the `difference` value for `mix-blend-mode` with a blue child and orange parent, resulting in pink](examples/example11-difference-blend-mode.png)
-
+![Figure 5: Example of the `difference` value for `mix-blend-mode` with a blue child and orange parent, resulting in pink](examples/example11-difference-blend-mode.png)
 :::
-
 
 Here, when blue overlaps with orange, we see pink: blue has (red,
 green, blue) color channels of `(0, 0, 1)`, and orange has `(1, .65,
@@ -1475,14 +1469,15 @@ Usually, `overflow: clip` is used with properties like `height` or
 parent. Our browser doesn't support these, but there is one edge case
 where `overflow: clip` is relevant: rounded corners.^[Technically,
 clipping is also relevant for our browser with single words that are longer
-than the browser window's width. See figure \ref{longword-example} for
-an example.] Consider this
-example:
+than the browser window's width. See Figure 6 for
+an example.] Consider this example:
+
+:::
 
 [longword]: examples/example11-longword.html
 
-![An example of overflowing text not being clipped by rounded corners \label{longword-example}](examples/example11-longword.png)
-
+::: {.center .print-only}
+![Figure 6: An example of overflowing text not being clipped by rounded corners \label{longword-example}](examples/example11-longword.png)
 :::
 
 ``` {.html .example}
@@ -1493,26 +1488,28 @@ example:
 </div>
 ```
 
-That HTML looks like this:
+That HTML looks like Figure 7.
 
 ::: {.web-only}
-
 <div style="border-radius:30px;background-color:lightblue;overflow:clip">
 This test text exists here to ensure that the "div" element is
 large enough that the border radius is obvious.
 </div>
+:::
 
+::: {.web-only}
+Figure 7: An example of overflow from text children of a div with
+`overflow:clip` and `border-radius` being clipped out.
 :::
 
 ::: {.print-only}
-
-![An example of overflow from text children of a div with `overflow:clip` and `border-radius` being clipped out](examples/example11-overflow-clip.png)
-
+![Figure 7: An example of overflow from text children of a div with
+`overflow:clip` and `border-radius` being clipped out](examples/example11-overflow-clip.png)
 :::
 
 Observe that the letters near the corner are cut off to maintain a sharp rounded
 edge. That's clipping; without the `overflow: clip` property these letters
-would instead be fully drawn, like we saw earlier in this chapter.
+would instead be fully drawn, like we saw in Figure 1.
 
 Counterintuitively, we'll implement clipping using blending modes.
 We'll make a new surface (the mask), draw a rounded rectangle into it,
@@ -1618,7 +1615,7 @@ Optimizing surface use
 ======================
 
 Our browser now works correctly, but uses way too many surfaces. For
-example, for a single, no-effects-needed div with some text content,
+example, for a single, no-effects-needed `div` with some text content,
 there are currently 18 surfaces allocated in the display list. If
 there's no blending going on, we should only need one!
 
@@ -1650,7 +1647,7 @@ class Opacity:
 ```
 
 Similarly, `Blend` doesn't necessarily need to create a layer if
-there's no blending going on. But the logic here is a little trickier:
+there's no blending going on. But the logic here is a little trickier: the
 `Blend` operation not only applies blending but also
 isolates the element contents `cmds`, which matters if they are being clipped by
 `overflow`. So let's skip creating a layer in `Blend` when there's no
@@ -1779,7 +1776,7 @@ text and boxes but also:
 - user-configurable blending modes via `mix-blend-mode`;
 - rounded rectangle clipping via destination-in blending or direct clipping;
 - optimizations to avoid surfaces when possible;
-- and browser compositing with extra surfaces for faster scrolling
+- and browser compositing with extra surfaces for faster scrolling.
 
 Besides the new features, we've upgraded from Tkinter to SDL and Skia,
 which makes our browser faster and more responsive, and also sets a
@@ -1828,7 +1825,8 @@ browser it currently does. Modify the `click` method to take border
 radii into account.
 
 11-3 *Interest region*. Our browser now draws the whole web page to a
-single surface, which means a very long web page (like this one!)
+single surface, which means a very long web page (like
+[this one](http://browser.engineering/visual-effects.html)!)
 creates a large surface, thereby using a lot of memory. Instead, only
 draw an "interest region" of limited height, say `4 * HEIGHT` pixels.
 You'll need to keep track of where the interest region is on the page,
@@ -1838,12 +1836,11 @@ region when the user attempts to scroll outside of it. Use Skia's
 
 11-4 *Overflow scrolling*. An element with the `overflow` property set to
 `scroll` and a fixed pixel `height` is scrollable. (You'll want to
-implement the width/height exercise from [Chapter
-6](styles.md#exercises) so that `height` is supported.) Implement some
+implement Exercise 7-2) so that `height` is supported.) Implement some
 version of `overflow: scroll`. I recommend the following user
 interaction: the user clicks within a scrollable element to focus it,
 and then can press the arrow keys to scroll up and down. You'll need
-to keep track of the *[layout overflow][overflow-doc]*. For an extra
+to keep track of the [layout overflow][overflow-doc]. For an extra
 challenge, make sure you support scrollable elements nested within
 other scrollable elements.
 
