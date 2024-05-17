@@ -319,26 +319,23 @@ We'll do this conversion to adjust the font sizes in the `text` and
 
 ``` {.python}
 class BlockLayout:
-	# ....
     def word(self, node, word):
     	# ...
-        size = dpx(float(node.style["font-size"][:-2]) * 0.75,
-            self.zoom)
+        px_size = float(node.style["font-size"][:-2])
+        size = dpx(px_size * 0.75, self.zoom)
 
     def input(self, node):
 	    # ...
-        size = dpx(float(node.style["font-size"][:-2]) * 0.75,
-            self.zoom)
+        px_size = float(node.style["font-size"][:-2])
+        size = dpx(px_size * 0.75, self.zoom)
 ```
 
-
-``` {.python}
+``` {.python expected=False}
 class InputLayout:
-    # ....
     def layout(self):
         # ...
-        size = dpx(float(self.node.style["font-size"][:-2]) * 0.75,
-            self.zoom)
+        px_size = float(self.node.style["font-size"][:-2])
+        size = dpx(px_size * 0.75, self.zoom)
 ```
 
 As well as the font size in `TextLayout`:[^min-font-size]
@@ -358,8 +355,8 @@ class TextLayout:
 	# ...
     def layout(self):
     	# ...
-        size = dpx(
-        	float(self.node.style["font-size"][:-2]) * 0.75, self.zoom)
+        px_size = float(self.node.style["font-size"][:-2])
+        size = dpx(px_size * 0.75, self.zoom)
 ```
 
 And the fixed `INPUT_WIDTH_PX` for text boxes:

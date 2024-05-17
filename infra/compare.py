@@ -17,12 +17,16 @@ class Span:
                 self.start_line, self.start_char = start.split(":")
             self.end_line, self.end_char = end.split(":")
 
+    def __add__(self, i):
+        return Span(f"{self.filename}@{int(self.start_line) + i}:0-{int(self.start_line)}:60")
+
     def __str__(self):
         return f"{self.filename}:{self.start_line}"
 
 class Block:
     def __init__(self, block):
         meta, self.content = block
+        self.book_content = self.content
         assert meta[0] == ""
         self.classes = meta[1]
 
@@ -119,6 +123,7 @@ def compare_files(book, code, language, file):
     src = code.read()
     blocks = tangle(book.name)
     failure, count = 0, 0
+    long_lines = []
     for block in blocks:
         content = block.content
         if block.errors:
@@ -147,5 +152,14 @@ def compare_files(book, code, language, file):
                 else:
                     print(" ", l, end="")
             print()
+
+        for i, line in enumerate(block.book_content.split("\n")):
+            if len(line) > 70:
+                long_lines.append((block.loc + i + 1, line))
+    if long_lines:
+        print()
+        for loc, chars in sorted(long_lines, key=lambda x: len(x[1]), reverse=True):
+            print(f"  {loc}: Line too long ({len(chars)} characters)")
+            failure += 1
     return failure, count
     
