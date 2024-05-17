@@ -560,7 +560,7 @@ tasks at a fixed cadence. But besides JavaScript the browser also has
 to render the page, and as you may recall from [Chapter
 2](graphics.md#framebudget), we'd like the browser to render the page
 exactly as fast as the display hardware can refresh. On most
-computers, this is 30 times per second, or 33 ms per frame. However, even
+computers, this is 60 times per second, or 16 ms per frame. However, even
 with today's computers, it's quite difficult to maintain such a high
 frame rate, and certainly too high of a bar for our toy browser.
 
