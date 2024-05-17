@@ -28,13 +28,6 @@ desktop environment controls the screen. Therefore:
 -   The desktop environment tells the program about clicks and key
     presses, and the program responds and redraws its window.
 
-[^sixty-hertz]: Most screens today have a refresh rate of 60 Hz, and
-that is generally considered fast enough to look smooth. However, new
-hardware is increasingly appearing with higher refresh rates, such as
-120Hz. It's not yet clear if browsers can be made that fast. Some
-rendering engines, games in particular, refresh at lower rates on
-purpose if they know the rendering speed can't keep up.
-
 Doing all of this by hand is a bit of a drag, so programs usually use
 a *graphical toolkit* to simplify these steps. Python comes with a
 graphical toolkit called Tk\index{Tk} using the Python package
@@ -524,6 +517,13 @@ or *frame rate*, of the screen, and/or a fixed 60 Hz.[^sixty-hertz]
 This means that the browser has to finish all its work in less than
 1/60th of a second, or 16 ms, in order to keep up. For this reason,
 16 ms is called the *animation frame budget* of the application.
+
+[^sixty-hertz]: Most screens today have a refresh rate of 60 Hz, and
+that is generally considered fast enough to look smooth. However, new
+hardware is increasingly appearing with higher refresh rates, such as
+120Hz. It's not yet clear if browsers can be made that fast. Some
+rendering engines, games in particular, refresh at lower rates on
+purpose if they know the rendering speed can't keep up.
 
 [^compositing]: On older systems, applications drew directly to the screen, and
 if they didn't update, whatever was there last would stay in place, which is
