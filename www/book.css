@@ -12,8 +12,7 @@ body {
 }
 
 pre, code { hyphens: none; -webkit-hyphens: none; }
-pre { font-size: 85%; overflow: auto; padding-left: 2ex; }
-
+pre { font-size: 18px; overflow: auto; padding-left: 2ex; }
 
 dt { margin-top: 1em; }
 dd { margin-bottom: 1em; }
