@@ -166,7 +166,7 @@ ambitions and dreams, today we strive to realize the vision laid out by the web.
 (No, it's not done yet!)
 
 In 1989–1990, the first web browser\index{web browser} (named WorldWideWeb, see Figure 4)
-and web server (named `httpd`, for HTTP Daemon according to UNIX naming conventions) were born,
+and web server (named `httpd`, for HTTP Daemon, according to UNIX naming conventions) were born,
 written by Tim Berners-Lee. Interestingly, while that browser’s capabilities
 were in some ways inferior to the browser you will implement in this
 book,[^no-css] in other ways they go beyond the capabilities available even in
@@ -225,7 +225,7 @@ all had to do with decentralization:
 
  - Because pages were identified simply by URLs, traffic could come to the web
    from outside sources like email, social networking, and search engines.
-   Further, compatibilty between sites and the power of hyperlinks created
+   Further, compatibility between sites and the power of hyperlinks created
    [network effects](https://en.wikipedia.org/wiki/Network_effect) that further
    strengthened the effect of hyperlinks from *within* the web.
 
@@ -442,12 +442,12 @@ The web has come a long way! But one thing seems clear: it isn't done yet.
 Exercises
 =========
 
-*ii*-1 *What comes next?* Based on what you learned about how the web came about and
+*iii*-1 *What comes next?* Based on what you learned about how the web came about and
 took its current form, what trends do you predict for its future evolution?
 For example, do you think it'll compete effectively against other non-web
 technologies and platforms?
 
-*ii*-2 *What became of the original ideas?* The way the web works in practice is
+*iii*-2 *What became of the original ideas?* The way the web works in practice is
 significantly different than the memex; one key difference is that there is no
 built-in way for the *user* of the web to add links between pages or notate
 them. Why do you think this is? Can you think of other goals from the original
