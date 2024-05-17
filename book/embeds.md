@@ -783,7 +783,7 @@ A `Tab` will:
 And the new `Frame` class will:
 
 * own the DOM, layout trees, and scroll offset for its HTML document;
-* oun style and layout on the its DOM and layout tree;
+* run style and layout on the its DOM and layout tree;
 * Implement loading and event handling (focus, hit testing, etc) for its HTML
   document.
 
