@@ -13,8 +13,7 @@ Connecting to a server
 ======================
 
 Browsing the internet starts with a URL\index{URL},[^url] a short string that
-identifies a particular web page that the browser should visit. A URL
-looks like this:
+identifies a particular web page that the browser should visit.
 
 [^url]: "URL" stands for "uniform resource locator", meaning that it
     is a portable (uniform) way to identify web pages
@@ -35,7 +34,7 @@ Figure 1: The syntax of URLs
 ![Figure 1: The syntax of URLs](im/http-url.png)
 :::
 
-A URL has three parts: the scheme\index{scheme} explains *how* to get the
+A URL has three parts (see Figure 1): the scheme\index{scheme} explains *how* to get the
 information; the host name explains *where* to get it; and the path\index{path}
 explains *what* information to get. There are also optional parts to
 the URL, like ports, queries, and fragments, which we'll see later.
@@ -142,7 +141,7 @@ Requesting information
 Once it's connected, the browser requests information from the server
 by giving its *path*, the path being the part of a URL that comes
 after the host name, like `/index.html`. The structure of the request
-is shown below. You can type it into `telnet` (make sure to type a blank line after the `Host` line):
+is shown in Figure 2. You can type it into `telnet` to try it.
 
 ::: {.cmd .web-only html=True}
     python3 infra/annotate_code.py <<EOF
@@ -161,9 +160,9 @@ information,[^11] then comes the path, and finally there is the word
 `HTTP/1.0` which tells the host that the browser speaks version 1.0 of
 [HTTP]\index{HTTP}. There are several versions of HTTP ([0.9, 1.0, 1.1, 
 2.0, and 3.0](https://medium.com/platform-engineer/evolution-of-http-69cfe6531ba0)).
-The HTTP 1.1 standard adds a variety of useful features, like
+The HTTP 1.1 standard adds a variety of useful features, like
 keep-alive, but in the interest of simplicity our browser won't use
-them. We're also not implementing HTTP 2.0; it is much more
+them. We're also not implementing HTTP 2.0; it is much more
 complex than the 1.X series, and is intended for large and complex web
 applications, which our browser can't run anyway.
 
@@ -199,7 +198,8 @@ HTTP was designed to be simple to understand and implement, making it
 easy for any kind of computer to adopt it. It's no coincidence that
 you can type HTTP directly into `telnet`! Nor is it an accident that
 HTTP is a "line-based protocol", using plain text and newlines,
-similar to [Simple Mail Transfer Protocol (SMTP)] for email. Ultimately, the whole pattern derives
+similar to Simple Mail Transfer Protocol ([SMTP][SMTP]) for email.
+Ultimately, the whole pattern derives
 from early computers only having line-based text input. In
 fact, one of the first two browsers had a [line-mode UI][line-mode].
 :::
@@ -210,7 +210,7 @@ fact, one of the first two browsers had a [line-mode UI][line-mode].
 The server's response
 =====================
 
-The server's response starts with the line below:
+The server's response starts with the line in Figure 3.
 
 ::: {.cmd .web-only html=True}
     python3 infra/annotate_code.py <<EOF
@@ -277,7 +277,7 @@ code that contains the content of the web page itself.
 
 [html]:  https://developer.mozilla.org/en-US/docs/Web/HTML
 
-The HTTP request/response transaction is summarized below. Let's now
+The HTTP request/response transaction is summarized in Figure 4. Let's now
 switch gears from manual connections to Python.
 
 ![Figure 4: An HTTP request and response pair are how a web browser gets web
@@ -396,7 +396,8 @@ multiple ways to talk to other computers:
 postcard.
 
 [^quic]: Newer versions of HTTP use something called
-    [QUIC](https://en.wikipedia.org/wiki/QUIC) instead of TCP, but our
+    [QUIC](https://en.wikipedia.org/wiki/QUIC) instead of the
+    Transmission Control Protocol (TCP), but our
     browser will stick to HTTP 1.0.
 
 
@@ -531,7 +532,7 @@ class URL:
         response = s.makefile("r", encoding="utf8", newline="\r\n")
 ```
 
-Here `makefile` returns a file-like object containing every byte we
+Here, `makefile` returns a file-like object containing every byte we
 receive from the server. I am instructing Python to turn those bytes
 into a string using the `utf8` *encoding*, or method of associating
 bytes to letters.[^utf8] I'm also informing Python of HTTP's weird line
@@ -736,7 +737,7 @@ Encrypted connections
 =====================
 
 So far, our browser supports the `http` scheme. That's a pretty common
-scheme. But more and more, websites are migrating to the
+scheme. But more and more websites are migrating to the
 `https`\index{HTTPS} scheme, and many websites require it.
 
 The difference between `http` and `https` is that `https` is more
@@ -746,7 +747,8 @@ normal `http` scheme, except that all communication between the browser
 and the host is encrypted. There are quite a few details to how this works:
 which encryption algorithms are used, how a common encryption key is agreed
 to, and of course how to make sure that the browser is connecting to
-the correct host. The difference in the protocol layers is shown below:
+the correct host. The difference in the protocol layers is shown in
+Figure 5.
 
 ![Figure 5: The difference between HTTP and HTTPS is the addition of a TLS layer.](im/http-tls.png)
 
@@ -834,7 +836,8 @@ class URL:
 Your browser should now be able to connect to HTTPS sites.
 
 While we're at it, let's add support for custom ports, which are
-specified in a URL by putting a colon after the host name:
+specified in a URL by putting a colon after the host name, as in
+Figure 6.
 
 ::: {.cmd .web-only html=True}
     python3 infra/annotate_code.py <<EOF
@@ -843,7 +846,7 @@ specified in a URL by putting a colon after the host name:
 :::
 
 ::: {.print-only}
-![Figure 6: Where the port goes in a URL](im/http-ports.png)
+![Figure 6: Where the port goes in a URL.](im/http-ports.png)
 :::
 
 If the URL has a port we can parse it out and use it:
@@ -936,7 +939,7 @@ make it so that, if your browser is started without a URL being given,
 some specific file on your computer is opened. You can use that file
 for quick testing.
 
-1-3 *`data:` scheme*. Yet another scheme is `data`, which allows inlining
+1-3 *`data`*. Yet another scheme is `data`, which allows inlining
 HTML content into the URL itself. Try navigating to
 `data:text/html,Hello world!` in a real browser to see what happens.
 Add support for this scheme to your browser. The `data` scheme is
@@ -950,16 +953,16 @@ greater-than (`&gt;`) entities. These should be printed as `<` and
 Entities allow web pages to include these special characters without
 the browser interpreting them as tags.
 
-1-5 *view-source*. Add support for the `view-source` scheme; navigating to
+1-5 *`view-source`*. Add support for the `view-source` scheme; navigating to
 `view-source:http://example.org/` should show the HTML source instead of
 the rendered page. Add support for this scheme. Your browser should
 print the entire HTML file as if it was text. You'll want to have also
-implemented the entities exercise.
+implemented Exercise 1-4.
 
-1-6 *Keep-alive*. Implement the HTTP/1.1 exercise; however, do not send
+1-6 *Keep-alive*. Implement Exercise 1-1; however, do not send
 the `Connection: close` header. Instead, when reading the body from
 the socket, only read as many bytes as given in the `Content-Length`
-header and don't close the socket afterwards. Instead, save the
+header and don't close the socket afterward. Instead, save the
 socket, and if another request is made to the same socket reuse the
 same socket instead of creating a new one. This will speed up repeated
 requests to the same server, which is common.
