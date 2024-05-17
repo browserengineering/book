@@ -6,7 +6,7 @@ next: text
 ...
 
 A web browser doesn't just download a web page; it also has to show
-that page to the user. In the 21^st^ century, that means a graphical
+that page to the user. In the twenty-first century, that means a graphical
 application. So in this chapter we'll equip our browser with a
 graphical user interface.[^1]
 
@@ -28,7 +28,7 @@ desktop environment controls the screen. Therefore:
 -   The desktop environment tells the program about clicks and key
     presses, and the program responds and redraws its window.
 
-[^sixty-hertz]: Most screens today have a refresh rate of 60Hz, and
+[^sixty-hertz]: Most screens today have a refresh rate of 60 Hz, and
 that is generally considered fast enough to look smooth. However, new
 hardware is increasingly appearing with higher refresh rates, such as
 120Hz. It's not yet clear if browsers can be made that fast. Some
@@ -50,7 +50,7 @@ window = tkinter.Tk()
 tkinter.mainloop()
 ```
 
-Here `tkinter.Tk()` asks the desktop environment to create a window
+Here, `tkinter.Tk()` asks the desktop environment to create a window
 and returns an object that you can use to draw to the window. The
 `tkinter.mainloop()` call enters a loop that looks like this:[^infinite-loop]
 
@@ -70,37 +70,37 @@ while True:
 ```
 
 ::: {.print-only}
-![A flowchart of event handling cycle](im/graphics-cycle.png)
+![Figure 1: Flowchart of an event handling cycle.](im/graphics-cycle.png)
 :::
 
 Here, `pendingEvent` first asks the desktop environment for recent
 mouse clicks or key presses, then `handleEvent` calls your application
 to update state, and then `drawScreen` redraws the window. This *event
-loop*\index{event loop} pattern is common in many applications, from
+loop* \index{event loop} pattern (see Figure 1) is common in many applications, from
 web browsers to video games, because in complex graphical applications
 it ensures that all events are eventually handled and the screen is
 eventually updated.
 
 ::: {.further}
-Though you're probably writing your browser on a desktop computer,
+Although you're probably writing your browser on a desktop computer,
 many people access the web through mobile devices such as phones or
-tablets. On mobile devices, there's still a screen, a rendering loop,
+tablets. On mobile devices there's still a screen, a rendering loop,
 and most other things discussed in this book.[^same-code-on-mobile]
 
 But there are several differences worth noting. Applications are usually
 full-screen, with only one application drawing to the screen at a time. There's
 no mouse and only a virtual keyboard, so the main form of interaction is touch.
-There is a concept of a "visual viewport" not present on desktop, to
-accommodate "desktop-only" and "mobile-ready" sites, as well as pinch zoom.
-[^meta-viewport] And screen pixel density is much higher, but the total screen
+There is the concept of a "visual viewport" that is not present on a desktop, to
+accommodate "desktop-only" and "mobile-ready" sites, as well as pinch
+zoom.[^meta-viewport] And screen pixel density is much higher, but the total screen
 resolution is usually lower. Supporting all of these differences is doable,
 but quite a bit of work. This book won't go further into implementing them,
 except in some cases as exercises.
 
 Also, power efficiency is much more important, because the device runs
-on a battery, while at the same time the CPU and memory are
+on a battery, while at the same time the central processing unit (CPU) and memory are
 significantly slower and less capable. That makes it much more
-important to take advantage of GPU hardware, and the slow CPU makes
+important to take advantage of any graphical processing unit (GPU)—the slow CPU makes
 good performance harder to achieve. Mobile browsers are challenging!
 :::
 
@@ -108,7 +108,7 @@ good performance harder to achieve. Mobile browsers are challenging!
 mobile editions, and the rendering engine code is almost exactly the same for
 both.
 
-[^meta-viewport]: Look at the source of this webpage. In the `<head>`
+[^meta-viewport]: Look at the source of [this webpage](http://browser.engineering/graphics.html). In the `<head>`
 you'll see a "viewport" `<meta>` tag. This tag tells the browser that
 the page supports mobile devices; without it, the browser assumes that
 the site is "desktop-only" and renders it differently, such as
@@ -126,7 +126,7 @@ rectangular Tk widget that you can draw circles, lines, and text
 on. For example, you can create a canvas with Tk like this:[^canvas]
 
 [^canvas]: You may be familiar with the HTML `<canvas>` element, which is a
-    similar idea: a 2D rectangle in which you can draw shapes.
+    similar idea: a two-dimensional (2D) rectangle in which you can draw shapes.
 
 ``` {.python .example}
 WIDTH, HEIGHT = 800, 600
@@ -135,10 +135,10 @@ canvas = tkinter.Canvas(window, width=WIDTH, height=HEIGHT)
 canvas.pack()
 ```
 
-The first line creates the window, as above; the second creates the
+The first line creates the window; and the second creates the
 `Canvas` inside that window. We pass the window as an argument so
 that Tk knows where to display the canvas. The other arguments define
-the canvas's size; I chose 800×600 because that was a common old-timey
+the canvas's size; I chose 800 × 600 because that was a common old-timey
 monitor size.[^svga] The third line is a Tk peculiarity, which positions
 the canvas inside the window. Tk also has widgets like buttons and
 dialog boxes, but our browser won't use them: we will need
@@ -190,15 +190,15 @@ if __name__ == "__main__":
 
 You ought to see: a rectangle, starting near the top-left corner of
 the canvas and ending at its center; then a circle inside that
-rectangle; and then the text "Hi!" next to the circle:
+rectangle; and then the text "Hi!" next to the circle, as in Figure 2.
 
 ::: {.center}
-![The expected example output with a rectangle, oval, and text](im/graphics-example.png)
+![Figure 2: The expected example output with a rectangle, circle, and text.](im/graphics-example.png)
 :::
 
-Coordinates in Tk refer to X positions from left to right and to Y
+Coordinates in Tk refer to *x* positions from left to right and to *y*
 positions from top to bottom. In other words, the bottom of the screen
-has *larger* Y values, the opposite of what you might be used to from
+has *larger* *y* values, the opposite of what you might be used to from
 math. Play with the coordinates above to figure out what each argument
 refers to.[^tkdocs]
 
@@ -212,7 +212,7 @@ using it for here. As you can see from [the
 tutorial](https://tkdocs.com/tutorial/canvas.html), you can move
 the individual things you've drawn to the canvas, listen to click
 events on each one, and so on. I'm not using those
-features in this book because I want to teach you how to implement them.
+features in this book, because I want to teach you how to implement them.
 :::
 
 Laying out text
@@ -249,17 +249,24 @@ def load(self, url):
         self.canvas.create_text(100, 100, text=c)
 ```
 
-Let's test this code on a real webpage. For reasons that might seem
+Let's test this code on a real web page. For reasons that might seem
 inscrutable[^delay], let's test it on the [first chapter of <span
-lang="zh">西游记</span> or "Journey to the
-West"][ex-monkey], a classic Chinese novel
+lang="zh">西游记</span> or *Journey to the
+West*][ex-monkey], a classic Chinese novel
 about a monkey. Run this URL[^instructions] through `request`, `lex`, and
 `load`. You should see a window with a big blob of black pixels
-inset a bit from the top left corner of the window.
+inset a little from the top left corner of the window.
 
 [^delay]: It's to delay a discussion of basic typography to the next chapter.
 
+::: {.web-only}
 [^instructions]: Right click on the link and "Copy URL".
+:::
+
+::: {.print-only}
+[^instructions]: The URLs for numbered references can be found in the
+"Links" section at the end of each chapter.
+:::
 
 Why a blob instead of letters? Well, of course, because we are drawing
 every letter in the same place, so they all overlap! Let's fix that:
@@ -273,18 +280,18 @@ for c in text:
 ```
 
 The variables `cursor_x` and `cursor_y` point to where the next
-character will go, as if you were typing the text with in a word
+character will go, as if you were typing the text into a word
 processor. I picked the magic numbers---13 and 18---by trying a few
 different values and picking one that looked most
 readable.[^font-metrics]
 
-[^font-metrics]: In the [next chapter](text.md), we'll replace magic
+[^font-metrics]: In [Chapter 3](text.md), we'll replace the magic
 numbers with font metrics.
 
-The text now forms a line from left to right. But with an 800 pixel
-wide canvas and 13 pixels per character, one line only fits about 60
-characters. You need more than that to read a novel, so we also need
-to *wrap* the text once we reach the edge of the screen:
+The text now forms a line from left to right. But with an
+800-pixel-wide canvas and 13 pixels per character, one line only fits
+about 60 characters. You need more than that to read a novel, so we
+also need to *wrap* the text once we reach the edge of the screen:
 
 ``` {.python indent=8}
 for c in text:
@@ -295,7 +302,8 @@ for c in text:
 ```
 
 The code increases `cursor_y` and resets `cursor_x`[^crlf] once
-`cursor_x` goes past 787 pixels.[^not-800] Wrapping the text this way
+`cursor_x` goes past 787 pixels.[^not-800] The sequence is shown in
+Figure 3. Wrapping the text this way
 makes it possible to read more than a single line.
 
 ::: {.web-only}
@@ -309,34 +317,36 @@ Here's a widget demonstrating that concept:
 :::
 
 ::: {.print-only}
-![A flow-chart of how characters the cursor moves as each character is drawn](im/graphics-cursor.png)
+![Figure 3: A flow-chart of how the cursor moves as each character is drawn.](im/graphics-cursor.png)
 :::
 
 [^crlf]: In the olden days of typewriters, increasing *y* meant
     *feed*ing in a new *line*, and resetting *x* meant *return*ing the
     *carriage* that printed letters to the left edge of the page. So
-    ASCII standardizes two separate characters—"carriage return" and
+    the American Standard Code for Information Interchange ([ASCII][ascii]) standardized two separate characters—"carriage return" and
     "line feed"—for these operations, so that ASCII could be directly
     executed by teletypewriters. That's why headers in HTTP are
     separated by `\r\n`, even though modern computers have no
     mechanical carriage.
 
+[ascii]: https://en.wikipedia.org/wiki/ASCII
+
 [^not-800]: Not 800, because we started at pixel 13 and I want to leave an
     even gap on both sides.
 
-At this point you should be able to load up [this page][ex-monkey] in your
-browser and have it look about like this:
+At this point you should be able to load up [our example ][ex-monkey] in your
+browser and have it look something like Figure 4.
 
 <div class=center>
-![Screenshot of Chinese text of 'Journey to the West'](examples/example2-text-screenshot.png)
+![Figure 4: The first chapter of *Journey to the West* rendered in our browser.](examples/example2-text-screenshot.png)
 <br>
 </div>
 
-[ex-monkey]: examples/xiyouji.html
+[ex-monkey]: http://browser.engineering/examples/xiyouji.html
 
 
 Now we can read a lot of text, but still not all of it: if there's
-enough text, all of the lines of text don't fit on the screen. We want
+enough text, not all of the lines will fit on the screen. We want
 users to *scroll*\index{scroll} the page to look at different parts of it.
 
 ::: {.further}
@@ -360,7 +370,7 @@ Scrolling text
 Scrolling introduces a layer of indirection between page coordinates
 (this text is 132 pixels from the top of the *page*) and screen
 coordinates (since you've scrolled 60 pixels down, this text is 72
-pixels from the top of the *screen*). Generally speaking, a browser
+pixels from the top of the *screen*)---see Figure 5. Generally speaking, a browser
 *lays out* the page---determines where everything on the page
 goes---in terms of page coordinates and then *renders* the
 page---draws everything---in terms of screen coordinates.[^screen-coordinates]
@@ -370,7 +380,7 @@ first drawn into a bitmap or GPU texture, then that bitmap/texture is shifted
 according to the scroll, and the result is rendered to the screen. [Chapter 11](visual-effects.md)
 will have more on this topic.
 
-![The difference between page and screen coordinates](im/graphics-coords.png)
+![Figure 5: The difference between page and screen coordinates.](im/graphics-coords.png)
 
 Our browser will have the same split. Right now `load` computes
 both the position of each character and draws it: layout\index{layout}
@@ -459,7 +469,7 @@ def __init__(self):
 
 Here, `self.scrolldown` is an *event handler*, a function that Tk will
 call whenever the down arrow key is pressed.[^event-arg] All it needs
-to do is increment `y` and re-draw the canvas:
+to do is increment `y` and redraw the canvas:
 
 [^event-arg]: `scrolldown` is passed an *event object* as an argument
     by Tk, but since scrolling down doesn't require any information
@@ -510,10 +520,10 @@ quickly for interactions to feel fluid,[^compositing] and must respond quickly
 to clicks and key presses so the user doesn't get frustrated. "Feel
 fluid" can be made more precise. Graphical applications such as
 browsers typically aim to redraw at a speed equal to the refresh rate,
-or *frame rate*, of the screen, and/or a fixed 60Hz[^sixty-hertz].
+or *frame rate*, of the screen, and/or a fixed 60 Hz.[^sixty-hertz]
 This means that the browser has to finish all its work in less than
-1/60th of a second, or 16ms, in order to keep up. For this reason,
-16ms is called the *animation frame budget* of the application.
+1/60th of a second, or 16 ms, in order to keep up. For this reason,
+16 ms is called the *animation frame budget* of the application.
 
 [^compositing]: On older systems, applications drew directly to the screen, and
 if they didn't update, whatever was there last would stay in place, which is
@@ -550,7 +560,7 @@ the second skips characters above it. In that second `if` statement,
 `y + VSTEP` is the bottom edge of the character, because characters
 that are halfway inside the viewing window still have to be drawn.
 
-Scrolling should now be pleasantly fast, and hopefully close to the 16ms
+Scrolling should now be pleasantly fast, and hopefully close to the 16 ms
 animation frame budget.^[On my computer, it was still about double that budget,
 so there is work to do---we'll get to that in future chapters.] And because we
 split `layout` and `draw`, we don't need to change `layout` at all to implement
@@ -560,9 +570,9 @@ this optimization.
 You should also keep in mind that not all web page interactions are
 animations---there are also discrete actions, such as mouse clicks.
 Research has shown that it usually suffices to respond to a discrete
-action in [100ms]---below that threshold, most humans are not
-sensitive to discrete action speed. This is very different than
-interactions such as scroll, where speed less than 60Hz or so is quite
+action in [100 ms]---below that threshold, most humans are not
+sensitive to discrete action speed. This is very different from
+interactions such as scroll, where a speed of less than 60 Hz or so is quite
 noticeable. The difference between the two has to do with the way the
 human mind processes movement (animation) versus discrete action, and
 the time it takes for the brain to decide upon such an action, execute
@@ -599,7 +609,7 @@ these at the end of the chapter so you can see how it improves.]
 :::
 
 Next, we'll make this browser work on English text, with all its
-complexities of variable width characters, line layout, and
+complexities of variable-width characters, line layout, and
 formatting.
 
 ::: {.signup}
@@ -625,7 +635,7 @@ Exercises
 2-1 *Line breaks*. Change `layout` to end the current line and start a new
 one when it sees a newline character. Increment *y* by more than
 `VSTEP` to give the illusion of paragraph breaks. There are poems
-embedded in "Journey to the West"; now you'll be able to make them
+embedded in *Journey to the West*; now you'll be able to make them
 out.
 
 2-2 *Mouse wheel*. Add support for scrolling up when you hit the up arrow.
@@ -648,7 +658,7 @@ events.[^more-mousewheel]
 [tk-mousewheel]: https://wiki.tcl-lang.org/page/mousewheel
 
 2-3 *Resizing*. Make the browser resizable. To do so, [pass the `fill` and
-`expand` arguments][fill-expand] to `canvas.pack`, call and bind to
+`expand` arguments][fill-expand] to `canvas.pack`, and call and bind to
 the `<Configure>` event, which happens when the window is resized. The
 window's new width and height can be found in the `width` and `height`
 fields on the event object. Remember that when the window is resized,
@@ -658,7 +668,7 @@ the line breaks must change, so you will need to call `layout` again.
 display list entry.[^not-quite-right] At the right edge of the screen,
 draw a blue, rectangular scrollbar. Make sure the size and position of
 the scrollbar reflects what part of the full document the browser can
-see, as in the figure showing page and screen coordinates. Hide the
+see, as in Figure 5. Hide the
 scrollbar if the whole document fits onscreen.
 
 [^not-quite-right]: This is not quite right in a real browser; the
@@ -672,14 +682,14 @@ characters, and you can call `create_text` to draw them, but the
 results aren't very good. Instead, head to [the OpenMoji
 project](https://openmoji.org), download the emoji for ["grinning
 face"](https://openmoji.org/library/#emoji=1F600)
-as a PNG file, resize it to 16×16 pixels, and save it
+as a PNG file, resize it to 16 × 16 pixels, and save it
 to the same folder as the browser. Use Tk's `PhotoImage` class to load
 the image and then the `create_image` method to draw it to the canvas.
 In fact, download the whole OpenMoji library (look for the "Get
 OpenMojis" button at the top right)---then your browser can look up
 whatever emoji is used in the page.
 
-2-6 *about:blank*. Currently, a malformed URL causes the browser to crash.
+2-6 *`about:blank`*. Currently, a malformed URL causes the browser to crash.
 It would be much better to have error recovery for that, and instead
 show a blank page, so that the user can fix the error. To do this, add
 support for the special `about:blank` URL, which should just render
@@ -695,9 +705,9 @@ browser.^[Once we get to [Chapter 4](html.md) you could write it in terms of
 the [`dir`][dir-attr] attribute on the `<body>` element.] English sentences
 should still lay out left-to-right, but they should grow from the right
 side of the screen (load [this example][rtl-example] in your favorite
-browser to see what I mean).^[Sentences in an actual RTL language should do
-the opposite. And then there is vertical writing mode for some east Asian
-langages like Chinese and Japanese.]
+browser to see what I mean).^[Sentences in an actual right-to-left language should do
+the opposite. And then there is vertical writing mode for some East Asian
+languages like Chinese and Japanese.]
 
 [dir-attr]: https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/dir
 
