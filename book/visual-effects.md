@@ -1843,7 +1843,7 @@ region when the user attempts to scroll outside of it. Use Skia's
 
 11-4 *Overflow scrolling*. An element with the `overflow` property set to
 `scroll` and a fixed pixel `height` is scrollable. (You'll want to
-implement Exercise 7-2) so that `height` is supported.) Implement some
+implement Exercise 6-2) so that `height` is supported.) Implement some
 version of `overflow: scroll`. I recommend the following user
 interaction: the user clicks within a scrollable element to focus it,
 and then can press the arrow keys to scroll up and down. You'll need
