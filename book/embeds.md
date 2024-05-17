@@ -1274,8 +1274,8 @@ class Tab:
 
 When an iframe is clicked, it passes the click through to the child
 frame, and immediately returns afterward, because iframes capture
-click events. Note how I subtracted the absolute `x` and `y` offsets of the
-iframe from the (absolute) `x` and `y` click positions when recursing into the
+click events. Note how I subtracted the absolute *x* and *y* offsets of the
+iframe from the (absolute) *x* and *y* click positions when recursing into the
 child frame:
 
 ``` {.python}
