@@ -16,11 +16,12 @@ The browser and me
 ==================
 
 Since I first encountered the web and its predecessors,[^bbs] in the
-early 90s, I've been fascinated by browsers and the concept of networked user
+early 1990s, I've been fascinated by browsers and the concept of networked user
 interfaces. When I [surfed][websurfing] the web, even in its earliest form, I
 felt I was seeing the future of computing. In some ways, the web and I grew
-together---for example, in 1994, the year the web went commercial, was the same
-year I started college; while there I spent a fair amount of time surfing it,
+together---for example, 1994, the year the web went commercial, was the same
+year I started college; while there I spent a fair amount of time
+surfing the web,
 and by the time I graduated in 1999, the browser had fueled the famous dot-com
 speculation gold rush. Not only that, but the company for which I now work,
 Google, is a child of the web and was founded during that time. 
@@ -37,8 +38,8 @@ you're familiar with the core technologies.
 
 [websurfing]: https://www.pcmag.com/encyclopedia/term/web-surfing
 
-[^bbs]: For me, [BBS](https://en.wikipedia.org/wiki/Bulletin_board_system)
-systems over a dial-up modem connection. A BBS, like a browser, is a
+[^bbs]: For me, [bulletin board systems (BBSs)](https://en.wikipedia.org/wiki/Bulletin_board_system)
+over a dial-up modem connection. A BBS, like a browser, is a
 window into dynamic content somewhere else on the internet.
 
 In my freshman year at college, I attended a presentation by a RedHat salesman.
@@ -46,10 +47,10 @@ The presentation was of course aimed at selling RedHat Linux, probably calling
 it the "operating system of the future" and speculating about the "year of the
 Linux desktop". But when asked about challenges RedHat faced, the salesman
 mentioned not Linux but _the web_: he said that someone "needs to make a good
-browser for Linux."[^netscape-linux] Even back then, in the first
+browser for Linux".[^netscape-linux] Even back then, in the first
 years of the web, the browser was already a necessary component
 of every computer.
-He even threw out a challenge: "how hard could it be to build a better browser?"
+He even threw out a challenge: "How hard could it be to build a better browser?"
 Indeed, how hard could it be? What makes it so hard? That question stuck with me
 for a long time.[^meantime-linux]
 
@@ -80,7 +81,7 @@ research, reaching back to nearly the beginning of computing,[^precursors] about
 how to help people connect and learn from each other.
 
 [^precursors]: And the web _also_ needed rich computer displays, powerful
-UI-building libraries, fast networks, and sufficient CPU power and information
+user-interface-building libraries, fast networks, and sufficient computing power and information
 storage capacity. As so often happens with technology, the web had many similar
 predecessors, but only took its modern form once all the pieces came together.
 
@@ -88,22 +89,23 @@ In the early days, the internet was a world-wide network of computers, largely
 at universities, labs, and major corporations, linked by physical cables and
 communicating over application-specific protocols. The (very) early web mostly
 built on this foundation. Web pages were files in a specific format stored on
-specific computers. URLs for web pages named the computer and the file, and
+specific computers. The addresses for web pages named the computer and the file, and
 early servers did little besides read files from a disk. The logical structure
 of the web mirrored its physical structure.
 
-A lot has changed. HTML is now usually dynamically assembled on the
+A lot has changed. The HyperText Markup Language (HTML) for web pages
+is now usually dynamically assembled on the
 fly[^server-side-rendering] and sent on demand to your browser. The pieces being
 assembled are themselves filled with dynamic content---news, inbox contents, and
-advertisements adjusted to your particular tastes. Even URLs no longer identify
-a specific computer---content distribution networks route a URL to any of
+advertisements adjusted to your particular tastes. Even the addresses no longer identify
+a specific computer---content distribution networks route requests to any of
 thousands of computers all around the world. At a higher level, most web pages
 are served not from someone's home computer[^self-hosted] but from a
 major corporation's social media platform or cloud computing service.
 
 [^server-side-rendering]: "Server-side rendering" is the process of assembling
 HTML on the server when loading a web page. Server-side rendering can use web
-tech like JavaScript and even [headless
+technologies like JavaScript and even [headless
 browsers](https://en.wikipedia.org/wiki/Headless_browser). Yet one more place
 browsers are taking over!
 
@@ -116,13 +118,13 @@ blocks that are the essence of the web:
 * The user uses a _User Agent_, called a _browser_, to navigate the web.
 * The web is a _network of information_
   linked by _hyperlinks_.
-* Information is requested with the _HTTP network protocol_
+* Information is requested with the _HyperText Transfer Protocol (HTTP)_
   and structured with the _HTML document format_.
-* Documents are identified by URLs, _not_ by their content,
-  and may be dynamically generated.
+* Documents are identified by Uniform Resource Locators (URLs),
+  _not_ by their content, and may be dynamically generated.
 * Web pages can link to auxiliary assets in different formats,
-  including images, videos, CSS, and JavaScript.
-* All these building blocks are open, standardized, and free to use or re-use.
+  including images, videos, Cascading Style Sheets (CSS), and JavaScript.
+* All these building blocks are open, standardized, and free to use or reuse.
 
 As a philosophical matter, perhaps one or another of these principles is
 secondary. One could try to distinguish between the networking and rendering
@@ -145,7 +147,7 @@ by some other protocol, or HTML by a successor. Yet the web will stay the web,
 because any successor format is sure to support a *superset* of functionality,
 and have the same fundamental structure.
 
-The key thing to understand is this grand experiment is not over.
+The key thing to understand is that this grand experiment is not over.
 The essence of the web will stay, but by building web browsers you have the
 chance to shape its future.
 
@@ -154,7 +156,7 @@ Real browser codebases
 
 So let me tell you what it's like to contribute to a browser. Some time during
 my first few months of working on Chrome, I came across the code implementing
-the[`<br>`][br-tag] tag---look at that, the good-old `<br>` tag, which I’ve
+the[`<br>`][br-tag] tag---look at that, the good old `<br>` tag, which I’ve
 used many times to insert newlines into web pages! And the implementation turns
 out to be barely any code at all, both in Chrome and in this book's simple
 browser.
@@ -162,7 +164,7 @@ browser.
 [br-tag]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/br
 
 But Chrome as a whole---its features, speed, security, reliability---_wow_.
-_Thousands_ of person-years went into it. There is a constant pressure to do
+_Thousands_ of person-years went into it. There is constant pressure to do
 more---to add more features, to improve performance, to keep up with the "web
 ecosystem"---for the thousands of businesses, millions of
 developers,[^developers] and billions of users on the web.
@@ -202,9 +204,9 @@ particular browser. Other people---including you---can and do contribute ideas,
 proposals, and implementations.
 
 What's amazing is that, despite the scale and the pace and the complexity, there
-is still plenty of room to contribute. Every browser today is open-source, which
+is still plenty of room to contribute. Every browser today is open source, which
 opens up its implementation to the whole community of web developers. Browsers
-evolve like giant R&D projects, where new ideas are constantly being proposed
+evolve like giant research projects, where new ideas are constantly being proposed
 and tested out. As you would expect, some features fail and some succeed. The
 ones that succeed end up in specifications and are implemented by other
 browsers. Every web browser is open to contributions---whether
@@ -215,10 +217,11 @@ And it's worth contributing, because working on web browsers is a lot of fun.
 Browser code concepts
 =====================
 
-HTML & CSS are meant to be black boxes---declarative APIs---where one
+HTML and CSS are meant to be black boxes---declarative application
+programming interfaces (APIs)---where one
 specifies _what_ outcome to achieve, and the _browser itself_ is
-responsible for figuring out the _how_ to achieve it. Web developers
-don't, and mostly can't, draw their web page's pixels on their own.
+responsible for figuring out _how_ to achieve it. Web developers
+don't, and mostly can't, draw their web pages' pixels on their own.
 
 That can make the browser magical or frustrating---depending on
 whether it is doing the right thing! But that also makes a browser a pretty
@@ -226,7 +229,7 @@ unusual piece of software, with unique challenges, interesting algorithms, and
 clever optimizations. Browsers are worth studying for the pure pleasure of it.
 
 [^loss-of-control]: Loss of control is not necessarily specific to the web---much
-of computing these days relies on mountains of other peoples’ code.
+of computing these days relies on mountains of other people's code.
 
 What makes that all work is the web browser's implementations of [inversion of
 control][inversion], [constraint programming][constraints], and
@@ -234,12 +237,12 @@ control][inversion], [constraint programming][constraints], and
 intermediary---the browser---handling most of the rendering, and the web
 developer specifying rendering parameters and content to this intermediary.
 [^forms] Further, these parameters usually take the form of _constraints_
-between relative sizes and positions of on-screen elements instead of
+between the relative sizes and positions of on-screen elements instead of
 specifying their values directly;[^constraints] the browser solves the
 constraints to find those values. The same idea applies for actions: web pages
 mostly require _that_ actions take place without specifying _when_ they do.
 This _declarative_ style means that from the point of view of a developer,
-changes "apply immediately," but under the hood, the browser can be
+changes "apply immediately", but under the hood, the browser can be
 [lazy] and delay applying the changes until they become externally visible,
 either due to subsequent API calls or because the page has to be displayed to
 the user.[^style-calculation]
@@ -272,7 +275,7 @@ of widgets is rarely specified directly.
 [^style-calculation]: For example, when exactly does the browser
 compute HTML element's styles? Any change to the styles is visible to
 all subsequent API calls, so in that sense it applies "immediately."
-But it is better for the browser to delay style re-calculation,
+But it is better for the browser to delay style recalculation,
 avoiding redundant work if styles change twice in quick succession.
 Maximally exploiting the opportunities afforded by declarative
 programming makes real-world browsers very complex.
@@ -280,7 +283,7 @@ programming makes real-world browsers very complex.
 To me, browsers are where algorithms _come to life_. A browser contains a
 rendering engine more complex and powerful than any computer game; a full
 networking stack; clever data structures and parallel programming techniques; a
-virtual machine, an interpreted language, and a JIT; a world-class security
+virtual machine, an interpreted language, and a just-in-time compiler; a world-class security
 sandbox; and a uniquely dynamic system for storing data.
 
 And the truth is---you use the browser all the time, maybe for reading this
@@ -297,8 +300,8 @@ information sharing: many people now spend their entire day in a browser, not
 using a single other application! Moreover, desktop applications are now often
 built and delivered as _web apps_: web pages loaded by a browser but used like
 installed applications.[^pwa] Even on mobile devices, apps often embed a browser
-to render parts of the application UI.[^hybrid] Perhaps in the future both
-desktop and mobile devices will largely be a container for web apps. Already,
+to render parts of the application user interface (UI).[^hybrid] Perhaps in the future both
+desktop and mobile devices will largely be containers for web apps. Already,
 browsers are a critical and indispensable part of computing.
 
 [^pwa]: Related to the notion of a web app is a Progressive Web App, which is a
@@ -313,7 +316,7 @@ So given this centrality, it's worth knowing how the web works. And in
 particular, it's worth focusing on the browser, which is the user
 agent[^useragent] and the mediator of the web's interactions, which
 ultimately is what makes the web's principles real. The browser is also the
-_implementer_ of the web: Its sandbox keeps web browsing safe; its algorithms
+_implementer_ of the web: its sandbox keeps web browsing safe; its algorithms
 implement the declarative document model; its UI navigates links. Web pages
 load fast and react smoothly only when the browser is hyper-efficient.
 
@@ -341,10 +344,10 @@ to try them---adding features is one of the best parts of browser development!
 The book then moves on to details and advanced features that flesh out the
 architecture of a real browser’s rendering engine, based on my experiences with
 Chrome. After finishing the book, you should be able to dig into the source code
-of Chromium, Gecko, or WebKit, and understand it without too much trouble.
+of Chromium, Gecko, or WebKit and understand it without too much trouble.
 
 I hope the book lets you appreciate a browser's depth, complexity, and power. I
-hope the book passes along its beauty---its clever algorithms and data
+hope the book passes along a browser's beauty---its clever algorithms and data
 structures, its co-evolution with the culture and history of computing, its
 centrality in our world. But most of all, I hope the book lets you see in
 yourself someone building the browser of the future.
