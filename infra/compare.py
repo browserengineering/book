@@ -154,11 +154,12 @@ def compare_files(book, code, language, file):
             print()
 
         for i, line in enumerate(block.book_content.split("\n")):
-            if len(line) > 61:
+            if len(line) > 70:
                 long_lines.append((block.loc + i + 1, line))
     if long_lines:
         print()
         for loc, chars in sorted(long_lines, key=lambda x: len(x[1]), reverse=True):
             print(f"  {loc}: Line too long ({len(chars)} characters)")
+            failure += 1
     return failure, count
     
