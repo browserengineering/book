@@ -4,9 +4,10 @@ body {
     text-align: justify; hyphens: auto; -webkit-hyphens: auto;
 }
 @media (prefers-color-scheme: light) {
-    body { color:#333; }
+body {
+    color:#333;
 }
-
+}
 @media (max-width: 800px) {
     html { font-size: 18px; }
 }
