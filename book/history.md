@@ -189,7 +189,7 @@ group](https://www.w3.org/People/Berners-Lee/1991/08/art-6484.txt).
 index page meant for searching within a site (vestiges of which exist today in
 the “index.html” convention when a URL path ends in /”), and had a WYSIWYG web
 page editor (the “contenteditable” HTML attribute and “html()” method on DOM
-elements (see [Chapter 15](invalidation.md))
+elements (see [Chapter 16](invalidation.md))
 have similar semantic behavior, but built-in file saving is gone).
 Today, the index is replaced with a search engine, and web page editors as a
 concept are somewhat obsolete due to the highly dynamic nature of today’s web
