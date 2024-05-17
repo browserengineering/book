@@ -25,7 +25,7 @@ content on the web,[^img-late] dating back to [early
 [img-email]: http://1997.webhistory.org/www.lists/www-talk.1993q1/0182.html
 
 [^img-late]: So it's a little ironic that images only make their
-appearance in chapter 15 of this book! It's because Tkinter doesn't
+appearance in Chapter 15 of this book! It's because Tkinter doesn't
 support many image formats or proper sizing and clipping, so I had to
 wait for the introduction of Skia.
 
@@ -35,10 +35,10 @@ wait for the introduction of Skia.
 
 [srcname]: http://1997.webhistory.org/www.lists/www-talk.1993q1/0196.html
 
-And which renders something like this:
+This particular example renders as shown in Figure 1.
 
 ::: {.center}
-![A computer operator using a hypertext editing system in 1969[^hes]](im/hes.jpg)
+![Figure 1: A computer operator using the Hypertext Editing System in 1969.[^hes]](im/hes.jpg)
 :::
 
 [^hes]: Gregory Lloyd from <a href="https://commons.wikimedia.org/wiki/File:HypertextEditingSystemConsoleBrownUniv1969.jpg">Wikipedia</a>, <a href="https://creativecommons.org/licenses/by/2.0/legalcode" rel="license">CC BY 2.0</a>.
@@ -153,7 +153,7 @@ field.[^memoryview]
 
 [^memoryview]: This is a bit of a hack. Perhaps a better solution
     would be to write the response directly into a Skia `Data` object
-    using the `writable_data` API. It would require some refactoring
+    using the `writable_data` API. That would require some refactoring
     of the rest of the browser which is why I'm choosing to avoid it.
     
 These download and decode steps can both fail; if that happens we'll
@@ -200,7 +200,7 @@ Skia applies a variety of clever optimizations to decoding, such as
 directly decoding the image to its eventual size and caching the
 decoded image as long as possible.[^html-image-decode] That's because
 raw image data can be quite large:[^time-memory] a pixel is usually
-stored as four bytes, so a 12 megapixel camera (as you can find on
+stored as 4 bytes, so a 12 megapixel camera (as you can find on
 phones these days) produces 48 megabytes of raw data for a single image.
 
 [^time-memory]: Decoding costs both a lot of memory and also a lot of
@@ -208,7 +208,7 @@ phones these days) produces 48 megabytes of raw data for a single image.
     chunk of our render budget. Optimizing image handling is essential
     to a performant browser.
     
-[^html-image-decode]: There's also is an [HTML API][html-image-decode]
+[^html-image-decode]: There's also an [HTML API][html-image-decode]
     to control decoding, so that the web page author can indicate when
     to pay that cost.
 
@@ -217,7 +217,7 @@ phones these days) produces 48 megabytes of raw data for a single image.
 Because image decoding can be so expensive, Skia also has several
 algorithms available for decoding, some of which are faster but result
 in a worse-looking image.[^lossy] For example,
-there's fast, simple, "nearest neighbor" algorithm and the slower but
+there's the fast, simple "nearest neighbor" algorithm and the slower but
 higher-quality "bilinear" or even "[Lanczos][lanczos]" algorithms.[^resizing]
 
 [^lossy]: Image formats like JPEG are also [*lossy*][lossy], meaning that
@@ -230,7 +230,7 @@ higher-quality "bilinear" or even "[Lanczos][lanczos]" algorithms.[^resizing]
 [^resizing]: Specifically, these algorithms decide how to decode an
     image when the image size and the destination size are different
     and the image therefore needs to be resized. The faster algorithms
-    tend to result in chopier, more jagged images.
+    tend to result in choppier, more jagged images.
 
 [lossy]: https://en.wikipedia.org/wiki/Lossy_compression
 
@@ -450,15 +450,15 @@ class ImageLayout(EmbedLayout):
 ```
 
 Now we need to create `ImageLayout`s in `BlockLayout`. Input elements
-are created in an `input` method, so we create a largely-similar
+are created in an `input` method, so we create a largely similar
 `image` method. But `input` is itself largely a duplicate of `word`, so
 this would be a lot of duplication. The only part of these methods
 that differs is the part that computes the width of the new inline
 child; most of the rest of the logic is shared.
 
 Let's instead refactor the shared code into new methods which `text`,
-`input`, and `input` can call. First, all of these methods need a font
-to determine how big of a space[^actual] to leave after the inline;
+`image`, and `input` can call. First, all of these methods need a font
+to determine how much space[^actual] to leave after the inline;
 let's make a function for that:
 
 [^actual]: Yes, this is how real browsers do it too.
@@ -545,7 +545,7 @@ But what about our second output modality, screen readers? That's what
 the `alt` attribute is for. It works like this:
 
     <img src="https://browser.engineering/im/hes.jpg"
-    alt="An operator using a hypertext editing system in 1969">
+    alt="An operator using the Hypertext Editing System in 1969">
 
 Implementing this in `AccessibilityNode` is very easy:
 
@@ -572,7 +572,7 @@ modalities.
 
 ::: {.further}
 Videos are similar to images, but demand more bandwidth, time, and
-memory; they also have complications like [Digital Rights Management
+memory; they also have complications like [digital rights management
 (DRM)][drm]. The `<video>` tag addresses some of that, with built-in
 support for advanced video [*codecs*][codec],^[In video, it's called a
 "codec", but in images it's called a "format"--go figure.] DRM, and
@@ -593,8 +593,8 @@ different than its regular size, even before introducing the features in this
 section.] But in fact it's generally valuable for
 authors to control the size of embedded content. There are a number of ways to
 do this,^[For example, the `width` and `height` CSS properties (not to be
-confused with the `width` and `height` attributes!), which were an exercise in
-Chapter 13.] but one way is the special `width` and `height`
+confused with the `width` and `height` attributes!), which we met in Exercise 13-4.]
+but one way is the special `width` and `height`
 attributes.^[Images have these mostly for historical reasons: they
 were invented before CSS existed.]
 
@@ -665,41 +665,24 @@ class ImageLayout(EmbedLayout):
         # ...
 ```
 
-::: {.web-only}
-
-Your browser should now be able to render <a
-href="/examples/example15-img.html">this example page</a> correctly. It
-should look like this:
-
-:::
-
-::: {.print-only}
-
-Your browser should now be able to render this example page correctly:
+Your browser should now be able to render the following example [page](https://browser.engineering/examples/example15-img.html) correctly, as shown in Figure 2. When it's scrolled down a bit you should see what's shown in Figure 3 (notice the different aspect
+ratios). And scrolling to the end will show what appears in Figure 4, including
+the "broken image" icon.
 
 ::: {.transclude .html}
 www/examples/example15-img.html
 :::
 
-It should look like this:
-
+::: {.center}
+![Figure 2: Rendering of an example with images.](examples/example15-img.png)
 :::
 
 ::: {.center}
-![Rendering of an example with images](examples/example15-img.png)
+![Figure 3: Rendering of an example with images after scrolling to aspect-ratio differences.](examples/example15-img-scroll1.png)
 :::
 
-When it's scrolled down a bit you should see this (notice the different aspect
-ratios):
-
 ::: {.center}
-![Rendering of an example with images after scrolling to aspect-ratio differences](examples/example15-img-scroll1.png)
-:::
-
-And scrolled to the end will show this, including the "broken image" icon:
-
-::: {.center}
-![Rendering of an example with images after scrolling to a broken image icon](examples/example15-img-scroll2.png)
+![Figure 4: Rendering of an example with images after scrolling to a broken image icon.](examples/example15-img-scroll2.png)
 :::
 
 ::: {.further}
@@ -719,7 +702,7 @@ Interactive widgets
 ===================
 
 So far, our browser has two kinds of embedded content: images and
-input elements. While both are important and widely-used,[^variants]
+input elements. While both are important and widely used,[^variants]
 they don't offer quite the customizability[^openui] and flexibility
 that complex embedded content use cases like maps, PDFs, ads, and social media
 controls require. So in modern browsers, these are handled by
@@ -790,19 +773,19 @@ script environments, `Frame`s will do the rest.
 It's good to plan out complicated refactors like this in some detail.
 A `Tab` will:
 
-* Interface between the `Browser` and the `Frame`s to handle events
-* Proxy communication between frames
-* Kick off animation frames and rendering
-* Paint and own the display list for all frames in the tab
-* Construct and own the accessibility tree
-* Commit to the browser thread
+* interface between the `Browser` and the `Frame`s to handle events;
+* proxy communication between frames;
+* kick off animation frames and rendering;
+* paint and own the display list for all frames in the tab;
+* construct and own the accessibility tree;
+* commit to the browser thread.
 
 And the new `Frame` class will:
 
-* Own the DOM, layout trees, and scroll offset for its HTML document
-* Run style and layout on the its DOM and layout tree
+* own the DOM, layout trees, and scroll offset for its HTML document;
+* oun style and layout on the its DOM and layout tree;
 * Implement loading and event handling (focus, hit testing, etc) for its HTML
-  document
+  document.
 
 Create these two classes and split the methods between them accordingly.
   
@@ -820,7 +803,7 @@ class Frame:
 ```
 
 Now let's look at how `Frame`s are created. The first place is in
-`Tab`'s load method, which needs to create the *root frame*:
+`Tab`'s `load` method, which needs to create the *root frame*:
 
 ``` {.python}
 class Tab:
@@ -835,7 +818,7 @@ class Tab:
         self.root_frame.load(url, payload)
 ```
 
-Note that the guts of `load` now lives in the `Frame`, because
+Note that the guts of `load` now live in the `Frame`, because
 the `Frame` owns the DOM tree. The `Frame` can *also* construct child
 `Frame`s, for `<iframe>` elements:
 
@@ -870,7 +853,7 @@ class Frame:
             self.tab.task_runner.schedule_task(task)
 ```
 
-And since they are async, we need to record whether they have loaded yet,
+And since they are asynchronous, we need to record whether they have loaded yet,
 to avoid trying to render an unloaded iframe:
 
 ``` {.python}
@@ -936,7 +919,7 @@ paint.[^why-split] We'll need to implement that split, and also add code
 to trigger each `Frame`'s rendering from the `Tab`.
 
 [^why-split]: Why split the rendering pipeline this way? Because the
-    accessibility tree and display list are ultimately transfered from
+    accessibility tree and display list are ultimately transferred from
     the main thread to the browser thread, so they get combined
     anyway. DOM, style, and layout trees, meanwhile, don't get passed
     between threads so don't intermingle.
@@ -1016,7 +999,7 @@ attributes and CSS of the `iframe` element:
 intrinsic sizing in the past, but it was [removed][seamless-removed]
 from the HTML specification when no browser implemented it. This may
 change [in the future][seamless-back], as there are good use cases for
-a "seamless" iframe whose layout coordinates with its parent frame.
+a "seamless" iframe whose layout is coordinated with its parent frame.
 
 [seamless-removed]: https://github.com/whatwg/html/issues/331
 [seamless-back]: https://github.com/w3c/csswg-drafts/issues/1771
@@ -1051,7 +1034,7 @@ class BlockLayout:
 
 ```
 
-The `IframeLayout` layout code is also similar, inheriting from
+The `IframeLayout` layout code is similar, inheriting from
 `EmbedLayout`, but without the aspect ratio code:
 
 ``` {.python}
@@ -1263,8 +1246,8 @@ interacting with them.
 
 ::: {.further}
 Before iframes, there were the [`<frameset>` and `<frame>`][frameset] elements.
-A `<frameset>` replaces the `<body>` tag and splits browser window
-screen among multiple `<frame>`s; this was an early alternative layout
+A `<frameset>` replaces the `<body>` tag and splits the browser window
+among multiple `<frame>`s; this was an early alternative layout
 system to the one presented in this book. Frames had confusing
 navigation and accessibility, and lacked the flexibility of
 `<iframe>`s, so aren't used much these days. The name "iframe" references
@@ -1290,10 +1273,10 @@ class Tab:
 ```
 
 When an iframe is clicked, it passes the click through to the child
-frame, and immediately return afterwards, because iframes capture
-click events. Note how I subtracted the absolute x and y offset of the
-iframe from the (absolute) x and y click position when recursing into the child
-frame:
+frame, and immediately returns afterward, because iframes capture
+click events. Note how I subtracted the absolute `x` and `y` offsets of the
+iframe from the (absolute) `x` and `y` click positions when recursing into the
+child frame:
 
 ``` {.python}
 class Frame:
@@ -1317,17 +1300,18 @@ all the loading and navigation logic that `Tab` used to have, it just
 works without any more changes!
 
 You should now be able to load [this
-example](examples/example15-iframe.html). It should look like this:
+example](examples/example15-iframe.html). It should look like the image
+shown in in Figure 5.
 
 ::: {.center}
-![Rendering of an iframe](examples/example15-iframe.png)
+![Figure 5: Rendering of an iframe.](examples/example15-iframe.png)
 :::
 
-Repeatedly clicking on the link will add another recursive iframe. After
-clicking twice it should look like this:
+Repeatedly clicking on the link on that page will add another recursive iframe.
+After clicking twice it should look like Figure 6.
 
 ::: {.center}
-![Rendering of an iframe](examples/example15-iframe-clicked.png)
+![Figure 6: Rendering of an iframe.](examples/example15-iframe-clicked.png)
 :::
 
 Let's get the other interactions working as well, starting with
@@ -1344,7 +1328,7 @@ class Tab:
 
 When an iframe tries to focus on an element, it sets itself as the
 focused iframe, but before it does that, it needs to un-focus the
-previously-focused iframe:
+previously focused iframe:
 
 ``` {.python}
 class Frame:
@@ -1356,7 +1340,7 @@ class Frame:
         # ...
 ```
 
-We need to re-render the previously-focused iframe so that it
+We need to re-render the previously focused iframe so that it
 stops drawing the focus outline.
 
 Another interaction is pressing `Tab` to cycle through focusable
@@ -1365,7 +1349,7 @@ elements in the current frame. Let's move the `advance_tab` logic into
 
 [^tab-exercise]: This is not a particularly user-friendly
     implementation of tab cycling when multiple frames are involved;
-    see the [exercises](#exercises) for a better version.
+    see Exercise 15-9 for a better version.
 
 ``` {.python}
 class Tab:
@@ -1388,7 +1372,7 @@ class Frame:
 
 Now, as you might recall from [Chapter 13](animations.md), scrolling
 happens both inside `Browser` and inside `Tab`, to improve responsiveness.
-That was already quite complicated, so to keep things simple, we'll only
+That was already quite complicated, so to keep things simple we'll only
 support threaded scrolling on the root frame. We'll need a new commit parameter
 so the browser thread knows whether the root frame is focused:
 
@@ -1466,7 +1450,7 @@ class Frame:
         self.scroll = self.clamp_scroll(new_scroll)
 ```
 
-There's also a set of accessibility hover interactions that we need to
+There are also a number of accessibility hover interactions that we need to
 support. This is hard, because the accessibility interactions happen
 in the browser thread, which has limited information:
 
@@ -1544,7 +1528,7 @@ class AccessibilityNode:
 
 And now we're ready for the method to map to absolute coordinates. This
 loops over all bounds rects and maps them up to the root. Note that there is
-a specal case for `FrameAccessibilityNode`, because its self-bounds are in
+a special case for `FrameAccessibilityNode`, because its self-bounds are in
 the coordinate space of the frame containing the iframe.
 
 ``` {.python}
@@ -1618,16 +1602,17 @@ _already_ run scripts---but right now, each `Frame` has its own
 `JSContext`, so these scripts can't really interact with each other. Instead
 *same-origin* iframes should run in the same JavaScript context and
 should be able to access each other's globals, call each other's
-functions, and modify each other's DOMs. Let's implement that.
+functions, and modify each other's DOMs, as shown in Figure 7.
+Let's implement that.
 
 ::: {.print-only}
-![Multiple frames within the same tab can share a single `JSContext`](im/browser-tab-frame-jscontext.jpg)
+![Figure 7: Multiple frames within the same tab can share a single `JSContext`.](im/browser-tab-frame-jscontext.jpg)
 :::
 
 For two frames' JavaScript environments to interact, we'll need to put
 them in the same `JSContext`. So, instead of each `Frame` having a
 `JSContext` of its own, we'll want to store `JSContext`s on the `Tab`,
-in a dictionary that maps origins to JS contexts:
+in a dictionary that maps origins to JavaScript contexts:
 
 ``` {.python}
 class Tab:
@@ -1689,9 +1674,9 @@ If you miss one, you'll get errors like this:
     	eval src/pyduktape.c:1 preventsyield
 :::
 
-If you see this error, this means you need to go find where you need
-to write `window.Node` instead of `Node`. You'll also need to modify `EVENT_DISPATCH_JS` to prefix
-classes with `window`:
+If you see this error, it means you need to find where you need
+to write `window.Node` instead of `Node`. You'll also need to modify
+`EVENT_DISPATCH_JS` to prefix classes with `window`:
 
 ``` {.python}
 EVENT_DISPATCH_JS = \
@@ -1895,7 +1880,7 @@ allow *some* interaction between same-origin frames. Let's do that now.
 The simplest way two frames can interact is that they can get access
 to each other's state via the `parent` attribute on the `Window`
 object. If the two frames have the same origin, that lets one frame
-calls methods, access variables, and modify browser state for the
+call methods, access variables, and modify browser state for the
 other frame. Because we've had these same-origin frames share a
 `JSContext`, this isn't too hard to implement. Basically, we'll need a
 way to go from a window ID to its parent frame's window ID:
@@ -2006,7 +1991,7 @@ Message-passing in JavaScript works like this: you call the
 [`postMessage` API][postmessage] on the `Window` object you'd like to
 talk to, with the message itself as the first parameter and `*` as the
 second:^[The second parameter has to do with origin restrictions; see
-the exercises.]
+Exercise 15-8.]
 
 [postmessage]: https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage
 
@@ -2094,7 +2079,7 @@ asynchronous API; sending a synchronous message might involve
 synchronizing multiple `JSContext`s or even multiple processes, which
 would add a lot of overhead and probably result in deadlocks.
 
-The task finds the target frame and call a dispatch method:
+The task finds the target frame and calls a dispatch method:
 
 ``` {.python}
 class Tab:
@@ -2122,10 +2107,9 @@ You should now be able to use `postMessage` to send messages between
 frames,[^postmessage-demo] including cross-origin frames running in
 different `JSContext`s, in a secure way.
 
-[^postmessage-demo]: In [this demo](examples/example15-iframe.html), for
-example, you should see "Message received from iframe: This is the contents of
+[^postmessage-demo]: In [this demo](https://browser.engineering/examples/example15-iframe.html), for example, you should see "Message received from iframe: This is the contents of
 postMessage." printed to the console. (This particular example uses a
-same-origin postMessage. You can test cross-origin locally by starting two
+same-origin `postMessage`. You can test cross-origin locally by starting two
 local HTTP servers on different ports, then changing the URL of the
 `example15-img.html` iframe document to point to the second port.)
 
@@ -2155,7 +2139,7 @@ pages don't trust each other---both in the case of embedding an
 untrusted page into your own page, and the reverse, where an attacker
 embeds your page into their own, malicious one. In both cases, we want
 to protect your page from any security or privacy risks caused by the
-other frame.^[Web sites can protect themselves from being iframed via
+other frame.^[Websites can protect themselves from being iframed via
 the `X-Frame-Options` header.]
 
 The starting point is that cross-origin iframes can't access each
@@ -2231,14 +2215,15 @@ used to [construct a clock][sab-attack].
 
 ::: {.further}
 The `SharedArrayBuffer` issue caused problems when I [added JavaScript
-support][js-blog] to the embedded browser widgets on this website. I
+support][js-blog] to the embedded browser widgets on
+[the book's website](https://browser.engineering). I
 was using `SharedArrayBuffer` to allow synchronous calls from a
 `JSContext` to the browser, and that required APIs that browsers
 restrict for security reasons. Setting the security headers wouldn't
-work, because [Chapter 14](accessibility.md) embeds a Youtube video,
-and YouTube doesn't send those headers. In the end, I worked around
-the issue by not embedding the browser widget and [asking the
-reader](scripts.html#outline) to open a new browser window.
+work, because Chapter 14 embeds a Youtube video,
+and at the time of writing YouTube doesn't send those headers.
+In the end, I worked around the issue by not embedding the browser widget
+and [asking the reader](http://browser.engineering/scripts.html#outline) to open a new browser window.
 :::
 
 [js-blog]: https://browserbook.substack.com/p/javascript-in-javascript
@@ -2262,9 +2247,9 @@ images and iframes. Reiterating the main points:
   they enable important cross-origin use cases like ads, video, and
   social media buttons.
 
-And as we hope you saw in this chapter, none of these features are too
-difficult to implement, though---as you'll see in the exercises
-below---implementing them well requires a lot of attention to detail
+And, as we hope you saw in this chapter, none of these features are too
+difficult to implement, though---as you'll see in the
+exercises---implementing them well requires a lot of attention to detail.
 
 ::: {.web-only}
 
@@ -2322,9 +2307,10 @@ property.
 
 [bg-size]: https://developer.mozilla.org/en-US/docs/Web/CSS/background-size
 
-15-3 *Object-fit*. implement the [`object-fit`][obj-fit] CSS property. It determines
-how the image within an `<img>` element is sized relative to its container
-element. This will require clipping images with a different aspect ratio.
+15-3 *`object-fit`*. Implement the [`object-fit`][obj-fit] CSS property.
+It determines how the image within an `<img>` element is sized relative to
+its container element. This will require clipping images with a different
+aspect ratio.
 
 [obj-fit]: https://developer.mozilla.org/en-US/docs/Web/CSS/object-fit
 
@@ -2348,13 +2334,13 @@ downloading of images until the user expressly asked for them.
 15-5 *Iframe aspect ratio*. Implement the [`aspect-ratio`][aspect-ratio] CSS
 property and use it to provide an implicit sizing to iframes and images
 when only one of `width` or `height` is specified (or when the image is not
-yet loaded, if you do the lazy loading exercise).
+yet loaded, if you do Exercise 15-4).
 
 [aspect-ratio]: https://developer.mozilla.org/en-US/docs/Web/CSS/aspect-ratio
 
 15-6 *Image placeholders*. Building on top of lazy loading, implement placeholder
-styling of images that haven't loaded yet. This is done by setting a 0x0 sizing,
-unless `width` or `height` is specified. Also add support for hiding the
+styling of images that haven't loaded yet. This is done by setting a 0 × 0
+sizing, unless `width` or `height` is specified. Also add support for hiding the
 "broken image" if the `alt` attribute is missing or empty.^[That's because
 if `alt` text is provided, the browser can assume the image is important
 to the meaning of the website, and so it should tell the user that they
@@ -2372,7 +2358,7 @@ parameter to [`postMessage`][postmessage]. This parameter is a string
 which indicates the frame origins that are allowed to receive the
 message.
 
-15-9 *Multi-frame focus*. in our browser, pressing `Tab` cycles through
+15-9 *Multi-frame focus*. In our browser, pressing `Tab` cycles through
 the elements in the focused frame. But this means it's impossible to access
 focusable elements in other frames by keyboard alone. Fix it to move
 between frames after iterating through all focusable elements in one
@@ -2386,12 +2372,12 @@ orders.^[It's debatable whether this is a good feature of iframes, as
 it causes a lot of confusion for web developers who embed iframes they
 don't plan on navigating.]
 
-15-11 *Iframes added or removed by script*. the `innerHTML` API can cause iframes
-to be added or removed, but our browser doesn't load or unload them
+15-11 *Iframes added or removed by script*. the `innerHTML` API can cause
+iframes to be added or removed, but our browser doesn't load or unload them
 when this happens. Fix this: new iframes should be loaded and old ones
 unloaded.
 
-15-12 *X-Frame-Options*. Implement [this header][xfo], which disallows a web page from
-appearing in an iframe.
+15-12 *`X-Frame-Options`*. Implement [this header][xfo], which disallows a web
+page from appearing in an iframe.
 
 [xfo]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options
