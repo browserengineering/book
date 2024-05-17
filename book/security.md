@@ -437,10 +437,10 @@ help them steal cookie values.
 
 [^tls]: Well... Our connection isn't encrypted, so an attacker could
     read it from an open Wifi connection. But another *server*
-    couldn't. Or, another server could hijack our DNS and redirect our
-    hostname to a different IP address, and then steal our cookies.
-    Some ISPs support DNSSEC, which prevents this, but not all.
-    Or, a state-level attacker could announce fradulent BGP
+    couldn't. Or how about this attack: another server could hijack our DNS
+    and redirect our hostname to a different IP address, and then steal our
+    cookies. Some ISPs support DNSSEC, which prevents this, but not all.
+    Or maybe this attack: a state-level attacker could announce fradulent BGP
     routes, which would send even a correctly-retrieved IP address to
     the wrong physical computer. (Security is very hard.)
 
