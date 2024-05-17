@@ -1154,7 +1154,7 @@ blending into the parent.
 I highly recommend [this blog post](https://ciechanow.ski/alpha-compositing/)
 giving a really nice visual overview of many of the same concepts explored in
 this chapter, plus way more content about how a library such as Skia might
-implement features like raster sampling of vector graphics for lines and text,
+implement features like raster sampling of vector graphics for lines and text
 and interpolation of surfaces when their pixel arrays don't match resolution
 or orientation.
 :::
