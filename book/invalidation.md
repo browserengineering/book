@@ -16,7 +16,7 @@ approach and simple abstractions to make it manageable.
 Editing Content
 ===============
 
-In [Chapter 13](animations.md), we used compositing to smoothly
+In Chapter 13, we used compositing to smoothly
 animate CSS properties like `transform` or `opacity`. But we couldn't
 animate _layout-inducing_ properties like `width` or `font-size` this
 way because they change not
@@ -29,7 +29,7 @@ a few frames' delay is distracting. But editing changes the HTML tree
 and therefore the layout tree. Rebuilding the layout tree from
 scratch, which our browser currently does, can be very slow on
 complex pages. Try, for example, loading [this
-chapter](invalidation.md) in our browser and typing into the input box
+chapter](https://browser.engineering/invalidation.html) in our browser and typing into the input box
 that appears after this paragraph...You'll find that it is *much* too
 slow---1.7 seconds just in `render` (see Figure 1)!
 ^[Trace [here](https://browser.engineering/examples/example16-input-no-optimizations.trace).]
@@ -152,7 +152,7 @@ class InputLayout(EmbedLayout):
 ```
 
 You can now edit the examples on
-[this page](http://browser.engineering/invalidation.html) in your browser---but
+[this page](https://browser.engineering/invalidation.html) in your browser---but
 each key stroke will take more than a second, making for a
 frustrating editing experience. So let's work on speeding that up.
 
@@ -588,7 +588,7 @@ class BlockLayout:
 
 Now that we have all three parts of the dirty flag done, you should be
 able to run your browser and test it on
-[this page](https://browser.engineering/invalidatiton.html). Even when you edit
+[this page](https://browser.engineering/invalidation.html). Even when you edit
 text or call `innerHTML`, you shouldn't see any assertion failures.
 Work incrementally and test often---it makes debugging easier.
 
@@ -2761,7 +2761,7 @@ help make resizing fast? Test both vertical and horizontal resizing.
 
 16-6 *Matching children*. Add support for [the `appendChild`
 method][appendchild-mdn] if you haven't
-already in exercise 9-2. What's interesting about `appendChild`
+already in Exercise 9-2. What's interesting about `appendChild`
 is that, while it *does* change a layout object's `children` field, it
 only does so by adding new children to the end. In this case, you can
 keep all of the existing layout object children. Apply this
@@ -2771,7 +2771,7 @@ optimization, at least in the case of block-mode `BlockLayout`s.
 
 16-7 *Invalidating `previous`*. Add support for [the `insertBefore`
 method][insertbefore-mdn] if you if you haven't
-already in exercise 9-2. Like with `appendChild`, we want to
+already in Exercise 9-2. Like with `appendChild`, we want to
 skip rebuilding layout objects if we can. However, this method can
 also change the `previous` field of layout objects; protect that field
 on all block-mode `BlockLayout`s and then avoid rebuilding as much of
