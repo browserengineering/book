@@ -1589,7 +1589,7 @@ from 2:36--3:54.[^whole-talk]
 :::
 
 ::: {.web-only .center}
-Figure 7: Accessibility talk.
+Figure 7: Accessibility talk available [here].
 :::
 
 ::: {.print-only .center}
