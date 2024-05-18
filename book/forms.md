@@ -756,7 +756,7 @@ message board state. The server then needs the browser to update what
 the user sees; with forms, the server sends a new HTML page in its
 response to the `POST` request. This process is shown in Figure 2.
 
-::: {.print-only}
+::: {.center}
 ![Figure 2: The cycle of request and response for a multi-page application](im/forms-mpa.png)
 :::
 
@@ -940,7 +940,7 @@ browser is using HTTP 1.0 to talk to it, it doesn't send back any
 headers at all except `Content-Length`, it doesn't support TLS, and so
 on. Again: this is a web *browser* book---it'll do.
 
-::: {.print-only}
+::: {.center}
 ![Figure 3: The architecture of the simple web server in this chapter](im/forms-server.png)
 :::
 
