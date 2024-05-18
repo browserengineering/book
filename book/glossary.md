@@ -321,8 +321,8 @@ Most of these coordinate systems use the standard *x* and *y*
 directions but with different origins, though not all.[^logical-coordinates]
 
 [^logical-coordinates]: Some *logical* coordinate systems flip the
-direction of `x` and `y` according to the direction of the writing
-mode of the language. For example, in Arabic it makes sense for `x` to
+direction of *x* and *y* according to the direction of the writing
+mode of the language. For example, in Arabic it makes sense for *x* to
 grow towards the left, and the origin is often at the top-right, not
 the top-left. This becomes confusing when nesting, containing blocks,
 scrolling, and positioning are used together.
