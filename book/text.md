@@ -9,7 +9,7 @@ In the last chapter, our browser created a graphical window and
 drew a grid of characters to it. That's OK for Chinese, but English
 text features characters of different widths grouped into words that
 you can't break across lines.[^lotsoflang] In this chapter, we'll add those
-capabilities. You'll even be able to read this page!
+capabilities. You'll even be able to read [this page](http://browser.engineering/text.html)!
 
 [^lotsoflang]: There are lots of languages in the world, and lots of
     typographic conventions. A real web browser supports every
@@ -27,10 +27,10 @@ we need to create and use font objects.
 
 What is a *font*, exactly? Well, in the olden days, printers arranged
 little metal slugs on rails, covered them with ink, and pressed them
-to a sheet of paper, creating a printed page. The metal shapes came in
+to a sheet of paper, creating a printed page (see Figure 1). The metal shapes came in
 boxes, one per letter, so you'd have a (large) box of e's, a (small)
-box of x's, and so on. The boxes came in cases (one for upper*case*
-and one for lower*case* letters). The set of cases was called a
+box of x's, and so on. The boxes came in cases (see Figure 2), one for upper-*case*
+and one for lower-*case* letters. The set of cases was called a
 font.[^fontname] Naturally, if you wanted to print larger text, you needed
 different (bigger) shapes, so those were a different font; a
 collection of fonts was called a *type*, which is why we call it
@@ -41,22 +41,19 @@ typing. Variations—like bold or italic letters—were called that type's
     metal shapes.
     
 ::: {.center}
-![A drawing of printing press workers[^printingpress]](im/text-old.jpeg)
+![Figure 1: A drawing of printing press workers. (By [Daniel Nikolaus Chodowiecki][chodowiecki]. [Wikipedia][wiki-tafel], public domain.)](im/text-old.jpeg)
 :::
 
-[^printingpress]:By
-<a href="https://en.wikipedia.org/wiki/Daniel_Chodowiecki">Daniel
-Nikolaus Chodowiecki</a>.
-<a href="https://commons.wikimedia.org/wiki/File:Chodowiecki_Basedow_Tafel_21_c.jpg">Wikipedia</a>,
-public domain
+[chodowiecki]: https://en.wikipedia.org/wiki/Daniel_Chodowiecki
+[wiki-tafel]: https://commons.wikimedia.org/wiki/File:Chodowiecki_Basedow_Tafel_21_c.jpg
 
 ::: {.center}
-![Metal types in letter cases and a composing stick[^metaltype]](im/text-metal.png)
+![Figure 2: Metal types in letter cases and a composing stick. (By Willi
+Heidelbach. [Wikipedia][wiki-type], [CC BY 2.5][cc-by-25].)](im/text-metal.png)
 :::
 
-[^metaltype]: Willi Heidelbach from
-<a href="https://en.wikipedia.org/wiki/File:Metal_movable_type.jpg">Wikipedia</a>,
-<a href="https://creativecommons.org/licenses/by/2.5/deed.en">CC BY 2.5</a>
+[wiki-type]: https://en.wikipedia.org/wiki/File:Metal_movable_type.jpg
+[cc-by-25]: https://creativecommons.org/licenses/by/2.5/deed.en
 
 This nomenclature reflects the world of the printing press: metal
 shapes in boxes in cases from different foundries. Our modern world
@@ -77,8 +74,8 @@ world of magic ink.[^magic-ink]
     small-caps version; these are sometimes called *options* as well.
     And don't get me started on automatic versus manual italics.
 
-[^sizes]: Font looks especially good at certain sizes where *hints* tell
-    the computer how to best to align it to the pixel grid.
+[^sizes]: A font looks especially good at certain sizes where *hints* tell
+    the computer how best to align it to the pixel grid.
     
 [^magic-ink]: This term comes from an [essay by Bret
     Victor][magic-ink-essay] that discusses how the graphical
@@ -92,7 +89,7 @@ type at a fixed size, style, and weight. For example:[^after-tk]
 
 [^after-tk]: You can only create `Font` objects, or any other kinds of
     Tk objects, after calling `tkinter.Tk()`, which is why I'm putting
-    this code in the Browser constructor.
+    this code in the `Browser` constructor.
 
 ``` {.python expected=False}
 import tkinter.font
@@ -121,10 +118,10 @@ canvas.create_text(200, 100, text="Hi!", font=bi_times)
 ```
 
 ::: {.further}
-In the olden times, American type setters kept their boxes of metal
+In the olden times, American typesetters kept their boxes of metal
 shapes arranged in a [California job case][california], which combined
-lower- and upper-case letters side by side in one case, making type
-setting easier. The upper-/lower-case nomenclature dates from
+lower- and upper-case letters side by side in one case, making
+typesetting easier. The upper-/lower-case nomenclature dates from
 centuries earlier.
 :::
 
@@ -151,7 +148,8 @@ Text takes up space vertically and horizontally, and the font object's
     different trade-offs.
 
 The `metrics` call yields information about the vertical dimensions of
-the text: the `linespace` is how tall the text is, which includes an
+the text (see Figure 3): the `linespace` is how tall the text is,
+which includes an
 `ascent` which goes "above the line" and a `descent` that goes "below
 the line".[^fixed] The `ascent` and `descent` matter when words in
 different sizes sit on the same line: they ought to line up "along the
@@ -161,29 +159,28 @@ line", not along their tops or bottoms.
     all letters are the same *width*, so it doesn't really fit here.
     
 ::: {.print-only .center}
-![Diagram of font metrics](im/text-metrics.png)
-^[The various vertical metrics of a font. All glyphs in a font share
-the same ascent, x-height, and descent, and are laid out on a shared
-baseline. However, the measure (or advance) of glyphs can differ.]
+![Figure 3: The various vertical metrics of a font. All glyphs in a font share
+the same ascent, *x*-height, and descent, and are laid out on a shared
+baseline. However, the measure (or advance) of glyphs can differ.](im/text-metrics.png)
 :::
 
 Let's dig deeper. Remember that `bi_times` is size-16 Times: why does
 `font.metrics` report that it is actually 19 pixels tall? Well, first
-of all, size-16 meant sixteen *points*, which are defined as 72^nd^s
-of an inch, not sixteen *pixels*,[^french-pts] which your monitor
-probably has around 100 of per inch.[^pt-for-fonts] Those sixteen
+of all, a size of 16 means 16 *points*, which are defined as 72nds
+of an inch, not 16 *pixels*,[^french-pts] which your monitor
+probably has around 100 of per inch.[^pt-for-fonts] Those 16
 points measure not the individual letters but the metal blocks the
 letters were once carved from, so the letters themselves must be *less
-than* sixteen points. In fact, different size-16 fonts have letters of
+than* 16 points. In fact, different size-16 fonts have letters of
 varying heights:[^varying-times]
 
 [^french-pts]: Actually, the definition of a "point" is a total mess,
     with many different length units all called "point" around the
     world. The [Wikipedia page][wiki-point] has the details, but a
     traditional American/British point is actually slightly less than
-    1/72 of an inch. The 1/72^nd^ standard comes from Postscript, but
-    some systems predate it; TeX, for example, hews closer to the
-    traditional point, approximating it as 1/72.27^th^ of an inch.
+    1/72 of an inch. The 1/72nd standard comes from PostScript, but
+    some systems predate it; `TeX`{=html} `\TeX`{=latex}, for example, hews closer to the
+    traditional point, approximating it as 1/72.27th of an inch.
     
 [wiki-point]: https://en.wikipedia.org/wiki/Point_(typography)
 
@@ -276,8 +273,8 @@ the same width.
 
 ::: {.further}
 If you find font metrics confusing, you're not the only one! In 2012,
-the Michigan Supreme Court heard [*Stand Up for Democracy v. Secretary
-of State*][case], a case ultimately about a ballot referendum's
+the Michigan Supreme Court heard [Stand Up for Democracy v. Secretary
+of State][case], a case ultimately about a ballot referendum's
 validity that centered on the definition of font size. The court
 decided (correctly) that font size is the size of the metal blocks
 that letters were carved from and not the size of the letters
@@ -289,8 +286,8 @@ themselves.
 Word by word
 ============
 
-In the last chapter, the `layout` function looped over the text
-character-by-character and moved to the next line whenever we ran out
+In [Chapter 2](graphics.md), the `layout` function looped over the text
+character by character and moved to the next line whenever we ran out
 of space. That's appropriate in Chinese, where each character more or
 less *is* a word. But in English you can't move to the next line in
 the middle of a word. Instead, we need to lay out the text one word at
@@ -373,9 +370,9 @@ space after the last word on a line.
 ::: {.further}
 Breaking lines in the middle of a word is called hyphenation, and can
 be turned on via the [`hyphens` CSS property][hyphens]. The state of
-the art is the [Knuth-Liang hyphenation algorithm][liang], which uses
+the art is the [Knuth–Liang hyphenation algorithm][liang], which uses
 a dictionary of word fragments to prioritize possible hyphenation
-points, to implement this. At first, the CSS specification [was
+points to implement this. At first, the CSS specification [was
 incompatible][css-hyphen] with this algorithm, but the recent
 [`text-wrap-style` property][css4-text] fixed that.
 :::
@@ -389,7 +386,7 @@ Styling text
 ============
 
 Right now, all of the text on the page is drawn with one font. But web
-pages sometimes **bold** or *italicize* text using the `<b>` and `<i>`
+pages sometimes specify that text should be **bold** or *italic* using the `<b>` and `<i>`
 tags. It'd be nice to support that, but right now, the code resists
 this: the `layout` function only receives the text of the page
 as input, and so has no idea where the bold and italics tags are.
@@ -415,7 +412,7 @@ class Tag:
 
 `lex` must now gather text into `Text` and `Tag` objects:[^exercises]
 
-[^exercises]: If you've done exercises in prior chapters, your code will look
+[^exercises]: If you've done some or all of the exercises in prior chapters, your code will look
     different. Code snippets in the book always assume you haven't
     done the exercises, so you'll need to port your modifications.
 
@@ -501,10 +498,10 @@ Note that this code correctly handles not only `<b>bold</b>` and
 `<i>italic</i>` text, but also `<b><i>bold italic</i></b>`
 text.[^even-misnested]
 
-[^even-misnested]: It even handles mis-nested tags like
+[^even-misnested]: It even handles incorrectly nested tags like
     `<b>b<i>bi</b>i</i>`, but it does not handle
     `<b><b>twice</b>bolded</b>` text. We'll return to this in
-    [a later chapter](styles.md).
+    [Chapter 6](styles.md).
 
 The `bold` and `italic` variables are used to select the font:
 
@@ -610,8 +607,8 @@ class Browser:
 ```
 
 When you do big refactors like this, it's important to work
-incrementally. While it might seem more efficient to change everything at
-once, that efficiency brings with it a risk of failure: trying to do
+incrementally. It might seem more efficient to change everything at
+once, but that efficiency brings with it a risk of failure: trying to do
 so much that you get confused and have to abandon the whole refactor.
 So take a moment to test that your browser still works before you move
 on.
@@ -626,8 +623,8 @@ size is the `<small>` tag and its deprecated sister tag
 
 [^why-obsolete]: In your web design projects, use the CSS `font-size`
     property to change text size instead of `<big>` and `<small>`. But
-    since we haven't [implemented CSS](styles.html) for our browser,
-    we're stuck using them here.
+    since we haven't yet implemented CSS for our browser (see [Chapter
+    6](styles.md)), we're stuck using them here.
 
 Our experience with font styles and weights suggests a simple
 approach that customizes the `size` field in `Layout`. It starts out as:
@@ -691,15 +688,14 @@ moved down. That means its vertical position has to be computed later,
 comes through the loop first, we need a *two-pass* algorithm for lines
 of text: the first pass identifies what words go in the line and
 computes their *x* positions, while the second pass vertically aligns
-the words and computes their *y* positions.
+the words and computes their *y* positions (see Figure 4).
 
 ::: {.print-only .center}
-![Diagram of line layout](im/text-line.png)
-^[How lines are laid out when multiple fonts are involved.
+![Figure 4: How lines are laid out when multiple fonts are involved.
 All words are drawn using a shared baseline. The ascent and descent
 of the whole line is then determined by the maximum ascent and descent
 of all words in the line, and leading is added before and after the
-line.]
+line.](im/text-line.png)
 :::
 
 Let's start with phase one. Since one line contains text from many
@@ -744,9 +740,9 @@ class Layout:
 
 This new `flush` function has three responsibilities:
 
-1. It must align the words along the baseline;
-2. It must add all those words to the display list; and
-3. It must update the `cursor_x` and `cursor_y` fields
+1. it must align the words along the baseline (see Figure 5);
+2. it must add all those words to the display list; and
+3. it must update the `cursor_x` and `cursor_y` fields
 
 ::: {.web-only}
 
@@ -759,7 +755,7 @@ Here's what it looks like, step by step:
 :::
 
 ::: {.print-only .center}
-![Aligning the words on a line](examples/example3-words-align.png)
+![Figure 5: Aligning the words on a line.](examples/example3-words-align.png)
 :::
 
 Since we want words to line up "on the line", let's start by computing
@@ -798,7 +794,7 @@ for x, word, font in self.line:
 ```
 
 Note how `y` starts at the baseline, and moves *up* by just enough to
-accomodate that word's ascent. Now `y` must move far enough down below
+accommodate that word's ascent. Now `y` must move far enough down below
 `baseline` to account for the deepest descender:
 
 ``` {.python}
@@ -815,9 +811,9 @@ self.line = []
 ```
 
 Now all the text is aligned along the line, even when text sizes are
-mixed. Plus, this new `flush` function is convenient for other line
-breaking jobs. For example, in HTML the `<br>` tag[^self-closing] ends
-the current line and starts a new one:
+mixed. Plus, this new `flush` function is convenient for other
+line-breaking jobs. For example, in HTML the `<br>` tag[^self-closing]
+ends the current line and starts a new one:
 
 [^self-closing]: Which is a self-closing tag, so there's no `</br>`.
     Many tags that *are* content, instead of annotating it, are like
@@ -846,10 +842,11 @@ I add a bit extra to `cursor_y` here to create a little gap between
 paragraphs.
 
 By this point you should be able to load up your browser and display
-[this page](examples/example3-sizes.html). It should look about like this:
+[this page](examples/example3-sizes.html), which should look something
+like Figure 6.
 
 ::: {.center}
-![Screenshot of a web page demonstrating different text sizes](examples/example3-sizes-screenshot.png)
+![Figure 6: Screenshot of a web page demonstrating different text sizes.](examples/example3-sizes-screenshot.png)
 :::
 
 ::: {.further}
@@ -869,8 +866,8 @@ Font caching
 
 Now that you've implemented styled text, you've probably
 noticed---unless you're on macOS[^macos-cache]---that on a large web
-page like this chapter our browser has slowed significantly from the
-[last chapter](graphics.md). That's because text layout, and
+page like [this chapter](http://browser.engineering/text.html) our browser has slowed significantly from the
+[previous chapter](graphics.md). That's because text layout, and
 specifically the part where you measure each word, is quite
 slow.[^profile]
 
@@ -889,7 +886,7 @@ Unfortunately, it's hard to make text measurement much faster. With
 proportional fonts and complex font features like hinting and kerning,
 measuring text can require pretty complex computations. But on a large
 web page, some words likely appear a lot---for example, this page
-includes the word "the" over two hundred times. Instead of measuring
+includes the word "the" over 200 times. Instead of measuring
 these words over and over again, we could measure them once, and then
 cache the results. On normal English text, this usually results in a
 substantial speedup.
@@ -921,8 +918,8 @@ def get_font(size, weight, slant):
     return FONTS[key][0]
 ```
 
-[^get_font-hack]: Actually, the values are a font objects and a
-`tkinter.Label` object. This dramatically improves performance of
+[^get_font-hack]: Actually, the values are a font object and a
+`tkinter.Label` object. This dramatically improves the performance of
 `metrics` for some reason, and is recommended by the [Python
 documentation][metrics-doc].
 
@@ -943,7 +940,7 @@ will hit the cache.
 
 ::: {.further}
 Fonts for scripts like Chinese can be megabytes in size, so they are
-generally stored on disk and only loaded into memory on-demand. That
+generally stored on disk and only loaded into memory on demand. That
 makes font loading slow and caching even more important. Browsers also
 have extensive caches for measuring, shaping, and rendering text.
 Because web pages have a lot of text, these caches turn out to be one
@@ -953,10 +950,10 @@ of the most important parts of speeding up rendering.
 Summary
 =======
 
-The last chapter introduced a browser that laid out characters in a
+The previous chapter introduced a browser that laid out characters in a
 grid. Now it does standard English text layout, so:
 
-- text is laid out word-by-word;
+- text is laid out word by word;
 - lines are split at word boundaries;
 - text can be bold or italic;
 - and text of different sizes can be mixed.
@@ -989,12 +986,13 @@ should look something like this:
 Exercises
 =========
 
-3-1 *Centered text*. This book's page titles are centered; make your
+3-1 *Centered text*. The page titles on this [book's website](http://browser.engineering/text.html)
+are centered; make your
 browser do the same for text between `<h1 class="title">` and `</h1>`.
 Each line has to be centered individually, because different lines
 will have different lengths.[^center-tag]
 
-[^center-tag]: In early HTML there was a `<center>` that did exactly
+[^center-tag]: In early HTML there was a `<center>` tag that did exactly
     this, but nowadays centering is typically done in CSS, through the
     `text-align` property. The approach in this exercise is of course non-standard, and just for learning purposes.
 
@@ -1018,7 +1016,7 @@ is a good test case.
     entity, which expands to a soft hyphen.
 
 3-4 *Small caps*. Make the `<abbr>` element render text in small caps,
-<abbr>like this</abbr>. Inside an `<abbr>` tag, lower-case letters
+`<abbr>like this</abbr>`{=html}`\textsc{line this}`{=latex}. Inside an `<abbr>` tag, lower-case letters
 should be small, capitalized, and bold, while all other characters
 (upper case, numbers, etc) should be drawn in the normal font.
 
@@ -1028,4 +1026,4 @@ lines, and whitespace like spaces and newlines are preserved. Use a
 fixed-width font like `Courier New` or `SFMono` as well. Make sure
 tags work normally inside `<pre>` tags: it should be possible to bold
 some text inside a `<pre>`. The results will look best if you also do
-the "Entities" exercise in [Chapter 1](http.md#exercises).
+[Exercise 1-5](http.md#exercises).
