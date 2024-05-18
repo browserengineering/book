@@ -742,7 +742,7 @@ This new `flush` function has three responsibilities:
 
 1. it must align the words along the baseline (see Figure 5);
 2. it must add all those words to the display list; and
-3. it must update the `cursor_x` and `cursor_y` fields
+3. it must update the `cursor_x` and `cursor_y` fields.
 
 ::: {.web-only}
 
