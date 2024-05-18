@@ -16,15 +16,15 @@ A tree of nodes
 ===============
 
 The HTML tree[^dom] has one node\index{node} for each open and close tag pair
-and for each span of text.[^1]
+and a node for each span of text.[^1] A simple HTML document showing
+the structure is shown in Figure 1.
 
 [^1]: In reality there are other types of nodes too, like comments,
     doctypes, and `CDATA` sections, and processing instructions. There
     are even some deprecated types!
 
-::: {.print-only .center}
-![An annotated HTML document](im/html-syntax.png)
-^[An HTML document, showing tags, text, and the nesting structure.]
+::: {.center}
+![Figure 1: An HTML document, showing tags, text, and the nesting structure.](im/html-syntax.png)
 :::
 
 For our browser to use a tree, tokens need to
@@ -74,10 +74,10 @@ which tokens it sees, no new nodes will be added to the `<video>` tag,
 which has already been closed. So that node is "finished". But the
 other nodes are unfinished: more children can be added to the
 `<html>`, `<section>`, and `<h1>` nodes, depending on what HTML comes
-next.
+next---see Figure 2.
 
 ::: {.print-only}
-![The finished and unfinished nodes while parsing some HTML](im/html-lr.png)
+![Figure 2: The finished and unfinished nodes while parsing some HTML.](im/html-lr.png)
 :::
 
 Since the parser reads the HTML file from beginning to end, these
@@ -121,7 +121,7 @@ We'll need to do a bit of surgery on `parse`. Right now `parse`
 creates `Tag` and `Text` objects and appends them to the `out` array.
 We need it to create `Element` and `Text` objects and add them to the
 `unfinished` tree. Since a tree is a bit more complex than a list,
-I'll move the adding-to-a-tree logic to two new methods `add_text` and
+I'll move the adding-to-a-tree logic to two new methods, `add_text` and
 `add_tag`.
 
 ``` {.python indent=4}
@@ -151,7 +151,7 @@ the final, complete tree. So: how do we add things to the tree?
 ::: {.further}
 HTML derives from a long line of document processing systems. Its
 predecessor, [SGML][sgml], traces back to [RUNOFF][runoff] and is a
-sibling to [troff][troff], now used for Linux man pages. The
+sibling to [troff][troff], now used for Linux manual pages. The
 [committee][jtc1-sc34] that standardized SGML now works on the `.odf`,
 `.docx`, and `.epub` formats.
 :::
@@ -250,13 +250,13 @@ Ok, that's all done. Let's test our parser out and see how well it
 works!
 
 ::: {.further}
-The ill-considered Javascript `document.write` method allows
+The ill-considered JavaScript `document.write` method allows
 JavaScript to modify the HTML source code while it's being parsed!
 This is actually a [bad idea][document-write-bad].
 An implementation of `document.write` must have the HTML parser stop to
 execute JavaScript, but that slows down requests for images,
 CSS, and JavaScript used later in the page. To solve this, modern
-browsers use [speculative][speculative-parsing] parsing to start
+browsers use [speculative parsing][speculative-parsing] to start
 loading additional resources even before parsing is done.
 :::
 
@@ -296,7 +296,8 @@ In general it's a good idea to define `__repr__` methods for any
 data objects, and to have those `__repr__` methods print all the
 relevant fields.
 
-Try this out on this web page, parsing the HTML source code and then
+Try this out on [the web page](http://browser.engineering/html.html)
+corresponding to this chapter, parsing the HTML source code and then
 calling `print_tree` to visualize it:
 
 ``` {.python expected=False}
@@ -305,7 +306,7 @@ nodes = HTMLParser(body).parse()
 print_tree(nodes)
 ```
 
-Run it on this web page, and you'll see something like this at the beginning:
+You'll see something like this at the beginning:
 
 ``` {.example}
  <!doctype html>
@@ -351,7 +352,7 @@ text nodes to side-step the problem:[^ignore-them]
 [^ignore-them]: Real browsers retain whitespace to correctly render
     `make<span></span>up` as one word and `make<span> </span>up` as
     two. Our browser won't. Plus, ignoring whitespace simplifies
-    [later chapters](layout.md) by avoiding a special-case for
+    later chapters by avoiding a special case for
     whitespace-only text tags.
 
 ``` {.python indent=4}
@@ -388,7 +389,7 @@ Elements like `<meta>` and `<link>` are what are called self-closing:
 these tags don't surround content, so you don't ever write `</meta>`
 or `</link>`. Our parser needs special support for them. In HTML,
 there's a [specific list][html5-void-elements] of these self-closing
-tags (the spec calls them "void" tags):[^void-elements]
+tags (the specification calls them "void" tags):[^void-elements]
 
 [html5-void-elements]: https://html.spec.whatwg.org/multipage/syntax.html#void-elements
 
@@ -425,7 +426,7 @@ omitted entirely. Let's focus on basic attribute support, ignoring
 values that contain whitespace, which are a little complicated.
 
 Since we're not handling whitespace in values, we can split on
-whitespace to get the tag name and the attribute-value pairs:
+whitespace to get the tag name and the attribute–value pairs:
 
 ``` {.python}
 class HTMLParser:
@@ -438,9 +439,9 @@ class HTMLParser:
         return tag, attributes
 ```
 
-HTML tag names are case-insensitive, as by the way are attribute
+HTML tag names are case insensitive, as by the way are attribute
 names, so I case-fold them.[^case-fold] Then, inside the loop, I
-split each attribute-value pair into a name and a value. The easiest
+split each attribute–value pair into a name and a value. The easiest
 case is an unquoted attribute, where an equal sign separates the two:
 
 [^case-fold]: The `casefold` method works better than `lower`. Lower-casing text
@@ -545,8 +546,8 @@ name, not by some special syntax, so the slash is optional.
 Using the node tree
 ===================
 
-Right now, the `Layout` class works token-by-token; we now want it to
-go node-by-node instead. So let's separate the old `token` method into
+Right now, the `Layout` class works token by token; we now want it to
+go node by node instead. So let's separate the old `token` method into
 two parts: all the cases for open tags will go into a new `open_tag`
 method and all the cases for close tags will go into a new `close_tag`
 method:[^no-text-case]
@@ -606,7 +607,7 @@ new `doctype` version for HTML will ever be added again.] It's called a
 "living standard" because it changes
 all the time as features are added. The mechanism for these changes is
 simply browsers shipping new features, not any change to the "version" of HTML.
-In general, the web is an *un-versioned platform*---new features are often added
+In general, the web is an *unversioned platform*---new features are often added
 as enhancements, but only so long as they don't break existing
 ones.^[Features can be removed, but only if they stop being used by the vast
 majority of sites. This makes it very hard to remove web features compared
@@ -631,11 +632,11 @@ The parser now handles HTML pages correctly—at least when the HTML is
 written by the sorts of goody-two-shoes programmers who remember the
 `<head>` tag, close every open tag, and make their bed in the morning.
 Mere mortals lack such discipline and so browsers also have to handle
-broken, confusing, headless HTML. In fact, modern HTML parsers are
+broken, confusing, `head`less HTML. In fact, modern HTML parsers are
 capable of transforming *any* string of characters into an HTML tree,
 no matter how confusing the markup.[^3]
 
-[^3]: Yes, it's crazy, and for a few years in the early '00s the W3C
+[^3]: Yes, it's crazy, and for a few years in the early 2000s the W3C
     tried to [do away with it](https://www.w3.org/TR/xhtml1/). They
     failed.
 
@@ -656,7 +657,7 @@ HTML document starts with a familiar boilerplate:
 
 In reality, *all six* of these tags, except the doctype, are optional:
 browsers insert them automatically when the web page omits them. Let's
-insert implicit tags to our browser via a new `implicit_tags`
+insert implicit tags in our browser via a new `implicit_tags`
 function. We'll want to call it in both `add_text` and `add_tag`:
 
 ``` {.python}
@@ -768,7 +769,7 @@ while True:
 Technically, the `</body>` and `</html>` tags can also be implicit.
 But since our `finish` function already closes any unfinished tags,
 that doesn't need any extra code. So all that's left for
-`implicit_tags` tags is to exit out of the loop:
+`implicit_tags` is to exit out of the loop:
 
 ``` {.python indent=8}
 while True:
@@ -778,7 +779,7 @@ while True:
 ```
 
 Of course, there are more rules for handling malformed HTML:
-formatting tags, nested paragraphs, embedded SVG and MathML, and all
+formatting tags, nested paragraphs, embedded Scalable Vector Graphics (SVG) and MathML, and all
 sorts of other complexity. Each has complicated rules abounding with
 edge cases. But let's end our discussion of handling author errors
 here.
@@ -793,13 +794,12 @@ guess what the *right* thing is.
 
 [html5-parsing]: https://html.spec.whatwg.org/multipage/parsing.html
 
-And now for the payoff! Here is a screenshot of our very own website,
-loaded in our own browser:^[To be fair, it actually looks about the same with
-the Chapter 3 browser, but significantly better than with
-[the Chapter 2 browser](examples/example2-browserengineering-screenshot.png).]
+And now for the payoff! Figure 3 shows a screenshot of our very own [website](http://browser.engineering/),
+loaded in our own browser.^[To be fair, it actually looks about the same with the Chapter 3 browser.]
 
 ::: {.center}
-![Screenshot of the browser.engineering website with this chapter's browser](examples/example4-browserengineering-screenshot.png)
+![Figure 3: Screenshot of http://browser.engineering/ viewed in this
+chapter's version of the browser.](examples/example4-browserengineering-screenshot.png)
 <br>
 :::
 
@@ -829,7 +829,7 @@ list of tokens. We added:
 - and a recursive layout algorithm to lay out an HTML tree.
 
 The tree structure of HTML is essential to display visually complex
-web pages, as we will see in the [next chapter](layout.md).
+web pages, as we will see in the next chapter.
 
 ::: {.web-only .widget height=400}
     lab4-browser.html
@@ -869,7 +869,7 @@ one paragraph inside another; real browsers do this too. Do the same
 for `<li>` elements, but make sure nested lists are still possible.
 
 4-3 *Scripts*. JavaScript code embedded in a `<script>` tag uses the left
-angle bracket to mean less-than. Modify your lexer so that the
+angle bracket to mean "less than". Modify your lexer so that the
 contents of `<script>` tags are treated specially: no tags are allowed
 inside `<script>`, except the `</script>` close tag.[^or-space]
 
@@ -885,8 +885,8 @@ angle brackets. Fix the lexer so that this is supported properly.
 Hint: the current lexer is a finite state machine, with two states
 (determined by `in_tag`). You'll need more states.
 
-4-5 *Syntax Highlighting*. Implement the `view-source:` protocol as in
-[Chapter 1](http.md#exercises), but make it syntax-highlight the
+4-5 *Syntax highlighting*. Implement the `view-source` protocol as in
+[Exercise 1-5](http.md#exercises), but make it syntax-highlight the
 source code of HTML pages. Keep source code for HTML tags in a normal
 font, but make text contents bold. If you've implemented it, wrap text
 in `<pre>` tags as well to preserve line breaks. Hint: subclass the
