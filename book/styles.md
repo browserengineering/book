@@ -5,7 +5,7 @@ prev: layout
 next: chrome
 ...
 
-In the [last chapter](layout.md), we gave each `pre` element a gray
+In the [previous chapter](layout.md) we gave each `pre` element a gray
 background. It looks OK, and it *is* good to have defaults, but
 sites want a say in how they look. Websites do that with
 _Cascading Style Sheets_ (CSS), which allow web authors (and, as
@@ -21,16 +21,16 @@ attribute. For example, this changes an element's background color:
 <div style="background-color:lightblue"></div>
 ```
 
-More generally, a `style` attribute contains property/value pairs
+More generally, a `style` attribute contains property–value pairs
 separated by semicolons. The browser looks at those [CSS]
-property-value\index{css property value}
+property–value\index{css property value}
 pairs to determine how an element looks, for example to determine its
 background color.
 
 [CSS]: https://developer.mozilla.org/en-US/docs/Web/CSS
 
 To add this to our browser, we'll need to start by parsing\index{parsing}
-these property/value pairs. I'll use recursive *parsing functions*, which
+these property–value pairs. I'll use recursive *parsing functions*, which
 are a good way to build a complex parser step by step. The idea is
 that each parsing function advances through the text being parsed and
 returns the data it parsed. We'll have different functions for
@@ -80,7 +80,7 @@ it started and extracts the substring it moved through.
     complex syntax but this is enough for our browser.
 
 Parsing functions can fail. The `word` function we just wrote raises
-an exception if `i` hasn't advanced though at least one
+an exception if `i` hasn't advanced through at least one
 character---otherwise it didn't point at a word to begin
 with.[^add-a-comma] Likewise, to check for a literal colon (or some
 other punctuation character) you'd do this:
@@ -96,12 +96,12 @@ def literal(self, literal):
 code, too; I recommend doing that to help you debug problems.
 
 The great thing about parsing functions is that they can build on one
-another. For example, property-value pairs are a property, a colon,
+another. For example, property–value pairs are a property, a colon,
 and a value,[^technically-different] with whitespace in between:
 
-[^technically-different]: In reality properties and values have
+[^technically-different]: In reality, properties and values have
     different syntaxes, so using `word` for both isn't quite right,
-    but for our browser's limited CSS this simplification will do.
+    but for our browser's limited CSS implementation this simplification will do.
 
 ``` {.python}
 def pair(self):
@@ -114,7 +114,7 @@ def pair(self):
 ```
 
 We can parse sequences by calling parsing functions in a loop. For
-example, `style` attributes are a sequence of property-value pairs:
+example, `style` attributes are a sequence of property–value pairs:
 
 ``` {.python indent=8 expected=False}
 def body(self):
@@ -131,7 +131,7 @@ def body(self):
 Now, in a browser, we always have to think about handling errors.
 Sometimes a web page author makes a mistake; sometimes our browser
 doesn't support a feature some other browser does. So we should skip
-property-value pairs that don't parse, but keep the ones that do.
+property–value pairs that don't parse, but keep the ones that do.
 
 We can skip things with this little function; it stops at any one of a
 set of characters and returns that character (or `None` if it was
@@ -147,7 +147,7 @@ def ignore_until(self, chars):
     return None
 ```
 
-When we fail to parse a property-value pair, we skip either to the
+When we fail to parse a property–value pair, we skip either to the
 next semicolon or to the end of the string:
 
 ``` {.python indent=4 expected=False}
@@ -196,7 +196,7 @@ but accept even minimally conformant input.
     Postel.
 
 [^from-circuits]: After a similar idea in circuit design, where
-    transistors must be nonlinear to reduce analog noise.
+    transistors must be non-linear to reduce analog noise.
 
 ::: {.further}
 This parsing method is formally called recursive descent parsing for
@@ -256,15 +256,16 @@ class BlockLayout:
 I've removed the default gray background from `pre` elements for now,
 but we'll put it back soon.
 
-Open this chapter up in your browser to test your code: the code block
-right after this paragraph should now have a light blue background.
+Open this [the web version of this chapter](https://browser.engineering/styles.html)
+up in your browser to test your code: the following code block
+should now have a light blue background:
 
 ``` {.example style=background-color:lightblue}
 <div style="background-color:lightblue"> ... </div>
 ```
 
 So this is one way web pages can change their appearance. And in the
-early days of the web,^[I'm talking Netscape 3. The late 90s.]
+early days of the web,^[I'm talking Netscape 3. The late 1990.]
 something like this was the *only* way. But honestly, it's a
 pain---you need to set a `style` attribute on each element, and if you
 change the style, that's a lot of attributes to edit. CSS\index{CSS}
@@ -276,9 +277,9 @@ was invented to improve on this state of affairs:
 
 To achieve these goals, CSS extends the `style` attribute with two
 related ideas: *selectors*\index{CSS selector} and *cascading*. Selectors
-describe which HTML elements a list of property/value pairs
+describe which HTML elements a list of property–value pairs
 apply to.[^media-queries] The combination of the two is called a
-*rule*\index{CSS rule}:
+*rule*\index{CSS rule}, as shown in Figure 1.
 
 [^media-queries]: CSS rules can also be guarded by "media queries",
     which say that a rule should apply only in certain browsing
@@ -288,11 +289,11 @@ apply to.[^media-queries] The combination of the two is called a
     them in [Chapter 14](accessibility.md).
 
 ::: {.center}
-![An annotated CSS rule](im/styles-syntax.png)
+![Figure 1: An annotated CSS rule.](im/styles-syntax.png)
 :::
 
 Let's add support for CSS to our browser. We'll need to parse
-CSS files into selectors and property/value pairs, figure out which
+CSS files into selectors and property–value pairs, figure out which
 elements on the page match each selector, and copy those property
 values to the elements' `style` fields.
 
@@ -312,7 +313,7 @@ that could consistently set text colors, mainly for links.
 Selectors
 =========
 
-Selectors come in lots of types, but in our browser, we'll support two:
+Selectors come in lots of types, but in our browser we'll support two:
 tag selectors (`p` selects all `<p>` elements, `ul` selects all `<ul>`
 elements) and descendant selectors (`article div` selects all `div`
 elements with an `article` ancestor).[^how-associate]
@@ -441,7 +442,7 @@ def parse(self):
 ```
 
 Error handling is hard to get right, so make sure to test your parser,
-just like the HTML parser [two chapters back](html.md). Here are some
+just like the HTML parser in [Chapter 4](html.md). Here are some
 errors you might run into:
 
 - If the output is missing some rules or properties, it's probably a
@@ -491,7 +492,7 @@ Applying style sheets\index{style sheet}
 With the parser debugged, the next step is applying the parsed style
 sheet to the web page. Since each CSS rule can style many elements on
 the page, this will require looping over all elements *and* all rules.
-When a rule applies, its property/values pairs are copied to the
+When a rule applies, its property–value pairs are copied to the
 element's style information:
 
 ``` {.python}
@@ -513,7 +514,7 @@ styling for the various HTML elements. For our browser, it might look
 like this:
 
 [^technically-ua]: Technically called a "User Agent" style sheet. User Agent,
-    [like the Memex](history.md).
+    like the Memex.
 
 ``` {.css}
 pre { background-color: gray; }
@@ -549,10 +550,10 @@ referencing CSS files using `link` elements:
 The mandatory `rel` attribute identifies this link as a style
 sheet[^like-canonical] and the `href` attribute has the style sheet
 URL. We need to find all these links, download their style sheets, and
-apply them.
+apply them, as in Figure 2.
 
 ::: {.print-only}
-![A browser loading related assets, like a stylesheet, for a web page](im/styles-http.png)
+![Figure 2: A browser loading related assets, like a stylesheet, for a web page](im/styles-http.png)
 :::
 
 Since we'll be doing similar tasks in the next few chapters, let's
@@ -599,12 +600,12 @@ Now, these style sheet URLs are usually not full URLs; they are
 something called *relative URLs*, which can be:^[There are other flavors,
 including query-relative and scheme-relative URLs, that I'm skipping.]
 
--   A normal URL, which specifies a scheme, host, path, and so on;
--   A host-relative URL, which starts with a slash but reuses the
-    existing scheme and host; or
--   A path-relative URL, which doesn't start with a slash and is
-    resolved like a file name would be.
--   A scheme-relative URL that starts with "//" followed by a full URL,
+-   a normal URL, which specifies a scheme, host, path, and so on;
+-   a host-relative URL, which starts with a slash but reuses the
+    existing scheme and host;
+-   a path-relative URL, which doesn't start with a slash and is
+    resolved like a file name would be;
+-   a scheme-relative URL that starts with "//" followed by a full URL,
     which should use the existing scheme.
 
 To download the style sheets, we'll need to convert each relative URL
@@ -788,11 +789,11 @@ def style(node, rules):
 
 Inheriting font size comes with a twist. Web pages can use percentages
 as font sizes: `h1 { font-size: 150% }` makes headings 50% bigger than
-surrounding text. But what if you had, say, a `code` element inside an
+the surrounding text. But what if you had, say, a `code` element inside an
 `h1` tag---would that inherit the `150%` value for `font-size`? Surely
 it shouldn't be another 50% bigger than the rest of the heading text?
 
-So, in fact, browsers resolve font size percentages
+In fact, browsers resolve font size percentages
 to absolute pixel units
 before those values are inherited; it's called a
 "computed style".\index{computed style}[^css-computed]
@@ -945,13 +946,14 @@ class DrawText:
 ```
 
 Phew! That was a lot of coordinated changes, so test everything and
-make sure it works. You should now see links on this page appear in
+make sure it works. You should now see links on the
+[web version of this chapter](https://browser.engineering/styles.html) appear in
 blue---and you might also notice that the rest of the text has become
 slightly lighter.[^book-css] Also, now that we're explicitly setting
 the text color, we should explicitly set the background color as
 well:[^dark-mode]
 
-[^book-css]: The book's main body text [is colored](book.css) `#333`,
+[^book-css]: The main body text is colored `#333`,
     or roughly 97% black after [gamma correction][gamma-correct].
     
 [gamma-correct]: https://en.wikipedia.org/wiki/SRGB#From_sRGB_to_CIE_XYZ
@@ -998,19 +1000,21 @@ converting code to data like this means maintaining a new format, but
 browsers get to reuse a format, CSS, they need to support anyway.
 
 But of course our chapter also has the nice benefit of even better rendering
-of this book's homepage. Notice how the background is no longer gray, and the
+of this book's homepage (Figure 3). Notice how the background is no longer gray, and the
 links have colors.
 
 ::: {.center}
-![Screenshot of the browser.engineering website with this chapter's browser](examples/example6-browserengineering-screenshot.png)
-<br>
+![Figure 3: https://browser.engineering/ viewed in this chapter's version of the
+browser.](examples/example6-browserengineering-screenshot.png)
+:::
 
 ::: {.further}
-Usually a point is one 72^nd^ of an inch while pixel size depends on
+Usually a point is 1/72nd of an inch while pixel size depends on
 the screen, but CSS instead [defines an inch][css-fixed] as 96 pixels,
 because that was once a common screen resolution. And these CSS pixels
 [need not be][dppx] physical pixels! Seem weird? This complexity is
-the result of changes in browsers (zooming) and hardware (high-DPI
+the result of changes in browsers (zooming) and hardware
+(high-DPI^[Dots per inch.]
 screens) plus the need to be compatible with older web pages meant for
 the time when all screens had 96 pixels per inch.
 :::
@@ -1087,7 +1091,7 @@ sheet.
 related CSS properties at the same time; for example, `font: italic
 bold 100% Times` sets the `font-style`, `font-weight`, `font-size`,
 and `font-family` properties all at once. Add shorthand properties to
-your parser. (If you haven't implemented `font-family`, just ignore
+your parser. (If you haven't implemented `font-family` (Exercise 6-1), just ignore
 that part.)
 
 6-6 *Inline style sheets*. The `link rel=stylesheet` syntax allows importing an
@@ -1095,8 +1099,8 @@ that part.)
  also a way to provide a style sheet inline, as part of the HTML, via the
  `<style>` tag---everything up to the following `</style>` tag is interpreted
  as a style sheet.[^ordered] Inline style sheets are useful for creating
- self-contained example web pages, but more importantly are a way that web
- sites can load faster by reducing the number of round-trip network requests to
+ self-contained example web pages, but more importantly are a way that
+ websites can load faster by reducing the number of round-trip network requests to
  the server. Since style sheets typically don't contain left angle brackets,
  you can implement this feature without modifying the HTML parser.
 
@@ -1105,10 +1109,10 @@ that part.)
     implement inline style sheets applying after external ones.
 
 6-7 *Fast descendant selectors*. Right now, matching a selector like `div
-div div div div` can take a long time---it's *O(nd)* in the worst
+div div div div` can take a long time---it's `*O(nd)*`{=html}`$O(nd)$`{=latex} in the worst
 case, where *n* is the length of the selector and *d* is the depth of
 the layout tree. Modify the descendant-selector matching code to run
-in *O(n)* time. It may help to have `DescendantSelector` store a list
+in `*O(n)*`{=html}`$O(n)$`{=latex} time. It may help to have `DescendantSelector` store a list
 of base selectors instead of just two.
 
 6-8 *Selector sequences*. Sometimes you want to select an element by tag *and*
@@ -1123,23 +1127,23 @@ these and modify the parser to parse them. Sum priorities.[^lexicographic]
     compare the number of ID, class, and tag selectors in
     lexicographic order, but summing the priorities of the selectors
     in the sequence will work fine as long as no one strings more than
-    10 selectors together.
+    ten selectors together.
 
-6-9 *Important*. a CSS property-value pair can be marked "important" using
+6-9 *Important*. a CSS property–value pair can be marked "important" using
 the `!important` syntax, like this:
 
     #banner a { color: black !important; }
 
-This gives that property-value pair (but not other pairs in the same block!) a
+This gives that property–value pair (but not other pairs in the same block!) a
 higher priority than any other selector (except for other `!important`
-selector). Parse and implement `!important`, giving any property-value pairs
-marked this way a priority 10000 higher than normal property-value pairs.
+properties). Parse and implement `!important`, giving any property–value pairs
+marked this way a priority 10 000 higher than normal property–value pairs.
 
 6-10 *`:has` selectors*. The [`:has` selector][has-selector] is the inverse of a
 descendant selector---it styles an ancestor according to the presence
 of a descendant. Implement `:has` selectors. Analyze
 the asymptotic speed of your implementation. There is a clever
-implementation that is *O(1)* amortized per element---can you find
+implementation that is `*O(1)*`{=html}`$O(1)$`{=latex} amortized per element---can you find
 it?^[In fact, browsers have to do something [even more
 complex][has-blog] to implement `:has` efficiently.]
 
