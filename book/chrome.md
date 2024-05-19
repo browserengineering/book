@@ -93,9 +93,9 @@ their own `layout` and `paint` methods, but before we get to those we
 need to think about how the `LineLayout` and `TextLayout` objects will
 be created. That has to happen during word wrapping.
 
-Recall [how word wrapping happens](text.md) inside `BlockLayout`'s
-`word` method. That method updates a `line` field, which stores all
-the words in the current line:
+Recall [how word wrapping happens (see Chapter 3)](text.md)
+inside `BlockLayout`'s `word` method. That method updates a `line` field,
+which stores all the words in the current line:
 
 ``` {.python file=lab6 indent=12}
 self.line.append((self.cursor_x, word, font, color))
@@ -440,7 +440,7 @@ link, that's usually going to be a text node. But since we want to
 know the actual URL the user clicked on, we need to climb back up the
 HTML tree to find the link element:^[I wrote this in a kind of curious
 way so it's easy to add other types of clickable things---like text boxes
-and buttons---in the [next chapter](forms.md).]
+and buttons---in [Chapter 8](forms.md).]
 
 ``` {.python indent=8}
 # ...
