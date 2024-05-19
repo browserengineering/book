@@ -1210,7 +1210,7 @@ Two threads
 ===========
 
 Well, one option, of course, is optimizing raster-and-draw, or even
-render, and we'll do that in the [next chapter](animations.md) But
+render, and we'll do that in [Chapter 13](animations.md) But
 another option---complex, but worthwhile and done by every major
 browser---is to do the render step in parallel with the
 raster-and-draw step by adopting a multithreaded architecture. Not
