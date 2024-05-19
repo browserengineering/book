@@ -159,7 +159,7 @@ GPU acceleration
 
 Try the fade animation in your browser, and you'll probably notice
 that it's not particularly smooth. And that shouldn't be surprising;
-after all, [the previous chapter](scheduling.md#profiling-rendering) showed
+after all, [Chapter 12](scheduling.md#profiling-rendering) showed
 that raster and draw was about 62 ms for simple pages, and render
 was 23 ms.
 
