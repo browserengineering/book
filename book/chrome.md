@@ -679,7 +679,7 @@ have two rows (see Figure 1):
   represent the browser back button.
 
 ::: {.center}
-![Figure 1: The intended appearance of the browser chrome](im/chrome-chrome.png)
+![Figure 1: The intended appearance of the browser chrome.](im/chrome-chrome.png)
 :::
 
 A lot of this design involves text, so let's start by picking a font:
