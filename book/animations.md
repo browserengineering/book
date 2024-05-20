@@ -1458,7 +1458,7 @@ class Browser:
             self.draw()
 ```
 
-Then, were we currently call `set_needs_raster_and_draw`, such as
+Then, where we currently call `set_needs_raster_and_draw`, such as
 `handle_down`, we need to call `set_needs_raster`:
 
 ``` {.python}
