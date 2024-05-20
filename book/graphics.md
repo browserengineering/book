@@ -252,14 +252,10 @@ inset a little from the top left corner of the window.
 
 [^delay]: It's to delay a discussion of basic typography to the next chapter.
 
-::: {.web-only}
-[^instructions]: Right click on the link and "Copy URL".
-:::
-
-::: {.print-only}
-[^instructions]: The URLs for numbered references can be found in the
-"Links" section at the end of each chapter.
-:::
+[^instructions]:
+    `Right click on the link and "Copy URL".`{=html}
+    `The URLs for numbered references can be found in the
+    ``Links'' section at the end of each chapter.`{=latex}
 
 Why a blob instead of letters? Well, of course, because we are drawing
 every letter in the same place, so they all overlap! Let's fix that:
