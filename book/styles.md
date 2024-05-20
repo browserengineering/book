@@ -256,7 +256,7 @@ class BlockLayout:
 I've removed the default gray background from `pre` elements for now,
 but we'll put it back soon.
 
-Open this [the web version of this chapter](https://browser.engineering/styles.html)
+Load [the web version of this chapter](https://browser.engineering/styles.html)
 up in your browser to test your code: the following code block
 should now have a light blue background:
 
