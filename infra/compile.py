@@ -357,6 +357,8 @@ def compile_method(base, name, args, ctx):
         return base_js + "." + name + "(" + ", ".join(args_js) + ")"
     elif base_js in RT_IMPORTS:
         return base_js + "." + name + "(" + ", ".join(args_js) + ")"
+    elif name == "read" and isinstance(base, ast.Call) and isinstance(base.func, ast.Name) and base.func.id == "open":
+        return base_js + ".read()"
     elif name == "keys":
         assert len(args) == 0
         return "Object.keys(" + base_js + ")"

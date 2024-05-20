@@ -81,8 +81,7 @@ class URL:
         s.close()
         return content
 
-browser8 = open("browser8.css")
-DEFAULT_STYLE_SHEET = CSSParser(browser8.read()).parse()
+DEFAULT_STYLE_SHEET = CSSParser(open("browser8.css").read()).parse()
 
 INPUT_WIDTH_PX = 200
 

@@ -5,7 +5,6 @@
  {"code": "'action' in elt.attributes", "type": "dict"},
  {"code": "'href' in elt.attributes", "type": "dict"},
  {"code": "'name' in node.attributes", "type": "dict"},
- {"code": "browser8.read()", "js": "constants.browser8.read()"},
  {"code": "DEFAULT_STYLE_SHEET.copy()", "js": "constants.DEFAULT_STYLE_SHEET.slice()"},
  {"code": "response.read()", "js": "response.read()"}
 ]
