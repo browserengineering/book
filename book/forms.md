@@ -34,10 +34,10 @@ form might be written like this:
 </form>
 ```
 
-And look like this:
+And look like Figure 1.
 
 ::: {.center}
-![The example form in our browser](im/forms-screenshot.png)
+![Figure 1: The example form in our browser.](im/forms-screenshot.png)
 :::
 
 This form contains two text entry boxes called `name` and `comment`.
@@ -374,10 +374,9 @@ class Tab:
                 return self.render()
 ```
 
-
 So that's clicking in an `input` area. But typing is harder. Think
-back to how we [implemented the address bar](chrome.md): we added a
-`focus` field that remembered what we clicked on so we could later
+back to how we [implemented the address bar (in Chapter 7)](chrome.md):
+we added a `focus` field that remembered what we clicked on so we could later
 send it our key presses. We need something like that `focus` field for
 input areas, but it's going to be more complex because the input areas
 live inside a `Tab`, not inside the `Browser`.
@@ -754,10 +753,10 @@ the server (say, via a form). That causes the browser to make a `POST`
 request to the server, which instructs the server to update the
 message board state. The server then needs the browser to update what
 the user sees; with forms, the server sends a new HTML page in its
-response to the `POST` request.
+response to the `POST` request. This process is shown in Figure 2.
 
-::: {.print-only}
-![The cycle of request and response for a multi-page application](im/forms-mpa.png)
+::: {.center}
+![Figure 2: The cycle of request and response for a multi-page application.](im/forms-mpa.png)
 :::
 
 Forms are a simple, minimal introduction to this cycle of request and
@@ -934,13 +933,14 @@ def handle_connection(conx):
     conx.close()
 ```
 
-Our implementation is all pretty bare-bones: our server doesn't check that the
+The architecture is summarized in Figure 3. Our implementation is all
+pretty bare-bones: our server doesn't check that the
 browser is using HTTP 1.0 to talk to it, it doesn't send back any
 headers at all except `Content-Length`, it doesn't support TLS, and so
 on. Again: this is a web *browser* book---it'll do.
 
-::: {.print-only}
-![The architecture of the simple web server in this chapter](im/forms-server.png)
+::: {.center}
+![Figure 3: The architecture of the simple web server in this chapter.](im/forms-server.png)
 :::
 
 ::: {.further}

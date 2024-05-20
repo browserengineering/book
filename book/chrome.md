@@ -93,9 +93,9 @@ their own `layout` and `paint` methods, but before we get to those we
 need to think about how the `LineLayout` and `TextLayout` objects will
 be created. That has to happen during word wrapping.
 
-Recall [how word wrapping happens](text.md) inside `BlockLayout`'s
-`word` method. That method updates a `line` field, which stores all
-the words in the current line:
+Recall [how word wrapping happens (see Chapter 3)](text.md)
+inside `BlockLayout`'s `word` method. That method updates a `line` field,
+which stores all the words in the current line:
 
 ``` {.python file=lab6 indent=12}
 self.line.append((self.cursor_x, word, font, color))
@@ -407,8 +407,7 @@ So the next step is to go from page coordinates to a layout
 object:^[You could try to first find the paint command clicked on, and
 go from that to layout object, but in real browsers there are all
 sorts of reasons this won't work, starting with invisible objects that
-can nonetheless be clicked on. See the exercise on hit testing in the
-display list.]
+can nonetheless be clicked on. See Exercise 7-11.]
 
 ``` {.python indent=8}
 # ...
@@ -441,7 +440,7 @@ link, that's usually going to be a text node. But since we want to
 know the actual URL the user clicked on, we need to climb back up the
 HTML tree to find the link element:^[I wrote this in a kind of curious
 way so it's easy to add other types of clickable things---like text boxes
-and buttons---in the [next chapter](forms.md).]
+and buttons---in [Chapter 8](forms.md).]
 
 ``` {.python indent=8}
 # ...
@@ -648,7 +647,7 @@ labels and icons and buttons.[^ohmy] This is called the browser
 "chrome"\index{browser chrome};[^chrome] all of this stuff is drawn by
 the browser to the same window as the page contents, and it requires
 information about the browser as a whole (like the list of all tabs),
-so it has to happen at the browser level, not per-tab.
+so it has to happen at the browser level, not per tab.
 
 [^ohmy]: Oh my!
 
@@ -671,7 +670,7 @@ class Browser:
 ```
 
 So, let's design the browser chrome. Ultimately, I think it should
-have two rows:
+have two rows (see Figure 1):
 
 * At the top, a list of tab names, separated by vertical lines, and a "`+`"
   button to add a new tab.
@@ -680,7 +679,7 @@ have two rows:
   represent the browser back button.
 
 ::: {.center}
-![The intended appearance of the browser chrome](im/chrome-chrome.png)
+![Figure 1: The intended appearance of the browser chrome.](im/chrome-chrome.png)
 :::
 
 A lot of this design involves text, so let's start by picking a font:
@@ -1192,7 +1191,8 @@ One way to go to another page is by clicking on a link. But most
 browsers also allow you to type into the address bar to visit a new
 URL, if you happen to know the URL.
 
-Take a moment to notice the complex ritual of typing in an address:
+Take a moment to notice the complex ritual of typing in an address (see
+Figure 2):
 
 - First, you have to click on the address bar to "focus"\index{focus} on it.
 - That also selects the full address, so that it's all deleted when
@@ -1202,8 +1202,8 @@ Take a moment to notice the complex ritual of typing in an address:
   navigate to the new page.
 - Finally, you type the "Enter" key which navigates to a new page.
 
-::: {.print-only .center}
-![Screenshots of editing in the address bar in Apple Safari 16.6.](im/chrome-editing.png)
+::: {.center}
+![Figure 2: Screenshots of editing in the address bar in Apple Safari 16.6.](im/chrome-editing.png)
 :::
 
 These steps suggest that the browser stores the contents of the
