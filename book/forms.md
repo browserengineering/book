@@ -757,7 +757,7 @@ the user sees; with forms, the server sends a new HTML page in its
 response to the `POST` request. This process is shown in Figure 2.
 
 ::: {.center}
-![Figure 2: The cycle of request and response for a multi-page application](im/forms-mpa.png)
+![Figure 2: The cycle of request and response for a multi-page application.](im/forms-mpa.png)
 :::
 
 Forms are a simple, minimal introduction to this cycle of request and
