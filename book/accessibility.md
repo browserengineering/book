@@ -43,14 +43,14 @@ software.
     want to interact with a web page.
 
 The reasons for customizing, of course, are as diverse as the customizations
-themselves. MDN [reports][mdn-def] that the World Health Organization
+themselves. The World Health Organization
 [found][who-fact-sheet] that as much as 15% of the world population have some
 form of disability, and many of them are severe or permanent. Nearly all of
 them can benefit greatly from the accessibility features described in this
 chapter. The more severe the disability for a particular person, the more
 critically important these features become for them.
 
-[who-fact-sheet]: https://www.who.int/en/news-room/fact-sheets/detail/disability-and-health
+[who-fact-sheet]: https://www.who.int/publications/i/item/9789241564182
 
 Some needs for accessibility come and go over time. For example, when my son was
 born,[^pavel] my wife and I alternated time taking care of the baby and I ended
