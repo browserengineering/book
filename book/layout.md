@@ -488,7 +488,7 @@ You can see these steps in action in this widget:
 
 :::
 
-::: {.print-only}
+::: {.center}
 ![Figure 2: A flowchart showing how widths are computed top-down,
 from parent to child, while heights are computed bottom-up,
 from child to parent.](im/layout-order.png)
