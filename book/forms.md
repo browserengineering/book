@@ -37,7 +37,7 @@ form might be written like this:
 And look like Figure 1.
 
 ::: {.center}
-![Figure 1: The example form in our browser](im/forms-screenshot.png)
+![Figure 1: The example form in our browser.](im/forms-screenshot.png)
 :::
 
 This form contains two text entry boxes called `name` and `comment`.
