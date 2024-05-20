@@ -941,7 +941,7 @@ headers at all except `Content-Length`, it doesn't support TLS, and so
 on. Again: this is a web *browser* book---it'll do.
 
 ::: {.center}
-![Figure 3: The architecture of the simple web server in this chapter](im/forms-server.png)
+![Figure 3: The architecture of the simple web server in this chapter.](im/forms-server.png)
 :::
 
 ::: {.further}
