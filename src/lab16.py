@@ -476,20 +476,14 @@ class BlockLayout:
             self.x.get(), self.y.get(), self.x.get() + self.width.get(),
             self.y.get() + self.height.get())
 
-    def is_atomic(self):
-        return not isinstance(self.node, Text) and \
-            (self.node.tag == "input" or self.node.tag == "button")
-
     def paint(self):
         cmds = []
-
-        if not self.is_atomic():
-            bgcolor = self.node.style["background-color"].get()
-            if bgcolor != "transparent":
-                radius = dpx(
-                    float(self.node.style["border-radius"].get()[:-2]),
-                    self.zoom.get())
-                cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
+        bgcolor = self.node.style["background-color"].get()
+        if bgcolor != "transparent":
+            radius = dpx(
+                float(self.node.style["border-radius"].get()[:-2]),
+                self.zoom.get())
+            cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
         return cmds
  
     def paint_effects(self, cmds):
