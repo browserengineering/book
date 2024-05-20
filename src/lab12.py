@@ -30,7 +30,7 @@ from lab10 import COOKIE_JAR, JSContext, URL
 from lab11 import get_font, DrawLine, DrawRect, DrawOutline
 from lab11 import linespace, DrawText, Blend
 from lab11 import BlockLayout, LineLayout, TextLayout, InputLayout, Chrome
-from lab11 import Tab, Browser, paint_tree, parse_color
+from lab11 import Tab, Browser, paint_tree, parse_color, parse_blend_mode
 from lab11 import NAMED_COLORS, FONTS
 
 class MeasureTime:
