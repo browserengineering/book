@@ -1747,8 +1747,8 @@ The opacity transition example's composited layers should look like Figure 5
 [flag]: https://docs.python.org/3/library/argparse.html
 
 [^flag-recommendation]: I also recommend you add a mode to your browser that
-disables compositing (i.e., setting `needs_compositing` to `False` for every
-`VisualEffect`), and disables use of the GPU (i.e., going back to the old way of
+disables compositing (that is, setting `needs_compositing` to `False` for every
+`VisualEffect`), and disables use of the GPU (that is, going back to the old way of
 making Skia surfaces). Everything should still work (albeit more slowly) in all
 of the modes, and you can use these additional modes to debug your browser more
 fully and benchmark its performance.
