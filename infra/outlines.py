@@ -21,7 +21,7 @@ class Function(Item):
         return "def {}({})".format(self.name, ", ".join(args))
 
     def html(self):
-        return self.str().replace("def", "<span class=kw>def</span>")
+        return "<span class=kw>def</span> {}({})".format(self.name, ", ".join(args))
 
     def sub(self):
         return None
@@ -35,7 +35,7 @@ class Class:
         return "class {}:".format(self.name)
 
     def html(self):
-        return self.str().replace("class", "<span class=kw>class</span>")
+        return "<span class=kw>class</span> {}:".format(self.name)
 
     def sub(self):
         return self.fns
