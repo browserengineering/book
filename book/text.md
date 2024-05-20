@@ -9,7 +9,7 @@ In the last chapter, our browser created a graphical window and
 drew a grid of characters to it. That's OK for Chinese, but English
 text features characters of different widths grouped into words that
 you can't break across lines.[^lotsoflang] In this chapter, we'll add those
-capabilities. You'll even be able to read [this page](http://browser.engineering/text.html)!
+capabilities. You'll even be able to read [this page](https://browser.engineering/text.html)!
 
 [^lotsoflang]: There are lots of languages in the world, and lots of
     typographic conventions. A real web browser supports every
