@@ -5,7 +5,7 @@ prev: invalidation
 next: change 
 ...
 
-The last sixteen chapters have, I hope, given you a solid understanding
+The last 16 chapters have, I hope, given you a solid understanding
 of all of the major components of a web browser, from the network
 requests it makes to the way it stores your data safely. With
 such a vast topic I had to leave a few things out. Here's my list of
@@ -178,7 +178,7 @@ through JavaScript execution.
 [firebug]: https://en.wikipedia.org/wiki/Firebug_(software)
 
 I skipped this topic because many challenges in browser UI are the
-same those of as any other UI: design, usability, complexity, and so
+same as those of any other UI: design, usability, complexity, and so
 on. That would make for a tedious book. Even the debugger,
 conceptually quite interesting, is only useful if a substantial amount
 of UI work is done to make it usable. Unfortunately, I'm not aware of

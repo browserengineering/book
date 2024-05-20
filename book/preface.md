@@ -64,7 +64,7 @@ This book's browser is irreverent toward standards: it handles only a
 sliver of the full HTML, CSS, and JavaScript languages, mishandles
 errors, and isn't resilient to malicious inputs. It is also quite
 slow. Despite that, its architecture matches that of real browsers,
-providing insight into those 10 million line of code behemoths.
+providing insight into those 10 million lines of code behemoths.
 
 That said, we've tried to explicitly note when the book's browser
 simplifies or diverges from standards. If you're not sure how your
@@ -84,7 +84,7 @@ protocols). We are grateful for this amazing resource, one which in
 turn was made possible by the very thing this book is about.
 
 *Pavel*: [James R. Wilcox][jrw] and I dreamed up this book during a
-late-night chat at ICFP 2018. [Max Willsey][mwillsey] proof-read and
+late-night chat at ICFP 2018. [Max Willsey][mwillsey] proofread and
 helped sequence the chapters. [Zach Tatlock][ztatlock] encouraged me
 to develop the book into a course. And the students of CS 6968 and CS
 4962 at the University of Utah found countless errors and suggested
