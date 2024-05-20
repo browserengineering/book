@@ -986,7 +986,7 @@ should look something like this:
 Exercises
 =========
 
-3-1 *Centered text*. The page titles on this [book's website](http://browser.engineering/text.html)
+3-1 *Centered text*. The page titles on this [book's website](https://browser.engineering/text.html)
 are centered; make your
 browser do the same for text between `<h1 class="title">` and `</h1>`.
 Each line has to be centered individually, because different lines
