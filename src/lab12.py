@@ -348,6 +348,7 @@ class Task:
         self.task_code = None
         self.args = None
 
+@wbetools.outline_hide
 class SingleThreadedTaskRunner:
     def __init__(self, tab):
         self.tab = tab

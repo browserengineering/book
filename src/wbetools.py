@@ -59,6 +59,9 @@ def patchable(f):
 def js_hide(f):
     return f
 
+def outline_hide(f):
+    return f
+
 def delete(f):
     return f
 

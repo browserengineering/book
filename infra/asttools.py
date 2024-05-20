@@ -144,7 +144,7 @@ class ResolvePatches(ast.NodeTransformer):
             return None
 
     def visit_ClassDef(self, cmd):
-        if not cmd.decorator_list:
+        if not cmd.decorator_list or not is_patch_decorator(cmd.decorator_list[0]):
             patches = self.patches.get(cmd.name, [])
             if patches:
                 body2 = {}

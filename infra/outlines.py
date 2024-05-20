@@ -92,6 +92,12 @@ def write_html(objs, indent=0):
         print("</code>")
 
 def to_item(cmd):
+    if hasattr(cmd, "decorator_list") and any([
+            isinstance(dec, ast.Attribute) and dec.attr == 'outline_hide'
+            and isinstance(dec.value, ast.Name) and dec.value.id == "wbetools"
+            for dec in cmd.decorator_list
+    ]):
+        return None
     if isinstance(cmd, ast.ClassDef):
         return Class(cmd.name, [to_item(scmd) for scmd in cmd.body])
     elif isinstance(cmd, ast.FunctionDef):
