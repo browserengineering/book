@@ -286,9 +286,9 @@ CSS property
 : A single concept (such as "color" or "width") used to style
 a specific part of an element.
 
-CSS property-value
+CSS property–value
 
-: a key-value pair of a CSS property and its value
+: a key–value pair of a CSS property and its value
 (e.g. "color" and "blue" or "width" and "30px").
 
 CSS rule
@@ -477,7 +477,8 @@ executes generic compute programs.
 
 DukPy
 
-: A JavaScript interpreter used in this book.
+: A Python binding library for Duktape, a JavaScript interpreter used in
+this book.
 
 GPU
 
