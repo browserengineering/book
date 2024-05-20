@@ -45,8 +45,7 @@ to the implementation you have built, the book says "your browser".
 [^jrwilcox-idea]: This idea is from [J.R. Wilcox][jrw], inspired in
 turn by [S. Zdancewic][sz]'s course on compilers.
 
-The code in this book [uses Python
-3](blog/why-python.md),\index{Python} and we recommend you follow
+The code in this book uses Python 3,\index{Python} and we recommend you follow
 along in the same. When the book shows Python command lines, it calls
 the Python binary `python3`.[^py3-cmd] That said, the text avoids
 dependencies where possible and you can try to follow along in another
