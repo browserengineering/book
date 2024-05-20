@@ -54,7 +54,7 @@ list back into multiple arguments.
 The point of a task is that it can be created at one point in time,
 and then run at some later time by a task runner of some kind,
 according to a scheduling algorithm.[^event-loop] In our browser, the
-task runner will store tasks in a first-in first-out queue:
+task runner will store tasks in a first-in, first-out queue:
 
 [^event-loop]: The event loops we discussed in [Chapter
 2](graphics.md#eventloop) and [Chapter
@@ -74,7 +74,7 @@ class TaskRunner:
 When the time comes to run a task, our task runner can just remove
 the first task from the queue and run it:[^fifo]
 
-[^fifo]: First-in-first-out is a simplistic way to choose which task
+[^fifo]: First-in, first-out is a simplistic way to choose which task
 to run next, and real browsers have sophisticated *schedulers* which
 consider [many different factors][chrome-scheduling].
 
@@ -89,7 +89,7 @@ class TaskRunner:
 ```
 
 To run those tasks, we need to call the `run` method on our
-`TaskRunner`, which we can do in the main event loop\index{event loop}:
+`TaskRunner`, which we can do in the main event loop:\index{event loop}
 
 ``` {.python expected=False}
 class Tab:
@@ -173,7 +173,7 @@ setTimeout(callback, 1000);
 ```
 
 As with `addEventListener` in [Chapter 9](scripts.md#event-handling),
-we'll implement `setTimeout` by saving the callback on in a JavaScript
+we'll implement `setTimeout` by saving the callback in a JavaScript
 variable and creating a handle by which the Python-side code can call
 it:
 
@@ -231,13 +231,13 @@ This runs `callback` one second from now on a new Python thread.
 Simple! But `threading.Timer` executes its callback *on a new Python
 thread*, and that introduces a lot of challenges. The callback can't
 just call `evaljs` directly: we'd end up with JavaScript running on
-two Python threads at the same time, which is not ok.[^js-thread] So
+two Python threads at the same time, which is not good.[^js-thread] So
 as a workaround, the callback will add a new `Task` to the task queue
 to call `__runSetTimeout`. That has the downside of potentially
 delaying the callback, but it means that JavaScript will only ever
 execute on the main thread.
 
-[^js-thread]: JavaScript is not a multi-threaded programming language.
+[^js-thread]: JavaScript is not a multithreaded programming language.
 It's possible on the web to create [workers] of various kinds, but they
 all run independently and communicate only via special message-passing APIs.
 
@@ -487,7 +487,7 @@ class JSContext:
             threading.Thread(target=run_load).start()
 ```
 
-Note that in the async case, the `XMLHttpRequest_send` method starts a
+Note that in the asynchronous case, the `XMLHttpRequest_send` method starts a
 thread and then immediately returns. That thread will run in parallel
 to the browser's main work until the request is done.
 
@@ -523,7 +523,7 @@ running in the browser to delay tasks until later.
 ::: {.further}
 
 `XMLHttpRequest` played a key role in helping the web evolve. In the
-90s, clicking on a link or submitting a form required loading a new
+1990s, clicking on a link or submitting a form required loading a new
 pages. With `XMLHttpRequest` web pages were able to act a whole lot
 more like a dynamic application; GMail was one famous early
 example.[^when-gmail] Nowadays, a web application that uses DOM
@@ -560,15 +560,15 @@ tasks at a fixed cadence. But besides JavaScript the browser also has
 to render the page, and as you may recall from [Chapter
 2](graphics.md#framebudget), we'd like the browser to render the page
 exactly as fast as the display hardware can refresh. On most
-computers, this is 30 times per second, or 33ms per frame. However, even
+computers, this is 60 times per second, or 16 ms per frame. However, even
 with today's computers, it's quite difficult to maintain such a high
 frame rate, and certainly too high of a bar for our toy browser.
 
-So let's establish 30 frames per second---33ms for each frame---as our refresh
+So let's establish 30 frames per second---33 ms for each frame---as our refresh
 rate target:[^why-33ms]
 
 [^why-33ms]: Of course, 30 times per second is actually 33.33333...
-    milliseconds. But it's a toy browser, and having a more exact
+    ms. But it's a toy browser, and having a more exact
     value also makes tests easier to write.
 
 
@@ -614,7 +614,7 @@ class Browser:
 Note how every time a frame is scheduled, we set up a timer to schedule the next
 one. We can kick off the process when we start the browser. In the top-level
 loop, after running a task on the active tab the browser will need to
-raster-and-draw, in case that task was a rendering task:
+raster and draw, in case that task was a rendering task:
 
 ``` {.python expected=False}
 def mainloop(browser):
@@ -625,7 +625,7 @@ def mainloop(browser):
         browser.schedule_animation_frame()
 ```
 
-Now we're scheduling a new rendering task every 33 milliseconds, just
+Now we're scheduling a new rendering task every 33 ms, just
 as we wanted to.
 
 ::: {.further}
@@ -633,11 +633,11 @@ as we wanted to.
 There's nothing special about any particular refresh rate. Some displays
 refresh 72 times per second, and displays that [refresh even more
 often][refresh-rate] are becoming more common. Movies are often shot
-in 24 frames per second (though [some directors advocate
+at 24 frames per second (though [some directors advocate
 48][hobbit-fps]) while television shows traditionally use 30 frames per
 second. Consistency is often more important than the actual frame
 rate: a consistant 24 frames per second can look a lot smoother than a
-varying framerate between 60 and 24.
+varying rate between 60 and 24.
 
 :::
 
@@ -706,7 +706,7 @@ layout tree (and style) could be out of date when a method is called. Normally,
 this isn't a problem, but in one important case it is: click handling. That's
 because we need to read the layout tree to figure out what object was clicked
 on, which means the layout tree needs to be up to date. To fix this, add a
-call to render at the top of `click`:
+call to `render` at the top of `click`:
 
 ``` {.python}
 class Tab:
@@ -894,7 +894,7 @@ function __runRAFHandlers() {
 Note that `__runRAFHandlers` needs to reset `RAF_LISTENERS` to the
 empty array before it runs any of the callbacks. That's because one of
 the callbacks could itself call `requestAnimationFrame`. If this
-happens during such a callback, the spec says that a *second*
+happens during such a callback, the specification says that a *second*
 animation frame should be scheduled. That means we need to make sure
 to store the callbacks for the *current* frame separately from the
 callbacks for the *next* frame.
@@ -945,7 +945,7 @@ later, they might end up delayed by many, many frames.
 Luckily, rendering is special in that it never makes sense to have two
 rendering tasks in a row, since the page wouldn't have changed in
 between. To avoid having two rendering tasks we'll add a dirty bit
-called `needs_animation_frame` to the `Browser` which indicates
+called `needs_animation_frame` to the `Browser` that indicates
 whether a rendering task actually needs to be scheduled:
 
 ``` {.python}
@@ -1009,13 +1009,13 @@ other background tasks like saving your work to the cloud.
 Profiling rendering
 ===================
 
-We now have a system for scheduling a rendering task every 33ms. But
-what if rendering takes longer than 33ms to finish? Before we answer
+We now have a system for scheduling a rendering task every 33 ms. But
+what if rendering takes longer than 33 ms to finish? Before we answer
 this question, let's instrument the browser and measure how much time
 is really being spent rendering. It's important to always measure
 before optimizing, because the result is often surprising.
 
-To instrument our browser, let's have our browser output the
+To instrument our browser, let's have it output the
 [JSON][json] tracing format used by [chrome://tracing][chrome-tracing]
 in Chrome, [Firefox Profiler](https://profiler.firefox.com/) or
 [Perfetto UI](https://ui.perfetto.dev/).[^note-standards]
@@ -1099,7 +1099,7 @@ class MeasureTime:
         self.file.flush()
 ```
 
-Here the `name` argument to `start` should describe what kind of
+Here, the `name` argument to `start` should describe what kind of
 computation is starting, and it needs to match the name passed to the
 corresponding `stop` event:
 
@@ -1159,7 +1159,7 @@ counting, and then exit the browser. Then open up Chrome tracing or
 one of the other tracing tools named above and load the trace.
 If you don't want to do it yourself,
 [here](examples/example12-count-single-threaded.trace) is a sample trace file
-from my computer. You should see something like this:
+from my computer. You should see something like Figure 1.
 
 :::
 
@@ -1168,31 +1168,31 @@ from my computer. You should see something like this:
 Fire up the server, open our timer script, wait for it to finish
 counting, and then exit the browser. Then open up Chrome tracing or
 one of the other tracing tools named above and load the trace.
-You should see something like this:
+You should see something like Figure 1.
 
 :::
 
 ::: {.center}
-![Tracing for the timer script in single-threaded mode](examples/example12-trace-count-single-threaded.png)
+![Figure 1: Tracing for the timer script in single-threaded mode](examples/example12-trace-count-single-threaded.png)
 :::
 
 In Chrome tracing, you can choose the cursor icon from the toolbar and
 drag a selection around a set of trace events. That will show counts
 and average times for those events in the details window at the bottom
-of the screen. On my computer, my browser spent about 23ms in `render`
-and about 62ms in `raster_and_draw` on average, as you can see in the zoomed-in
-view below. That clearly blows through our 33ms budget. So, what can we do?
+of the screen. On my computer, my browser spent about 23 ms in `render`
+and about 62 ms in `raster_and_draw` on average, as you can see in the zoomed-in
+view in Figure 2. That clearly blows through our 33 ms budget. So, what can
+we do?
 
 ::: {.center}
-![Tracing for render and raster of one frame of the timer script](examples/example12-trace-count-render-raster.png)
+![Figure 2: Tracing for render and raster of one frame of the timer script](examples/example12-trace-count-render-raster.png)
 :::
 
 ::: {.further}
 
 Our browser spends a lot of time copying pixels. That's why
 [optimizing surfaces][optimize-surfaces] is important! It'll be faster
-if you've completed the *interest region* exercise from
-[Chapter 11](visual-effects.md#exercises), because making `tab_surface`
+if you've completed Exercise 11-3, because making `tab_surface`
 smaller also helps a lot. Modern browsers go a step further and
 perform raster and draw [on the GPU][skia-gpu], where a lot more
 parallelism is available. Even so, on complex pages raster and draw
@@ -1210,17 +1210,17 @@ Two threads
 ===========
 
 Well, one option, of course, is optimizing raster-and-draw, or even
-render. And we'll do that in the [next chapter](animations.md) But
+render, and we'll do that in [Chapter 13](animations.md) But
 another option---complex, but worthwhile and done by every major
 browser---is to do the render step in parallel with the
-raster-and-draw step by adopting a multi-threaded architecture. Not
+raster-and-draw step by adopting a multithreaded architecture. Not
 only would this speed up the rendering pipeline (dropping from 85 to
-62 milliseconds) but we could also execute JavaScript on one thread
+62 ms) but we could also execute JavaScript on one thread
 while the expensive `raster_and_draw` task runs on the other.
 
 Let's call our two threads the *browser thread*[^also-compositor] and
 the *main thread*.[^main-thread-name] The browser thread corresponds
-to the `Browser` class and will handle raster and draw. It'll also
+to the `Browser` class and will handle raster-and-draw. It'll also
 handle interactions with the browser chrome. The main thread, on the
 other hand, corresponds to a `Tab` and will handle running scripts,
 loading resources, and rendering, along with associated tasks like
@@ -1240,7 +1240,7 @@ JavaScript can sometimes run on [other threads][webworker]).
 
 [webworker]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API
 
-Now, multi-threaded architectures are tricky, so let's do a little planning.
+Now, multithreaded architectures are tricky, so let's do a little planning.
 
 To start, the one thread that exists already---the one that runs when
 you start the browser---will be the browser thread. We'll make a main
@@ -1251,7 +1251,7 @@ When the browser thread needs to communicate with the main thread, to
 inform it of events, it'll place tasks on the main thread's
 `TaskRunner`.[^why-no-browser-taskrunner] The main thread will need to
 communicate with the browser thread to request animation frames and to
-send it a display list to raster and draw, and the main thread will do
+send it a display list to raster-and-draw, and the main thread will do
 that via two methods on `browser`: `set_needs_animation_frame` to request
 an animation frame and `commit` to send it a display list.
 
@@ -1264,7 +1264,7 @@ DOM.
 
 The overall control flow for rendering a frame will therefore be:
 
-1. The main thread code requests an animation frame with
+1. The code running in the main thread requests an animation frame with
    `set_needs_animation_frame`, perhaps in response to an event
    handler or due to `requestAnimationFrame`.
 2. The browser thread event loop schedules an animation frame on
@@ -1518,14 +1518,14 @@ class Browser:
         self.lock.release()
 ```
 
-Make sure to update the `Chrome` to use this new `url` field, since we
+Make sure to update the `Chrome` class to use this new `url` field, since we
 don't want the chrome, running on the browser thread, to read from the
 tab, running on the main thread.
 
 Note that `commit` is called on the main thread, but acquires the
 browser thread lock. As a result, `commit` is a critical time when
-both threads are both "stopped" simultaneously.[^fast-commit] Also
-note that, it's possible for the browser thread to get a `commit` from
+both threads are "stopped" simultaneously.[^fast-commit] Also
+note that it's possible for the browser thread to get a `commit` from
 an inactive tab,[^inactive-tab-tasks] so the `tab` parameter is
 compared with the active tab before copying over any committed data.
 
@@ -1670,7 +1670,7 @@ class MeasureTime:
 ::: {.web-only}
 
 Now, if you make a new trace from the counting animation and load it
-into one of the tracing tools, you should see something like this (
+into one of the tracing tools, you should see something like Figure 3 (
 click [here](examples/example12-count-two-threads.trace) to download an example trace):
 
 :::
@@ -1678,21 +1678,21 @@ click [here](examples/example12-count-two-threads.trace) to download an example 
 ::: {.print-only}
 
 Now, if you make a new trace from the counting animation and load it
-into one of the tracing tools, you should see something like this:
+into one of the tracing tools, you should see something like Figure 3.
 
 :::
 
 ::: {.center}
-![Tracing for the timer script in two-threads mode](examples/example12-trace-count-two-threads.png)
+![Figure 3: Tracing for the timer script in two-threads mode](examples/example12-trace-count-two-threads.png)
 :::
 
 You can see how the render and raster tasks now happen on different
-threads, and how our multi-threaded architecture allows them to happen
-concurrently.^[However in this case the two threads are *not* running
+threads, and how our multithreaded architecture allows them to happen
+concurrently.^[However, in this case the two threads are *not* running
 tasks concurrently. That's because all of the JavaScript tasks are
 `requestAnimationFrame` callbacks, which are scheduled by the browser
 thread, and those are only kicked off once the browser thread finishes
-its raster and draw work. There is an exercise about addressing that problem. ]
+its raster and draw work. Execise 12-8 addresses that problem. ]
 
 ::: {.further}
 The tracing system we introduced in this chapter comes directly from
@@ -1847,7 +1847,7 @@ class Tab:
 ```
 
 We'll set `scroll_changed_in_tab` when loading a new page or when the
-browser thread's scroll offset of past the bottom of the page:
+browser thread's scroll offset is past the bottom of the page:
 
 ``` {.python}
 class Tab:
@@ -1908,21 +1908,22 @@ That's it! If you try the counting demo now, you'll be able to scroll
 even during the artificial pauses.
 [Here](examples/example12-count-with-scroll.trace) is a trace that
 shows threaded scrolling at work (notice how raster and draw now
-sometimes happen at the same time as main-thread work):
+sometimes happen at the same time as main-thread work), and it's visualized
+in Figure 4.
 
 :::
 
 ::: {.print-only}
 
 That's it! If you try the counting demo now, you'll be able to scroll even
-during the artificial pauses. Here is a trace screenshot that shows threaded
+during the artificial pauses. Figure 4 is a trace screenshot that shows threaded
 scrolling at work (notice how raster and draw now sometimes happen at the same
 time as main-thread work):
 
 :::
 
 ::: {.center}
-![Trace output of threaded scrolling on the counting demo](examples/example12-count-with-scroll.png)
+![Figure 4: Trace output of threaded scrolling on the counting demo](examples/example12-count-with-scroll.png)
 :::
 
 As you've seen, moving tasks to the
@@ -2003,15 +2004,15 @@ have to happen before drawing to the screen.
 [update-the-rendering]: https://html.spec.whatwg.org/multipage/webappapis.html#update-the-rendering
 
 Nevertheless, in practice, no current modern browser runs style or
-layout on any thread but the the main one.[^servo] The reason is simple: there
+layout on any thread but the main one.[^servo] The reason is simple: there
 are many JavaScript APIs that can query style or layout state. For
 example, [`getComputedStyle`][gcs] requires first computing style, and
 [`getBoundingClientRect`][gbcr] requires first doing
 layout.[^nothing-later] If a web page calls one of these APIs, and
-style or layout is not up-to-date, then it has to be computed then and
+style or layout is not up to date, then it has to be computed then and
 there. These computations are called *forced style* or *forced
 layout*: style or layout are "forced" to happen right away, as opposed
-to possibly 33ms in the future, if they're not already computed.
+to possibly 33 ms in the future, if they're not already computed.
 Because of these forced style and layout situations, browsers have to
 be able to compute style and layout on the main thread.[^or-stall]
 
@@ -2023,7 +2024,7 @@ do that work, but that's even worse, because forcing work on the
 compositor thread will make scrolling janky unless you do even more work to
 avoid that somehow.
 
-[^servo]: Some browser do use multiple threads *within* style and
+[^servo]: Some browsers do use multiple threads *within* style and
     layout; the [Servo] research browser was the pioneer here,
     attempting a fully parallel style, layout, and paint phase. Some of
     Servo's code is now part of Firefox. Still, even if style or
@@ -2071,7 +2072,7 @@ will be provided, and can tune the graphics pipeline for those graphs.
 Games can upload hyper-optimized code and pre-rendered data to the CPU
 and GPU memory when they start. Browsers, on the other hand, need to
 handle arbitrary web pages, and can't spend much time optimizing
-anything. This makes for a very different set of tradeoffs, and is why
+anything. This makes for a very different set of trade-offs, and is why
 browsers often feel less fancy and smooth than games.
 
 :::
@@ -2086,8 +2087,8 @@ of modern browsers. The main points to remember are:
 
 - the browser organizes work into task queues, with tasks for things
   like running JavaScript, handling user input, and rendering the page;
-- the goal is to consistently generate frames to the screen at a 60Hz
-  cadence, which means a 33ms budget to draw each animation frame;
+- the goal is to consistently generate frames to the screen at a 60 Hz
+  cadence, which means a 33 ms budget to draw each animation frame;
 - the browser has two key threads involved in rendering;
 - the main thread runs JavaScript and the special rendering task;
 - the browser thread draws the display list to the screen,
@@ -2121,15 +2122,16 @@ should now look something like this:
     python3 infra/outlines.py src/lab12.py
 :::
 
-
+::: {.web-only}
 If you run it, it should look something like [this
 page](widgets/lab12-browser.html); due to the browser sandbox, you
 will need to open that page in a new tab.
+:::
 
 Exercises
 =========
 
-12-1 *setInterval*. [`setInterval`][setInterval] is similar to `setTimeout`
+12-1 *`setInterval`*. [`setInterval`][setInterval] is similar to `setTimeout`
 but runs repeatedly at a given cadence until
 [`clearInterval`][clearInterval] is called. Implement these APIs. Make
 sure to test `setInterval` with various cadences in a page that also
@@ -2146,8 +2148,8 @@ One option is to use the `__name__` field of `task_code`, which will
 get the name of the Python function run by the task.
 
 12-3 *Clock-based frame timing*. Right now our browser schedules each
-animation frame exactly 33ms after the previous one completes. This
-actually leads to a slower animation frame rate cadence than 33ms. Fix
+animation frame exactly 33 ms after the previous one completes. This
+actually leads to a slower animation frame rate cadence than 33 ms. Fix
 this in our browser by using the absolute time to schedule animation
 frames, instead of a fixed delay between frames. Also implement main-thread
 animation frame scheduling that happens *before* raster and draw, not after,
@@ -2155,7 +2157,7 @@ allowing both threads to do animation work simultaneously.
 
 12-4 *Scheduling*. As more types of complex tasks end up on the event
 queue, there comes a greater need to carefully schedule them to ensure
-the rendering cadence is as close to 33ms as possible, and also to
+the rendering cadence is as close to 33 ms as possible, and also to
 avoid task starvation. Implement a task scheduler with a priority
 system that balances these two needs: prioritize rendering tasks and
 input handling, and deprioritize (but don't completely starve) tasks that
@@ -2165,7 +2167,7 @@ web page that taxes the system with a lot of `setTimeout`-based tasks.
 12-5 *Threaded loading*. When loading a page, our browser currently waits
 for each style sheet or script resource to load in turn. This is
 unnecessarily slow, especially on a bad network. Instead, make your
-browser sending off all the network requests in parallel. You must
+browser send off all the network requests in parallel. You must
 still process resources like styles in source order, however. It may
 be convenient to use the `join` method on a `Thread`, which will block
 the thread calling `join` until the thread being `join`ed completes.
