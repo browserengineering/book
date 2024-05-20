@@ -37,7 +37,7 @@ form might be written like this:
 And look like Figure 1.
 
 ::: {.center}
-![Figure 1: The example form in our browser](im/forms-screenshot.png)
+![Figure 1: The example form in our browser.](im/forms-screenshot.png)
 :::
 
 This form contains two text entry boxes called `name` and `comment`.
@@ -757,7 +757,7 @@ the user sees; with forms, the server sends a new HTML page in its
 response to the `POST` request. This process is shown in Figure 2.
 
 ::: {.center}
-![Figure 2: The cycle of request and response for a multi-page application](im/forms-mpa.png)
+![Figure 2: The cycle of request and response for a multi-page application.](im/forms-mpa.png)
 :::
 
 Forms are a simple, minimal introduction to this cycle of request and
@@ -941,7 +941,7 @@ headers at all except `Content-Length`, it doesn't support TLS, and so
 on. Again: this is a web *browser* book---it'll do.
 
 ::: {.center}
-![Figure 3: The architecture of the simple web server in this chapter](im/forms-server.png)
+![Figure 3: The architecture of the simple web server in this chapter.](im/forms-server.png)
 :::
 
 ::: {.further}
