@@ -1581,7 +1581,7 @@ sentence or phrase is particularly complex, they may want the
 screen reader to re-read it.
 
 You can see an example[^imagine] of screen reader navigation in the
-talk presented in the video showin in Figure 7, specifically the segment
+talk presented in the video shown in Figure 7, specifically the segment
 from 2:36--3:54.[^whole-talk]
 
 ::: {.web-only .center}
