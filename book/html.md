@@ -794,7 +794,7 @@ guess what the *right* thing is.
 
 [html5-parsing]: https://html.spec.whatwg.org/multipage/parsing.html
 
-And now for the payoff! Figure 3 shows a screenshot of our very own [website](http://browser.engineering/),
+And now for the payoff! Figure 3 shows a screenshot of our very own [website](https://browser.engineering/),
 loaded in our own browser.^[To be fair, it actually looks about the same with the Chapter 3 browser.]
 
 ::: {.center}
