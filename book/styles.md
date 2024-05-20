@@ -265,7 +265,7 @@ should now have a light blue background:
 ```
 
 So this is one way web pages can change their appearance. And in the
-early days of the web,^[I'm talking Netscape 3. The late 1990.]
+early days of the web,^[I'm talking Netscape 3. The late 1990s.]
 something like this was the *only* way. But honestly, it's a
 pain---you need to set a `style` attribute on each element, and if you
 change the style, that's a lot of attributes to edit. CSS\index{CSS}
