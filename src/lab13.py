@@ -780,8 +780,6 @@ class JSContext:
             self.XMLHttpRequest_send)
         self.interp.export_function("setTimeout",
             self.setTimeout)
-        self.interp.export_function("now",
-            self.now)
         self.interp.export_function("requestAnimationFrame",
             self.requestAnimationFrame)
         self.tab.browser.measure.time('script-runtime')
@@ -810,9 +808,6 @@ class JSContext:
         elt = self.handle_to_node[handle]
         elt.attributes["style"] = s;
         self.tab.set_needs_render()
-
-    def now(self):
-        return int(time.time() * 1000)
 
 def parse_transition(value):
     properties = {}
@@ -1159,6 +1154,7 @@ class CommitData:
         self.display_list = display_list
         self.composited_updates = composited_updates
 
+@wbetools.js_hide
 def print_composited_layers(composited_layers):
     print("Composited layers:")
     for layer in composited_layers:

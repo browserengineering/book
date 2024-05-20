@@ -554,15 +554,6 @@ class TextLayout:
         return ("TextLayout(x={}, y={}, width={}, height={}, word={})").format(
             self.x, self.y, self.width, self.height, self.word)
 
-def filter_quality(node):
-    attr = node.style.get("image-rendering", "auto")
-    if attr == "high-quality":
-        return skia.FilterQuality.kHigh_FilterQuality
-    elif attr == "crisp-edges":
-        return skia.FilterQuality.kLow_FilterQuality
-    else:
-        return skia.FilterQuality.kMedium_FilterQuality
-
 class ImageLayout(EmbedLayout):
     def __init__(self, node, parent, previous, frame):
         super().__init__(node, parent, previous, frame)
@@ -682,6 +673,7 @@ class IframeLayout(EmbedLayout):
         return "IframeLayout(src={}, x={}, y={}, width={}, height={})".format(
             self.node.attributes["src"], self.x, self.y, self.width, self.height)
 
+@wbetools.outline_hide
 class AttributeParser:
     def __init__(self, s):
         self.s = s

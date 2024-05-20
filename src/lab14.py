@@ -279,9 +279,6 @@ class LineLayout:
 
         return cmds
 
-    def role(self):
-        return "none"
-
     @wbetools.js_hide
     def __repr__(self):
         return "LineLayout(x={}, y={}, width={}, height={})".format(
@@ -1540,11 +1537,13 @@ class Browser:
         else:
             print(text)
 
+    @wbetools.js_hide
     def toggle_mute(self):
         self.lock.acquire(blocking=True)
         self.muted = not self.muted
         self.lock.release()
 
+    @wbetools.js_hide
     def is_muted(self):
         return self.muted
 

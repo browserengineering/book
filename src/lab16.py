@@ -215,6 +215,7 @@ class ProtectedField:
     def copy(self, field):
         self.set(field.read(notify=self))
 
+    @wbetools.js_hide
     def __str__(self):
         if self.dirty:
             return "<dirty>"
