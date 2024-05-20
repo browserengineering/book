@@ -10,7 +10,7 @@ to the most recent release of each library. It will be regularly
 updated as new versions are released and tested.
 
 Porting to Skia 124
--------------------
+===================
 
 The text of this book uses Skia 87, and the associated skia-python
 87.6 release. Skia 124, and the associated skia-python 124b7 release,
@@ -24,9 +24,11 @@ def parse_image_rendering(quality):
     if quality == "high-quality":
         return skia.SamplingOptions(skia.CubicResampler.Mitchell())
     elif quality == "crisp-edges":
-        return skia.SamplingOptions(skia.FilterMode.kNearest, skia.MipmapMode.kNone)
+        return skia.SamplingOptions(
+            skia.FilterMode.kNearest, skia.MipmapMode.kNone)
     else:
-        return skia.SamplingOptions(skia.FilterMode.kLinear, skia.MipmapMode.kLinear)
+        return skia.SamplingOptions(
+            skia.FilterMode.kLinear, skia.MipmapMode.kLinear)
 ```
 
 And changing the `execute` method of `DrawImage` like so:
