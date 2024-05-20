@@ -374,7 +374,6 @@ class Tab:
                 return self.render()
 ```
 
-[]
 So that's clicking in an `input` area. But typing is harder. Think
 back to how we [implemented the address bar (in Chapter 7)](chrome.md):
 we added a `focus` field that remembered what we clicked on so we could later
