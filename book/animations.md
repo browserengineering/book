@@ -2031,7 +2031,7 @@ To implement `local_to_absolute`, we first need a new `map` method on
 "contents" of the transform and outputs a rect in post-transform
 space. For example, if the transform was `translate(20px, 0px)` then
 the output of calling `map` on a rect would translate it by 20 pixels
-in the `x` direction.
+in the *x* direction.
 
 ``` {.python}
 class Transform(VisualEffect):
