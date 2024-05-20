@@ -2292,7 +2292,7 @@ CSS property and parsing of `@keyframe` to implement the demos
 [here](examples/example13-opacity-animation.html) and
 [here](examples/example13-width-animation.html).
 
-13-6 *Overlap testing w/transform animations*. Our
+13-6 *Overlap testing with transform animations*. Our
 browser currently does not overlap test correctly in the presence of transform
 animations that cause overlap to come and go. (You'll need to have already done
 Exercise 13-3.) First create a demo that
