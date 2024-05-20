@@ -533,8 +533,10 @@ in display list entries.
 *Italic* fonts were developed in Italy (hence the name) to mimic a
 cursive handwriting style called "[chancery hand][chancery]".
 Non-italic fonts are called *roman* because they mimic text on Roman
-monuments. There is an obscure third option: [*oblique*
-fonts][oblique], which look like roman fonts but are slanted.
+monuments. There is an obscure third option:
+[`<span style="font-style:oblique">oblique</span>`{=html}
+`\textsl{oblique}`{=latex} fonts][oblique],
+which look like roman fonts but are slanted.
 :::
 
 [chancery]: https://en.wikipedia.org/wiki/Chancery_hand
