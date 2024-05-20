@@ -352,7 +352,7 @@ width and height arguments).
 [^color-space]: Example detail: a different color space is required
 for GPU mode.
 
-Thanks to the thorough support in SDL and Skia for GPU rendering, that should be
+Thanks to the thorough support for GPU rendering in SDL and Skia, that should be
 all that's necessary for our browser to raster and draw on the GPU. And as
 expected, speed is much improved. I found that raster and draw improved to
 7 ms on average (see Figure 1).
@@ -1458,7 +1458,7 @@ class Browser:
             self.draw()
 ```
 
-Then, were we currently call `set_needs_raster_and_draw`, such as
+Then, where we currently call `set_needs_raster_and_draw`, such as
 `handle_down`, we need to call `set_needs_raster`:
 
 ``` {.python}
