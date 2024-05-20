@@ -637,7 +637,7 @@ at 24 frames per second (though [some directors advocate
 48][hobbit-fps]) while television shows traditionally use 30 frames per
 second. Consistency is often more important than the actual frame
 rate: a consistant 24 frames per second can look a lot smoother than a
-frame varying rate between 60 and 24.
+varying rate between 60 and 24.
 
 :::
 
