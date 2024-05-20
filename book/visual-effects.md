@@ -54,7 +54,8 @@ regular releases that change APIs or break compatibility; version 87
 is fairly old and should work reliably on most systems. In your own
 projects, or before filing bug reports in Skia, please do use more
 recent Skia releases. It's also possible that future Python version no
-longer support Skia 87; our [porting notes](https://browser.engineering/porting.html) explain how
+longer support Skia 87; our
+[porting notes](https://browser.engineering/porting.html) explain how
 to use recent Skia releases for the code in this book.
 
 :::
