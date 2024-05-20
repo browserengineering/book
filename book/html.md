@@ -296,7 +296,7 @@ In general it's a good idea to define `__repr__` methods for any
 data objects, and to have those `__repr__` methods print all the
 relevant fields.
 
-Try this out on [the web page](http://browser.engineering/html.html)
+Try this out on [the web page](https://browser.engineering/html.html)
 corresponding to this chapter, parsing the HTML source code and then
 calling `print_tree` to visualize it:
 
