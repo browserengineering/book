@@ -690,7 +690,7 @@ of text: the first pass identifies what words go in the line and
 computes their *x* positions, while the second pass vertically aligns
 the words and computes their *y* positions (see Figure 4).
 
-::: {.print-only .center}
+::: {.center}
 ![Figure 4: How lines are laid out when multiple fonts are involved.
 All words are drawn using a shared baseline. The ascent and descent
 of the whole line is then determined by the maximum ascent and descent
@@ -754,7 +754,7 @@ Here's what it looks like, step by step:
 
 :::
 
-::: {.print-only .center}
+::: {.center}
 ![Figure 5: Aligning the words on a line.](examples/example3-words-align.png)
 :::
 
