@@ -170,7 +170,7 @@ class ResolvePatches(ast.NodeTransformer):
 class ResolveJSHide(ast.NodeTransformer):
     def visit_FunctionDef(self, cmd):
         if any([
-                isinstance(dec, ast.Attribute) and dec.attr == "js_hide"
+                isinstance(dec, ast.Attribute) and dec.attr in ["js_hide", "delete"]
                 and isinstance(dec.value, ast.Name) and dec.value.id == "wbetools"
                 for dec in cmd.decorator_list
         ]):

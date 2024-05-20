@@ -251,13 +251,11 @@ class BlockLayout:
                                          word, font, color))
         return cmds
 
-    @wbetools.js_hide
-    def open_tag(self, tag):
-        pass
+    @wbetools.delete
+    def open_tag(self, tag): pass
 
-    @wbetools.js_hide
-    def close_tag(self, tag):
-        pass
+    @wbetools.delete
+    def close_tag(self, tag): pass
 
     @wbetools.js_hide
     def __repr__(self):
