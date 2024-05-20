@@ -787,7 +787,12 @@ def compile(tree, ctx, indent=0, patches={}, patchables={}):
         return out
     elif isinstance(tree, ast.ClassDef):
         if tree.decorator_list:
-            assert tree.decorator_list[0].func.value.id == "wbetools"
+            assert isinstance(tree.decorator_list[0], ast.Call) and \
+                isinstance(tree.decorator_list[0].func, ast.Attribute) and \
+                tree.decorator_list[0].func.value.id == "wbetools" or \
+                isinstance(tree.decorator_list[0], ast.Attribute) and \
+                tree.decorator_list[0].value.id == "wbetools", \
+                "Weird decorator {}".format(ast.dump(tree.decorator_list[0]))
         ctx[tree.name] = {"is_class": True}
         ctx2 = Context("class", ctx)
         parts = [compile(part, indent=indent + INDENT, ctx=ctx2) for part in tree.body]

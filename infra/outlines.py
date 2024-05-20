@@ -21,6 +21,10 @@ class Function(Item):
         return "def {}({})".format(self.name, ", ".join(args))
 
     def html(self):
+        if len(self.args) > 0 and self.args[0] == "self":
+            args = self.args[1:]
+        else:
+            args = self.args
         return "<span class=kw>def</span> {}({})".format(self.name, ", ".join(args))
 
     def sub(self):
@@ -93,8 +97,7 @@ def write_html(objs, indent=0):
 
 def to_item(cmd):
     if hasattr(cmd, "decorator_list") and any([
-            isinstance(dec, ast.Attribute) and dec.attr == 'outline_hide'
-            and isinstance(dec.value, ast.Name) and dec.value.id == "wbetools"
+            asttools.is_outline_hide_decorator(dec)
             for dec in cmd.decorator_list
     ]):
         return None

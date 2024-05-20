@@ -125,8 +125,9 @@ class ResolvePatches(ast.NodeTransformer):
     def visit_FunctionDef(self, cmd):
         if not cmd.decorator_list or not is_patch_decorator(cmd.decorator_list[0]):
             if cmd.decorator_list:
-                if not is_patchable_decorator(cmd.decorator_list[0]):
-                    raise Exception()
+                if not is_patchable_decorator(cmd.decorator_list[0]) \
+                   and not is_js_hide_decorator(cmd.decorator_list[0]):
+                    raise Exception("Bad decorator {} on {}()".format(unparse(cmd.decorator_list[0]), cmd.name))
                 self.patchables.setdefault(cmd.name, []).append(cmd)
 
             patches = self.patches.get(cmd.name, [])
@@ -166,14 +167,18 @@ class ResolvePatches(ast.NodeTransformer):
     def double_visit(self, tree):
         self.visit(tree)
         return self.visit(tree)
+
+def is_js_hide_decorator(dec):
+    return isinstance(dec, ast.Attribute) and dec.attr in ["js_hide", "delete"] \
+        and isinstance(dec.value, ast.Name) and dec.value.id == "wbetools"
+
+def is_outline_hide_decorator(dec):
+    return isinstance(dec, ast.Attribute) and dec.attr == "outline" \
+        and isinstance(dec.value, ast.Name) and dec.value.id == "wbetools"
         
 class ResolveJSHide(ast.NodeTransformer):
     def visit_FunctionDef(self, cmd):
-        if any([
-                isinstance(dec, ast.Attribute) and dec.attr in ["js_hide", "delete"]
-                and isinstance(dec.value, ast.Name) and dec.value.id == "wbetools"
-                for dec in cmd.decorator_list
-        ]):
+        if any([is_js_hide_decorator(dec) for dec in cmd.decorator_list]):
             return None
         else:
             return cmd
