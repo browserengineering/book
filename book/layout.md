@@ -295,7 +295,7 @@ position somewhere on the page.
 :::
 
 
-::: {.print-only}
+::: {.center}
 ![Figure 1: An example of an HTML tree and the corresponding layout tree.](im/layout-tree.png)
 :::
 
