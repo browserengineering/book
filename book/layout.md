@@ -31,11 +31,11 @@ the HTML tree to produce the layout tree, then computes the size and position
 for each layout object, and finally draws each layout object to the screen.
 
 [^no-box]: Elements like `<script>` don't generate layout objects, and
-    some elements generate multiple (`<li>` elements have a layout
-    object for the bullet point!), but mostly it's one layout object
+    some elements generate multiple layout objects (`<li>` elements
+    have an extra one for the bullet point!), but mostly it's one layout object
     each.
 
-Let's start by looking how the existing `Layout` class is used:
+Let's start by looking at how the existing `Layout` class is used:
 
 ``` {.python expected=False}
 class Browser:
@@ -210,7 +210,7 @@ class BlockLayout:
             return "block"
 ```
 
-Here the list of `BLOCK_ELEMENTS` is basically what you expect, a list
+Here, the list of `BLOCK_ELEMENTS` is basically what you expect, a list
 of all the tags that describe blocks and containers:[^from-the-spec]
 
 [^from-the-spec]: Taken from the [HTML living standard][html5-elts].
@@ -229,7 +229,7 @@ BLOCK_ELEMENTS = [
 ```
 
 Our `layout_mode` method has to handle one tricky case, where a node
-contains both block children like a `<p>` element but also text
+contains both block children like a `<p>` element and also text
 children like a text node or a `<b>` element. It's probably best to think
 of this as a kind of error on the part of the web developer. And just like
 with implicit tags in [Chapter 4](html.md), we need a repair mechanism to
@@ -282,7 +282,9 @@ class BlockLayout:
 Our browser is now constructing a whole tree of `BlockLayout` objects;
 you can use `print_tree` to see this tree in the `Browser`'s `load` method.
 You'll see that large web pages like this chapter produce large and
-complex layout trees!
+complex layout trees! (An example is shown in Figure 1.)
+Now we need each of these `BlockLayout` objects to have a size and
+position somewhere on the page.
 
 ::: {.web-only}
 
@@ -293,12 +295,9 @@ complex layout trees!
 :::
 
 
-::: {.print-only}
-![An example of an HTML tree and the corresponding layout tree](im/layout-tree.png)
+::: {.center}
+![Figure 1: An example of an HTML tree and the corresponding layout tree.](im/layout-tree.png)
 :::
-
-Now we need each of these `BlockLayout` objects to have a size and
-position somewhere on the page.
 
 ::: {.further}
 In CSS, the layout mode is set by the [`display`
@@ -340,7 +339,7 @@ method to use these fields.
 Let's start with `cursor_x` and `cursor_y`. Instead of having them
 denote absolute positions on the page, let's make them relative to the
 `BlockLayout`'s `x` and `y`. So they now need to start from `0`
-instead of `HSTEP` and `VSTEP`, both in `layout` and `flush`:
+instead of `HSTEP` and `VSTEP`, in both `layout` and `flush`:
 
 ``` {.python}
 class BlockLayout:
@@ -391,7 +390,7 @@ goes all the way across its parent:[^until-css]
 
 [^until-css]: In the [next chapter](styles.md), we'll add support for
 author-defined styles, which in real browsers modify these layout
-rules by setting custom widths or changing how *x* and *y* position
+rules by setting custom widths or changing how *x* and *y* positions
 are computed.
 
 ``` {.python}
@@ -431,13 +430,13 @@ class BlockLayout:
 
 However, a `BlockLayout` that contains text doesn't have children;
 instead, it needs to be tall enough to contain all its text, which we
-can conveniently read off of `cursor_y`:[^why-two-fields]
+can conveniently read off from `cursor_y`:[^why-two-fields]
 
 [^why-two-fields]: Since the height is just equal to `cursor_y`, why
     not rename `cursor_y` to `height` instead? You could, it would
     work fine, but I would rather not. As you can see from, say, the
     `y` computation, the `height` field is a public field, read by
-    other layout objects to compute their positions. As such I'd
+    other layout objects to compute their positions. As such, I'd
     rather make sure it _always_ has the right value, whereas
     `cursor_y` changes as we lay out a paragraph of text and therefore
     sometimes has the "wrong" value. Keeping these two fields separate
@@ -468,7 +467,8 @@ its previous sibling's `y` position, the recursive `layout` calls have
 to start at the first sibling and iterate through the list
 forward.
 
-That is, the `layout` method should perform its steps in this order:
+That is, the `layout` method should perform its steps in this order
+(see Figure 2):
 
 + When `layout` is called, it first computes the `width`, `x`, and `y`
   fields, reading from the `parent` and `previous` layout objects.
@@ -488,18 +488,17 @@ You can see these steps in action in this widget:
 
 :::
 
-::: {.print-only}
-![A flowchart of layout](im/layout-order.png)
-^[A flowchart showing how widths are computed top-down,
+::: {.center}
+![Figure 2: A flowchart showing how widths are computed top-down,
 from parent to child, while heights are computed bottom-up,
-from child to parent.]
+from child to parent.](im/layout-order.png)
 :::
 
 This kind of dependency reasoning is crucial to layout and more
 broadly to any kind of computation on trees. If you get the order of
 operations wrong, some layout object will try to read a value that
 hasn't been computed yet, and the browser will have a bug. We'll come
-back to this issue of dependencies [later](invalidation.md), where it
+back to this issue of dependencies [in Chapter 16](invalidation.md), where it
 will become even more important.
 
 `DocumentLayout` needs some layout code too, though since the
@@ -596,9 +595,9 @@ complex, and we're about to add more features. Stable foundations make
 for comfortable houses.
 
 ::: {.further}
-Layout trees are common [in GUI frameworks][widget-tree], but there
+Layout trees are common [in graphical user interface (GUI) frameworks][widget-tree], but there
 are other ways to structure layout, such as constraint-based layout.
-TeX's [boxes and glue][boxes-glue] and iOS [auto-layout][auto-layout]
+`TeX`{=html}`\TeX`{=latex}'s [boxes and glue][boxes-glue] and iOS's [auto-layout][auto-layout]
 are two examples of this alternative paradigm.
 :::
 
@@ -619,7 +618,7 @@ clicked on.
 Backgrounds are rectangles, so our first task is putting rectangles in
 the display list. Right now, the display list is a list of words to
 draw to the screen, but we can conceptualize it instead as
-a list of *commands*, of which there is only one type. We now want two
+a list of *commands*, of which there is currently only one type. We now want two
 types of commands:
 
 ``` {.python}
@@ -705,7 +704,7 @@ class DrawRect:
 ```
 
 By default, `create_rectangle` draws a one-pixel black border, which
-for backgrounds we don't want, so make sure to pass `width=0`.
+we don't want for backgrounds, so make sure to pass `width=0`.
 
 We still want to skip offscreen graphics commands, so let's add a
 `bottom` field to `DrawText` so we know when to skip those:
@@ -729,11 +728,11 @@ class Browser:
             cmd.execute(self.scroll, self.canvas)
 ```
 
-Try your browser on a page---maybe this one---with code snippets on
+Try your browser on a page---maybe [this one](https://browser.engineering/layout.html)---with code snippets on
 it. You should see each code snippet set off with a gray background.
 
-Here's one more cute benefit of tree-based layout. Thanks to
-tree-based layout we now record the height of the whole page. The
+Here's one more cute benefit of tree-based layout:
+we now record the height of the whole page. The
 browser can use that to avoid scrolling past the bottom:
 
 ``` {.python}
@@ -749,18 +748,19 @@ and bottom of the page.
 So those are the basics of tree-based layout! In fact, as we'll see in
 the next two chapters, this is just one part of the layout tree's central role in
 the browser. But before we get to that, we need to add some styling
-capabilities to our browser. However, even with layout the `browser.engineering`
-homepage looks a bit better:
+capabilities to our browser. However, even with layout the
+[browser.engineering homepage](https://browser.engineering/) looks a
+bit better---see Figure 3.
 
 ::: {.center}
-![Screenshot of the browser.engineering website with this chapter's browser](examples/example5-browserengineering-screenshot.png)
-<br>
+![Figure 3: https://browser.engineering/ viwed in this chapter's
+version of the browser.](examples/example5-browserengineering-screenshot.png)
 :::
 
 ::: {.further}
 The draft CSS [Painting API][mdn-houdini] allows pages to extend the
 display list with new types of commands, implemented in JavaScript.
-This makes it possible to use CSS for styling with visually-complex
+This makes it possible to use CSS for styling with visually complex
 styling provided by a library.
 :::
 
@@ -806,7 +806,7 @@ should look something like this:
 Exercises
 =========
 
-5-1 *Links bar*. At the top and bottom of each chapter of this book is a
+5-1 *Links bar*. At the top and bottom of the web version of each chapter of this book is a
 gray bar naming the chapter and offering back and forward links. It is
 enclosed in a `<nav class="links">` tag. Have your browser give this
 links bar the light gray background a real browser would.
@@ -822,7 +822,7 @@ You can make them little squares, located to the left of the list item
 itself. Also indent `<li>` elements so the text inside the element is
 to the right of the bullet point.
 
-5-4 *Table of contents*. This book has a table of contents at the top of
+5-4 *Table of contents*. The web version of this book has a table of contents at the top of
 each chapter, enclosed in a `<nav id="toc">` tag, which contains a
 list of links. Add the text "Table of Contents", with a gray
 background, above that list. Don't modify the lexer or parser.
