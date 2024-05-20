@@ -101,7 +101,7 @@ good performance harder to achieve. Mobile browsers are challenging!
 mobile editions, and the rendering engine code is almost exactly the same for
 both.
 
-[^meta-viewport]: Look at the source of [this webpage](http://browser.engineering/graphics.html). In the `<head>`
+[^meta-viewport]: Look at the source of [this webpage](https://browser.engineering/graphics.html). In the `<head>`
 you'll see a "viewport" `<meta>` tag. This tag tells the browser that
 the page supports mobile devices; without it, the browser assumes that
 the site is "desktop-only" and renders it differently, such as
@@ -335,7 +335,7 @@ browser and have it look something like Figure 4.
 <br>
 </div>
 
-[ex-monkey]: http://browser.engineering/examples/xiyouji.html
+[ex-monkey]: https://browser.engineering/examples/xiyouji.html
 
 
 Now we can read a lot of text, but still not all of it: if there's
@@ -353,7 +353,7 @@ and Chrome, [uses dynamic programming][icu-wb] to guess phrase
 boundaries based on a [word frequency table][cjdict].
 :::
 
-[icu]: http://site.icu-project.org
+[icu]: https://site.icu-project.org
 [icu-wb]: https://unicode-org.github.io/icu/userguide/boundaryanalysis/break-rules.html#details-about-dictionary-based-break-iteration
 [cjdict]: https://github.com/unicode-org/icu/blob/master/icu4c/source/data/brkitr/dictionaries/cjdict.txt
 
