@@ -31,8 +31,8 @@ scratch, which our browser currently does, can be very slow on
 complex pages. Try, for example, loading [this
 chapter](https://browser.engineering/invalidation.html) in our browser and typing into the input box
 that appears after this paragraph...You'll find that it is *much* too
-slow---1.7 seconds just in `render` (see Figure 1)!
-^[Trace [here](https://browser.engineering/examples/example16-input-no-optimizations.trace).]
+slow---1.7 seconds just in `render`
+(see Figure 1)!^[Trace [here](https://browser.engineering/examples/example16-input-no-optimizations.trace).]
 
 <input style="width:100%"/>
 
@@ -1520,8 +1520,8 @@ compute `f` repeatedly, but remember that each of those `read` calls
 establishes a dependency for one layout field upon another. I like to
 think of each `f` as being scoped to its field's computation.
 
-We also need to compute the `x` position of a `TextLayout`. That can
-use the previous sibling's font, `x` position, and width:
+We also need to compute the *x* position of a `TextLayout`. That can
+use the previous sibling's font, *x* position, and width:
 
 ``` {.python}
 class TextLayout:
@@ -1870,9 +1870,8 @@ text) and checking that its `height` didn't change (necessary in case
 we wrapped onto more lines).
 
 Editing should also now feel snappier---about
-0.6 seconds instead of the original 1.7. Better, but still not good:
-^[Trace [here](http://browser.engineering/examples/example16-input-reuse-layout-tree.trace).]
-
+0.6 seconds instead of the original 1.7. Better, but still not
+good:^[Trace [here](http://browser.engineering/examples/example16-input-reuse-layout-tree.trace).]
 
 Editing should also now feel snappier---about
 0.6 seconds instead of the original 1.7 (see Figure 3).
@@ -2751,7 +2750,7 @@ invalidation properly.
 information, so that the `style` phase doesn't need to traverse nodes
 whose styles are unchanged.
 
-16-5 *Resizing the browser*. Perhaps, in Exericse 2-3 you implemented
+16-5 *Resizing the browser*. Perhaps, in Exericse 2-3, you implemented
 support for resizing the browser. (And most likely, you dropped support for
 it when we switched to SDL.) Reimplement support for resizing your browser;
 you'll need to pass the `SDL_WINDOW_RESIZABLE` flag to `SDL_CreateWindow`
