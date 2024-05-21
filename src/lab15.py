@@ -848,8 +848,6 @@ class JSContext:
             self.XMLHttpRequest_send)
         self.interp.export_function("setTimeout",
             self.setTimeout)
-        self.interp.export_function("now",
-            self.now)
         self.interp.export_function("requestAnimationFrame",
             self.requestAnimationFrame)
         self.interp.export_function("parent", self.parent)

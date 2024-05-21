@@ -499,8 +499,7 @@ class BlockLayout:
             else:
                 cmds.append(DrawCursor(self, 0))
 
-        if not self.is_atomic():
-            cmds = paint_visual_effects(self.node, cmds, self.self_rect())
+        cmds = paint_visual_effects(self.node, cmds, self.self_rect())
         return cmds
 
 def DrawCursor(elt, offset):
