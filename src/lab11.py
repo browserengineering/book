@@ -24,7 +24,7 @@ from lab7 import DrawLine, DrawOutline, DrawRect
 from lab8 import Text, Element, BlockLayout, InputLayout
 from lab8 import Browser, LineLayout, TextLayout, DocumentLayout, Chrome
 from lab8 import DEFAULT_STYLE_SHEET, INPUT_WIDTH_PX
-from lab9 import EVENT_DISPATCH_JS
+from lab9 import RUNTIME_JS, EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL, JSContext, Tab
 
 FONTS = {}

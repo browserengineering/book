@@ -23,6 +23,7 @@ exercises/
 videos/
 .idea/
 src/*.full.py
+src/outline*.txt
 latex/*
 browser.trace
 package.json

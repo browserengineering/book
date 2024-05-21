@@ -107,6 +107,7 @@ class Transform(VisualEffect):
         return Transform(self.translation, self.self_rect,
             self.node, [child])
 
+    @wbetools.js_hide
     def __repr__(self):
         if self.translation:
             (x, y) = self.translation
@@ -134,6 +135,7 @@ class DrawLine(PaintCommand):
         )
         canvas.drawPath(path, paint)
 
+    @wbetools.js_hide
     def __repr__(self):
         return "DrawLine top={} left={} bottom={} right={}".format(
             self.y1, self.x1, self.y2, self.x2)
@@ -150,9 +152,7 @@ class DrawRRect(PaintCommand):
         )
         canvas.drawRRect(self.rrect, paint)
 
-    def print(self, indent=0):
-        return " " * indent + self.__repr__()
-
+    @wbetools.js_hide
     def __repr__(self):
         return "DrawRRect(rect={}, color={})".format(
             str(self.rrect), self.color)
@@ -178,16 +178,14 @@ class DrawText(PaintCommand):
         canvas.drawString(self.text, float(self.left), baseline,
             self.font, paint)
 
+    @wbetools.js_hide
     def __repr__(self):
         return "DrawText(text={})".format(self.text)
 
 class DrawRect(PaintCommand):
-    def __init__(self, x1, y1, x2, y2, color):
-        super().__init__(skia.Rect.MakeLTRB(x1, y1, x2, y2))
-        self.top = y1
-        self.left = x1
-        self.bottom = y2
-        self.right = x2
+    def __init__(self, rect, color):
+        super().__init__(rect)
+        self.rect = rect
         self.color = color
 
     def execute(self, canvas):
@@ -196,6 +194,7 @@ class DrawRect(PaintCommand):
         )
         canvas.drawRect(self.rect, paint)
 
+    @wbetools.js_hide
     def __repr__(self):
         return ("DrawRect(top={} left={} " +
             "bottom={} right={} color={})").format(
@@ -269,6 +268,7 @@ class Blend(VisualEffect):
         return Blend(self.opacity, self.blend_mode,
                      self.node, [child])
 
+    @wbetools.js_hide
     def __repr__(self):
         args = ""
         if self.opacity < 1:
@@ -291,6 +291,7 @@ class DrawCompositedLayer(PaintCommand):
         bounds = layer.composited_bounds()
         layer.surface.draw(canvas, bounds.left(), bounds.top())
 
+    @wbetools.js_hide
     def __repr__(self):
         return "DrawCompositedLayer()"
 
@@ -534,6 +535,7 @@ class BlockLayout:
         cmds = paint_visual_effects(self.node, cmds, self.self_rect())
         return cmds
 
+    @wbetools.js_hide
     def __repr__(self):
         return "BlockLayout[{}](x={}, y={}, width={}, height={}, node={})".format(
             self.layout_mode(), self.x, self.y, self.width, self.height, self.node)
@@ -564,6 +566,7 @@ class DocumentLayout:
     def paint_effects(self, cmds):
         return cmds
 
+    @wbetools.js_hide
     def __repr__(self):
         return "DocumentLayout()"
 
@@ -612,6 +615,7 @@ class LineLayout:
     def paint_effects(self, cmds):
         return cmds
 
+    @wbetools.js_hide
     def __repr__(self):
         return "LineLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
@@ -659,6 +663,7 @@ class TextLayout:
     def paint_effects(self, cmds):
         return cmds
     
+    @wbetools.js_hide
     def __repr__(self):
         return ("TextLayout(x={}, y={}, width={}, height={}, word={})").format(
             self.x, self.y, self.width, self.height, self.word)
@@ -731,6 +736,7 @@ class InputLayout:
     def paint_effects(self, cmds):
         return paint_visual_effects(self.node, cmds, self.self_rect())
 
+    @wbetools.js_hide
     def __repr__(self):
         if self.node.tag == "input":
             extra = "type=input"
@@ -758,8 +764,8 @@ def paint_visual_effects(node, cmds, rect):
     node.blend_op = blend_op
     return [Transform(translation, rect, node, [blend_op])]
 
-SETTIMEOUT_CODE = "__runSetTimeout(dukpy.handle)"
-XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
+SETTIMEOUT_JS = "__runSetTimeout(dukpy.handle)"
+XHR_ONLOAD_JS = "__runXHROnload(dukpy.out, dukpy.handle)"
 RUNTIME_JS = open("runtime13.js").read()
 
 @wbetools.patch(JSContext)
@@ -849,6 +855,7 @@ class NumericAnimation:
             self.change_per_frame * self.frame_count
         return str(current_value)
 
+    @wbetools.js_hide
     def __repr__(self):
         return ("NumericAnimation(" + \
             "old_value={old_value}, change_per_frame={change_per_frame}, " + \
@@ -984,15 +991,12 @@ class CompositedLayer:
                 1, 1, irect.width() - 2, irect.height() - 2)
             DrawOutline(border_rect, "red", 1).execute(canvas)
 
+    @wbetools.js_hide
     def __repr__(self):
         return ("layer: composited_bounds={} " +
             "absolute_bounds={} first_chunk={}").format(
             self.composited_bounds(), self.absolute_bounds(),
             self.display_items if len(self.display_items) > 0 else 'None')
-
-def raster(display_list, canvas):
-    for cmd in display_list:
-        cmd.execute(canvas)
 
 @wbetools.patch(Tab)
 class Tab:

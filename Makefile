@@ -42,6 +42,11 @@ widgets: \
 src/lab%.full.py: src/lab%.py infra/inline.py infra/asttools.py
 	python3 infra/inline.py $< > $@
 
+src/outline%.txt: src/lab%.py infra/inline.py infra/asttools.py infra/outlines.py
+	python3 infra/outlines.py $< > $@
+
+outlines: $(patsubst %,src/outline%.txt,$(shell seq 1 16))
+
 CHAPTER=all
 
 PANDOC=pandoc --number-sections --from markdown --to html --lua-filter=infra/filter.lua --fail-if-warnings --metadata-file=config.json --highlight-style=infra/wbecode.theme $(FLAGS)

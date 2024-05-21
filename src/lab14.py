@@ -38,13 +38,14 @@ from lab11 import FONTS, NAMED_COLORS, get_font, linespace, paint_tree
 from lab11 import parse_color, parse_blend_mode
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner, Chrome
 from lab12 import Task, REFRESH_RATE_SEC
-from lab13 import JSContext, diff_styles, add_parent_pointers
+from lab13 import JSContext, diff_styles, add_parent_pointers, SETTIMEOUT_JS, \
+    XHR_ONLOAD_JS
 from lab13 import local_to_absolute, absolute_bounds_for_obj, absolute_to_local
 from lab13 import NumericAnimation
 from lab13 import map_translation, parse_transform, parse_transition
 from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import PaintCommand, DrawText, DrawCompositedLayer, DrawOutline, \
-    DrawLine, DrawRRect
+    DrawLine, DrawRRect, DrawRect
 from lab13 import VisualEffect, Blend, Transform, Tab, Browser
 
 @wbetools.patch(Element)
