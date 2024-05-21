@@ -569,15 +569,15 @@ function patch_canvas(canvas) {
     };
 
     canvas.drawRRect = (rrect, paint) => {
-        oldDrawRect.call(canvas, rrect, paint["paint"].getPaint());
+        oldDrawRect.call(canvas, rrect, paint.getPaint());
     };
 
     canvas.drawString = (text, x, y, font, paint) => {
         canvas.drawText(text, x, y, paint.getPaint(), font.getFont())       
     };
 
-    canvas.saveLayer = (dict) => {
-        oldSaveLayer.call(canvas, dict["paint"].getPaint());
+    canvas.saveLayer = (paint) => {
+        oldSaveLayer.call(canvas, paint.getPaint());
     };
 
     canvas.clipRect = (rect) => {
@@ -831,6 +831,9 @@ function init_skia(canvasKit, robotoData) {
                     case "Style":
                         this.paint.setStyle(value);
                         continue;
+                    case "StrokeWidth":
+                        this.paint.setStrokeWidth(value);
+                        continue;
                     default:
                         throw "Unknown Skia Paint value: " + key;
                 }
@@ -839,18 +842,6 @@ function init_skia(canvasKit, robotoData) {
 
         getPaint() {
             return this.paint;
-        }
-
-        setStyle(style) {
-            this.paint.setStyle(style);
-        }
-
-        setStrokeWidth(width) {
-            this.paint.setStrokeWidth(width);
-        }
-
-        setColor(color) {
-            this.paint.setColor(color);
         }
     }, (obj) => {
         obj.kStroke_Style = CanvasKit.PaintStyle.Stroke;
