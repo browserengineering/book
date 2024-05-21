@@ -156,6 +156,9 @@ class Layout:
         self.recurse(tree)
         self.flush()
 
+    @wbetools.delete
+    def token(self, tok): pass
+
     def recurse(self, tree):
         if isinstance(tree, Text):
             for word in tree.text.split():

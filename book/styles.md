@@ -524,8 +524,7 @@ Let's store that in a new file, `browser.css`, and have our browser
 read it when it starts:
 
 ``` {.python replace=browser/browser6}
-browser_styles = open("browser.css")
-DEFAULT_STYLE_SHEET = CSSParser(browser_styles.read()).parse()
+DEFAULT_STYLE_SHEET = CSSParser(open("browser.css").read()).parse()
 ```
 
 Now, when the browser loads a web page, it can apply that default

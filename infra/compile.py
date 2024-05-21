@@ -357,6 +357,8 @@ def compile_method(base, name, args, ctx):
         return base_js + "." + name + "(" + ", ".join(args_js) + ")"
     elif base_js in RT_IMPORTS:
         return base_js + "." + name + "(" + ", ".join(args_js) + ")"
+    elif name == "read" and isinstance(base, ast.Call) and isinstance(base.func, ast.Name) and base.func.id == "open":
+        return base_js + ".read()"
     elif name == "keys":
         assert len(args) == 0
         return "Object.keys(" + base_js + ")"
@@ -785,7 +787,12 @@ def compile(tree, ctx, indent=0, patches={}, patchables={}):
         return out
     elif isinstance(tree, ast.ClassDef):
         if tree.decorator_list:
-            assert tree.decorator_list[0].func.value.id == "wbetools"
+            assert isinstance(tree.decorator_list[0], ast.Call) and \
+                isinstance(tree.decorator_list[0].func, ast.Attribute) and \
+                tree.decorator_list[0].func.value.id == "wbetools" or \
+                isinstance(tree.decorator_list[0], ast.Attribute) and \
+                tree.decorator_list[0].value.id == "wbetools", \
+                "Weird decorator {}".format(ast.dump(tree.decorator_list[0]))
         ctx[tree.name] = {"is_class": True}
         ctx2 = Context("class", ctx)
         parts = [compile(part, indent=indent + INDENT, ctx=ctx2) for part in tree.body]

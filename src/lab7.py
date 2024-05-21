@@ -153,6 +153,9 @@ class BlockLayout:
             for child in node.children:
                 self.recurse(child)
 
+    @wbetools.delete
+    def flush(self): pass
+
     def new_line(self):
         self.cursor_x = 0
         last_line = self.children[-1] if self.children else None

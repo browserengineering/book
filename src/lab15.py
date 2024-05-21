@@ -34,7 +34,7 @@ from lab11 import parse_color, parse_blend_mode
 from lab12 import MeasureTime, REFRESH_RATE_SEC
 from lab12 import Task, TaskRunner, SingleThreadedTaskRunner
 from lab13 import diff_styles, parse_transition, add_parent_pointers
-from lab13 import local_to_absolute, absolute_bounds_for_obj
+from lab13 import local_to_absolute, absolute_bounds_for_obj, absolute_to_local
 from lab13 import NumericAnimation
 from lab13 import map_translation, parse_transform
 from lab13 import CompositedLayer, paint_visual_effects
@@ -554,15 +554,6 @@ class TextLayout:
         return ("TextLayout(x={}, y={}, width={}, height={}, word={})").format(
             self.x, self.y, self.width, self.height, self.word)
 
-def filter_quality(node):
-    attr = node.style.get("image-rendering", "auto")
-    if attr == "high-quality":
-        return skia.FilterQuality.kHigh_FilterQuality
-    elif attr == "crisp-edges":
-        return skia.FilterQuality.kLow_FilterQuality
-    else:
-        return skia.FilterQuality.kMedium_FilterQuality
-
 class ImageLayout(EmbedLayout):
     def __init__(self, node, parent, previous, frame):
         super().__init__(node, parent, previous, frame)
@@ -682,6 +673,7 @@ class IframeLayout(EmbedLayout):
         return "IframeLayout(src={}, x={}, y={}, width={}, height={})".format(
             self.node.attributes["src"], self.x, self.y, self.width, self.height)
 
+@wbetools.outline_hide
 class AttributeParser:
     def __init__(self, s):
         self.s = s
@@ -856,8 +848,6 @@ class JSContext:
             self.XMLHttpRequest_send)
         self.interp.export_function("setTimeout",
             self.setTimeout)
-        self.interp.export_function("now",
-            self.now)
         self.interp.export_function("requestAnimationFrame",
             self.requestAnimationFrame)
         self.interp.export_function("parent", self.parent)

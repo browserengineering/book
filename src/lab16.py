@@ -15,6 +15,7 @@ import socket
 import ssl
 import dukpy
 import time
+import wbetools
 
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab4 import print_tree
@@ -30,7 +31,7 @@ from lab11 import parse_color, parse_blend_mode
 from lab12 import MeasureTime, REFRESH_RATE_SEC
 from lab12 import Task, TaskRunner, SingleThreadedTaskRunner
 from lab13 import diff_styles, parse_transition, add_parent_pointers
-from lab13 import local_to_absolute, absolute_bounds_for_obj
+from lab13 import local_to_absolute, absolute_bounds_for_obj, absolute_to_local
 from lab13 import NumericAnimation
 from lab13 import map_translation, parse_transform
 from lab13 import CompositedLayer, paint_visual_effects
@@ -40,14 +41,14 @@ from lab13 import VisualEffect, Blend, Transform, DrawOutline
 from lab14 import parse_outline, style, \
     paint_outline, dpx, cascade_priority, \
     is_focusable, get_tabindex, speak_text, \
-    CSSParser, mainloop
+    CSSParser, mainloop, Chrome
 from lab15 import URL, HTMLParser, AttributeParser, DrawImage, \
     DocumentLayout, BlockLayout, \
     EmbedLayout, InputLayout, LineLayout, TextLayout, ImageLayout, \
-    IframeLayout, JSContext, AccessibilityNode, Frame, Tab, \
+    IframeLayout, JSContext, AccessibilityNode, FrameAccessibilityNode, Frame, Tab, \
     CommitData, Browser, BROKEN_IMAGE, font, \
-    IFRAME_WIDTH_PX, IFRAME_HEIGHT_PX, parse_image_rendering, DEFAULT_STYLE_SHEET
-import wbetools
+    IFRAME_WIDTH_PX, IFRAME_HEIGHT_PX, parse_image_rendering, DEFAULT_STYLE_SHEET, \
+    RUNTIME_JS
 
 @wbetools.patch(is_focusable)
 def is_focusable(node):
@@ -215,6 +216,7 @@ class ProtectedField:
     def copy(self, field):
         self.set(field.read(notify=self))
 
+    @wbetools.js_hide
     def __str__(self):
         if self.dirty:
             return "<dirty>"
@@ -475,20 +477,14 @@ class BlockLayout:
             self.x.get(), self.y.get(), self.x.get() + self.width.get(),
             self.y.get() + self.height.get())
 
-    def is_atomic(self):
-        return not isinstance(self.node, Text) and \
-            (self.node.tag == "input" or self.node.tag == "button")
-
     def paint(self):
         cmds = []
-
-        if not self.is_atomic():
-            bgcolor = self.node.style["background-color"].get()
-            if bgcolor != "transparent":
-                radius = dpx(
-                    float(self.node.style["border-radius"].get()[:-2]),
-                    self.zoom.get())
-                cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
+        bgcolor = self.node.style["background-color"].get()
+        if bgcolor != "transparent":
+            radius = dpx(
+                float(self.node.style["border-radius"].get()[:-2]),
+                self.zoom.get())
+            cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
         return cmds
  
     def paint_effects(self, cmds):
@@ -504,8 +500,7 @@ class BlockLayout:
             else:
                 cmds.append(DrawCursor(self, 0))
 
-        if not self.is_atomic():
-            cmds = paint_visual_effects(self.node, cmds, self.self_rect())
+        cmds = paint_visual_effects(self.node, cmds, self.self_rect())
         return cmds
 
 def DrawCursor(elt, offset):

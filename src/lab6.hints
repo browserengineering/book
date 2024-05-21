@@ -4,6 +4,5 @@
 {"code": "'style' in node.attributes", "type": "dict"},
 {"code": "'href' in node.attributes", "type": "dict"},
 {"code": "'/' in dir", "type": "str"},
-{"code": "DEFAULT_STYLE_SHEET.copy()", "js": "constants.DEFAULT_STYLE_SHEET.slice()"},
-{"code": "browser6_styles.read()", "js": "constants.browser6_styles.read()"}
+{"code": "DEFAULT_STYLE_SHEET.copy()", "js": "constants.DEFAULT_STYLE_SHEET.slice()"}
 ]

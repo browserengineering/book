@@ -21,7 +21,11 @@ class Function(Item):
         return "def {}({})".format(self.name, ", ".join(args))
 
     def html(self):
-        return self.str().replace("def", "<span class=kw>def</span>")
+        if len(self.args) > 0 and self.args[0] == "self":
+            args = self.args[1:]
+        else:
+            args = self.args
+        return "<span class=kw>def</span> {}({})".format(self.name, ", ".join(args))
 
     def sub(self):
         return None
@@ -35,7 +39,7 @@ class Class:
         return "class {}:".format(self.name)
 
     def html(self):
-        return self.str().replace("class", "<span class=kw>class</span>")
+        return "<span class=kw>class</span> {}:".format(self.name)
 
     def sub(self):
         return self.fns
@@ -92,6 +96,11 @@ def write_html(objs, indent=0):
         print("</code>")
 
 def to_item(cmd):
+    if hasattr(cmd, "decorator_list") and any([
+            asttools.is_outline_hide_decorator(dec)
+            for dec in cmd.decorator_list
+    ]):
+        return None
     if isinstance(cmd, ast.ClassDef):
         return Class(cmd.name, [to_item(scmd) for scmd in cmd.body])
     elif isinstance(cmd, ast.FunctionDef):

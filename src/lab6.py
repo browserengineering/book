@@ -251,13 +251,11 @@ class BlockLayout:
                                          word, font, color))
         return cmds
 
-    @wbetools.js_hide
-    def open_tag(self, tag):
-        pass
+    @wbetools.delete
+    def open_tag(self, tag): pass
 
-    @wbetools.js_hide
-    def close_tag(self, tag):
-        pass
+    @wbetools.delete
+    def close_tag(self, tag): pass
 
     @wbetools.js_hide
     def __repr__(self):
@@ -287,8 +285,7 @@ class DrawText:
     def __repr__(self):
         return "DrawText(text={})".format(self.text)
 
-browser6_styles = open("browser6.css")
-DEFAULT_STYLE_SHEET = CSSParser(browser6_styles.read()).parse()
+DEFAULT_STYLE_SHEET = CSSParser(open("browser6.css").read()).parse()
 
 @wbetools.patch(Browser)
 class Browser:

@@ -39,7 +39,7 @@ from lab11 import parse_color, parse_blend_mode
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner, Chrome
 from lab12 import Task, REFRESH_RATE_SEC
 from lab13 import JSContext, diff_styles, add_parent_pointers
-from lab13 import local_to_absolute, absolute_bounds_for_obj
+from lab13 import local_to_absolute, absolute_bounds_for_obj, absolute_to_local
 from lab13 import NumericAnimation
 from lab13 import map_translation, parse_transform
 from lab13 import CompositedLayer, paint_visual_effects
@@ -278,9 +278,6 @@ class LineLayout:
                 outline_node, cmds, outline_rect, self.zoom)
 
         return cmds
-
-    def role(self):
-        return "none"
 
     @wbetools.js_hide
     def __repr__(self):
@@ -805,8 +802,6 @@ class JSContext:
             self.XMLHttpRequest_send)
         self.interp.export_function("setTimeout",
             self.setTimeout)
-        self.interp.export_function("now",
-            self.now)
         self.interp.export_function("requestAnimationFrame",
             self.requestAnimationFrame)
         self.tab.browser.measure.time('script-runtime')
@@ -1540,11 +1535,13 @@ class Browser:
         else:
             print(text)
 
+    @wbetools.js_hide
     def toggle_mute(self):
         self.lock.acquire(blocking=True)
         self.muted = not self.muted
         self.lock.release()
 
+    @wbetools.js_hide
     def is_muted(self):
         return self.muted
 
