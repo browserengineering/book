@@ -13,6 +13,7 @@ import skia
 import socket
 import ssl
 import urllib.parse
+import wbetools
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab4 import print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS
@@ -25,7 +26,6 @@ from lab8 import Browser, LineLayout, TextLayout, DocumentLayout, Chrome
 from lab8 import DEFAULT_STYLE_SHEET, INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL, JSContext, Tab
-import wbetools
 
 FONTS = {}
 
