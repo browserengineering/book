@@ -220,8 +220,8 @@ def parse(source, filename='<unknown>'):
 def inline(tree):
     tree2 = ResolveImports().visit(copy.deepcopy(tree))
     tree3 = ResolvePatches().double_visit(tree2)
-    tree4 = ResolveJSHide().visit(tree3)
-    return ast.fix_missing_locations(tree4)
+    #tree4 = ResolveJSHide().visit(tree3)
+    return ast.fix_missing_locations(tree3)
 
 def resolve_patches_and_return_them(tree):
     r = ResolvePatches()

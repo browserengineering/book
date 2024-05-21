@@ -48,6 +48,15 @@ def reload_module(mod):
             delattr(mod, attr)
     importlib.reload(mod)
 
+def import_as(file_path, module_name):
+    # Based in example in importlib documentation
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+
 def run_tests(chapter, file_name):
     failure, count = doctest.testfile(os.path.abspath(file_name), module_relative=False)
 
@@ -90,6 +99,15 @@ if __name__ == "__main__":
             if key == "tests":
                 print(f"  {t.bold(value)}: Testing {chapter}...", end=" ")
                 results[value] = run_tests(chapter, value)
+                if not results[value][0]: print(t.green("pass"))
+            elif key == "full":
+                print(f"  {t.bold(value)}: Testing inlined {chapter}...", end=" ")
+                full_file = value.replace("-tests.md", ".full.py")
+                mod_name = value.replace("-tests.md", "")
+                os.system("make -C .. src/" + full_file)
+                import_as(full_file, mod_name)
+                results[value] = run_tests(chapter, value)
+                del sys.modules[mod_name]
                 if not results[value][0]: print(t.green("pass"))
             elif key == "lab":
                 print(f"  {t.bold(value)}: Comparing {chapter}'s python...", end=" ")
