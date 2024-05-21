@@ -426,6 +426,9 @@ class Tab:
         for cmd in self.display_list:
             cmd.execute(canvas)
 
+    @wbetools.delete
+    def draw(self, canvas, offset): pass
+
 @wbetools.patch(Chrome)
 class Chrome:
     def __init__(self, browser):
