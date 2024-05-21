@@ -920,10 +920,6 @@ class Tab:
         self.set_needs_render()
         self.loaded = True
 
-    def request_animation_frame_callback(self):
-        self.needs_raf_callbacks = True
-        self.browser.set_needs_animation_frame(self)
-
     def run_animation_frame(self, scroll):
         if not self.scroll_changed_in_tab:
             self.scroll = scroll
