@@ -1391,8 +1391,8 @@ class Browser:
         self.schedule_load(url)
 ```
 
-...because cases like the `click` method on `Chrome` are called by
-`handle_click`, which has already acquired the lock.^[Using locks properly and
+This way `new_tab_internal` can be called directly by methods,
+like `Chrome`'s `click` method, that already hold the lock.^[Using locks while
 avoiding race conditions and deadlocks can be quite difficult!]
 
 ``` {.python}
