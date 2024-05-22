@@ -1200,7 +1200,7 @@ working. There's one tricky case: `tree_to_list`, which might deal
 with both protected and unprotected `children` fields. I fixed this
 with a type test:
 
-``` {.python replace=list)/l),ProtectedField/list,if/if%20not}
+``` {.python}
 def tree_to_list(tree, list):
     # ...
     children = tree.children
@@ -2713,11 +2713,11 @@ The complete set of functions, classes, and methods in our browser
 should now look something like this:
 
 ::: {.web-only .cmd .python .outline html=True}
-    python3 infra/outlines.py --html src/lab16.py
+    python3 infra/outlines.py --html src/lab16.py --template book/outline.txt
 :::
 
 ::: {.print-only .cmd .python .outline}
-    python3 infra/outlines.py src/lab16.py
+    python3 infra/outlines.py src/lab16.py --template book/outline.txt
 :::
 
 Exercises

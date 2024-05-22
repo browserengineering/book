@@ -42,8 +42,8 @@ widgets: \
 src/lab%.full.py: src/lab%.py infra/inline.py infra/asttools.py
 	python3 infra/inline.py $< > $@
 
-src/outline%.txt: src/lab%.py infra/inline.py infra/asttools.py infra/outlines.py
-	python3 infra/outlines.py $< > $@
+src/outline%.txt: src/lab%.py infra/inline.py infra/asttools.py infra/outlines.py book/outline.txt
+	python3 infra/outlines.py $< --template book/outline.txt > $@
 
 outlines: $(patsubst %,src/outline%.txt,$(shell seq 1 16))
 

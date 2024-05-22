@@ -25,7 +25,8 @@ IGNORE_FILES = [
     ".*",
     "lab*.full.py",
     "wbetools.py",
-    "browser.trace"
+    "browser.trace",
+    "outline*.txt",
 ]
 
 def test_compare(chapter, value, language, fname):

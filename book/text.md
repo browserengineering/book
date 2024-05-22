@@ -977,11 +977,11 @@ The complete set of functions, classes, and methods in our browser
 should look something like this:
 
 ::: {.web-only .cmd .python .outline html=True}
-    python3 infra/outlines.py --html src/lab3.py
+    python3 infra/outlines.py --html src/lab3.py --template book/outline.txt
 :::
 
 ::: {.print-only .cmd .python .outline}
-    python3 infra/outlines.py src/lab3.py
+    python3 infra/outlines.py src/lab3.py --template book/outline.txt
 :::
 
 

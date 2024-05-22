@@ -51,83 +51,6 @@ from lab15 import URL, HTMLParser, AttributeParser, DrawImage, \
     IFRAME_WIDTH_PX, IFRAME_HEIGHT_PX, parse_image_rendering, DEFAULT_STYLE_SHEET, \
     RUNTIME_JS, POST_MESSAGE_DISPATCH_JS
 
-@wbetools.patch(is_focusable)
-def is_focusable(node):
-    if get_tabindex(node) <= 0:
-        return False
-    elif "tabindex" in node.attributes:
-        return True
-    elif "contenteditable" in node.attributes:
-        return True
-    else:
-        return node.tag in ["input", "button", "a"]
-
-@wbetools.patch(print_tree)
-def print_tree(node, indent=0):
-    print(' ' * indent, node)
-    children = node.children
-    if not isinstance(children, list):
-        children = children.get()
-    for child in children:
-        print_tree(child, indent + 2)
-
-@wbetools.patch(tree_to_list)
-def tree_to_list(tree, list):
-    list.append(tree)
-    children = tree.children
-    if not isinstance(children, type([])):
-        children = children.get()
-    for child in children:
-        tree_to_list(child, list)
-    return list
-
-@wbetools.patch(paint_outline)
-def paint_outline(node, cmds, rect, zoom):
-    outline = parse_outline(node.style["outline"].get())
-    if not outline: return
-    thickness, color = outline
-    cmds.append(DrawOutline(rect,
-        color, dpx(thickness, zoom)))
-
-@wbetools.patch(font)
-def font(css_style, zoom, notify):
-    weight = css_style['font-weight'].read(notify)
-    style = css_style['font-style'].read(notify)
-    size = None
-    try:
-        size = float(css_style['font-size'].read(notify)[:-2]) * 0.75
-    except:
-        size = 16
-    font_size = dpx(size, zoom)
-    return get_font(font_size, weight, style)
-
-@wbetools.patch(absolute_bounds_for_obj)
-def absolute_bounds_for_obj(obj):
-    rect = skia.Rect.MakeXYWH(
-        obj.x.get(), obj.y.get(), obj.width.get(), obj.height.get())
-    cur = obj.node
-    while cur:
-        rect = map_translation(rect, parse_transform(cur.style['transform'].get()))
-        cur = cur.parent
-    return rect
-
-@wbetools.patch(paint_visual_effects)
-def paint_visual_effects(node, cmds, rect):
-    opacity = float(node.style["opacity"].get())
-    blend_mode = node.style["mix-blend-mode"].get()
-    translation = parse_transform(node.style["transform"].get())
-
-    if node.style["overflow"].get() == "clip":
-        border_radius = float(node.style["border-radius"].get()[:-2])
-        if not blend_mode:
-            blend_mode = "source-over"
-        cmds = [Blend(1.0, "source-over", node,
-                      cmds + [Blend(1.0, "destination-in", None, [
-                          DrawRRect(rect, 0, "white")])])]
-
-    blend_op = Blend(opacity, blend_mode, node, cmds)
-    node.blend_op = blend_op
-    return [Transform(translation, rect, node, [blend_op])]
 
 class ProtectedField:
     def __init__(self, obj, name, parent=None, dependencies=None,
@@ -228,6 +151,84 @@ class ProtectedField:
         return "ProtectedField({}, {})".format(
             self.obj.node if hasattr(self.obj, "node") else self.obj,
             self.name)
+
+@wbetools.patch(is_focusable)
+def is_focusable(node):
+    if get_tabindex(node) <= 0:
+        return False
+    elif "tabindex" in node.attributes:
+        return True
+    elif "contenteditable" in node.attributes:
+        return True
+    else:
+        return node.tag in ["input", "button", "a"]
+
+@wbetools.patch(print_tree)
+def print_tree(node, indent=0):
+    print(' ' * indent, node)
+    children = node.children
+    if not isinstance(children, list):
+        children = children.get()
+    for child in children:
+        print_tree(child, indent + 2)
+
+@wbetools.patch(tree_to_list)
+def tree_to_list(tree, list):
+    list.append(tree)
+    children = tree.children
+    if isinstance(children, ProtectedField):
+        children = children.get()
+    for child in children:
+        tree_to_list(child, list)
+    return list
+
+@wbetools.patch(paint_outline)
+def paint_outline(node, cmds, rect, zoom):
+    outline = parse_outline(node.style["outline"].get())
+    if not outline: return
+    thickness, color = outline
+    cmds.append(DrawOutline(rect,
+        color, dpx(thickness, zoom)))
+
+@wbetools.patch(font)
+def font(css_style, zoom, notify):
+    weight = css_style['font-weight'].read(notify)
+    style = css_style['font-style'].read(notify)
+    size = None
+    try:
+        size = float(css_style['font-size'].read(notify)[:-2]) * 0.75
+    except:
+        size = 16
+    font_size = dpx(size, zoom)
+    return get_font(font_size, weight, style)
+
+@wbetools.patch(absolute_bounds_for_obj)
+def absolute_bounds_for_obj(obj):
+    rect = skia.Rect.MakeXYWH(
+        obj.x.get(), obj.y.get(), obj.width.get(), obj.height.get())
+    cur = obj.node
+    while cur:
+        rect = map_translation(rect, parse_transform(cur.style['transform'].get()))
+        cur = cur.parent
+    return rect
+
+@wbetools.patch(paint_visual_effects)
+def paint_visual_effects(node, cmds, rect):
+    opacity = float(node.style["opacity"].get())
+    blend_mode = node.style["mix-blend-mode"].get()
+    translation = parse_transform(node.style["transform"].get())
+
+    if node.style["overflow"].get() == "clip":
+        border_radius = float(node.style["border-radius"].get()[:-2])
+        if not blend_mode:
+            blend_mode = "source-over"
+        cmds = [Blend(1.0, "source-over", node,
+                      cmds + [Blend(1.0, "destination-in", None, [
+                          DrawRRect(rect, 0, "white")])])]
+
+    blend_op = Blend(opacity, blend_mode, node, cmds)
+    node.blend_op = blend_op
+    return [Transform(translation, rect, node, [blend_op])]
     
 CSS_PROPERTIES = {
     "font-size": "inherit", "font-weight": "inherit",

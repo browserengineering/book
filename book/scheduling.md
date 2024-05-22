@@ -246,7 +246,7 @@ all run independently and communicate only via special message-passing APIs.
 Let's implement that:
 
 ``` {.python}
-SETTIMEOUT_CODE = "__runSetTimeout(dukpy.handle)"
+SETTIMEOUT_JS = "__runSetTimeout(dukpy.handle)"
 
 class JSContext:
     def __init__(self, tab):
@@ -255,7 +255,7 @@ class JSContext:
             self.setTimeout)
 
     def dispatch_settimeout(self, handle):
-        self.interp.evaljs(SETTIMEOUT_CODE, handle=handle)
+        self.interp.evaljs(SETTIMEOUT_JS, handle=handle)
 
     def setTimeout(self, handle, time):
         def run_callback():
@@ -348,7 +348,7 @@ class JSContext:
 
     def dispatch_settimeout(self, handle):
         if self.discarded: return
-        self.interp.evaljs(SETTIMEOUT_CODE, handle=handle)
+        self.interp.evaljs(SETTIMEOUT_JS, handle=handle)
 ```
 
 ``` {.python}
@@ -495,13 +495,13 @@ To communicate the result back to JavaScript, we'll call a
 `__runXHROnload` function from `dispatch_xhr_onload`:
 
 ``` {.python}
-XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
+XHR_ONLOAD_JS = "__runXHROnload(dukpy.out, dukpy.handle)"
 
 class JSContext:
     def dispatch_xhr_onload(self, out, handle):
         if self.discarded: return
         do_default = self.interp.evaljs(
-            XHR_ONLOAD_CODE, out=out, handle=handle)
+            XHR_ONLOAD_JS, out=out, handle=handle)
 ```
 
 The `__runXHROnload` method just pulls the relevant object from
@@ -2151,11 +2151,11 @@ The complete set of functions, classes, and methods in our browser
 should now look something like this:
 
 ::: {.web-only .cmd .python .outline html=True}
-    python3 infra/outlines.py --html src/lab12.py
+    python3 infra/outlines.py --html src/lab12.py --template book/outline.txt
 :::
 
 ::: {.print-only .cmd .python .outline}
-    python3 infra/outlines.py src/lab12.py
+    python3 infra/outlines.py src/lab12.py --template book/outline.txt
 :::
 
 ::: {.web-only}
