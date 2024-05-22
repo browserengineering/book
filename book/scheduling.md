@@ -1398,7 +1398,7 @@ avoiding race conditions and deadlocks can be quite difficult!]
 ``` {.python}
 class Chrome:
     def click(self, x, y):
-        # ...
+        if self.newtab_rect.contains(x, y):
             self.browser.new_tab_internal(
                 URL("https://browser.engineering/"))
 
