@@ -5,7 +5,7 @@ prev: embeds
 next: skipped
 ...
 
-[Compositing](animations.md) makes animations smoother, but
+Compositing makes animations smoother, but
 it doesn't help with interactions that affect layout, like text
 editing or DOM modifications. Luckily, we can avoid redundant layout
 work by treating the layout tree as a kind of cache, and only
@@ -16,7 +16,7 @@ approach and simple abstractions to make it manageable.
 Editing Content
 ===============
 
-In [Chapter 13](animations.md), we used compositing to smoothly
+In Chapter 13, we used compositing to smoothly
 animate CSS properties like `transform` or `opacity`. But we couldn't
 animate _layout-inducing_ properties like `width` or `font-size` this
 way because they change not
@@ -29,26 +29,15 @@ a few frames' delay is distracting. But editing changes the HTML tree
 and therefore the layout tree. Rebuilding the layout tree from
 scratch, which our browser currently does, can be very slow on
 complex pages. Try, for example, loading [this
-chapter](invalidation.md) in our browser and typing into this
-input box:
+chapter](https://browser.engineering/invalidation.html) in our browser and typing into the input box
+that appears after this paragraph...You'll find that it is *much* too
+slow---1.7 seconds just in `render`
+(see Figure 1)!^[Trace [here](https://browser.engineering/examples/example16-input-no-optimizations.trace).]
 
 <input style="width:100%"/>
 
-::: {.web-only}
-
-You'll find that it is *much* too slow---1.7 seconds just in `render`!
-^[Trace [here](examples/example16-input-no-optimizations.trace).]
-
-:::
-
-::: {.print-only}
-
-You'll find that it is *much* too slow---1.7 seconds just in `render`!
-
-:::
-
 ::: {.center}
-![Example of typing without any invalidation optimizations](examples/example16-input-no-optimizations.png)
+![Figure 1: Example of typing without any invalidation optimizations.](examples/example16-input-no-optimizations.png)
 :::
 
 Typing into `input` elements could be special-cased,[^no-resize] but
@@ -63,7 +52,7 @@ there are other text editing APIs that can't be. For example, the
 [^amazing-ce]: The `contenteditable` attribute can turn any element on
     any page into a living document. It's how we implemented the "typo"
     feature for this book: type `Ctrl-E` (or `Cmd-E` on a Mac) to turn
-    it on. The source code is [here](/feedback.js); see the
+    it on. The source code is [here](https://browser.engineering/feedback.js); see the
     `typo_mode` function for the `contenteditable` attribute.
 
 ::: {.web-only .demo contenteditable=true}
@@ -162,7 +151,8 @@ class InputLayout(EmbedLayout):
             cmds.append(DrawCursor(self, self.font.measureText(text)))
 ```
 
-You can now edit the examples on this page in your browser---but
+You can now edit the examples on
+[this page](https://browser.engineering/invalidation.html) in your browser---but
 each key stroke will take more than a second, making for a
 frustrating editing experience. So let's work on speeding that up.
 
@@ -184,7 +174,7 @@ Fundamentally, the reason editing this page is slow in our browser is
 that it's pretty big. After all, it's not handling the
 keypress that's slow: appending a character to a `Text` node takes
 almost no time. What takes time is re-rendering the whole page
-afterwards.
+afterward.
 
 We want interactions to be fast, even on large, complex pages, so we
 want re-rendering the page to take time proportional to the *size of
@@ -229,7 +219,7 @@ incremental, but this chapter focuses on layout.[^why-layout]
 
 The key to this cache-and-invalidate approach will be tracking the
 effects of changes. When one part of the page, like a `style`
-attribute, changes, other things that depends on it, like that
+attribute, changes, other things that depend on it, like that
 element's size, change as well. So we'll need to construct a detailed
 *dependency graph*, down to the level of each layout field, and use
 that graph to determine what to recompute. It will be similar to our
@@ -265,7 +255,7 @@ Idempotence
 ===========
 
 If we want to implement this caching-and-invalidation idea, the first
-roadblock is that our browser re-builds the layout tree from scratch
+roadblock is that our browser rebuilds the layout tree from scratch
 every time the layout phase runs:
 
 ``` {.python file=lab15}
@@ -292,9 +282,9 @@ in just a few places:
 - `DocumentLayout` objects are created by the `Frame` in `render`.
 - `BlockLayout` objects are created by either:
   - a `DocumentLayout`, in `layout`, or
-  - a `BlockLayout`, in `layout`.
-- `LineLayout` objects are created by `BlockLayout` in `new_line`.
-- All others are created by `BlockLayout` in `add_inline_child`.
+  - a `BlockLayout`, in `layout`;
+- `LineLayout` objects are created by `BlockLayout` in `new_line`;
+- all others are created by `BlockLayout` in `add_inline_child`.
 
 Let's start with `DocumentLayout`. It's created in `render`, and its
 two parameters, `nodes` and `self`, are the same every time. This
@@ -330,7 +320,7 @@ class DocumentLayout:
 ```
 
 Once again, the constructor parameters cannot change, so again we can
-skip re-constructing this layout object, like so:
+skip reconstructing this layout object, like so:
 
 ``` {.python replace=.append(child)/%20%3d%20[child]}
 class DocumentLayout:
@@ -597,7 +587,8 @@ class BlockLayout:
 ```
 
 Now that we have all three parts of the dirty flag done, you should be
-able to run your browser and test it on this page. Even when you edit
+able to run your browser and test it on
+[this page](https://browser.engineering/invalidation.html). Even when you edit
 text or call `innerHTML`, you shouldn't see any assertion failures.
 Work incrementally and test often---it makes debugging easier.
 
@@ -674,7 +665,7 @@ class ProtectedField:
         self.dirty = True
 ```
 
-Note the early return: marking an already-dirty field doesn't do
+Note the early return: marking an already dirty field doesn't do
 anything. That'll become relevant later.
 Now call `mark` in `innerHTML_set` and `keypress`:
 
@@ -716,7 +707,7 @@ class BlockLayout:
 ```
 
 The nice thing about `get` is it makes the dirty flag operations
-automatic, and therefore impossible to forget. It also make the code a
+automatic, and therefore impossible to forget. It also makes the code a
 little nicer to read.
 
 Finally, to reset the dirty flag, let's make the caller pass in a new
@@ -771,7 +762,7 @@ very specific sequence of changes.
 Recursive invalidation
 ======================
 
-Let's leverage the `ProtectedField` class to avoid re-creating all of
+Let's leverage the `ProtectedField` class to avoid recreating all of
 the `LineLayout`s and their children every time inline layout happens.
 It all starts here:
 
@@ -791,7 +782,7 @@ The `new_line` and `recurse` methods, and the helpers they call like
 line wrapping: they check widths, create new lines,
 and so on. We'd like to skip all that if the
 `children` field isn't dirty, but this will be a bit more challenging
-that for block layout mode: lots of different fields are read during
+than for block layout mode: lots of different fields are read during
 line wrapping, and the `children` field depends on all of them.
 
 Converting all of those fields into `ProtectedField`s
@@ -986,7 +977,7 @@ Real browsers don't use automatic dependency-tracking like
 `ProtectedField` adds lots of objects and method calls, and it's easy
 to accidentally make performance worse by over-using it. It's also
 possible to create cascading work by invalidating too many protected
-fields. Finally, most browser engine code bases have a lot of
+fields. Finally, most browser engine codebases have a lot of
 historical code, and it takes a lot of time to refactor them to use
 new approaches.
 :::
@@ -1444,10 +1435,10 @@ Note that in this last code block, we first `read` the `children`
 field, then iterate over the list of children and `read` each of their
 `height` fields. The `height` field, unlike the previous layout
 fields, depends on the children's fields, not the parent's, and that's
-how we correctly iterate over children.
+how we correctly iterate over children (see Figure 2).
 
-::: {.print-only}
-![The dependencies of widths and heights in the layou tree point in opposite directions](im/protected-field-dependencies-top.jpg)
+::: {.center}
+![Figure 2: The dependencies of widths and heights in the layout tree point in opposite directions.](im/protected-field-dependencies-top.jpg)
 :::
 
 So that's all the layout fields on `BlockLayout` and `DocumentLayout`.
@@ -1480,7 +1471,7 @@ Protecting inline layout
 
 We need to protect `LineLayout`s', `TextLayout`s', and `EmbedLayout`s'
 fields too, and their `layout` methods work a little differently. Yes,
-each of these layout objects has `x`, `y`, and `height` fields. But
+each of these layout objects has `x`, `y`, and `height` fields, but
 they also compute `font`, `ascent`, and `descent` fields
 that are used by other layout objects. We'll
 have to protect all of these. Since we now have quite a bit of
@@ -1529,7 +1520,7 @@ compute `f` repeatedly, but remember that each of those `read` calls
 establishes a dependency for one layout field upon another. I like to
 think of each `f` as being scoped to its field's computation.
 
-We also need to compute the `x` position of a `TextLayout`. That can
+We also need to compute the *x* position of a `TextLayout`. That can
 use the previous sibling's font, *x* position, and width:
 
 ``` {.python}
@@ -1707,7 +1698,7 @@ class LineLayout:
 As a result of these changes, every layout object field is now
 protected. Just like before, make sure all uses of these fields use
 `read` and `get` and that your browser still runs, including during
-`contenteditable`. You will likely need to now fix a few uses of
+`contenteditable`. You will likely now need to fix a few uses of
 `height` and `y` inside `Frame` and `Tab`, like for clamping scroll
 offsets.
 
@@ -1756,7 +1747,7 @@ fewer prints you see, the fewer fields change and the more work we
 should be able to skip.
 
 Try editing some text with `contenteditable` on a large web page (like
-this one)---you'll see a *screenful* of output, thousands of lines of
+this chapter)---you'll see a *screenful* of output, thousands of lines of
 printed nonsense. It's a little hard to understand why, so let's add a
 nice printable form for `ProtectedField`s, plus a new `name` parameter
 for debugging purposes:[^why-print-node]
@@ -1878,23 +1869,16 @@ element's `children` (which we have to do, to incorporate the new
 text) and checking that its `height` didn't change (necessary in case
 we wrapped onto more lines).
 
-::: {.web-only}
+Editing should also now feel snappier---about
+0.6 seconds instead of the original 1.7. Better, but still not
+good:^[Trace [here](http://browser.engineering/examples/example16-input-reuse-layout-tree.trace).]
 
 Editing should also now feel snappier---about
-0.6 seconds instead of the original 1.7. Better, but still not good:
-^[Trace [here](examples/example16-input-reuse-layout-tree.trace).]
-
-:::
-
-::: {.print-only}
-
-Editing should also now feel snappier---about
-0.6 seconds instead of the original 1.7. Better, but still not good:
-
-:::
+0.6 seconds instead of the original 1.7 (see Figure 3).
+Better, but still not good.
 
 ::: {.center}
-![Snappier rendering due to reusing the layout tree](examples/example16-input-reuse-layout-tree.png)
+![Figure 3: Snappier rendering due to reusing the layout tree.](examples/example16-input-reuse-layout-tree.png)
 :::
 
 ::: {.further}
@@ -1930,17 +1914,16 @@ The basic idea revolves around the question: do we even need to call
 create child layout objects, compute layout properties, and recurse into
 more calls to `layout`. Those steps can be skipped if:
 
-- We don't need to create child layout objects, meaning the `children`
+- we don't need to create child layout objects, meaning the `children`
   field isn't dirty;
-- We don't need to recompute layout fields, because they aren't dirty;
-  and
-- We don't need to recursively call `layout`.
+- we don't need to recompute layout fields, because they aren't dirty;
+- and we don't need to recursively call `layout`.
 
 There's no dirty flag yet for the last condition, so let's add one.
 I'll call it `has_dirty_descendants` because it tracks whether any
 descendant has a dirty `ProtectedField`:[^ancestors]
 
-[^ancestors]: In some code bases, you will see these called *ancestor*
+[^ancestors]: In some codebases, you will see these called *ancestor*
     dirty flags instead. It's the same thing, just following the flow
     of dirty bits instead of the flow of control.
 
@@ -2078,35 +2061,24 @@ class Tab:
             frame.document.zoom.mark()
 ```
 
-::: {.web-only}
-
 Skipping unneeded `layout` methods should provide a noticable speed
-bump, with small layouts now taking about 7ms to update
+bump, with small layouts now taking about 7 ms to update
 layout and editing now substantially smoother.[^other-phases]^[Trace
-[here](examples/example16-input-skip-traverse.trace).]
+[here](https://browser.engineering/examples/example16-input-skip-traverse.trace).]
 
-:::
-
-::: {.print-only}
-
-Skipping unneeded `layout` methods should provide a noticable speed
-bump, with small layouts now taking about 7ms to update
-layout and editing now substantially smoother.[^other-phases]
-
-:::
 
 ::: {.center}
-![Example after skipping layout traversal](examples/example16-input-skip-traverse.png)
+![Figure 4: Example after skipping layout traversal.](examples/example16-input-skip-traverse.png)
 :::
 
-However, in this screenshot I also traced paint, to show you why `render`
-overall is still about 230ms. (Making a browser fast requires optimizing
+However, in Figure 4 I also traced paint, to show you why `render`
+overall is still about 230 ms. (Making a browser fast requires optimizing
 everything! I won't implement it, but paint can be made a lot faster
-too---see the exercises.)
+too---see Exercise 16-10.)
 
 [^other-phases]:  It might also be pretty laggy on large pages due to the
 composite-raster-draw cycle being fairly slow, depending on which exercises you
-implemented in [Chapter 13](animations.md#exercises).
+implemented in Chapter 13.
 
 ::: {.further}
 `ProtectedField` is similar to the [observer
@@ -2153,7 +2125,7 @@ class Element:
 ```
 
 Make the same change in `Text`. The `CSS_PROPERTIES` dictionary
-contains each CSS property that we support, plus its default value:
+contains each CSS property that we support, plus their default value:
 
 ``` {.python}
 CSS_PROPERTIES = {
@@ -2183,7 +2155,7 @@ class JSContext:
 ```
 
 But that's not all. There is also other code that invalidates style,
-in particular code that can affect a pseudo class such as `:focus`.
+in particular code that can affect a pseudo-class such as `:focus`.
 
 ``` {.python}
 class Frame:
@@ -2237,7 +2209,7 @@ def style(node, rules, frame):
                 new_style[property] = parent_value
 ```
 
-Likewise when resolving percentage font sizes:
+Likewise, when resolving percentage font sizes:
 
 ``` {.python}
 def style(node, rules, frame):
@@ -2385,16 +2357,17 @@ not thousands, of lines long, and support thousands of CSS properties.
 Their dependency graphs are
 dramatically more complex than our browser's.
 
-We'd therefore like to make it easier to see the dependency graph.
+We'd therefore like to make it easier to see the dependency graph, though
+see Figure 5 for an idea of the scale of the task.
 And along the way we can centralize *invariants* about the shape of
 that graph. That will [harden][hardening] our browser against
 accidental bugs in the future and also improve performance.
 
 [hardening]: https://en.wikipedia.org/wiki/Hardening_(computing)
 
-::: {.print-only}
-![A dependency diagram for the layout fields in our browser.
-Simplified though it is, the dependency diagram is already quite complex](im/protected-field-dependencies-bottom.jpg)
+:::
+![Figure 5: A dependency diagram for the layout fields in our browser.
+Simplified though it is, the dependency diagram is already quite complex.](im/protected-field-dependencies-bottom.jpg)
 :::
 
 An easy first step is explicitly listing the dependencies of each
@@ -2479,7 +2452,7 @@ method to do that:[^semi-dynamic]
 [^semi-dynamic]: This is dynamic, just like calls to `read`, but at
 least we're centralizing dependencies in one place. Plus, listing the
 dependencies explicitly and then checking them later is a kind of
-[defense-in-depth] against invalidation bugs.
+[defense in depth] against invalidation bugs.
 
 [defense-in-depth]: https://en.wikipedia.org/wiki/Defense_in_depth_(computing)
 
@@ -2680,7 +2653,7 @@ ideal.
 Luckily, techniques like compile-time code generation and macros can
 be used to turn `ProtectedField` objects into straight-line code
 behind the scenes. Setting a particular `ProtectedField` can set the
-dirty bits on statically-known invalidations, the dirty bits can be
+dirty bits on statically known invalidations, the dirty bits can be
 inlined into the layout objects, and the `read` function can check
 that the dependency was declared at compile time.^[Real browsers pull
 tricks like that all the time, in order to be super fast but still
@@ -2697,10 +2670,11 @@ Real browsers also use assertions to catch bugs, much like the
 `ProtectedField` abstraction in this chapter. But to avoid slowing
 down the browser for users, non-essential assertions are "compiled
 out" in the *release build*, which is what end-users run. The *debug
-build*, which browser engineers use when debugging or developing new
+build* is browser engineers use when debugging or developing new
 features, and also in automated tests. Debug builds
 also compile in debugging features like [sanitizers][ffx-sanitizers],
-while release builds instead use heavy-weight optimizations [like PGO][chrome-pgo].
+while release builds instead use heavyweight optimizations
+[like PGO][chrome-pgo] (profile-guided optimization).
 
 :::
 
@@ -2718,7 +2692,7 @@ through optimized cache invalidation. The main takeaways are:
 - making rendering idempotent allows us skip redundant work
   while guaranteeing that the page will look the same;
 - a good browser aims for the principle of incremental performance:
-  the cost of an change should be proportional to size of the change,
+  the cost of a change should be proportional to size of the change,
   not the size of the page as a whole;
 - cache invalidation is difficult and error-prone,
   and justifies careful abstractions like `ProtectedField`;
@@ -2769,26 +2743,24 @@ invalidation properly.
 
 [replacechildren-mdn]: https://developer.mozilla.org/en-US/docs/Web/API/Element/replaceChildren
 
-[^unless-createelement]: Unless you've implemented the "createElement"
-    or "removeChild" exercises [in Chapter 9](scripts.md#exercises),
+[^unless-createelement]: Unless you've implemented Exercises 9-2 and 9-3,
     in which case they can also be "detached" elements.
 
 16-4 *Descendant bits for style*. Add descendant dirty flags for `style`
 information, so that the `style` phase doesn't need to traverse nodes
 whose styles are unchanged.
 
-16-5 *Resizing the browser*. Perhaps, back in [Chapter
-2](graphics.md#exercises), you implemented support for resizing the
-browser. (And most likely, you dropped support for it when we switched
-to SDL.) Reimplement support for resizing your browser; you'll need to
-pass the `SDL_WINDOW_RESIZABLE` flag to `SDL_CreateWindow` and listen
-for `SDL_WINDOWEVENT_RESIZED` events. Make sure invalidation works:
-resizing the window show resize the page. How much does invalidation
+16-5 *Resizing the browser*. Perhaps, in Exericse 2-3, you implemented
+support for resizing the browser. (And most likely, you dropped support for
+it when we switched to SDL.) Reimplement support for resizing your browser;
+you'll need to pass the `SDL_WINDOW_RESIZABLE` flag to `SDL_CreateWindow`
+and listen for `SDL_WINDOWEVENT_RESIZED` events. Make sure invalidation works:
+resizing the window should resize the page. How much does invalidation
 help make resizing fast? Test both vertical and horizontal resizing.
 
 16-6 *Matching children*. Add support for [the `appendChild`
-method][appendchild-mdn] if you [haven't
-already](scripts.md#exercises). What's interesting about `appendChild`
+method][appendchild-mdn] if you haven't
+already in Exercise 9-2. What's interesting about `appendChild`
 is that, while it *does* change a layout object's `children` field, it
 only does so by adding new children to the end. In this case, you can
 keep all of the existing layout object children. Apply this
@@ -2797,8 +2769,8 @@ optimization, at least in the case of block-mode `BlockLayout`s.
 [appendchild-mdn]: https://developer.mozilla.org/en-US/docs/Web/API/Node/appendChild
 
 16-7 *Invalidating `previous`*. Add support for [the `insertBefore`
-method][insertbefore-mdn] if you [haven't
-already](scripts.md#exercises). Like with `appendChild`, we want to
+method][insertbefore-mdn] if you if you haven't
+already in Exercise 9-2. Like with `appendChild`, we want to
 skip rebuilding layout objects if we can. However, this method can
 also change the `previous` field of layout objects; protect that field
 on all block-mode `BlockLayout`s and then avoid rebuilding as much of
@@ -2808,9 +2780,9 @@ the layout tree as possible.
 
 16-8 *`:hover` pseudo-class*. There is a `:hover` pseudo-class that
 identifies elements the mouse is [hovering over][hover-pseudo].
-Implement it by sending mouse hover events to the active `Tab` and hit
-testing to find out which element is hovered. Try to avoid [forcing a
-layout][forced-layout-hit-test] in this hit test; one way to do that
+Implement it by sending mouse hover events to the active `Tab` and
+hit-testing to find out which element is being hovered over. Try to avoid
+[forcing a layout][forced-layout-hit-test] in this hit test; one way to do that
 is to store a `pending_hover` on the `Tab` and run the hit test
 after `layout` during `render`, and then perform *another* render to
 invalidate the hovered element's style.
@@ -2819,7 +2791,7 @@ invalidate the hovered element's style.
 
 [hover-pseudo]: https://developer.mozilla.org/en-US/docs/Web/CSS/:hover
 
-16-9 *Optimizing away `ProtectedField`*. as mentioned in the last section
+16-9 *Optimizing away `ProtectedField`*. As mentioned in the last section
 of this chapter, creating all these `ProtectedField` objects is way too expensive for
 a real browser. See if you can find a way to avoid creating the
 objects entirely. Depending on the language you're using to implement
@@ -2830,4 +2802,4 @@ of `ProtectedField` to be functional rather than object-oriented.
 16-10 *Optimizing paint*. Even after making layout fast for text input, paint is
 still painfully slow. Fix that by storing the display list between frames,
 dirty bits for whether paint is needed for each layout object, and mutating
-the display list rather than re-creating it every time.
+the display list rather than recreating it every time.
