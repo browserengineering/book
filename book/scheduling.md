@@ -1378,6 +1378,7 @@ We also need to split `new_tab` into a version that acquires a lock
 and one that doesn't (`new_tab_internal`):
 
 ``` {.python}
+class Browser:
     def new_tab(self, url):
         self.lock.acquire(blocking=True)
         self.new_tab_internal(url)
