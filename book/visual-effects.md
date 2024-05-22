@@ -847,7 +847,8 @@ class Browser:
             self.raster_tab()
 ```
 
-We also have some related changes in `Tab`. First, we no longer need
+We also have some related changes in `Tab`. Let's rename `Tab`'s
+`draw` method to `raster`. In it, we no longer need
 to pass around the scroll offset to the `execute` methods, or account
 for `chrome_bottom`, because we always draw the whole tab to the tab
 surface:

@@ -159,10 +159,7 @@ class Tab:
                 header, body = script_url.request(url)
             except:
                 continue
-            try:
-                self.js.run(body)
-            except dukpy.JSRuntimeError as e:
-                print("Script", script, "crashed", e)
+            self.js.run(script, body)
 
         self.rules = DEFAULT_STYLE_SHEET.copy()
         links = [node.attributes["href"]

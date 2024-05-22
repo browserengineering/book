@@ -88,20 +88,20 @@ matching nodes:
     >>> b = lab9.Browser()
     >>> b.new_tab(url)
     >>> js = b.tabs[0].js
-    >>> js.run("document.querySelectorAll('div').length")
+    >>> js.run("test", "document.querySelectorAll('div').length")
     1
-    >>> js.run("document.querySelectorAll('p').length")
+    >>> js.run("test", "document.querySelectorAll('p').length")
     2
-    >>> js.run("document.querySelectorAll('html').length")
+    >>> js.run("test", "document.querySelectorAll('html').length")
     1
     
 That last query is finding an implicit tag. Complex queries are also supported
 
-    >>> js.run("document.querySelectorAll('html p').length")
+    >>> js.run("test", "document.querySelectorAll('html p').length")
     2
-    >>> js.run("document.querySelectorAll('html body div p').length")
+    >>> js.run("test", "document.querySelectorAll('html body div p').length")
     2
-    >>> js.run("document.querySelectorAll('body html div p').length")
+    >>> js.run("test", "document.querySelectorAll('body html div p').length")
     0
 
 Testing getAttribute
@@ -109,19 +109,19 @@ Testing getAttribute
 
 `querySelectorAll` should return `Node` objects:
 
-    >>> js.run("document.querySelectorAll('html')[0] instanceof Node")
+    >>> js.run("test", "document.querySelectorAll('html')[0] instanceof Node")
     True
 
 
 Once we have a `Node` object we can call `getAttribute`:
 
-    >>> js.run("document.querySelectorAll('p')[0].getAttribute('id')")
+    >>> js.run("test", "document.querySelectorAll('p')[0].getAttribute('id')")
     'lorem'
 
 Note that this is "live": as the page changes `querySelectorAll` gives new results:
 
     >>> b.tabs[0].nodes.children[0].children[0].children[0].attributes['id'] = 'blah'
-    >>> js.run("document.querySelectorAll('p')[0].getAttribute('id')")
+    >>> js.run("test", "document.querySelectorAll('p')[0].getAttribute('id')")
     'blah'
 
 Testing innerHTML
@@ -133,7 +133,7 @@ HTML fragments. So we must purposely avoid testing those.
 One annoying thing about `innerHTML` is that, since it is an assignment, it
 returns its right hand side. I use `void()` to avoid testing that.
 
-    >>> js.run("void(document.querySelectorAll('p')[0].innerHTML" +
+    >>> js.run("test", "void(document.querySelectorAll('p')[0].innerHTML" +
     ...     " = 'This is a <b id=new>new</b> element!')")
 
 Once we've changed the page, the browser should re-render:
@@ -159,14 +159,14 @@ new word.
 
 Now that we've modified the page we should be able to find the new elements:
 
-    >>> js.run("document.querySelectorAll('b').length")
+    >>> js.run("test", "document.querySelectorAll('b').length")
     1
 
 We should also be able to delete nodes this way:
 
-    >>> js.run("var old_b = document.querySelectorAll('b')[0]")
-    >>> js.run("void(document.querySelectorAll('p')[0].innerHTML = 'Lorem')")
-    >>> js.run("document.querySelectorAll('b').length")
+    >>> js.run("test", "var old_b = document.querySelectorAll('b')[0]")
+    >>> js.run("test", "void(document.querySelectorAll('p')[0].innerHTML = 'Lorem')")
+    >>> js.run("test", "document.querySelectorAll('b').length")
     0
     
 The page is rer-endered again:
@@ -185,7 +185,7 @@ The page is rer-endered again:
 
 Despite this, the old nodes should stick around:
 
-    >>> js.run("old_b.getAttribute('id')")
+    >>> js.run("test", "old_b.getAttribute('id')")
     'new'
 
 Testing events
@@ -196,8 +196,8 @@ adding an event listener and then triggering it. I'll use the `div` element to
 test things:
 
     >>> div = b.tabs[0].nodes.children[0].children[0]
-    >>> js.run("var div = document.querySelectorAll('div')[0]")
-    >>> js.run("div.addEventListener('test', function(e) { console.log('Listener ran!')})")
+    >>> js.run("test", "var div = document.querySelectorAll('div')[0]")
+    >>> js.run("test", "div.addEventListener('test', function(e) { console.log('Listener ran!')})")
     >>> js.dispatch_event("test", div)
     Listener ran!
     False
@@ -222,35 +222,35 @@ input, typing into the input, clicking on the button, and submitting the form.
 We'll have a mix of `preventDefault` and non-`preventDefault` handlers to test
 that feature as well.
 
-    >>> js.run("var a = document.querySelectorAll('a')[0]")
-    >>> js.run("var form = document.querySelectorAll('form')[0]")
-    >>> js.run("var input = document.querySelectorAll('input')[0]")
-    >>> js.run("var button = document.querySelectorAll('button')[0]")
+    >>> js.run("test", "var a = document.querySelectorAll('a')[0]")
+    >>> js.run("test", "var form = document.querySelectorAll('form')[0]")
+    >>> js.run("test", "var input = document.querySelectorAll('input')[0]")
+    >>> js.run("test", "var button = document.querySelectorAll('button')[0]")
     
 Note that the `input` element has a value of `hi`:
 
-    >>> js.run("input.getAttribute('value')")
+    >>> js.run("test", "input.getAttribute('value')")
     'hi'
 
 Clicking on the link should be canceled because we don't actually want to
 navigate to a new page.
 
-    >>> js.run("a.addEventListener('click', " +
+    >>> js.run("test", "a.addEventListener('click', " +
     ...     "function(e) { console.log('a clicked'); e.preventDefault()})")
 
 For the `input` element, clicking should work, because we need to focus it to
 type into it. But let's cancel the `keydown` event just to test that that works.
 
-    >>> js.run("input.addEventListener('click', " +
+    >>> js.run("test", "input.addEventListener('click', " +
     ...     "function(e) { console.log('input clicked')})")
-    >>> js.run("input.addEventListener('keydown', " +
+    >>> js.run("test", "input.addEventListener('keydown', " +
     ...     "function(e) { console.log('input typed'); e.preventDefault()})")
 
 Finally, let's allow clicking on the button but then cancel the form submission:
 
-    >>> js.run("button.addEventListener('click', " +
+    >>> js.run("test", "button.addEventListener('click', " +
     ...     "function(e) { console.log('button clicked')})")
-    >>> js.run("form.addEventListener('submit', " +
+    >>> js.run("test", "form.addEventListener('submit', " +
     ...     "function(e) { console.log('form submitted'); e.preventDefault()})")
 
 With these all set up, we need to do some clicking and typing to trigger these
@@ -288,5 +288,5 @@ Similarly, when we clicked on the `input` element its `value` should be cleared,
 but when we then typed `t` into it that was canceled so the value should still
 be empty at the end:
 
-    >>> js.run("input.getAttribute('value')")
+    >>> js.run("test", "input.getAttribute('value')")
     ''

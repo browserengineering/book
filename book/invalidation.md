@@ -1025,7 +1025,7 @@ a new line. We'll use `read` to set up that dependency:
 ``` {.python}
 class BlockLayout:
     def add_inline_child(self, node, w, child_class,
-        frame, word=None):
+                         frame, word=None):
         width = self.width.read(notify=self.children)
         if self.cursor_x + w > width:
             self.new_line()
@@ -1186,7 +1186,7 @@ You'll want to do something similar in `add_inline_child`:
 ``` {.python}
 class BlockLayout:
     def add_inline_child(self, node, w, child_class,
-        frame, word=None):
+                         frame, word=None):
         # ...
         line = self.temp_children[-1]
         # ...
@@ -1260,7 +1260,7 @@ In `TextLayout`, we again need to handle `font` (and hence have
 
 ``` {.python expected=False}
 class TextLayout:
-    def __init__(self, node, parent, previous, word):
+    def __init__(self, node, word, parent, previous):
         # ...
         self.width = ProtectedField()
         # ...
@@ -1481,7 +1481,7 @@ Let's start with `TextLayout`:
 
 ``` {.python ignore=ProtectedField}
 class TextLayout:
-    def __init__(self, node, parent, previous, word):
+    def __init__(self, node, word, parent, previous):
         # ...
         self.x = ProtectedField()
         self.y = ProtectedField()
@@ -2506,7 +2506,7 @@ everything:
 
 ``` {.python}
 class TextLayout:
-    def __init__(self, node, parent, previous, word):
+    def __init__(self, node, word, parent, previous):
         # ...
         self.zoom = ProtectedField(self, "zoom", self.parent,
             [self.parent.zoom])

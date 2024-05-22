@@ -460,13 +460,13 @@ class BlockLayout:
         self.temp_children.append(new_line)
 
     def add_inline_child(self, node, w, child_class,
-        frame, word=None):
+                         frame, word=None):
         width = self.width.read(notify=self.children)
         if self.cursor_x + w > width:
             self.new_line()
         line = self.temp_children[-1]
         if word:
-            child = child_class(node, line, self.previous_word, word)
+            child = child_class(node, word, line, self.previous_word)
         else:
             child = child_class(node, line, self.previous_word, frame)
         line.children.append(child)
@@ -621,7 +621,7 @@ class LineLayout:
 
 @wbetools.patch(TextLayout)
 class TextLayout:
-    def __init__(self, node, parent, previous, word):
+    def __init__(self, node, word, parent, previous):
         self.node = node
         self.word = word
         self.children = []

@@ -283,7 +283,7 @@ class BlockLayout:
         line = self.children[-1]
         previous_word = line.children[-1] if line.children else None
         if word:
-            child = child_class(node, line, previous_word, word)
+            child = child_class(node, word, line, previous_word)
         else:
             child = child_class(node, line, previous_word, frame)
         line.children.append(child)
@@ -497,7 +497,7 @@ class LineLayout:
             self.x, self.y, self.width, self.height)
 
 class TextLayout:
-    def __init__(self, node, parent, previous, word):
+    def __init__(self, node, word, parent, previous):
         self.node = node
         self.word = word
         self.children = []
@@ -1051,7 +1051,7 @@ def style(node, rules, frame):
 
 @wbetools.patch(AccessibilityNode)
 class AccessibilityNode:
-    def __init__(self, node, parent = None):
+    def __init__(self, node, parent=None):
         self.node = node
         self.children = []
         self.parent = parent
@@ -1153,7 +1153,7 @@ class AccessibilityNode:
         return abs_bounds
 
 class FrameAccessibilityNode(AccessibilityNode):
-    def __init__(self, node, parent = None):
+    def __init__(self, node, parent=None):
         super().__init__(node, parent)
         self.scroll = self.node.frame.scroll
         self.zoom = self.node.layout_object.zoom

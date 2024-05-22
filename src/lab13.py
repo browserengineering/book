@@ -1347,6 +1347,9 @@ class Browser:
             if not parent:
                 self.draw_list.append(current_effect)
 
+    @wbetools.delete
+    def raster_and_draw(self): pass
+
     def composite_raster_and_draw(self):
         self.lock.acquire(blocking=True)
         if not self.needs_composite and \

@@ -28,7 +28,7 @@
 {"code": "new_parent in new_effects", "type": "dict"},
 {"code": "'value' in self.node.attributes", "type": "dict"},
 {"code": "b'Browser'", "js": "'Browser'"},
-{"code": "child_class(node, line, previous_word, word)", "js": "await (new child_class()).init(node, line, previous_word, word)"},
+{"code": "child_class(node, word, line, previous_word)", "js": "await (new child_class()).init(node, word, line, previous_word)"},
 {"code": "child_class(node, line, previous_word, frame)", "js": "await (new child_class()).init(node, line, previous_word, frame)"},
 {"code": "'src' in node.attributes", "type": "dict"},
 {"code": "'alt' in self.node.attributes", "type": "dict"},
