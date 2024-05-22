@@ -1352,7 +1352,17 @@ class TaskRunner:
 
 The `Browser` should no longer call any methods on the `Tab`. Instead,
 to handle events, it should schedule tasks on the main thread. For
-example, here is loading:
+example, here is loading. In this case we need to clear any pending tasks
+before loading a new page, because those previous tasks are now invalid:
+
+``` {.python}
+class TaskRunner:
+    def clear_pending_tasks(self):
+        self.condition.acquire(blocking=True)
+        self.tasks.clear()
+        self.pending_scroll = None
+        self.condition.release()
+```
 
 ``` {.python}
 class Browser:
@@ -1362,15 +1372,32 @@ class Browser:
         self.active_tab.task_runner.schedule_task(task)
 
     def new_tab(self, url):
-        # ...
+        self.lock.acquire(blocking=True)
+        self.new_tab_internal(url)
+        self.lock.release()
+
+    def new_tab_internal(self, url):
+        new_tab = Tab(self, HEIGHT - self.chrome.bottom)
+        self.tabs.append(new_tab)
+        self.set_active_tab(new_tab)
         self.schedule_load(url)
 ```
+
+In this case I had to split `new_tab` into a version that acquires a lock
+and one that doesn't (`new_tab_internal`, because cases like the `click`
+method on `Chrome` are called by `handle_click`, which has already acquired
+the lock.^[Using locks properly and avoiding race conditions and deadlocks
+can be quite difficult!]
 
 ``` {.python}
 class Chrome:
     def enter(self):
         if self.focus == "address bar":
             self.browser.schedule_load(URL(self.address_bar))
+
+    def click(self, x, y):
+        # ...
+            self.browser.new_tab_internal(URL("https://browser.engineering/"))
 ```
 
 Event handlers are mostly similar, except that we need to be careful
@@ -1383,6 +1410,7 @@ on the web page, we must schedule a task on the main thread:
 ``` {.python}
 class Browser:
     def handle_click(self, e):
+        self.lock.acquire(blocking=True)
         if e.y < self.chrome.bottom:
              # ...
         else:
@@ -1390,6 +1418,7 @@ class Browser:
             tab_y = e.y - self.chrome.bottom
             task = Task(self.active_tab.click, e.x, tab_y)
             self.active_tab.task_runner.schedule_task(task)
+        self.lock.release()
 ```
 
 The same logic holds for `keypress`:
