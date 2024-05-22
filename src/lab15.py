@@ -1153,7 +1153,7 @@ class AccessibilityNode:
         return abs_bounds
 
 class FrameAccessibilityNode(AccessibilityNode):
-    def __init__(self, node, parent = None):
+    def __init__(self, node, parent=None):
         super().__init__(node, parent)
         self.scroll = self.node.frame.scroll
         self.zoom = self.node.layout_object.zoom

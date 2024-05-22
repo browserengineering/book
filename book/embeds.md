@@ -549,7 +549,7 @@ the `alt` attribute is for. It works like this:
 
 Implementing this in `AccessibilityNode` is very easy:
 
-``` {.python replace=node)/node%2C%20parent%20%3d%20None)}
+``` {.python replace=node)/node%2C%20parent%3dNone)}
 class AccessibilityNode:
     def __init__(self, node):
         else:
@@ -1231,7 +1231,7 @@ Finally, let's also add iframes to the accessibility tree. Like the
 display list, the accessibility tree is global across all frames.
 We can have iframes create `iframe` nodes:
 
-``` {.python replace=node)/node%2C%20parent%20%3d%20None)}
+``` {.python replace=node)/node%2C%20parent%3dNone)}
 class AccessibilityNode:
     def __init__(self, node):
         else:
@@ -1501,7 +1501,7 @@ frame's coordinates (note how we subtract off the zoomed border of the frame):
 
 ``` {.python}
 class FrameAccessibilityNode(AccessibilityNode):
-    def __init__(self, node, parent = None):
+    def __init__(self, node, parent=None):
         super().__init__(node, parent)
         self.scroll = self.node.frame.scroll
         self.zoom = self.node.layout_object.zoom
