@@ -26,7 +26,7 @@ identifies a particular web page that the browser should visit.
     EOF
 :::
 
-::: {.center}
+::: {.center .web-only}
 Figure 1: The syntax of URLs.
 :::
 
@@ -857,7 +857,7 @@ Figure 6.
     EOF
 :::
 
-::: {.center}
+::: {.center .web-only}
 Figure 6: Where the port goes in a URL.
 :::
 
