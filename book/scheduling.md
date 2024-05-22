@@ -1399,7 +1399,8 @@ class Chrome:
 
     def click(self, x, y):
         # ...
-            self.browser.new_tab_internal(URL("https://browser.engineering/"))
+            self.browser.new_tab_internal(
+                URL("https://browser.engineering/"))
 ```
 
 Event handlers are mostly similar, except that we need to be careful

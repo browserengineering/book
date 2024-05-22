@@ -447,7 +447,8 @@ REFRESH_RATE_SEC = .033
 class Chrome:
     def click(self, x, y):
         if self.newtab_rect.contains(x, y):
-            self.browser.new_tab_internal(URL("https://browser.engineering/"))
+            self.browser.new_tab_internal(
+                URL("https://browser.engineering/"))
         elif self.back_rect.contains(x, y):
             task = Task(self.browser.active_tab.go_back)
             self.browser.active_tab.task_runner.schedule_task(task)
