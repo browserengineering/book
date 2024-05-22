@@ -1360,17 +1360,6 @@ class Browser:
         self.active_tab.task_runner.clear_pending_tasks()
         task = Task(self.active_tab.load, url, body)
         self.active_tab.task_runner.schedule_task(task)
-
-    def new_tab(self, url):
-        self.lock.acquire(blocking=True)
-        self.new_tab_internal(url)
-        self.lock.release()
-
-    def new_tab_internal(self, url):
-        new_tab = Tab(self, HEIGHT - self.chrome.bottom)
-        self.tabs.append(new_tab)
-        self.set_active_tab(new_tab)
-        self.schedule_load(url)
 ```
 
 Above, I needed to clear any pending tasks before loading a new page, because
@@ -1385,11 +1374,25 @@ class TaskRunner:
         self.condition.release()
 ```
 
-In this case I had to split `new_tab` into a version that acquires a lock
-and one that doesn't (`new_tab_internal`), because cases like the `click`
-method on `Chrome` are called by `handle_click`, which has already acquired
-the lock.^[Using locks properly and avoiding race conditions and deadlocks
-can be quite difficult!]
+We also need to split `new_tab` into a version that acquires a lock
+and one that doesn't (`new_tab_internal`):
+
+``` {.python}
+    def new_tab(self, url):
+        self.lock.acquire(blocking=True)
+        self.new_tab_internal(url)
+        self.lock.release()
+
+    def new_tab_internal(self, url):
+        new_tab = Tab(self, HEIGHT - self.chrome.bottom)
+        self.tabs.append(new_tab)
+        self.set_active_tab(new_tab)
+        self.schedule_load(url)
+```
+
+...because cases like the `click` method on `Chrome` are called by
+`handle_click`, which has already acquired the lock.^[Using locks properly and
+avoiding race conditions and deadlocks can be quite difficult!]
 
 ``` {.python}
 class Chrome:
