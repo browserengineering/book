@@ -620,7 +620,7 @@ class LineLayout:
 
 @wbetools.patch(TextLayout)
 class TextLayout:
-    def __init__(self, node, parent, previous, word):
+    def __init__(self, node, word, parent, previous):
         self.node = node
         self.word = word
         self.children = []
