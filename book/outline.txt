@@ -152,8 +152,8 @@ class Layout:
     def token(tok)
     def open_tag(tag)
     def close_tag(tag)
-    def word(word)
     def flush()
+    def word(word)
 class DocumentLayout:
     def __init__(node, frame)
     def layout(width, zoom)
@@ -180,18 +180,6 @@ class BlockLayout:
     def paint()
     def paint_effects(cmds)
     def layout_needed()
-class EmbedLayout:
-    def __init__(node, parent, previous, frame)
-    def layout()
-    def should_paint()
-    def layout_needed()
-class InputLayout:
-    def __init__(node, parent, previous, frame)
-    def layout()
-    def should_paint()
-    def paint()
-    def paint_effects(cmds)
-    def self_rect()
 class LineLayout:
     def __init__(node, parent, previous)
     def layout()
@@ -207,6 +195,18 @@ class TextLayout:
     def paint_effects(cmds)
     def self_rect()
     def layout_needed()
+class EmbedLayout:
+    def __init__(node, parent, previous, frame)
+    def layout()
+    def should_paint()
+    def layout_needed()
+class InputLayout:
+    def __init__(node, parent, previous, frame)
+    def layout()
+    def should_paint()
+    def paint()
+    def paint_effects(cmds)
+    def self_rect()
 class ImageLayout:
     def __init__(node, parent, previous, frame)
     def layout()
