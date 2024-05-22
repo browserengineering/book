@@ -1527,8 +1527,7 @@ animations that only require the draw step, like our example opacity
 animation, will now run super smoothly.
 
 One final note: the compositing data structures need to be cleared when changing
-tabs, so let's do that (factoring out a `clear_data` method to do it more
-cleanly now that there are several things to clear):
+tabs. Let's do that by factoring out a `clear_data` method that clears everything in one go.
 
 ``` {.python}
 class Browser:
