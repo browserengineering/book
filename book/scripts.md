@@ -167,7 +167,7 @@ Python into JavaScript. We'll be exporting a lot of functions, so to
 avoid polluting the `Tab` object with many new methods, let's put this
 code in a new `JSContext` class:
 
-``` {.python replace=__init__(self)/__init__(self%2c%20tab)}
+``` {.python replace=__init__(self)/__init__(self%2c%20tab),%2c%20code/%2c%20script%2c%20code}
 class JSContext:
     def __init__(self):
         self.interp = dukpy.JSInterpreter()
@@ -182,7 +182,7 @@ variable values and other state between them.
 
 We create this new `JSContext` object while loading the page:
 
-``` {.python replace=JSContext()/JSContext(self)}
+``` {.python replace=JSContext()/JSContext(self),run(body)/run(script%2c%20body)}
 class Tab:
     def load(self, url, payload=None):
         # ...
@@ -309,14 +309,12 @@ ignore the crash. Web pages shouldn't be able to crash our browser!
 You can implement that like this:
 
 ``` {.python}
-class Tab:
-    def load(self, url, payload=None):
-        for script in scripts:
-            # ...
-            try:
-                self.js.run(body)
-            except dukpy.JSRuntimeError as e:
-                print("Script", script, "crashed", e)
+class JSContext:
+    def run(self, script, code):
+        try:
+            return self.interp.evaljs(code)
+        except dukpy.JSRuntimeError as e:
+            print("Script", script, "crashed", e)
 ```
 
 But as you go through this chapter, you'll also run into another type

@@ -45,8 +45,11 @@ class JSContext:
         self.node_to_handle = {}
         self.handle_to_node = {}
 
-    def run(self, code):
-        return self.interp.evaljs(code)
+    def run(self, script, code):
+        try:
+            return self.interp.evaljs(code)
+        except dukpy.JSRuntimeError as e:
+            print("Script", script, "crashed", e)
 
     def dispatch_event(self, type, elt):
         handle = self.node_to_handle.get(elt, -1)
@@ -105,10 +108,7 @@ class Tab:
                 body = script_url.request()
             except:
                 continue
-            try:
-                self.js.run(body)
-            except dukpy.JSRuntimeError as e:
-                print("Script", script, "crashed", e)
+            self.js.run(script, body)
 
         self.rules = DEFAULT_STYLE_SHEET.copy()
         links = [node.attributes["href"]

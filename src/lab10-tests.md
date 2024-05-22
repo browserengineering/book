@@ -88,25 +88,24 @@ Now let's test a simple same-site request:
     >>> browser = lab10.Browser()
     >>> browser.new_tab(lab10.URL(url))
     >>> tab = browser.tabs[0]
-    >>> tab.js.run(xhrjs(url2))
+    >>> tab.js.run("test", xhrjs(url2))
     Hello!
 
 Relative URLs also work:
 
-    >>> tab.js.run(xhrjs("/hello"))
+    >>> tab.js.run("test", xhrjs("/hello"))
     Hello!
     
 Non-synchronous XHRs should fail:
 
-    >>> tab.js.run("XMLHttpRequest().open('GET', '/', true)") #doctest: +IGNORE_EXCEPTION_DETAIL
-    Traceback (most recent call last):
-        ...
-    _dukpy.JSRuntimeError: <complicated error message>
+    >>> tab.js.run("test", "new XMLHttpRequest().open('GET', '/', true)") #doctest: +ELLIPSIS
+    Script test crashed Error: Asynchronous XHR is not supported
+    ...
     
 If cookies are present, they should be sent:
 
     >>> lab10.COOKIE_JAR["about.blank"] = ('foo=bar', {})
-    >>> tab.js.run(xhrjs(url2))
+    >>> tab.js.run("test", xhrjs(url2))
     Hello!
     >>> test.socket.last_request(url2)
     b'GET /hello HTTP/1.0\r\nHost: about.blank\r\nCookie: foo=bar\r\n\r\n'
@@ -117,10 +116,9 @@ Now let's see that cross-domain requests fail:
 
     >>> url3 = "http://other.site/"
     >>> test.socket.respond(url3, b"HTTP/1.0 200 OK\r\n\r\nPrivate")
-    >>> tab.js.run(xhrjs(url3)) #doctest: +IGNORE_EXCEPTION_DETAIL
-    Traceback (most recent call last):
+    >>> tab.js.run("test", xhrjs(url3)) #doctest: +ELLIPSIS
+    Script test crashed EvalError: Error while calling Python Function: Exception('Cross-origin XHR request not allowed')
         ...
-    _dukpy.JSRuntimeError: <complicated error message>
 
 It's not important whether the request is _ever_ sent; the CORS
 exercise requires sending it but the standard implementation does not
@@ -269,10 +267,9 @@ JavaScript!
     ... b"Content-Security-Policy: default-src\r\n\r\n")
     >>> browser.new_tab(lab10.URL(url))
     >>> tab = browser.tabs[-1]
-    >>> tab.js.run("""
+    >>> tab.js.run("test", """
     ... x = new XMLHttpRequest()
     ... x.open('GET', 'http://weird.test/xhr', false);
-    ... x.send();""") #doctest: +IGNORE_EXCEPTION_DETAIL
-    Traceback (most recent call last):
+    ... x.send();""") #doctest: +ELLIPSIS
+    Script test crashed EvalError: Error while calling Python Function: Exception('Cross-origin XHR blocked by CSP')
       ...
-    _dukpy.JSRuntimeError: <complicated wrapper around 'Cross-origin XHR blocked by CSP'>
