@@ -30,25 +30,26 @@ from lab11 import FONTS, NAMED_COLORS, get_font, linespace
 from lab11 import parse_color, parse_blend_mode
 from lab12 import MeasureTime, REFRESH_RATE_SEC
 from lab12 import Task, TaskRunner, SingleThreadedTaskRunner
+from lab12 import SETTIMEOUT_JS, XHR_ONLOAD_JS
 from lab13 import diff_styles, parse_transition, add_parent_pointers
 from lab13 import local_to_absolute, absolute_bounds_for_obj, absolute_to_local
 from lab13 import NumericAnimation
 from lab13 import map_translation, parse_transform
 from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import PaintCommand, DrawText, DrawCompositedLayer, \
-    DrawLine, DrawRRect
+    DrawLine, DrawRRect, DrawRect
 from lab13 import VisualEffect, Blend, Transform, DrawOutline
 from lab14 import parse_outline, style, \
     paint_outline, dpx, cascade_priority, \
     is_focusable, get_tabindex, speak_text, \
-    CSSParser, mainloop, Chrome
+    CSSParser, mainloop, Chrome, PseudoclassSelector, SPEECH_FILE
 from lab15 import URL, HTMLParser, AttributeParser, DrawImage, \
     DocumentLayout, BlockLayout, \
     EmbedLayout, InputLayout, LineLayout, TextLayout, ImageLayout, \
     IframeLayout, JSContext, AccessibilityNode, FrameAccessibilityNode, Frame, Tab, \
     CommitData, Browser, BROKEN_IMAGE, font, \
     IFRAME_WIDTH_PX, IFRAME_HEIGHT_PX, parse_image_rendering, DEFAULT_STYLE_SHEET, \
-    RUNTIME_JS
+    RUNTIME_JS, POST_MESSAGE_DISPATCH_JS
 
 @wbetools.patch(is_focusable)
 def is_focusable(node):
@@ -71,14 +72,14 @@ def print_tree(node, indent=0):
         print_tree(child, indent + 2)
 
 @wbetools.patch(tree_to_list)
-def tree_to_list(tree, l):
-    l.append(tree)
+def tree_to_list(tree, list):
+    list.append(tree)
     children = tree.children
-    if not isinstance(children, list):
+    if not isinstance(children, type([])):
         children = children.get()
     for child in children:
-        tree_to_list(child, l)
-    return l
+        tree_to_list(child, list)
+    return list
 
 @wbetools.patch(paint_outline)
 def paint_outline(node, cmds, rect, zoom):
