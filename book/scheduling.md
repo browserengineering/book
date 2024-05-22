@@ -1352,17 +1352,7 @@ class TaskRunner:
 
 The `Browser` should no longer call any methods on the `Tab`. Instead,
 to handle events, it should schedule tasks on the main thread. For
-example, here is loading. In this case we need to clear any pending tasks
-before loading a new page, because those previous tasks are now invalid:
-
-``` {.python}
-class TaskRunner:
-    def clear_pending_tasks(self):
-        self.condition.acquire(blocking=True)
-        self.tasks.clear()
-        self.pending_scroll = None
-        self.condition.release()
-```
+example, here is loading:
 
 ``` {.python}
 class Browser:
@@ -1381,6 +1371,18 @@ class Browser:
         self.tabs.append(new_tab)
         self.set_active_tab(new_tab)
         self.schedule_load(url)
+```
+
+Above, I needed to clear any pending tasks before loading a new page, because
+those previous tasks are now invalid:
+
+``` {.python}
+class TaskRunner:
+    def clear_pending_tasks(self):
+        self.condition.acquire(blocking=True)
+        self.tasks.clear()
+        self.pending_scroll = None
+        self.condition.release()
 ```
 
 In this case I had to split `new_tab` into a version that acquires a lock
