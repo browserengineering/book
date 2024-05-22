@@ -1025,7 +1025,7 @@ a new line. We'll use `read` to set up that dependency:
 ``` {.python}
 class BlockLayout:
     def add_inline_child(self, node, w, child_class,
-        frame, word=None):
+                         frame, word=None):
         width = self.width.read(notify=self.children)
         if self.cursor_x + w > width:
             self.new_line()
@@ -1186,7 +1186,7 @@ You'll want to do something similar in `add_inline_child`:
 ``` {.python}
 class BlockLayout:
     def add_inline_child(self, node, w, child_class,
-        frame, word=None):
+                         frame, word=None):
         # ...
         line = self.temp_children[-1]
         # ...
