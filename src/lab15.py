@@ -1051,7 +1051,7 @@ def style(node, rules, frame):
 
 @wbetools.patch(AccessibilityNode)
 class AccessibilityNode:
-    def __init__(self, node, parent = None):
+    def __init__(self, node, parent=None):
         self.node = node
         self.children = []
         self.parent = parent

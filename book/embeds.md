@@ -1525,7 +1525,7 @@ needs parent pointers to walk up the accessibility tree, so let's add that first
 
 ``` {.python}
 class AccessibilityNode:
-    def __init__(self, node, parent = None):
+    def __init__(self, node, parent=None):
         # ...
         self.parent = parent
 
