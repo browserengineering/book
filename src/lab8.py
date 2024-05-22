@@ -15,10 +15,9 @@ from lab3 import FONTS, get_font
 from lab4 import Text, Element, print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS, DocumentLayout
 from lab6 import CSSParser, TagSelector, DescendantSelector
-from lab6 import INHERITED_PROPERTIES, style, cascade_priority
-from lab6 import URL, tree_to_list
+from lab6 import INHERITED_PROPERTIES, style, cascade_priority, tree_to_list
 from lab7 import DrawText, DrawLine, DrawOutline, BlockLayout, LineLayout, TextLayout
-from lab7 import Tab, Browser, Chrome, DrawRect, Rect
+from lab7 import URL, Tab, Browser, Chrome, DrawRect, Rect
 
 @wbetools.patch(Element)
 class Element:
