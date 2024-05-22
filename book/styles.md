@@ -1052,11 +1052,11 @@ The complete set of functions, classes, and methods in our browser
 should now look something like this:
 
 ::: {.web-only .cmd .python .outline html=True}
-    python3 infra/outlines.py --html src/lab6.py
+    python3 infra/outlines.py --html src/lab6.py --template book/outline.txt
 :::
 
 ::: {.print-only .cmd .python .outline}
-    python3 infra/outlines.py src/lab6.py
+    python3 infra/outlines.py src/lab6.py --template book/outline.txt
 :::
 
 
