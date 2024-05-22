@@ -1529,6 +1529,24 @@ Now the draw display list will be based on the new display list, and
 animations that only require the draw step, like our example opacity
 animation, will now run super smoothly.
 
+One final note: the compositing data structures need to be cleared when changing
+tabs. Let's do that by factoring out a `clear_data` method that clears everything in one go.
+
+``` {.python}
+class Browser:
+    def clear_data(self):
+        self.active_tab_scroll = 0
+        self.active_tab_url = None
+        self.display_list = []
+        self.composited_layers = []
+        self.composited_updates = {}
+
+    def set_active_tab(self, tab):
+        # ...
+        self.clear_data()
+```
+
+
 ::: {.further}
 
 While visual effect animations in our browser are now efficient

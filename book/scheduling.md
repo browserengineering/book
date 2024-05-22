@@ -1360,14 +1360,48 @@ class Browser:
         self.active_tab.task_runner.clear_pending_tasks()
         task = Task(self.active_tab.load, url, body)
         self.active_tab.task_runner.schedule_task(task)
+```
 
+Above, I needed to clear any pending tasks before loading a new page, because
+those previous tasks are now invalid:
+
+``` {.python}
+class TaskRunner:
+    def clear_pending_tasks(self):
+        self.condition.acquire(blocking=True)
+        self.tasks.clear()
+        self.pending_scroll = None
+        self.condition.release()
+```
+
+We also need to split `new_tab` into a version that acquires a lock
+and one that doesn't (`new_tab_internal`):
+
+``` {.python}
+class Browser:
     def new_tab(self, url):
-        # ...
+        self.lock.acquire(blocking=True)
+        self.new_tab_internal(url)
+        self.lock.release()
+
+    def new_tab_internal(self, url):
+        new_tab = Tab(self, HEIGHT - self.chrome.bottom)
+        self.tabs.append(new_tab)
+        self.set_active_tab(new_tab)
         self.schedule_load(url)
 ```
 
+This way `new_tab_internal` can be called directly by methods,
+like `Chrome`'s `click` method, that already hold the lock.^[Using locks while
+avoiding race conditions and deadlocks can be quite difficult!]
+
 ``` {.python}
 class Chrome:
+    def click(self, x, y):
+        if self.newtab_rect.contains(x, y):
+            self.browser.new_tab_internal(
+                URL("https://browser.engineering/"))
+
     def enter(self):
         if self.focus == "address bar":
             self.browser.schedule_load(URL(self.address_bar))
@@ -1383,6 +1417,7 @@ on the web page, we must schedule a task on the main thread:
 ``` {.python}
 class Browser:
     def handle_click(self, e):
+        self.lock.acquire(blocking=True)
         if e.y < self.chrome.bottom:
              # ...
         else:
@@ -1390,6 +1425,7 @@ class Browser:
             tab_y = e.y - self.chrome.bottom
             task = Task(self.active_tab.click, e.x, tab_y)
             self.active_tab.task_runner.schedule_task(task)
+        self.lock.release()
 ```
 
 The same logic holds for `keypress`:
