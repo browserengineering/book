@@ -1393,14 +1393,14 @@ can be quite difficult!]
 
 ``` {.python}
 class Chrome:
-    def enter(self):
-        if self.focus == "address bar":
-            self.browser.schedule_load(URL(self.address_bar))
-
     def click(self, x, y):
         # ...
             self.browser.new_tab_internal(
                 URL("https://browser.engineering/"))
+
+    def enter(self):
+        if self.focus == "address bar":
+            self.browser.schedule_load(URL(self.address_bar))
 ```
 
 Event handlers are mostly similar, except that we need to be careful
