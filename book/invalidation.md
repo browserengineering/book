@@ -1200,7 +1200,7 @@ working. There's one tricky case: `tree_to_list`, which might deal
 with both protected and unprotected `children` fields. I fixed this
 with a type test:
 
-``` {.python replace=list)/l),ProtectedField/list,if/if%20not}
+``` {.python}
 def tree_to_list(tree, list):
     # ...
     children = tree.children
