@@ -1540,10 +1540,8 @@ class Browser:
         self.composited_updates = {}
 
     def set_active_tab(self, tab):
-        self.active_tab = tab
+        # ...
         self.clear_data()
-        self.needs_animation_frame = True
-        self.animation_timer = None
 ```
 
 
