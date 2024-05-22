@@ -1386,7 +1386,7 @@ class TaskRunner:
 ```
 
 In this case I had to split `new_tab` into a version that acquires a lock
-and one that doesn't (`new_tab_internal`, because cases like the `click`
+and one that doesn't (`new_tab_internal`), because cases like the `click`
 method on `Chrome` are called by `handle_click`, which has already acquired
 the lock.^[Using locks properly and avoiding race conditions and deadlocks
 can be quite difficult!]
