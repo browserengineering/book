@@ -23,15 +23,15 @@ from lab5 import BLOCK_ELEMENTS
 from lab6 import CSSParser, TagSelector, DescendantSelector
 from lab6 import INHERITED_PROPERTIES, style, cascade_priority
 from lab6 import tree_to_list
-from lab8 import Text, Element, DocumentLayout
+from lab8 import Text, Element
 from lab8 import DEFAULT_STYLE_SHEET, INPUT_WIDTH_PX
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, JSContext, URL
-from lab11 import get_font, DrawLine, DrawRect, DrawOutline
+from lab11 import get_font, DrawLine, DrawRect, DrawRRect, DrawOutline
 from lab11 import linespace, DrawText, Blend
-from lab11 import BlockLayout, LineLayout, TextLayout, InputLayout, Chrome
-from lab11 import Tab, Browser, paint_tree, parse_color, parse_blend_mode
-from lab11 import NAMED_COLORS, FONTS
+from lab11 import DocumentLayout, BlockLayout, LineLayout, TextLayout, InputLayout, Chrome
+from lab11 import Tab, Browser, paint_tree, paint_visual_effects
+from lab11 import parse_color, parse_blend_mode, NAMED_COLORS, FONTS
 
 class MeasureTime:
     def __init__(self):
@@ -86,8 +86,8 @@ class MeasureTime:
         self.file.close()
         self.lock.release()
 
-SETTIMEOUT_CODE = "__runSetTimeout(dukpy.handle)"
-XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
+SETTIMEOUT_JS = "__runSetTimeout(dukpy.handle)"
+XHR_ONLOAD_JS = "__runXHROnload(dukpy.out, dukpy.handle)"
 RUNTIME_JS = open("runtime12.js").read()
 
 @wbetools.patch(JSContext)
@@ -138,7 +138,7 @@ class JSContext:
     def dispatch_settimeout(self, handle):
         if self.discarded: return
         self.tab.browser.measure.time('script-settimeout')
-        self.interp.evaljs(SETTIMEOUT_CODE, handle=handle)
+        self.interp.evaljs(SETTIMEOUT_JS, handle=handle)
         self.tab.browser.measure.stop('script-settimeout')
 
     def setTimeout(self, handle, time):
@@ -151,7 +151,7 @@ class JSContext:
         if self.discarded: return
         self.tab.browser.measure.time('script-xhr')
         do_default = self.interp.evaljs(
-            XHR_ONLOAD_CODE, out=out, handle=handle)
+            XHR_ONLOAD_JS, out=out, handle=handle)
         self.tab.browser.measure.stop('script-xhr')
 
     def XMLHttpRequest_send(
@@ -408,8 +408,10 @@ class TaskRunner:
         self.condition.release()
 
     def clear_pending_tasks(self):
+        self.condition.acquire(blocking=True)
         self.tasks.clear()
         self.pending_scroll = None
+        self.condition.release()
 
     def start_thread(self):
         self.main_thread.start()
@@ -445,7 +447,8 @@ REFRESH_RATE_SEC = .033
 class Chrome:
     def click(self, x, y):
         if self.newtab_rect.contains(x, y):
-            self.browser.new_tab_internal(URL("https://browser.engineering/"))
+            self.browser.new_tab_internal(
+                URL("https://browser.engineering/"))
         elif self.back_rect.contains(x, y):
             task = Task(self.browser.active_tab.go_back)
             self.browser.active_tab.task_runner.schedule_task(task)

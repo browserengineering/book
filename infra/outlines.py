@@ -57,21 +57,6 @@ class Const(Item):
     def sub(self):
         return None
 
-@dataclass
-class IfMain:
-    pass
-    
-    def str(self):
-        return "if __name__ == \"__main__\""
-
-    def html(self):
-        return self.str().replace("if", "<span class=cf>if</span>") \
-            .replace("==", "<span class=op>==</span>") \
-            .replace("\"__main__\"", "<span class=st>\"__main__\"</span>")
-
-    def sub(self):
-        return None
-
 def write_str(objs, indent=0):
     for obj in objs:
         print(" " * indent, obj.str(), sep="")

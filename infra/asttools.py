@@ -173,7 +173,7 @@ def is_js_hide_decorator(dec):
         and isinstance(dec.value, ast.Name) and dec.value.id == "wbetools"
 
 def is_outline_hide_decorator(dec):
-    return isinstance(dec, ast.Attribute) and dec.attr == "outline" \
+    return isinstance(dec, ast.Attribute) and dec.attr == "outline_hide" \
         and isinstance(dec.value, ast.Name) and dec.value.id == "wbetools"
         
 class ResolveJSHide(ast.NodeTransformer):

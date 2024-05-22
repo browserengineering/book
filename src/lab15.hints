@@ -44,7 +44,5 @@
 {"code": "MeasureTime()", "js": "new MeasureTime()"},
 {"code": "len(self.tab.window_id_to_frame)", "js": "Object.keys(this.tab.window_id_to_frame).length"},
 {"code": "DEFAULT_STYLE_SHEET.copy()", "js": "constants.DEFAULT_STYLE_SHEET.slice()"},
-{"code": "open('runtime15.js').read()", "js": "filesystem.open('runtime15.js').read()"},
-{"code": "open('browser15.css').read()", "js": "filesystem.open('browser15.css').read()"},
 {"code": "response.read()", "js": "response.read()"}
 ]

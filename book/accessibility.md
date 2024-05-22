@@ -1523,7 +1523,7 @@ For the [focus example](examples/example14-focus.html), the focus outline
 of an `<a>` element becomes red, as in Figure 6.
 
 ::: {.center}
-![Figure 6: Example of a customized red focuse outline](examples/example14-focus-outline-custom.png)
+![Figure 6: Example of a customized red focus outline](examples/example14-focus-outline-custom.png)
 :::
 
 As with dark mode, focus outlines are a case where adding an
