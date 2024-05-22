@@ -477,7 +477,7 @@ a new `add_inline_child` method. We'll need to pass in the HTML node,
 the element, and the layout class to instantiate (plus a `word`
 parameter that's just for `TextLayout`s):
 
-``` {.python replace=child_class%2c/child_class%2c%20frame%2c,previous_word)/previous_word%2c%20frame)}
+``` {.python replace=child_class%2c/child_class%2c%20frame%2c,node%2c%20line%2c%20previous_word)/node%2c%20line%2c%20previous_word%2c%20frame)}
 class BlockLayout:
     def add_inline_child(self, node, w, child_class, word=None):
         if self.cursor_x + w > self.x + self.width:
@@ -485,7 +485,7 @@ class BlockLayout:
         line = self.children[-1]
         previous_word = line.children[-1] if line.children else None
         if word:
-            child = child_class(node, line, previous_word, word)
+            child = child_class(node, word, line, previous_word)
         else:
             child = child_class(node, line, previous_word)
         line.children.append(child)

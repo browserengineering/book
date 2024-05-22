@@ -1260,7 +1260,7 @@ In `TextLayout`, we again need to handle `font` (and hence have
 
 ``` {.python expected=False}
 class TextLayout:
-    def __init__(self, node, parent, previous, word):
+    def __init__(self, node, word, parent, previous):
         # ...
         self.width = ProtectedField()
         # ...
@@ -1481,7 +1481,7 @@ Let's start with `TextLayout`:
 
 ``` {.python ignore=ProtectedField}
 class TextLayout:
-    def __init__(self, node, parent, previous, word):
+    def __init__(self, node, word, parent, previous):
         # ...
         self.x = ProtectedField()
         self.y = ProtectedField()
@@ -2506,7 +2506,7 @@ everything:
 
 ``` {.python}
 class TextLayout:
-    def __init__(self, node, parent, previous, word):
+    def __init__(self, node, word, parent, previous):
         # ...
         self.zoom = ProtectedField(self, "zoom", self.parent,
             [self.parent.zoom])

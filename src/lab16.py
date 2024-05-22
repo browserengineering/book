@@ -466,7 +466,7 @@ class BlockLayout:
             self.new_line()
         line = self.temp_children[-1]
         if word:
-            child = child_class(node, line, self.previous_word, word)
+            child = child_class(node, word, line, self.previous_word)
         else:
             child = child_class(node, line, self.previous_word, frame)
         line.children.append(child)
