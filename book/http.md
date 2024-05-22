@@ -27,11 +27,11 @@ identifies a particular web page that the browser should visit.
 :::
 
 ::: {.center}
-Figure 1: The syntax of URLs
+Figure 1: The syntax of URLs.
 :::
 
 ::: {.print-only}
-![Figure 1: The syntax of URLs](im/http-url.png)
+![Figure 1: The syntax of URLs.](im/http-url.png)
 :::
 
 A URL has three parts (see Figure 1): the scheme\index{scheme} explains *how* to get the
@@ -151,8 +151,12 @@ is shown in Figure 2. You can type it into `telnet` to try it.
     EOF
 :::
 
+::: {.center .web-only}
+Figure 2: An annotated HTTP GET request.
+:::
+
 ::: {.print-only}
-![Figure 2: An annotated HTTP GET request](im/http-get.png)
+![Figure 2: An annotated HTTP GET request.](im/http-get.png)
 :::
 
 Here, the word `GET`\index{GET} means that the browser would like to receive
@@ -218,8 +222,12 @@ The server's response starts with the line in Figure 3.
     EOF
 :::
 
+::: {.center .web-only}
+Figure 3: Annotated first line of an HTTP response.
+:::
+
 ::: {.print-only}
-![Figure 3: Annotated first line of an HTTP response](im/http-status.png)
+![Figure 3: Annotated first line of an HTTP response.](im/http-status.png)
 :::
 
 This tells you that the host confirms that it, too, speaks `HTTP/1.0`,
@@ -280,8 +288,10 @@ code that contains the content of the web page itself.
 The HTTP request/response transaction is summarized in Figure 4. Let's now
 switch gears from manual connections to Python.
 
+::: {.center}
 ![Figure 4: An HTTP request and response pair are how a web browser gets web
-pages from a web server](im/http-request.png)
+pages from a web server.](im/http-request.png)
+:::
 
 ::: {.further}
 Wikipedia has nice lists of HTTP [headers][headers] and [response codes][codes].
@@ -750,7 +760,9 @@ to, and of course how to make sure that the browser is connecting to
 the correct host. The difference in the protocol layers is shown in
 Figure 5.
 
+::: {.center}
 ![Figure 5: The difference between HTTP and HTTPS is the addition of a TLS layer.](im/http-tls.png)
+:::
 
 Luckily, the Python `ssl` library implements all of these details for
 us, so making an encrypted connection is almost as easy as making a
@@ -843,6 +855,10 @@ Figure 6.
     python3 infra/annotate_code.py <<EOF
     http://example.org:[8080][tl|Port]/index.html
     EOF
+:::
+
+::: {.center}
+Figure 6: Where the port goes in a URL.
 :::
 
 ::: {.print-only}
