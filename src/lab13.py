@@ -306,22 +306,6 @@ def parse_transform(transform_str):
 
 @wbetools.patch(CSSParser)
 class CSSParser:
-    def word(self):
-        start = self.i
-        in_quote = False
-        while self.i < len(self.s):
-            cur = self.s[self.i]
-            if cur == "'":
-                in_quote = not in_quote
-            elif cur.isalnum() or cur in ",/#-.%()\"'" \
-                or (in_quote and cur == ':'):
-                self.i += 1
-            else:
-                break
-        if not (self.i > start):
-            raise Exception("Parsing error")
-        return self.s[start:self.i]
-
     def until_chars(self, chars):
         start = self.i
         while self.i < len(self.s) and self.s[self.i] not in chars:
