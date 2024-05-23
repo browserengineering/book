@@ -46,7 +46,7 @@ from lab13 import map_translation, parse_transform, parse_transition
 from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import PaintCommand, DrawText, DrawCompositedLayer, DrawOutline, \
     DrawLine, DrawRRect, DrawRect
-from lab13 import VisualEffect, Blend, Transform, Tab, Browser
+from lab13 import VisualEffect, Blend, Transform, Tab, Browser, CSSParser
 
 @wbetools.patch(Element)
 class Element:
@@ -644,78 +644,8 @@ class PseudoclassSelector:
     def __repr__(self):
         return "PseudoclassSelector({}, {})".format(self.pseudoclass, self.base)
 
+@wbetools.patch(CSSParser)
 class CSSParser:
-    def __init__(self, s):
-        self.s = s
-        self.i = 0
-
-    def whitespace(self):
-        while self.i < len(self.s) and self.s[self.i].isspace():
-            self.i += 1
-
-    def literal(self, literal):
-        if not (self.i < len(self.s) and self.s[self.i] == literal):
-            raise Exception("Parsing error")
-        self.i += 1
-
-    def word(self):
-        start = self.i
-        in_quote = False
-        while self.i < len(self.s):
-            cur = self.s[self.i]
-            if cur == "'":
-                in_quote = not in_quote
-            if cur == "(":
-                in_parens = True
-            if cur.isalnum() or cur in ",/#-.%()\"'" \
-                or (in_quote and cur == ':'):
-                self.i += 1
-            else:
-                break
-        if not (self.i > start):
-            raise Exception("Parsing error")
-
-        return self.s[start:self.i]
-
-    def until_chars(self, chars):
-        start = self.i
-        while self.i < len(self.s) and self.s[self.i] not in chars:
-            self.i += 1
-        return self.s[start:self.i]
-
-    def pair(self, until):
-        prop = self.word()
-        self.whitespace()
-        self.literal(":")
-        self.whitespace()
-        val = self.until_chars(until)
-        return prop.casefold(), val.strip()
-
-    def ignore_until(self, chars):
-        while self.i < len(self.s):
-            if self.s[self.i] in chars:
-                return self.s[self.i]
-            else:
-                self.i += 1
-
-    def body(self):
-        pairs = {}
-        while self.i < len(self.s) and self.s[self.i] != "}":
-            try:
-                prop, val = self.pair([";", "}"])
-                pairs[prop.casefold()] = val
-                self.whitespace()
-                self.literal(";")
-                self.whitespace()
-            except Exception:
-                why = self.ignore_until([";", "}"])
-                if why == ";":
-                    self.literal(";")
-                    self.whitespace()
-                else:
-                    break
-        return pairs
-
     def simple_selector(self):
         out = TagSelector(self.word().casefold())
         if self.i < len(self.s) and self.s[self.i] == ":":
@@ -739,7 +669,7 @@ class CSSParser:
         self.whitespace()
         self.literal("(")
         self.whitespace()
-        prop, val = self.pair(")")
+        prop, val = self.pair([")"])
         self.whitespace()
         self.literal(")")
         return prop, val

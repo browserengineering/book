@@ -698,7 +698,7 @@ class CSSParser:
         self.whitespace()
         self.literal("(")
         self.whitespace()
-        prop, val = self.pair()
+        prop, val = self.pair([")"])
         self.whitespace()
         self.literal(")")
         return prop, val
@@ -1423,46 +1423,7 @@ this to show a 3px red outline:[^outline-syntax]
 [^outline-syntax]: We'll only implement this syntax, but `outline` can
     also take a few other forms.
 
-The first challenge in implementing `outline` is that, annoyingly, at the moment
-our CSS parser doesn't recognize the line above as a valid property/value pair,
-since it parses values as a single word. Let's upgrade the parser to recognize
-any string of characters except one of a specified set of `chars`:
-
-``` {.python}
-class CSSParser:
-    def until_chars(self, chars):
-        start = self.i
-        while self.i < len(self.s) and self.s[self.i] not in chars:
-            self.i += 1
-        return self.s[start:self.i]
-
-    def pair(self, until):
-        # ...
-        val = self.until_chars(until)
-        # ...
-        return prop.casefold(), val.strip()
-```
-
-Inside a CSS rule body, a property value continues until a semicolon
-or a close curly brace, but inside a media query it continues until a
-close parenthesis:
-
-``` {.python}
-class CSSParser:
-    def body(self):
-        while self.i < len(self.s) and self.s[self.i] != "}":
-            try:
-                prop, val = self.pair([";", "}"])
-                # ...
-
-    def media_query(self):
-        # ...
-        prop, val = self.pair(")")
-        # ...
-```
-
-Now we have `outline`'s value in the relevant element's `style`. We can
-parse that into a thickness and a color:
+We can parse that into a thickness and a color:
 
 ``` {.python}
 def parse_outline(outline_str):
