@@ -178,9 +178,9 @@ varying heights:[^varying-times]
     with many different length units all called "point" around the
     world. The [Wikipedia page][wiki-point] has the details, but a
     traditional American/British point is actually slightly less than
-    1/72 of an inch. The 1/72nd standard comes from PostScript, but
+    1/72 of an inch. The 1/72 standard comes from PostScript, but
     some systems predate it; `TeX`{=html} `\TeX`{=latex}, for example, hews closer to the
-    traditional point, approximating it as 1/72.27th of an inch.
+    traditional point, approximating it as 1/72.27 of an inch.
     
 [wiki-point]: https://en.wikipedia.org/wiki/Point_(typography)
 
@@ -455,7 +455,7 @@ Note that `Text` and `Tag` are asymmetric: `lex` avoids empty
 `Tag` object represents the HTML code `<>`, while an empty `Text`
 object with empty text represents no content at all.
 
-Since we've modified `lex`, we are now passing `layout` not just the
+Since we've modified `lex` we are now passing `layout` not just the
 text of the page, but also the tags in it. So `layout` must loop over
 tokens, not text:
 
@@ -1018,9 +1018,9 @@ is a good test case.
     entity, which expands to a soft hyphen.
 
 3-4 *Small caps*. Make the `<abbr>` element render text in small caps,
-`<abbr>like this</abbr>`{=html}`\textsc{line this}`{=latex}. Inside an `<abbr>` tag, lower-case letters
+`<abbr>like this</abbr>`{=html}`\textsc{like this}`{=latex}. Inside an `<abbr>` tag, lower-case letters
 should be small, capitalized, and bold, while all other characters
-(upper case, numbers, etc) should be drawn in the normal font.
+(upper case, numbers, etc.) should be drawn in the normal font.
 
 3-5 *Preformatted text*. Add support for the `<pre>` tag. Unlike normal
 paragraphs, text inside `<pre>` tags doesn't automatically break

@@ -67,7 +67,7 @@ with `example.org`”, and it does.
     communications in ethernet frames, on wireless you have to do even
     more. I'm trying to be brief.
 
-[^switch-ap]: Or a switch, or an access point, there are a lot of possibilities,
+[^switch-ap]: Or a switch, or an access point; there are a lot of possibilities,
 but eventually there is a router.
 
 [^network-tracing]: They may also record where the message came from so they can
@@ -121,9 +121,9 @@ now talk to `example.org`.
     obscure `telnet` features.
 
 ::: {.further}
-The URL syntax is defined in [RFC
-3987](https://tools.ietf.org/html/rfc3986), whose first author is Tim
-Berners-Lee---no surprise there! The second author is Roy Fielding, a
+The URL syntax is defined in
+[RFC 3987](https://tools.ietf.org/html/rfc3986), whose first author is
+Tim Berners-Lee---no surprise there! The second author is Roy Fielding, a
 key contributor to the design of HTTP and also well known for describing
 the Representational State Transfer (REST) architecture of the web in his [Ph.D. thesis][rest-thesis],
 which explains how REST allowed the web to grow in a decentralized
@@ -141,7 +141,7 @@ Requesting information
 Once it's connected, the browser requests information from the server
 by giving its *path*, the path being the part of a URL that comes
 after the host name, like `/index.html`. The structure of the request
-is shown in Figure 2. You can type it into `telnet` to try it.
+is shown in Figure 2. You can type this into `telnet` to try it.
 
 ::: {.cmd .web-only html=True}
     python3 infra/annotate_code.py <<EOF
@@ -167,7 +167,7 @@ information,[^11] then comes the path, and finally there is the word
 The HTTP 1.1 standard adds a variety of useful features, like
 keep-alive, but in the interest of simplicity our browser won't use
 them. We're also not implementing HTTP 2.0; it is much more
-complex than the 1.X series, and is intended for large and complex web
+complex than the 1.*x* series, and is intended for large and complex web
 applications, which our browser can't run anyway.
 
 [HTTP]: https://developer.mozilla.org/en-US/docs/Web/HTTP
@@ -446,7 +446,7 @@ This talks to `example.org` to set up the connection and ready both
 computers to exchange data.
 
 ::: {.quirk}
-Naturally, this won't work if you're offline. It also might not work if
+Naturally this won't work if you're offline. It also might not work if
 you're behind a proxy, or in a variety of more complex networking
 environments. The workaround will depend on your setup---it might be
 as simple as disabling your proxy, or it could be much more complex.
@@ -492,9 +492,9 @@ you send that blank line at the end of the request. If you forget
 that, the other computer will keep waiting on you to send that
 newline, and you'll keep waiting on its response.[^literal]
 
-[^send-return]: `send` actually returns a number (`47` in this case)
-    that tells you how many bytes of data you sent to the other
-    computer. If, say, your network connection failed midway through
+[^send-return]: `send` actually returns a number, in this case `47`.
+    That tells you how many bytes of data you sent to the other
+    computer; if, say, your network connection failed midway through
     sending the data, you might want to know how much you sent before
     the connection failed.
 
@@ -508,7 +508,7 @@ there's a corresponding `decode` method that goes the other
 way.[^charset] Python reminds you to be careful by giving different
 types to text and to bytes:
 
-[^charset]: When you call `encode` and `decode`, you need to tell the
+[^charset]: When you call `encode` and `decode` you need to tell the
     computer what *character encoding* you want it to use. This is a
     complicated topic. I'm using `utf8` here, which is a common
     character encoding and will work on many pages, but in the real
@@ -575,7 +575,7 @@ class URL:
 ```
 
 Note that I do *not* check that the server's version of HTTP is the
-same as mine. This might sound like a good idea, but there are a lot
+same as mine; this might sound like a good idea, but there are a lot
 of misconfigured servers out there that respond in HTTP 1.1 even when
 you talk to them in HTTP 1.0.^[Luckily the protocols are similar
 enough to not cause confusion.]
@@ -600,7 +600,7 @@ them to lower case.[^casefold] Also, whitespace is insignificant in HTTP
 header values, so I strip off extra whitespace at the beginning and end.
 
 [^casefold]: I used [`casefold`][casefold] instead of `lower`, because it works
-better in more languages.
+better for more languages.
 
 [casefold]: https://docs.python.org/3/library/stdtypes.html#str.casefold
 
@@ -736,8 +736,8 @@ web page. You can also try using it on [this chapter](https://browser.engineerin
 
 ::: {.further}
 HTML, just like URLs and HTTP, is designed to be very easy to parse and
-display at a basic level. And in the beginning, there were very few features
-of HTML, so it was possible to code up something not so much more fancy than
+display at a basic level. And in the beginning there were very few features
+in HTML, so it was possible to code up something not so much more fancy than
 what you see here, yet still display the content in a usable way. Even our
 super simple and basic HTML parser can already print out the text of the
 [browser.engineering](https://browser.engineering/) website.
@@ -757,7 +757,7 @@ normal `http` scheme, except that all communication between the browser
 and the host is encrypted. There are quite a few details to how this works:
 which encryption algorithms are used, how a common encryption key is agreed
 to, and of course how to make sure that the browser is connecting to
-the correct host. The difference in the protocol layers is shown in
+the correct host. The difference in the protocol layers involved is shown in
 Figure 5.
 
 ::: {.center}
@@ -1008,7 +1008,7 @@ header, specifically for the `no-store` and `max-age` values. If the
 `Cache-Control` header contains any value other than these two, it's best not
 to cache the response.
 
-1-9 *Compression*. Add support for HTTP compression. In HTTP compression the browser
+1-9 *Compression*. Add support for HTTP compression, in which the browser
 [informs the server][negotiate] that compressed data is acceptable.
 Your browser must send the `Accept-Encoding` header with the value
 `gzip`. If the server supports compression, its response will have a

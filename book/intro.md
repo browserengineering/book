@@ -273,8 +273,8 @@ font and window sizes, desired positions and sizes, and the relative arrangement
 of widgets is rarely specified directly.
 
 [^style-calculation]: For example, when exactly does the browser
-compute HTML element's styles? Any change to the styles is visible to
-all subsequent API calls, so in that sense it applies "immediately."
+compute HTML element styles? Any change to the styles is visible to
+all subsequent API calls, so in that sense it applies "immediately".
 But it is better for the browser to delay style recalculation,
 avoiding redundant work if styles change twice in quick succession.
 Maximally exploiting the opportunities afforded by declarative
