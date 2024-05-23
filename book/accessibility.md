@@ -160,19 +160,20 @@ To handle modifier keys, we'll need to listen to both "key down" and
 "key up" events in the event loop, and store whether the `Ctrl` key is pressed:
 
 ``` {.python}
+def mainloop(browser):
+    # ...
     ctrl_down = False
     while True:
 		if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-			# ...
             elif event.type == sdl2.SDL_KEYDOWN:
                 # ...
-                 elif event.key.keysym.sym == sdl2.SDLK_RCTRL or \
-                     event.key.keysym.sym == sdl2.SDLK_LCTRL:
-                     ctrl_down = True            	
+                elif event.key.keysym.sym == sdl2.SDLK_RCTRL or \
+                    event.key.keysym.sym == sdl2.SDLK_LCTRL:
+                    ctrl_down = True            	
              elif event.type == sdl2.SDL_KEYUP:
-                 if event.key.keysym.sym == sdl2.SDLK_RCTRL or \
-                     event.key.keysym.sym == sdl2.SDLK_LCTRL:
-                     ctrl_down = False
+                if event.key.keysym.sym == sdl2.SDLK_RCTRL or \
+                    event.key.keysym.sym == sdl2.SDLK_LCTRL:
+                    ctrl_down = False
              	# ...
 ```
 
@@ -180,7 +181,7 @@ Now we can have a case in the key handling code for "key down" events
 while the `Ctrl` key is held:
 
 ``` {.python}
-    ctrl_down = False
+def mainloop(browser):
     while True:
 		if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             elif event.type == sdl2.SDL_KEYDOWN:
@@ -481,9 +482,10 @@ before becoming widely used.
 We'll trigger dark mode in the event loop with `Ctrl-d`:
 
 ``` {.python}
+def mainloop(browser):
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            # ...
+            elif event.type == sdl2.SDL_KEYDOWN:
                 if ctrl_down:
                     # ...
                     elif event.key.keysym.sym == sdl2.SDLK_d:
@@ -830,6 +832,7 @@ minimizing or maximizing the browser window. Those require calling
 specialized OS APIs, so I won't implement them.
 
 ``` {.python}
+def mainloop(browser):
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             elif event.type == sdl2.SDL_KEYDOWN:
@@ -900,6 +903,7 @@ the link.
 We'll start by binding those keys in the event loop:
 
 ``` {.python}
+def mainloop(browser):
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             elif event.type == sdl2.SDL_KEYDOWN:
@@ -1859,13 +1863,14 @@ on and off. While real operating systems typically use more obscure
 shortcuts, I'll use `Ctrl-a` to turn on the screen reader in the event loop:
 
 ``` {.python}
+def mainloop(browser):
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            # ...
+            elif event.type == sdl2.SDL_KEYDOWN:
                 if ctrl_down:
                     # ...
                     elif event.key.keysym.sym == sdl2.SDLK_a:
-                        browser.toggle_accessibility()            
+                        browser.toggle_accessibility()
 ```
 
 The `toggle_accessibility` method tells the `Tab` that accessibility
@@ -2390,6 +2395,7 @@ So let's implement the read-on-hover feature. First we need to listen for mouse
 move events in the event loop, which in SDL are called `MOUSEMOTION`:
 
 ``` {.python}
+def mainloop(browser):
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             # ...
