@@ -1064,7 +1064,42 @@ def style(node, rules):
 This `diff_styles` function is going to look for all properties that are
 mentioned in the `transition` property and are different between the old and
 the new style. So first, we're going to have to parse the `transition`
-value:^[Note that this returns a dictionary mapping property names to transition
+value.
+
+The first challenge is, annoyingly, that at the moment
+our CSS parser doesn't recognize `opacity 2s` as a valid CSS value,
+since it parses values as a single word. Let's upgrade the parser to recognize
+any string of characters except one of a specified set of `chars`:
+
+``` {.python}
+class CSSParser:
+    def until_chars(self, chars):
+        start = self.i
+        while self.i < len(self.s) and self.s[self.i] not in chars:
+            self.i += 1
+        return self.s[start:self.i]
+
+    def pair(self, until):
+        # ...
+        val = self.until_chars(until)
+        # ...
+        return prop.casefold(), val.strip()
+```
+
+Inside a CSS rule body, a property value continues until a semicolon
+or a close curly brace:
+
+``` {.python}
+class CSSParser:
+    def body(self):
+        while self.i < len(self.s) and self.s[self.i] != "}":
+            try:
+                prop, val = self.pair([";", "}"])
+                # ...
+```
+
+Now that we parse the CSS property, we can parse out the properties
+with transitions:^[Note that this returns a dictionary mapping property names to transition
 durations, measured in frames.]
 
 ``` {.python}
