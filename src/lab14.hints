@@ -4,8 +4,6 @@
 {"code": "b'Browser'", "js": "'Browser'"},
  {"code": "'href' in elt.attributes", "type": "dict"},
 {"code": "'content-security-policy' in headers", "type": "dict"},
-{"code": "self.s[self.i] in chars", "type": "list"},
-{"code": "self.s[self.i] not in chars", "type": "list"},
 {"code": "'value' in self.node.attributes", "type": "dict"},
 {"code": "'tabindex' in node.attributes", "type": "dict"},
 {"code": "'src' in node.attributes", "type": "dict"},

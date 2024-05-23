@@ -10,7 +10,7 @@
  {"code": "len(self.node_to_handle)", "js": "this.node_to_handle.size"},
  {"code": "self.node_to_handle[elt] = handle", "js": "      this.node_to_handle.set(elt, handle);"},
  {"code": "('OpenGL initialized: vendor={},' + 'renderer={}').format(OpenGL.GL.glGetString(OpenGL.GL.GL_VENDOR), OpenGL.GL.glGetString(OpenGL.GL.GL_RENDERER))", "js": ""},
- {"code": "self.s[self.i] in chars", "js": "chars.find((c) => c == this.s[this.i])"},
+ {"code": "self.s[self.i] not in chars", "type": "str"},
  {"code": "property not in old_style", "type": "dict"},
  {"code": "property not in new_style", "type": "dict"},
  {"code": "'style' in node.attributes", "type": "dict"},
