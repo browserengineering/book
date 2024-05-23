@@ -1010,7 +1010,7 @@ for it.[^entity] If a word doesn't fit at the end of a line, check if
 it has soft hyphens, and if so break the word across lines. Remember
 that a word can have multiple soft hyphens in it, and make sure to
 draw a hyphen when you break a word. The word
-"super­cala­fraga­listic­expi­ala­do­shus"
+"super­cali­fragi­listic­expi­ali­docious"
 is a good test case.
 
 [^entity]: If you've done a [previous exercise](http.md#exercises) on
