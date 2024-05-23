@@ -1897,12 +1897,12 @@ mostly a historical artifact.)
 
 [transform-def]: https://developer.mozilla.org/en-US/docs/Web/CSS/transform
 
-::: {.example}
-    <div style="background-color:lightblue;
-                transform:translate(50px, 50px)">Underneath</div>
-    <div style="background-color:lightgreen;
-                transform:translate(0px, 0px)">On top</div>
-:::
+``` {.html .example}
+<div style="background-color:lightblue;
+            transform:translate(50px, 50px)">Underneath</div>
+<div style="background-color:lightgreen;
+            transform:translate(0px, 0px)">On top</div>
+```
 
 Supporting these transforms is simple. First let's parse the property
 values:[^space-separated]

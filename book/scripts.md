@@ -41,7 +41,7 @@ The first step to using DukPy is installing it. On most machines,
 including on Windows, macOS, and Linux systems, you should be able to
 do this with:
 
-``` {.example}
+``` {.sh}
 python3 -m pip install dukpy
 ```
 

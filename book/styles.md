@@ -17,7 +17,7 @@ Parsing with functions
 One way a web page can change its appearance is with the `style`\index{style}
 attribute. For example, this changes an element's background color:
 
-``` {.example}
+``` {.html .example style=background-color:lightblue}
 <div style="background-color:lightblue"></div>
 ```
 
@@ -257,12 +257,8 @@ I've removed the default gray background from `pre` elements for now,
 but we'll put it back soon.
 
 Load [the web version of this chapter](https://browser.engineering/styles.html)
-in your browser to test your code: the following code block
-should now have a light blue background:
-
-``` {.example style=background-color:lightblue}
-<div style="background-color:lightblue"> ... </div>
-```
+in your browser to test your code: the code block at the start of the chapter
+should now have a light blue background.
 
 So this is one way web pages can change their appearance. And in the
 early days of the web,^[I'm talking Netscape 3. The late 1990s.]
