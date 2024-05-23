@@ -1188,12 +1188,6 @@ should now look something like this:
 :::
 
 
-The server's outline is unchanged from the last chapter:
-
-::: {.cmd .python .outline html=True}
-    python3 infra/outlines.py --html src/server9.py
-:::
-
 Exercises
 =========
 
