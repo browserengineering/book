@@ -325,7 +325,7 @@ class MockCanvas:
     def save(self):
         self.commands.append("save()")
 
-    def saveLayer(self, paint):
+    def saveLayer(self, ignored, paint):
         format_str = "saveLayer(" + MockCanvas.format_paint(paint, False)
         self.commands.append((format_str + ")").format(
             color=paint.getColor(),

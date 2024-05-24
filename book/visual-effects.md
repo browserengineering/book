@@ -89,8 +89,7 @@ to [WebAssembly][webassembly] to do the same.
 [webassembly]: https://developer.mozilla.org/en-US/docs/WebAssembly
 [canvaskit]: https://skia.org/docs/user/modules/canvaskit/
 
-
-SDL creates the window
+SDL Creates the Window
 ======================
 
 The first big task is to switch to using SDL to create the window and
@@ -184,8 +183,7 @@ SDL is most popular for making games. Their site lists [a selection of
 books](https://wiki.libsdl.org/Books) about game programming in SDL.
 :::
 
-
-Surfaces and pixels
+Surfaces and Pixels
 ===================
 
 Let's peek under the hood of these SDL calls. 
@@ -640,7 +638,8 @@ class BlockLayout:
                 self.self_rect(), radius, bgcolor))
 ```
 
-With that, [this example](https://browser.engineering/examples/example11-rounded-background.html) will round the corners of its background (See Figure 1; notice that it does not round the text, though):
+With that, [this example](https://browser.engineering/examples/example11-rounded-background.html) will round the corners of its background
+(see Figure 1; notice that it does not round the text, though):
 
 ::: {.transclude .html}
 www/examples/example11-rounded-background.html
@@ -669,7 +668,7 @@ high-density enough to retire these techniques.
 
 [font-hinting]: https://en.wikipedia.org/wiki/Font_hinting
 
-Browser compositing
+Browser Compositing
 ===================
 
 Skia and SDL have just made our browser more complex, but the
@@ -1021,7 +1020,7 @@ complicated to handle in real browsers.
 
 [containing-block]: https://developer.mozilla.org/en-US/docs/Web/CSS/Containing_block
 
-Blending and stacking
+Blending and Stacking
 =====================
 
 To handle the order of operations properly,
@@ -1066,7 +1065,7 @@ that that effect will be applied to, like this:
 
 ``` {.python .example}
 # draw parent
-canvas.saveLayer(skia.Paint(Alphaf=0.5))
+canvas.saveLayer(None, skia.Paint(Alphaf=0.5))
 # draw children
 canvas.restore()
 ```
@@ -1075,7 +1074,7 @@ Here, the `saveLayer` call asks Skia[^layer-surface] to draw all the
 children to a separate
 surface before blending them into the parent once
 `restore` is called.
-The `paint` option to `saveLayer` specifies the specific type of
+The second parameter to `saveLayer` specifies the specific type of
 blending, here with the `Alphaf` parameter requesting 50% opacity.
 
 [^layer-surface]: It's called `saveLayer` instead of `createSurface` because
@@ -1162,15 +1161,15 @@ commands to a surface, and *then* apply transparency to it when
 blending into the parent.
 
 ::: {.further}
-I highly recommend [this blog post](https://ciechanow.ski/alpha-compositing/)
-giving a really nice visual overview of many of the same concepts explored in
+I highly recommend [this blog post](https://ciechanow.ski/alpha-compositing/),
+which gives a really nice visual overview of many of the same concepts explored in
 this chapter, plus way more content about how a library such as Skia might
 implement features like raster sampling of vector graphics for lines and text
 and interpolation of surfaces when their pixel arrays don't match resolution
 or orientation.
 :::
 
-Compositing pixels
+Compositing Pixels
 ==================
 
 Now let's pause and explore how opacity actually works under the hood.
@@ -1385,7 +1384,7 @@ class Blend:
         paint = skia.Paint(
             BlendMode=parse_blend_mode(self.blend_mode),
         )
-        canvas.saveLayer(paint)
+        canvas.saveLayer(None, paint)
         for cmd in self.children:
             cmd.execute(canvas)
         canvas.restore()
@@ -1428,7 +1427,7 @@ when resized][alpha-deriv].
 [alpha-deriv]: https://jcgt.org/published/0004/02/03/paper.pdf
 [premultiplied]: https://limnu.com/premultiplied-alpha-primer-artists/
 
-Clipping and masking
+Clipping and Masking
 ====================
 
 The "multiply" and "difference" blend modes can seem kind of obscure,
@@ -1620,7 +1619,7 @@ video][rr-video] walks through several.
 [hardware-overlays]: https://en.wikipedia.org/wiki/Hardware_overlay
 [rr-video]: https://css-tricks.com/video-screencasts/24-rounded-corners/
 
-Optimizing surface use
+Optimizing Surface Use
 ======================
 
 Our browser now works correctly, but uses way too many surfaces. For
@@ -1648,7 +1647,7 @@ class Opacity:
             Alphaf=self.opacity,
         )
         if self.opacity < 1:
-            canvas.saveLayer(paint)
+            canvas.saveLayer(None, paint)
         for cmd in self.children:
             cmd.execute(canvas)
         if self.opacity < 1:
@@ -1692,7 +1691,7 @@ class Blend:
             BlendMode=parse_blend_mode(self.blend_mode),
         )
         if self.blend_mode:
-            canvas.saveLayer(paint)
+            canvas.saveLayer(None, paint)
         for cmd in self.children:
             cmd.execute(canvas)
         if self.blend_mode:
@@ -1729,7 +1728,7 @@ class Blend:
             BlendMode=parse_blend_mode(self.blend_mode),
         )
         if self.should_save:
-            canvas.saveLayer(paint)
+            canvas.saveLayer(None, paint)
         for cmd in self.children:
             cmd.execute(canvas)
         if self.should_save:
@@ -1785,7 +1784,7 @@ text and boxes but also:
 - user-configurable blending modes via `mix-blend-mode`;
 - rounded rectangle clipping via destination-in blending or direct clipping;
 - optimizations to avoid surfaces when possible;
-- and browser compositing with extra surfaces for faster scrolling.
+- browser compositing with extra surfaces for faster scrolling.
 
 Besides the new features, we've upgraded from Tkinter to SDL and Skia,
 which makes our browser faster and more responsive, and also sets a
@@ -1849,7 +1848,7 @@ implement Exercise 6-2) so that `height` is supported.) Implement some
 version of `overflow: scroll`. I recommend the following user
 interaction: the user clicks within a scrollable element to focus it,
 and then can press the arrow keys to scroll up and down. You'll need
-to keep track of the [layout overflow][overflow-doc]. For an extra
+to keep track of the [*layout overflow*][overflow-doc]. For an extra
 challenge, make sure you support scrollable elements nested within
 other scrollable elements.
 

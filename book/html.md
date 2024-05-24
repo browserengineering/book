@@ -66,7 +66,9 @@ parser builds a tree one element or text node at a time. But that
 means the parser needs to store an *incomplete* tree as it goes. For example,
 suppose the parser has so far read this bit of HTML:
 
-    <html><video></video><section><h1>This is my webpage
+``` {.html .example}
+<html><video></video><section><h1>This is my webpage
+```
 
 The parser has seen five tags (and one text node). The rest of the
 HTML will contain more open tags, close tags, and text; but no matter

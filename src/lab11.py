@@ -110,7 +110,7 @@ class Blend:
             BlendMode=parse_blend_mode(self.blend_mode),
         )
         if self.should_save:
-            canvas.saveLayer(paint)
+            canvas.saveLayer(None, paint)
         for cmd in self.children:
             cmd.execute(canvas)
         if self.should_save:

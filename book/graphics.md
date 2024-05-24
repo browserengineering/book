@@ -62,7 +62,7 @@ while True:
     drawScreen()
 ```
 
-::: {.print-only}
+::: {.center}
 ![Figure 1: Flowchart of an event-handling cycle.](im/graphics-cycle.png)
 :::
 

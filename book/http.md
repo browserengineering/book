@@ -729,7 +729,9 @@ executing this script from the command line. The code reads the first
 argument (`sys.argv[1]`) from the command line and uses it as a URL.
 Try running this code on the URL `http://example.org/`:
 
-    python3 browser.py http://example.org/
+``` {.sh}
+python3 browser.py http://example.org/
+```
 
 You should see some short text welcoming you to the official example
 web page. You can also try using it on [this chapter](https://browser.engineering/http.html)!

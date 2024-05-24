@@ -20,7 +20,9 @@ content on the web,[^img-late] dating back to [early
 1993][img-email].[^img-history] They're included on web pages via the
 `<img>` tag, which looks like this:
 
-    <img src="https://browser.engineering/im/hes.jpg">
+``` {.html .example}
+<img src="https://browser.engineering/im/hes.jpg">
+```
 
 [img-email]: http://1997.webhistory.org/www.lists/www-talk.1993q1/0182.html
 
@@ -38,10 +40,9 @@ wait for the introduction of Skia.
 This particular example renders as shown in Figure 1.
 
 ::: {.center}
-![Figure 1: A computer operator using the Hypertext Editing System in 1969.[^hes]](im/hes.jpg)
+![Figure 1: A computer operator using the Hypertext Editing System in
+1969. (Gregory Lloyd from [Wikipedia](https://commons.wikimedia.org/wiki/File:HypertextEditingSystemConsoleBrownUniv1969.jpg), CC BY-SA 4.0 International.)](im/hes.jpg)
 :::
-
-[^hes]: Gregory Lloyd from <a href="https://commons.wikimedia.org/wiki/File:HypertextEditingSystemConsoleBrownUniv1969.jpg">Wikipedia</a>, <a href="https://creativecommons.org/licenses/by/2.0/legalcode" rel="license">CC BY 2.0</a>.
 
 Luckily, implementing images isn't too hard, so let's just get
 started. There are four steps to displaying images in our browser:
@@ -544,8 +545,10 @@ image on the screen!
 But what about our second output modality, screen readers? That's what
 the `alt` attribute is for. It works like this:
 
-    <img src="https://browser.engineering/im/hes.jpg"
-    alt="An operator using the Hypertext Editing System in 1969">
+``` {.html .example}
+<img src="https://browser.engineering/im/hes.jpg"
+  alt="An operator using the Hypertext Editing System in 1969">
+```
 
 Implementing this in `AccessibilityNode` is very easy:
 
@@ -698,7 +701,7 @@ property][aspect-ratio] is one way web pages can address this issue.
 [resp-design]: https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Responsive_Design
 [cls]: https://web.dev/cls/
 
-Interactive widgets
+Interactive Widgets
 ===================
 
 So far, our browser has two kinds of embedded content: images and
@@ -784,7 +787,7 @@ And the new `Frame` class will:
 
 * own the DOM, layout trees, and scroll offset for its HTML document;
 * run style and layout on the its DOM and layout tree;
-* Implement loading and event handling (focus, hit testing, etc) for its HTML
+* implement loading and event handling (focus, hit testing, etc) for its HTML
   document.
 
 Create these two classes and split the methods between them accordingly.
@@ -910,7 +913,7 @@ has gained support for hardware-accelerated 3D content, while
 
 [webassembly]: https://en.wikipedia.org/wiki/WebAssembly
 
-Iframe rendering
+Iframe Rendering
 ================
 
 Rendering is split between the `Tab` and its `Frame`s: the `Frame`
@@ -1266,7 +1269,7 @@ these elements in a way---it's short for "inline frame".
 
 [frameset]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/frameset
 
-Iframe input events
+Iframe Input Events
 ===================
 
 Now that we've got iframes rendering to the screen, let's close the
@@ -1321,7 +1324,7 @@ Repeatedly clicking on the link on that page will add another recursive iframe.
 After clicking twice it should look like Figure 6.
 
 ::: {.center}
-![Figure 6: Rendering of an iframe.](examples/example15-iframe-clicked.png)
+![Figure 6: Rendering of embedded iframes.](examples/example15-iframe-clicked.png)
 :::
 
 Let's get the other interactions working as well, starting with
@@ -1602,8 +1605,7 @@ by both sides.
 [overflow]: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow
 [threaded-scroll]: https://developer.chrome.com/articles/renderingng/#threaded-scrolling-animations-and-decode
 
-
-Iframe scripts
+Iframe Scripts
 ==============
 
 We've now got users interacting with iframes---but what about
@@ -1879,7 +1881,7 @@ order to get better security and performance.
 [domain-prop]: https://developer.mozilla.org/en-US/docs/Web/API/Document/domain
 [origin-headers]: https://html.spec.whatwg.org/multipage/browsers.html#origin-isolation
 
-Communicating between frames
+Communicating Between Frames
 ============================
 
 We've now managed to run multiple `Frame`s' worth of JavaScript in a
@@ -2139,7 +2141,7 @@ are probably the most popular [browser extensions][extensions].
 [extensions]: https://en.wikipedia.org/wiki/Browser_extension
 [io]: https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API
 
-Isolation and timing
+Isolation and Timing
 ====================
 
 Iframes add a whole new layer of security challenges atop what we
@@ -2244,14 +2246,14 @@ Summary
 This chapter introduced how the browser handles embedded content use cases like
 images and iframes. Reiterating the main points:
 
-- non-HTML *embedded content*---images, video, canvas, iframes, input elements,
-  and plugins---can be embedded in a web page;
-- embedded content comes with its own performance concerns---like
-  image decoding time---and necessitates custom optimizations;
-- iframes are a particularly important kind of embedded content,
+- Non-HTML *embedded content*---images, video, canvas, iframes, input elements,
+  and plugins---can be embedded in a web page.
+- Embedded content comes with its own performance concerns---like
+  image decoding time---and necessitates custom optimizations.
+- Iframes are a particularly important kind of embedded content,
   having over time replaced browser plugins as the standard way to
-  easily embed complex content into a web page;
-- and iframes introduce all the complexities of the web---rendering, event
+  easily embed complex content into a web page.
+- Iframes introduce all the complexities of the web---rendering, event
   handling, navigation, security---into the browser's handling of
   embedded content. However, this complexity is justified, because
   they enable important cross-origin use cases like ads, video, and
@@ -2281,7 +2283,6 @@ should now look something like this:
 ::: {.print-only .cmd .python .outline}
     python3 infra/outlines.py src/lab15.py --template book/outline.txt
 :::
-
 
 Exercises
 =========
@@ -2349,7 +2350,8 @@ yet loaded, if you do Exercise 15-4).
 [aspect-ratio]: https://developer.mozilla.org/en-US/docs/Web/CSS/aspect-ratio
 
 15-6 *Image placeholders*. Building on top of lazy loading, implement placeholder
-styling of images that haven't loaded yet. This is done by setting a 0 × 0
+styling of images that haven't loaded yet. This is done by setting a
+`0×0`{=html}`$0\times0$`{=latex}
 sizing, unless `width` or `height` is specified. Also add support for hiding the
 "broken image" if the `alt` attribute is missing or empty.^[That's because
 if `alt` text is provided, the browser can assume the image is important
@@ -2375,14 +2377,14 @@ between frames after iterating through all focusable elements in one
 frame.
 
 15-10 *Iframe history*. Ensure that iframes affect browser history. For
-example, if you click on a link inside an iframe, and then hit
+example, if you click on a link inside an iframe, and then hit the
 back button, it should go back inside the iframe. Make sure that this
 works even when the user clicks links in multiple frames in various
 orders.^[It's debatable whether this is a good feature of iframes, as
 it causes a lot of confusion for web developers who embed iframes they
 don't plan on navigating.]
 
-15-11 *Iframes added or removed by script*. the `innerHTML` API can cause
+15-11 *Iframes added or removed by script*. The `innerHTML` API can cause
 iframes to be added or removed, but our browser doesn't load or unload them
 when this happens. Fix this: new iframes should be loaded and old ones
 unloaded.

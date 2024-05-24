@@ -133,7 +133,7 @@ Measuring text
 Text takes up space vertically and horizontally, and the font object's
 `metrics` and `measure` methods measure that space:[^spacing]
 
-``` {.example}
+``` {.python .example}
 >>> bi_times.metrics()
 {'ascent': 15, 'descent': 4, 'linespace': 19, 'fixed': 0}
 >>> bi_times.measure("Hi!")
@@ -193,7 +193,7 @@ varying heights:[^varying-times]
     specified a bold, italic Times font. The bold, italic Times font
     is taller, at least on my current macOS system!
 
-``` {.example}
+``` {.python .example}
 >>> tkinter.font.Font(family="Courier", size=16).metrics()
 {'fixed': 1, 'ascent': 13, 'descent': 4, 'linespace': 17}
 >>> tkinter.font.Font(family="Times", size=16).metrics()
@@ -206,7 +206,7 @@ The `measure()` method is more direct: it tells you how much
 *horizontal* space text takes up, in pixels. This depends on the text,
 of course, since different letters have different widths:[^widths]
 
-``` {.example}
+``` {.python .example}
 >>> bi_times.measure("Hi!")
 24
 >>> bi_times.measure("H")
@@ -1010,7 +1010,7 @@ for it.[^entity] If a word doesn't fit at the end of a line, check if
 it has soft hyphens, and if so break the word across lines. Remember
 that a word can have multiple soft hyphens in it, and make sure to
 draw a hyphen when you break a word. The word
-"super­cala­fraga­listic­expi­ala­do­shus"
+"super­cali­fragi­listic­expi­ali­docious"
 is a good test case.
 
 [^entity]: If you've done a [previous exercise](http.md#exercises) on

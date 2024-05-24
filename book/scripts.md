@@ -41,7 +41,7 @@ The first step to using DukPy is installing it. On most machines,
 including on Windows, macOS, and Linux systems, you should be able to
 do this with:
 
-``` {.example}
+``` {.sh}
 python3 -m pip install dukpy
 ```
 
@@ -1187,12 +1187,6 @@ should now look something like this:
     python3 infra/outlines.py src/lab9.py --template book/outline.txt
 :::
 
-
-The server's outline is unchanged from the last chapter:
-
-::: {.cmd .python .outline html=True}
-    python3 infra/outlines.py --html src/server9.py
-:::
 
 Exercises
 =========
