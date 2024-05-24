@@ -5,7 +5,7 @@ prev: embeds
 next: skipped
 ...
 
-Compositing makes animations smoother, but
+Compositing (See Chapter 13) makes animations smoother, but
 it doesn't help with interactions that affect layout, like text
 editing or DOM modifications. Luckily, we can avoid redundant layout
 work by treating the layout tree as a kind of cache, and only
@@ -28,8 +28,9 @@ One good example is editing text. People type pretty quickly, so even
 a few frames' delay is distracting. But editing changes the HTML tree
 and therefore the layout tree. Rebuilding the layout tree from
 scratch, which our browser currently does, can be very slow on
-complex pages. Try, for example, loading [this
-chapter](https://browser.engineering/invalidation.html) in our browser and typing into the input box
+complex pages. Try, for example, loading
+[the web version of this chapter](https://browser.engineering/invalidation.html)
+in our browser and typing into the input box
 that appears after this paragraph...You'll find that it is *much* too
 slow---1.7 seconds just in `render`
 (see Figure 1)!^[Trace [here](https://browser.engineering/examples/example16-input-no-optimizations.trace).]
@@ -622,8 +623,7 @@ imagine him saying that quote while talking about layout invalidation.
 [quote-originates]: https://www.karlton.org/2017/12/naming-things-hard/
 [curmudgeon]: https://www.karlton.org/karlton/
 
-
-Protected fields
+Protected Fields
 ================
 
 Dirty flags like `children_dirty` are the traditional approach to
@@ -758,8 +758,7 @@ very specific sequence of changes.
 [under-invalidation]: https://developer.chrome.com/articles/layoutng/#under-invalidation
 [hard-to-find]: https://developer.chrome.com/articles/layoutng/#correctness
 
-
-Recursive invalidation
+Recursive Invalidation
 ======================
 
 Let's leverage the `ProtectedField` class to avoid recreating all of
@@ -977,13 +976,12 @@ Real browsers don't use automatic dependency-tracking like
 `ProtectedField` adds lots of objects and method calls, and it's easy
 to accidentally make performance worse by over-using it. It's also
 possible to create cascading work by invalidating too many protected
-fields. Finally, most browser engine codebases have a lot of
+fields. Finally, most browser engine code bases have a lot of
 historical code, and it takes a lot of time to refactor them to use
 new approaches.
 :::
 
-
-Protecting widths
+Protecting Widths
 =================
 
 Another field that line wrapping depends on is `width`. Let's convert
@@ -1234,8 +1232,7 @@ effect of that is pretty similar to what this book describes.
 [^our-book-simple]: This book doesn't separate out the fragment tree
     because our layout algorithm is simple enough not to need it.
 
-
-Widths for inline elements
+Widths for Inline Elements
 ==========================
 
 At this point, `BlockLayout` has a protected `width` field,
@@ -1334,9 +1331,7 @@ need to think about monads in general, just `ProtectedField`.
 [haskell]: https://www.haskell.org/
 [monad-tutorials]: https://wiki.haskell.org/Monad_tutorials_timeline
 
-
-
-Invalidating layout fields
+Invalidating Layout Fields
 ==========================
 
 While we're here, let's take a moment to protect all of the other layout
@@ -1466,7 +1461,7 @@ browsers.
 [ot]: https://en.wikipedia.org/wiki/Operational_transformation
 [dd]: https://www.microsoft.com/en-us/research/publication/differential-dataflow/
 
-Protecting inline layout
+Protecting Inline Layout
 ========================
 
 We need to protect `LineLayout`s', `TextLayout`s', and `EmbedLayout`s'
@@ -1721,9 +1716,7 @@ to better web page loading performance, and is the reason you'll often
 see web pages render only part of the HTML at first when loading large
 web pages (including this book!).
 
-
-
-Skipping no-op updates
+Skipping No-op Updates
 ======================
 
 We've got quite a number of layout fields now, so let's see how much
@@ -1870,12 +1863,8 @@ text) and checking that its `height` didn't change (necessary in case
 we wrapped onto more lines).
 
 Editing should also now feel snappier---about
-0.6 seconds instead of the original 1.7. Better, but still not
+0.6 seconds instead of the original 1.7 (see Figure 3). Better, but still not
 good:^[Trace [here](http://browser.engineering/examples/example16-input-reuse-layout-tree.trace).]
-
-Editing should also now feel snappier---about
-0.6 seconds instead of the original 1.7 (see Figure 3).
-Better, but still not good.
 
 ::: {.center}
 ![Figure 3: Snappier rendering due to reusing the layout tree.](examples/example16-input-reuse-layout-tree.png)
@@ -1900,7 +1889,7 @@ universal.
 [spreadsheet]: https://lord.io/spreadsheets/
 
 
-Skipping traversals
+Skipping Traversals
 ===================
 
 Now that all of the layout fields are protected, we can check if any
@@ -1916,14 +1905,14 @@ more calls to `layout`. Those steps can be skipped if:
 
 - we don't need to create child layout objects, meaning the `children`
   field isn't dirty;
-- we don't need to recompute layout fields, because they aren't dirty;
-- and we don't need to recursively call `layout`.
+- we don't need to recompute layout fields, because they aren't dirty; and
+- we don't need to recursively call `layout`.
 
 There's no dirty flag yet for the last condition, so let's add one.
 I'll call it `has_dirty_descendants` because it tracks whether any
 descendant has a dirty `ProtectedField`:[^ancestors]
 
-[^ancestors]: In some codebases, you will see these called *ancestor*
+[^ancestors]: In some code bases, you will see these called *ancestor*
     dirty flags instead. It's the same thing, just following the flow
     of dirty bits instead of the flow of control.
 
@@ -2077,7 +2066,7 @@ everything! I won't implement it, but paint can be made a lot faster
 too---see Exercise 16-10.)
 
 [^other-phases]:  It might also be pretty laggy on large pages due to the
-composite-raster-draw cycle being fairly slow, depending on which exercises you
+composite--raster--draw cycle being fairly slow, depending on which exercises you
 implemented in Chapter 13.
 
 ::: {.further}
@@ -2095,7 +2084,7 @@ performance by batching updates.
 [observer-pattern]: https://en.wikipedia.org/wiki/Observer_pattern
 [kvo]: https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/KeyValueObserving/KeyValueObserving.html
 
-Granular style invalidation
+Granular Style Invalidation
 ===========================
 
 Unfortunately, in the process of adding invalidation, we have
@@ -2209,7 +2198,7 @@ def style(node, rules, frame):
                 new_style[property] = parent_value
 ```
 
-Likewise, when resolving percentage font sizes:
+Likewise when resolving percentage font sizes:
 
 ``` {.python}
 def style(node, rules, frame):
@@ -2288,7 +2277,7 @@ class BlockLayout:
         # ...
 ```
 
-Likewise we pass in the `font` field if that's what we're computing:
+Likewise, we pass in the `font` field if that's what we're computing:
 
 ``` {.python expected=False}
 class TextLayout:
@@ -2343,7 +2332,7 @@ but this complexity is necessary for fast re-styles.
     DOM APIs that it wouldn't make sense to implement such an advanced
     invalidation technique, but for real browsers it is quite important.
 
-Analyzing dependencies
+Analyzing Dependencies
 ======================
 
 Layout is now pretty fast and correct thanks to the `ProtectedField`
@@ -2365,7 +2354,7 @@ accidental bugs in the future and also improve performance.
 
 [hardening]: https://en.wikipedia.org/wiki/Hardening_(computing)
 
-:::
+::: {.center}
 ![Figure 5: A dependency diagram for the layout fields in our browser.
 Simplified though it is, the dependency diagram is already quite complex.](im/protected-field-dependencies-bottom.jpg)
 :::
@@ -2687,17 +2676,17 @@ Summary
 This chapter introduces the concept of partial style and layout
 through optimized cache invalidation. The main takeaways are:
 
-- caching and invalidation is a powerful way to speed up key browser
-  interactions, and is therefore an essential technique in real browsers;
-- making rendering idempotent allows us skip redundant work
-  while guaranteeing that the page will look the same;
-- a good browser aims for the principle of incremental performance:
+- Caching and invalidation is a powerful way to speed up key browser
+  interactions, and is therefore an essential technique in real browsers.
+- Making rendering idempotent allows us skip redundant work
+  while guaranteeing that the page will look the same.
+- A good browser aims for the principle of incremental performance:
   the cost of a change should be proportional to size of the change,
-  not the size of the page as a whole;
-- cache invalidation is difficult and error-prone,
-  and justifies careful abstractions like `ProtectedField`;
-- and invalidation can be used to skip allocation, computation, and
-  even traversals of objects
+  not the size of the page as a whole.
+- Cache invalidation is difficult and error-prone,
+  and justifies careful abstractions like `ProtectedField`.
+- Invalidation can be used to skip allocation, computation, and
+  even traversals of objects.
 
 ::: {.web-only}
 
@@ -2750,7 +2739,7 @@ invalidation properly.
 information, so that the `style` phase doesn't need to traverse nodes
 whose styles are unchanged.
 
-16-5 *Resizing the browser*. Perhaps, in Exericse 2-3, you implemented
+16-5 *Resizing the browser*. Perhaps, back in Exericse 2-3, you implemented
 support for resizing the browser. (And most likely, you dropped support for
 it when we switched to SDL.) Reimplement support for resizing your browser;
 you'll need to pass the `SDL_WINDOW_RESIZABLE` flag to `SDL_CreateWindow`
