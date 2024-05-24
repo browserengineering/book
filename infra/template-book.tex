@@ -1,3 +1,11 @@
+% -*- mode: latex; -*-
+
+% ***********************************************************
+\newif\ifprintedoutput
+\printedoutputtrue % Use this for printed book output
+% \printedoutputfalse % Use this for electronic book output
+% ***********************************************************
+
 % ---- NOTE(chrishtr): The default pandoc latex template is below. Everything
 % above this line is our custom add-on. The template below *may* change with
 % future pandoc releases. To regenerate it, paste the output of
@@ -17,7 +25,7 @@ $if(CJKmainfont)$
 \PassOptionsToPackage{space}{xeCJK}
 $endif$
 %
-\documentclass[
+\documentclass[openany
 $if(fontsize)$
   $fontsize$,
 $endif$
@@ -227,16 +235,16 @@ $endif$
 }{}
 $if(indent)$
 $else$
-\makeatletter
-\@ifundefined{KOMAClassName}{% if non-KOMA class
-  \IfFileExists{parskip.sty}{%
-    \usepackage{parskip}
-  }{% else
-    \setlength{\parindent}{0pt}
-    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
-}{% if KOMA class
-  \KOMAoptions{parskip=half}}
-\makeatother
+% \makeatletter
+% \@ifundefined{KOMAClassName}{% if non-KOMA class
+%   \IfFileExists{parskip.sty}{%
+%     \usepackage{parskip}
+%   }{% else
+%     \setlength{\parindent}{0pt}
+%     \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+% }{% if KOMA class
+%   \KOMAoptions{parskip=half}}
+% \makeatother
 $endif$
 $if(verbatim-in-note)$
 \usepackage{fancyvrb}
@@ -317,11 +325,6 @@ $endif$
 \setlength{\emergencystretch}{3em} % prevent overfull lines
 \providecommand{\tightlist}{%
   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
-$if(numbersections)$
-\setcounter{secnumdepth}{$if(secnumdepth)$$secnumdepth$$else$5$endif$}
-$else$
-\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
-$endif$
 $if(subfigure)$
 \usepackage{subcaption}
 $endif$
@@ -423,6 +426,29 @@ $endif$
 $if(csquotes)$
 \usepackage{csquotes}
 $endif$
+
+% Copyediting changes
+\usepackage[bottom]{footmisc}
+
+\usepackage{fancyhdr}
+\fancyhead{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyhead[RO,LE]{\thepage}
+\fancyhead[RE]{\small\slshape\MakeUppercase\leftmark}
+\fancyhead[LO]{\small\slshape\MakeUppercase\rightmark}
+\pagestyle{fancy}
+
+\usepackage{stackengine}
+\def\ucr{\scalebox{1}{\stackinset{c}{}{c}{-.2pt}{%
+  \textcolor{white}{\sffamily\bfseries\footnotesize ?}}{%
+  \rotatebox{45}{\footnotesize$$\blacksquare$$}}}}
+\DeclareUnicodeCharacter{FFFD}{\ucr}
+
+\usepackage{enumitem}
+\usepackage{wasysym}
+% End copyediting changes
+
 \IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
 \IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
 \urlstyle{$if(urlstyle)$$urlstyle$$else$same$endif$}
@@ -434,12 +460,8 @@ $if(verbatim-in-note)$
 \VerbatimFootnotes % allow verbatim text in footnotes
 $endif$
 \hypersetup{
-$if(title-meta)$
-  pdftitle={$title-meta$},
-$endif$
-$if(author-meta)$
-  pdfauthor={$author-meta$},
-$endif$
+  pdftitle={Web Browser Engineering},
+  pdfauthor={Chris Harrelson and Pavel Panchekha},
 $if(lang)$
   pdflang={$lang$},
 $endif$
@@ -463,6 +485,22 @@ $endif$
 $endif$
   pdfcreator={LaTeX via pandoc}}
 
+% Additional copyediting changes
+\ifprintedoutput
+\usepackage{endnotes}
+\renewcommand{\notesname}{Links}
+\renewcommand{\makeenmark}{\hbox{[\theenmark]}}
+\makeatletter
+\def\enoteformat{%
+  \rightskip\z@ \leftskip\z@ \parindent=1.8em
+  \leavevmode{\setbox\z@=\lastbox}\llap{[\theenmark]\enskip}%
+}
+\newcommand\href@endnote[2]{#2~\endnote{\url{#1}}}
+\DeclareRobustCommand{\href}{\hyper@normalise\href@endnote}
+\makeatother
+\fi
+% End copyediting changes
+
 $if(title)$
 \title{Web Browser Engineering$if(thanks)$\thanks{$thanks$}$endif$}
 $endif$
@@ -478,7 +516,7 @@ $else$
 $endif$
 \subtitle{$subtitle$}
 $endif$
-\author{$for(author)$$author$$sep$ \and $endfor$}
+\author{Chris Harrelson and Pavel Panchekha}
 \date{$date$}
 $if(beamer)$
 $if(institute)$
@@ -492,13 +530,11 @@ $if(logo)$
 $endif$
 $endif$
 
-\usepackage{wasysym}
-
 \begin{document}
 \begin{CJK}{UTF8}{gbsn}
-$if(has-frontmatter)$
 \frontmatter
-$endif$
+\renewcommand{\chaptermark}[1]{\markboth{#1}{}}
+
 $if(title)$
 $if(beamer)$
 \frame{\titlepage}
@@ -512,43 +548,7 @@ $abstract$
 $endif$
 $endif$
 
-$for(include-before)$
-$include-before$
-
-$endfor$
-$if(toc)$
-$if(toc-title)$
-\renewcommand*\contentsname{$toc-title$}
-$endif$
-$if(beamer)$
-\begin{frame}[allowframebreaks]
-$if(toc-title)$
-  \frametitle{$toc-title$}
-$endif$
-  \tableofcontents[hideallsubsections]
-\end{frame}
-$else$
-{
-$if(colorlinks)$
-\hypersetup{linkcolor=$if(toccolor)$$toccolor$$else$$endif$}
-$endif$
-\setcounter{tocdepth}{$toc-depth$}
 \tableofcontents
-}
-$endif$
-$endif$
-$if(lof)$
-\listoffigures
-$endif$
-$if(lot)$
-\listoftables
-$endif$
-$if(linestretch)$
-\setstretch{$linestretch$}
-$endif$
-$if(has-frontmatter)$
-\mainmatter
-$endif$
 
 ---Contents---
 
