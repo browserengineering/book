@@ -17,7 +17,7 @@ industry programmers and even to researchers. This book dissipates
 that mystery by systematically explaining all major components of a
 modern web browser.
 
-Reading this book
+Reading This Book
 =================
 
 Parts 1--3 of this book construct a basic browser weighing in at around
