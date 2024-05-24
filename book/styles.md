@@ -256,8 +256,8 @@ class BlockLayout:
 I've removed the default gray background from `pre` elements for now,
 but we'll put it back soon.
 
-Load [the web version of this chapter](https://browser.engineering/styles.html)
-in your browser to test your code: the code block at the start of the chapter
+Open [the web version of this chapter](https://browser.engineering/styles.html)
+up in your browser to test your code: the code block at the start of the chapter
 should now have a light blue background.
 
 So this is one way web pages can change their appearance. And in the
@@ -267,9 +267,9 @@ pain---you need to set a `style` attribute on each element, and if you
 change the style, that's a lot of attributes to edit. CSS\index{CSS}
 was invented to improve on this state of affairs:
 
-- One CSS file can consistently style many web pages at once
-- One line of CSS can consistently style many elements at once
-- CSS is future-proof and supports browsers with different features
+- One CSS file can consistently style many web pages at once.
+- One line of CSS can consistently style many elements at once.
+- CSS is future-proof and supports browsers with different features.
 
 To achieve these goals, CSS extends the `style` attribute with two
 related ideas: *selectors*\index{CSS selector} and *cascading*. Selectors
@@ -600,7 +600,7 @@ including query-relative and scheme-relative URLs, that I'm skipping.]
     existing scheme and host;
 -   a path-relative URL, which doesn't start with a slash and is
     resolved like a file name would be;
--   a scheme-relative URL that starts with "//" followed by a full URL,
+-   a scheme-relative URL that starts with "`//`" followed by a full URL,
     which should use the existing scheme.
 
 To download the style sheets, we'll need to convert each relative URL
@@ -948,7 +948,7 @@ slightly lighter.[^book-css] Also, now that we're explicitly setting
 the text color, we should explicitly set the background color as
 well:[^dark-mode]
 
-[^book-css]: The main body text is colored `#333`,
+[^book-css]: The main body text on the web is colored `#333`,
     or roughly 97% black after [gamma correction][gamma-correct].
     
 [gamma-correct]: https://en.wikipedia.org/wiki/SRGB#From_sRGB_to_CIE_XYZ
@@ -1004,7 +1004,7 @@ browser.](examples/example6-browserengineering-screenshot.png)
 :::
 
 ::: {.further}
-Usually a point is 1/72nd of an inch while pixel size depends on
+Usually a point is 1/72 of an inch while pixel size depends on
 the screen, but CSS instead [defines an inch][css-fixed] as 96 pixels,
 because that was once a common screen resolution. And these CSS pixels
 [need not be][dppx] physical pixels! Seem weird? This complexity is
@@ -1076,13 +1076,13 @@ class. Implement class selectors; give them priority 10. If you've
 implemented them correctly, you should see syntax highlighting for the
 code blocks in this book.
 
-6-4 *Display*. Right now, the `layout_mode` function relies on a
+6-4 *`display`*. Right now, the `layout_mode` function relies on a
 hard-coded list of block elements. In a real browser, the `display`
 property controls this. Implement `display` with a default value of
 `inline`, and move the list of block elements to the browser style
 sheet.
 
-6-5 *Shorthand Properties* CSS "shorthand properties" set multiple
+6-5 *Shorthand properties* CSS "shorthand properties" set multiple
 related CSS properties at the same time; for example, `font: italic
 bold 100% Times` sets the `font-style`, `font-weight`, `font-size`,
 and `font-family` properties all at once. Add shorthand properties to
@@ -1124,7 +1124,7 @@ these and modify the parser to parse them. Sum priorities.[^lexicographic]
     in the sequence will work fine as long as no one strings more than
     ten selectors together.
 
-6-9 *Important*. a CSS property–value pair can be marked "important" using
+6-9 *`!important`*. A CSS property–value pair can be marked "important" using
 the `!important` syntax, like this:
 
     #banner a { color: black !important; }

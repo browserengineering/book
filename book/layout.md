@@ -806,7 +806,8 @@ should look something like this:
 Exercises
 =========
 
-5-1 *Links bar*. At the top and bottom of the web version of each chapter of this book is a
+5-1 *Links bar*. At the top and bottom of the web version of each
+chapter of this book there is a
 gray bar naming the chapter and offering back and forward links. It is
 enclosed in a `<nav class="links">` tag. Have your browser give this
 links bar the light gray background a real browser would.

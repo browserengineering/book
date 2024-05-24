@@ -299,8 +299,8 @@ max_descent = max([word.font.metrics("descent")
 
 Note that this code is reading from a `font` field on each word and
 writing to each word's `y` field. That means that inside
-`TextLayout`'s `layout` method, which is why it's good we computed `x`, `width`,
-`height` , and `font`, but not `y`.
+`TextLayout`'s `layout` method we need to compute `x`, `width`,
+`height` , and `font`, but not `y`. Remember that for later.
 
 Finally, since each line is now a standalone layout object, it needs
 to have a height. We compute it from the maximum ascent and descent:
@@ -675,7 +675,7 @@ have two rows (see Figure 1):
 * At the top, a list of tab names, separated by vertical lines, and a "`+`"
   button to add a new tab.
 
-* Underneath, the URL of of the current web page, and a "`<`" button to
+* Underneath, the URL of the current web page, and a "`<`" button to
   represent the browser back button.
 
 ::: {.center}
