@@ -675,7 +675,7 @@ have two rows (see Figure 1):
 * At the top, a list of tab names, separated by vertical lines, and a "`+`"
   button to add a new tab.
 
-* Underneath, the URL of of the current web page, and a "`<`" button to
+* Underneath, the URL of the current web page, and a "`<`" button to
   represent the browser back button.
 
 ::: {.center}
