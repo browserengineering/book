@@ -1385,7 +1385,7 @@ class Blend:
         paint = skia.Paint(
             BlendMode=parse_blend_mode(self.blend_mode),
         )
-        canvas.saveLayer(none, paint)
+        canvas.saveLayer(None, paint)
         for cmd in self.children:
             cmd.execute(canvas)
         canvas.restore()
