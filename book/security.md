@@ -43,7 +43,7 @@ server can distinguish which requests come from whom. In effect,
 a cookie is a decentralized, server-granted identity for your browser.
 
 Here are the technical details. An HTTP response can contain a
-`Set-Cookie` header. This header contains a key-value pair; for
+`Set-Cookie` header. This header contains a key–value pair; for
 example, the following header sets the value of the `foo` cookie to
 `bar`:
 
@@ -51,7 +51,7 @@ example, the following header sets the value of the `foo` cookie to
     Set-Cookie: foo=bar
 :::
     
-The browser remembers this key-value pair, and the next time it makes
+The browser remembers this key–value pair, and the next time it makes
 a request to the same server (cookies are site-specific), the browser
 echoes it back in the `Cookie` header:
 
@@ -59,7 +59,7 @@ echoes it back in the `Cookie` header:
     Cookie: foo=bar
 :::
 
-Servers can set multiple cookies and also set parameters like
+Servers can set multiple cookies, and also set parameters like
 expiration dates, but this `Set-Cookie` / `Cookie` transaction
 as shown in Figure 1 is the core principle.
 
@@ -412,7 +412,7 @@ users.
 
 Now that our browser supports cookies and uses them for logins, we
 need to make sure cookie data is safe from malicious actors. After
-all: the cookie is the browser's identity, so if someone stole it, the
+all, the cookie is the browser's identity, so if someone stole it, the
 server would think they are you. We need to prevent that.
 
 ::: {.further}
@@ -436,12 +436,13 @@ clever, they might be able to get *the server* or *the browser* to
 help them steal cookie values.
 
 [^tls]: Well... Our connection isn't encrypted, so an attacker could
-    read it from an open Wifi connection. But another *server*
+    read it from an open Wi-Fi connection. But another *server*
     couldn't. Or how about this attack: another server could hijack our DNS
     and redirect our hostname to a different IP address, and then steal our
-    cookies. Some ISPs support DNSSEC, which prevents this, but not all.
-    Or maybe this attack: a state-level attacker could announce fradulent BGP
-    routes, which would send even a correctly-retrieved IP address to
+    cookies. Some internet service providers support DNSSEC, which prevents this, but not all.
+    Or consider this attack: a state-level attacker could announce fradulent BGP
+    (Border Gateway Protocol)
+    routes, which would send even a correctly retrieved IP address to
     the wrong physical computer. (Security is very hard.)
 
 The easiest way for an attacker to steal your private data is to ask
@@ -524,7 +525,7 @@ class JSContext:
 ```
 
 With `XMLHttpRequest`, a web page can make HTTP requests in response
-to user actions, making websites more interactive! This API, and newer
+to user actions, making websites more interactive (see Figure 2). This API, and newer
 analogs like [`fetch`][mdn-fetch], are how websites allow you to like a
 post, see hover previews, or submit a form without reloading.
 
@@ -532,7 +533,7 @@ post, see hover previews, or submit a form without reloading.
 
 ::: {.print-only}
 ![Figure 2: The architecture of a single-page application leveraging
-`XMLHttpRequest`](im/security-spa.png)
+`XMLHttpRequest`.](im/security-spa.png)
 :::
 
 ::: {.further}
@@ -651,7 +652,7 @@ But the same-origin policy doesn't apply to normal browser actions
 like clicking a link or filling out a form. This enables an exploit
 called *cross-site request forgery*, often shortened to CSRF.
 
-In cross-site request forgery, instead of using `XMLHttpRequest,` the
+In cross-site request forgery, instead of using `XMLHttpRequest`, the
 attacker uses a form that submits to the guest book:
 
 ``` {.html}
@@ -905,7 +906,7 @@ before sending `SameSite` cookies. Remember that `SameSite` cookies
 are only sent for `GET` requests or if the new URL and the top-level
 URL have the same host name:[^schemeful]
 
-[^schemeful]: At I write this, some browsers also check that the new
+[^schemeful]: As I write this, some browsers also check that the new
     URL and the top-level URL have the same scheme and some browsers
     ignore subdomains, so that `www.foo.com` and `login.foo.com` are
     considered the "same site". If cookies were invented today, they'd
@@ -1005,13 +1006,13 @@ posting as them or misusing any other capabilities those users had.
 
 [^document-cookie]: A site's cookies and cookie parameters are
     available to scripts running on that site through the
-    [`document.cookie`][mdn-doc-cookie] API. See exercise 10-5
+    [`document.cookie`][mdn-doc-cookie] API. See Exercise 10-5
     for more details on how web servers can *opt in* to allowing
     cross-origin requests. To steal cookies, it's the attacker's
     server that would to opt in to receiving stolen cookies. Or, in a
     real browser, `evil.js` could add images or scripts to the page to
     trigger additional requests. In our limited browser the attack has to
-    be a little clunkier, but the evil script still can, for example,
+    be a little clunkier, but the evil script can still, for example,
     replace the whole page with a link that goes to their site and
     includes the token value in the URL. You've seen "please click to
     continue" screens and have clicked through unthinkingly; your users
@@ -1047,7 +1048,6 @@ escaping. But if you forget to encode any text anywhere---that's a
 security bug. So browsers provide additional layers of defense.
 
 ::: {.further}
-
 Since the CSS parser we implemented in Chapter 6 is very
 permissive, some HTML pages also parse as valid CSS. This leads to an attack:
 include an external HTML page as a style sheet and observe the styling it
@@ -1184,7 +1184,7 @@ block the evil script[^evil-js] and report so in the console.
 [^evil-js]: Needless to say, `example.com` does not actually host an
     `evil.js` file, and any request to it returns "404 Not Found".
 
-So are we done? Is the guest book totally secure? Uh... no. There's
+So are we done? Is the guest book totally secure? Uh ... no. There's
 more---much, *much* more---to web application security than what's in
 this book. And just like the rest of this book, there are many other
 browser mechanisms that touch on security and privacy. Let's settle
@@ -1257,7 +1257,7 @@ should now look something like this:
 :::
 
 
-The server has also grown since last chapter:
+The server has also grown since the previous chapter:
 
 ::: {.cmd .python .outline html=True}
     python3 infra/outlines.py --html src/server10.py
@@ -1293,7 +1293,7 @@ overwritten if the same cookie is set again with a later date. On the
 server side, save the expiration date in the `SESSIONS` variable and
 use it to delete old sessions to save memory.
 
-10-5 *CORS*. Web servers can [*opt in*][cors] to allowing cross-origin
+10-5 *Cross-origin resource sharing (CORS)*. Web servers can [*opt in*][cors] to allowing cross-origin
 `XMLHttpRequest`s. The way it works is that on cross-origin HTTP
 requests, the browser makes the request and includes an `Origin`
 header with the origin of the requesting site; this request includes
@@ -1306,7 +1306,7 @@ be what the CORS standard calls "simple requests".
 
 [cors]: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
 
-10-6 *Referer*. When your browser visits a web page, or when it loads a CSS
+10-6 *`Referer`*. When your browser visits a web page, or when it loads a CSS
 or JavaScript file, it sends a `Referer` header[^referer] containing
 the URL it is coming from. Sites often use this for analytics.
 Implement this in your browser. However, some URLs contain personal

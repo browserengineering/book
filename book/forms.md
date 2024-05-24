@@ -17,7 +17,7 @@ How forms work
 
 HTML forms have a couple of moving parts.
 
-First, in HTML, there is a `form` element, which contains `input`
+First, in HTML there is a `form` element, which contains `input`
 elements,[^or-others] which in turn can be edited by the user. So a
 form might be written like this:
 
@@ -43,7 +43,7 @@ And look like Figure 1.
 This form contains two text entry boxes called `name` and `comment`.
 When the user goes to this page, they can click on those boxes to edit
 their values. Then, when they click the button at the end of the form,
-the browser collects all of the name/value pairs and bundles them into
+the browser collects all of the name–value pairs and bundles them into
 an HTTP `POST` request (as indicated by the `method` attribute), sent
 to the URL given by the `form` element's `action` attribute, with the
 usual rules of relative URLs---so in this case, `/submit`. The `POST`
@@ -375,7 +375,7 @@ class Tab:
 ```
 
 So that's clicking in an `input` area. But typing is harder. Think
-back to how we [implemented the address bar (in Chapter 7)](chrome.md):
+back to how we [implemented the address bar in Chapter 7](chrome.md):
 we added a `focus` field that remembered what we clicked on so we could later
 send it our key presses. We need something like that `focus` field for
 input areas, but it's going to be more complex because the input areas
@@ -600,9 +600,9 @@ class Tab:
 
 For each of those `input` elements, we need to extract the `name`
 attribute and the `value` attribute, and _form encode_ both of them.
-Form encoding is how the name-value pairs are formatted in the HTTP
-`POST` request. Basically: name, then equal sign, then value; and
-name-value pairs are separated by ampersands:
+Form encoding is how the name–value pairs are formatted in the HTTP
+`POST` request. Basically, it is: name, then equal sign, then value; and
+name–value pairs are separated by ampersands:
 
 ``` {.python}
 class Tab:
@@ -636,8 +636,8 @@ for input in inputs:
 ```
 
 [^why-use-library]: You can write your own `percent_encode` function
-using Python's `ord` and `hex` functions if you'd like. I'm using the
-standard function for expediency. [In chapter 1](http.md),
+using Python's `ord` and `hex` functions if you like. I'm using the
+standard function for expediency. [In Chapter 1](http.md),
 using these library functions would have obscured key concepts, but by
 this point percent encoding is necessary but not conceptually
 interesting.
@@ -714,7 +714,7 @@ way.[^or-redirect] That's basically it for forms!
 ::: {.further}
 While most form submissions use the form encoding described here,
 forms with file uploads (using `<input type=file>`) use a [different
-encoding][multi-part] that includes metadata for each key-value pair
+encoding][multi-part] that includes metadata for each key–value pair
 (like the file name or file type). There's also an obscure
 [`text/plain` encoding][plain-enc] option, which uses no escaping and
 which even the standard warns against using.
@@ -726,7 +726,7 @@ which even the standard warns against using.
 How web apps work
 =================
 
-So...how do web applications (web apps) use forms? When you
+So... how do web applications (web apps) use forms? When you
 use an application from your browser---whether you are registering to
 vote, looking at pictures of your baby cousin, or checking your
 email---there are typically[^exceptions] two programs involved: client
@@ -778,11 +778,11 @@ forms are based on the same principles of client and server code.
 
 ::: {.further}
 There are request types besides `GET` and `POST`, like [`PUT`][put-req]
-(create if nonexistant) and [`DELETE`][del-req], or the more obscure
+(create if non-existant) and [`DELETE`][del-req], or the more obscure
 `CONNECT` and `TRACE`. In 2010 the [`PATCH` method][patch-req] was
 standardized in [RFC 5789][rfc5789]. New methods were intended as a
 standard extension mechanism for HTTP, and some protocols were built
-this way (like [WebDav][webdav]'s `PROPFIND`, `MOVE`,` and `LOCK` methods),
+this way (like [WebDav][webdav]'s `PROPFIND`, `MOVE`, and `LOCK` methods),
 but this did not become an enduring way to extend the web itself, and
 HTTP 2.0 and 3.0 did not add any new methods.
 :::
@@ -808,7 +808,7 @@ A web server is a separate program from the web browser, so let's
 start a new file. The server will need to:
 
 -   open a socket and listen for connections;
--   parse HTTP requests it receivesl
+-   parse HTTP requests it receives;
 -   and respond to those requests with an HTML web page.
 
 Let's start by opening a socket. Like for the browser, we need to
@@ -956,7 +956,7 @@ do (compression, protocol support, sharing domains).
 Generating web pages
 ====================
 
-So far all of this server code is "boilerplate"---any web application
+So far, all of this server code is "boilerplate"---any web application
 will have similar code. What makes our server a guest book, on the
 other hand, depends on what happens inside `do_request`. It needs to
 store the guest book state, generate HTML pages, and respond to `POST`
@@ -1094,7 +1094,7 @@ application platform. We've added:
 - layout objects for input areas and buttons;
 - clicking on buttons and typing into input areas;
 - hierarchical focus handling;
-- and form submission with HTTP POST.
+- and form submission with HTTP `POST`.
 
 Plus, our browser now has a little web server friend. That's going to
 be handy as we add more interactive features to the browser.
@@ -1156,7 +1156,7 @@ was in. Add this feature to your browser.
 8-2 *`GET` forms*. Forms can be submitted via `GET` requests as well as `POST`
 requests. In `GET` requests, the form-encoded data is pasted onto the
 end of the URL, separated from the path by a question mark, like
-`/search?q=hi`; GET form submissions have no body. Implement `GET` form
+`/search?q=hi`; `GET` form submissions have no body. Implement `GET` form
 submissions.
 
 8-3 *Blurring*. Right now, if you click inside a text entry, and then
@@ -1203,7 +1203,7 @@ file, so that when the server is restarted it doesn't lose data.
 
 8-8 *Rich buttons*. Make it possible for a button to contain arbitrary
 elements as children, and render them correctly. The children should
-be contained inside button instead of spilling out---this can make a
+be contained inside the button instead of spilling out---this can make a
 button really tall. Think about edge cases, like a button that
 contains another button, an input area, or a link, and test real
 browsers to see what they do.
