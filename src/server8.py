@@ -4,6 +4,11 @@ import urllib.parse
 def handle_connection(conx):
     req = conx.makefile("b")
     reqline = req.readline().decode('utf8')
+    print('go')
+    print(reqline)
+    print(len(reqline))
+    if len(reqline) == 0:
+        return;
     method, url, version = reqline.split(" ", 2)
     assert method in ["GET", "POST"]
     headers = {}
