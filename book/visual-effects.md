@@ -1075,7 +1075,7 @@ Here, the `saveLayer` call asks Skia[^layer-surface] to draw all the
 children to a separate
 surface before blending them into the parent once
 `restore` is called.
-The secondc parameter to `saveLayer` specifies the specific type of
+The second parameter to `saveLayer` specifies the specific type of
 blending, here with the `Alphaf` parameter requesting 50% opacity.
 
 [^layer-surface]: It's called `saveLayer` instead of `createSurface` because
