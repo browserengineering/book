@@ -2343,10 +2343,10 @@ CSS property and parsing of `@keyframe` to implement the demos
 [here](examples/example13-opacity-animation.html) and
 [here](examples/example13-width-animation.html).
 
-13-6 *Overlap testing with transform animations*. (If you've already done
-Exercise 13-5.) Our
+13-6 *Overlap testing with transform animations*. Our
 browser currently does not overlap test correctly in the presence of transform
-animations that cause overlap to come and go. First create a demo that
+animations that cause overlap to come and go. (You'll need to have already done
+Exercise 13-3.) First create a demo that
 exhibits the bug, and then fix it. One way to fix it is to enter "assume
 overlap mode" whenever an animated transform display item is encountered. This
 means that every subsequent display item is assumed to overlap the animating
