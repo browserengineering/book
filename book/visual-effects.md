@@ -1066,7 +1066,7 @@ that that effect will be applied to, like this:
 
 ``` {.python .example}
 # draw parent
-canvas.saveLayer(skia.Paint(Alphaf=0.5))
+canvas.saveLayer(None, skia.Paint(Alphaf=0.5))
 # draw children
 canvas.restore()
 ```
@@ -1075,7 +1075,7 @@ Here, the `saveLayer` call asks Skia[^layer-surface] to draw all the
 children to a separate
 surface before blending them into the parent once
 `restore` is called.
-The `paint` option to `saveLayer` specifies the specific type of
+The second parameter to `saveLayer` specifies the specific type of
 blending, here with the `Alphaf` parameter requesting 50% opacity.
 
 [^layer-surface]: It's called `saveLayer` instead of `createSurface` because
@@ -1385,7 +1385,7 @@ class Blend:
         paint = skia.Paint(
             BlendMode=parse_blend_mode(self.blend_mode),
         )
-        canvas.saveLayer(paint)
+        canvas.saveLayer(None, paint)
         for cmd in self.children:
             cmd.execute(canvas)
         canvas.restore()
@@ -1648,7 +1648,7 @@ class Opacity:
             Alphaf=self.opacity,
         )
         if self.opacity < 1:
-            canvas.saveLayer(paint)
+            canvas.saveLayer(None, paint)
         for cmd in self.children:
             cmd.execute(canvas)
         if self.opacity < 1:
@@ -1692,7 +1692,7 @@ class Blend:
             BlendMode=parse_blend_mode(self.blend_mode),
         )
         if self.blend_mode:
-            canvas.saveLayer(paint)
+            canvas.saveLayer(None, paint)
         for cmd in self.children:
             cmd.execute(canvas)
         if self.blend_mode:
@@ -1729,7 +1729,7 @@ class Blend:
             BlendMode=parse_blend_mode(self.blend_mode),
         )
         if self.should_save:
-            canvas.saveLayer(paint)
+            canvas.saveLayer(None, paint)
         for cmd in self.children:
             cmd.execute(canvas)
         if self.should_save:
