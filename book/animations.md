@@ -154,16 +154,16 @@ CSS-native animations, came onto the scene only in the
 
 :::
 
-GPU acceleration
+GPU Acceleration
 ================
 
 Try the fade animation in your browser, and you'll probably notice
 that it's not particularly smooth. And that shouldn't be surprising;
 after all, [Chapter 12](scheduling.md#profiling-rendering) showed
-that raster and draw was about 62 ms for simple pages, and render
-was 23 ms.
+that raster and draw was about 62\,{=latex} {=html}ms for simple pages, and render
+was 23\,{=latex} {=html}ms.
 
-Even with just 62 ms per frame, our browser is barely doing 15 frames per
+Even with just 62\,{=latex} {=html}ms per frame, our browser is barely doing 15 frames per
 second; for smooth animations we want 30! So we need to speed up
 raster and draw.
 
@@ -549,7 +549,7 @@ size.
 
 :::
 
-Compositing leaves
+Compositing Leaves
 ==================
 
 Let's implementing compositing. We'll need to identify paint commands and
@@ -909,7 +909,7 @@ and clipping.
 
 :::
 
-CSS transitions
+CSS Transitions
 ===============
 
 The key to not re-rastering layers is to know which layers have
@@ -1183,7 +1183,7 @@ dirty bit requiring rendering later.^[We also need to
 schedule an animation frame for the next frame of the animation, but
 `set_needs_render` already does that for us.]
 
-The whole rendering cycle between the browser and main thread is summarized
+The whole rendering cycle between the browser and main threads is summarized
 in Figure 2.
 
 ::: {.center}
@@ -1351,7 +1351,7 @@ and management of animations via JavaScript.
 [web-animations]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Animations_API
 :::
 
-Composited animations
+Composited Animations
 =====================
 
 We're finally ready to teach the browser how to avoid raster (and layout) when
@@ -1587,7 +1587,7 @@ class Browser:
 While visual effect animations in our browser are now efficient
 and *composited*, they are not *threaded* in the sense of
 [Chapter 12][threaded-12]: the animation still ticks on the main thread, and
-if there is a slow JavaScript or other task clogging the task queue, animations
+if there is some slow JavaScript or other task clogging the task queue, animations
 will stutter. This is a significant problem for real browsers, so almost all of
 them support threaded opacity, transform and filter animations; some support
 certain kinds of clip animations as well. Adding threaded animations to our
@@ -1785,7 +1785,6 @@ composited layers should look like Figure 5 (notice how there are two layers).
 
 :::
 
-
 ::: {.print-only}
 
 The opacity transition example's composited layers should look like Figure 5
@@ -1832,8 +1831,7 @@ purpose of signaling pre-compositing.
 [will-change]: https://developer.mozilla.org/en-US/docs/Web/CSS/will-change
 :::
 
-
-Overlap and transforms
+Overlap and Transforms
 ======================
 
 The compositing algorithm we implemented works great in many cases.
@@ -2001,7 +1999,7 @@ class Transform(VisualEffect):
             return "Transform(<no-op>)"
 ```
 
-We also need to fix the hit-testing algorithm to take into account translations
+We also need to fix the hit testing algorithm to take into account translations
 in `click`. Instead of just comparing the locations of layout objects with
 the click point, compute an *absolute* bound---in coordinates of what the
 user sees, including the translation offset---and compare against that.
@@ -2046,7 +2044,7 @@ class Tab:
 
 However, if you try to load the example above, you'll find that it still looks
 wrong---the blue square is supposed to be *under* the green one, but it's on
-top.^[The hit-testing is correct, though, because the rendering problem is in
+top.^[The hit testing is correct, though, because the rendering problem is in
 compositing, not geometry of layout objects.]
 
 That's because when we test for overlap, we're comparing the
@@ -2259,12 +2257,12 @@ Summary
 This chapter introduces animations. The key takeaways you should
 remember are that:
 
-- animations come in DOM-based, input-driven and video-like varieties;
-- GPU acceleration is necessary for smooth animations;
+- Animations come in DOM-based, input-driven and video-like varieties;
+- GPU acceleration is necessary for smooth animations.
 - compositing is usually necessary for smooth and threaded visual effect
-  animations;
-- it's important to optimize the number of composited layers;
-- and overlap testing can cause additional GPU memory use and needs to be
+  animations.
+- It's important to optimize the number of composited layers.
+- Overlap testing can cause additional GPU memory use and needs to be
   implemented with care.
 
 ::: {.web-only}
@@ -2345,10 +2343,10 @@ CSS property and parsing of `@keyframe` to implement the demos
 [here](examples/example13-opacity-animation.html) and
 [here](examples/example13-width-animation.html).
 
-13-6 *Overlap testing with transform animations*. Our
+13-6 *Overlap testing with transform animations*. (If you've already done
+Exercise 13-5.) Our
 browser currently does not overlap test correctly in the presence of transform
-animations that cause overlap to come and go. (You'll need to have already done
-Exercise 13-3.) First create a demo that
+animations that cause overlap to come and go. First create a demo that
 exhibits the bug, and then fix it. One way to fix it is to enter "assume
 overlap mode" whenever an animated transform display item is encountered. This
 means that every subsequent display item is assumed to overlap the animating
@@ -2389,14 +2387,14 @@ whether the time to raster the provided display items is low enough to not
 justify a GPU texture. This will be true for solid colors, but
 probably not for complex shapes or text.
 
-13-9 *Hit-testing*. Right now, when handling clicks, we convert each layout
+13-9 *Hit testing*. Right now, when handling clicks, we convert each layout
 object's bounds to absolute coordinates (via
 `absolute_bounds_for_obj`) to compare to the click location. But we
 could instead convert the click location to local coordinates as we
 traverse the layout tree. Implement that instead. It'll probably be
 convenient to define a `hit_test` method on each layout object which
 takes in a click location, adjusts it for transforms, and recursively
-calls child `hit_test` methods.^[In real browsers hit-testing is used
+calls child `hit_test` methods.^[In real browsers hit testing is used
 for more than just clicking. The name comes from thinking whether an
 arrow shot at that location would "hit" the object.]
 
