@@ -378,7 +378,7 @@ surfaces on a GPU, in order to speed up animations.
 
 Decode
 
-: Converting from a compressed format for a resource (such as an 
+: Converting from a compressed format for a resource (such as
 an image) into a simpler format in memory (such as a bitmap).
 
 Device pixel ratio
