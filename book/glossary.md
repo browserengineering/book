@@ -7,7 +7,7 @@ the breadth of all their features. As with all software engineering---indeed,
 all complex subjects---the best way to avoid confusion is to use *consistent and
 clear names*.
 
-Key web terms
+Key Web Terms
 =============
 
 Accessibility
@@ -69,7 +69,7 @@ Web
 
 Web browser
 
-: A software program that allows people to load and
+: Software that allows people to load and
 navigate web pages. Also often just called a "browser".
 
 Web page
@@ -119,8 +119,7 @@ and WebGPU.
 
 TC39
 
-: Technical Committee 39. The standardization organization for
-JavaScript.
+: Technical Committee 39. The standardization organization for JavaScript.
 
 W3C
 
@@ -278,7 +277,7 @@ single element.
 
 Computed style
 
-: The values for the CSS Properties that apply to
+: The values for the CSS properties that apply to
 elements after applying all rules according to the cascade order.
 
 CSS property
@@ -288,7 +287,7 @@ a specific part of an element.
 
 CSS property–value
 
-: a key–value pair of a CSS property and its value
+: A key–value pair of a CSS property and its value
 (e.g. "color" and "blue" or "width" and "30px").
 
 CSS rule
@@ -312,7 +311,7 @@ Style
 display of an element. Also the name of a corresponding attribute to
 specify inline styles.
 
-Coordinate spaces
+Coordinate Spaces
 =================
 
 In the browser, 2D coordinate spaces are used to determine where
@@ -379,7 +378,7 @@ surfaces on a GPU, in order to speed up animations.
 
 Decode
 
-: converting from a compressed format for a resource (such as an 
+: Converting from a compressed format for a resource (such as
 an image) into a simpler format in memory (such as a bitmap).
 
 Device pixel ratio
@@ -439,7 +438,7 @@ a web page onto a computer screen.
 
 Scroll
 
-: adjusting the horizontal or vertical offset of a web page
+: Adjusting the horizontal or vertical offset of a web page
 in response to user input, in order to see parts of it not currently visible.
 
 Style
@@ -462,7 +461,7 @@ Zoom
 : Changing the ratio of CSS sizes to pixels in order to make
 content on a web page larger or smaller.
 
-Computer technologies
+Computer Technologies
 =====================
 
 Assistive technology
@@ -472,7 +471,7 @@ the computer or web browser. The most common are screen readers.
 
 CPU
 
-: Central Processing Unit, the hardware component in a computer that
+: Central processing unit, the hardware component in a computer that
 executes generic compute programs.
 
 DukPy
@@ -482,7 +481,7 @@ this book.
 
 GPU
 
-: Graphics Processing Unit, a specialized computing chip optimized for
+: Graphics processing unit, a specialized computing chip optimized for
 tasks like generating pixel output on computer screens.
 
 Process
@@ -496,11 +495,6 @@ Python
 : A common computer programming language, used in this
 book to implement a toy browser.
 
-Thread
-
-: A single sequence of commands executed on a CPU. Most CPUs have
-these days can execute multiple threads at once.
-
 SDL
 
 : A windowing library for computer programs used in later chapters of
@@ -510,6 +504,11 @@ Skia
 
 : A raster drawing library for computer programs used in later chapters
 of this book.
+
+Thread
+
+: A single sequence of commands executed on a CPU. Most CPUs have
+these days can execute multiple threads at once.
 
 Tk
 
