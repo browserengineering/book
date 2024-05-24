@@ -824,7 +824,7 @@ This chapter taught our browser that HTML is a tree, not just a flat
 list of tokens. We added:
 
 - a parser to transform HTML tokens to a tree;
-- code to recognize and handle attributes on elements.
+- code to recognize and handle attributes on elements;
 - automatic fixes for some malformed HTML documents;
 - and a recursive layout algorithm to lay out an HTML tree.
 

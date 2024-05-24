@@ -321,7 +321,7 @@ But as you go through this chapter, you'll also run into another type
 of crash: crashes in our own JavaScript runtime. We can't ignore
 those, because that's our code. Debugging these crashes is a bear: by
 default DukPy won't show a backtrace, and if the runtime code calls
-into a exported function that crashes it gets even more confusing.
+into an exported function that crashes it gets even more confusing.
 
 Here are a few tips to help with these crashes. First, if you get a
 crash inside some JavaScript function, wrap the body of the function
@@ -383,7 +383,7 @@ We'll implement simplified versions of these APIs.[^simplified]
 will return an array, not this thing called a `NodeList`; `innerHTML`
 will only write the HTML contents of an element, and won't allow
 reading those contents. This suffices to demonstrate
-JavaScript-browser interaction.
+JavaScript–browser interaction.
 
 Let's start with `querySelectorAll`. First, export a function:
 
@@ -447,7 +447,7 @@ def querySelectorAll(self, selector_text):
              if selector.matches(node)]
 ```
 
-Finally we need to return those nodes back to JavaScript. You might
+Finally, we need to return those nodes back to JavaScript. You might
 try something like this:
 
 ``` {.python expected=False}
@@ -474,7 +474,7 @@ all, the `Element` class only exists in Python, not JavaScript!
 Python objects need to stay on the Python side of the browser, so
 JavaScript code will need to refer to them via some kind of
 indirection. I'll use simple numeric identifier, which I'll call a
-*handle*.[^8]
+*handle* (see Figure 2).[^8]
 
 [^8]: Note the similarity to file descriptors, which give user-level
     applications access to kernel data structures.
@@ -1090,7 +1090,7 @@ form.addEventListener("submit", function(e) {
 This way it's impossible to submit the form when the comment is too
 long!
 
-Well...impossible in this browser. But since there are browsers that
+Well... impossible in this browser. But since there are browsers that
 don't run JavaScript (like ours, one chapter back), we should check
 the length on the server side too:
 
@@ -1221,7 +1221,7 @@ Implement all three methods.
 
 9-3 *`removeChild`*. The [`removeChild`][removeChild] method on `Node`s
 detaches the provided child and returns it, bringing that child---and
-its subtree---back into an *detached* state. (It can then be
+its subtree---back into a *detached* state. (It can then be
 *re-attached* elsewhere, with `appendChild` and `insertBefore`, or
 deleted.) Implement this method. It's more challenging to implement
 this one, because you'll need to also remove the subtree from the
