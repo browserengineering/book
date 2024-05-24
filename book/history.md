@@ -269,7 +269,7 @@ Explorer (see Figure 8) in 1995 and soon bundled it with Windows 95.
 [permission from Microsoft][ms-permission].)](im/ie1.png)
 :::
 
-[viola-book]: https://web.archive.org/web/20200706084621/http://viola.org/viola/book/preface.html
+[violawww-book]: https://web.archive.org/web/20200706084621/http://viola.org/viola/book/preface.html
 [wiki-mosaic]: https://commons.wikimedia.org/wiki/File:NCSA_Mosaic_Browser_Screenshot.png
 [cc0-1]: https://creativecommons.org/publicdomain/zero/1.0/legalcode
 [wiki-netscape]: https://en.wikipedia.org/wiki/File:Navigator_1-22.png#filehistory
@@ -348,7 +348,7 @@ There never really was a point where any browser openly attempted to break away
 from the standard, despite fears that that might happen.[^dhtml] Instead, intense
 competition for market share was channeled into very fast innovation and an
 ever-expanding set of APIs and capabilities for the web, which we nowadays refer
-to as _the web platform,_ not just the “World Wide Web”. This recognizes the
+to as *the web platform*, not just the “World Wide Web”. This recognizes the
 fact that the web is no longer a document viewing mechanism, but has evolved
 into a fully realized computing platform and ecosystem.[^web-os]
 
@@ -380,8 +380,8 @@ Open source
 
 Another important and interesting outcome of the _second_ browser war was that
 all mainstream browsers today[^examples-of-browsers-today] are based
-on _three open-source web rendering / JavaScript\index{JavaScript}
-engines_: Chromium, Gecko and WebKit.[^javascript-repo] Since Chromium
+on _three open-source web rendering / JavaScript\index{JavaScript}
+engines_: Chromium, Gecko, and WebKit.[^javascript-repo] Since Chromium
 and WebKit have a common ancestral codebase, while Gecko is an
 open-source descendant of Netscape, all three date back to the
 1990s---almost to the beginning of the web.
@@ -389,9 +389,9 @@ open-source descendant of Netscape, all three date back to the
 [^examples-of-browsers-today]: Examples of Chromium-based browsers include
 Chrome, Edge, Opera (which switched to Chromium from the
 [Presto](https://en.wikipedia.org/wiki/Presto_(browser_engine)) engine in 2013),
-Samsung Internet, Yandex Browser, UC Browser and Brave. In addition, there are
+Samsung Internet, Yandex Browser, UC Browser, and Brave. In addition, there are
 many "embedded" browsers, based on one or another of the three engines, for a
-wide variety of automobiles, phones, TVs and other electronic devices.
+wide variety of automobiles, phones, TVs, and other electronic devices.
 
 [^javascript-repo]: The JavaScript engines are actually in different
 repositories (as are various other subcomponents), and can and do get

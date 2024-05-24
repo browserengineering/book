@@ -3,13 +3,13 @@
 FLAGS=
 
 CHAPTERS=\
-preface intro history \
+preface about intro history \
 http graphics text \
 html layout styles chrome \
 forms scripts security \
 visual-effects scheduling animations accessibility embeds invalidation \
 skipped change \
-glossary bibliography about classes porting
+glossary bibliography classes porting
 
 EXAMPLE_HTML=$(patsubst src/example%.html,%,$(wildcard src/example*.html))
 EXAMPLE_JS=$(patsubst src/example%.js,%,$(wildcard src/example*.js))

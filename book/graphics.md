@@ -62,8 +62,8 @@ while True:
     drawScreen()
 ```
 
-::: {.print-only}
-![Figure 1: Flowchart of an event handling cycle.](im/graphics-cycle.png)
+::: {.center}
+![Figure 1: Flowchart of an event-handling cycle.](im/graphics-cycle.png)
 :::
 
 Here, `pendingEvent` first asks the desktop environment for recent
@@ -128,8 +128,8 @@ canvas = tkinter.Canvas(window, width=WIDTH, height=HEIGHT)
 canvas.pack()
 ```
 
-The first line creates the window; and the second creates the
-`Canvas` inside that window. We pass the window as an argument so
+The first line creates the window, and the second creates the
+`Canvas` inside that window. We pass the window as an argument, so
 that Tk knows where to display the canvas. The other arguments define
 the canvas's size; I chose 800 × 600 because that was a common old-timey
 monitor size.[^svga] The third line is a Tk peculiarity, which positions
@@ -144,7 +144,7 @@ finer-grained control over appearance, which a canvas provides.[^widgets]
 [^svga]: This size, called Super Video Graphics Array (SVGA), was standardized
 in 1987, and probably did seem super back then.
 
-To keep it all organized, let's put this code in a class:
+To keep it all organized let's put this code in a class:
 
 ``` {.python}
 class Browser:
@@ -189,7 +189,7 @@ rectangle; and then the text "Hi!" next to the circle, as in Figure 2.
 ![Figure 2: The expected example output with a rectangle, circle, and text.](im/graphics-example.png)
 :::
 
-Coordinates in Tk refer to *x* positions from left to right and to *y*
+Coordinates in Tk refer to *x* positions from left to right and *y*
 positions from top to bottom. In other words, the bottom of the screen
 has *larger* *y* values, the opposite of what you might be used to from
 math. Play with the coordinates above to figure out what each argument
@@ -517,7 +517,7 @@ This means that the browser has to finish all its work in less than
 [^sixty-hertz]: Most screens today have a refresh rate of 60 Hz, and
 that is generally considered fast enough to look smooth. However, new
 hardware is increasingly appearing with higher refresh rates, such as
-120Hz. It's not yet clear if browsers can be made that fast. Some
+120 Hz. It's not yet clear if browsers can be made that fast. Some
 rendering engines, games in particular, refresh at lower rates on
 purpose if they know the rendering speed can't keep up.
 
@@ -532,8 +532,8 @@ redraw their window contents, though, to change what is displayed.
 
 
 But this scrolling is pretty slow.[^slow-scroll] Why? It turns out
-that loading information about the shape of a character inside
-`create_text` takes a while. To speed up scrolling, we need to make
+that loading information about the shape of a character, inside
+`create_text`, takes a while. To speed up scrolling we need to make
 sure to do it only when necessary (while at the same time ensuring the
 pixels on the screen are always correct).
 
@@ -695,7 +695,7 @@ were `about:blank`.
 [fill-expand]: https://web.archive.org/web/20201111222645id_/http://effbot.org/tkinterbook/pack.htm
 
 2-7 *Alternate text direction*. Not all languages read and lay out from left
-to right. Arabic, Persian and Hebrew are good examples of right-to-left
+to right. Arabic, Persian, and Hebrew are good examples of right-to-left
 languages. Implement basic support for this with a command-line flag to your
 browser.^[Once we get to [Chapter 4](html.md) you could write it in terms of
 the [`dir`][dir-attr] attribute on the `<body>` element.] English sentences
