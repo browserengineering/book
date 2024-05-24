@@ -5,7 +5,7 @@ prev: embeds
 next: skipped
 ...
 
-Compositing (See Chapter 13) makes animations smoother, but
+Compositing (see Chapter 13) makes animations smoother, but
 it doesn't help with interactions that affect layout, like text
 editing or DOM modifications. Luckily, we can avoid redundant layout
 work by treating the layout tree as a kind of cache, and only
