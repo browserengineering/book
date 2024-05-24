@@ -477,7 +477,7 @@ executes generic compute programs.
 DukPy
 
 : A Python binding library for Duktape, a JavaScript engine used in
-this book.]
+this book.
 
 GPU
 
