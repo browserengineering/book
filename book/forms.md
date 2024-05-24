@@ -12,7 +12,7 @@ In this chapter, we'll start to transform our browser into a platform
 for web applications by building out support for HTML forms, the
 simplest way for a browser to send information to a server.
 
-How forms work
+How Forms Work
 ==============
 
 HTML forms have a couple of moving parts.
@@ -84,7 +84,7 @@ in [MathML][mathml], and floating images in [CSS 1.0][css1].
 [mathml]: https://www.w3.org/Math/
 [css1]: https://www.w3.org/TR/REC-CSS1/#floating-elements
 
-Rendering widgets
+Rendering Widgets
 =================
 
 First, let's draw the input areas that the user will type
@@ -303,7 +303,7 @@ text inputs.
 
 [inline-block]: https://developer.mozilla.org/en-US/docs/Web/CSS/display
 
-Interacting with widgets
+Interacting with Widgets
 ========================
 
 We've got `input` elements rendering, but you can't edit their
@@ -555,8 +555,7 @@ styled][frame-caret].
 [focused-element]: https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/core/dom/document.h;l=881;drc=80def040657db16e79f59e7e3b27857014c0f58d
 [frame-caret]: https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/core/editing/frame_caret.h?q=framecaret&ss=chromium
 
-
-Submitting forms
+Submitting Forms
 ================
 
 You submit a form by clicking on a `button`. So let's add another
@@ -793,7 +792,7 @@ HTTP 2.0 and 3.0 did not add any new methods.
 [webdav]: https://en.wikipedia.org/wiki/WebDAV
 [rfc5789]: https://datatracker.ietf.org/doc/html/rfc5789
 
-Receiving POST requests
+Receiving POST Requests
 =======================
 
 To better understand the request/response cycle, let's write a simple
@@ -953,7 +952,7 @@ do (compression, protocol support, sharing domains).
 
 [hpbn]: https://hpbn.co
 
-Generating web pages
+Generating Web Pages
 ====================
 
 So far, all of this server code is "boilerplate"---any web application
@@ -1094,7 +1093,7 @@ application platform. We've added:
 - layout objects for input areas and buttons;
 - clicking on buttons and typing into input areas;
 - hierarchical focus handling;
-- and form submission with HTTP `POST`.
+- form submission with HTTP `POST`.
 
 Plus, our browser now has a little web server friend. That's going to
 be handy as we add more interactive features to the browser.

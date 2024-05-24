@@ -674,7 +674,7 @@ favor. That said, `<b>`, `<i>`, and `<small>` still have some
 
 [html5-text]: https://html.spec.whatwg.org/multipage/text-level-semantics.html#the-small-element
 
-Text of different sizes
+Text of Different Sizes
 =======================
 
 Start mixing font sizes, like `<small>a</small><big>A</big>`, and
@@ -863,7 +863,7 @@ Mongolian [government websites][president-mn] use the script.
 [mongolian]: https://www.w3.org/TR/mlreq/
 [president-mn]: https://president.mn/mng/
 
-Font caching
+Font Caching
 ============
 
 Now that you've implemented styled text, you've probably
@@ -958,7 +958,7 @@ grid. Now it does standard English text layout, so:
 - text is laid out word by word;
 - lines are split at word boundaries;
 - text can be bold or italic;
-- and text of different sizes can be mixed.
+- text of different sizes can be mixed.
 
 You can now use our browser to read an essay, a blog post, or even a
 book!

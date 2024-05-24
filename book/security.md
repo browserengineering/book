@@ -169,7 +169,7 @@ were used on the web.
 [wiki-magic-cookie]: https://en.wikipedia.org/wiki/Magic_cookie
 [x-cookie]: https://en.wikipedia.org/wiki/X_Window_authorization#Cookie-based_access
 
-A login system
+A Login System
 ==============
 
 I want users to log in before posting to the guest book. Minimally,
@@ -347,7 +347,7 @@ websites (without a good reason).
 
 [http-auth]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Authentication
 
-Implementing cookies
+Implementing Cookies
 ====================
 
 To start, we need a place in the browser that stores cookies; that
@@ -426,8 +426,7 @@ were not popular. They are now [obsolete][rfc-6265].
 [rfc-2965]: https://datatracker.ietf.org/doc/html/rfc2965
 [rfc-6265]: https://datatracker.ietf.org/doc/html/rfc6265
 
-
-Cross-site requests
+Cross-site Requests
 ===================
 
 Cookies are site-specific, so one server shouldn't be sent another
@@ -550,7 +549,7 @@ are not accessible from JavaScript.
 [bad-req-headers]: https://developer.mozilla.org/en-US/docs/Glossary/Forbidden_header_name
 [bad-resp-headers]: https://developer.mozilla.org/en-US/docs/Glossary/Forbidden_response_header_name
 
-Same-origin policy
+Same-origin Policy
 ==================
 
 However, new capabilities lead to new responsibilities. HTTP requests
@@ -643,8 +642,7 @@ methods.
 
 [tainted]: https://developer.mozilla.org/en-US/docs/Web/HTML/CORS_enabled_image
 
-
-Cross-site request forgery
+Cross-site Request Forgery
 ==========================
 
 The same-origin policy prevents cross-origin `XMLHttpRequest` calls.
@@ -764,8 +762,7 @@ header][x-frame-options].
 
 [csp-frame-ancestors]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/frame-ancestors
 
-
-SameSite cookies
+SameSite Cookies
 ================
 
 For form submissions, that fail-safe solution is `SameSite` cookies.
@@ -967,7 +964,7 @@ compatibility with existing websites.
 
 [patches]: https://jakearchibald.com/2021/cors/
 
-Cross-site scripting
+Cross-site Scripting
 ====================
 
 Now other websites can't misuse our browser's cookies to read or write
@@ -1059,8 +1056,7 @@ thanks to browsers' [Cross-Origin Read Blocking][corb] policy.
 [corb]: https://chromium.googlesource.com/chromium/src/+/refs/heads/main/services/network/cross_origin_read_blocking_explainer.md
 [json-hijack]: https://owasp.org/www-pdf-archive/OWASPLondon20161124_JSON_Hijacking_Gareth_Heyes.pdf
 
-
-Content security policy
+Content Security Policy
 =======================
 
 One such layer is the `Content-Security-Policy` header. The full
@@ -1204,7 +1200,6 @@ actually blocking the requests.
 
 [report-only]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy-Report-Only
 
-
 Summary
 =======
 
@@ -1215,7 +1210,7 @@ ensuring it was not misused. That involved:
 - mitigating cross-site `XMLHttpRequest`s with the same-origin policy;
 - mitigating cross-site request forgery with nonces and with
   `SameSite` cookies;
-- and mitigating cross-site scripting with escaping and with
+- mitigating cross-site scripting with escaping and with
   `Content-Security-Policy`.
 
 We've also seen the more general lesson that every increase in the
