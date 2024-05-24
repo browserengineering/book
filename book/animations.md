@@ -1793,7 +1793,7 @@ The opacity transition example's composited layers should look like Figure 5
 :::
 
 ::: {.center}
-![Example of composited layers for an opacity transition](examples/example13-opacity-layers.png)
+![Figure 5: Example of composited layers for an opacity transition](examples/example13-opacity-layers.png)
 :::
 
 [flag]: https://docs.python.org/3/library/argparse.html
