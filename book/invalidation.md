@@ -31,7 +31,7 @@ scratch, which our browser currently does, can be very slow on
 complex pages. Try, for example, loading
 [the web version of this chapter](https://browser.engineering/invalidation.html)
 in our browser and typing into the input box
-that appears after this paragraph...You'll find that it is *much* too
+that appears after this paragraph ... You'll find that it is *much* too
 slow---1.7 seconds just in `render`
 (see Figure 1)!^[Trace [here](https://browser.engineering/examples/example16-input-no-optimizations.trace).]
 
@@ -861,7 +861,7 @@ class BlockLayout:
 
 But now we're back to manually calling methods and trying to make sure
 we don't forget a call. What we need is something seamless: `set`-ting
-to a field should automatically mark all the fields that depend on it.
+a field should automatically mark all the fields that depend on it.
 
 To do that, each `ProtectedField` will need to track all fields that
 depend on it, called its `invalidations`:
@@ -1191,7 +1191,7 @@ class BlockLayout:
 ```
 
 Thanks to these fixes, our browser now avoids rebuilding any part of
-the layout tree, unless it changes, and that should make re-layout
+the layout tree unless it changes, and that should make re-layout
 somewhat faster. If you've been going through and adding the
 appropriate `read` and `get` calls, your browser should be close to
 working. There's one tricky case: `tree_to_list`, which might deal
@@ -1216,7 +1216,7 @@ Note that we have quite a few protected fields now, but we only skip
 recomputing `children` based on dirty flags. That's because
 recomputing `children` is slow, but most other fields are really fast
 to compute. Checking dirty flags takes time and adds code clutter, so
-we only want to do when it's worth it.
+we only want to do it when it's worth it.
 
 ::: {.further}
 In real browsers, the layout phase is sometimes split in two, first
@@ -2441,7 +2441,7 @@ method to do that:[^semi-dynamic]
 [^semi-dynamic]: This is dynamic, just like calls to `read`, but at
 least we're centralizing dependencies in one place. Plus, listing the
 dependencies explicitly and then checking them later is a kind of
-[defense in depth] against invalidation bugs.
+[defense in depth][defense-in-depth] against invalidation bugs.
 
 [defense-in-depth]: https://en.wikipedia.org/wiki/Defense_in_depth_(computing)
 
@@ -2584,7 +2584,7 @@ class EmbedLayout:
 
 We can even freeze all of the style fields! The only complication is
 that `innerHTML` changes an element's parent, so let's create the
-style dict dynamically. Initialize it to `None` in the constructor:
+style dictionary dynamically. Initialize it to `None` in the constructor:
 
 ``` {.python}
 class Element:
@@ -2659,7 +2659,7 @@ Real browsers also use assertions to catch bugs, much like the
 `ProtectedField` abstraction in this chapter. But to avoid slowing
 down the browser for users, non-essential assertions are "compiled
 out" in the *release build*, which is what end-users run. The *debug
-build* is browser engineers use when debugging or developing new
+build* is what browser engineers use when debugging or developing new
 features, and also in automated tests. Debug builds
 also compile in debugging features like [sanitizers][ffx-sanitizers],
 while release builds instead use heavyweight optimizations
@@ -2678,10 +2678,10 @@ through optimized cache invalidation. The main takeaways are:
 
 - Caching and invalidation is a powerful way to speed up key browser
   interactions, and is therefore an essential technique in real browsers.
-- Making rendering idempotent allows us skip redundant work
+- Making rendering idempotent allows us to skip redundant work
   while guaranteeing that the page will look the same.
 - A good browser aims for the principle of incremental performance:
-  the cost of a change should be proportional to size of the change,
+  the cost of a change should be proportional to the size of the change,
   not the size of the page as a whole.
 - Cache invalidation is difficult and error-prone,
   and justifies careful abstractions like `ProtectedField`.

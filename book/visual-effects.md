@@ -33,7 +33,7 @@ and rasterization at a lower level.
 [sdl]: https://www.libsdl.org/
 
 [^tkinter-before-gpu]: That's because Tk, the graphics library that
-Tkinter uses, dates from the early 90s, before high-performance
+Tkinter uses, dates from the early 1990s, before high-performance
 graphics cards and GPUs became widespread.
 
 ::: {.installation}
@@ -239,7 +239,7 @@ somewhat more complex code within SDL and Skia themselves.[^skia-color]
 [^skia-color]: Skia actually represents colors
 as 32-bit integers, with the most significant byte representing
 the alpha value (255 meaning opaque and 0 meaning transparent) and
-then the next three bytes representing the red, green, and blue color
+the next three bytes representing the red, green, and blue color
 channels.
 
 Defining colors via red, green, and blue components is fairly
@@ -503,8 +503,8 @@ Get rid of the old `Rect` class that was introduced in [Chapter
 constructed, instead put `skia.Rect.MakeLTRB` (for "make
 left-top-right-bottom") or `MakeXYWH` (for "make
 *x*-*y*-width-height"). Everywhere that the sides of the
-rectangle (e.g. `left`) were checked, replace them with the
-corresponding function on a Skia `Rect` (e.g. `left()`). Also replace
+rectangle (e.g., `left`) were checked, replace them with the
+corresponding function on a Skia `Rect` (e.g., `left()`). Also replace
 calls to `containsPoint` with Skia's `contains`.
 
 While we're here, let's also add a `rect` field to the other drawing
@@ -638,15 +638,23 @@ class BlockLayout:
                 self.self_rect(), radius, bgcolor))
 ```
 
-With that, [this example](https://browser.engineering/examples/example11-rounded-background.html) will round the corners of its background
-(see Figure 1; notice that it does not round the text, though):
+With that, [this
+example](https://browser.engineering/examples/example11-rounded-background.html):[^relative-urls]
+
+[^relative-urls]: Note that the example listed here, in common with
+    other examples present in the book, accesses a local resource (a
+    CSS file in this case) that is also present on
+    [browser.engineering](https://browser.engineering/).
 
 ::: {.transclude .html}
 www/examples/example11-rounded-background.html
 :::
 
+will round the corners of its background
+(see Figure 1; notice that it does not round the text, though).
+
 ::: {.center}
-![Figure 1: Example of a long word with rounded background](examples/example11-rounded-background.png)
+![Figure 1: Example of a long word with a rounded background.](examples/example11-rounded-background.png)
 :::
 
 Similar changes should be made to `InputLayout`. New shapes, like
@@ -992,7 +1000,7 @@ transparent black pixels were blending with orange pixels, resulting
 in a dark-orange color. In the second example, the black pixels were
 first blended with the background, then the result was made
 transparent. Thus, fully black pixels replaced fully orange ones,
-resulting just black pixels, which were later made 50% transparent.
+resulting in just black pixels, which were later made 50% transparent.
 
 Applying blending in the proper order, as is necessary to implement effects
 like `opacity`, requires more careful handling of surfaces.
@@ -1057,7 +1065,7 @@ of stacking contexts is very related to the tree of surfaces.
 
 To match this use pattern, in Skia, surfaces form a stack. You can
 push a new surface on the stack, raster things to it, and then pop it
-off, which blends it with surface below. When rastering, you push a
+off, which blends it with the surface below. When rastering, you push a
 new surface onto the stack every time
 you need to apply some visual effect,
 and pop-and-blend once you're done rastering all the elements
@@ -1165,7 +1173,7 @@ I highly recommend [this blog post](https://ciechanow.ski/alpha-compositing/),
 which gives a really nice visual overview of many of the same concepts explored in
 this chapter, plus way more content about how a library such as Skia might
 implement features like raster sampling of vector graphics for lines and text
-and interpolation of surfaces when their pixel arrays don't match resolution
+and interpolation of surfaces when their pixel arrays don't match in resolution
 or orientation.
 :::
 
@@ -1332,7 +1340,7 @@ Figure 5: Example of the `difference` value for `mix-blend-mode` with a blue chi
 :::
 
 Here, when blue overlaps with orange, we see pink: blue has (red,
-green, blue) color channels of `(0, 0, 1)`, and orange has `(1, .65,
+green, blue) color channels of `(0, 0, 1)`, and orange has `(1, 0.65,
 0)`, so with "difference" blending the resulting pixel will be `(1,
 0.65, 1)`, which is pink. On a pixel level, what's happening is
 something like this:
@@ -1857,7 +1865,7 @@ other scrollable elements.
 11-5 *Touch input*. Many desktop (and all mobile, of course) screens these
 days support touch and multitouch input. And SDL has [APIs][sdl-touch]
 to support it. Implement a touch-input variant of `click`.^[You might want
-to go back and look at a go-further block in [Chapter 7](chrome.md) for some
+to go back and look at the "Go Further" block in [Chapter 7](chrome.md) for some
 hints about good ways to implement touch input.]
 
 [sdl-touch]: https://wiki.libsdl.org/SDL2/SDL_MultiGestureEvent

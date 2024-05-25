@@ -958,7 +958,7 @@ grid. Now it does standard English text layout, so:
 - text is laid out word by word;
 - lines are split at word boundaries;
 - text can be bold or italic;
-- and text of different sizes can be mixed.
+- text of different sizes can be mixed.
 
 You can now use our browser to read an essay, a blog post, or even a
 book!

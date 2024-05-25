@@ -41,7 +41,7 @@ This particular example renders as shown in Figure 1.
 
 ::: {.center}
 ![Figure 1: A computer operator using the Hypertext Editing System in
-1969. (Gregory Lloyd from [Wikipedia](https://commons.wikimedia.org/wiki/File:HypertextEditingSystemConsoleBrownUniv1969.jpg), CC BY-SA 4.0 International.)](im/hes.jpg)
+1969. (Gregory Lloyd from [Wikipedia](https://commons.wikimedia.org/wiki/File:HypertextEditingSystemConsoleBrownUniv1969.jpg), [CC BY-SA 4.0 International](https://creativecommons.org/licenses/by-sa/4.0/deed.en).)](im/hes.jpg)
 :::
 
 Luckily, implementing images isn't too hard, so let's just get
@@ -668,7 +668,7 @@ class ImageLayout(EmbedLayout):
         # ...
 ```
 
-Your browser should now be able to render the following example [page](https://browser.engineering/examples/example15-img.html) correctly, as shown in Figure 2. When it's scrolled down a bit you should see what's shown in Figure 3 (notice the different aspect
+Your browser should now be able to render the following [example page](https://browser.engineering/examples/example15-img.html) correctly, as shown in Figure 2. When it's scrolled down a bit you should see what's shown in Figure 3 (notice the different aspect
 ratios). And scrolling to the end will show what appears in Figure 4, including
 the "broken image" icon.
 
@@ -1454,7 +1454,7 @@ class Frame:
         return max(0, min(scroll, maxscroll))
 ```
 
-Make sure to use `clamp_scroll` method everywhere. For example, in `scroll_to`:
+Make sure to use the `clamp_scroll` method everywhere. For example, in `scroll_to`:
 
 ``` {.python}
 class Frame:
@@ -1855,7 +1855,7 @@ class JSContext:
 ```
 
 We'll need something similar in `innerHTML` and `style` because we
-need to `set_needs_render` on the relevant `Frame`.
+need to call `set_needs_render` on the relevant `Frame`.
 
 Finally, for `setTimeout` and `XMLHttpRequest`, which involve a call
 from JavaScript into the browser and later a call from the browser
@@ -2022,7 +2022,7 @@ window.addEventListener("message", function(e) {
 ```
 
 [^structured-cloning]: In a real browser, you can also pass data that
-is not a string, such as numbers and objects. It works via a
+is not a string, such as numbers and objects. This works via a
 *serialization* algorithm called [structured
 cloning][structured-clone], which converts most JavaScript objects
 (though not, for example, DOM nodes) to a sequence of bytes that the
@@ -2187,7 +2187,7 @@ first implementation of site isolation.
 
 [site-isolation]: https://www.chromium.org/Home/chromium-security/site-isolation/
 
-Site isolation has become much more important recent years, due to the
+Site isolation has become much more important in recent years, due to the
 CPU cache timing attacks called [*spectre* and
 *meltdown*][spectre-meltdown]. In short, these attacks allow an
 attacker to read arbitrary locations in memory---including another
@@ -2233,7 +2233,7 @@ was using `SharedArrayBuffer` to allow synchronous calls from a
 `JSContext` to the browser, and that required APIs that browsers
 restrict for security reasons. Setting the security headers wouldn't
 work, because Chapter 14 embeds a Youtube video,
-and at the time of writing YouTube doesn't send those headers.
+and as I'm writing this YouTube doesn't send those headers.
 In the end, I worked around the issue by not embedding the browser widget
 and [asking the reader](http://browser.engineering/scripts.html#outline) to open a new browser window.
 :::
@@ -2310,7 +2310,7 @@ rasterization time.
 Implement the basics of this CSS property: a `url(...)` value for the
 `background-image` property. Avoid loading the image if the
 `background-image` property does not actually end up used on any
-element. For a bigger challenge, also allow the web page set the size
+element. For a bigger challenge, also allow the web page to set the size
 of the background image with the [`background-size`][bg-size] CSS
 property.
 

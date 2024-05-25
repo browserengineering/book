@@ -160,7 +160,7 @@ trickier][speculative] to implement efficiently.
 Exporting functions
 ===================
 
-Right now our browser just prints the last expression in a script; but
+Right now, our browser just prints the last expression in a script; but
 in a real browser scripts must call the `console.log` function to
 print. To support that, we will need to *export a function* from
 Python into JavaScript. We'll be exporting a lot of functions, so to
@@ -1090,7 +1090,7 @@ form.addEventListener("submit", function(e) {
 This way it's impossible to submit the form when the comment is too
 long!
 
-Well... impossible in this browser. But since there are browsers that
+Well ... impossible in this browser. But since there are browsers that
 don't run JavaScript (like ours, one chapter back), we should check
 the length on the server side too:
 

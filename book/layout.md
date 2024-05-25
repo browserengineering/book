@@ -753,7 +753,7 @@ capabilities to our browser. However, even with layout the
 bit better---see Figure 3.
 
 ::: {.center}
-![Figure 3: https://browser.engineering/ viwed in this chapter's
+![Figure 3: https://browser.engineering/ viewed in this chapter's
 version of the browser.](examples/example5-browserengineering-screenshot.png)
 :::
 

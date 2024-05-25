@@ -726,7 +726,7 @@ which even the standard warns against using.
 How web apps work
 =================
 
-So... how do web applications (web apps) use forms? When you
+So ... how do web applications (web apps) use forms? When you
 use an application from your browser---whether you are registering to
 vote, looking at pictures of your baby cousin, or checking your
 email---there are typically[^exceptions] two programs involved: client
@@ -778,7 +778,7 @@ forms are based on the same principles of client and server code.
 
 ::: {.further}
 There are request types besides `GET` and `POST`, like [`PUT`][put-req]
-(create if non-existant) and [`DELETE`][del-req], or the more obscure
+(create if non-existent) and [`DELETE`][del-req], or the more obscure
 `CONNECT` and `TRACE`. In 2010 the [`PATCH` method][patch-req] was
 standardized in [RFC 5789][rfc5789]. New methods were intended as a
 standard extension mechanism for HTTP, and some protocols were built
@@ -809,7 +809,7 @@ start a new file. The server will need to:
 
 -   open a socket and listen for connections;
 -   parse HTTP requests it receives;
--   and respond to those requests with an HTML web page.
+-   respond to those requests with an HTML web page.
 
 Let's start by opening a socket. Like for the browser, we need to
 create an internet streaming socket using TCP:
