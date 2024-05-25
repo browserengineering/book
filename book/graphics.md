@@ -326,13 +326,11 @@ Here's a widget demonstrating that concept:
 At this point you should be able to load up [our example page][ex-monkey] in your
 browser and have it look something like Figure 4.
 
-<div class=center>
+::: {.center}
 ![Figure 4: The first chapter of *Journey to the West* rendered in our browser.](examples/example2-text-screenshot.png)
-<br>
-</div>
+:::
 
 [ex-monkey]: https://browser.engineering/examples/xiyouji.html
-
 
 Now we can read a lot of text, but still not all of it: if there's
 enough text, not all of the lines will fit on the screen. We want
