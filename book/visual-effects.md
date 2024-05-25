@@ -1771,8 +1771,8 @@ example. Both of these libraries are used outside of the browser, too:
 Core Graphics in iOS and macOS, and Skia in Android.
 :::
 
-[^cgpp]: There is also [Computer Graphics: Principles and
-Practice][classic], which incidentally I remember buying---this is
+[^cgpp]: There is also [*Computer Graphics: Principles and
+Practice*][classic], which incidentally I remember buying---this is
 Chris speaking---back in the days of my youth (1992 or so). At the time I
 didn't get much further than rastering lines and polygons (in assembly
 language!). These days you can do the same and more with Skia and a
