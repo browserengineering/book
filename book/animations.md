@@ -160,8 +160,8 @@ GPU Acceleration
 Try the fade animation in your browser, and you'll probably notice
 that it's not particularly smooth. And that shouldn't be surprising;
 after all, [Chapter 12](scheduling.md#profiling-rendering) showed
-that raster and draw was about 62\,{=latex} {=html}ms for simple pages, and render
-was 23\,{=latex} {=html}ms.
+that raster and draw was about 62`\,`{=latex}` `{=html}ms for simple pages, and render
+was 23`\,`{=latex}` `{=html}ms.
 
 Even with just 62\,{=latex} {=html}ms per frame, our browser is barely doing 15 frames per
 second; for smooth animations we want 30! So we need to speed up
@@ -358,7 +358,7 @@ expected, speed is much improved. I found that raster and draw improved to
 7 ms on average (see Figure 1).
 
 ::: {.center}
-![Figure 1: Raster and draw times from a trace using GPU raster](examples/example13-trace-count-gpu-raster.png)
+![Figure 1: Raster and draw times from a trace using GPU raster.](examples/example13-trace-count-gpu-raster.png)
 :::
 
 That's about 10 times faster, and enough to hit 30 frames per second. (And on
@@ -1363,7 +1363,7 @@ concept: keep track of what is animating, and re-run only `paint`,
 
 Implementing this is harder than it sounds. We'll need to split the _new_
 display list into the _old_ composited layers and a _new_ draw display list. To
-do this we'll need know how the new and old display lists are related, and what
+do this we'll need to know how the new and old display lists are related, and what
 parts of the display list changed. For this purpose we'll add a `node` field to
 each display item, storing the node that painted it, as a sort of identifier:
 
@@ -1589,7 +1589,7 @@ and *composited*, they are not *threaded* in the sense of
 [Chapter 12][threaded-12]: the animation still ticks on the main thread, and
 if there is some slow JavaScript or other task clogging the task queue, animations
 will stutter. This is a significant problem for real browsers, so almost all of
-them support threaded opacity, transform and filter animations; some support
+them support threaded opacity, transform, and filter animations; some support
 certain kinds of clip animations as well. Adding threaded animations to our
 browser is left as Execise 13-3.
 
@@ -2130,7 +2130,7 @@ testing is now complete. You should now be able to render
 
 ::: {.print-only}
 
-The blue square should now be underneath the green square, so overlap
+The blue square in Figure 6 should now be underneath the green square, so overlap
 testing is now complete. You should now be able to render
 [this example](https://browser.engineering/examples/example13-transform-overlap.html)
 correctly:

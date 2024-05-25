@@ -489,7 +489,7 @@ class JSContext:
 
 Note that in the asynchronous case, the `XMLHttpRequest_send` method starts a
 thread and then immediately returns. That thread will run in parallel
-to the browser's main work until the request is done.
+with the browser's main work until the request is done.
 
 To communicate the result back to JavaScript, we'll call a
 `__runXHROnload` function from `dispatch_xhr_onload`:
@@ -1213,7 +1213,7 @@ render, and we'll do that in [Chapter 13](animations.md) But
 another option---complex, but worthwhile and done by every major
 browser---is to do the render step in parallel with the
 raster-and-draw step by adopting a multithreaded architecture. Not
-only would this speed up the rendering pipeline (dropping from 85 to
+only would this speed up the rendering pipeline (dropping from 85 ms to
 62 ms) but we could also execute JavaScript on one thread
 while the expensive `raster_and_draw` task runs on the other.
 

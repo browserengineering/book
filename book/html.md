@@ -622,7 +622,7 @@ with other platforms.]
 
 [^almost-standards-mode]: There's also this crazy thing called "[almost
     standards][limited-quirks]" or "limited quirks" mode, due to a
-    backwards-incompatible change in table cell vertical layout. Yes.
+    backward-incompatible change in table cell vertical layout. Yes.
     I don't need to make these up!
 
 [limited-quirks]: https://hsivonen.fi/doctype/

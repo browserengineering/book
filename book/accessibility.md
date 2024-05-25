@@ -1486,7 +1486,7 @@ For the [focus example](examples/example14-focus.html), the focus outline
 of an `<a>` element becomes red, as in Figure 6.
 
 ::: {.center}
-![Figure 6: Example of a customized red focus outline](examples/example14-focus-outline-custom.png)
+![Figure 6: Example of a customized red focus outline.](examples/example14-focus-outline-custom.png)
 :::
 
 As with dark mode, focus outlines are a case where adding an
@@ -2665,7 +2665,7 @@ www/examples/example14-maxwidth-media.css
 :::
 
 14-5 *Mixed inlines*. Make the focus ring work correctly on nested inline
-elements. For example in `<a>a <b>bold</b> link</a>`, the focus ring
+elements. For example, in `<a>a <b>bold</b> link</a>`, the focus ring
 should cover all three words together when the user is focused on the
 link, and with multiple rectangles if the inline crosses lines.
 However, if the user focuses on a block-level element, such as in
@@ -2707,7 +2707,7 @@ compare the behavior with a real browser.
 
 [os-integ]: https://pypi.org/project/accessible_output/
 
-*Focus method and events*: Add support for the JavaScript
+*Focus method and events*. Add support for the JavaScript
 [`focus()`][focus-method] method
 and the corresponding [`focus`][focus-event] and
 [`blur`][blur-event] events on DOM elements. Make sure that `focus()`
