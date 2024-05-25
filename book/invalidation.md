@@ -2770,7 +2770,7 @@ the layout tree as possible.
 16-8 *`:hover` pseudo-class*. There is a `:hover` pseudo-class that
 identifies elements the mouse is [hovering over][hover-pseudo].
 Implement it by sending mouse hover events to the active `Tab` and
-hit-testing to find out which element is being hovered over. Try to avoid
+hit testing to find out which element is being hovered over. Try to avoid
 [forcing a layout][forced-layout-hit-test] in this hit test; one way to do that
 is to store a `pending_hover` on the `Tab` and run the hit test
 after `layout` during `render`, and then perform *another* render to
