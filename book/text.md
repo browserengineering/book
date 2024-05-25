@@ -17,7 +17,7 @@ capabilities. You'll even be able to read [this page](https://browser.engineerin
     Text is near-infinitely complex, but this book cannot be
     infinitely long!
 
-What is a font?
+What is a Font?
 ===============
 
 So far, we've called `create_text` with a character and two
@@ -127,7 +127,7 @@ centuries earlier.
 
 [california]: http://www.alembicpress.co.uk/Typecases/CJCCASE.HTM 
 
-Measuring text
+Measuring Text
 ==============
 
 Text takes up space vertically and horizontally, and the font object's
@@ -283,7 +283,7 @@ themselves.
 
 [case]: https://publicdocs.courts.mi.gov/opinions/final/sct/20120803_s145387_157_standup-op.pdf 
 
-Word by word
+Word by Word
 ============
 
 In [Chapter 2](graphics.md), the `layout` function looped over the text
@@ -382,7 +382,7 @@ incompatible][css-hyphen] with this algorithm, but the recent
 [css-hyphen]: https://news.ycombinator.com/item?id=19472922
 [css4-text]: https://drafts.csswg.org/css-text-4/#propdef-text-wrap-style
 
-Styling text
+Styling Text
 ============
 
 Right now, all of the text on the page is drawn with one font. But web
@@ -542,7 +542,7 @@ which look like roman fonts but are slanted.
 [chancery]: https://en.wikipedia.org/wiki/Chancery_hand
 [oblique]: https://en.wikipedia.org/wiki/Oblique_type
 
-A layout object
+A Layout Object
 ===============
 
 With all of these tags, `layout` has become quite large, with lots of
@@ -674,7 +674,7 @@ favor. That said, `<b>`, `<i>`, and `<small>` still have some
 
 [html5-text]: https://html.spec.whatwg.org/multipage/text-level-semantics.html#the-small-element
 
-Text of different sizes
+Text of Different Sizes
 =======================
 
 Start mixing font sizes, like `<small>a</small><big>A</big>`, and
@@ -863,7 +863,7 @@ Mongolian [government websites][president-mn] use the script.
 [mongolian]: https://www.w3.org/TR/mlreq/
 [president-mn]: https://president.mn/mng/
 
-Font caching
+Font Caching
 ============
 
 Now that you've implemented styled text, you've probably

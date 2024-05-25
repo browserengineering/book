@@ -1324,7 +1324,7 @@ Repeatedly clicking on the link on that page will add another recursive iframe.
 After clicking twice it should look like Figure 6.
 
 ::: {.center}
-![Figure 6: Rendering of embedded iframes.](examples/example15-iframe-clicked.png)
+![Figure 6: Rendering of nested iframes.](examples/example15-iframe-clicked.png)
 :::
 
 Let's get the other interactions working as well, starting with

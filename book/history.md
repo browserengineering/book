@@ -15,7 +15,7 @@ Standard Generalized Markup Language (
 [SGML](https://en.wikipedia.org/wiki/Standard_Generalized_Markup_Language))
 or other predecessors to HTML. (Except in this footnote!)
 
-The Memex concept
+The Memex Concept
 =================
 
 ::: {.center}
@@ -75,7 +75,7 @@ By "association", Bush meant a trail of thought leading from one record
 to the next via a human-curated link. He imagined not just a universal
 library, but a universal way to record the results of what we learn.
 
-The web emerges
+The Web Emerges
 ===============
 
 The concept of [hypertext][hypertext]\index{hypertext} documents linked by
@@ -312,7 +312,7 @@ explosion in third-party JavaScript libraries and frameworks.
 Netscape's early versions were also not free software---you had to buy them from
 a store. They cost about $50.
 
-Web standards
+Web Standards
 =============
 
 In parallel with these developments was another, equally important, one---the
@@ -375,7 +375,7 @@ standards---it is in retrospect not that relevant which browser “won” or “
 each of the browser “wars”. In each case _the web_ won, because it
 gained users and grew in capability.
 
-Open source
+Open Source
 ===========
 
 Another important and interesting outcome of the _second_ browser war was that

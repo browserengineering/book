@@ -13,7 +13,7 @@ where the tree of elements is transformed into a tree of *layout
 objects* before drawing. In the process, we'll make web pages more
 colorful with backgrounds.
 
-The layout tree
+The Layout Tree
 ===============
 
 Right now, our browser lays out an element's open and close tags
@@ -142,8 +142,7 @@ tree][gecko-tree].
 [webkit-tree]: https://webkit.org/blog/114/webcore-rendering-i-the-basics/
 [gecko-tree]: https://wiki.mozilla.org/Gecko:Key_Gecko_Structures_And_Invariants
 
-
-Block layout
+Block Layout
 ============
 
 So far, we've focused on text layout---and text is laid out
@@ -310,7 +309,7 @@ avoids this kind of error.
 
 [mdn-display]: https://developer.mozilla.org/en-US/docs/Web/CSS/display
 
-Size and position
+Size and Position
 =================
 
 In the [previous chapter](html.md), the `Layout` object was
@@ -531,7 +530,7 @@ to traverse the tree and calculate each attribute.
 
 [wiki-atgram]: https://en.wikipedia.org/wiki/Attribute_grammar
 
-Recursive painting
+Recursive Painting
 ==================
 
 Our `layout` method is now doing quite a bit of work: computing sizes
@@ -775,7 +774,7 @@ This chapter was a dramatic rewrite of our browser's layout engine, so:
 - each node in the tree has one of two different *layout modes*;
 - layout computes a size and position for each layout object;
 - the display list now contains generic commands;
-- and source code snippets now have backgrounds.
+- source code snippets now have backgrounds.
 
 Tree-based layout makes it possible to dramatically expand our
 browser's styling capabilities. We'll work on that in the [next

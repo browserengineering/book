@@ -12,7 +12,7 @@ features like CSS, JavaScript, and visual effects. So this chapter
 adds a proper HTML parser\index{parsing} and converts the layout
 engine to use it.
 
-A tree of nodes
+A Tree of Nodes
 ===============
 
 The HTML tree[^dom] has one node\index{node} for each open and close tag pair
@@ -163,7 +163,7 @@ sibling to [troff][troff], now used for Linux manual pages. The
 [troff]: https://troff.org
 [jtc1-sc34]: https://www.iso.org/committee/45374.html
 
-Constructing the tree
+Constructing the Tree
 =====================
 
 Let's talk about adding nodes to a tree. To add a text node we add it
@@ -265,7 +265,7 @@ loading additional resources even before parsing is done.
 [speculative-parsing]: https://developer.mozilla.org/en-US/docs/Glossary/speculative_parsing
 [document-write-bad]: https://developer.mozilla.org/en-US/docs/Web/API/Document/write
 
-Debugging a parser
+Debugging a Parser
 ==================
 
 How do we know our parser does the right thing---that it builds the
@@ -384,7 +384,7 @@ HTML,[^almost-standards-mode] but don't use the URL, so
 `<!doctype html>` is the best document type declaration for modern HTML.
 :::
 
-Self-closing tags
+Self-closing Tags
 =================
 
 Elements like `<meta>` and `<link>` are what are called self-closing:
@@ -545,7 +545,7 @@ name, not by some special syntax, so the slash is optional.
 [xhtml]: https://www.w3.org/TR/xhtml1/
 
 
-Using the node tree
+Using the Node Tree
 ===================
 
 Right now, the `Layout` class works token by token; we now want it to
@@ -627,7 +627,7 @@ with other platforms.]
 
 [limited-quirks]: https://hsivonen.fi/doctype/
 
-Handling author errors
+Handling Author Errors
 ======================
 
 The parser now handles HTML pages correctly—at least when the HTML is
@@ -828,7 +828,7 @@ list of tokens. We added:
 - a parser to transform HTML tokens to a tree;
 - code to recognize and handle attributes on elements;
 - automatic fixes for some malformed HTML documents;
-- and a recursive layout algorithm to lay out an HTML tree.
+- a recursive layout algorithm to lay out an HTML tree.
 
 The tree structure of HTML is essential to display visually complex
 web pages, as we will see in the next chapter.

@@ -9,7 +9,7 @@ A web browser displays information identified by a URL. And the first
 step is to use that URL to connect to and download that information
 from a server somewhere on the Internet.
 
-Connecting to a server
+Connecting to a Server
 ======================
 
 Browsing the internet starts with a URL\index{URL},[^url] a short string that
@@ -135,7 +135,7 @@ confusion][what-is-rest] about it.
 [rest-thesis]: https://ics.uci.edu/~fielding/pubs/dissertation/fielding_dissertation_2up.pdf
 [what-is-rest]: https://twobithistory.org/2020/06/28/rest.html
 
-Requesting information
+Requesting Information
 ======================
 
 Once it's connected, the browser requests information from the server
@@ -211,7 +211,7 @@ fact, one of the first two browsers had a [line-mode UI][line-mode].
 [SMTP]: https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol
 [line-mode]: https://en.wikipedia.org/wiki/Line_Mode_Browser
 
-The server's response
+The Server's Response
 =====================
 
 The server's response starts with the line in Figure 3.
@@ -469,7 +469,7 @@ use][mac-bsd] large amounts of code descended from BSD Unix.
 
 [mac-bsd]: https://developer.apple.com/library/archive/documentation/Darwin/Conceptual/KernelProgramming/BSD/BSD.html
 
-Request and response
+Request and Response
 ====================
 
 Now that we have a connection, we make a request to the other server.
@@ -745,7 +745,7 @@ super simple and basic HTML parser can already print out the text of the
 [browser.engineering](https://browser.engineering/) website.
 :::
 
-Encrypted connections
+Encrypted Connections
 =====================
 
 So far, our browser supports the `http` scheme. That's a pretty common
@@ -918,7 +918,7 @@ can:
 -   connect to that host using the `sockets` and `ssl` libraries;
 -   send an HTTP request to that host, including a `Host` header;
 -   split the HTTP response into a status line, headers, and a body;
--   and print the text (and not the tags) in the body.
+-   print the text (and not the tags) in the body.
 
 Yes, this is still more of a command-line tool than a web browser, but
 it already has some of the core capabilities of a browser.
