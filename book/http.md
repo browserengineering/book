@@ -202,7 +202,7 @@ HTTP was designed to be simple to understand and implement, making it
 easy for any kind of computer to adopt it. It's no coincidence that
 you can type HTTP directly into `telnet`! Nor is it an accident that
 HTTP is a "line-based protocol", using plain text and newlines,
-similar to Simple Mail Transfer Protocol ([SMTP][SMTP]) for email.
+similar to the Simple Mail Transfer Protocol ([SMTP][SMTP]) for email.
 Ultimately, the whole pattern derives
 from early computers only having line-based text input. In
 fact, one of the first two browsers had a [line-mode UI][line-mode].

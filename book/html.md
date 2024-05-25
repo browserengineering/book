@@ -71,7 +71,7 @@ suppose the parser has so far read this bit of HTML:
 ```
 
 The parser has seen five tags (and one text node). The rest of the
-HTML will contain more open tags, close tags, and text; but no matter
+HTML will contain more open tags, close tags, and text, but no matter
 which tokens it sees, no new nodes will be added to the `<video>` tag,
 which has already been closed. So that node is "finished". But the
 other nodes are unfinished: more children can be added to the

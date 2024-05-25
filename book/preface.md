@@ -85,8 +85,8 @@ turn was made possible by the very thing this book is about.
 *Pavel*: [James R. Wilcox][jrw] and I dreamed up this book during a
 late-night chat at ICFP 2018. [Max Willsey][mwillsey] proofread and
 helped sequence the chapters. [Zach Tatlock][ztatlock] encouraged me
-to develop the book into a course. And the students of CS 6968 and CS
-4962 at the University of Utah found countless errors and suggested
+to develop the book into a course. And the students of CS 6968,
+CS 4962, and CS 4560 at the University of Utah found countless errors and suggested
 important simplifications. I am thankful to all of them. Most of all,
 I am thankful to my wife [Sara][saras], who supported my writing and
 gave me the strength to finish this many-year-long project.

@@ -59,7 +59,7 @@ it wasn’t viewed as especially fast or featureful compared to its implementati
 on other operating systems.
 
 [^meantime-linux]: Meanwhile, the "better Linux browser than Netscape" took a
-long time to appear....
+long time to appear...
 
 How hard indeed! After seven years in the trenches working on Chrome, I now know
 the answer to his question: building a browser is both easy and incredibly hard,

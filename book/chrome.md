@@ -1414,8 +1414,8 @@ browser navigates to a URL with a fragment, it should scroll the page
 so that the element with that identifier is at the top of the screen.
 Also, implement fragment links: relative URLs that begin with a `#`
 don't load a new page, but instead scroll the element with that
-identifier to the top of the screen. The table of contents on this
-page uses fragment links.
+identifier to the top of the screen. The table of contents on [the web
+version of this chapter](https://browser.engineering/chrome.html) uses fragment links.
 
 7-6 *Search*. If the user types something that's *not* a URL into the
 address bar, make your browser automatically search for it with a

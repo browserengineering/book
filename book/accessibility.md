@@ -413,8 +413,8 @@ good old [Lorem ipsum][lorem-ipsum]!]
 :::
 
 This should render as shown in Figure 1, while Figure 2 shows how it should
-look after a 2x zoom. Note how not only are the words twice
-as big, but the lines wrap at different words, just as desired:
+look after a 2× zoom. Note how not only are the words twice
+as big, but the lines wrap at different words, just as desired.
 
 [lorem-ipsum]: https://en.wikipedia.org/wiki/Lorem_ipsum
 
@@ -757,9 +757,9 @@ def style(node, rules, tab):
 
 ::: {.web-only}
 
-Try your browser on [this](examples/example14-focus.html)^[I'll use it
-throughout the chapter as the "focus example".] example web page with lots
-of links, text entries and buttons,
+Try your browser on this [web page](examples/example14-focus.html)^[I'll use it
+throughout the chapter as the "focus example".] with lots
+of links, text entries, and buttons,
 and you should now see that in dark mode they also change
 color to have a darker background and lighter foreground. It should look like
 Figure 4 in dark mode.
@@ -1757,7 +1757,7 @@ Screen Readers
 ==============
 
 Typically, the screen reader is a separate application from the
-browser[^why-diff] the browser communicates with through
+browser;[^why-diff] the browser communicates with it through
 OS-specific APIs. To keep this book platform-independent and demonstrate
 more clearly how screen readers interact with the accessibility tree, our
 discussion of screen reader support will instead include a minimal
@@ -1769,7 +1769,7 @@ Modern browsers generally talk to screen readers from  something like the
 multithreaded browser.] So the very first thing we need to do is send the
 tab's accessibility tree over to the browser thread. That'll be a
 straightforward extension of the commit concept introduced in
-[Chapter 12][ch12-commit]. First we'll add the tree to `CommitData`: 
+[Chapter 12][ch12-commit]. First, we'll add the tree to `CommitData`: 
 
 ``` {.python replace=accessibility_tree)/accessibility_tree%2c%20focus)}
 class CommitData:
@@ -2152,7 +2152,7 @@ setting the `role` attribute.
     the document, has the `alert` role (or the equivalent `aria-live`
     value, `assertive`), and is visible in the layout tree (meaning it
     doesn't have `display: none`), or if its contents change. In this
-    chapter, I won't handle all of these cases and just focus on new
+    chapter, I won't handle all of these cases—I'll just focus on new
     elements with an `alert` role, not changes to contents or CSS.
     
 On to implementation. We first need to make it possible

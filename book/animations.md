@@ -780,7 +780,7 @@ side to account for that:
 [^even-more-corner-cases]: One pixel of "slop" around the edges is
 not good enough for a real browser, which has to deal with lots of
 really subtle issues like nicely blending pixels between adjacent
-composited layers, subpixel positioning and effects like blur filters
+composited layers, subpixel positioning, and effects like blur filters
 with infinite theoretical extent.
 
 ``` {.python}
@@ -945,7 +945,7 @@ div { transition: opacity 2s; }
 Now, whenever the `opacity` property of a `div` changes for any
 reason---like from changing its style attribute---the browser smoothly
 interpolates between the old and new values for two seconds. Here is
-an [example](https://browser.engineering/examples/example13-opacity-transition.html).
+[an example](https://browser.engineering/examples/example13-opacity-transition.html).
 
 ::: {.web-only}
 
@@ -1319,7 +1319,7 @@ more complex example.]
 :::
 
 ::: {.center}
-![Figure 4: Example trace of an opacity transition with compositring disabled.](examples/example13-trace-opacity-transition-no-compositing.png)
+![Figure 4: Example trace of an opacity transition with compositing disabled.](examples/example13-trace-opacity-transition-no-compositing.png)
 :::
 
 ::: {.further}
@@ -1400,7 +1400,7 @@ class Tab:
 ```
 
 Now, when we `commit` a frame which only needs the paint phase,
-send the `composited_updates` over to the browser, which it
+send the `composited_updates` over to the browser, which
 will use that to skip composite and raster. The data to be sent
 across for each animation update will be an `Element` and a
 `Blend`.
@@ -2044,7 +2044,7 @@ class Tab:
 
 However, if you try to load the example above, you'll find that it still looks
 wrong---the blue square is supposed to be *under* the green one, but it's on
-top.^[The hit testing is correct, though, because the rendering problem is in
+top.^[Hit testing is correct, though, because the rendering problem is in
 compositing, not geometry of layout objects.]
 
 That's because when we test for overlap, we're comparing the
@@ -2179,7 +2179,8 @@ each display item:
 [^clipping-notes]: This is very important, because otherwise some
 composited layers can end up huge despite not drawing much to the screen.
 A good example of this optimization making a big difference is loading the
-browser from [Chapter 15](https://browser.engineering/embeds.html) for the browser.engineering homepage,
+browser from [Chapter 15](https://browser.engineering/embeds.html) for
+the [browser.engineering](https://browser.engineering/) homepage,
 where otherwise we would end up with an enormous composited layer for an
 iframe.
 
@@ -2255,11 +2256,11 @@ Summary
 =======
 
 This chapter introduces animations. The key takeaways you should
-remember are that:
+remember are:
 
 - Animations come in DOM-based, input-driven and video-like varieties;
 - GPU acceleration is necessary for smooth animations.
-- compositing is usually necessary for smooth and threaded visual effect
+- Compositing is usually necessary for smooth and threaded visual effect
   animations.
 - It's important to optimize the number of composited layers.
 - Overlap testing can cause additional GPU memory use and needs to be
@@ -2353,7 +2354,7 @@ means that every subsequent display item is assumed to overlap the animating
 one (even if it doesn't at the moment), and therefore can't merge into any
 `CompositedLayer` earlier in the list than the animating one. Another way is
 to run overlap testing on every animation frame in the browser thread, and if
-the results differ from the prior frame, re-do compositing and raster.
+the results differ from the prior frame, redo compositing and raster.
 [^css-animation-transform]
 
 [^css-animation-transform]: And if you've done Exercise 13-5, and

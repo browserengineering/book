@@ -35,7 +35,7 @@ world (see Figure 1). It was described in terms of the microfilm screen technolo
 but its purpose and concept has some clear similarities to the web as we know it
 today, even if the user interface and technology details differ.
 
-The web is at its core organized around the Memex-like goal of _representing and
+The web is, at its core, organized around the Memex-like goal of _representing and
 displaying information_, providing a way for humans to effectively learn and
 explore. The collective knowledge and wisdom of the species long ago exceeded
 the capacity of a single mind, organization, library, country, culture, group or

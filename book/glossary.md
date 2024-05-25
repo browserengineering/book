@@ -188,7 +188,7 @@ languages.
 HTML attribute
 
 : A parameter on an element indicating some
-information, such as the source of an image or URL of a style sheet.
+information, such as the source of an image or the URL of a style sheet.
 
 Iframe
 
@@ -296,7 +296,7 @@ CSS rule
 
 CSS selector
 
-: The part of a CSS rule that specifies which elements a
+: The part of a CSS rule that specifies to which elements a
 given list of property values applies.
 
 Inheritance
@@ -378,13 +378,13 @@ surfaces on a GPU, in order to speed up animations.
 
 Decode
 
-: Converting from a compressed format for a resource (such as
+: Convert from a compressed format for a resource (such as
 an image) into a simpler format in memory (such as a bitmap).
 
 Device pixel ratio
 
 : the ratio between the screen pixel resolution and a
-"typical" screen (defined as the pixel resolution of a 90's CRT).
+"typical" screen (defined as the pixel resolution of a 1990s CRT).
 
 Display list
 
@@ -507,7 +507,7 @@ of this book.
 
 Thread
 
-: A single sequence of commands executed on a CPU. Most CPUs have
+: A single sequence of commands executed on a CPU. Most CPUs 
 these days can execute multiple threads at once.
 
 Tk

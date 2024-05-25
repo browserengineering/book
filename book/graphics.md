@@ -561,7 +561,7 @@ this optimization.
 
 ::: {.further}
 You should also keep in mind that not all web page interactions are
-animations---there are also discrete actions, such as mouse clicks.
+animations---there are also discrete actions such as mouse clicks.
 Research has shown that it usually suffices to respond to a discrete
 action in [100 ms]---below that threshold, most humans are not
 sensitive to discrete action speed. This is very different from

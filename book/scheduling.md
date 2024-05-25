@@ -275,7 +275,7 @@ only one thread accesses the `task_runner` at a time.
 To do so we use a [`Condition`][condition-variable] object, which can only held
 by one thread at a time. Each thread will try to acquire `condition` before
 reading or writing to the `task_runner`, avoiding simultaneous
-access:^[The `blocking` parameter to `acquire` indicates whether the thread
+access.^[The `blocking` parameter to `acquire` indicates whether the thread
 should wait for the lock to be available before continuing; in this chapter
 you'll always set it to `True`. (When the thread is waiting, it's said to be
 *blocked*.)]
@@ -562,7 +562,7 @@ to render the page, and as you may recall from [Chapter
 exactly as fast as the display hardware can refresh. On most
 computers, this is 60 times per second, or 16 ms per frame. However, even
 with today's computers, it's quite difficult to maintain such a high
-frame rate, and certainly too high of a bar for our toy browser.
+frame rate, and certainly too high a bar for our toy browser.
 
 So let's establish 30 frames per second---33 ms for each frame---as our refresh
 rate target:[^why-33ms]
@@ -699,7 +699,7 @@ class JSContext:
 ```
 
 There are more calls to `render`; you should find and fix all of
-them...except, let's take a closer look at `click`.
+them ... except, let's take a closer look at `click`.
 
 We now don't immediately render when something changes. That means that the
 layout tree (and style) could be out of date when a method is called. Normally,
@@ -1952,7 +1952,7 @@ in Figure 4.
 That's it! If you try the counting demo now, you'll be able to scroll even
 during the artificial pauses. Figure 4 is a trace screenshot that shows threaded
 scrolling at work (notice how raster and draw now sometimes happen at the same
-time as main-thread work):
+time as main-thread work).
 
 :::
 
@@ -2014,8 +2014,8 @@ threads][renderingng-architecture], which together serve to make the
 browser even faster and more responsive. For example, raster-and-draw
 often runs on its own thread so that the browser thread can handle
 events even while a new frame is being prepared. Likewise, modern
-browsers typically have a collection of network or IO threads, which
-move all interaction with the network or the file system off of the
+browsers typically have a collection of network or input/output (I/O) threads, which
+move all interaction with the network or the file system off the
 main thread.
 
 [renderingng-architecture]: https://developer.chrome.com/blog/renderingng-architecture/#process-and-thread-structure
