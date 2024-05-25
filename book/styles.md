@@ -11,7 +11,7 @@ sites want a say in how they look. Websites do that with
 _Cascading Style Sheets_ (CSS), which allow web authors (and, as
 we'll see, browser developers) to define how a web page ought to look.
 
-Parsing with functions
+Parsing with Functions
 ======================
 
 One way a web page can change its appearance is with the `style`\index{style}
@@ -209,7 +209,7 @@ browser, faster parsing means pages load faster.
 [simdjson]: https://simdjson.org/
 [ll-parser]: https://en.wikipedia.org/wiki/LL_parser
 
-The `style` attribute
+The `style` Attribute
 =====================
 
 Now that the `style` attribute is parsed, we can use that parsed
@@ -482,7 +482,7 @@ and fix such bugs.
 [bug-3]: https://nvd.nist.gov/vuln/detail/CVE-2010-1663
 [fuzzing]: https://hacks.mozilla.org/2021/02/browser-fuzzing-at-mozilla/
 
-Applying style sheets\index{style sheet}
+Applying Style Sheets\index{style sheet}
 =====================
 
 With the parser debugged, the next step is applying the parsed style
@@ -1017,7 +1017,6 @@ the time when all screens had 96 pixels per inch.
 [css-fixed]: https://www.w3.org/TR/2011/REC-CSS2-20110607/syndata.html#length-units
 [dppx]: https://developer.mozilla.org/en-US/docs/Web/CSS/resolution
 
-
 Summary
 =======
 
@@ -1029,7 +1028,7 @@ files. That means we:
 - added support for both `style` attributes and `link`ed CSS files;
 - implemented cascading and inheritance;
 - refactored `BlockLayout` to move the font properties to CSS;
-- and moved most tag-specific reasoning to a browser style sheet.
+- moved most tag-specific reasoning to a browser style sheet.
 
 Our styling engine is also relatively easy to extend with properties
 and selectors.

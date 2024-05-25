@@ -80,7 +80,7 @@ aesthetics, you'll need to use old-school JavaScript from the turn of
 the century.
 :::
 
-Running JavaScript code
+Running JavaScript Code
 =======================
 
 The test above shows how you run JavaScript code in DukPy: you just
@@ -157,7 +157,7 @@ trickier][speculative] to implement efficiently.
 [deferAttr]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script#attr-defer
 [speculative]: https://developer.mozilla.org/en-US/docs/Glossary/speculative_parsing
 
-Exporting functions
+Exporting Functions
 ===================
 
 Right now our browser just prints the last expression in a script; but
@@ -293,7 +293,7 @@ don't have access to the DOM.
 [rtc]: https://en.wikipedia.org/wiki/Run_to_completion_scheduling
 [webworkers]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API
 
-Handling crashes
+Handling Crashes
 ================
 
 Crashes in JavaScript code are frustrating to debug. You can cause a
@@ -358,7 +358,7 @@ Python and JavaScript get pretty complicated. *Because* these bugs are hard,
 it's worth approaching debugging systematically and gathering a lot of
 information before attempting a fix.
 
-Returning handles
+Returning Handles
 =================
 
 So far, JavaScript evaluation is fun but useless, because JavaScript
@@ -559,7 +559,7 @@ document = { querySelectorAll: function(s) {
     handle. That means you can't use equality to compare `Node`
     objects. I'll ignore that but a real browser wouldn't.
 
-Wrapping handles
+Wrapping Handles
 ================
 
 Now that we've got some `Node`s, what can we do with them?
@@ -629,8 +629,7 @@ properties won't create corresponding HTML attributes, nor vice versa.
 [reflection]: https://html.spec.whatwg.org/multipage/common-dom-interfaces.html#reflecting-content-attributes-in-idl-attributes
 [setAttribute]: https://developer.mozilla.org/en-US/docs/Web/API/Element/setAttribute
 
-
-Event handling
+Event Handling
 ==============
 
 The browser executes JavaScript code as soon as it loads the web page,
@@ -963,7 +962,7 @@ collectors to [cooperate][cross-component].
 
 [cross-component]: https://research.google/pubs/pub47359/
 
-Event defaults
+Event Defaults
 ==============
 
 So far, when an event is generated, the browser will run the listeners,
@@ -1155,7 +1154,7 @@ those demonstrate:
 - generating handles to allow scripts to refer to page elements;
 - reading attribute values from page elements;
 - writing and modifying page elements;
-- and attaching event listeners so that scripts can respond to page events.
+- attaching event listeners so that scripts can respond to page events.
 
 A web page can now add functionality via a clever script, instead of waiting for
 a browser developer to add it into the browser itself. And as a side benefit,
