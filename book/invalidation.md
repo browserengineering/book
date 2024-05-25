@@ -280,7 +280,7 @@ are created. Search your browser code for `Layout`, which all layout
 class names end with. You should see that layout objects are created
 in just a few places:
 
-- `DocumentLayout` objects are created by the `Frame` in `render`.
+- `DocumentLayout` objects are created by the `Frame` in `render`;
 - `BlockLayout` objects are created by either:
   - a `DocumentLayout`, in `layout`, or
   - a `BlockLayout`, in `layout`;
@@ -631,7 +631,7 @@ layout invalidation, but they have downsides. Using them correctly
 means paying attention to the dependencies between fields and knowing when
 each field is read from and written to. And it's easy to forget to check or
 set a dirty flag, which leads to hard-to-find bugs. In our simple
-browser, it could probably be done, but a real browser's layout system
+browser it could probably be done, but a real browser's layout system
 is much more complex, and mistakes become almost impossible to avoid.
 
 A better approach exists. First of all, let's try to combine the dirty
@@ -2740,7 +2740,7 @@ information, so that the `style` phase doesn't need to traverse nodes
 whose styles are unchanged.
 
 16-5 *Resizing the browser*. Perhaps, back in Exericse 2-3, you implemented
-support for resizing the browser. (And most likely, you dropped support for
+support for resizing the browser. (And, most likely, you dropped support for
 it when we switched to SDL.) Reimplement support for resizing your browser;
 you'll need to pass the `SDL_WINDOW_RESIZABLE` flag to `SDL_CreateWindow`
 and listen for `SDL_WINDOWEVENT_RESIZED` events. Make sure invalidation works:

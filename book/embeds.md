@@ -737,7 +737,7 @@ and `height` attributes. So implementing basic iframes just requires
 handling these three significant differences:
 
 * Iframes have *no browser chrome*. So any page navigation has to happen from
-   within the page (either through an `<a>` element or script), or as a side
+   within the page (either through an `<a>` element or a script), or as a side
    effect of navigation on the web page that *contains* the `<iframe>`
    element. Clicking on a link in an iframe also navigates the iframe, not
    the top-level page.
