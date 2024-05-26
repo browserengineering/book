@@ -5306,7 +5306,7 @@ based on the \texttt{layout\_mode} of its HTML node:
             \VariableTok{self}\NormalTok{.cursor\_y }\OperatorTok{=} \DecValTok{0}
             \VariableTok{self}\NormalTok{.weight }\OperatorTok{=} \StringTok{"normal"}
             \VariableTok{self}\NormalTok{.style }\OperatorTok{=} \StringTok{"roman"}
-            \VariableTok{self}\NormalTok{.size }\OperatorTok{=} \DecValTok{16}
+            \VariableTok{self}\NormalTok{.size }\OperatorTok{=} \DecValTok{12}
 
             \VariableTok{self}\NormalTok{.line }\OperatorTok{=}\NormalTok{ []}
             \VariableTok{self}\NormalTok{.recurse(}\VariableTok{self}\NormalTok{.node)}
@@ -5930,7 +5930,7 @@ should look something like this:
 \section{Exercises}\label{LayingOutPages-exercises}}
 \begin{enumerate}[label=\thechapter-\arabic*]
 \item \emph{Links bar.} At the top and bottom of the web version of
-  each chapter of this book is
+  each chapter of this book there is
 a gray bar naming the chapter and offering back and forward links. It is
 enclosed in a \texttt{\textless{}nav\ class="links"\textgreater{}} tag.
 Have your browser give this links bar the light gray background a real
@@ -8878,11 +8878,11 @@ edited by the user. So a form might be written like this:
 \begin{bookblock*}{notcode}
 \begin{Shaded}
 \begin{Highlighting}[]
-\KeywordTok{\textless{}form} \ErrorTok{action}\OtherTok{=}\StringTok{"/submit"} \ErrorTok{method}\OtherTok{=}\StringTok{"post"}\KeywordTok{\textgreater{}}
-    \KeywordTok{\textless{}p\textgreater{}}\NormalTok{Name: }\KeywordTok{\textless{}input} \ErrorTok{name}\OtherTok{=}\StringTok{name} \ErrorTok{value}\OtherTok{=}\StringTok{1}\KeywordTok{\textgreater{}\textless{}/p\textgreater{}}
-    \KeywordTok{\textless{}p\textgreater{}}\NormalTok{Comment: }\KeywordTok{\textless{}input} \ErrorTok{name}\OtherTok{=}\StringTok{comment} \ErrorTok{value}\OtherTok{=}\StringTok{2}\KeywordTok{\textgreater{}\textless{}/p\textgreater{}}
-    \KeywordTok{\textless{}p\textgreater{}\textless{}button\textgreater{}}\NormalTok{Submit!}\KeywordTok{\textless{}/button\textgreater{}\textless{}/p\textgreater{}}
-\KeywordTok{\textless{}/form\textgreater{}}
+\DataTypeTok{\textless{}}\KeywordTok{form}\OtherTok{ action}\OperatorTok{=}\StringTok{"/submit"}\OtherTok{ method}\OperatorTok{=}\StringTok{"post"}\DataTypeTok{\textgreater{}}
+    \DataTypeTok{\textless{}}\KeywordTok{p}\DataTypeTok{\textgreater{}}\NormalTok{Name: }\DataTypeTok{\textless{}}\KeywordTok{input}\OtherTok{ name}\OperatorTok{=}\StringTok{name}\OtherTok{ value}\OperatorTok{=}\StringTok{1}\DataTypeTok{\textgreater{}\textless{}/}\KeywordTok{p}\DataTypeTok{\textgreater{}}
+    \DataTypeTok{\textless{}}\KeywordTok{p}\DataTypeTok{\textgreater{}}\NormalTok{Comment: }\DataTypeTok{\textless{}}\KeywordTok{input}\OtherTok{ name}\OperatorTok{=}\StringTok{comment}\OtherTok{ value}\OperatorTok{=}\StringTok{2}\DataTypeTok{\textgreater{}\textless{}/}\KeywordTok{p}\DataTypeTok{\textgreater{}}
+    \DataTypeTok{\textless{}}\KeywordTok{p}\DataTypeTok{\textgreater{}\textless{}}\KeywordTok{button}\DataTypeTok{\textgreater{}}\NormalTok{Submit!}\DataTypeTok{\textless{}/}\KeywordTok{button}\DataTypeTok{\textgreater{}\textless{}/}\KeywordTok{p}\DataTypeTok{\textgreater{}}
+\DataTypeTok{\textless{}/}\KeywordTok{form}\DataTypeTok{\textgreater{}}
 \end{Highlighting}
 \end{Shaded}
 \end{bookblock*}
@@ -13695,10 +13695,10 @@ With that,
 \begin{bookblock*}{notcode}
 \begin{Shaded}
 \begin{Highlighting}[]
-\KeywordTok{\textless{}link} \ErrorTok{rel}\OtherTok{=}\StringTok{stylesheet} \ErrorTok{href}\OtherTok{=}\StringTok{"example11{-}longword.css"}\KeywordTok{\textgreater{}}
-\KeywordTok{\textless{}div\textgreater{}}
+\DataTypeTok{\textless{}}\KeywordTok{link}\OtherTok{ rel}\OperatorTok{=}\StringTok{stylesheet}\OtherTok{ href}\OperatorTok{=}\StringTok{"example11{-}longword.css"}\DataTypeTok{\textgreater{}}
+\DataTypeTok{\textless{}}\KeywordTok{div}\DataTypeTok{\textgreater{}}
 \NormalTok{Background is rounded}
-\KeywordTok{\textless{}/div\textgreater{}}
+\DataTypeTok{\textless{}/}\KeywordTok{div}\DataTypeTok{\textgreater{}}
 \end{Highlighting}
 \end{Shaded}
 \end{bookblock*}
@@ -14363,13 +14363,13 @@ property}, like this:
 \begin{bookblock*}{notcode}
 \begin{Shaded}
 \begin{Highlighting}[]
-\KeywordTok{\textless{}div} \ErrorTok{style}\OtherTok{=}\StringTok{"background{-}color:orange"}\KeywordTok{\textgreater{}}
+\DataTypeTok{\textless{}}\KeywordTok{div}\OtherTok{ style}\OperatorTok{=}\StringTok{"background{-}color:orange"}\DataTypeTok{\textgreater{}}
 \NormalTok{    Parent}
-    \KeywordTok{\textless{}div} \ErrorTok{style}\OtherTok{=}\StringTok{"background{-}color:blue;mix{-}blend{-}mode:difference"}\KeywordTok{\textgreater{}}
+    \DataTypeTok{\textless{}}\KeywordTok{div}\OtherTok{ style}\OperatorTok{=}\StringTok{"background{-}color:blue;mix{-}blend{-}mode:difference"}\DataTypeTok{\textgreater{}}
 \NormalTok{        Child}
-    \KeywordTok{\textless{}/div\textgreater{}}
+    \DataTypeTok{\textless{}/}\KeywordTok{div}\DataTypeTok{\textgreater{}}
 \NormalTok{    Parent}
-\KeywordTok{\textless{}/div\textgreater{}}
+\DataTypeTok{\textless{}/}\KeywordTok{div}\DataTypeTok{\textgreater{}}
 \end{Highlighting}
 \end{Shaded}
 \end{bookblock*}}
@@ -14796,8 +14796,9 @@ Android.
 \end{bookblock}
 \footnotetext{
 There is also
-  \href{https://en.wikipedia.org/wiki/Computer_Graphics:_Principles_and_Practice}{\emph{Computer
-  Graphics: Principles and Practice}}, which incidentally I remember
+  \href{https://en.wikipedia.org/wiki/Computer_Graphics:_Principles_and_Practice}{
+    \textit{Computer Graphics: Principles and Practice}},
+  which incidentally I remember
   buying---this is Chris speaking---back in the days of my youth (1992
   or so). At the time I didn't get much further than rastering lines and
   polygons (in assembly language!). These days you can do the same and
@@ -19599,14 +19600,11 @@ correctly:
 \begin{bookblock*}{notcode}
 \begin{Shaded}
 \begin{Highlighting}[]
-\KeywordTok{\textless{}div} \ErrorTok{style}\OtherTok{=}\StringTok{"opacity:0.8"}\KeywordTok{\textgreater{}}
-  \KeywordTok{\textless{}div\textgreater{}\textless{}/div\textgreater{}}
-  \KeywordTok{\textless{}div} \ErrorTok{style}\OtherTok{=}\StringTok{"overflow:clip;border{-}radius:30px;opacity:0.5;}
-              \StringTok{background{-}color:lightblue;}
-              \StringTok{transform:translate(50px,10px)"}\KeywordTok{\textgreater{}}\NormalTok{Underneath}\KeywordTok{\textless{}/div\textgreater{}}
-  \KeywordTok{\textless{}div} \ErrorTok{style}\OtherTok{=}\StringTok{"background{-}color:lightgreen;}
-              \StringTok{transform:translate(0px,0px)"}\KeywordTok{\textgreater{}}\NormalTok{On top}\KeywordTok{\textless{}/div\textgreater{}}
-\KeywordTok{\textless{}/div\textgreater{}}
+\DataTypeTok{\textless{}}\KeywordTok{div}\OtherTok{ style}\OperatorTok{=}\StringTok{"opacity:0.8"}\DataTypeTok{\textgreater{}}
+  \DataTypeTok{\textless{}}\KeywordTok{div}\DataTypeTok{\textgreater{}\textless{}/}\KeywordTok{div}\DataTypeTok{\textgreater{}}
+	\DataTypeTok{\textless{}}\KeywordTok{div}\OtherTok{ style}\OperatorTok{=}\StringTok{"overflow:clip;border{-}radius:30px;opacity:0.5;background{-}color:lightblue;transform:translate(50px,10px)"}\DataTypeTok{\textgreater{}}\NormalTok{Underneath}\DataTypeTok{\textless{}/}\KeywordTok{div}\DataTypeTok{\textgreater{}}
+  \DataTypeTok{\textless{}}\KeywordTok{div}\OtherTok{ style}\OperatorTok{=}\StringTok{"background{-}color:lightgreen;transform:translate(0px,0px)"}\DataTypeTok{\textgreater{}}\NormalTok{On top}\DataTypeTok{\textless{}/}\KeywordTok{div}\DataTypeTok{\textgreater{}}
+\DataTypeTok{\textless{}/}\KeywordTok{div}\DataTypeTok{\textgreater{}}
 \end{Highlighting}
 \end{Shaded}
 \end{bookblock*}
@@ -20045,7 +20043,7 @@ functions} (in fact, the default one in real browsers is
 \texttt{cubic-bezier(0.25,\ 0.1,\ 0.25,\ 1.0)}, not linear). Implement
 this easing function, and one or two others.
 
-\item\label{ex:ThreadedAnimation} \emph{Composited and threaded transform and scroll animations.} Our
+\item\label{ex:ThreadedAnimation} \emph{Composited and threaded animations.} Our
 browser supports transfoms and scrolling, but they are not fully
 composited or threaded, and transform transition animations are not
 supported. Implement these. (Hint: for transforms, it just requires
@@ -20602,7 +20600,7 @@ Here is an example of some text before zoom:\footnote{No book on the web
 \end{bookblock*}
 \noindent This % And here is a screenshot of how it
 should render as shown in Figure~\ref{fig:BeforeZoom}, % And here it is with 2x
-while Figure~\ref{fig:AfterZoom} show how it should look after a 2$\times$ zoom.
+while Figure~\ref{fig:AfterZoom} shows how it should look after a 2$\times$ zoom.
 Note how not only are the words twice as
 big, but the lines wrap at different words, just as desired.
 
@@ -24550,7 +24548,7 @@ border. To trigger the outline, just add this to the browser CSS file:
 \begin{Shaded}
 \begin{Highlighting}[]
 \NormalTok{iframe \{}
-    \KeywordTok{outline}\NormalTok{: }\DecValTok{1}\DataTypeTok{px} \DecValTok{solid} \ConstantTok{black}\OperatorTok{;}
+    \KeywordTok{outline}\CharTok{:} \DecValTok{1}\DataTypeTok{px} \DecValTok{solid} \ConstantTok{black}\OperatorTok{;}
 \NormalTok{\}}
 \end{Highlighting}
 \end{Shaded}
@@ -26876,11 +26874,11 @@ algorithms in order to make layout faster.
 \href{https://developer.chrome.com/articles/layoutng/\#under-invalidation}{Under-invalidation}
 is the technical name for forgetting to set the dirty flag on a field
 when you change a dependency. It often causes a bug where a particular
-change needs to be happen multiple times to finally ``take''. In other
+change needs to happen multiple times to finally ``take''. In other
 words, this kind of bug creates accidental non-idempotency! These bugs
 are
 \href{https://developer.chrome.com/articles/layoutng/\#correctness}{hard
-to find}, because they typically only show up if you make a very
+to find} because they typically only show up if you make a very
 specific sequence of changes.
 \end{bookblock}
 
@@ -27706,14 +27704,11 @@ which I'm going to treat as an intermediate step in computing
 \texttt{height} and not protect:
 \begin{Shaded}
 \begin{Highlighting}[]
-\KeywordTok{class}\NormalTok{ InputLayout(EmbedLayout):}
+\KeywordTok{class}\NormalTok{ ImageLayout(EmbedLayout):}
     \KeywordTok{def}\NormalTok{ layout(}\VariableTok{self}\NormalTok{):}
-        \BuiltInTok{super}\NormalTok{().layout()}
-\NormalTok{        zoom }\OperatorTok{=} \VariableTok{self}\NormalTok{.zoom.read(notify}\OperatorTok{=}\VariableTok{self}\NormalTok{.width)}
-        \VariableTok{self}\NormalTok{.width.}\BuiltInTok{set}\NormalTok{(dpx(INPUT\_WIDTH\_PX, zoom))}
-
+        \CommentTok{\# ...}
 \NormalTok{        font }\OperatorTok{=} \VariableTok{self}\NormalTok{.font.read(notify}\OperatorTok{=}\VariableTok{self}\NormalTok{.height)}
-        \VariableTok{self}\NormalTok{.height.}\BuiltInTok{set}\NormalTok{(linespace(font))}
+        \VariableTok{self}\NormalTok{.height.}\BuiltInTok{set}\NormalTok{(}\BuiltInTok{max}\NormalTok{(}\VariableTok{self}\NormalTok{.img\_height, linespace(font)))}
 
 \NormalTok{        height }\OperatorTok{=} \VariableTok{self}\NormalTok{.height.read(notify}\OperatorTok{=}\VariableTok{self}\NormalTok{.ascent)}
         \VariableTok{self}\NormalTok{.ascent.}\BuiltInTok{set}\NormalTok{(}\OperatorTok{{-}}\NormalTok{height)}
@@ -27873,12 +27868,7 @@ In a real browser, HTML parsing
   loop tasks. This leads to better web page loading performance, and is
   the reason you'll often see web pages render only part of the HTML at
   first when loading large web pages (including \href{https://browser.engineering}{this book}!).
-
-In a real browser, HTML parsing
-  doesn't happen in one go, but often is broken up into multiple event
-  loop tasks. This leads to better web page loading performance, and is
-  the reason you'll often see web pages render only part of the HTML at
-  first when loading large web pages (including \href{https://browser.engineering}{this book}!).}
+}
 
 \hypertarget{skipping-no-op-updates}{%
 \section{Skipping No-op Updates}\label{skipping-no-op-updates}}
