@@ -14156,7 +14156,7 @@ command that takes a sequence of other drawing commands as an argument:
 \NormalTok{        paint }\OperatorTok{=}\NormalTok{ skia.Paint(}
 \NormalTok{            Alphaf}\OperatorTok{=}\VariableTok{self}\NormalTok{.opacity}
 \NormalTok{        )}
-\NormalTok{        canvas.saveLayer(paint)}
+\NormalTok{        canvas.saveLayer(}\VariableTok{None}\NormalTok{, paint)}
         \ControlFlowTok{for}\NormalTok{ cmd }\KeywordTok{in} \VariableTok{self}\NormalTok{.children:}
 \NormalTok{            cmd.execute(canvas)}
 \NormalTok{        canvas.restore()}
