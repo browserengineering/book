@@ -1113,7 +1113,7 @@ class Opacity:
         paint = skia.Paint(
             Alphaf=self.opacity
         )
-        canvas.saveLayer(paint)
+        canvas.saveLayer(None, paint)
         for cmd in self.children:
             cmd.execute(canvas)
         canvas.restore()

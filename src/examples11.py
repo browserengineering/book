@@ -72,7 +72,7 @@ class Opacity:
             Alphaf=self.opacity,
         )
         if self.opacity < 1:
-            canvas.saveLayer(paint)
+            canvas.saveLayer(None, paint)
         for cmd in self.children:
             cmd.execute(canvas)
         if self.opacity < 1:
