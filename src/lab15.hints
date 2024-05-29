@@ -28,7 +28,7 @@
 {"code": "new_parent in new_effects", "type": "dict"},
 {"code": "'value' in self.node.attributes", "type": "dict"},
 {"code": "b'Browser'", "js": "'Browser'"},
-{"code": "child_class(node, line, previous_word, word)", "js": "await (new child_class()).init(node, line, previous_word, word)"},
+{"code": "child_class(node, word, line, previous_word)", "js": "await (new child_class()).init(node, word, line, previous_word)"},
 {"code": "child_class(node, line, previous_word, frame)", "js": "await (new child_class()).init(node, line, previous_word, frame)"},
 {"code": "'src' in node.attributes", "type": "dict"},
 {"code": "'alt' in self.node.attributes", "type": "dict"},
@@ -44,7 +44,5 @@
 {"code": "MeasureTime()", "js": "new MeasureTime()"},
 {"code": "len(self.tab.window_id_to_frame)", "js": "Object.keys(this.tab.window_id_to_frame).length"},
 {"code": "DEFAULT_STYLE_SHEET.copy()", "js": "constants.DEFAULT_STYLE_SHEET.slice()"},
-{"code": "open('runtime15.js').read()", "js": "filesystem.open('runtime15.js').read()"},
-{"code": "open('browser15.css').read()", "js": "filesystem.open('browser15.css').read()"},
 {"code": "response.read()", "js": "response.read()"}
 ]

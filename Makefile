@@ -3,13 +3,13 @@
 FLAGS=
 
 CHAPTERS=\
-preface intro history \
+preface about intro history \
 http graphics text \
 html layout styles chrome \
 forms scripts security \
 visual-effects scheduling animations accessibility embeds invalidation \
 skipped change \
-glossary bibliography about classes porting
+glossary bibliography classes porting
 
 EXAMPLE_HTML=$(patsubst src/example%.html,%,$(wildcard src/example*.html))
 EXAMPLE_JS=$(patsubst src/example%.js,%,$(wildcard src/example*.js))
@@ -41,6 +41,11 @@ widgets: \
 
 src/lab%.full.py: src/lab%.py infra/inline.py infra/asttools.py
 	python3 infra/inline.py $< > $@
+
+src/outline%.txt: src/lab%.py infra/inline.py infra/asttools.py infra/outlines.py book/outline.txt
+	python3 infra/outlines.py $< --template book/outline.txt > $@
+
+outlines: $(patsubst %,src/outline%.txt,$(shell seq 1 16))
 
 CHAPTER=all
 

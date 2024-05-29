@@ -107,6 +107,7 @@ class Transform(VisualEffect):
         return Transform(self.translation, self.self_rect,
             self.node, [child])
 
+    @wbetools.js_hide
     def __repr__(self):
         if self.translation:
             (x, y) = self.translation
@@ -134,6 +135,7 @@ class DrawLine(PaintCommand):
         )
         canvas.drawPath(path, paint)
 
+    @wbetools.js_hide
     def __repr__(self):
         return "DrawLine top={} left={} bottom={} right={}".format(
             self.y1, self.x1, self.y2, self.x2)
@@ -150,9 +152,7 @@ class DrawRRect(PaintCommand):
         )
         canvas.drawRRect(self.rrect, paint)
 
-    def print(self, indent=0):
-        return " " * indent + self.__repr__()
-
+    @wbetools.js_hide
     def __repr__(self):
         return "DrawRRect(rect={}, color={})".format(
             str(self.rrect), self.color)
@@ -178,16 +178,14 @@ class DrawText(PaintCommand):
         canvas.drawString(self.text, float(self.left), baseline,
             self.font, paint)
 
+    @wbetools.js_hide
     def __repr__(self):
         return "DrawText(text={})".format(self.text)
 
 class DrawRect(PaintCommand):
-    def __init__(self, x1, y1, x2, y2, color):
-        super().__init__(skia.Rect.MakeLTRB(x1, y1, x2, y2))
-        self.top = y1
-        self.left = x1
-        self.bottom = y2
-        self.right = x2
+    def __init__(self, rect, color):
+        super().__init__(rect)
+        self.rect = rect
         self.color = color
 
     def execute(self, canvas):
@@ -196,6 +194,7 @@ class DrawRect(PaintCommand):
         )
         canvas.drawRect(self.rect, paint)
 
+    @wbetools.js_hide
     def __repr__(self):
         return ("DrawRect(top={} left={} " +
             "bottom={} right={} color={})").format(
@@ -246,7 +245,7 @@ class Blend(VisualEffect):
             BlendMode=parse_blend_mode(self.blend_mode)
         )
         if self.should_save:
-            canvas.saveLayer(paint)
+            canvas.saveLayer(None, paint)
         for cmd in self.children:
             cmd.execute(canvas)
         if self.should_save:
@@ -269,6 +268,7 @@ class Blend(VisualEffect):
         return Blend(self.opacity, self.blend_mode,
                      self.node, [child])
 
+    @wbetools.js_hide
     def __repr__(self):
         args = ""
         if self.opacity < 1:
@@ -291,6 +291,7 @@ class DrawCompositedLayer(PaintCommand):
         bounds = layer.composited_bounds()
         layer.surface.draw(canvas, bounds.left(), bounds.top())
 
+    @wbetools.js_hide
     def __repr__(self):
         return "DrawCompositedLayer()"
 
@@ -305,19 +306,6 @@ def parse_transform(transform_str):
 
 @wbetools.patch(CSSParser)
 class CSSParser:
-    def __init__(self, s):
-        self.s = s
-        self.i = 0
-
-    def whitespace(self):
-        while self.i < len(self.s) and self.s[self.i].isspace():
-            self.i += 1
-
-    def literal(self, literal):
-        if not (self.i < len(self.s) and self.s[self.i] == literal):
-            raise Exception("Parsing error")
-        self.i += 1
-
     def word(self):
         start = self.i
         in_quote = False
@@ -334,35 +322,25 @@ class CSSParser:
             raise Exception("Parsing error")
         return self.s[start:self.i]
 
-    def until_semicolon(self):
+    def until_chars(self, chars):
         start = self.i
-        while self.i < len(self.s):
-            cur = self.s[self.i]
-            if cur == ";":
-                break
+        while self.i < len(self.s) and self.s[self.i] not in chars:
             self.i += 1
         return self.s[start:self.i]
 
-    def pair(self):
+    def pair(self, until):
         prop = self.word()
         self.whitespace()
         self.literal(":")
         self.whitespace()
-        val = self.until_semicolon()
-        return prop.casefold(), val
-
-    def ignore_until(self, chars):
-        while self.i < len(self.s):
-            if self.s[self.i] in chars:
-                return self.s[self.i]
-            else:
-                self.i += 1
+        val = self.until_chars(until)
+        return prop.casefold(), val.strip()
 
     def body(self):
         pairs = {}
         while self.i < len(self.s) and self.s[self.i] != "}":
             try:
-                prop, val = self.pair()
+                prop, val = self.pair([";", "}"])
                 pairs[prop.casefold()] = val
                 self.whitespace()
                 self.literal(";")
@@ -375,36 +353,6 @@ class CSSParser:
                 else:
                     break
         return pairs
-
-    def selector(self):
-        out = TagSelector(self.word().casefold())
-        self.whitespace()
-        while self.i < len(self.s) and self.s[self.i] != "{":
-            tag = self.word()
-            descendant = TagSelector(tag.casefold())
-            out = DescendantSelector(out, descendant)
-            self.whitespace()
-        return out
-
-    def parse(self):
-        rules = []
-        while self.i < len(self.s):
-            try:
-                self.whitespace()
-                selector = self.selector()
-                self.literal("{")
-                self.whitespace()
-                body = self.body()
-                self.literal("}")
-                rules.append((selector, body))
-            except Exception:
-                why = self.ignore_until(["}"])
-                if why == "}":
-                    self.literal("}")
-                    self.whitespace()
-                else:
-                    break
-        return rules
 
 class BlockLayout:
     def __init__(self, node, parent, previous):
@@ -534,6 +482,7 @@ class BlockLayout:
         cmds = paint_visual_effects(self.node, cmds, self.self_rect())
         return cmds
 
+    @wbetools.js_hide
     def __repr__(self):
         return "BlockLayout[{}](x={}, y={}, width={}, height={}, node={})".format(
             self.layout_mode(), self.x, self.y, self.width, self.height, self.node)
@@ -564,6 +513,7 @@ class DocumentLayout:
     def paint_effects(self, cmds):
         return cmds
 
+    @wbetools.js_hide
     def __repr__(self):
         return "DocumentLayout()"
 
@@ -612,6 +562,7 @@ class LineLayout:
     def paint_effects(self, cmds):
         return cmds
 
+    @wbetools.js_hide
     def __repr__(self):
         return "LineLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
@@ -659,6 +610,7 @@ class TextLayout:
     def paint_effects(self, cmds):
         return cmds
     
+    @wbetools.js_hide
     def __repr__(self):
         return ("TextLayout(x={}, y={}, width={}, height={}, word={})").format(
             self.x, self.y, self.width, self.height, self.word)
@@ -731,6 +683,7 @@ class InputLayout:
     def paint_effects(self, cmds):
         return paint_visual_effects(self.node, cmds, self.self_rect())
 
+    @wbetools.js_hide
     def __repr__(self):
         if self.node.tag == "input":
             extra = "type=input"
@@ -758,8 +711,8 @@ def paint_visual_effects(node, cmds, rect):
     node.blend_op = blend_op
     return [Transform(translation, rect, node, [blend_op])]
 
-SETTIMEOUT_CODE = "__runSetTimeout(dukpy.handle)"
-XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
+SETTIMEOUT_JS = "__runSetTimeout(dukpy.handle)"
+XHR_ONLOAD_JS = "__runXHROnload(dukpy.out, dukpy.handle)"
 RUNTIME_JS = open("runtime13.js").read()
 
 @wbetools.patch(JSContext)
@@ -849,6 +802,7 @@ class NumericAnimation:
             self.change_per_frame * self.frame_count
         return str(current_value)
 
+    @wbetools.js_hide
     def __repr__(self):
         return ("NumericAnimation(" + \
             "old_value={old_value}, change_per_frame={change_per_frame}, " + \
@@ -984,15 +938,12 @@ class CompositedLayer:
                 1, 1, irect.width() - 2, irect.height() - 2)
             DrawOutline(border_rect, "red", 1).execute(canvas)
 
+    @wbetools.js_hide
     def __repr__(self):
         return ("layer: composited_bounds={} " +
             "absolute_bounds={} first_chunk={}").format(
             self.composited_bounds(), self.absolute_bounds(),
             self.display_items if len(self.display_items) > 0 else 'None')
-
-def raster(display_list, canvas):
-    for cmd in display_list:
-        cmd.execute(canvas)
 
 @wbetools.patch(Tab)
 class Tab:
@@ -1028,10 +979,6 @@ class Tab:
 
     def set_needs_paint(self):
         self.needs_paint = True
-        self.browser.set_needs_animation_frame(self)
-
-    def request_animation_frame_callback(self):
-        self.needs_raf_callbacks = True
         self.browser.set_needs_animation_frame(self)
 
     def run_animation_frame(self, scroll):
@@ -1346,6 +1293,9 @@ class Browser:
                     parent = parent.parent
             if not parent:
                 self.draw_list.append(current_effect)
+
+    @wbetools.delete
+    def raster_and_draw(self): pass
 
     def composite_raster_and_draw(self):
         self.lock.acquire(blocking=True)

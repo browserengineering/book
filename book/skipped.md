@@ -26,7 +26,7 @@ for many other programming languages to target, and which may one day be co-equa
 to JavaScript on the web.
 
 This book skips building the JavaScript engine, instead using DukPy. I
-made this choice because while JavaScript execution is central to a
+made this choice because, while JavaScript execution is central to a
 modern browser, it uses techniques fairly similar to the execution of
 other languages like Python, Lua, or Java. The best way to learn about
 the insides of a modern JavaScript engine is a book on programming

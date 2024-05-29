@@ -13,6 +13,7 @@ import skia
 import socket
 import ssl
 import urllib.parse
+import wbetools
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
 from lab4 import print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS
@@ -23,9 +24,8 @@ from lab7 import DrawLine, DrawOutline, DrawRect
 from lab8 import Text, Element, BlockLayout, InputLayout
 from lab8 import Browser, LineLayout, TextLayout, DocumentLayout, Chrome
 from lab8 import DEFAULT_STYLE_SHEET, INPUT_WIDTH_PX
-from lab9 import EVENT_DISPATCH_JS
+from lab9 import RUNTIME_JS, EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL, JSContext, Tab
-import wbetools
 
 FONTS = {}
 
@@ -110,7 +110,7 @@ class Blend:
             BlendMode=parse_blend_mode(self.blend_mode),
         )
         if self.should_save:
-            canvas.saveLayer(paint)
+            canvas.saveLayer(None, paint)
         for cmd in self.children:
             cmd.execute(canvas)
         if self.should_save:
@@ -425,6 +425,9 @@ class Tab:
     def raster(self, canvas):
         for cmd in self.display_list:
             cmd.execute(canvas)
+
+    @wbetools.delete
+    def draw(self, canvas, offset): pass
 
 @wbetools.patch(Chrome)
 class Chrome:

@@ -13,7 +13,7 @@ hyperlinks, an address bar, and the rest of the browser
 interface---the part of the browser that decides *which* page we are
 looking at.
 
-Where are the links?
+Where Are the Links?
 ====================
 
 The core of the web is the link, so the most important part of the
@@ -192,8 +192,7 @@ And then there are languages laid out [vertically][mongolian]...
 [unicode-bidi]: https://www.w3.org/International/articles/inline-bidi-markup/uba-basics
 [mongolian]: https://en.wikipedia.org/wiki/Mongolian_script
 
-
-Line layout, redux
+Line Layout, Redux
 ==================
 
 We're now creating line and text objects, but we still need to lay
@@ -299,8 +298,8 @@ max_descent = max([word.font.metrics("descent")
 
 Note that this code is reading from a `font` field on each word and
 writing to each word's `y` field. That means that inside
-`TextLayout`'s `layout` method, which is why it's good we computed `x`, `width`,
-`height` , and `font`, but not `y`.
+`TextLayout`'s `layout` method we need to compute `x`, `width`,
+`height` , and `font`, but not `y`. Remember that for later.
 
 Finally, since each line is now a standalone layout object, it needs
 to have a height. We compute it from the maximum ascent and descent:
@@ -353,7 +352,7 @@ support for it.
 [rendering-hates]: https://gankra.github.io/blah/text-hates-you/
 [morx]: https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6morx.html
 
-Click handling
+Click Handling
 ==============
 
 Now that we know where the links are, we can work on clicking them. In
@@ -491,7 +490,7 @@ scaled element.
 [rect-based]: http://www.chromium.org/developers/design-documents/views-rect-based-targeting
 [hit-test]: https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/core/layout/hit_test_location.h
 
-Multiple pages
+Multiple Pages
 ==============
 
 If you're anything like me, the next thing you tried after clicking on
@@ -639,7 +638,7 @@ used the modern notion of tabs.
 [tabbed-dna]: https://ajstiles.wordpress.com/2005/02/11/tabbed_browser_/
 [booklink-x]: https://twitter.com/awesomekling/status/1694242398539264363
 
-Browser chrome
+Browser Chrome
 ==============
 
 Real web browsers don't just show web page contents---they've got
@@ -675,7 +674,7 @@ have two rows (see Figure 1):
 * At the top, a list of tab names, separated by vertical lines, and a "`+`"
   button to add a new tab.
 
-* Underneath, the URL of of the current web page, and a "`<`" button to
+* Underneath, the URL of the current web page, and a "`<`" button to
   represent the browser back button.
 
 ::: {.center}
@@ -1028,7 +1027,7 @@ around. Even this book's browser has tabs on top, for example.
 [chrome-comic]: https://www.google.com/googlebooks/chrome/
 [chrome-comic-tabs]: https://www.google.com/googlebooks/chrome/big_18.html
 
-Navigation history
+Navigation History
 ==================
 
 Now that we are navigating between pages all the time, it's easy to
@@ -1354,7 +1353,7 @@ It's been a lot of work just to handle links! We had to:
 - determine which piece of text a user clicked on;
 - split per-page from browser-wide information;
 - draw a tab bar, an address bar, and a back button;
-- and even implement text editing!
+- even implement text editing!
 
 Now just imagine all the features you can add to your browser!
 
@@ -1379,11 +1378,11 @@ The complete set of functions, classes, and methods in our browser
 should now look something like this:
 
 ::: {.web-only .cmd .python .outline html=True}
-    python3 infra/outlines.py --html src/lab7.py
+    python3 infra/outlines.py --html src/lab7.py --template book/outline.txt
 :::
 
 ::: {.print-only .cmd .python .outline}
-    python3 infra/outlines.py src/lab7.py
+    python3 infra/outlines.py src/lab7.py --template book/outline.txt
 :::
 
 Exercises
@@ -1415,8 +1414,8 @@ browser navigates to a URL with a fragment, it should scroll the page
 so that the element with that identifier is at the top of the screen.
 Also, implement fragment links: relative URLs that begin with a `#`
 don't load a new page, but instead scroll the element with that
-identifier to the top of the screen. The table of contents on this
-page uses fragment links.
+identifier to the top of the screen. The table of contents on [the web
+version of this chapter](https://browser.engineering/chrome.html) uses fragment links.
 
 7-6 *Search*. If the user types something that's *not* a URL into the
 address bar, make your browser automatically search for it with a

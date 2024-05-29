@@ -13,7 +13,7 @@ where the tree of elements is transformed into a tree of *layout
 objects* before drawing. In the process, we'll make web pages more
 colorful with backgrounds.
 
-The layout tree
+The Layout Tree
 ===============
 
 Right now, our browser lays out an element's open and close tags
@@ -142,8 +142,7 @@ tree][gecko-tree].
 [webkit-tree]: https://webkit.org/blog/114/webcore-rendering-i-the-basics/
 [gecko-tree]: https://wiki.mozilla.org/Gecko:Key_Gecko_Structures_And_Invariants
 
-
-Block layout
+Block Layout
 ============
 
 So far, we've focused on text layout---and text is laid out
@@ -310,7 +309,7 @@ avoids this kind of error.
 
 [mdn-display]: https://developer.mozilla.org/en-US/docs/Web/CSS/display
 
-Size and position
+Size and Position
 =================
 
 In the [previous chapter](html.md), the `Layout` object was
@@ -531,7 +530,7 @@ to traverse the tree and calculate each attribute.
 
 [wiki-atgram]: https://en.wikipedia.org/wiki/Attribute_grammar
 
-Recursive painting
+Recursive Painting
 ==================
 
 Our `layout` method is now doing quite a bit of work: computing sizes
@@ -753,7 +752,7 @@ capabilities to our browser. However, even with layout the
 bit better---see Figure 3.
 
 ::: {.center}
-![Figure 3: https://browser.engineering/ viwed in this chapter's
+![Figure 3: https://browser.engineering/ viewed in this chapter's
 version of the browser.](examples/example5-browserengineering-screenshot.png)
 :::
 
@@ -775,7 +774,7 @@ This chapter was a dramatic rewrite of our browser's layout engine, so:
 - each node in the tree has one of two different *layout modes*;
 - layout computes a size and position for each layout object;
 - the display list now contains generic commands;
-- and source code snippets now have backgrounds.
+- source code snippets now have backgrounds.
 
 Tree-based layout makes it possible to dramatically expand our
 browser's styling capabilities. We'll work on that in the [next
@@ -795,18 +794,19 @@ The complete set of functions, classes, and methods in our browser
 should look something like this:
 
 ::: {.web-only .cmd .python .outline html=True}
-    python3 infra/outlines.py --html src/lab5.py
+    python3 infra/outlines.py --html src/lab5.py --template book/outline.txt
 :::
 
 ::: {.print-only .cmd .python .outline}
-    python3 infra/outlines.py src/lab5.py
+    python3 infra/outlines.py src/lab5.py --template book/outline.txt
 :::
 
 
 Exercises
 =========
 
-5-1 *Links bar*. At the top and bottom of the web version of each chapter of this book is a
+5-1 *Links bar*. At the top and bottom of the web version of each
+chapter of this book there is a
 gray bar naming the chapter and offering back and forward links. It is
 enclosed in a `<nav class="links">` tag. Have your browser give this
 links bar the light gray background a real browser would.

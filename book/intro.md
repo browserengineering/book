@@ -12,7 +12,7 @@ been the same for you. And using the web means using a browser. I
 hope, as you read this book, that you fall in love with web browsers,
 just like I did.
 
-The browser and me
+The Browser and Me
 ==================
 
 Since I first encountered the web and its predecessors,[^bbs] in the
@@ -59,7 +59,7 @@ it wasn’t viewed as especially fast or featureful compared to its implementati
 on other operating systems.
 
 [^meantime-linux]: Meanwhile, the "better Linux browser than Netscape" took a
-long time to appear....
+long time to appear...
 
 How hard indeed! After seven years in the trenches working on Chrome, I now know
 the answer to his question: building a browser is both easy and incredibly hard,
@@ -70,7 +70,7 @@ endlessly interesting.
 So that's how I fell in love with web browsers. Now let me tell you why you
 will, too.
 
-The web in history
+The Web in History
 ==================
 
 The web is a grand, crazy experiment. It's natural, nowadays, to watch videos,
@@ -151,7 +151,7 @@ The key thing to understand is that this grand experiment is not over.
 The essence of the web will stay, but by building web browsers you have the
 chance to shape its future.
 
-Real browser codebases
+Real Browser Codebases
 ======================
 
 So let me tell you what it's like to contribute to a browser. Some time during
@@ -214,7 +214,7 @@ fixing bugs or proposing new features or implementing promising optimizations.
 
 And it's worth contributing, because working on web browsers is a lot of fun.
 
-Browser code concepts
+Browser Code Concepts
 =====================
 
 HTML and CSS are meant to be black boxes---declarative application
@@ -273,8 +273,8 @@ font and window sizes, desired positions and sizes, and the relative arrangement
 of widgets is rarely specified directly.
 
 [^style-calculation]: For example, when exactly does the browser
-compute HTML element's styles? Any change to the styles is visible to
-all subsequent API calls, so in that sense it applies "immediately."
+compute HTML element styles? Any change to the styles is visible to
+all subsequent API calls, so in that sense it applies "immediately".
 But it is better for the browser to delay style recalculation,
 avoiding redundant work if styles change twice in quick succession.
 Maximally exploiting the opportunities afforded by declarative
@@ -290,7 +290,7 @@ And the truth is---you use the browser all the time, maybe for reading this
 book! That makes the algorithms more approachable in a browser than almost
 anywhere else, because the web is already familiar.
 
-The role of the browser
+The Role of the Browser
 =======================
 
 The web is at the center of modern computing.
@@ -323,7 +323,7 @@ load fast and react smoothly only when the browser is hyper-efficient.
 [^useragent]: The User Agent concept views a computer, or software within the
     computer, as a trusted assistant and advocate of the human user.
 
-Browsers and you
+Browsers and You
 ================
 
 This book explains how to build a simple browser, one that can---despite its

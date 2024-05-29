@@ -42,15 +42,17 @@ end
 
 function DisableLinks(el)
   -- Links to Markdown files now link to HTML files
-  if config.print then
-     -- do nothing
-  elseif is_disabled(el.target) then
+  if is_disabled(el.target) then
     el = pandoc.Span(el.content)
     el.classes = { "link" }
-  elseif el.target:find("%.md$") and not el.target:find("://") then
+  elseif not config.print and el.target:find("%.md$") and not el.target:find("://") then
     el.target = string.gsub(el.target, "%.md", ".html")
-  elseif el.target:find("%.md#") and not el.target:find("://") then
+  elseif not config.print and el.target:find("%.md#") and not el.target:find("://") then
     el.target = string.gsub(el.target, "%.md#", ".html#")
+  elseif config.print and (el.target:find("%.md$") or el.target:find("%.md#"))
+         and not el.target:find("://") then
+    el = pandoc.Span(el.content)
+    el.classes = { "link" } -- this does nothing, just there for parallelism with is_disabled
   end
   return el
 end

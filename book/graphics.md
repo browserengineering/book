@@ -13,7 +13,7 @@ graphical user interface.[^1]
 [^1]: There are some obscure text-based browsers: I used `w3m` as my
     main browser for most of 2011. I don't anymore.
 
-Creating windows
+Creating Windows
 ================
 
 Desktop and laptop computers run operating systems that provide
@@ -62,8 +62,8 @@ while True:
     drawScreen()
 ```
 
-::: {.print-only}
-![Figure 1: Flowchart of an event handling cycle.](im/graphics-cycle.png)
+::: {.center}
+![Figure 1: Flowchart of an event-handling cycle.](im/graphics-cycle.png)
 :::
 
 Here, `pendingEvent` first asks the desktop environment for recent
@@ -111,7 +111,7 @@ visible on the screen is the "visual viewport" and the whole
 documents' bounds are the "layout viewport". This is kind of a mix
 between zooming and scrolling that's usually absent on desktop.
 
-Drawing to the window
+Drawing to the Window
 =====================
 
 Our browser will draw the web page text to a *canvas*,\index{canvas} a
@@ -128,8 +128,8 @@ canvas = tkinter.Canvas(window, width=WIDTH, height=HEIGHT)
 canvas.pack()
 ```
 
-The first line creates the window; and the second creates the
-`Canvas` inside that window. We pass the window as an argument so
+The first line creates the window, and the second creates the
+`Canvas` inside that window. We pass the window as an argument, so
 that Tk knows where to display the canvas. The other arguments define
 the canvas's size; I chose 800 × 600 because that was a common old-timey
 monitor size.[^svga] The third line is a Tk peculiarity, which positions
@@ -144,7 +144,7 @@ finer-grained control over appearance, which a canvas provides.[^widgets]
 [^svga]: This size, called Super Video Graphics Array (SVGA), was standardized
 in 1987, and probably did seem super back then.
 
-To keep it all organized, let's put this code in a class:
+To keep it all organized let's put this code in a class:
 
 ``` {.python}
 class Browser:
@@ -189,7 +189,7 @@ rectangle; and then the text "Hi!" next to the circle, as in Figure 2.
 ![Figure 2: The expected example output with a rectangle, circle, and text.](im/graphics-example.png)
 :::
 
-Coordinates in Tk refer to *x* positions from left to right and to *y*
+Coordinates in Tk refer to *x* positions from left to right and *y*
 positions from top to bottom. In other words, the bottom of the screen
 has *larger* *y* values, the opposite of what you might be used to from
 math. Play with the coordinates above to figure out what each argument
@@ -208,7 +208,7 @@ events on each one, and so on. I'm not using those
 features in this book, because I want to teach you how to implement them.
 :::
 
-Laying out text
+Laying Out Text
 ===============
 
 Let's draw a simple web page on this canvas. So far, our browser
@@ -326,13 +326,11 @@ Here's a widget demonstrating that concept:
 At this point you should be able to load up [our example page][ex-monkey] in your
 browser and have it look something like Figure 4.
 
-<div class=center>
+::: {.center}
 ![Figure 4: The first chapter of *Journey to the West* rendered in our browser.](examples/example2-text-screenshot.png)
-<br>
-</div>
+:::
 
 [ex-monkey]: https://browser.engineering/examples/xiyouji.html
-
 
 Now we can read a lot of text, but still not all of it: if there's
 enough text, not all of the lines will fit on the screen. We want
@@ -353,7 +351,7 @@ boundaries based on a [word frequency table][cjdict].
 [icu-wb]: https://unicode-org.github.io/icu/userguide/boundaryanalysis/break-rules.html#details-about-dictionary-based-break-iteration
 [cjdict]: https://github.com/unicode-org/icu/blob/master/icu4c/source/data/brkitr/dictionaries/cjdict.txt
 
-Scrolling text
+Scrolling Text
 ==============
 
 Scrolling introduces a layer of indirection between page coordinates
@@ -500,8 +498,7 @@ making it fast; we'll get to some more of the ways later in the book.
 [webrender]: 
 https://hacks.mozilla.org/2017/10/the-whole-web-at-maximum-fps-how-webrender-gets-rid-of-jank/
 
-
-Faster rendering
+Faster Rendering
 ================
 
 <a name="framebudget"></a> Applications have to redraw these contents
@@ -517,7 +514,7 @@ This means that the browser has to finish all its work in less than
 [^sixty-hertz]: Most screens today have a refresh rate of 60 Hz, and
 that is generally considered fast enough to look smooth. However, new
 hardware is increasingly appearing with higher refresh rates, such as
-120Hz. It's not yet clear if browsers can be made that fast. Some
+120 Hz. It's not yet clear if browsers can be made that fast. Some
 rendering engines, games in particular, refresh at lower rates on
 purpose if they know the rendering speed can't keep up.
 
@@ -532,8 +529,8 @@ redraw their window contents, though, to change what is displayed.
 
 
 But this scrolling is pretty slow.[^slow-scroll] Why? It turns out
-that loading information about the shape of a character inside
-`create_text` takes a while. To speed up scrolling, we need to make
+that loading information about the shape of a character, inside
+`create_text`, takes a while. To speed up scrolling we need to make
 sure to do it only when necessary (while at the same time ensuring the
 pixels on the screen are always correct).
 
@@ -564,7 +561,7 @@ this optimization.
 
 ::: {.further}
 You should also keep in mind that not all web page interactions are
-animations---there are also discrete actions, such as mouse clicks.
+animations---there are also discrete actions such as mouse clicks.
 Research has shown that it usually suffices to respond to a discrete
 action in [100 ms]---below that threshold, most humans are not
 sensitive to discrete action speed. This is very different from
@@ -587,7 +584,7 @@ now:
 - talks to your operating system to create a window;
 - lays out the text and draws it to that window;
 - listens for keyboard commands;
-- and scrolls the window in response.
+- scrolls the window in response.
 
 ::: {.web-only}
 
@@ -618,11 +615,11 @@ The complete set of functions, classes, and methods in our browser
 should look something like this:
 
 ::: {.web-only .cmd .python .outline html=True}
-    python3 infra/outlines.py --html src/lab2.py
+    python3 infra/outlines.py --html src/lab2.py --template book/outline.txt
 :::
 
 ::: {.print-only .cmd .python .outline}
-    python3 infra/outlines.py src/lab2.py
+    python3 infra/outlines.py src/lab2.py --template book/outline.txt
 :::
 
 Exercises
@@ -695,7 +692,7 @@ were `about:blank`.
 [fill-expand]: https://web.archive.org/web/20201111222645id_/http://effbot.org/tkinterbook/pack.htm
 
 2-7 *Alternate text direction*. Not all languages read and lay out from left
-to right. Arabic, Persian and Hebrew are good examples of right-to-left
+to right. Arabic, Persian, and Hebrew are good examples of right-to-left
 languages. Implement basic support for this with a command-line flag to your
 browser.^[Once we get to [Chapter 4](html.md) you could write it in terms of
 the [`dir`][dir-attr] attribute on the `<body>` element.] English sentences

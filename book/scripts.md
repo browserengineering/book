@@ -41,7 +41,7 @@ The first step to using DukPy is installing it. On most machines,
 including on Windows, macOS, and Linux systems, you should be able to
 do this with:
 
-``` {.example}
+``` {.sh}
 python3 -m pip install dukpy
 ```
 
@@ -80,7 +80,7 @@ aesthetics, you'll need to use old-school JavaScript from the turn of
 the century.
 :::
 
-Running JavaScript code
+Running JavaScript Code
 =======================
 
 The test above shows how you run JavaScript code in DukPy: you just
@@ -157,17 +157,17 @@ trickier][speculative] to implement efficiently.
 [deferAttr]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script#attr-defer
 [speculative]: https://developer.mozilla.org/en-US/docs/Glossary/speculative_parsing
 
-Exporting functions
+Exporting Functions
 ===================
 
-Right now our browser just prints the last expression in a script; but
+Right now, our browser just prints the last expression in a script; but
 in a real browser scripts must call the `console.log` function to
 print. To support that, we will need to *export a function* from
 Python into JavaScript. We'll be exporting a lot of functions, so to
 avoid polluting the `Tab` object with many new methods, let's put this
 code in a new `JSContext` class:
 
-``` {.python replace=__init__(self)/__init__(self%2c%20tab)}
+``` {.python replace=__init__(self)/__init__(self%2c%20tab),%2c%20code/%2c%20script%2c%20code}
 class JSContext:
     def __init__(self):
         self.interp = dukpy.JSInterpreter()
@@ -182,7 +182,7 @@ variable values and other state between them.
 
 We create this new `JSContext` object while loading the page:
 
-``` {.python replace=JSContext()/JSContext(self)}
+``` {.python replace=JSContext()/JSContext(self),run(body)/run(script%2c%20body)}
 class Tab:
     def load(self, url, payload=None):
         # ...
@@ -293,7 +293,7 @@ don't have access to the DOM.
 [rtc]: https://en.wikipedia.org/wiki/Run_to_completion_scheduling
 [webworkers]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API
 
-Handling crashes
+Handling Crashes
 ================
 
 Crashes in JavaScript code are frustrating to debug. You can cause a
@@ -309,21 +309,19 @@ ignore the crash. Web pages shouldn't be able to crash our browser!
 You can implement that like this:
 
 ``` {.python}
-class Tab:
-    def load(self, url, payload=None):
-        for script in scripts:
-            # ...
-            try:
-                self.js.run(body)
-            except dukpy.JSRuntimeError as e:
-                print("Script", script, "crashed", e)
+class JSContext:
+    def run(self, script, code):
+        try:
+            return self.interp.evaljs(code)
+        except dukpy.JSRuntimeError as e:
+            print("Script", script, "crashed", e)
 ```
 
 But as you go through this chapter, you'll also run into another type
 of crash: crashes in our own JavaScript runtime. We can't ignore
 those, because that's our code. Debugging these crashes is a bear: by
 default DukPy won't show a backtrace, and if the runtime code calls
-into a exported function that crashes it gets even more confusing.
+into an exported function that crashes it gets even more confusing.
 
 Here are a few tips to help with these crashes. First, if you get a
 crash inside some JavaScript function, wrap the body of the function
@@ -360,7 +358,7 @@ Python and JavaScript get pretty complicated. *Because* these bugs are hard,
 it's worth approaching debugging systematically and gathering a lot of
 information before attempting a fix.
 
-Returning handles
+Returning Handles
 =================
 
 So far, JavaScript evaluation is fun but useless, because JavaScript
@@ -385,7 +383,7 @@ We'll implement simplified versions of these APIs.[^simplified]
 will return an array, not this thing called a `NodeList`; `innerHTML`
 will only write the HTML contents of an element, and won't allow
 reading those contents. This suffices to demonstrate
-JavaScript-browser interaction.
+JavaScript–browser interaction.
 
 Let's start with `querySelectorAll`. First, export a function:
 
@@ -449,7 +447,7 @@ def querySelectorAll(self, selector_text):
              if selector.matches(node)]
 ```
 
-Finally we need to return those nodes back to JavaScript. You might
+Finally, we need to return those nodes back to JavaScript. You might
 try something like this:
 
 ``` {.python expected=False}
@@ -476,7 +474,7 @@ all, the `Element` class only exists in Python, not JavaScript!
 Python objects need to stay on the Python side of the browser, so
 JavaScript code will need to refer to them via some kind of
 indirection. I'll use simple numeric identifier, which I'll call a
-*handle*.[^8]
+*handle* (see Figure 2).[^8]
 
 [^8]: Note the similarity to file descriptors, which give user-level
     applications access to kernel data structures.
@@ -561,7 +559,7 @@ document = { querySelectorAll: function(s) {
     handle. That means you can't use equality to compare `Node`
     objects. I'll ignore that but a real browser wouldn't.
 
-Wrapping handles
+Wrapping Handles
 ================
 
 Now that we've got some `Node`s, what can we do with them?
@@ -631,8 +629,7 @@ properties won't create corresponding HTML attributes, nor vice versa.
 [reflection]: https://html.spec.whatwg.org/multipage/common-dom-interfaces.html#reflecting-content-attributes-in-idl-attributes
 [setAttribute]: https://developer.mozilla.org/en-US/docs/Web/API/Element/setAttribute
 
-
-Event handling
+Event Handling
 ==============
 
 The browser executes JavaScript code as soon as it loads the web page,
@@ -965,7 +962,7 @@ collectors to [cooperate][cross-component].
 
 [cross-component]: https://research.google/pubs/pub47359/
 
-Event defaults
+Event Defaults
 ==============
 
 So far, when an event is generated, the browser will run the listeners,
@@ -1092,7 +1089,7 @@ form.addEventListener("submit", function(e) {
 This way it's impossible to submit the form when the comment is too
 long!
 
-Well...impossible in this browser. But since there are browsers that
+Well ... impossible in this browser. But since there are browsers that
 don't run JavaScript (like ours, one chapter back), we should check
 the length on the server side too:
 
@@ -1157,7 +1154,7 @@ those demonstrate:
 - generating handles to allow scripts to refer to page elements;
 - reading attribute values from page elements;
 - writing and modifying page elements;
-- and attaching event listeners so that scripts can respond to page events.
+- attaching event listeners so that scripts can respond to page events.
 
 A web page can now add functionality via a clever script, instead of waiting for
 a browser developer to add it into the browser itself. And as a side benefit,
@@ -1182,19 +1179,13 @@ The complete set of functions, classes, and methods in our browser
 should now look something like this:
 
 ::: {.web-only .cmd .python .outline html=True}
-    python3 infra/outlines.py --html src/lab9.py
+    python3 infra/outlines.py --html src/lab9.py --template book/outline.txt
 :::
 
 ::: {.print-only .cmd .python .outline}
-    python3 infra/outlines.py src/lab9.py
+    python3 infra/outlines.py src/lab9.py --template book/outline.txt
 :::
 
-
-The server's outline is unchanged from the last chapter:
-
-::: {.cmd .python .outline html=True}
-    python3 infra/outlines.py --html src/server9.py
-:::
 
 Exercises
 =========
@@ -1223,7 +1214,7 @@ Implement all three methods.
 
 9-3 *`removeChild`*. The [`removeChild`][removeChild] method on `Node`s
 detaches the provided child and returns it, bringing that child---and
-its subtree---back into an *detached* state. (It can then be
+its subtree---back into a *detached* state. (It can then be
 *re-attached* elsewhere, with `appendChild` and `insertBefore`, or
 deleted.) Implement this method. It's more challenging to implement
 this one, because you'll need to also remove the subtree from the

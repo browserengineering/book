@@ -17,7 +17,7 @@ capabilities. You'll even be able to read [this page](https://browser.engineerin
     Text is near-infinitely complex, but this book cannot be
     infinitely long!
 
-What is a font?
+What is a Font?
 ===============
 
 So far, we've called `create_text` with a character and two
@@ -127,13 +127,13 @@ centuries earlier.
 
 [california]: http://www.alembicpress.co.uk/Typecases/CJCCASE.HTM 
 
-Measuring text
+Measuring Text
 ==============
 
 Text takes up space vertically and horizontally, and the font object's
 `metrics` and `measure` methods measure that space:[^spacing]
 
-``` {.example}
+``` {.python .example}
 >>> bi_times.metrics()
 {'ascent': 15, 'descent': 4, 'linespace': 19, 'fixed': 0}
 >>> bi_times.measure("Hi!")
@@ -178,9 +178,9 @@ varying heights:[^varying-times]
     with many different length units all called "point" around the
     world. The [Wikipedia page][wiki-point] has the details, but a
     traditional American/British point is actually slightly less than
-    1/72 of an inch. The 1/72nd standard comes from PostScript, but
+    1/72 of an inch. The 1/72 standard comes from PostScript, but
     some systems predate it; `TeX`{=html} `\TeX`{=latex}, for example, hews closer to the
-    traditional point, approximating it as 1/72.27th of an inch.
+    traditional point, approximating it as 1/72.27 of an inch.
     
 [wiki-point]: https://en.wikipedia.org/wiki/Point_(typography)
 
@@ -193,7 +193,7 @@ varying heights:[^varying-times]
     specified a bold, italic Times font. The bold, italic Times font
     is taller, at least on my current macOS system!
 
-``` {.example}
+``` {.python .example}
 >>> tkinter.font.Font(family="Courier", size=16).metrics()
 {'fixed': 1, 'ascent': 13, 'descent': 4, 'linespace': 17}
 >>> tkinter.font.Font(family="Times", size=16).metrics()
@@ -206,7 +206,7 @@ The `measure()` method is more direct: it tells you how much
 *horizontal* space text takes up, in pixels. This depends on the text,
 of course, since different letters have different widths:[^widths]
 
-``` {.example}
+``` {.python .example}
 >>> bi_times.measure("Hi!")
 24
 >>> bi_times.measure("H")
@@ -283,7 +283,7 @@ themselves.
 
 [case]: https://publicdocs.courts.mi.gov/opinions/final/sct/20120803_s145387_157_standup-op.pdf 
 
-Word by word
+Word by Word
 ============
 
 In [Chapter 2](graphics.md), the `layout` function looped over the text
@@ -382,7 +382,7 @@ incompatible][css-hyphen] with this algorithm, but the recent
 [css-hyphen]: https://news.ycombinator.com/item?id=19472922
 [css4-text]: https://drafts.csswg.org/css-text-4/#propdef-text-wrap-style
 
-Styling text
+Styling Text
 ============
 
 Right now, all of the text on the page is drawn with one font. But web
@@ -455,7 +455,7 @@ Note that `Text` and `Tag` are asymmetric: `lex` avoids empty
 `Tag` object represents the HTML code `<>`, while an empty `Text`
 object with empty text represents no content at all.
 
-Since we've modified `lex`, we are now passing `layout` not just the
+Since we've modified `lex` we are now passing `layout` not just the
 text of the page, but also the tags in it. So `layout` must loop over
 tokens, not text:
 
@@ -542,7 +542,7 @@ which look like roman fonts but are slanted.
 [chancery]: https://en.wikipedia.org/wiki/Chancery_hand
 [oblique]: https://en.wikipedia.org/wiki/Oblique_type
 
-A layout object
+A Layout Object
 ===============
 
 With all of these tags, `layout` has become quite large, with lots of
@@ -674,7 +674,7 @@ favor. That said, `<b>`, `<i>`, and `<small>` still have some
 
 [html5-text]: https://html.spec.whatwg.org/multipage/text-level-semantics.html#the-small-element
 
-Text of different sizes
+Text of Different Sizes
 =======================
 
 Start mixing font sizes, like `<small>a</small><big>A</big>`, and
@@ -863,7 +863,7 @@ Mongolian [government websites][president-mn] use the script.
 [mongolian]: https://www.w3.org/TR/mlreq/
 [president-mn]: https://president.mn/mng/
 
-Font caching
+Font Caching
 ============
 
 Now that you've implemented styled text, you've probably
@@ -910,11 +910,11 @@ values will be `Font` objects.[^get_font-hack] We can put the caching
 logic itself in a new `get_font` function:
 
 ``` {.python}
-def get_font(size, weight, slant):
-    key = (size, weight, slant)
+def get_font(size, weight, style):
+    key = (size, weight, style)
     if key not in FONTS:
         font = tkinter.font.Font(size=size, weight=weight,
-            slant=slant)
+            slant=style)
         label = tkinter.Label(font=font)
         FONTS[key] = (font, label)
     return FONTS[key][0]
@@ -958,7 +958,7 @@ grid. Now it does standard English text layout, so:
 - text is laid out word by word;
 - lines are split at word boundaries;
 - text can be bold or italic;
-- and text of different sizes can be mixed.
+- text of different sizes can be mixed.
 
 You can now use our browser to read an essay, a blog post, or even a
 book!
@@ -977,11 +977,11 @@ The complete set of functions, classes, and methods in our browser
 should look something like this:
 
 ::: {.web-only .cmd .python .outline html=True}
-    python3 infra/outlines.py --html src/lab3.py
+    python3 infra/outlines.py --html src/lab3.py --template book/outline.txt
 :::
 
 ::: {.print-only .cmd .python .outline}
-    python3 infra/outlines.py src/lab3.py
+    python3 infra/outlines.py src/lab3.py --template book/outline.txt
 :::
 
 
@@ -1010,7 +1010,7 @@ for it.[^entity] If a word doesn't fit at the end of a line, check if
 it has soft hyphens, and if so break the word across lines. Remember
 that a word can have multiple soft hyphens in it, and make sure to
 draw a hyphen when you break a word. The word
-"super­cala­fraga­listic­expi­ala­do­shus"
+"super­cali­fragi­listic­expi­ali­docious"
 is a good test case.
 
 [^entity]: If you've done a [previous exercise](http.md#exercises) on
@@ -1018,9 +1018,9 @@ is a good test case.
     entity, which expands to a soft hyphen.
 
 3-4 *Small caps*. Make the `<abbr>` element render text in small caps,
-`<abbr>like this</abbr>`{=html}`\textsc{line this}`{=latex}. Inside an `<abbr>` tag, lower-case letters
+`<abbr>like this</abbr>`{=html}`\textsc{like this}`{=latex}. Inside an `<abbr>` tag, lower-case letters
 should be small, capitalized, and bold, while all other characters
-(upper case, numbers, etc) should be drawn in the normal font.
+(upper case, numbers, etc.) should be drawn in the normal font.
 
 3-5 *Preformatted text*. Add support for the `<pre>` tag. Unlike normal
 paragraphs, text inside `<pre>` tags doesn't automatically break

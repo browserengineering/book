@@ -13,7 +13,7 @@ must be split across multiple CPU threads\index{thread}, with
 different threads running events in parallel to maximize
 responsiveness.
 
-Tasks and task queues
+Tasks and Task Queues
 =====================
 
 So far, most of the work our browser's been doing has come from user
@@ -156,8 +156,8 @@ architect a browser using tasks.
 [nodejs-eventloop]: https://nodejs.dev/learn/the-nodejs-event-loop
 [async-js]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/EventLoop#never_blocking
 
-Timers and setTimeout
-=====================
+Timers and `setTimeout`
+=======================
 
 Tasks are *also* a natural way to support several JavaScript APIs that
 ask for a function to be run at some point in the future. For example,
@@ -246,7 +246,7 @@ all run independently and communicate only via special message-passing APIs.
 Let's implement that:
 
 ``` {.python}
-SETTIMEOUT_CODE = "__runSetTimeout(dukpy.handle)"
+SETTIMEOUT_JS = "__runSetTimeout(dukpy.handle)"
 
 class JSContext:
     def __init__(self, tab):
@@ -255,7 +255,7 @@ class JSContext:
             self.setTimeout)
 
     def dispatch_settimeout(self, handle):
-        self.interp.evaljs(SETTIMEOUT_CODE, handle=handle)
+        self.interp.evaljs(SETTIMEOUT_JS, handle=handle)
 
     def setTimeout(self, handle, time):
         def run_callback():
@@ -275,7 +275,7 @@ only one thread accesses the `task_runner` at a time.
 To do so we use a [`Condition`][condition-variable] object, which can only held
 by one thread at a time. Each thread will try to acquire `condition` before
 reading or writing to the `task_runner`, avoiding simultaneous
-access:^[The `blocking` parameter to `acquire` indicates whether the thread
+access.^[The `blocking` parameter to `acquire` indicates whether the thread
 should wait for the lock to be available before continuing; in this chapter
 you'll always set it to `True`. (When the thread is waiting, it's said to be
 *blocked*.)]
@@ -348,7 +348,7 @@ class JSContext:
 
     def dispatch_settimeout(self, handle):
         if self.discarded: return
-        self.interp.evaljs(SETTIMEOUT_CODE, handle=handle)
+        self.interp.evaljs(SETTIMEOUT_JS, handle=handle)
 ```
 
 ``` {.python}
@@ -489,19 +489,19 @@ class JSContext:
 
 Note that in the asynchronous case, the `XMLHttpRequest_send` method starts a
 thread and then immediately returns. That thread will run in parallel
-to the browser's main work until the request is done.
+with the browser's main work until the request is done.
 
 To communicate the result back to JavaScript, we'll call a
 `__runXHROnload` function from `dispatch_xhr_onload`:
 
 ``` {.python}
-XHR_ONLOAD_CODE = "__runXHROnload(dukpy.out, dukpy.handle)"
+XHR_ONLOAD_JS = "__runXHROnload(dukpy.out, dukpy.handle)"
 
 class JSContext:
     def dispatch_xhr_onload(self, out, handle):
         if self.discarded: return
         do_default = self.interp.evaljs(
-            XHR_ONLOAD_CODE, out=out, handle=handle)
+            XHR_ONLOAD_JS, out=out, handle=handle)
 ```
 
 The `__runXHROnload` method just pulls the relevant object from
@@ -544,7 +544,7 @@ browsers.
 
 :::
 
-The cadence of rendering
+The Cadence of Rendering
 ========================
 
 There's more to tasks than just implementing some JavaScript APIs.
@@ -562,7 +562,7 @@ to render the page, and as you may recall from [Chapter
 exactly as fast as the display hardware can refresh. On most
 computers, this is 60 times per second, or 16 ms per frame. However, even
 with today's computers, it's quite difficult to maintain such a high
-frame rate, and certainly too high of a bar for our toy browser.
+frame rate, and certainly too high a bar for our toy browser.
 
 So let's establish 30 frames per second---33 ms for each frame---as our refresh
 rate target:[^why-33ms]
@@ -644,7 +644,7 @@ varying rate between 60 and 24.
 [refresh-rate]: https://www.intel.com/content/www/us/en/gaming/resources/highest-refresh-rate-gaming.html
 [hobbit-fps]: https://www.extremetech.com/extreme/128113-why-movies-are-moving-from-24-to-48-fps
 
-Optimizing with dirty bits
+Optimizing with Dirty Bits
 ==========================
 
 If you run this on your computer, there's a good chance your CPU usage
@@ -699,7 +699,7 @@ class JSContext:
 ```
 
 There are more calls to `render`; you should find and fix all of
-them...except, let's take a closer look at `click`.
+them ... except, let's take a closer look at `click`.
 
 We now don't immediately render when something changes. That means that the
 layout tree (and style) could be out of date when a method is called. Normally,
@@ -817,7 +817,7 @@ to leverage this model, though of course work (always) remains to be done.
 
 [renderingng]: https://developer.chrome.com/docs/chromium/renderingng
 
-Animating frames
+Animating Frames
 ================
 
 One big reason for a steady rendering cadence is so that animations
@@ -1006,7 +1006,7 @@ backgrounded, minimized or otherwise throttled, while still allowing
 other background tasks like saving your work to the cloud.
 :::
 
-Profiling rendering
+Profiling Rendering
 ===================
 
 We now have a system for scheduling a rendering task every 33 ms. But
@@ -1194,7 +1194,7 @@ Our browser spends a lot of time copying pixels. That's why
 [optimizing surfaces][optimize-surfaces] is important! It'll be faster
 if you've completed Exercise 11-3, because making `tab_surface`
 smaller also helps a lot. Modern browsers go a step further and
-perform raster and draw [on the GPU][skia-gpu], where a lot more
+perform raster-and-draw [on the GPU][skia-gpu], where a lot more
 parallelism is available. Even so, on complex pages raster and draw
 really do sometimes take a lot of time. I'll dig into this more in
 Chapter 13.
@@ -1205,8 +1205,7 @@ Chapter 13.
 
 [skia-gpu]: https://skia.org/docs/user/api/skcanvas_creation/#gpu
 
-
-Two threads
+Two Threads
 ===========
 
 Well, one option, of course, is optimizing raster-and-draw, or even
@@ -1214,7 +1213,7 @@ render, and we'll do that in [Chapter 13](animations.md) But
 another option---complex, but worthwhile and done by every major
 browser---is to do the render step in parallel with the
 raster-and-draw step by adopting a multithreaded architecture. Not
-only would this speed up the rendering pipeline (dropping from 85 to
+only would this speed up the rendering pipeline (dropping from 85 ms to
 62 ms) but we could also execute JavaScript on one thread
 while the expensive `raster_and_draw` task runs on the other.
 
@@ -1360,14 +1359,48 @@ class Browser:
         self.active_tab.task_runner.clear_pending_tasks()
         task = Task(self.active_tab.load, url, body)
         self.active_tab.task_runner.schedule_task(task)
+```
 
+Above, I needed to clear any pending tasks before loading a new page, because
+those previous tasks are now invalid:
+
+``` {.python}
+class TaskRunner:
+    def clear_pending_tasks(self):
+        self.condition.acquire(blocking=True)
+        self.tasks.clear()
+        self.pending_scroll = None
+        self.condition.release()
+```
+
+We also need to split `new_tab` into a version that acquires a lock
+and one that doesn't (`new_tab_internal`):
+
+``` {.python}
+class Browser:
     def new_tab(self, url):
-        # ...
+        self.lock.acquire(blocking=True)
+        self.new_tab_internal(url)
+        self.lock.release()
+
+    def new_tab_internal(self, url):
+        new_tab = Tab(self, HEIGHT - self.chrome.bottom)
+        self.tabs.append(new_tab)
+        self.set_active_tab(new_tab)
         self.schedule_load(url)
 ```
 
+This way `new_tab_internal` can be called directly by methods,
+like `Chrome`'s `click` method, that already hold the lock.^[Using locks while
+avoiding race conditions and deadlocks can be quite difficult!]
+
 ``` {.python}
 class Chrome:
+    def click(self, x, y):
+        if self.newtab_rect.contains(x, y):
+            self.browser.new_tab_internal(
+                URL("https://browser.engineering/"))
+
     def enter(self):
         if self.focus == "address bar":
             self.browser.schedule_load(URL(self.address_bar))
@@ -1383,6 +1416,7 @@ on the web page, we must schedule a task on the main thread:
 ``` {.python}
 class Browser:
     def handle_click(self, e):
+        self.lock.acquire(blocking=True)
         if e.y < self.chrome.bottom:
              # ...
         else:
@@ -1390,6 +1424,7 @@ class Browser:
             tab_y = e.y - self.chrome.bottom
             task = Task(self.active_tab.click, e.x, tab_y)
             self.active_tab.task_runner.schedule_task(task)
+        self.lock.release()
 ```
 
 The same logic holds for `keypress`:
@@ -1426,7 +1461,7 @@ parallelism available to the browser.
 
 [cores]: https://en.wikipedia.org/wiki/Multi-core_processor
 
-Committing a display list
+Committing a Display List
 =========================
 
 We already have a `set_needs_animation_frame` method, but we also need
@@ -1598,8 +1633,7 @@ could run in parallel with the rest of the browser, and performance
 would improve as well.
 :::
 
-
-Threaded profiling
+Threaded Profiling
 ==================
 
 Now that we have two threads, we'll want to be able to visualize this
@@ -1704,7 +1738,7 @@ leaps they did in recent years. Good debugging tools are essential to
 software engineering!
 :::
 
-Threaded scrolling
+Threaded Scrolling
 ==================
 
 Splitting the main thread from the browser thread means that the main
@@ -1918,7 +1952,7 @@ in Figure 4.
 That's it! If you try the counting demo now, you'll be able to scroll even
 during the artificial pauses. Figure 4 is a trace screenshot that shows threaded
 scrolling at work (notice how raster and draw now sometimes happen at the same
-time as main-thread work):
+time as main-thread work).
 
 :::
 
@@ -1962,7 +1996,7 @@ so it doesn't run into these difficulties. That's also a strategy. For
 example, until 2020, Chromium-based browsers on Android did not
 support `background-attachment: fixed`.
 
-Threaded style and layout
+Threaded Style and Layout
 =========================
 
 Now that we have separate browser and main threads, and now that some
@@ -1980,8 +2014,8 @@ threads][renderingng-architecture], which together serve to make the
 browser even faster and more responsive. For example, raster-and-draw
 often runs on its own thread so that the browser thread can handle
 events even while a new frame is being prepared. Likewise, modern
-browsers typically have a collection of network or IO threads, which
-move all interaction with the network or the file system off of the
+browsers typically have a collection of network or input/output (I/O) threads, which
+move all interaction with the network or the file system off the
 main thread.
 
 [renderingng-architecture]: https://developer.chrome.com/blog/renderingng-architecture/#process-and-thread-structure
@@ -2085,15 +2119,15 @@ Summary
 This chapter demonstrated the two-thread rendering system at the core
 of modern browsers. The main points to remember are:
 
-- the browser organizes work into task queues, with tasks for things
-  like running JavaScript, handling user input, and rendering the page;
-- the goal is to consistently generate frames to the screen at a 60 Hz
-  cadence, which means a 33 ms budget to draw each animation frame;
-- the browser has two key threads involved in rendering;
-- the main thread runs JavaScript and the special rendering task;
-- the browser thread draws the display list to the screen,
-  handles/dispatches input events, and performs scrolling;
-- and the main thread communicates with the browser thread via `commit`,
+- The browser organizes work into task queues, with tasks for things
+  like running JavaScript, handling user input, and rendering the page.
+- The goal is to consistently generate frames to the screen at a 60 Hz
+  cadence, which means a 33 ms budget to draw each animation frame.
+- The browser has two key threads involved in rendering.
+- The main thread runs JavaScript and the special rendering task.
+- The browser thread draws the display list to the screen,
+  handles/dispatches input events, and performs scrolling.
+- The main thread communicates with the browser thread via `commit`,
   which synchronizes the two threads.
 
 Additionally, you've seen how hard it is to move tasks between the two
@@ -2115,11 +2149,11 @@ The complete set of functions, classes, and methods in our browser
 should now look something like this:
 
 ::: {.web-only .cmd .python .outline html=True}
-    python3 infra/outlines.py --html src/lab12.py
+    python3 infra/outlines.py --html src/lab12.py --template book/outline.txt
 :::
 
 ::: {.print-only .cmd .python .outline}
-    python3 infra/outlines.py src/lab12.py
+    python3 infra/outlines.py src/lab12.py --template book/outline.txt
 :::
 
 ::: {.web-only}

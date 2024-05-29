@@ -1,5 +1,5 @@
 ---
-title: More resources
+title: More Resources
 ...
 
 [A Brief History of JavaScript](https://auth0.com/blog/a-brief-history-of-javascript/)

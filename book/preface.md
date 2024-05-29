@@ -17,17 +17,17 @@ industry programmers and even to researchers. This book dissipates
 that mystery by systematically explaining all major components of a
 modern web browser.
 
-Reading this book
+Reading This Book
 =================
 
-Parts 1--3 of this book construct a basic browser weighing in around
+Parts 1--3 of this book construct a basic browser weighing in at around
 1000 lines of code, twice that after exercises. The average chapter
 takes 4--6 hours to read, implement, and debug for someone with a few
 years' programming experience. Part 4 of this book covers advanced
 topics; those chapters are longer and have more code. The final
 browser weighs in at about 3000 lines.
 
-Your browser[^yours-ours] will "work" at every step of the way, and
+Your browser[^yours-ours] will "work" at each step of the way, and
 every chapter will build upon the last.[^jrwilcox-idea] That way, you will
 also practice growing and improving complex software. If you feel
 particularly interested in some component, please do flesh it out,
@@ -42,11 +42,10 @@ which refers to the conceptual browser we (you and us, the
 authors) have built so far. In cases where the book is referring specifically
 to the implementation you have built, the book says "your browser".
 
-[^jrwilcox-idea]: This idea is from [J.R. Wilcox][jrw], inspired in
-turn by [S. Zdancewic][sz]'s course on compilers.
+[^jrwilcox-idea]: This idea is from [J. R. Wilcox][jrw], inspired in
+turn by [S. Zdancewic's][sz] course on compilers.
 
-The code in this book [uses Python
-3](blog/why-python.md),\index{Python} and we recommend you follow
+The code in this book uses [Python 3](https://browserbook.substack.com/p/why-python),\index{Python} and we recommend you follow
 along in the same. When the book shows Python command lines, it calls
 the Python binary `python3`.[^py3-cmd] That said, the text avoids
 dependencies where possible and you can try to follow along in another
@@ -86,8 +85,8 @@ turn was made possible by the very thing this book is about.
 *Pavel*: [James R. Wilcox][jrw] and I dreamed up this book during a
 late-night chat at ICFP 2018. [Max Willsey][mwillsey] proofread and
 helped sequence the chapters. [Zach Tatlock][ztatlock] encouraged me
-to develop the book into a course. And the students of CS 6968 and CS
-4962 at the University of Utah found countless errors and suggested
+to develop the book into a course. And the students of CS 6968,
+CS 4962, and CS 4560 at the University of Utah found countless errors and suggested
 important simplifications. I am thankful to all of them. Most of all,
 I am thankful to my wife [Sara][saras], who supported my writing and
 gave me the strength to finish this many-year-long project.
@@ -102,7 +101,7 @@ listening to my endless musings about the web, and encouraging me to
 turn my idea for a browser book into reality. I am also grateful to
 [Dan Gildea][dan-gildea] for providing feedback on my browser-book
 concept on multiple occasions. Finally, I'm grateful to Pavel for
-doing the hard work getting this project off the ground and allowing
+doing the hard work of getting this project off the ground and allowing
 me to join the adventure. (Turns out Pavel and I had the same idea!)
 
 [dan-gildea]: https://www.cs.rochester.edu/u/gildea/

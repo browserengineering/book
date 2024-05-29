@@ -33,7 +33,7 @@ and rasterization at a lower level.
 [sdl]: https://www.libsdl.org/
 
 [^tkinter-before-gpu]: That's because Tk, the graphics library that
-Tkinter uses, dates from the early 90s, before high-performance
+Tkinter uses, dates from the early 1990s, before high-performance
 graphics cards and GPUs became widespread.
 
 ::: {.installation}
@@ -89,8 +89,7 @@ to [WebAssembly][webassembly] to do the same.
 [webassembly]: https://developer.mozilla.org/en-US/docs/WebAssembly
 [canvaskit]: https://skia.org/docs/user/modules/canvaskit/
 
-
-SDL creates the window
+SDL Creates the Window
 ======================
 
 The first big task is to switch to using SDL to create the window and
@@ -184,8 +183,7 @@ SDL is most popular for making games. Their site lists [a selection of
 books](https://wiki.libsdl.org/Books) about game programming in SDL.
 :::
 
-
-Surfaces and pixels
+Surfaces and Pixels
 ===================
 
 Let's peek under the hood of these SDL calls. 
@@ -241,7 +239,7 @@ somewhat more complex code within SDL and Skia themselves.[^skia-color]
 [^skia-color]: Skia actually represents colors
 as 32-bit integers, with the most significant byte representing
 the alpha value (255 meaning opaque and 0 meaning transparent) and
-then the next three bytes representing the red, green, and blue color
+the next three bytes representing the red, green, and blue color
 channels.
 
 Defining colors via red, green, and blue components is fairly
@@ -505,8 +503,8 @@ Get rid of the old `Rect` class that was introduced in [Chapter
 constructed, instead put `skia.Rect.MakeLTRB` (for "make
 left-top-right-bottom") or `MakeXYWH` (for "make
 *x*-*y*-width-height"). Everywhere that the sides of the
-rectangle (e.g. `left`) were checked, replace them with the
-corresponding function on a Skia `Rect` (e.g. `left()`). Also replace
+rectangle (e.g., `left`) were checked, replace them with the
+corresponding function on a Skia `Rect` (e.g., `left()`). Also replace
 calls to `containsPoint` with Skia's `contains`.
 
 While we're here, let's also add a `rect` field to the other drawing
@@ -640,14 +638,23 @@ class BlockLayout:
                 self.self_rect(), radius, bgcolor))
 ```
 
-With that, [this example](https://browser.engineering/examples/example11-rounded-background.html) will round the corners of its background (See Figure 1; notice that it does not round the text, though):
+With that, [this
+example](https://browser.engineering/examples/example11-rounded-background.html):[^relative-urls]
+
+[^relative-urls]: Note that the example listed here, in common with
+    other examples present in the book, accesses a local resource (a
+    CSS file in this case) that is also present on
+    [browser.engineering](https://browser.engineering/).
 
 ::: {.transclude .html}
 www/examples/example11-rounded-background.html
 :::
 
+will round the corners of its background
+(see Figure 1; notice that it does not round the text, though).
+
 ::: {.center}
-![Figure 1: Example of a long word with rounded background](examples/example11-rounded-background.png)
+![Figure 1: Example of a long word with a rounded background.](examples/example11-rounded-background.png)
 :::
 
 Similar changes should be made to `InputLayout`. New shapes, like
@@ -669,7 +676,7 @@ high-density enough to retire these techniques.
 
 [font-hinting]: https://en.wikipedia.org/wiki/Font_hinting
 
-Browser compositing
+Browser Compositing
 ===================
 
 Skia and SDL have just made our browser more complex, but the
@@ -847,7 +854,8 @@ class Browser:
             self.raster_tab()
 ```
 
-We also have some related changes in `Tab`. First, we no longer need
+We also have some related changes in `Tab`. Let's rename `Tab`'s
+`draw` method to `raster`. In it, we no longer need
 to pass around the scroll offset to the `execute` methods, or account
 for `chrome_bottom`, because we always draw the whole tab to the tab
 surface:
@@ -992,7 +1000,7 @@ transparent black pixels were blending with orange pixels, resulting
 in a dark-orange color. In the second example, the black pixels were
 first blended with the background, then the result was made
 transparent. Thus, fully black pixels replaced fully orange ones,
-resulting just black pixels, which were later made 50% transparent.
+resulting in just black pixels, which were later made 50% transparent.
 
 Applying blending in the proper order, as is necessary to implement effects
 like `opacity`, requires more careful handling of surfaces.
@@ -1020,7 +1028,7 @@ complicated to handle in real browsers.
 
 [containing-block]: https://developer.mozilla.org/en-US/docs/Web/CSS/Containing_block
 
-Blending and stacking
+Blending and Stacking
 =====================
 
 To handle the order of operations properly,
@@ -1057,7 +1065,7 @@ of stacking contexts is very related to the tree of surfaces.
 
 To match this use pattern, in Skia, surfaces form a stack. You can
 push a new surface on the stack, raster things to it, and then pop it
-off, which blends it with surface below. When rastering, you push a
+off, which blends it with the surface below. When rastering, you push a
 new surface onto the stack every time
 you need to apply some visual effect,
 and pop-and-blend once you're done rastering all the elements
@@ -1065,7 +1073,7 @@ that that effect will be applied to, like this:
 
 ``` {.python .example}
 # draw parent
-canvas.saveLayer(skia.Paint(Alphaf=0.5))
+canvas.saveLayer(None, skia.Paint(Alphaf=0.5))
 # draw children
 canvas.restore()
 ```
@@ -1074,7 +1082,7 @@ Here, the `saveLayer` call asks Skia[^layer-surface] to draw all the
 children to a separate
 surface before blending them into the parent once
 `restore` is called.
-The `paint` option to `saveLayer` specifies the specific type of
+The second parameter to `saveLayer` specifies the specific type of
 blending, here with the `Alphaf` parameter requesting 50% opacity.
 
 [^layer-surface]: It's called `saveLayer` instead of `createSurface` because
@@ -1161,15 +1169,15 @@ commands to a surface, and *then* apply transparency to it when
 blending into the parent.
 
 ::: {.further}
-I highly recommend [this blog post](https://ciechanow.ski/alpha-compositing/)
-giving a really nice visual overview of many of the same concepts explored in
+I highly recommend [this blog post](https://ciechanow.ski/alpha-compositing/),
+which gives a really nice visual overview of many of the same concepts explored in
 this chapter, plus way more content about how a library such as Skia might
 implement features like raster sampling of vector graphics for lines and text
-and interpolation of surfaces when their pixel arrays don't match resolution
+and interpolation of surfaces when their pixel arrays don't match in resolution
 or orientation.
 :::
 
-Compositing pixels
+Compositing Pixels
 ==================
 
 Now let's pause and explore how opacity actually works under the hood.
@@ -1332,7 +1340,7 @@ Figure 5: Example of the `difference` value for `mix-blend-mode` with a blue chi
 :::
 
 Here, when blue overlaps with orange, we see pink: blue has (red,
-green, blue) color channels of `(0, 0, 1)`, and orange has `(1, .65,
+green, blue) color channels of `(0, 0, 1)`, and orange has `(1, 0.65,
 0)`, so with "difference" blending the resulting pixel will be `(1,
 0.65, 1)`, which is pink. On a pixel level, what's happening is
 something like this:
@@ -1384,7 +1392,7 @@ class Blend:
         paint = skia.Paint(
             BlendMode=parse_blend_mode(self.blend_mode),
         )
-        canvas.saveLayer(paint)
+        canvas.saveLayer(None, paint)
         for cmd in self.children:
             cmd.execute(canvas)
         canvas.restore()
@@ -1427,7 +1435,7 @@ when resized][alpha-deriv].
 [alpha-deriv]: https://jcgt.org/published/0004/02/03/paper.pdf
 [premultiplied]: https://limnu.com/premultiplied-alpha-primer-artists/
 
-Clipping and masking
+Clipping and Masking
 ====================
 
 The "multiply" and "difference" blend modes can seem kind of obscure,
@@ -1619,7 +1627,7 @@ video][rr-video] walks through several.
 [hardware-overlays]: https://en.wikipedia.org/wiki/Hardware_overlay
 [rr-video]: https://css-tricks.com/video-screencasts/24-rounded-corners/
 
-Optimizing surface use
+Optimizing Surface Use
 ======================
 
 Our browser now works correctly, but uses way too many surfaces. For
@@ -1647,7 +1655,7 @@ class Opacity:
             Alphaf=self.opacity,
         )
         if self.opacity < 1:
-            canvas.saveLayer(paint)
+            canvas.saveLayer(None, paint)
         for cmd in self.children:
             cmd.execute(canvas)
         if self.opacity < 1:
@@ -1691,7 +1699,7 @@ class Blend:
             BlendMode=parse_blend_mode(self.blend_mode),
         )
         if self.blend_mode:
-            canvas.saveLayer(paint)
+            canvas.saveLayer(None, paint)
         for cmd in self.children:
             cmd.execute(canvas)
         if self.blend_mode:
@@ -1728,7 +1736,7 @@ class Blend:
             BlendMode=parse_blend_mode(self.blend_mode),
         )
         if self.should_save:
-            canvas.saveLayer(paint)
+            canvas.saveLayer(None, paint)
         for cmd in self.children:
             cmd.execute(canvas)
         if self.should_save:
@@ -1763,8 +1771,8 @@ example. Both of these libraries are used outside of the browser, too:
 Core Graphics in iOS and macOS, and Skia in Android.
 :::
 
-[^cgpp]: There is also [Computer Graphics: Principles and
-Practice][classic], which incidentally I remember buying---this is
+[^cgpp]: There is also [*Computer Graphics: Principles and
+Practice*][classic], which incidentally I remember buying---this is
 Chris speaking---back in the days of my youth (1992 or so). At the time I
 didn't get much further than rastering lines and polygons (in assembly
 language!). These days you can do the same and more with Skia and a
@@ -1784,7 +1792,7 @@ text and boxes but also:
 - user-configurable blending modes via `mix-blend-mode`;
 - rounded rectangle clipping via destination-in blending or direct clipping;
 - optimizations to avoid surfaces when possible;
-- and browser compositing with extra surfaces for faster scrolling.
+- browser compositing with extra surfaces for faster scrolling.
 
 Besides the new features, we've upgraded from Tkinter to SDL and Skia,
 which makes our browser faster and more responsive, and also sets a
@@ -1803,11 +1811,11 @@ The complete set of functions, classes, and methods in our browser
 should now look something like this:
 
 ::: {.web-only .cmd .python .outline html=True}
-    python3 infra/outlines.py --html src/lab11.py
+    python3 infra/outlines.py --html src/lab11.py --template book/outline.txt
 :::
 
 ::: {.print-only .cmd .python .outline}
-    python3 infra/outlines.py src/lab11.py
+    python3 infra/outlines.py src/lab11.py --template book/outline.txt
 :::
 
 ::: {.signup}
@@ -1848,7 +1856,7 @@ implement Exercise 6-2) so that `height` is supported.) Implement some
 version of `overflow: scroll`. I recommend the following user
 interaction: the user clicks within a scrollable element to focus it,
 and then can press the arrow keys to scroll up and down. You'll need
-to keep track of the [layout overflow][overflow-doc]. For an extra
+to keep track of the [*layout overflow*][overflow-doc]. For an extra
 challenge, make sure you support scrollable elements nested within
 other scrollable elements.
 
@@ -1857,7 +1865,7 @@ other scrollable elements.
 11-5 *Touch input*. Many desktop (and all mobile, of course) screens these
 days support touch and multitouch input. And SDL has [APIs][sdl-touch]
 to support it. Implement a touch-input variant of `click`.^[You might want
-to go back and look at a go-further block in [Chapter 7](chrome.md) for some
+to go back and look at the "Go Further" block in [Chapter 7](chrome.md) for some
 hints about good ways to implement touch input.]
 
 [sdl-touch]: https://wiki.libsdl.org/SDL2/SDL_MultiGestureEvent

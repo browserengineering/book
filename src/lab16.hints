@@ -13,7 +13,7 @@
 {"code": "'contenteditable' in self.node.attributes", "type": "dict"},
 {"code": "'contenteditable' in node.attributes", "type": "dict"},
 {"code": "'tabindex' in node.attributes", "type": "dict"},
-{"code": "child_class(node, line, self.previous_word, word)", "js": "await (new child_class()).init(node, line, this.previous_word, word)"},
+{"code": "child_class(node, word, line, self.previous_word)", "js": "await (new child_class()).init(node, word, line, this.previous_word)"},
 {"code": "child_class(node, line, self.previous_word, frame)", "js": "await (new child_class()).init(node, line, this.previous_word, frame)"},
 {"code": "property in INHERITED_PROPERTIES", "type": "dict"},
 {"code": "notify in self.invalidations", "type": "set"},

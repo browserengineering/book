@@ -26,6 +26,7 @@
 \defbox{installation}{Installation}{blue}
 \defbox{further}{Go Further}{ForestGreen}
 \defbox{example}{Example}{Gray}
+\defbox{notcode}{}{Black}
 
 % Finally we define the actual "bookblock" environment that our
 % Markdown will expand divs into
@@ -34,6 +35,18 @@
   \begin{tcolorbox}[colback=\getprop{#1}{color}!5!white,
                     colframe=\getprop{#1}{color}!75!white,
                     title={\getprop{#1}{title}}]
+  \else
+  \PackageError{bookblock}{Unknown book block '#1'}{}
+  \fi
+}{
+\end{tcolorbox}
+}
+
+% Same but with no title
+\newenvironment{bookblock*}[1]{
+  \ifcsname @val@#1@color\endcsname
+  \begin{tcolorbox}[colback=\getprop{#1}{color}!5!white,
+                    colframe=\getprop{#1}{color}!75!white]
   \else
   \PackageError{bookblock}{Unknown book block '#1'}{}
   \fi

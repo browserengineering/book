@@ -19,7 +19,7 @@ possible to interact with web pages by touch, keyboard, or voice.
 
 [a11y]: https://developer.mozilla.org/en-US/docs/Learn/Accessibility/What_is_accessibility
 
-What is accessibility?
+What is Accessibility?
 ======================
 
 Accessibility\index{accessibility} means that the user can change or
@@ -136,7 +136,7 @@ European Union is the [European Accessibility Act][europe-a11y].
 [uk-a11y]: https://www.siteimprove.com/glossary/uk-accessibility-laws/
 [europe-a11y]: https://ec.europa.eu/social/main.jsp?catId=1202
 
-CSS zoom
+CSS Zoom
 ========
 
 Let's start with the simplest accessibility problem: text on the
@@ -160,19 +160,20 @@ To handle modifier keys, we'll need to listen to both "key down" and
 "key up" events in the event loop, and store whether the `Ctrl` key is pressed:
 
 ``` {.python}
+def mainloop(browser):
+    # ...
     ctrl_down = False
     while True:
 		if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-			# ...
             elif event.type == sdl2.SDL_KEYDOWN:
                 # ...
-                 elif event.key.keysym.sym == sdl2.SDLK_RCTRL or \
-                     event.key.keysym.sym == sdl2.SDLK_LCTRL:
-                     ctrl_down = True            	
+                elif event.key.keysym.sym == sdl2.SDLK_RCTRL or \
+                    event.key.keysym.sym == sdl2.SDLK_LCTRL:
+                    ctrl_down = True            	
              elif event.type == sdl2.SDL_KEYUP:
-                 if event.key.keysym.sym == sdl2.SDLK_RCTRL or \
-                     event.key.keysym.sym == sdl2.SDLK_LCTRL:
-                     ctrl_down = False
+                if event.key.keysym.sym == sdl2.SDLK_RCTRL or \
+                    event.key.keysym.sym == sdl2.SDLK_LCTRL:
+                    ctrl_down = False
              	# ...
 ```
 
@@ -180,7 +181,7 @@ Now we can have a case in the key handling code for "key down" events
 while the `Ctrl` key is held:
 
 ``` {.python}
-    ctrl_down = False
+def mainloop(browser):
     while True:
 		if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             elif event.type == sdl2.SDL_KEYDOWN:
@@ -412,8 +413,8 @@ good old [Lorem ipsum][lorem-ipsum]!]
 :::
 
 This should render as shown in Figure 1, while Figure 2 shows how it should
-look after a 2x zoom. Note how not only are the words twice
-as big, but the lines wrap at different words, just as desired:
+look after a 2× zoom. Note how not only are the words twice
+as big, but the lines wrap at different words, just as desired.
 
 [lorem-ipsum]: https://en.wikipedia.org/wiki/Lorem_ipsum
 
@@ -457,8 +458,7 @@ and less important. For example, the Pixelbook Go I'm using to write
 this book, with a resolution of 166 pixels per inch has a ratio of
 1.25. The choice of ratio for a given screen is somewhat arbitrary.
 
-
-Dark mode
+Dark Mode
 =========
 
 Another useful visual change is using darker colors to help users who
@@ -481,9 +481,10 @@ before becoming widely used.
 We'll trigger dark mode in the event loop with `Ctrl-d`:
 
 ``` {.python}
+def mainloop(browser):
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            # ...
+            elif event.type == sdl2.SDL_KEYDOWN:
                 if ctrl_down:
                     # ...
                     elif event.key.keysym.sym == sdl2.SDLK_d:
@@ -639,7 +640,7 @@ used.
 
 :::
 
-Customizing dark mode
+Customizing Dark Mode
 =====================
 
 Our simple dark mode implementation works well for pages with just
@@ -681,7 +682,7 @@ Here I chose very specific hexadecimal colors that preserve the general color
 scheme of blue and orange, but ensure maximum contrast with white foreground
 text so they are easy to read. It's important to choose colors that ensure
 maximum contrast (an ["AAA"][AAA] rating). [This tool][contrast-tool] is 
-handy for checking the constrast of foreground and background colors.
+handy for checking the contrast of foreground and background colors.
 
 [AAA]: https://accessibleweb.com/rating/aaa/
 
@@ -698,7 +699,7 @@ class CSSParser:
         self.whitespace()
         self.literal("(")
         self.whitespace()
-        prop, val = self.pair()
+        prop, val = self.pair([")"])
         self.whitespace()
         self.literal(")")
         return prop, val
@@ -756,9 +757,9 @@ def style(node, rules, tab):
 
 ::: {.web-only}
 
-Try your browser on [this](examples/example14-focus.html)^[I'll use it
-throughout the chapter as the "focus example".] example web page with lots
-of links, text entries and buttons,
+Try your browser on this [web page](examples/example14-focus.html)^[I'll use it
+throughout the chapter as the "focus example".] with lots
+of links, text entries, and buttons,
 and you should now see that in dark mode they also change
 color to have a darker background and lighter foreground. It should look like
 Figure 4 in dark mode.
@@ -802,8 +803,7 @@ elements (use with care!) with [`forced-color-adjust`][fc-adjust].
 [forced-colors]: https://developer.mozilla.org/en-US/docs/Web/CSS/@media/forced-colors
 [fc-adjust]: https://developer.mozilla.org/en-US/docs/Web/CSS/forced-color-adjust
 
-
-Keyboard navigation
+Keyboard Navigation
 ===================
 
 Right now, most browser features are triggered using the
@@ -830,6 +830,7 @@ minimizing or maximizing the browser window. Those require calling
 specialized OS APIs, so I won't implement them.
 
 ``` {.python}
+def mainloop(browser):
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             elif event.type == sdl2.SDL_KEYDOWN:
@@ -900,6 +901,7 @@ the link.
 We'll start by binding those keys in the event loop:
 
 ``` {.python}
+def mainloop(browser):
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             elif event.type == sdl2.SDL_KEYDOWN:
@@ -1173,7 +1175,7 @@ listener.
 [onactivate]: https://docs.microsoft.com/en-us/previous-versions/windows/internet-explorer/ie-developer/platform-apis/aa742710(v=vs.85)
 [domactivate]: https://w3c.github.io/uievents/#event-type-DOMActivate
 
-Indicating focus
+Indicating Focus
 ================
 
 Thanks to our keyboard shortcuts, users can now reach any link,
@@ -1423,46 +1425,7 @@ this to show a 3px red outline:[^outline-syntax]
 [^outline-syntax]: We'll only implement this syntax, but `outline` can
     also take a few other forms.
 
-The first challenge in implementing `outline` is that, annoyingly, at the moment
-our CSS parser doesn't recognize the line above as a valid property/value pair,
-since it parses values as a single word. Let's upgrade the parser to recognize
-any string of characters except one of a specified set of `chars`:
-
-``` {.python}
-class CSSParser:
-    def until_chars(self, chars):
-        start = self.i
-        while self.i < len(self.s) and self.s[self.i] not in chars:
-            self.i += 1
-        return self.s[start:self.i]
-
-    def pair(self, until):
-        # ...
-        val = self.until_chars(until)
-        # ...
-        return prop.casefold(), val.strip()
-```
-
-Inside a CSS rule body, a property value continues until a semicolon
-or a close curly brace, but inside a media query it continues until a
-close parenthesis:
-
-``` {.python}
-class CSSParser:
-    def body(self):
-        while self.i < len(self.s) and self.s[self.i] != "}":
-            try:
-                prop, val = self.pair([";", "}"])
-                # ...
-
-    def media_query(self):
-        # ...
-        prop, val = self.pair(")")
-        # ...
-```
-
-Now we have `outline`'s value in the relevant element's `style`. We can
-parse that into a thickness and a color:
+We can parse that into a thickness and a color:
 
 ``` {.python}
 def parse_outline(outline_str):
@@ -1523,7 +1486,7 @@ For the [focus example](examples/example14-focus.html), the focus outline
 of an `<a>` element becomes red, as in Figure 6.
 
 ::: {.center}
-![Figure 6: Example of a customized red focuse outline](examples/example14-focus-outline-custom.png)
+![Figure 6: Example of a customized red focus outline.](examples/example14-focus-outline-custom.png)
 :::
 
 As with dark mode, focus outlines are a case where adding an
@@ -1550,13 +1513,12 @@ Accessibility Guidelines][wcag] provides contrast guidance.
 [focus-blog]: https://darekkay.com/blog/accessible-focus-indicator/
 [ms-blog]: https://blogs.windows.com/msedgedev/2019/10/15/form-controls-microsoft-edge-chromium/
 
-
-The accessibility tree
+The Accessibility Tree
 ======================
 
 Zoom, dark mode, and focus indicators help users with difficulty
 seeing fine details, but if the user can't see the screen at all,^[The
-original motivation of screen readers was for blind users, but it's
+original motivation for screen readers was for blind users, but it's
 also sometimes useful for situations where the user shouldn't be
 looking at the screen (such as driving), or for devices with no
 screen.] they typically use a screen reader instead. The name
@@ -1791,12 +1753,11 @@ the operating system to individual tabs can lead to security issues.
 
 [chrome-mp-a11y]: https://chromium.googlesource.com/chromium/src/+/HEAD/docs/accessibility/browser/how_a11y_works_2.md
 
-
-Screen readers
+Screen Readers
 ==============
 
 Typically, the screen reader is a separate application from the
-browser[^why-diff] the browser communicates with through
+browser;[^why-diff] the browser communicates with it through
 OS-specific APIs. To keep this book platform-independent and demonstrate
 more clearly how screen readers interact with the accessibility tree, our
 discussion of screen reader support will instead include a minimal
@@ -1808,7 +1769,7 @@ Modern browsers generally talk to screen readers from  something like the
 multithreaded browser.] So the very first thing we need to do is send the
 tab's accessibility tree over to the browser thread. That'll be a
 straightforward extension of the commit concept introduced in
-[Chapter 12][ch12-commit]. First we'll add the tree to `CommitData`: 
+[Chapter 12][ch12-commit]. First, we'll add the tree to `CommitData`: 
 
 ``` {.python replace=accessibility_tree)/accessibility_tree%2c%20focus)}
 class CommitData:
@@ -1898,13 +1859,14 @@ on and off. While real operating systems typically use more obscure
 shortcuts, I'll use `Ctrl-a` to turn on the screen reader in the event loop:
 
 ``` {.python}
+def mainloop(browser):
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
-            # ...
+            elif event.type == sdl2.SDL_KEYDOWN:
                 if ctrl_down:
                     # ...
                     elif event.key.keysym.sym == sdl2.SDLK_a:
-                        browser.toggle_accessibility()            
+                        browser.toggle_accessibility()
 ```
 
 The `toggle_accessibility` method tells the `Tab` that accessibility
@@ -2166,7 +2128,7 @@ receive consistent information.
 
 [braille-display]: https://en.wikipedia.org/wiki/Refreshable_braille_display
 
-Accessible alerts
+Accessible Alerts
 =================
 
 Scripts do not interact directly with the accessibility tree, much
@@ -2190,7 +2152,7 @@ setting the `role` attribute.
     the document, has the `alert` role (or the equivalent `aria-live`
     value, `assertive`), and is visible in the layout tree (meaning it
     doesn't have `display: none`), or if its contents change. In this
-    chapter, I won't handle all of these cases and just focus on new
+    chapter, I won't handle all of these cases—I'll just focus on new
     elements with an `alert` role, not changes to contents or CSS.
     
 On to implementation. We first need to make it possible
@@ -2325,9 +2287,8 @@ is all that's necessary to create a live region; no role is necessary.
 
 :::
 
-
-Voice & visual interaction
-==========================
+Voice and Visual Interaction
+============================
 
 Thanks to our work in this chapter, our rendering pipeline now
 basically has two different outputs: a display list for visual
@@ -2429,6 +2390,7 @@ So let's implement the read-on-hover feature. First we need to listen for mouse
 move events in the event loop, which in SDL are called `MOUSEMOTION`:
 
 ``` {.python}
+def mainloop(browser):
     while True:
         if sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             # ...
@@ -2603,14 +2565,14 @@ This chapter introduces accessibility---features to ensure *all* users can
 access and interact with websites---and shows how to solve several of
 the most common accessibility problems in browsers. The key takeaways are:
 
-- the semantic and declarative nature of HTML makes accessibility
-  features natural extensions;
-- accessibility features often serve multiple needs, and almost
-  everyone benefits from these features in one way or another;
-- the accessibility tree is similar to the display list and drives
+- The semantic and declarative nature of HTML makes accessibility
+  features natural extensions.
+- Accessibility features often serve multiple needs, and almost
+  everyone benefits from these features in one way or another.
+- The accessibility tree is similar to the display list and drives
   the browser's interaction with screen readers and other assistive
-  technologies;
-- and new features like dark mode, keyboard navigation, and outlines need
+  technologies.
+- New features like dark mode, keyboard navigation, and outlines need
   to be customizable by web page authors to be maximally usable.
 
 ::: {.web-only}
@@ -2627,11 +2589,11 @@ The complete set of functions, classes, and methods in our browser
 should now look something like this:
 
 ::: {.web-only .cmd .python .outline html=True}
-    python3 infra/outlines.py --html src/lab14.py
+    python3 infra/outlines.py --html src/lab14.py --template book/outline.txt
 :::
 
 ::: {.print-only .cmd .python .outline}
-    python3 infra/outlines.py src/lab14.py
+    python3 infra/outlines.py src/lab14.py --template book/outline.txt
 :::
 
 
@@ -2680,11 +2642,10 @@ and can be viewed as a kind of accessibility.
 [responsive-design]: https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Responsive_Design
 
 ::: {.web-only}
-After completng the exercise,
+After completing the exercise,
 [this example](examples/example14-maxwidth-media.html) should have green text
 on narrow screens.
 :::
-
 
 ::: {.print-only}
 
@@ -2704,7 +2665,7 @@ www/examples/example14-maxwidth-media.css
 :::
 
 14-5 *Mixed inlines*. Make the focus ring work correctly on nested inline
-elements. For example in `<a>a <b>bold</b> link</a>`, the focus ring
+elements. For example, in `<a>a <b>bold</b> link</a>`, the focus ring
 should cover all three words together when the user is focused on the
 link, and with multiple rectangles if the inline crosses lines.
 However, if the user focuses on a block-level element, such as in
@@ -2746,7 +2707,7 @@ compare the behavior with a real browser.
 
 [os-integ]: https://pypi.org/project/accessible_output/
 
-*Focus method and events*: Add support for the JavaScript
+*Focus method and events*. Add support for the JavaScript
 [`focus()`][focus-method] method
 and the corresponding [`focus`][focus-event] and
 [`blur`][blur-event] events on DOM elements. Make sure that `focus()`

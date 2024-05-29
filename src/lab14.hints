@@ -4,8 +4,6 @@
 {"code": "b'Browser'", "js": "'Browser'"},
  {"code": "'href' in elt.attributes", "type": "dict"},
 {"code": "'content-security-policy' in headers", "type": "dict"},
-{"code": "self.s[self.i] in chars", "type": "list"},
-{"code": "self.s[self.i] not in chars", "type": "list"},
 {"code": "'value' in self.node.attributes", "type": "dict"},
 {"code": "'tabindex' in node.attributes", "type": "dict"},
 {"code": "'src' in node.attributes", "type": "dict"},
@@ -21,7 +19,5 @@
 {"code": "(active_idx + 1) % len(self.tabs)", "js": "(active_idx + 1) % self.tabs.length"},
 {"code": "MeasureTime()", "js": "new MeasureTime()"},
 {"code": "browser.toggle_mute()", "js": "browser.toggle_mute()"},
-{"code": "DEFAULT_STYLE_SHEET.copy()", "js": "constants.DEFAULT_STYLE_SHEET.slice()"},
-{"code": "open('runtime14.js').read()", "js": "filesystem.open('runtime14.js').read()"},
-{"code": "open('browser14.css').read()", "js": "filesystem.open('browser14.css').read()"}
+{"code": "DEFAULT_STYLE_SHEET.copy()", "js": "constants.DEFAULT_STYLE_SHEET.slice()"}
 ]

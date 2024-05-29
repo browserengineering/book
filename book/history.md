@@ -15,7 +15,7 @@ Standard Generalized Markup Language (
 [SGML](https://en.wikipedia.org/wiki/Standard_Generalized_Markup_Language))
 or other predecessors to HTML. (Except in this footnote!)
 
-The Memex concept
+The Memex Concept
 =================
 
 ::: {.center}
@@ -35,7 +35,7 @@ world (see Figure 1). It was described in terms of the microfilm screen technolo
 but its purpose and concept has some clear similarities to the web as we know it
 today, even if the user interface and technology details differ.
 
-The web is at its core organized around the Memex-like goal of _representing and
+The web is, at its core, organized around the Memex-like goal of _representing and
 displaying information_, providing a way for humans to effectively learn and
 explore. The collective knowledge and wisdom of the species long ago exceeded
 the capacity of a single mind, organization, library, country, culture, group or
@@ -75,7 +75,7 @@ By "association", Bush meant a trail of thought leading from one record
 to the next via a human-curated link. He imagined not just a universal
 library, but a universal way to record the results of what we learn.
 
-The web emerges
+The Web Emerges
 ===============
 
 The concept of [hypertext][hypertext]\index{hypertext} documents linked by
@@ -269,7 +269,7 @@ Explorer (see Figure 8) in 1995 and soon bundled it with Windows 95.
 [permission from Microsoft][ms-permission].)](im/ie1.png)
 :::
 
-[viola-book]: https://web.archive.org/web/20200706084621/http://viola.org/viola/book/preface.html
+[violawww-book]: https://web.archive.org/web/20200706084621/http://viola.org/viola/book/preface.html
 [wiki-mosaic]: https://commons.wikimedia.org/wiki/File:NCSA_Mosaic_Browser_Screenshot.png
 [cc0-1]: https://creativecommons.org/publicdomain/zero/1.0/legalcode
 [wiki-netscape]: https://en.wikipedia.org/wiki/File:Navigator_1-22.png#filehistory
@@ -312,7 +312,7 @@ explosion in third-party JavaScript libraries and frameworks.
 Netscape's early versions were also not free software---you had to buy them from
 a store. They cost about $50.
 
-Web standards
+Web Standards
 =============
 
 In parallel with these developments was another, equally important, one---the
@@ -348,7 +348,7 @@ There never really was a point where any browser openly attempted to break away
 from the standard, despite fears that that might happen.[^dhtml] Instead, intense
 competition for market share was channeled into very fast innovation and an
 ever-expanding set of APIs and capabilities for the web, which we nowadays refer
-to as _the web platform,_ not just the “World Wide Web”. This recognizes the
+to as *the web platform*, not just the “World Wide Web”. This recognizes the
 fact that the web is no longer a document viewing mechanism, but has evolved
 into a fully realized computing platform and ecosystem.[^web-os]
 
@@ -375,13 +375,13 @@ standards---it is in retrospect not that relevant which browser “won” or “
 each of the browser “wars”. In each case _the web_ won, because it
 gained users and grew in capability.
 
-Open source
+Open Source
 ===========
 
 Another important and interesting outcome of the _second_ browser war was that
 all mainstream browsers today[^examples-of-browsers-today] are based
-on _three open-source web rendering / JavaScript\index{JavaScript}
-engines_: Chromium, Gecko and WebKit.[^javascript-repo] Since Chromium
+on _three open-source web rendering / JavaScript\index{JavaScript}
+engines_: Chromium, Gecko, and WebKit.[^javascript-repo] Since Chromium
 and WebKit have a common ancestral codebase, while Gecko is an
 open-source descendant of Netscape, all three date back to the
 1990s---almost to the beginning of the web.
@@ -389,9 +389,9 @@ open-source descendant of Netscape, all three date back to the
 [^examples-of-browsers-today]: Examples of Chromium-based browsers include
 Chrome, Edge, Opera (which switched to Chromium from the
 [Presto](https://en.wikipedia.org/wiki/Presto_(browser_engine)) engine in 2013),
-Samsung Internet, Yandex Browser, UC Browser and Brave. In addition, there are
+Samsung Internet, Yandex Browser, UC Browser, and Brave. In addition, there are
 many "embedded" browsers, based on one or another of the three engines, for a
-wide variety of automobiles, phones, TVs and other electronic devices.
+wide variety of automobiles, phones, TVs, and other electronic devices.
 
 [^javascript-repo]: The JavaScript engines are actually in different
 repositories (as are various other subcomponents), and can and do get

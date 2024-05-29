@@ -12,7 +12,7 @@ features like CSS, JavaScript, and visual effects. So this chapter
 adds a proper HTML parser\index{parsing} and converts the layout
 engine to use it.
 
-A tree of nodes
+A Tree of Nodes
 ===============
 
 The HTML tree[^dom] has one node\index{node} for each open and close tag pair
@@ -66,10 +66,12 @@ parser builds a tree one element or text node at a time. But that
 means the parser needs to store an *incomplete* tree as it goes. For example,
 suppose the parser has so far read this bit of HTML:
 
-    <html><video></video><section><h1>This is my webpage
+``` {.html .example}
+<html><video></video><section><h1>This is my webpage
+```
 
 The parser has seen five tags (and one text node). The rest of the
-HTML will contain more open tags, close tags, and text; but no matter
+HTML will contain more open tags, close tags, and text, but no matter
 which tokens it sees, no new nodes will be added to the `<video>` tag,
 which has already been closed. So that node is "finished". But the
 other nodes are unfinished: more children can be added to the
@@ -161,7 +163,7 @@ sibling to [troff][troff], now used for Linux manual pages. The
 [troff]: https://troff.org
 [jtc1-sc34]: https://www.iso.org/committee/45374.html
 
-Constructing the tree
+Constructing the Tree
 =====================
 
 Let's talk about adding nodes to a tree. To add a text node we add it
@@ -263,7 +265,7 @@ loading additional resources even before parsing is done.
 [speculative-parsing]: https://developer.mozilla.org/en-US/docs/Glossary/speculative_parsing
 [document-write-bad]: https://developer.mozilla.org/en-US/docs/Web/API/Document/write
 
-Debugging a parser
+Debugging a Parser
 ==================
 
 How do we know our parser does the right thing---that it builds the
@@ -382,7 +384,7 @@ HTML,[^almost-standards-mode] but don't use the URL, so
 `<!doctype html>` is the best document type declaration for modern HTML.
 :::
 
-Self-closing tags
+Self-closing Tags
 =================
 
 Elements like `<meta>` and `<link>` are what are called self-closing:
@@ -543,7 +545,7 @@ name, not by some special syntax, so the slash is optional.
 [xhtml]: https://www.w3.org/TR/xhtml1/
 
 
-Using the node tree
+Using the Node Tree
 ===================
 
 Right now, the `Layout` class works token by token; we now want it to
@@ -620,12 +622,12 @@ with other platforms.]
 
 [^almost-standards-mode]: There's also this crazy thing called "[almost
     standards][limited-quirks]" or "limited quirks" mode, due to a
-    backwards-incompatible change in table cell vertical layout. Yes.
+    backward-incompatible change in table cell vertical layout. Yes.
     I don't need to make these up!
 
 [limited-quirks]: https://hsivonen.fi/doctype/
 
-Handling author errors
+Handling Author Errors
 ======================
 
 The parser now handles HTML pages correctly—at least when the HTML is
@@ -824,9 +826,9 @@ This chapter taught our browser that HTML is a tree, not just a flat
 list of tokens. We added:
 
 - a parser to transform HTML tokens to a tree;
-- code to recognize and handle attributes on elements.
+- code to recognize and handle attributes on elements;
 - automatic fixes for some malformed HTML documents;
-- and a recursive layout algorithm to lay out an HTML tree.
+- a recursive layout algorithm to lay out an HTML tree.
 
 The tree structure of HTML is essential to display visually complex
 web pages, as we will see in the next chapter.
@@ -845,11 +847,11 @@ The complete set of functions, classes, and methods in our browser
 should look something like this:
 
 ::: {.web-only .cmd .python .outline html=True}
-    python3 infra/outlines.py --html src/lab4.py
+    python3 infra/outlines.py --html src/lab4.py --template book/outline.txt
 :::
 
 ::: {.print-only .cmd .python .outline}
-    python3 infra/outlines.py src/lab4.py
+    python3 infra/outlines.py src/lab4.py --template book/outline.txt
 :::
 
 

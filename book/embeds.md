@@ -20,7 +20,9 @@ content on the web,[^img-late] dating back to [early
 1993][img-email].[^img-history] They're included on web pages via the
 `<img>` tag, which looks like this:
 
-    <img src="https://browser.engineering/im/hes.jpg">
+``` {.html .example}
+<img src="https://browser.engineering/im/hes.jpg">
+```
 
 [img-email]: http://1997.webhistory.org/www.lists/www-talk.1993q1/0182.html
 
@@ -38,10 +40,9 @@ wait for the introduction of Skia.
 This particular example renders as shown in Figure 1.
 
 ::: {.center}
-![Figure 1: A computer operator using the Hypertext Editing System in 1969.[^hes]](im/hes.jpg)
+![Figure 1: A computer operator using the Hypertext Editing System in
+1969. (Gregory Lloyd from [Wikipedia](https://commons.wikimedia.org/wiki/File:HypertextEditingSystemConsoleBrownUniv1969.jpg), [CC BY-SA 4.0 International](https://creativecommons.org/licenses/by-sa/4.0/deed.en).)](im/hes.jpg)
 :::
-
-[^hes]: Gregory Lloyd from <a href="https://commons.wikimedia.org/wiki/File:HypertextEditingSystemConsoleBrownUniv1969.jpg">Wikipedia</a>, <a href="https://creativecommons.org/licenses/by/2.0/legalcode" rel="license">CC BY 2.0</a>.
 
 Luckily, implementing images isn't too hard, so let's just get
 started. There are four steps to displaying images in our browser:
@@ -477,7 +478,7 @@ a new `add_inline_child` method. We'll need to pass in the HTML node,
 the element, and the layout class to instantiate (plus a `word`
 parameter that's just for `TextLayout`s):
 
-``` {.python replace=child_class%2c/child_class%2c%20frame%2c,previous_word)/previous_word%2c%20frame)}
+``` {.python replace=child_class%2c/child_class%2c%20frame%2c,node%2c%20line%2c%20previous_word)/node%2c%20line%2c%20previous_word%2c%20frame)}
 class BlockLayout:
     def add_inline_child(self, node, w, child_class, word=None):
         if self.cursor_x + w > self.x + self.width:
@@ -485,7 +486,7 @@ class BlockLayout:
         line = self.children[-1]
         previous_word = line.children[-1] if line.children else None
         if word:
-            child = child_class(node, line, previous_word, word)
+            child = child_class(node, word, line, previous_word)
         else:
             child = child_class(node, line, previous_word)
         line.children.append(child)
@@ -544,12 +545,14 @@ image on the screen!
 But what about our second output modality, screen readers? That's what
 the `alt` attribute is for. It works like this:
 
-    <img src="https://browser.engineering/im/hes.jpg"
-    alt="An operator using the Hypertext Editing System in 1969">
+``` {.html .example}
+<img src="https://browser.engineering/im/hes.jpg"
+  alt="An operator using the Hypertext Editing System in 1969">
+```
 
 Implementing this in `AccessibilityNode` is very easy:
 
-``` {.python replace=node)/node%2C%20parent%20%3d%20None)}
+``` {.python replace=node)/node%2C%20parent%3dNone)}
 class AccessibilityNode:
     def __init__(self, node):
         else:
@@ -665,7 +668,7 @@ class ImageLayout(EmbedLayout):
         # ...
 ```
 
-Your browser should now be able to render the following example [page](https://browser.engineering/examples/example15-img.html) correctly, as shown in Figure 2. When it's scrolled down a bit you should see what's shown in Figure 3 (notice the different aspect
+Your browser should now be able to render the following [example page](https://browser.engineering/examples/example15-img.html) correctly, as shown in Figure 2. When it's scrolled down a bit you should see what's shown in Figure 3 (notice the different aspect
 ratios). And scrolling to the end will show what appears in Figure 4, including
 the "broken image" icon.
 
@@ -698,7 +701,7 @@ property][aspect-ratio] is one way web pages can address this issue.
 [resp-design]: https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Responsive_Design
 [cls]: https://web.dev/cls/
 
-Interactive widgets
+Interactive Widgets
 ===================
 
 So far, our browser has two kinds of embedded content: images and
@@ -734,7 +737,7 @@ and `height` attributes. So implementing basic iframes just requires
 handling these three significant differences:
 
 * Iframes have *no browser chrome*. So any page navigation has to happen from
-   within the page (either through an `<a>` element or script), or as a side
+   within the page (either through an `<a>` element or a script), or as a side
    effect of navigation on the web page that *contains* the `<iframe>`
    element. Clicking on a link in an iframe also navigates the iframe, not
    the top-level page.
@@ -784,7 +787,7 @@ And the new `Frame` class will:
 
 * own the DOM, layout trees, and scroll offset for its HTML document;
 * run style and layout on the its DOM and layout tree;
-* Implement loading and event handling (focus, hit testing, etc) for its HTML
+* implement loading and event handling (focus, hit testing, etc) for its HTML
   document.
 
 Create these two classes and split the methods between them accordingly.
@@ -910,7 +913,7 @@ has gained support for hardware-accelerated 3D content, while
 
 [webassembly]: https://en.wikipedia.org/wiki/WebAssembly
 
-Iframe rendering
+Iframe Rendering
 ================
 
 Rendering is split between the `Tab` and its `Frame`s: the `Frame`
@@ -952,6 +955,16 @@ class Tab:
             # ...
 
         # ...
+```
+
+In this code I used a new `dispatch_RAF` method, which is just like the
+pre-iframe code but wraps the call for the specified `window_id`:
+
+``` {.python}
+class JSContext:
+    def dispatch_RAF(self, window_id):
+        code = self.wrap("window.__runRAFHandlers()", window_id)
+        self.interp.evaljs(code)
 ```
 
 Note that the `needs_accessibility`, `pending_hover`, and other flags
@@ -1221,7 +1234,7 @@ Finally, let's also add iframes to the accessibility tree. Like the
 display list, the accessibility tree is global across all frames.
 We can have iframes create `iframe` nodes:
 
-``` {.python replace=node)/node%2C%20parent%20%3d%20None)}
+``` {.python replace=node)/node%2C%20parent%3dNone)}
 class AccessibilityNode:
     def __init__(self, node):
         else:
@@ -1256,7 +1269,7 @@ these elements in a way---it's short for "inline frame".
 
 [frameset]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/frameset
 
-Iframe input events
+Iframe Input Events
 ===================
 
 Now that we've got iframes rendering to the screen, let's close the
@@ -1311,7 +1324,7 @@ Repeatedly clicking on the link on that page will add another recursive iframe.
 After clicking twice it should look like Figure 6.
 
 ::: {.center}
-![Figure 6: Rendering of an iframe.](examples/example15-iframe-clicked.png)
+![Figure 6: Rendering of nested iframes.](examples/example15-iframe-clicked.png)
 :::
 
 Let's get the other interactions working as well, starting with
@@ -1441,7 +1454,7 @@ class Frame:
         return max(0, min(scroll, maxscroll))
 ```
 
-Make sure to use `clamp_scroll` method everywhere. For example, in `scroll_to`:
+Make sure to use the `clamp_scroll` method everywhere. For example, in `scroll_to`:
 
 ``` {.python}
 class Frame:
@@ -1491,7 +1504,7 @@ frame's coordinates (note how we subtract off the zoomed border of the frame):
 
 ``` {.python}
 class FrameAccessibilityNode(AccessibilityNode):
-    def __init__(self, node, parent = None):
+    def __init__(self, node, parent=None):
         super().__init__(node, parent)
         self.scroll = self.node.frame.scroll
         self.zoom = self.node.layout_object.zoom
@@ -1515,7 +1528,7 @@ needs parent pointers to walk up the accessibility tree, so let's add that first
 
 ``` {.python}
 class AccessibilityNode:
-    def __init__(self, node, parent = None):
+    def __init__(self, node, parent=None):
         # ...
         self.parent = parent
 
@@ -1592,8 +1605,7 @@ by both sides.
 [overflow]: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow
 [threaded-scroll]: https://developer.chrome.com/articles/renderingng/#threaded-scrolling-animations-and-decode
 
-
-Iframe scripts
+Iframe Scripts
 ==============
 
 We've now got users interacting with iframes---but what about
@@ -1843,7 +1855,7 @@ class JSContext:
 ```
 
 We'll need something similar in `innerHTML` and `style` because we
-need to `set_needs_render` on the relevant `Frame`.
+need to call `set_needs_render` on the relevant `Frame`.
 
 Finally, for `setTimeout` and `XMLHttpRequest`, which involve a call
 from JavaScript into the browser and later a call from the browser
@@ -1869,7 +1881,7 @@ order to get better security and performance.
 [domain-prop]: https://developer.mozilla.org/en-US/docs/Web/API/Document/domain
 [origin-headers]: https://html.spec.whatwg.org/multipage/browsers.html#origin-isolation
 
-Communicating between frames
+Communicating Between Frames
 ============================
 
 We've now managed to run multiple `Frame`s' worth of JavaScript in a
@@ -2010,7 +2022,7 @@ window.addEventListener("message", function(e) {
 ```
 
 [^structured-cloning]: In a real browser, you can also pass data that
-is not a string, such as numbers and objects. It works via a
+is not a string, such as numbers and objects. This works via a
 *serialization* algorithm called [structured
 cloning][structured-clone], which converts most JavaScript objects
 (though not, for example, DOM nodes) to a sequence of bytes that the
@@ -2129,7 +2141,7 @@ are probably the most popular [browser extensions][extensions].
 [extensions]: https://en.wikipedia.org/wiki/Browser_extension
 [io]: https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API
 
-Isolation and timing
+Isolation and Timing
 ====================
 
 Iframes add a whole new layer of security challenges atop what we
@@ -2175,7 +2187,7 @@ first implementation of site isolation.
 
 [site-isolation]: https://www.chromium.org/Home/chromium-security/site-isolation/
 
-Site isolation has become much more important recent years, due to the
+Site isolation has become much more important in recent years, due to the
 CPU cache timing attacks called [*spectre* and
 *meltdown*][spectre-meltdown]. In short, these attacks allow an
 attacker to read arbitrary locations in memory---including another
@@ -2221,7 +2233,7 @@ was using `SharedArrayBuffer` to allow synchronous calls from a
 `JSContext` to the browser, and that required APIs that browsers
 restrict for security reasons. Setting the security headers wouldn't
 work, because Chapter 14 embeds a Youtube video,
-and at the time of writing YouTube doesn't send those headers.
+and as I'm writing this YouTube doesn't send those headers.
 In the end, I worked around the issue by not embedding the browser widget
 and [asking the reader](http://browser.engineering/scripts.html#outline) to open a new browser window.
 :::
@@ -2234,14 +2246,14 @@ Summary
 This chapter introduced how the browser handles embedded content use cases like
 images and iframes. Reiterating the main points:
 
-- non-HTML *embedded content*---images, video, canvas, iframes, input elements,
-  and plugins---can be embedded in a web page;
-- embedded content comes with its own performance concerns---like
-  image decoding time---and necessitates custom optimizations;
-- iframes are a particularly important kind of embedded content,
+- Non-HTML *embedded content*---images, video, canvas, iframes, input elements,
+  and plugins---can be embedded in a web page.
+- Embedded content comes with its own performance concerns---like
+  image decoding time---and necessitates custom optimizations.
+- Iframes are a particularly important kind of embedded content,
   having over time replaced browser plugins as the standard way to
-  easily embed complex content into a web page;
-- and iframes introduce all the complexities of the web---rendering, event
+  easily embed complex content into a web page.
+- Iframes introduce all the complexities of the web---rendering, event
   handling, navigation, security---into the browser's handling of
   embedded content. However, this complexity is justified, because
   they enable important cross-origin use cases like ads, video, and
@@ -2265,13 +2277,12 @@ The complete set of functions, classes, and methods in our browser
 should now look something like this:
 
 ::: {.web-only .cmd .python .outline html=True}
-    python3 infra/outlines.py --html src/lab15.py
+    python3 infra/outlines.py --html src/lab15.py --template book/outline.txt
 :::
 
 ::: {.print-only .cmd .python .outline}
-    python3 infra/outlines.py src/lab15.py
+    python3 infra/outlines.py src/lab15.py --template book/outline.txt
 :::
-
 
 Exercises
 =========
@@ -2299,7 +2310,7 @@ rasterization time.
 Implement the basics of this CSS property: a `url(...)` value for the
 `background-image` property. Avoid loading the image if the
 `background-image` property does not actually end up used on any
-element. For a bigger challenge, also allow the web page set the size
+element. For a bigger challenge, also allow the web page to set the size
 of the background image with the [`background-size`][bg-size] CSS
 property.
 
@@ -2339,7 +2350,8 @@ yet loaded, if you do Exercise 15-4).
 [aspect-ratio]: https://developer.mozilla.org/en-US/docs/Web/CSS/aspect-ratio
 
 15-6 *Image placeholders*. Building on top of lazy loading, implement placeholder
-styling of images that haven't loaded yet. This is done by setting a 0 × 0
+styling of images that haven't loaded yet. This is done by setting a
+`0×0`{=html}`$0\times0$`{=latex}
 sizing, unless `width` or `height` is specified. Also add support for hiding the
 "broken image" if the `alt` attribute is missing or empty.^[That's because
 if `alt` text is provided, the browser can assume the image is important
@@ -2365,14 +2377,14 @@ between frames after iterating through all focusable elements in one
 frame.
 
 15-10 *Iframe history*. Ensure that iframes affect browser history. For
-example, if you click on a link inside an iframe, and then hit
+example, if you click on a link inside an iframe, and then hit the
 back button, it should go back inside the iframe. Make sure that this
 works even when the user clicks links in multiple frames in various
 orders.^[It's debatable whether this is a good feature of iframes, as
 it causes a lot of confusion for web developers who embed iframes they
 don't plan on navigating.]
 
-15-11 *Iframes added or removed by script*. the `innerHTML` API can cause
+15-11 *Iframes added or removed by script*. The `innerHTML` API can cause
 iframes to be added or removed, but our browser doesn't load or unload them
 when this happens. Fix this: new iframes should be loaded and old ones
 unloaded.

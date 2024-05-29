@@ -27,7 +27,6 @@ from lab14 import Text, Element
 from lab6 import TagSelector, DescendantSelector
 from lab6 import tree_to_list, INHERITED_PROPERTIES
 from lab8 import INPUT_WIDTH_PX
-from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, NAMED_COLORS, get_font, linespace
 from lab11 import parse_color, parse_blend_mode
@@ -39,13 +38,13 @@ from lab13 import NumericAnimation
 from lab13 import map_translation, parse_transform
 from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import PaintCommand, DrawText, DrawCompositedLayer, DrawOutline, \
-    DrawLine, DrawRRect
+    DrawLine, DrawRRect, DrawRect
 from lab13 import VisualEffect, Blend, Transform
 from lab14 import parse_outline, paint_outline, \
     dpx, cascade_priority, style, \
     is_focusable, get_tabindex, speak_text, \
     CSSParser, mainloop, Browser, Chrome, Tab, \
-    AccessibilityNode
+    AccessibilityNode, PseudoclassSelector, SPEECH_FILE
 
 @wbetools.patch(URL)
 class URL:
@@ -284,7 +283,7 @@ class BlockLayout:
         line = self.children[-1]
         previous_word = line.children[-1] if line.children else None
         if word:
-            child = child_class(node, line, previous_word, word)
+            child = child_class(node, word, line, previous_word)
         else:
             child = child_class(node, line, previous_word, frame)
         line.children.append(child)
@@ -492,16 +491,13 @@ class LineLayout:
             paint_outline(outline_node, cmds, outline_rect, self.zoom)
         return cmds
 
-    def role(self):
-        return "none"
-
     @wbetools.js_hide
     def __repr__(self):
         return "LineLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
 
 class TextLayout:
-    def __init__(self, node, parent, previous, word):
+    def __init__(self, node, word, parent, previous):
         self.node = node
         self.word = word
         self.children = []
@@ -1003,9 +999,6 @@ class JSContext:
         else:
             threading.Thread(target=run_load).start()
 
-    def now(self):
-        return int(time.time() * 1000)
-
     def dispatch_RAF(self, window_id):
         code = self.wrap("window.__runRAFHandlers()", window_id)
         self.interp.evaljs(code)
@@ -1058,7 +1051,7 @@ def style(node, rules, frame):
 
 @wbetools.patch(AccessibilityNode)
 class AccessibilityNode:
-    def __init__(self, node, parent = None):
+    def __init__(self, node, parent=None):
         self.node = node
         self.children = []
         self.parent = parent
@@ -1160,7 +1153,7 @@ class AccessibilityNode:
         return abs_bounds
 
 class FrameAccessibilityNode(AccessibilityNode):
-    def __init__(self, node, parent = None):
+    def __init__(self, node, parent=None):
         super().__init__(node, parent)
         self.scroll = self.node.frame.scroll
         self.zoom = self.node.layout_object.zoom
@@ -1555,10 +1548,6 @@ class Tab:
 
     def set_needs_paint(self):
         self.needs_paint = True
-        self.browser.set_needs_animation_frame(self)
-
-    def request_animation_frame_callback(self):
-        self.needs_raf_callbacks = True
         self.browser.set_needs_animation_frame(self)
 
     def run_animation_frame(self, scroll):

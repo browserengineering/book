@@ -9,12 +9,11 @@ A web browser displays information identified by a URL. And the first
 step is to use that URL to connect to and download that information
 from a server somewhere on the Internet.
 
-Connecting to a server
+Connecting to a Server
 ======================
 
 Browsing the internet starts with a URL\index{URL},[^url] a short string that
-identifies a particular web page that the browser should visit. A URL
-looks like this:
+identifies a particular web page that the browser should visit.
 
 [^url]: "URL" stands for "uniform resource locator", meaning that it
     is a portable (uniform) way to identify web pages
@@ -27,15 +26,15 @@ looks like this:
     EOF
 :::
 
-::: {.center}
-Figure 1: The syntax of URLs
+::: {.center .web-only}
+Figure 1: The syntax of URLs.
 :::
 
 ::: {.print-only}
-![Figure 1: The syntax of URLs](im/http-url.png)
+![Figure 1: The syntax of URLs.](im/http-url.png)
 :::
 
-A URL has three parts: the scheme\index{scheme} explains *how* to get the
+A URL has three parts (see Figure 1): the scheme\index{scheme} explains *how* to get the
 information; the host name explains *where* to get it; and the path\index{path}
 explains *what* information to get. There are also optional parts to
 the URL, like ports, queries, and fragments, which we'll see later.
@@ -68,7 +67,7 @@ with `example.org`”, and it does.
     communications in ethernet frames, on wireless you have to do even
     more. I'm trying to be brief.
 
-[^switch-ap]: Or a switch, or an access point, there are a lot of possibilities,
+[^switch-ap]: Or a switch, or an access point; there are a lot of possibilities,
 but eventually there is a router.
 
 [^network-tracing]: They may also record where the message came from so they can
@@ -122,9 +121,9 @@ now talk to `example.org`.
     obscure `telnet` features.
 
 ::: {.further}
-The URL syntax is defined in [RFC
-3987](https://tools.ietf.org/html/rfc3986), whose first author is Tim
-Berners-Lee---no surprise there! The second author is Roy Fielding, a
+The URL syntax is defined in
+[RFC 3987](https://tools.ietf.org/html/rfc3986), whose first author is
+Tim Berners-Lee---no surprise there! The second author is Roy Fielding, a
 key contributor to the design of HTTP and also well known for describing
 the Representational State Transfer (REST) architecture of the web in his [Ph.D. thesis][rest-thesis],
 which explains how REST allowed the web to grow in a decentralized
@@ -136,13 +135,13 @@ confusion][what-is-rest] about it.
 [rest-thesis]: https://ics.uci.edu/~fielding/pubs/dissertation/fielding_dissertation_2up.pdf
 [what-is-rest]: https://twobithistory.org/2020/06/28/rest.html
 
-Requesting information
+Requesting Information
 ======================
 
 Once it's connected, the browser requests information from the server
 by giving its *path*, the path being the part of a URL that comes
 after the host name, like `/index.html`. The structure of the request
-is shown below. You can type it into `telnet` (make sure to type a blank line after the `Host` line):
+is shown in Figure 2. You can type this into `telnet` to try it.
 
 ::: {.cmd .web-only html=True}
     python3 infra/annotate_code.py <<EOF
@@ -152,8 +151,12 @@ is shown below. You can type it into `telnet` (make sure to type a blank line af
     EOF
 :::
 
+::: {.center .web-only}
+Figure 2: An annotated HTTP GET request.
+:::
+
 ::: {.print-only}
-![Figure 2: An annotated HTTP GET request](im/http-get.png)
+![Figure 2: An annotated HTTP GET request.](im/http-get.png)
 :::
 
 Here, the word `GET`\index{GET} means that the browser would like to receive
@@ -161,10 +164,10 @@ information,[^11] then comes the path, and finally there is the word
 `HTTP/1.0` which tells the host that the browser speaks version 1.0 of
 [HTTP]\index{HTTP}. There are several versions of HTTP ([0.9, 1.0, 1.1, 
 2.0, and 3.0](https://medium.com/platform-engineer/evolution-of-http-69cfe6531ba0)).
-The HTTP 1.1 standard adds a variety of useful features, like
+The HTTP 1.1 standard adds a variety of useful features, like
 keep-alive, but in the interest of simplicity our browser won't use
-them. We're also not implementing HTTP 2.0; it is much more
-complex than the 1.X series, and is intended for large and complex web
+them. We're also not implementing HTTP 2.0; it is much more
+complex than the 1.*x* series, and is intended for large and complex web
 applications, which our browser can't run anyway.
 
 [HTTP]: https://developer.mozilla.org/en-US/docs/Web/HTTP
@@ -199,7 +202,8 @@ HTTP was designed to be simple to understand and implement, making it
 easy for any kind of computer to adopt it. It's no coincidence that
 you can type HTTP directly into `telnet`! Nor is it an accident that
 HTTP is a "line-based protocol", using plain text and newlines,
-similar to [Simple Mail Transfer Protocol (SMTP)] for email. Ultimately, the whole pattern derives
+similar to the Simple Mail Transfer Protocol ([SMTP][SMTP]) for email.
+Ultimately, the whole pattern derives
 from early computers only having line-based text input. In
 fact, one of the first two browsers had a [line-mode UI][line-mode].
 :::
@@ -207,10 +211,10 @@ fact, one of the first two browsers had a [line-mode UI][line-mode].
 [SMTP]: https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol
 [line-mode]: https://en.wikipedia.org/wiki/Line_Mode_Browser
 
-The server's response
+The Server's Response
 =====================
 
-The server's response starts with the line below:
+The server's response starts with the line in Figure 3.
 
 ::: {.cmd .web-only html=True}
     python3 infra/annotate_code.py <<EOF
@@ -218,8 +222,12 @@ The server's response starts with the line below:
     EOF
 :::
 
+::: {.center .web-only}
+Figure 3: Annotated first line of an HTTP response.
+:::
+
 ::: {.print-only}
-![Figure 3: Annotated first line of an HTTP response](im/http-status.png)
+![Figure 3: Annotated first line of an HTTP response.](im/http-status.png)
 :::
 
 This tells you that the host confirms that it, too, speaks `HTTP/1.0`,
@@ -277,11 +285,13 @@ code that contains the content of the web page itself.
 
 [html]:  https://developer.mozilla.org/en-US/docs/Web/HTML
 
-The HTTP request/response transaction is summarized below. Let's now
+The HTTP request/response transaction is summarized in Figure 4. Let's now
 switch gears from manual connections to Python.
 
+::: {.center}
 ![Figure 4: An HTTP request and response pair are how a web browser gets web
-pages from a web server](im/http-request.png)
+pages from a web server.](im/http-request.png)
+:::
 
 ::: {.further}
 Wikipedia has nice lists of HTTP [headers][headers] and [response codes][codes].
@@ -396,7 +406,8 @@ multiple ways to talk to other computers:
 postcard.
 
 [^quic]: Newer versions of HTTP use something called
-    [QUIC](https://en.wikipedia.org/wiki/QUIC) instead of TCP, but our
+    [QUIC](https://en.wikipedia.org/wiki/QUIC) instead of the
+    Transmission Control Protocol (TCP), but our
     browser will stick to HTTP 1.0.
 
 
@@ -435,7 +446,7 @@ This talks to `example.org` to set up the connection and ready both
 computers to exchange data.
 
 ::: {.quirk}
-Naturally, this won't work if you're offline. It also might not work if
+Naturally this won't work if you're offline. It also might not work if
 you're behind a proxy, or in a variety of more complex networking
 environments. The workaround will depend on your setup---it might be
 as simple as disabling your proxy, or it could be much more complex.
@@ -458,7 +469,7 @@ use][mac-bsd] large amounts of code descended from BSD Unix.
 
 [mac-bsd]: https://developer.apple.com/library/archive/documentation/Darwin/Conceptual/KernelProgramming/BSD/BSD.html
 
-Request and response
+Request and Response
 ====================
 
 Now that we have a connection, we make a request to the other server.
@@ -481,9 +492,9 @@ you send that blank line at the end of the request. If you forget
 that, the other computer will keep waiting on you to send that
 newline, and you'll keep waiting on its response.[^literal]
 
-[^send-return]: `send` actually returns a number (`47` in this case)
-    that tells you how many bytes of data you sent to the other
-    computer. If, say, your network connection failed midway through
+[^send-return]: `send` actually returns a number, in this case `47`.
+    That tells you how many bytes of data you sent to the other
+    computer; if, say, your network connection failed midway through
     sending the data, you might want to know how much you sent before
     the connection failed.
 
@@ -497,7 +508,7 @@ there's a corresponding `decode` method that goes the other
 way.[^charset] Python reminds you to be careful by giving different
 types to text and to bytes:
 
-[^charset]: When you call `encode` and `decode`, you need to tell the
+[^charset]: When you call `encode` and `decode` you need to tell the
     computer what *character encoding* you want it to use. This is a
     complicated topic. I'm using `utf8` here, which is a common
     character encoding and will work on many pages, but in the real
@@ -531,7 +542,7 @@ class URL:
         response = s.makefile("r", encoding="utf8", newline="\r\n")
 ```
 
-Here `makefile` returns a file-like object containing every byte we
+Here, `makefile` returns a file-like object containing every byte we
 receive from the server. I am instructing Python to turn those bytes
 into a string using the `utf8` *encoding*, or method of associating
 bytes to letters.[^utf8] I'm also informing Python of HTTP's weird line
@@ -564,7 +575,7 @@ class URL:
 ```
 
 Note that I do *not* check that the server's version of HTTP is the
-same as mine. This might sound like a good idea, but there are a lot
+same as mine; this might sound like a good idea, but there are a lot
 of misconfigured servers out there that respond in HTTP 1.1 even when
 you talk to them in HTTP 1.0.^[Luckily the protocols are similar
 enough to not cause confusion.]
@@ -589,7 +600,7 @@ them to lower case.[^casefold] Also, whitespace is insignificant in HTTP
 header values, so I strip off extra whitespace at the beginning and end.
 
 [^casefold]: I used [`casefold`][casefold] instead of `lower`, because it works
-better in more languages.
+better for more languages.
 
 [casefold]: https://docs.python.org/3/library/stdtypes.html#str.casefold
 
@@ -718,25 +729,27 @@ executing this script from the command line. The code reads the first
 argument (`sys.argv[1]`) from the command line and uses it as a URL.
 Try running this code on the URL `http://example.org/`:
 
-    python3 browser.py http://example.org/
+``` {.sh}
+python3 browser.py http://example.org/
+```
 
 You should see some short text welcoming you to the official example
 web page. You can also try using it on [this chapter](https://browser.engineering/http.html)!
 
 ::: {.further}
 HTML, just like URLs and HTTP, is designed to be very easy to parse and
-display at a basic level. And in the beginning, there were very few features
-of HTML, so it was possible to code up something not so much more fancy than
+display at a basic level. And in the beginning there were very few features
+in HTML, so it was possible to code up something not so much more fancy than
 what you see here, yet still display the content in a usable way. Even our
 super simple and basic HTML parser can already print out the text of the
 [browser.engineering](https://browser.engineering/) website.
 :::
 
-Encrypted connections
+Encrypted Connections
 =====================
 
 So far, our browser supports the `http` scheme. That's a pretty common
-scheme. But more and more, websites are migrating to the
+scheme. But more and more websites are migrating to the
 `https`\index{HTTPS} scheme, and many websites require it.
 
 The difference between `http` and `https` is that `https` is more
@@ -746,9 +759,12 @@ normal `http` scheme, except that all communication between the browser
 and the host is encrypted. There are quite a few details to how this works:
 which encryption algorithms are used, how a common encryption key is agreed
 to, and of course how to make sure that the browser is connecting to
-the correct host. The difference in the protocol layers is shown below:
+the correct host. The difference in the protocol layers involved is shown in
+Figure 5.
 
+::: {.center}
 ![Figure 5: The difference between HTTP and HTTPS is the addition of a TLS layer.](im/http-tls.png)
+:::
 
 Luckily, the Python `ssl` library implements all of these details for
 us, so making an encrypted connection is almost as easy as making a
@@ -834,7 +850,8 @@ class URL:
 Your browser should now be able to connect to HTTPS sites.
 
 While we're at it, let's add support for custom ports, which are
-specified in a URL by putting a colon after the host name:
+specified in a URL by putting a colon after the host name, as in
+Figure 6.
 
 ::: {.cmd .web-only html=True}
     python3 infra/annotate_code.py <<EOF
@@ -842,8 +859,12 @@ specified in a URL by putting a colon after the host name:
     EOF
 :::
 
+::: {.center .web-only}
+Figure 6: Where the port goes in a URL.
+:::
+
 ::: {.print-only}
-![Figure 6: Where the port goes in a URL](im/http-ports.png)
+![Figure 6: Where the port goes in a URL.](im/http-ports.png)
 :::
 
 If the URL has a port we can parse it out and use it:
@@ -897,7 +918,7 @@ can:
 -   connect to that host using the `sockets` and `ssl` libraries;
 -   send an HTTP request to that host, including a `Host` header;
 -   split the HTTP response into a status line, headers, and a body;
--   and print the text (and not the tags) in the body.
+-   print the text (and not the tags) in the body.
 
 Yes, this is still more of a command-line tool than a web browser, but
 it already has some of the core capabilities of a browser.
@@ -912,11 +933,11 @@ The complete set of functions, classes, and methods in our browser
 should look something like this:
 
 ::: {.web-only .cmd .python .outline html=True}
-    python3 infra/outlines.py --html src/lab1.py
+    python3 infra/outlines.py --html src/lab1.py --template book/outline.txt
 :::
 
 ::: {.print-only .cmd .python .outline}
-    python3 infra/outlines.py src/lab1.py
+    python3 infra/outlines.py src/lab1.py --template book/outline.txt
 :::
 
 
@@ -936,7 +957,7 @@ make it so that, if your browser is started without a URL being given,
 some specific file on your computer is opened. You can use that file
 for quick testing.
 
-1-3 *`data:` scheme*. Yet another scheme is `data`, which allows inlining
+1-3 *`data`*. Yet another scheme is `data`, which allows inlining
 HTML content into the URL itself. Try navigating to
 `data:text/html,Hello world!` in a real browser to see what happens.
 Add support for this scheme to your browser. The `data` scheme is
@@ -950,16 +971,16 @@ greater-than (`&gt;`) entities. These should be printed as `<` and
 Entities allow web pages to include these special characters without
 the browser interpreting them as tags.
 
-1-5 *view-source*. Add support for the `view-source` scheme; navigating to
+1-5 *`view-source`*. Add support for the `view-source` scheme; navigating to
 `view-source:http://example.org/` should show the HTML source instead of
 the rendered page. Add support for this scheme. Your browser should
 print the entire HTML file as if it was text. You'll want to have also
-implemented the entities exercise.
+implemented Exercise 1-4.
 
-1-6 *Keep-alive*. Implement the HTTP/1.1 exercise; however, do not send
+1-6 *Keep-alive*. Implement Exercise 1-1; however, do not send
 the `Connection: close` header. Instead, when reading the body from
 the socket, only read as many bytes as given in the `Content-Length`
-header and don't close the socket afterwards. Instead, save the
+header and don't close the socket afterward. Instead, save the
 socket, and if another request is made to the same socket reuse the
 same socket instead of creating a new one. This will speed up repeated
 requests to the same server, which is common.
@@ -989,7 +1010,7 @@ header, specifically for the `no-store` and `max-age` values. If the
 `Cache-Control` header contains any value other than these two, it's best not
 to cache the response.
 
-1-9 *Compression*. Add support for HTTP compression. In HTTP compression the browser
+1-9 *Compression*. Add support for HTTP compression, in which the browser
 [informs the server][negotiate] that compressed data is acceptable.
 Your browser must send the `Accept-Encoding` header with the value
 `gzip`. If the server supports compression, its response will have a
