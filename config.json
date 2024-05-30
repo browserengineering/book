@@ -64,7 +64,7 @@
             "server": "server10.py",
             "runtime": "runtime10.js",
             "tests": "lab10-tests.md",
-            "todo-ignored-full": "lab10-tests.md"
+            "full": "lab10-tests.md"
         },
 
         "visual-effects.md": {
