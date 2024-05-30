@@ -179,13 +179,6 @@ def is_outline_hide_decorator(dec):
     return isinstance(dec, ast.Attribute) and dec.attr in ["js_hide", "delete", "outline_hide"] \
         and isinstance(dec.value, ast.Name) and dec.value.id == "wbetools"
         
-class ResolveJSHide(ast.NodeTransformer):
-    def visit_FunctionDef(self, cmd):
-        if any([is_js_hide_decorator(dec) for dec in cmd.decorator_list]):
-            return None
-        else:
-            return cmd
-
 class AST39(ast.NodeTransformer):
     def visit_Num(self, node):
         return ast.Constant(node.n)
@@ -223,7 +216,6 @@ def parse(source, filename='<unknown>'):
 def inline(tree):
     tree2 = ResolveImports().visit(copy.deepcopy(tree))
     tree3 = ResolvePatches().double_visit(tree2)
-    #tree4 = ResolveJSHide().visit(tree3)
     return ast.fix_missing_locations(tree3)
 
 def resolve_patches_and_return_them(tree):
