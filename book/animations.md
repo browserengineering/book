@@ -245,18 +245,18 @@ other objects on the screen.
 ``` {.python}
 class Browser:
     def __init__(self):
-         # ...
-            self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
-                sdl2.SDL_WINDOWPOS_CENTERED,
-                sdl2.SDL_WINDOWPOS_CENTERED,
-                WIDTH, HEIGHT,
-                sdl2.SDL_WINDOW_SHOWN | sdl2.SDL_WINDOW_OPENGL)
-            self.gl_context = sdl2.SDL_GL_CreateContext(
-                self.sdl_window)
-            print(("OpenGL initialized: vendor={}," + \
-                "renderer={}").format(
-                OpenGL.GL.glGetString(OpenGL.GL.GL_VENDOR),
-                OpenGL.GL.glGetString(OpenGL.GL.GL_RENDERER)))
+        # ...
+        self.sdl_window = sdl2.SDL_CreateWindow(b"Browser",
+            sdl2.SDL_WINDOWPOS_CENTERED,
+            sdl2.SDL_WINDOWPOS_CENTERED,
+            WIDTH, HEIGHT,
+            sdl2.SDL_WINDOW_SHOWN | sdl2.SDL_WINDOW_OPENGL)
+        self.gl_context = sdl2.SDL_GL_CreateContext(
+            self.sdl_window)
+        print(("OpenGL initialized: vendor={}," + \
+            "renderer={}").format(
+            OpenGL.GL.glGetString(OpenGL.GL.GL_VENDOR),
+            OpenGL.GL.glGetString(OpenGL.GL.GL_RENDERER)))
 
     def handle_quit(self):
         # ...
