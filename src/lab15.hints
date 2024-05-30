@@ -44,5 +44,6 @@
 {"code": "MeasureTime()", "js": "new MeasureTime()"},
 {"code": "len(self.tab.window_id_to_frame)", "js": "Object.keys(this.tab.window_id_to_frame).length"},
 {"code": "DEFAULT_STYLE_SHEET.copy()", "js": "constants.DEFAULT_STYLE_SHEET.slice()"},
-{"code": "response.read()", "js": "response.read()"}
+{"code": "response.read()", "js": "response.read()"},
+{"code": "skia.CubicResampler.Mitchell()", "js": "skia.CubicResampler.Mitchell()"}
 ]
