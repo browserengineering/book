@@ -44,7 +44,7 @@ The new API is somewhat cleaner and more customizable.
 Finally, add these `SDL_GL_SetAttribute` calls to set GL version Skia
 expects:
 
-```
+``` {.python}
 class Browser:
     def __init__(self):
         self.sdl_window = sdl2.SDL_CreateWindow(b'Browser',
