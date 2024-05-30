@@ -40,10 +40,23 @@ class DrawImage:
 ```
 
 The new API is somewhat cleaner and more customizable.
+
+Finally, add these `SDL_GL_SetAttribute` calls to set GL version Skia
+expects:
+
+``` {.python}
+class Browser:
+    def __init__(self):
+        self.sdl_window = sdl2.SDL_CreateWindow(b'Browser',
+            sdl2.SDL_WINDOWPOS_CENTERED,
+            sdl2.SDL_WINDOWPOS_CENTERED,
+            WIDTH, HEIGHT,
+            sdl2.SDL_WINDOW_SHOWN | sdl2.SDL_WINDOW_OPENGL)
+
+        sdl2.SDL_GL_SetAttribute(sdl2.SDL_GL_CONTEXT_MAJOR_VERSION, 3)
+        sdl2.SDL_GL_SetAttribute(sdl2.SDL_GL_CONTEXT_MINOR_VERSION, 2)
+        sdl2.SDL_GL_SetAttribute(sdl2.SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG, True)
+        sdl2.SDL_GL_SetAttribute(sdl2.SDL_GL_CONTEXT_PROFILE_MASK,
+                                 sdl2.SDL_GL_CONTEXT_PROFILE_CORE)
+```
  
-Additionally, as of our latest testing, this release has difficulties
-drawing anti-aliased text and lines on macOS, and writes error
-messages about shader compilation to the console. These are believed
-to be due to compatibility issues between Skia 124's GL backend and
-the macOS GL implementation. Future versions of Skia may resolve these
-issues by switching to an alternative, Metal-based backend on macOS.
