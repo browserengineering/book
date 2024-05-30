@@ -68,6 +68,8 @@ class StringLoader(importlib.abc.Loader):
         exec(code, module.__dict__)
 
 def import_text_as(source, module_name):
+    """Import the string/AST `source` as a module named `module_name`"""
+
     # Based on https://gist.github.com/moreati/44bce66fe0c4febc8d80e064532d4b49
     spec = importlib.machinery.ModuleSpec(
         module_name,
