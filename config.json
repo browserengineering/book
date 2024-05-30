@@ -106,7 +106,7 @@
             "lab": "lab16.py",
             "lab15": "lab15.py",
             "tests": "lab16-tests.md",
-            "todo-ignored-full": "lab16-tests.md"
+            "full": "lab16-tests.md"
         },
 
         "skipped.md": { },
