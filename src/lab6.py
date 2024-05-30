@@ -247,8 +247,10 @@ class BlockLayout:
             rect = DrawRect(self.x, self.y, x2, y2, bgcolor)
             cmds.append(rect)
 
-        for x, y, word, font, color in self.display_list:
-            cmds.append(DrawText(x, y, word, font, color))
+        if self.layout_mode() == "inline":
+            for x, y, word, font, color in self.display_list:
+                cmds.append(DrawText(x, y, word, font, color))
+
         return cmds
 
     @wbetools.delete
