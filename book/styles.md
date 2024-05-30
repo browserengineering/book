@@ -909,7 +909,7 @@ def flush(self):
     # ...
     metrics = [font.metrics() for x, word, font, color in self.line]
     # ...
-    for x, word, font, color in self.line:
+    for rel_x, word, font, color in self.line:
         # ...
         self.display_list.append((x, y, word, font, color))
     # ...
@@ -921,8 +921,7 @@ That `display_list` is converted to drawing commands in `paint`:
 def paint(self):
     # ...
     for x, y, word, font, color in self.display_list:
-        cmds.append(DrawText(self.x + x, self.y + y,
-                                     word, font, color))
+        cmds.append(DrawText(x, y, word, font, color))
 ```
 
 `DrawText` now needs a `color` argument, and needs to pass it to

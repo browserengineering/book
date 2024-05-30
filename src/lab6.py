@@ -229,7 +229,8 @@ class BlockLayout:
         metrics = [font.metrics() for x, word, font, color in self.line]
         max_ascent = max([metric["ascent"] for metric in metrics])
         baseline = self.cursor_y + 1.25 * max_ascent
-        for x, word, font, color in self.line:
+        for rel_x, word, font, color in self.line:
+            x = self.x + rel_x
             y = baseline - font.metrics("ascent")
             self.display_list.append((x, y, word, font, color))
         self.cursor_x = self.x
@@ -247,8 +248,7 @@ class BlockLayout:
             cmds.append(rect)
 
         for x, y, word, font, color in self.display_list:
-            cmds.append(DrawText(self.x + x, self.y + y,
-                                         word, font, color))
+            cmds.append(DrawText(x, y, word, font, color))
         return cmds
 
     @wbetools.delete
