@@ -1,5 +1,6 @@
 import ast
 import copy
+import pathlib
 
 def is_doc_string(cmd):
     return isinstance(cmd, ast.Expr) and \
@@ -98,7 +99,9 @@ class ResolveImports(ast.NodeTransformer):
         assert cmd.module
         assert all(name.asname is None for name in cmd.names)
         names = [name.name for name in cmd.names]
-        filename = "src/{}.py".format(cmd.module)
+        repo_root = pathlib.Path(__file__).parent.parent
+        filename = repo_root / "src/{}.py".format(cmd.module)
+
         objs = []
 
         subast = load(filename)
