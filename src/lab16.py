@@ -24,7 +24,6 @@ from lab14 import Text, Element
 from lab6 import TagSelector, DescendantSelector
 from lab6 import tree_to_list, INHERITED_PROPERTIES
 from lab8 import INPUT_WIDTH_PX
-from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR
 from lab11 import FONTS, NAMED_COLORS, get_font, linespace
 from lab11 import parse_color, parse_blend_mode
@@ -49,7 +48,7 @@ from lab15 import URL, HTMLParser, AttributeParser, DrawImage, \
     IframeLayout, JSContext, AccessibilityNode, FrameAccessibilityNode, Frame, Tab, \
     CommitData, Browser, BROKEN_IMAGE, font, \
     IFRAME_WIDTH_PX, IFRAME_HEIGHT_PX, parse_image_rendering, DEFAULT_STYLE_SHEET, \
-    RUNTIME_JS, POST_MESSAGE_DISPATCH_JS
+    EVENT_DISPATCH_JS, RUNTIME_JS, POST_MESSAGE_DISPATCH_JS
 
 
 class ProtectedField:
