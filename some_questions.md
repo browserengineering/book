@@ -6,6 +6,9 @@ title: "Testing testing"
 
 This is an inline quiz.
 
+<link rel="stylesheet" href="../mdbook-quiz/crates/mdbook-quiz/js/style.css">
+<script src="../mdbook-quiz/crates/mdbook-quiz/js/quiz-embed.iife.js"></script>
+
 ::: {.inline-quiz}
 What is the answer to life, the universe, and everything?
 
