@@ -2,12 +2,12 @@ package.path = package.path .. ";/opt/homebrew/Cellar/luarocks/3.11.0/share/lua/
 json = require('dkjson')
 
 function Div(el)
-   if el.classes[1] == 'inline-quiz' then
-      return process_quiz(el)
+   if el.classes[1] == 'mc-question' then
+      return process_mc_quiz(el)
    end
 end
 
-function process_quiz(el)
+function process_mc_quiz(el)
    -- expecting Div [ Para ..., BulletList [[Plain ...], ...], Para ...]
    -- check that everything looks good
    if el.content[1].tag ~= 'Para' then
@@ -36,7 +36,7 @@ function process_quiz(el)
    return pandoc.Div(pandoc.Para(pandoc.Str('')),
                      pandoc.Attr('', {"quiz-placeholder"},
                                  {{"data-quiz-questions", encoded},
-                                  {"data-quiz-name", "foobar"}}))
+                                  {"data-quiz-name", pandoc.utils.stringify(el.identifier)}}))
 end
 
 function encode_mc(question, answer, distractors, context)
@@ -48,5 +48,3 @@ function encode_mc(question, answer, distractors, context)
 
    return json.encode({ questions = { q } })
 end
-
--- print(encode_mc("What is the answer", "42", {"what", "I don't understand"}, "where's the tea?"))
