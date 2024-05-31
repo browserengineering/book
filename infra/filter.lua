@@ -1,5 +1,7 @@
 -- Pass 1: Load configuration data
 
+local json = require('infra/dkjson')
+
 local config = nil
 local chapters = nil
 local mode = nil
@@ -87,6 +89,10 @@ function Div(el)
      end
   end
 
+  if el.classes[1] == 'mc-question' then
+     return process_mc_quiz(el)
+  end
+
   if not config.show_todos and el.classes[1] == "todo" then
     return pandoc.RawBlock("html", "")
   elseif el.classes:includes("signup") then
@@ -158,6 +164,49 @@ function latex_wrap(el, env, args)
          el,
          pandoc.RawBlock("latex", "\\end{" .. env .. "}"),
    }
+end
+
+-- Question handling routine
+function process_mc_quiz(el)
+   -- expecting Div [ Para ..., BulletList [[Plain ...], ...], Para ...]
+   -- check that everything looks good
+   if el.content[1].tag ~= 'Para' then
+      print('Expected paragraph at beginning of quiz block.')
+      return
+   end
+   if el.content[2].tag ~= 'BulletList' then
+      print('Expected bulleted list at middle of quiz block.')
+      return
+   end
+   if el.content[3].tag ~= 'Para' then
+      print('Expected paragraph at end of quiz block.')
+      return
+   end
+
+   local prompt = pandoc.utils.stringify(el.content[1])
+   local answer = pandoc.utils.stringify(el.content[2].content[1])
+   local distractors = {}
+   for i, v in ipairs({table.unpack(el.content[2].content, 2)}) do
+      distractors[i] = pandoc.utils.stringify(v)
+   end
+   local context = pandoc.utils.stringify(el.content[3].content)
+
+   local encoded = encode_mc(prompt, answer, distractors, context)
+
+   return pandoc.Div(pandoc.Para(pandoc.Str('')),
+                     pandoc.Attr('', {"quiz-placeholder"},
+                                 {{"data-quiz-questions", encoded},
+                                  {"data-quiz-name", pandoc.utils.stringify(el.identifier)}}))
+end
+
+function encode_mc(question, answer, distractors, context)
+   local q = { type = "MultipleChoice",
+               prompt = { prompt = question,
+                          distractors = distractors },
+               answer = { answer = answer },
+               context = context }
+
+   return json.encode({ questions = { q } })
 end
 
 -- Pass 3: Collect and insert a table of contents
