@@ -46,7 +46,7 @@ function encode_mc(question, answer, distractors, context)
                answer = { answer = answer },
                context = context }
 
-   return json.encode(q)
+   return json.encode({ questions = { q } })
 end
 
 -- print(encode_mc("What is the answer", "42", {"what", "I don't understand"}, "where's the tea?"))
