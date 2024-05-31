@@ -112,6 +112,16 @@ to _create_ the child layout objects and then _recursively_ call
 their `layout` methods. This is a common pattern for constructing
 trees; we'll be seeing it a lot throughout this book.
 
+::: {.mc-question #testing}
+What describes the proper relationship between a text editor and a browser?
+
+ - The text editor *may* have a web browser embedded in it.
+ - The text editor should be implemented in a web browser. (E.g. VS Code)
+ - Web browsers already have editable text fields—what more do you need?
+
+I will think you have no taste if you get this wrong.
+:::
+
 Now when we construct a `DocumentLayout` object inside `load`, we'll
 be building a tree; a very short tree, more of a stump (just the "document"
 and the HTML element below it), but a tree nonetheless!
