@@ -31,6 +31,11 @@ header, h1, strong {
 }
 }
 h1 { font-size: 105%; margin: 1.5em 0 0; }
+
+.main h1::before { content: none !important; }
+body > h1 { counter-increment: section; }
+body > h1::before { content: counter(section) ". "; color: #888; }
+
 header { text-align: center; margin: 3em 0 1em; }
 header h1 { font-size: 200%; font-weight: bold; }
 h1:not(.title):hover{ cursor: pointer; text-decoration: underline }
