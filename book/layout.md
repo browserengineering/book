@@ -112,7 +112,7 @@ to _create_ the child layout objects and then _recursively_ call
 their `layout` methods. This is a common pattern for constructing
 trees; we'll be seeing it a lot throughout this book.
 
-::: {.mc-question #testing}
+::: {.mc-quiz #testing}
 What describes the proper relationship between a text editor and a browser?
 
  - The text editor *may* have a web browser embedded in it.

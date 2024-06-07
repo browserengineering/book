@@ -89,7 +89,7 @@ function Div(el)
      end
   end
 
-  if el.classes[1] == 'mc-question' and not config.print then
+  if el.classes[1] == 'mc-quiz' and not config.print then
      return process_quiz(el)
   end
 
