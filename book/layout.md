@@ -120,6 +120,15 @@ What describes the proper relationship between a text editor and a browser?
  - Web browsers already have editable text fields—what more do you need?
 
 I will think you have no taste if you get this wrong.
+
+--------
+
+This is the second question. How many fingers am I holding up?
+
+ - This is absurd.
+ - What?
+ - Four.
+ - Seven.
 :::
 
 Now when we construct a `DocumentLayout` object inside `load`, we'll
