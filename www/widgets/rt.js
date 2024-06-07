@@ -362,21 +362,9 @@ class tkinter {
                     ctx.textBaseline = "alphabetic";
                     ctx.font = this.string;
                     let m = ctx.measureText("Hxy");
-                    let asc, desc;
 
-                    // Only Safari provides emHeight properties as of 2021-04
-                    // We fake them in the other browsers by guessing that emHeight = font.size
-                    // This is not quite right but is close enough for many fonts...
-                    if (m.emHeightAscent && m.emHeightDescent) {
-                        asc = ctx.measureText("Hxy").emHeightAscent / rt_constants.ZOOM;
-                        desc = ctx.measureText("Hxy").emHeightDescent / rt_constants.ZOOM;
-                    } else {
-                        asc = ctx.measureText("Hxy").actualBoundingBoxAscent / rt_constants.ZOOM;
-                        desc = ctx.measureText("Hxy").actualBoundingBoxDescent / rt_constants.ZOOM;
-                        let gap = this.size - (asc + desc)
-                        asc += gap / 2;
-                        desc += gap / 2;
-                    }
+                    let asc = ctx.measureText("Hxy").fontBoundingBoxAscent / rt_constants.ZOOM;
+                    let desc = ctx.measureText("Hxy").fontBoundingBoxDescent / rt_constants.ZOOM;
                     this.$metrics = { ascent: asc, descent: desc, linespace: asc + desc, fixed: 0 };
                 }
                 if (field) return this.$metrics[field]
