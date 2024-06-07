@@ -337,8 +337,11 @@
   display: flex;
   gap: 10px;
 }
+.mdbook-quiz .multiple-choice .response fieldset .choice * {
+  cursor: pointer !important;
+}
 .mdbook-quiz .multiple-choice .response fieldset .choice:hover {
-    filter: brightness(120%);
+  filter: brightness(120%);
 }
 .mdbook-quiz .multiple-choice .response fieldset .choice:not(:last-child) {
   margin-bottom: 1em;

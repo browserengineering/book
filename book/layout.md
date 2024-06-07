@@ -112,25 +112,6 @@ to _create_ the child layout objects and then _recursively_ call
 their `layout` methods. This is a common pattern for constructing
 trees; we'll be seeing it a lot throughout this book.
 
-::: {.mc-quiz #testing}
-What describes the proper relationship between a text editor and a browser?
-
- - The text editor *may* have a web browser embedded in it.
- - The text editor should be implemented in a web browser. (E.g. VS Code)
- - Web browsers already have editable text fields—what more do you need?
-
-I will think you have no taste if you get this wrong.
-
---------
-
-This is the second question. How many fingers am I holding up?
-
- - This is absurd.
- - What?
- - Four.
- - Seven.
-:::
-
 Now when we construct a `DocumentLayout` object inside `load`, we'll
 be building a tree; a very short tree, more of a stump (just the "document"
 and the HTML element below it), but a tree nonetheless!
@@ -160,6 +141,34 @@ tree][gecko-tree].
 [blink-tree]: https://developers.google.com/web/updates/2018/09/inside-browser-part3
 [webkit-tree]: https://webkit.org/blog/114/webcore-rendering-i-the-basics/
 [gecko-tree]: https://wiki.mozilla.org/Gecko:Key_Gecko_Structures_And_Invariants
+
+::: {.mc-quiz #layout-tree-quiz}
+The layout tree has a 1:1 correspondence with the HTML tree.
+
+ - False. Some HTML elements have *no* corresponding layout elements while others have *many* layout elements.
+ - False. Some HTML elements have *many* corresponding layout elements, but every element must draw something.
+ - True. All HTML elements produce a single layout element, and every layout element must come from a source HTML element.
+ - True. The HTML tree gets pruned to only the elements that produce some layout material.
+
+----------
+
+The `layout` method for some layout modes calls `layout` recursively. Where does this recursion bottom out?
+
+ - Only at a layout object with no children.
+ - It never bottoms out.
+ - Only at an `InlineLayout` object.
+ - Only at a `DocumentLayout` object.
+
+-----------
+
+What type of object is at the root of the layout tree? The intermediate nodes? The leaves?
+
+ - The root is a DocumentLayout, all other nodes are BlockLayout
+ - The root is an InlineLayout, the intermediate nodes are DocumentLayout, the leaves are BlockLayout
+ - The root and intermediate nodes are BlockLayout, the leaves are InlineLayout
+ - The root is a DocumentLayout, the intermediate nodes are BlockLayout, the leaves are InlineLayout or BlockLayout
+
+:::
 
 Block Layout
 ============
