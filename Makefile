@@ -49,7 +49,7 @@ outlines: $(patsubst %,src/outline%.txt,$(shell seq 1 16))
 
 CHAPTER=all
 
-PANDOC=pandoc --number-sections --from markdown --to html --lua-filter=infra/filter.lua --fail-if-warnings --metadata-file=config.json --highlight-style=infra/wbecode.theme $(FLAGS)
+PANDOC=pandoc --from markdown --to html --lua-filter=infra/filter.lua --fail-if-warnings --metadata-file=config.json --highlight-style=infra/wbecode.theme $(FLAGS)
 
 PANDOC_LATEX=pandoc --number-sections --standalone --from markdown --to latex --fail-if-warnings --metadata-file=config.json --lua-filter=infra/filter.lua --highlight-style=infra/wbecode.theme $(FLAGS)
 
