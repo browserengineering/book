@@ -90,7 +90,6 @@ function Div(el)
      end
   end
 
-<<<<<<< HEAD
   -- Exclude quiz assets and other things
   if el.classes:includes("quiz") and not config.show_quiz then
      return {}
@@ -99,13 +98,6 @@ function Div(el)
   -- Multiple-choice quiz processing
   if el.classes[1] == 'mc-quiz' and config.show_quiz then
      return process_quiz(el)
-||||||| parent of 8643201 (Quizzes are more visually distinct from the text)
-  if el.classes[1] == 'mc-question' then
-     return process_mc_quiz(el)
-=======
-  if el.classes[1] == 'mc-question' and not config.print then
-     return process_mc_quiz(el)
->>>>>>> 8643201 (Quizzes are more visually distinct from the text)
   end
 
   if not config.show_todos and el.classes[1] == "todo" then
