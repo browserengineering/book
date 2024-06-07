@@ -32,11 +32,13 @@ header, h1, strong {
 }
 h1 { font-size: 105%; margin: 1.5em 0 0; }
 
+/* Auto-number section headings, but not on the main page. */
+/* Also, on hover over section headings, show a "#" to indicate permalinks. */
+body > h1 { counter-increment: section; }
+body > h1::before { content: counter(section) ". "; color: #888; }
 .main h1::before { content: none !important; }
 h1:not(.title):hover { cursor: pointer; }
 h1:not(.title):hover::after { content: " #"; color: #888; }
-body > h1 { counter-increment: section; }
-body > h1::before { content: counter(section) ". "; color: #888; }
 
 header { text-align: center; margin: 3em 0 1em; }
 header h1 { font-size: 200%; font-weight: bold; }
@@ -54,6 +56,8 @@ a:active { color: #f64; }
 
 li { margin: 1em 0; }
 
+/* On the main page, <ol> contains chapter names and <hi> contains
+ * Part names; all should be big. */
 .main ol, .main h1 { font-size: 120%; }
 .main header { margin-bottom: 3em; }
 .main > h1 { margin: 0; }
