@@ -1359,7 +1359,8 @@ class Tab:
         self.browser.measure.time('render')
 
         for id, frame in self.window_id_to_frame.items():
-            frame.render()
+            if frame.loaded:
+                frame.render()
 
         if self.needs_accessibility:
             self.accessibility_tree = AccessibilityNode(self.root_frame.nodes)
