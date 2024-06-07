@@ -1,13 +1,14 @@
 @charset "UTF-8";/* intentionally left blank */
-:root {
+.mdbook-quiz {
   --mdbook-fg: black;
   --mdbook-bg: white;
   --mdbook-light-border-color: #ccc;
   --mdbook-heavy-border-color: #aaa;
-  --mdbook-button-bg: #fafafa;
-  --mdbook-button-fg: black;
+  /* --mdbook-button-bg: #fafafa; */
+  /* --mdbook-button-fg: black; */
   --mdbook-button-border-color: #888;
-  --mdbook-prompt-bg: #f1f6f9;
+  /* --mdbook-prompt-bg: #f1f6f9; */
+  --mdbook-prompt-bg: #3B3F41;
   --mdbook-error-color: #e16969;
   --mdbook-highlight: #ffffc1;
   --mdbook-correct: green;
@@ -16,7 +17,7 @@
   --mdbook-multipart-bg: #fafafa;
 }
 .mdbook-quiz {
-  border: 2px solid var(--mdbook-heavy-border-color);
+  border: 2px solid var(--mdbook-heavy-border-color) !important;
   border-radius: 4px;
   padding: 1em;
   margin-top: 2.5em;
@@ -65,6 +66,7 @@
 .mdbook-quiz header {
   display: flex;
   justify-content: space-between;
+  margin: 0 0 0;
 }
 .mdbook-quiz h3 {
   margin: 0 0 1em;
@@ -166,6 +168,7 @@
 .mdbook-quiz .prompt {
   background: var(--mdbook-prompt-bg);
   margin-bottom: 1em;
+  border-radius: 4px;
 }
 .mdbook-quiz .prompt pre {
   overflow-x: auto;
@@ -333,6 +336,9 @@
 .mdbook-quiz .multiple-choice .response fieldset .choice {
   display: flex;
   gap: 10px;
+}
+.mdbook-quiz .multiple-choice .response fieldset .choice:hover {
+    filter: brightness(120%);
 }
 .mdbook-quiz .multiple-choice .response fieldset .choice:not(:last-child) {
   margin-bottom: 1em;
