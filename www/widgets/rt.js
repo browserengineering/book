@@ -363,9 +363,6 @@ class tkinter {
                     ctx.font = this.string;
                     let m = ctx.measureText("Hxy");
 
-                    // Only Safari provides emHeight properties as of 2021-04
-                    // We fake them in the other browsers by guessing that emHeight = font.size
-                    // This is not quite right but is close enough for many fonts...
                     let asc = ctx.measureText("Hxy").fontBoundingBoxAscent / rt_constants.ZOOM;
                     let desc = ctx.measureText("Hxy").fontBoundingBoxDescent / rt_constants.ZOOM;
                     this.$metrics = { ascent: asc, descent: desc, linespace: asc + desc, fixed: 0 };
