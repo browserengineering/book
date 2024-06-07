@@ -335,7 +335,7 @@ class JSContext:
     def setAttribute(handle, attr, value, window_id)
     def innerHTML_set(handle, s, window_id)
     def style_set(handle, s, window_id)
-    def XMLHttpRequest_send(method, url, body, isasync, handle, window_id)
+    def XMLHttpRequest_send(method, url, body, isasync, handle, window_id) # noargs
     def setTimeout(handle, time, window_id)
     def requestAnimationFrame()
     def parent(window_id)
@@ -409,7 +409,7 @@ class Chrome:
 # Mainloop
 def load(url)
 class CommitData:
-    def __init__
+    def __init__() # noargs
 class Browser:
     def __init__()
     # --
