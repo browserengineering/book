@@ -90,7 +90,7 @@ function Div(el)
   end
 
   if el.classes[1] == 'mc-question' and not config.print then
-     return process_mc_quiz(el)
+     return process_quiz(el)
   end
 
   if not config.show_todos and el.classes[1] == "todo" then
@@ -166,20 +166,31 @@ function latex_wrap(el, env, args)
    }
 end
 
--- Question handling routine
-function process_mc_quiz(el)
+-- Quiz handling routine
+function process_quiz(el)
+   local questions = split_list(el.content, pandoc.HorizontalRule())
+   local parsed_questions = {}
+   for i, e in ipairs(questions) do
+      table.insert(parsed_questions, process_mc_question(pandoc.Div(e)))
+   end
+
+   local encoded = json.encode({ questions = parsed_questions })
+
+   return pandoc.Div(pandoc.Para(pandoc.Str('')),
+                     pandoc.Attr('', {"quiz-placeholder"},
+                                 {{"data-quiz-questions", encoded},
+                                  {"data-quiz-name", pandoc.utils.stringify(el.identifier)}}))
+end
+
+function process_mc_question(el)
    -- expecting Div [ Para ..., BulletList [[Plain ...], ...], Para ...]
    -- check that everything looks good
    if el.content[1].tag ~= 'Para' then
-      print('Expected paragraph at beginning of quiz block.')
+      print('Expected paragraph at beginning of mc quiz block.')
       return
    end
    if el.content[2].tag ~= 'BulletList' then
-      print('Expected bulleted list at middle of quiz block.')
-      return
-   end
-   if el.content[3].tag ~= 'Para' then
-      print('Expected paragraph at end of quiz block.')
+      print('Expected bulleted list at middle of mc quiz block.')
       return
    end
 
@@ -189,24 +200,39 @@ function process_mc_quiz(el)
    for i, v in ipairs({table.unpack(el.content[2].content, 2)}) do
       distractors[i] = pandoc.utils.stringify(v)
    end
-   local context = pandoc.utils.stringify(el.content[3].content)
 
-   local encoded = encode_mc(prompt, answer, distractors, context)
+   local context = ''
+   if el.content[3] and el.content[3].tag == 'Para' then
+      context = pandoc.utils.stringify(el.content[3].content)
+   end
 
-   return pandoc.Div(pandoc.Para(pandoc.Str('')),
-                     pandoc.Attr('', {"quiz-placeholder"},
-                                 {{"data-quiz-questions", encoded},
-                                  {"data-quiz-name", pandoc.utils.stringify(el.identifier)}}))
-end
-
-function encode_mc(question, answer, distractors, context)
    local q = { type = "MultipleChoice",
-               prompt = { prompt = question,
+               prompt = { prompt = prompt,
                           distractors = distractors },
                answer = { answer = answer },
                context = context }
 
-   return json.encode({ questions = { q } })
+   return q
+end
+
+-- Generic function to split list
+function split_list(list, split_on)
+    local result = {}
+    local sublist = {}
+    for i, el in ipairs(list) do
+        if el == split_on then
+            if #sublist > 0 then
+                table.insert(result, sublist)
+                sublist = {}
+            end
+        else
+            table.insert(sublist, el)
+        end
+    end
+    if #sublist > 0 then
+        table.insert(result, sublist)
+    end
+    return result
 end
 
 -- Pass 3: Collect and insert a table of contents
