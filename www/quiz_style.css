@@ -322,8 +322,11 @@
 .mdbook-quiz .multiple-choice .response fieldset .choice * {
   cursor: pointer !important;
 }
+.mdbook-quiz .multiple-choice .response fieldset .choice * {
+  cursor: pointer !important;
+}
 .mdbook-quiz .multiple-choice .response fieldset .choice:hover {
-    filter: brightness(120%);
+  filter: brightness(120%);
 }
 .mdbook-quiz .multiple-choice .response fieldset .choice:not(:last-child) {
   margin-bottom: 0.25em;
