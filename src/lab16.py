@@ -891,7 +891,7 @@ class IframeLayout(EmbedLayout):
         else:
             self.height.set(dpx(IFRAME_HEIGHT_PX + 2, zoom)) 
 
-        if self.node.frame:
+        if self.node.frame and self.node.frame.loaded:
             self.node.frame.frame_height = \
                 self.height.get() - dpx(2, self.zoom.get())
             self.node.frame.frame_width = \
@@ -1304,6 +1304,9 @@ class Tab:
 
         needs_composite = False
         for (window_id, frame) in self.window_id_to_frame.items():
+            if not frame.loaded:
+                continue
+
             self.browser.measure.time('script-runRAFHandlers')
             frame.js.dispatch_RAF(frame.window_id)
             self.browser.measure.stop('script-runRAFHandlers')

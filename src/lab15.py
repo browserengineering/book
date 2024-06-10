@@ -636,7 +636,7 @@ class IframeLayout(EmbedLayout):
         else:
             self.height = dpx(IFRAME_HEIGHT_PX + 2, self.zoom)
 
-        if self.node.frame:
+        if self.node.frame and self.node.frame.loaded:
             self.node.frame.frame_height = \
                 self.height - dpx(2, self.zoom)
             self.node.frame.frame_width = \
