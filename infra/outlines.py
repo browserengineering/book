@@ -12,16 +12,21 @@ class Item: pass
 class Function(Item):
     name: str
     args: List[str]
+    flags : List[str] = ()
     
     def str(self):
-        if len(self.args) > 0 and self.args[0] == "self":
+        if "noargs" in self.flags:
+            args = ["..."]
+        elif len(self.args) > 0 and self.args[0] == "self":
             args = self.args[1:]
         else:
             args = self.args
         return "def {}({})".format(self.name, ", ".join(args))
 
     def html(self):
-        if len(self.args) > 0 and self.args[0] == "self":
+        if "noargs" in self.flags:
+            args = ["..."]
+        elif len(self.args) > 0 and self.args[0] == "self":
             args = self.args[1:]
         else:
             args = self.args
@@ -34,6 +39,7 @@ class Function(Item):
 class Class:
     name: str
     fns: List[Item]
+    flags : List[str] = ()
     
     def str(self):
         return "class {}:".format(self.name)
@@ -47,6 +53,7 @@ class Class:
 @dataclass
 class Const(Item):
     names: List[str]
+    flags : List[str] = ()
     
     def str(self):
         return "{}".format(", ".join(self.names))
@@ -115,6 +122,12 @@ def read_template(f):
         if line.isspace(): continue # Whitespace
         if line.strip()[0] == "#": continue # Comments
 
+        if "#" in line:
+            line, flags = line.split("#", 1)
+            flags = [flag.strip() for flag in flags.split(",")]
+        else:
+            flags = []
+
         # Figure out what item is on this line
         if line.strip().startswith("def "):
             name = line.strip()[4:].split("(")[0]
@@ -127,6 +140,8 @@ def read_template(f):
             new_item = Const(names)
         else:
             raise Exception(f"{f.name}:{i+1}: Could not parse item in template")
+
+        new_item.flags = flags
 
         # Add it to the template
         if line[0].isalpha():
@@ -158,6 +173,7 @@ def sort_outline(ol, template, indent="", debug=False):
             if old_item:
                 if debug: print(f"{indent}Found {item.name}")
                 new_ol.append(old_item[0][1])
+                old_item[0][1].flags = item.flags
                 del ol[old_item[0][0]]
             else:
                 pass
@@ -173,7 +189,9 @@ def sort_outline(ol, template, indent="", debug=False):
             # Sort found names in the right order
             found_names = sorted(found_names, key=lambda x: item.names.index(x))
             if debug: print(f"{indent}Found {', '.join(found_names)}")
-            new_ol.append(Const(found_names))
+            new_item = Const(found_names)
+            new_item.flags = item.flags
+            new_ol.append(new_item)
             # Sort in reverse order so indices don't change as we delete
             for i, old in sorted(old_items, key=lambda x: x[0], reverse=True):
                 del ol[i]
@@ -195,6 +213,7 @@ def sort_outline(ol, template, indent="", debug=False):
                     "\n".join([f"  " + subitem.str() for subitem in cls.fns])
                 cls.fns = new_fns
                 new_ol.append(cls)
+                cls.flags = item.flags
                 del ol[old_item[0][0]]
             else:
                 pass
