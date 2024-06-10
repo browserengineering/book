@@ -27,7 +27,7 @@ from lab8 import Text, Element, INPUT_WIDTH_PX, DEFAULT_STYLE_SHEET
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, parse_color, NAMED_COLORS, parse_blend_mode, linespace
-from lab11 import paint_tree
+from lab11 import paint_tree, BlockLayout
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
 from lab12 import Tab, Browser, Task, REFRESH_RATE_SEC, Chrome, JSContext
 from lab12 import CommitData
@@ -355,71 +355,9 @@ class CSSParser:
                     break
         return pairs
 
+@wbetools.patch(BlockLayout)
 class BlockLayout:
-    def __init__(self, node, parent, previous):
-        self.node = node
-        self.parent = parent
-        self.previous = previous
-        self.children = []
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-
-    def layout(self):
-        self.width = self.parent.width
-        self.x = self.parent.x
-
-        if self.previous:
-            self.y = self.previous.y + self.previous.height
-        else:
-            self.y = self.parent.y
-
-        mode = self.layout_mode()
-        if mode == "block":
-            previous = None
-            for child in self.node.children:
-                next = BlockLayout(child, self, previous)
-                self.children.append(next)
-                previous = next
-        else:
-            self.new_line()
-            self.recurse(self.node)
-
-        for child in self.children:
-            child.layout()
-
-        self.height = sum([child.height for child in self.children])
-
-    def layout_mode(self):
-        if isinstance(self.node, Text):
-            return "inline"
-        elif self.node.children:
-            for child in self.node.children:
-                if isinstance(child, Text): continue
-                if child.tag in BLOCK_ELEMENTS:
-                    return "block"
-            return "inline"
-        elif self.node.tag == "input":
-            return "inline"
-        else:
-            return "block"
-
-    def recurse(self, node):
-        if isinstance(node, Text):
-            for word in node.text.split():
-                self.word(node, word)
-        else:
-            if node.tag == "br":
-                self.new_line()
-            elif node.tag == "input" or node.tag == "button":
-                self.input(node)
-            else:
-                for child in node.children:
-                    self.recurse(child)
-
     def new_line(self):
-        self.previous_word = None
         self.cursor_x = 0
         last_line = self.children[-1] if self.children else None
         new_line = LineLayout(self.node, self, last_line)
@@ -434,9 +372,9 @@ class BlockLayout:
         if self.cursor_x + w > self.width:
             self.new_line()
         line = self.children[-1]
-        text = TextLayout(node, word, line, self.previous_word)
+        previous_word = line.children[-1] if line.children else None
+        text = TextLayout(node, word, line, previous_word)
         line.children.append(text)
-        self.previous_word = text
         self.cursor_x += w + font.measureText(" ")
 
     def input(self, node):
@@ -444,30 +382,18 @@ class BlockLayout:
         if self.cursor_x + w > self.width:
             self.new_line()
         line = self.children[-1]
-        input = InputLayout(node, line, self.previous_word)
+        previous_word = line.children[-1] if line.children else None
+        input = InputLayout(node, line, previous_word)
         line.children.append(input)
-        self.previous_word = input
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         size = float(node.style["font-size"][:-2])
         font = get_font(size, weight, size)
         self.cursor_x += w + font.measureText(" ")
 
-    def should_paint(self):
-        return isinstance(self.node, Text) or \
-            (self.node.tag != "input" and self.node.tag !=  "button")
-
-    def self_rect(self):
-        return skia.Rect.MakeLTRB(
-            self.x, self.y,
-            self.x + self.width, self.y + self.height)
-
+    # Needed because DrawRRect is redefined
     def paint(self):
         cmds = []
-
-        rect = skia.Rect.MakeLTRB(
-            self.x, self.y,
-            self.x + self.width, self.y + self.height)
 
         bgcolor = self.node.style.get("background-color",
                                  "transparent")
@@ -479,14 +405,10 @@ class BlockLayout:
 
         return cmds
 
+    # Needed because paint_visual_effects is redefined
     def paint_effects(self, cmds):
         cmds = paint_visual_effects(self.node, cmds, self.self_rect())
         return cmds
-
-    @wbetools.js_hide
-    def __repr__(self):
-        return "BlockLayout[{}](x={}, y={}, width={}, height={}, node={})".format(
-            self.layout_mode(), self.x, self.y, self.width, self.height, self.node)
 
 class DocumentLayout:
     def __init__(self, node):
