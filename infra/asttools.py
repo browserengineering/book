@@ -1,6 +1,5 @@
 import ast
 import copy
-import pathlib
 
 def is_doc_string(cmd):
     return isinstance(cmd, ast.Expr) and \
@@ -99,9 +98,7 @@ class ResolveImports(ast.NodeTransformer):
         assert cmd.module
         assert all(name.asname is None for name in cmd.names)
         names = [name.name for name in cmd.names]
-        repo_root = pathlib.Path(__file__).parent.parent
-        filename = repo_root / "src/{}.py".format(cmd.module)
-
+        filename = "src/{}.py".format(cmd.module)
         objs = []
 
         subast = load(filename)
@@ -176,9 +173,16 @@ def is_js_hide_decorator(dec):
         and isinstance(dec.value, ast.Name) and dec.value.id == "wbetools"
 
 def is_outline_hide_decorator(dec):
-    return isinstance(dec, ast.Attribute) and dec.attr in ["js_hide", "delete", "outline_hide"] \
+    return isinstance(dec, ast.Attribute) and dec.attr == "outline_hide" \
         and isinstance(dec.value, ast.Name) and dec.value.id == "wbetools"
         
+class ResolveJSHide(ast.NodeTransformer):
+    def visit_FunctionDef(self, cmd):
+        if any([is_js_hide_decorator(dec) for dec in cmd.decorator_list]):
+            return None
+        else:
+            return cmd
+
 class AST39(ast.NodeTransformer):
     def visit_Num(self, node):
         return ast.Constant(node.n)
@@ -216,7 +220,8 @@ def parse(source, filename='<unknown>'):
 def inline(tree):
     tree2 = ResolveImports().visit(copy.deepcopy(tree))
     tree3 = ResolvePatches().double_visit(tree2)
-    return ast.fix_missing_locations(tree3)
+    tree4 = ResolveJSHide().visit(tree3)
+    return ast.fix_missing_locations(tree4)
 
 def resolve_patches_and_return_them(tree):
     r = ResolvePatches()
