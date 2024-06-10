@@ -1380,6 +1380,24 @@ class Tab:
 
         self.browser.measure.stop('render')
 
+@wbetools.patch(AccessibilityNode)
+class AccessibilityNode:
+    def compute_bounds(self):
+        if self.node.layout_object:
+            return [absolute_bounds_for_obj(self.node.layout_object)]
+        if isinstance(self.node, Text):
+            return []
+        inline = self.node.parent
+        bounds = []
+        while not inline.layout_object: inline = inline.parent
+        for line in inline.layout_object.children.get():
+            line_bounds = skia.Rect.MakeEmpty()
+            for child in line.children:
+                if child.node.parent == self.node:
+                    line_bounds.join(skia.Rect.MakeXYWH(
+                        child.x.get(), child.y.get(), child.width.get(), child.height.get()))
+            bounds.append(line_bounds)
+        return bounds
 
 if __name__ == "__main__":
     wbetools.parse_flags()
