@@ -27,7 +27,7 @@ from lab8 import Text, Element, INPUT_WIDTH_PX, DEFAULT_STYLE_SHEET
 from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, get_font, parse_color, NAMED_COLORS, parse_blend_mode, linespace
-from lab11 import paint_tree, BlockLayout
+from lab11 import paint_tree, BlockLayout, DocumentLayout, LineLayout, TextLayout, InputLayout
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
 from lab12 import Tab, Browser, Task, REFRESH_RATE_SEC, Chrome, JSContext
 from lab12 import CommitData
@@ -357,40 +357,6 @@ class CSSParser:
 
 @wbetools.patch(BlockLayout)
 class BlockLayout:
-    def new_line(self):
-        self.cursor_x = 0
-        last_line = self.children[-1] if self.children else None
-        new_line = LineLayout(self.node, self, last_line)
-        self.children.append(new_line)
-
-    def word(self, node, word):
-        weight = node.style["font-weight"]
-        style = node.style["font-style"]
-        size = float(node.style["font-size"][:-2]) * 0.75
-        font = get_font(size, weight, size)
-        w = font.measureText(word)
-        if self.cursor_x + w > self.width:
-            self.new_line()
-        line = self.children[-1]
-        previous_word = line.children[-1] if line.children else None
-        text = TextLayout(node, word, line, previous_word)
-        line.children.append(text)
-        self.cursor_x += w + font.measureText(" ")
-
-    def input(self, node):
-        w = INPUT_WIDTH_PX
-        if self.cursor_x + w > self.width:
-            self.new_line()
-        line = self.children[-1]
-        previous_word = line.children[-1] if line.children else None
-        input = InputLayout(node, line, previous_word)
-        line.children.append(input)
-        weight = node.style["font-weight"]
-        style = node.style["font-style"]
-        size = float(node.style["font-size"][:-2])
-        font = get_font(size, weight, size)
-        self.cursor_x += w + font.measureText(" ")
-
     # Needed because DrawRRect is redefined
     def paint(self):
         cmds = []
@@ -410,119 +376,9 @@ class BlockLayout:
         cmds = paint_visual_effects(self.node, cmds, self.self_rect())
         return cmds
 
-class DocumentLayout:
-    def __init__(self, node):
-        self.node = node
-        self.parent = None
-        self.previous = None
-        self.children = []
-
-    def layout(self):
-        child = BlockLayout(self.node, self, None)
-        self.children.append(child)
-
-        self.width = WIDTH - 2*HSTEP
-        self.x = HSTEP
-        self.y = VSTEP
-        child.layout()
-        self.height = child.height
-
-    def should_paint(self):
-        return True
-
-    def paint(self):
-        return []
-
-    def paint_effects(self, cmds):
-        return cmds
-
-    @wbetools.js_hide
-    def __repr__(self):
-        return "DocumentLayout()"
-
-class LineLayout:
-    def __init__(self, node, parent, previous):
-        self.node = node
-        self.parent = parent
-        self.previous = previous
-        self.children = []
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-
-    def layout(self):
-        self.width = self.parent.width
-        self.x = self.parent.x
-
-        if self.previous:
-            self.y = self.previous.y + self.previous.height
-        else:
-            self.y = self.parent.y
-
-        for word in self.children:
-            word.layout()
-
-        if not self.children:
-            self.height = 0
-            return
-
-        max_ascent = max([-word.font.getMetrics().fAscent 
-                          for word in self.children])
-        baseline = self.y + 1.25 * max_ascent
-        for word in self.children:
-            word.y = baseline + word.font.getMetrics().fAscent
-        max_descent = max([word.font.getMetrics().fDescent
-                           for word in self.children])
-        self.height = 1.25 * (max_ascent + max_descent)
-
-    def should_paint(self):
-        return True
-
-    def paint(self):
-        return []
-
-    def paint_effects(self, cmds):
-        return cmds
-
-    @wbetools.js_hide
-    def __repr__(self):
-        return "LineLayout(x={}, y={}, width={}, height={})".format(
-            self.x, self.y, self.width, self.height)
-
+@wbetools.patch(TextLayout)
 class TextLayout:
-    def __init__(self, node, word, parent, previous):
-        self.node = node
-        self.word = word
-        self.children = []
-        self.parent = parent
-        self.previous = previous
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-        self.font = None
-
-    def layout(self):
-        weight = self.node.style["font-weight"]
-        style = self.node.style["font-style"]
-        size = float(self.node.style["font-size"][:-2]) * 0.75
-        self.font = get_font(size, weight, style)
-
-        # Do not set self.y!!!
-        self.width = self.font.measureText(self.word)
-
-        if self.previous:
-            space = self.previous.font.measureText(" ")
-            self.x = self.previous.x + space + self.previous.width
-        else:
-            self.x = self.parent.x
-
-        self.height = linespace(self.font)
-
-    def should_paint(self):
-        return True
-
+    # Needed because DrawText is redefined
     def paint(self):
         cmds = []
         color = self.node.style["color"]
@@ -530,49 +386,9 @@ class TextLayout:
             DrawText(self.x, self.y, self.word, self.font, color))
         return cmds
 
-    def paint_effects(self, cmds):
-        return cmds
-    
-    @wbetools.js_hide
-    def __repr__(self):
-        return ("TextLayout(x={}, y={}, width={}, height={}, word={})").format(
-            self.x, self.y, self.width, self.height, self.word)
-
+@wbetools.patch(InputLayout)
 class InputLayout:
-    def __init__(self, node, parent, previous):
-        self.node = node
-        self.children = []
-        self.parent = parent
-        self.previous = previous
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-        self.font = None
-
-    def layout(self):
-        weight = self.node.style["font-weight"]
-        style = self.node.style["font-style"]
-        size = float(self.node.style["font-size"][:-2]) * 0.75
-        self.font = get_font(size, weight, style)
-
-        self.width = INPUT_WIDTH_PX
-        self.height = linespace(self.font)
-
-        if self.previous:
-            space = self.previous.font.measureText(" ")
-            self.x = self.previous.x + space + self.previous.width
-        else:
-            self.x = self.parent.x
-
-    def self_rect(self):
-        return skia.Rect.MakeLTRB(
-            self.x, self.y, self.x + self.width,
-            self.y + self.height)
-
-    def should_paint(self):
-        return True
-
+    # Needed because DrawText, DrawLine, DrawRRect are redefined
     def paint(self):
         cmds = []
 
@@ -603,17 +419,9 @@ class InputLayout:
 
         return cmds
 
+    # Needed because paint_visual_effects is redefined
     def paint_effects(self, cmds):
         return paint_visual_effects(self.node, cmds, self.self_rect())
-
-    @wbetools.js_hide
-    def __repr__(self):
-        if self.node.tag == "input":
-            extra = "type=input"
-        else:
-            extra = "type=button text={}".format(self.node.children[0].text)
-        return "InputLayout(x={}, y={}, width={}, height={} {})".format(
-            self.x, self.y, self.width, self.height, extra)
 
 @wbetools.patchable
 def paint_visual_effects(node, cmds, rect):
