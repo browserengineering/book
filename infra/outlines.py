@@ -94,7 +94,11 @@ def to_item(cmd):
     ]):
         return None
     if isinstance(cmd, ast.ClassDef):
-        return Class(cmd.name, [to_item(scmd) for scmd in cmd.body])
+        out = []
+        for scmd in cmd.body:
+            item = to_item(scmd)
+            if item: out.append(item)
+        return Class(cmd.name, out)
     elif isinstance(cmd, ast.FunctionDef):
         return Function(cmd.name, [arg.arg for arg in cmd.args.args])
     elif isinstance(cmd, ast.Assign) and len(cmd.targets) == 1:

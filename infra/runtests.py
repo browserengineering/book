@@ -4,7 +4,9 @@ import doctest
 import os, sys
 import json
 import compare
-import importlib
+import types
+import importlib, importlib.abc, importlib.machinery, importlib.util
+import asttools
 from unittest import mock
 from pathlib import Path
 
@@ -48,6 +50,37 @@ def reload_module(mod):
         if attr not in ('__name__', '__file__'):
             delattr(mod, attr)
     importlib.reload(mod)
+    
+class StringLoader(importlib.abc.Loader):
+    def __init__(self, source):
+        self.source = source
+
+    # Based on https://gist.github.com/moreati/44bce66fe0c4febc8d80e064532d4b49
+    def create_module(self, spec):
+        module = types.ModuleType(spec.name)
+        module.__spec__ = spec
+        module.__loader__ = spec.loader
+        module.__file__ = spec.origin
+        return module
+
+    def exec_module(self, module):
+        code = compile(self.source, module.__file__, 'exec')
+        exec(code, module.__dict__)
+
+def import_text_as(source, module_name):
+    """Import the string/AST `source` as a module named `module_name`"""
+
+    # Based on https://gist.github.com/moreati/44bce66fe0c4febc8d80e064532d4b49
+    spec = importlib.machinery.ModuleSpec(
+        module_name,
+        loader=StringLoader(source),
+        origin="inliner",
+    )
+
+    # Based on importlib documentation
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
 
 def run_tests(chapter, file_name):
     failure, count = doctest.testfile(os.path.abspath(file_name), module_relative=False)
@@ -91,6 +124,16 @@ if __name__ == "__main__":
             if key == "tests":
                 print(f"  {t.bold(value)}: Testing {chapter}...", end=" ")
                 results[value] = run_tests(chapter, value)
+                if not results[value][0]: print(t.green("pass"))
+            elif key == "full":
+                print(f"  {t.bold(value)}: Testing inlined {chapter}...", end=" ")
+                source_file = value.replace("-tests.md", ".py")
+                with open(source_file) as f:
+                    tree = asttools.parse(f.read(), f.name)
+                mod_name = value.replace("-tests.md", "")
+                import_text_as(asttools.inline(tree), mod_name)
+                results[value] = run_tests(chapter, value)
+                del sys.modules[mod_name]
                 if not results[value][0]: print(t.green("pass"))
             elif key == "lab":
                 print(f"  {t.bold(value)}: Comparing {chapter}'s python...", end=" ")
