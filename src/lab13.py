@@ -30,6 +30,7 @@ from lab11 import FONTS, get_font, parse_color, NAMED_COLORS, parse_blend_mode, 
 from lab11 import paint_tree
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner
 from lab12 import Tab, Browser, Task, REFRESH_RATE_SEC, Chrome, JSContext
+from lab12 import CommitData
 
 @wbetools.patch(Text)
 class Text:
@@ -1047,8 +1048,6 @@ class Tab:
         clamped_scroll = self.clamp_scroll(self.scroll)
         if clamped_scroll != self.scroll:
             self.scroll_changed_in_tab = True
-        if clamped_scroll != self.scroll:
-            self.scroll_changed_in_tab = True
         self.scroll = clamped_scroll
 
         self.browser.measure.stop('render')
@@ -1086,12 +1085,7 @@ class Tab:
                     elt = elt.parent
             elt = elt.parent
 
-    def keypress(self, char):
-        if self.focus:
-            if self.js.dispatch_event("keydown", self.focus): return
-            self.focus.attributes["value"] += char
-            self.set_needs_render()
-
+@wbetools.patch(CommitData)
 class CommitData:
     def __init__(self, url, scroll, height,
         display_list, composited_updates):
@@ -1393,13 +1387,6 @@ class Browser:
     def raster_tab(self):
         for composited_layer in self.composited_layers:
             composited_layer.raster()
-
-    def raster_chrome(self):
-        canvas = self.chrome_surface.getCanvas()
-        canvas.clear(skia.ColorWHITE)
-
-        for cmd in self.chrome.paint():
-            cmd.execute(canvas)
 
     def draw(self):
         canvas = self.root_surface.getCanvas()
