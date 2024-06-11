@@ -2030,7 +2030,7 @@ change:[^or-protect-them]
 ``` {.python}
 class IframeLayout(EmbedLayout):
     def layout(self):
-        if self.node.frame:
+        if self.node.frame and self.node.frame.loaded:
             # ...
             self.node.frame.document.width.mark()
 ```

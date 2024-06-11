@@ -166,7 +166,7 @@ def is_focusable(node):
 def print_tree(node, indent=0):
     print(' ' * indent, node)
     children = node.children
-    if not isinstance(children, list):
+    if isinstance(children, ProtectedField):
         children = children.get()
     for child in children:
         print_tree(child, indent + 2)
@@ -318,14 +318,11 @@ class DocumentLayout:
             for obj in tree_to_list(self, []):
                 assert not obj.layout_needed()
 
-    def paint(self):
-        return []
-
     def paint_effects(self, cmds):
         if self.frame != self.frame.tab.root_frame and self.frame.scroll != 0:
             rect = skia.Rect.MakeLTRB(
-                self.x, self.y,
-                self.x + self.width, self.y + self.height)
+                self.x.get(), self.y.get(),
+                self.x.get() + self.width.get(), self.y.get() + self.height.get())
             cmds = [Transform((0, - self.frame.scroll), rect, self.node, cmds)]
         return cmds
 
@@ -602,9 +599,6 @@ class LineLayout:
 
         self.has_dirty_descendants = False
 
-    def paint(self):
-        return []
-
     def paint_effects(self, cmds):
         outline_rect = skia.Rect.MakeEmpty()
         outline_node = None
@@ -704,9 +698,6 @@ class TextLayout:
         cmds.append(DrawText(
             self.x.get(), self.y.get() + leading,
             self.word, self.font.get(), color))
-        return cmds
-
-    def paint_effects(self, cmds):
         return cmds
 
     def self_rect(self):
@@ -879,9 +870,6 @@ class ImageLayout(EmbedLayout):
         cmds.append(DrawImage(self.node.image, rect, quality))
         return cmds
 
-    def paint_effects(self, cmds):
-        return cmds
-
 @wbetools.patch(IframeLayout)
 class IframeLayout(EmbedLayout):
     def layout(self):
@@ -902,7 +890,7 @@ class IframeLayout(EmbedLayout):
         else:
             self.height.set(dpx(IFRAME_HEIGHT_PX + 2, zoom)) 
 
-        if self.node.frame:
+        if self.node.frame and self.node.frame.loaded:
             self.node.frame.frame_height = \
                 self.height.get() - dpx(2, self.zoom.get())
             self.node.frame.frame_width = \
@@ -1061,7 +1049,8 @@ def paint_tree(layout_object, display_list):
     cmds = layout_object.paint()
 
     if isinstance(layout_object, IframeLayout) and \
-        layout_object.node.frame:
+        layout_object.node.frame and \
+        layout_object.node.frame.loaded:
         paint_tree(layout_object.node.frame.document, cmds)
     else:
         if isinstance(layout_object.children, ProtectedField):
@@ -1077,6 +1066,7 @@ def paint_tree(layout_object, display_list):
 @wbetools.patch(Frame)
 class Frame:
     def load(self, url, payload=None):
+        self.loaded = False
         self.zoom = 1
         self.scroll = 0
         self.scroll_changed_in_frame = True
@@ -1092,6 +1082,7 @@ class Frame:
 
         self.nodes = HTMLParser(body).parse()
 
+        if self.js: self.js.discarded = True
         self.js = self.tab.get_js(url)
         self.js.add_window(self)
 
@@ -1147,7 +1138,8 @@ class Frame:
                 img.encoded_data = body
                 data = skia.Data.MakeWithoutCopy(body)
                 img.image = skia.Image.MakeFromEncoded(data)
-                assert img.image, "Failed to recognize image format for " + str(image_url)
+                assert img.image, \
+                    "Failed to recognize image format for " + str(image_url)
             except Exception as e:
                 print("Image", image_url, "crashed", e)
                 img.image = BROKEN_IMAGE
@@ -1164,10 +1156,12 @@ class Frame:
                 iframe.frame = None
                 continue
             iframe.frame = Frame(self.tab, self, iframe)
-            iframe.frame.load(document_url)
+            task = Task(iframe.frame.load, document_url)
+            self.tab.task_runner.schedule_task(task)
 
         self.document = DocumentLayout(self.nodes, self)
         self.set_needs_render()
+        self.loaded = True
 
     def render(self):
         if self.needs_style:
@@ -1183,10 +1177,8 @@ class Frame:
 
         if self.needs_layout:
             self.document.layout(self.frame_width, self.tab.zoom)
-            if self.tab.accessibility_is_on:
-                self.tab.needs_accessibility = True
-            else:
-                self.needs_paint = True
+            self.tab.needs_accessibility = True
+            self.needs_paint = True
             self.needs_layout = False
 
         clamped_scroll = self.clamp_scroll(self.scroll)
@@ -1311,6 +1303,9 @@ class Tab:
 
         needs_composite = False
         for (window_id, frame) in self.window_id_to_frame.items():
+            if not frame.loaded:
+                continue
+
             self.browser.measure.time('script-runRAFHandlers')
             frame.js.dispatch_RAF(frame.window_id)
             self.browser.measure.stop('script-runRAFHandlers')
@@ -1366,7 +1361,8 @@ class Tab:
         self.browser.measure.time('render')
 
         for id, frame in self.window_id_to_frame.items():
-            frame.render()
+            if frame.loaded:
+                frame.render()
 
         if self.needs_accessibility:
             self.accessibility_tree = AccessibilityNode(self.root_frame.nodes)
@@ -1383,6 +1379,24 @@ class Tab:
 
         self.browser.measure.stop('render')
 
+@wbetools.patch(AccessibilityNode)
+class AccessibilityNode:
+    def compute_bounds(self):
+        if self.node.layout_object:
+            return [absolute_bounds_for_obj(self.node.layout_object)]
+        if isinstance(self.node, Text):
+            return []
+        inline = self.node.parent
+        bounds = []
+        while not inline.layout_object: inline = inline.parent
+        for line in inline.layout_object.children.get():
+            line_bounds = skia.Rect.MakeEmpty()
+            for child in line.children:
+                if child.node.parent == self.node:
+                    line_bounds.join(skia.Rect.MakeXYWH(
+                        child.x.get(), child.y.get(), child.width.get(), child.height.get()))
+            bounds.append(line_bounds)
+        return bounds
 
 if __name__ == "__main__":
     wbetools.parse_flags()

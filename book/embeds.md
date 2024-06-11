@@ -1102,7 +1102,7 @@ And we can set those when the parent frame is laid out:
 class IframeLayout(EmbedLayout):
     def layout(self):
         # ...
-        if self.node.frame:
+        if self.node.frame and self.node.frame.loaded:
             self.node.frame.frame_height = \
                 self.height - dpx(2, self.zoom)
             self.node.frame.frame_width = \
