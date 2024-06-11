@@ -1600,6 +1600,7 @@ class Tab:
             self.focused_frame.needs_focus_scroll = False
 
         for (window_id, frame) in self.window_id_to_frame.items():
+            if frame == self.root_frame: continue
             if frame.scroll_changed_in_frame:
                 needs_composite = True
                 frame.scroll_changed_in_frame = False
