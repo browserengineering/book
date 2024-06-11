@@ -9,6 +9,45 @@ descendant selectors.
     >>> _ = test.socket.patch().start()
     >>> _ = test.ssl.patch().start()
     >>> import lab6
+    
+Testing layout again
+====================
+
+We need to make sure we didn't break layout with all of these changes:
+
+    >>> sample_html = "<div></div><div>text</div><div><div></div>text</div><span></span><span>text</span>"
+    >>> url = lab6.URL(test.socket.serve(sample_html))
+    >>> browser = lab6.Browser()
+    >>> browser.load(url)
+    >>> lab6.print_tree(browser.nodes)
+     <html>
+       <body>
+         <div>
+         <div>
+           'text'
+         <div>
+           <div>
+           'text'
+         <span>
+         <span>
+           'text'
+
+    >>> lab6.print_tree(browser.document)
+     DocumentLayout()
+       BlockLayout[block](x=13, y=18, width=774, height=45.0, node=<html>)
+         BlockLayout[block](x=13, y=18, width=774, height=45.0, node=<body>)
+           BlockLayout[block](x=13, y=18, width=774, height=0, node=<div>)
+           BlockLayout[inline](x=13, y=18, width=774, height=15.0, node=<div>)
+           BlockLayout[block](x=13, y=33.0, width=774, height=15.0, node=<div>)
+             BlockLayout[block](x=13, y=33.0, width=774, height=0, node=<div>)
+             BlockLayout[inline](x=13, y=33.0, width=774, height=15.0, node='text')
+           BlockLayout[block](x=13, y=48.0, width=774, height=0, node=<span>)
+           BlockLayout[inline](x=13, y=48.0, width=774, height=15.0, node=<span>)
+
+    >>> browser.display_list #doctest: +NORMALIZE_WHITESPACE
+    [DrawText(top=20.25 left=13 bottom=32.25 text=text font=Font size=12 weight=normal slant=roman style=None),
+     DrawText(top=35.25 left=13 bottom=47.25 text=text font=Font size=12 weight=normal slant=roman style=None),
+     DrawText(top=50.25 left=13 bottom=62.25 text=text font=Font size=12 weight=normal slant=roman style=None)]
 
 Testing resolve_url
 ===================
@@ -52,16 +91,16 @@ Testing tree_to_list
     >>> browser.load(url)
     >>> lab6.print_tree(browser.document)
      DocumentLayout()
-       BlockLayout[block](x=13, y=18, width=774, height=15.0)
-         BlockLayout[block](x=13, y=18, width=774, height=15.0)
-           BlockLayout[inline](x=13, y=18, width=774, height=15.0)
+       BlockLayout[block](x=13, y=18, width=774, height=15.0, node=<html>)
+         BlockLayout[block](x=13, y=18, width=774, height=15.0, node=<body>)
+           BlockLayout[inline](x=13, y=18, width=774, height=15.0, node=<div>)
     >>> list = []
     >>> retval = lab6.tree_to_list(browser.document, list)
     >>> retval #doctest: +NORMALIZE_WHITESPACE
     [DocumentLayout(),
-     BlockLayout[block](x=13, y=18, width=774, height=15.0),
-     BlockLayout[block](x=13, y=18, width=774, height=15.0),
-     BlockLayout[inline](x=13, y=18, width=774, height=15.0)]
+     BlockLayout[block](x=13, y=18, width=774, height=15.0, node=<html>),
+     BlockLayout[block](x=13, y=18, width=774, height=15.0, node=<body>),
+     BlockLayout[inline](x=13, y=18, width=774, height=15.0, node=<div>)]
     >>> retval == list
     True
 

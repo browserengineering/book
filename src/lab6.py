@@ -259,11 +259,6 @@ class BlockLayout:
     @wbetools.delete
     def close_tag(self, tag): pass
 
-    @wbetools.js_hide
-    def __repr__(self):
-        return "BlockLayout[{}](x={}, y={}, width={}, height={})".format(
-            self.layout_mode(), self.x, self.y, self.width, self.height)
-
 @wbetools.patch(DrawText)
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
@@ -282,10 +277,6 @@ class DrawText:
             font=self.font,
             anchor='nw',
             fill=self.color)
-
-    @wbetools.js_hide
-    def __repr__(self):
-        return "DrawText(text={})".format(self.text)
 
 DEFAULT_STYLE_SHEET = CSSParser(open("browser6.css").read()).parse()
 
