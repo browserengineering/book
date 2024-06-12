@@ -231,7 +231,7 @@ class BlockLayout:
         baseline = self.cursor_y + 1.25 * max_ascent
         for rel_x, word, font, color in self.line:
             x = self.x + rel_x
-            y = baseline - font.metrics("ascent")
+            y = self.y + baseline - font.metrics("ascent")
             self.display_list.append((x, y, word, font, color))
         self.cursor_x = self.x
         self.line = []
@@ -259,11 +259,6 @@ class BlockLayout:
     @wbetools.delete
     def close_tag(self, tag): pass
 
-    @wbetools.js_hide
-    def __repr__(self):
-        return "BlockLayout[{}](x={}, y={}, width={}, height={})".format(
-            self.layout_mode(), self.x, self.y, self.width, self.height)
-
 @wbetools.patch(DrawText)
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
@@ -282,10 +277,6 @@ class DrawText:
             font=self.font,
             anchor='nw',
             fill=self.color)
-
-    @wbetools.js_hide
-    def __repr__(self):
-        return "DrawText(text={})".format(self.text)
 
 DEFAULT_STYLE_SHEET = CSSParser(open("browser6.css").read()).parse()
 
