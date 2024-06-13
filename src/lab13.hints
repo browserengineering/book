@@ -16,7 +16,6 @@
  {"code": "'style' in node.attributes", "type": "dict"},
  {"code": "node not in self.composited_updates", "type": "list"},
  {"code": "new_parent in new_effects", "type": "dict"},
- {"code": "child.tag in BLOCK_ELEMENTS", "type": "list"},
  {"code": "rect.outset(1, 1)", "js": "rect.outset(1, 1)"},
  {"code": "sys.exit()", "js": ""},
  {"code": "open('runtime13.js').read()", "js": "filesystem.open('runtime13.js').read()"}
