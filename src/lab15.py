@@ -1436,6 +1436,7 @@ class Frame:
     def scrolldown(self):
         self.scroll = self.clamp_scroll(self.scroll + SCROLL_STEP)
         self.scroll_changed_in_frame = True
+        self.tab.set_needs_paint()
 
     def scroll_to(self, elt):
         assert not (self.needs_style or self.needs_layout)
@@ -1451,7 +1452,7 @@ class Frame:
         new_scroll = obj.y - SCROLL_STEP
         self.scroll = self.clamp_scroll(new_scroll)
         self.scroll_changed_in_frame = True
-        self.set_needs_render()
+        self.tab.set_needs_paint()
 
     def click(self, x, y):
         self.focus_element(None)
@@ -1597,6 +1598,12 @@ class Tab:
         if self.focus and self.focused_frame.needs_focus_scroll:
             self.focused_frame.scroll_to(self.focus)
             self.focused_frame.needs_focus_scroll = False
+
+        for (window_id, frame) in self.window_id_to_frame.items():
+            if frame == self.root_frame: continue
+            if frame.scroll_changed_in_frame:
+                needs_composite = True
+                frame.scroll_changed_in_frame = False
 
         scroll = None
         if self.root_frame.scroll_changed_in_frame:
