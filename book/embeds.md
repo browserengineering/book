@@ -1437,6 +1437,24 @@ class Tab:
         self.set_needs_paint()
 ```
 
+If a frame other than the root frame is scrolled, we'll just set
+`needs_composite` so the browser has to reraster from scratch:
+
+``` {.python}
+class Tab:
+    def run_animation_frame(self, scroll):
+        # ...
+        for (window_id, frame) in self.window_id_to_frame.items():
+            if frame == self.root_frame: continue
+            if frame.scroll_changed_in_frame:
+                needs_composite = True
+                frame.scroll_changed_in_frame = False
+        # ...
+```
+
+It's possible to composite or even thread iframe scrolling, but for
+the sake of expediency we won't do it here.
+
 There's one more subtlety to scrolling. After we scroll, we want to
 *clamp* the scroll position, to prevent the user scrolling past the
 last thing on the page. Right now `clamp_scroll` uses the window
