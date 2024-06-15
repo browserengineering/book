@@ -87,7 +87,13 @@ function Div(el)
      end
   end
 
-  if el.classes[1] == 'mc-quiz' and not config.print then
+  -- Exclude quiz assets and other things
+  if el.classes:includes("quiz") and not config.show_quiz then
+     return {}
+  end
+
+  -- Multiple-choice quiz processing
+  if el.classes[1] == 'mc-quiz' and config.show_quiz then
      return process_quiz(el)
   end
 

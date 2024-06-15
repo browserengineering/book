@@ -14,10 +14,10 @@ $for(author-meta)$  <meta name="author" content="$author-meta$" />$endfor$
 
 $if(prev)$  <link rel="prev" href="$prev$.html" />$endif$
 $if(next)$  <link rel="next" href="$next$.html" />$endif$
+$if(quiz)$  <link rel="stylesheet" href="$base$quiz_style.css" />$endif$
 $for(css)$  <link rel="stylesheet" href="$base$$css$" />$endfor$
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Vollkorn%7CLora&display=swap" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Vollkorn:400i%7CLora:400i&display=swap" />
-  <link rel="stylesheet" href="$base$quiz_style.css" />
   <link rel="alternate" type="application/rss+xml" href="$base$rss.xml" title="Web Browser Engineering">
 
   <title>$if(main)$$else$$title$ | $endif$Web Browser Engineering</title>
@@ -108,6 +108,6 @@ $endif$
 
 <script type="text/javascript" src="$base$feedback.js"></script>
 <script type="text/javascript" src="$base$book.js"></script>
-<script type="text/javascript" src="$base$quiz-embed.iife.js"></script>
+$if(quiz)$<script type="text/javascript" src="$base$quiz-embed.iife.js"></script>$endif$
 </body>
 </html>
