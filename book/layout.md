@@ -163,10 +163,10 @@ The `layout` method for some layout modes calls `layout` recursively. Where does
 
 What type of object is at the root of the layout tree? The intermediate nodes? The leaves?
 
- - The root is a DocumentLayout, all other nodes are BlockLayout
- - The root is an InlineLayout, the intermediate nodes are DocumentLayout, the leaves are BlockLayout
- - The root and intermediate nodes are BlockLayout, the leaves are InlineLayout
- - The root is a DocumentLayout, the intermediate nodes are BlockLayout, the leaves are InlineLayout or BlockLayout
+ - The root is a DocumentLayout, all other nodes are BlockLayout.
+ - The root is an InlineLayout, the intermediate nodes are DocumentLayout, the leaves are BlockLayout.
+ - The root and intermediate nodes are BlockLayout, the leaves are InlineLayout.
+ - The root is a DocumentLayout, the intermediate nodes are BlockLayout, the leaves are InlineLayout or BlockLayout.
 
 :::
 
