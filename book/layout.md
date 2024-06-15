@@ -1,6 +1,7 @@
 ---
 title: Laying Out Pages
 chapter: 5
+quiz: true
 prev: html
 next: styles
 ...
