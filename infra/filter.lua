@@ -1,7 +1,5 @@
 -- Pass 1: Load configuration data
 
-local json = require('infra/dkjson')
-
 local config = nil
 local chapters = nil
 local mode = nil
@@ -174,7 +172,7 @@ function process_quiz(el)
       table.insert(parsed_questions, process_mc_question(pandoc.Div(e)))
    end
 
-   local encoded = json.encode({ questions = parsed_questions })
+   local encoded = pandoc.json.encode({ questions = parsed_questions })
 
    return pandoc.Div(pandoc.Para(pandoc.Str('')),
                      pandoc.Attr('', {"quiz-placeholder"},
