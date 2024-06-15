@@ -1,7 +1,5 @@
 -- Pass 1: Load configuration data
 
-local json = require('infra/dkjson')
-
 local config = nil
 local chapters = nil
 local mode = nil
