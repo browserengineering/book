@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import bottle
+from bottle import response
 import json
 import os, sys
 import time
@@ -106,6 +107,20 @@ class Data:
 
 DATA = Data("db.json")
 
+# Snarfed from: https://stackoverflow.com/a/17262900/7327755
+def allow_cors(fn):
+    def _enable_cors(*args, **kwargs):
+        # set CORS headers
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Origin, Accept, Content-Type, X-Requested-With, X-CSRF-Token'
+
+        if bottle.request.method != 'OPTIONS':
+            # actual request; reply with the actual response
+            return fn(*args, **kwargs)
+
+    return _enable_cors
+
 @bottle.post("/api/typo")
 def typo():
     data = json.load(bottle.request.body)
@@ -121,6 +136,14 @@ def comment():
     data = json.load(bottle.request.body)
     DATA.chapter_comment(**data)
 
+@bottle.post("/api/quiz_telemetry", method=['OPTIONS', 'POST'])
+@allow_cors                     # for testing; lets you send requests from localhost
+def quiz_telemetry():
+    data = json.load(bottle.request.body)
+    # Just dump the quiz telemetry into a file for now
+    with open('quiz_telemetry.txt', 'a') as fh:
+        fh.write(json.dumps(data) + "\n")
+
 def name_key(name):
     parts = name.split()
     if name == "some now-deleted users":
@@ -132,7 +155,7 @@ def name_key(name):
     else:
         # Very low-effort attempt at "last name"
         return (parts[-1].casefold(), [n.casefold() for n in parts[:-1]])
-    
+
 @bottle.get("/thanks")
 @bottle.view("thanks.view")
 def thanks():
@@ -187,7 +210,7 @@ def thanks():
         "YongWoo Jeon",
         "Jess"
     ]
-    
+
     contributor_names = sorted((feedback_names | gh_names) - author_names, key=name_key) + \
         ["some now-deleted users"]
 
@@ -247,7 +270,7 @@ def feedback():
             saved.setdefault(page, []).append(prettify(o))
         elif o['status'] == "starred":
             starred.append(prettify(o))
-    
+
     return { 'new': new, 'saved': saved, 'starred': starred }
 
 @bottle.route("/feedback.rss")
