@@ -1438,7 +1438,7 @@ class Tab:
 ```
 
 If a frame other than the root frame is scrolled, we'll just set
-`needs_composite` so the browser has to reraster from scratch:
+`needs_composite` so the browser has to re-raster from scratch:
 
 ``` {.python}
 class Tab:
