@@ -1452,9 +1452,6 @@ class Tab:
         # ...
 ```
 
-It's possible to composite or even thread iframe scrolling, but for
-the sake of expediency we won't do it here.
-
 There's one more subtlety to scrolling. After we scroll, we want to
 *clamp* the scroll position, to prevent the user scrolling past the
 last thing on the page. Right now `clamp_scroll` uses the window
