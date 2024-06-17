@@ -92,6 +92,17 @@ def paint_outline(node, cmds, rect, zoom):
 
 @wbetools.patch(BlockLayout)
 class BlockLayout:
+    def __init__(self, node, parent, previous):
+        self.node = node
+        node.layout_object = self
+        self.parent = parent
+        self.previous = previous
+        self.children = []
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
+
     def layout(self):
         self.zoom = self.parent.zoom
         self.width = self.parent.width
@@ -162,16 +173,6 @@ class BlockLayout:
 
 @wbetools.patch(LineLayout)
 class LineLayout:
-    def __init__(self, node, parent, previous):
-        self.node = node
-        self.parent = parent
-        self.previous = previous
-        self.children = []
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-
     def layout(self):
         self.zoom = self.parent.zoom
         self.width = self.parent.width
@@ -198,12 +199,6 @@ class LineLayout:
                            for word in self.children])
         self.height = 1.25 * (max_ascent + max_descent)
 
-    def should_paint(self):
-        return True
-
-    def paint(self):
-        return []
-
     def paint_effects(self, cmds):
         outline_rect = skia.Rect.MakeEmpty()
         outline_node = None
@@ -218,11 +213,6 @@ class LineLayout:
                 outline_node, cmds, outline_rect, self.zoom)
 
         return cmds
-
-    @wbetools.js_hide
-    def __repr__(self):
-        return "LineLayout(x={}, y={}, width={}, height={})".format(
-            self.x, self.y, self.width, self.height)
 
 def dpx(css_px, zoom):
     return css_px * zoom
