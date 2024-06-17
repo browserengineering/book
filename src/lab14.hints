@@ -8,7 +8,6 @@
 {"code": "'tabindex' in node.attributes", "type": "dict"},
 {"code": "'src' in node.attributes", "type": "dict"},
 {"code": "'style' in node.attributes", "type": "dict"},
-{"code": "child.tag in BLOCK_ELEMENTS", "type": "list"},
 {"code": "'role' in node.attributes", "type": "dict"},
 {"code": "print", "js": "console.log"},
 {"code": "'href' in node.attributes", "type": "dict"},
