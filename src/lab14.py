@@ -288,32 +288,8 @@ class DocumentLayout:
         child.layout()
         self.height = child.height
 
-    def should_paint(self):
-        return True
-
-    def paint(self):
-        return []
-
-    def paint_effects(self, cmds):
-        return cmds
-
-    @wbetools.js_hide
-    def __repr__(self):
-        return "DocumentLayout()"
-
 @wbetools.patch(TextLayout)
 class TextLayout:
-    def __init__(self, node, word, parent, previous):
-        self.node = node
-        self.word = word
-        self.children = []
-        self.parent = parent
-        self.previous = previous
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-
     def layout(self):
         self.zoom = self.parent.zoom
         weight = self.node.style["font-weight"]
@@ -337,24 +313,6 @@ class TextLayout:
         return skia.Rect.MakeLTRB(
             self.x, self.y, self.x + self.width,
             self.y + self.height)
-
-    def should_paint(self):
-        return True
-
-    def paint(self):
-        cmds = []
-        color = self.node.style["color"]
-        cmds.append(
-            DrawText(self.x, self.y, self.word, self.font, color))
-        return cmds
-
-    def paint_effects(self, cmds):
-        return cmds
-    
-    @wbetools.js_hide
-    def __repr__(self):
-        return ("TextLayout(x={}, y={}, width={}, height={}, word={})").format(
-            self.x, self.y, self.width, self.height, self.word)
 
 @wbetools.patch(InputLayout)
 class InputLayout:
@@ -385,14 +343,6 @@ class InputLayout:
             self.x = self.previous.x + space + self.previous.width
         else:
             self.x = self.parent.x
-
-    def self_rect(self):
-        return skia.Rect.MakeLTRB(
-            self.x, self.y, self.x + self.width,
-            self.y + self.height)
-
-    def should_paint(self):
-        return True
 
     def paint(self):
         cmds = []
@@ -428,11 +378,6 @@ class InputLayout:
         cmds = paint_visual_effects(self.node, cmds, self.self_rect())
         paint_outline(self.node, cmds, self.self_rect(), self.zoom)
         return cmds 
-
-    @wbetools.js_hide
-    def __repr__(self):
-        return "InputLayout(x={}, y={}, width={}, height={})".format(
-            self.x, self.y, self.width, self.height)
 
 @wbetools.patchable
 def is_focusable(node):
