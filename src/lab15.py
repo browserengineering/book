@@ -1436,7 +1436,6 @@ class Frame:
     def scrolldown(self):
         self.scroll = self.clamp_scroll(self.scroll + SCROLL_STEP)
         self.scroll_changed_in_frame = True
-        self.tab.set_needs_paint()
 
     def scroll_to(self, elt):
         assert not (self.needs_style or self.needs_layout)
