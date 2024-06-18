@@ -24716,6 +24716,23 @@ When a tab is asked to scroll, it then scrolls the focused frame:
 \end{Highlighting}
 \end{Shaded}
 
+If a frame other than the root frame is scrolled, we'll just set
+\texttt{needs\_composite} so the browser has to re-raster from scratch:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{class}\NormalTok{ Tab:}
+    \KeywordTok{def}\NormalTok{ run\_animation\_frame(}\VariableTok{self}\NormalTok{, scroll):}
+        \CommentTok{\# ...}
+        \ControlFlowTok{for}\NormalTok{ (window\_id, frame) }\KeywordTok{in} \VariableTok{self}\NormalTok{.window\_id\_to\_frame.items():}
+            \ControlFlowTok{if}\NormalTok{ frame }\OperatorTok{==} \VariableTok{self}\NormalTok{.root\_frame: }\ControlFlowTok{continue}
+            \ControlFlowTok{if}\NormalTok{ frame.scroll\_changed\_in\_frame:}
+\NormalTok{                needs\_composite }\OperatorTok{=} \VariableTok{True}
+\NormalTok{                frame.scroll\_changed\_in\_frame }\OperatorTok{=} \VariableTok{False}
+        \CommentTok{\# ...}
+\end{Highlighting}
+\end{Shaded}
+
 There's one more subtlety to scrolling. After we scroll, we want to
 \emph{clamp} the scroll position, to prevent the user scrolling past the
 last thing on the page. Right now, \texttt{clamp\_scroll} uses the window
