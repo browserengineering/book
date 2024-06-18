@@ -47,6 +47,7 @@ from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import PaintCommand, DrawText, DrawCompositedLayer, DrawOutline, \
     DrawLine, DrawRRect, DrawRect
 from lab13 import VisualEffect, Blend, Transform, Tab, Browser, CSSParser
+from lab13 import BlockLayout, DocumentLayout, TextLayout, LineLayout, InputLayout
 
 @wbetools.patch(Element)
 class Element:
@@ -89,6 +90,7 @@ def paint_outline(node, cmds, rect, zoom):
     thickness, color = outline
     cmds.append(DrawOutline(rect, color, dpx(thickness, zoom)))
 
+@wbetools.patch(BlockLayout)
 class BlockLayout:
     def __init__(self, node, parent, previous):
         self.node = node
@@ -127,40 +129,6 @@ class BlockLayout:
 
         self.height = sum([child.height for child in self.children])
 
-    def layout_mode(self):
-        if isinstance(self.node, Text):
-            return "inline"
-        elif self.node.children:
-            for child in self.node.children:
-                if isinstance(child, Text): continue
-                if child.tag in BLOCK_ELEMENTS:
-                    return "block"
-            return "inline"
-        elif self.node.tag == "input":
-            return "inline"
-        else:
-            return "block"
-
-    def recurse(self, node):
-        if isinstance(node, Text):
-            for word in node.text.split():
-                self.word(node, word)
-        else:
-            if node.tag == "br":
-                self.new_line()
-            elif node.tag == "input" or node.tag == "button":
-                self.input(node)
-            else:
-                for child in node.children:
-                    self.recurse(child)
-
-    def new_line(self):
-        self.previous_word = None
-        self.cursor_x = 0
-        last_line = self.children[-1] if self.children else None
-        new_line = LineLayout(self.node, self, last_line)
-        self.children.append(new_line)
-
     def word(self, node, word):
         weight = node.style["font-weight"]
         style = node.style["font-style"]
@@ -171,9 +139,9 @@ class BlockLayout:
         if self.cursor_x + w > self.width:
             self.new_line()
         line = self.children[-1]
-        text = TextLayout(node, word, line, self.previous_word)
+        previous_word = line.children[-1] if line.children else None
+        text = TextLayout(node, word, line, previous_word)
         line.children.append(text)
-        self.previous_word = text
         self.cursor_x += w + font.measureText(" ")
 
     def input(self, node):
@@ -181,24 +149,15 @@ class BlockLayout:
         if self.cursor_x + w > self.width:
             self.new_line()
         line = self.children[-1]
-        input = InputLayout(node, line, self.previous_word)
+        previous_word = line.children[-1] if line.children else None
+        input = InputLayout(node, line, previous_word)
         line.children.append(input)
-        self.previous_word = input
         weight = node.style["font-weight"]
         style = node.style["font-style"]
         px_size = float(node.style["font-size"][:-2])
         size = dpx(px_size * 0.75, self.zoom)
         font = get_font(size, weight, size)
         self.cursor_x += w + font.measureText(" ")
-
-    def self_rect(self):
-        return skia.Rect.MakeLTRB(
-            self.x, self.y,
-            self.x + self.width, self.y + self.height)
-
-    def should_paint(self):
-        return isinstance(self.node, Text) or \
-            (self.node.tag != "input" and self.node.tag !=  "button")
 
     def paint(self):
         cmds = []
@@ -212,27 +171,8 @@ class BlockLayout:
             cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
         return cmds
 
-    def paint_effects(self, cmds):
-        cmds = paint_visual_effects(self.node, cmds, self.self_rect())
-
-        return cmds
-
-    @wbetools.js_hide
-    def __repr__(self):
-        return "BlockLayout[{}](x={}, y={}, width={}, height={}, node={})".format(
-            self.layout_mode(), self.x, self.y, self.width, self.height, self.node)
-
+@wbetools.patch(LineLayout)
 class LineLayout:
-    def __init__(self, node, parent, previous):
-        self.node = node
-        self.parent = parent
-        self.previous = previous
-        self.children = []
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-
     def layout(self):
         self.zoom = self.parent.zoom
         self.width = self.parent.width
@@ -259,12 +199,6 @@ class LineLayout:
                            for word in self.children])
         self.height = 1.25 * (max_ascent + max_descent)
 
-    def should_paint(self):
-        return True
-
-    def paint(self):
-        return []
-
     def paint_effects(self, cmds):
         outline_rect = skia.Rect.MakeEmpty()
         outline_node = None
@@ -279,11 +213,6 @@ class LineLayout:
                 outline_node, cmds, outline_rect, self.zoom)
 
         return cmds
-
-    @wbetools.js_hide
-    def __repr__(self):
-        return "LineLayout(x={}, y={}, width={}, height={})".format(
-            self.x, self.y, self.width, self.height)
 
 def dpx(css_px, zoom):
     return css_px * zoom
@@ -339,6 +268,7 @@ def style(node, rules, tab):
     for child in node.children:
         style(child, rules, tab)
 
+@wbetools.patch(DocumentLayout)
 class DocumentLayout:
     def __init__(self, node):
         self.node = node
@@ -358,31 +288,8 @@ class DocumentLayout:
         child.layout()
         self.height = child.height
 
-    def should_paint(self):
-        return True
-
-    def paint(self):
-        return []
-
-    def paint_effects(self, cmds):
-        return cmds
-
-    @wbetools.js_hide
-    def __repr__(self):
-        return "DocumentLayout()"
-
+@wbetools.patch(TextLayout)
 class TextLayout:
-    def __init__(self, node, word, parent, previous):
-        self.node = node
-        self.word = word
-        self.children = []
-        self.parent = parent
-        self.previous = previous
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-
     def layout(self):
         self.zoom = self.parent.zoom
         weight = self.node.style["font-weight"]
@@ -407,24 +314,7 @@ class TextLayout:
             self.x, self.y, self.x + self.width,
             self.y + self.height)
 
-    def should_paint(self):
-        return True
-
-    def paint(self):
-        cmds = []
-        color = self.node.style["color"]
-        cmds.append(
-            DrawText(self.x, self.y, self.word, self.font, color))
-        return cmds
-
-    def paint_effects(self, cmds):
-        return cmds
-    
-    @wbetools.js_hide
-    def __repr__(self):
-        return ("TextLayout(x={}, y={}, width={}, height={}, word={})").format(
-            self.x, self.y, self.width, self.height, self.word)
-
+@wbetools.patch(InputLayout)
 class InputLayout:
     def __init__(self, node, parent, previous):
         self.node = node
@@ -453,14 +343,6 @@ class InputLayout:
             self.x = self.previous.x + space + self.previous.width
         else:
             self.x = self.parent.x
-
-    def self_rect(self):
-        return skia.Rect.MakeLTRB(
-            self.x, self.y, self.x + self.width,
-            self.y + self.height)
-
-    def should_paint(self):
-        return True
 
     def paint(self):
         cmds = []
@@ -496,11 +378,6 @@ class InputLayout:
         cmds = paint_visual_effects(self.node, cmds, self.self_rect())
         paint_outline(self.node, cmds, self.self_rect(), self.zoom)
         return cmds 
-
-    @wbetools.js_hide
-    def __repr__(self):
-        return "InputLayout(x={}, y={}, width={}, height={})".format(
-            self.x, self.y, self.width, self.height)
 
 @wbetools.patchable
 def is_focusable(node):

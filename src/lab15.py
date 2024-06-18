@@ -21,7 +21,7 @@ import wbetools
 import OpenGL.GL
 
 from lab2 import WIDTH, HEIGHT, HSTEP, VSTEP, SCROLL_STEP
-from lab4 import print_tree
+from lab4 import print_tree, HTMLParser
 from lab5 import BLOCK_ELEMENTS
 from lab14 import Text, Element
 from lab6 import TagSelector, DescendantSelector
@@ -30,7 +30,7 @@ from lab8 import INPUT_WIDTH_PX
 from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, NAMED_COLORS, get_font, linespace
 from lab11 import parse_color, parse_blend_mode
-from lab12 import MeasureTime, REFRESH_RATE_SEC
+from lab12 import MeasureTime, REFRESH_RATE_SEC, JSContext
 from lab12 import Task, TaskRunner, SingleThreadedTaskRunner
 from lab13 import diff_styles, parse_transition, add_parent_pointers
 from lab13 import local_to_absolute, absolute_bounds_for_obj, absolute_to_local
@@ -45,6 +45,7 @@ from lab14 import parse_outline, paint_outline, \
     is_focusable, get_tabindex, speak_text, \
     CSSParser, mainloop, Browser, Chrome, Tab, \
     AccessibilityNode, PseudoclassSelector, SPEECH_FILE
+from lab14 import DocumentLayout, BlockLayout, LineLayout, TextLayout
 
 @wbetools.patch(URL)
 class URL:
@@ -164,6 +165,7 @@ def paint_tree(layout_object, display_list):
     cmds = layout_object.paint_effects(cmds)
     display_list.extend(cmds)
 
+@wbetools.patch(DocumentLayout)
 class DocumentLayout:
     def __init__(self, node, frame):
         self.node = node
@@ -184,12 +186,6 @@ class DocumentLayout:
         child.layout()
         self.height = child.height
 
-    def should_paint(self):
-        return True
-
-    def paint(self):
-        return []
-
     def paint_effects(self, cmds):
         if self.frame != self.frame.tab.root_frame and self.frame.scroll != 0:
             rect = skia.Rect.MakeLTRB(
@@ -197,10 +193,6 @@ class DocumentLayout:
                 self.x + self.width, self.y + self.height)
             cmds = [Transform((0, - self.frame.scroll), rect, self.node, cmds)]
         return cmds
-
-    @wbetools.js_hide
-    def __repr__(self):
-        return "DocumentLayout()"
 
 @wbetools.patchable
 def font(style, zoom):
@@ -214,6 +206,7 @@ def font(style, zoom):
     font_size = dpx(size, zoom)
     return get_font(font_size, weight, variant)
 
+@wbetools.patch(BlockLayout)
 class BlockLayout:
     def __init__(self, node, parent, previous, frame):
         self.node = node
@@ -328,11 +321,6 @@ class BlockLayout:
             w = IFRAME_WIDTH_PX + dpx(2, self.zoom)
         self.add_inline_child(node, w, IframeLayout, self.frame)
 
-    def self_rect(self):
-        return skia.Rect.MakeLTRB(
-            self.x, self.y,
-            self.x + self.width, self.y + self.height)
-
     def should_paint(self):
         return isinstance(self.node, Text) or \
             (self.node.tag not in \
@@ -348,10 +336,6 @@ class BlockLayout:
                     "border-radius", "0px")[:-2]),
                 self.zoom)
             cmds.append(DrawRRect(self.self_rect(), radius, bgcolor))
-        return cmds
-
-    def paint_effects(self, cmds):
-        cmds = paint_visual_effects(self.node, cmds, self.self_rect())
         return cmds
 
     @wbetools.js_hide
@@ -445,17 +429,8 @@ class InputLayout(EmbedLayout):
         return "InputLayout(x={}, y={}, width={}, height={})".format(
             self.x, self.y, self.width, self.height)
 
+@wbetools.patch(LineLayout)
 class LineLayout:
-    def __init__(self, node, parent, previous):
-        self.node = node
-        self.parent = parent
-        self.previous = previous
-        self.children = []
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-
     def layout(self):
         self.zoom = self.parent.zoom
         self.width = self.parent.width
@@ -486,43 +461,8 @@ class LineLayout:
                            for child in self.children])
         self.height = max_ascent + max_descent
 
-    def should_paint(self):
-        return True
-
-    def paint(self):
-        return []
-
-    def paint_effects(self, cmds):
-        outline_rect = skia.Rect.MakeEmpty()
-        outline_node = None
-        for child in self.children:
-            outline_str = child.node.parent.style.get("outline")
-            if parse_outline(outline_str):
-                outline_rect.join(child.self_rect())
-                outline_node = child.node.parent
-
-        if outline_node:
-            paint_outline(outline_node, cmds, outline_rect, self.zoom)
-        return cmds
-
-    @wbetools.js_hide
-    def __repr__(self):
-        return "LineLayout(x={}, y={}, width={}, height={})".format(
-            self.x, self.y, self.width, self.height)
-
+@wbetools.patch(TextLayout)
 class TextLayout:
-    def __init__(self, node, word, parent, previous):
-        self.node = node
-        self.word = word
-        self.children = []
-        self.parent = parent
-        self.previous = previous
-        self.x = None
-        self.y = None
-        self.width = None
-        self.height = None
-        self.font = None
-
     def layout(self):
         self.zoom = self.parent.zoom
         self.font = font(self.node.style, self.zoom)
@@ -540,29 +480,6 @@ class TextLayout:
 
         self.ascent = self.font.getMetrics().fAscent * 1.25
         self.descent = self.font.getMetrics().fDescent * 1.25
-
-    def should_paint(self):
-        return True
-
-    def paint(self):
-        cmds = []
-        color = self.node.style["color"]
-        cmds.append(
-            DrawText(self.x, self.y, self.word, self.font, color))
-        return cmds
-
-    def paint_effects(self, cmds):
-        return cmds
-
-    def self_rect(self):
-        return skia.Rect.MakeLTRB(
-            self.x, self.y, self.x + self.width,
-            self.y + self.height)
-    
-    @wbetools.js_hide
-    def __repr__(self):
-        return ("TextLayout(x={}, y={}, width={}, height={}, word={})").format(
-            self.x, self.y, self.width, self.height, self.word)
 
 class ImageLayout(EmbedLayout):
     def __init__(self, node, parent, previous, frame):
@@ -737,95 +654,11 @@ class AttributeParser:
                 attributes[key.casefold()] = ""
         return (tag, attributes)
 
+@wbetools.patch(HTMLParser)
 class HTMLParser:
-    def __init__(self, body):
-        self.body = body
-        self.unfinished = []
-
-    def parse(self):
-        text = ""
-        in_tag = False
-        for c in self.body:
-            if c == "<":
-                in_tag = True
-                if text: self.add_text(text)
-                text = ""
-            elif c == ">":
-                in_tag = False
-                self.add_tag(text)
-                text = ""
-            else:
-                text += c
-        if not in_tag and text:
-            self.add_text(text)
-        return self.finish()
-
     def get_attributes(self, text):
         (tag, attributes) = AttributeParser(text).parse()
         return tag, attributes
-
-    def add_text(self, text):
-        if text.isspace(): return
-        self.implicit_tags(None)
-        parent = self.unfinished[-1]
-        node = Text(text, parent)
-        parent.children.append(node)
-
-    SELF_CLOSING_TAGS = [
-        "area", "base", "br", "col", "embed", "hr", "img", "input",
-        "link", "meta", "param", "source", "track", "wbr",
-    ]
-
-    def add_tag(self, tag):
-        tag, attributes = self.get_attributes(tag)
-        if tag.startswith("!"): return
-        self.implicit_tags(tag)
-
-        if tag.startswith("/"):
-            if len(self.unfinished) == 1: return
-            node = self.unfinished.pop()
-            parent = self.unfinished[-1]
-            parent.children.append(node)
-        elif tag in self.SELF_CLOSING_TAGS:
-            parent = self.unfinished[-1]
-            node = Element(tag, attributes, parent)
-            parent.children.append(node)
-        else:
-            parent = self.unfinished[-1] if self.unfinished else None
-            node = Element(tag, attributes, parent)
-            self.unfinished.append(node)
-
-    HEAD_TAGS = [
-        "base", "basefont", "bgsound", "noscript",
-        "link", "meta", "title", "style", "script",
-    ]
-
-    def implicit_tags(self, tag):
-        while True:
-            open_tags = [node.tag for node in self.unfinished]
-            if open_tags == [] and tag != "html":
-                self.add_tag("html")
-            elif open_tags == ["html"] \
-                 and tag not in ["head", "body", "/html"]:
-                if tag in self.HEAD_TAGS:
-                    self.add_tag("head")
-                else:
-                    self.add_tag("body")
-            elif open_tags == ["html", "head"] and \
-                 tag not in ["/head"] + self.HEAD_TAGS:
-                self.add_tag("/head")
-            else:
-                break
-
-    def finish(self):
-        if len(self.unfinished) == 0:
-            self.add_tag("html")
-        while len(self.unfinished) > 1:
-            node = self.unfinished.pop()
-            parent = self.unfinished[-1]
-            parent.children.append(node)
-        return self.unfinished.pop()
-
 
 EVENT_DISPATCH_JS = \
     "new window.Node(dukpy.handle)" + \
@@ -838,6 +671,7 @@ SETTIMEOUT_JS = "window.__runSetTimeout(dukpy.handle)"
 XHR_ONLOAD_JS = "window.__runXHROnload(dukpy.out, dukpy.handle)"
 RUNTIME_JS = open("runtime15.js").read()
 
+@wbetools.patch(JSContext)
 class JSContext:
     def __init__(self, tab, url_origin):
         self.tab = tab
@@ -906,15 +740,6 @@ class JSContext:
             type=type, handle=handle)
         return not do_default
 
-    def get_handle(self, elt):
-        if elt not in self.node_to_handle:
-            handle = len(self.node_to_handle)
-            self.node_to_handle[elt] = handle
-            self.handle_to_node[handle] = elt
-        else:
-            handle = self.node_to_handle[elt]
-        return handle
-
     def querySelectorAll(self, selector_text, window_id):
         frame = self.tab.window_id_to_frame[window_id]
         self.throw_if_cross_origin(frame)
@@ -923,10 +748,6 @@ class JSContext:
                 in tree_to_list(frame.nodes, [])
                  if selector.matches(node)]
         return [self.get_handle(node) for node in nodes]
-
-    def getAttribute(self, handle, attr):
-        elt = self.handle_to_node[handle]
-        return elt.attributes.get(attr, None)
 
     def setAttribute(self, handle, attr, value, window_id):
         frame = self.tab.window_id_to_frame[window_id]        
@@ -1016,9 +837,6 @@ class JSContext:
     def dispatch_RAF(self, window_id):
         code = self.wrap("window.__runRAFHandlers()", window_id)
         self.interp.evaljs(code)
-
-    def requestAnimationFrame(self):
-        self.tab.browser.set_needs_animation_frame(self.tab)
 
 @wbetools.patch(style)
 def style(node, rules, frame):
@@ -1859,45 +1677,6 @@ class Browser:
         self.active_tab.task_runner.schedule_task(task)
         self.needs_animation_frame = True
         self.lock.release()
-
-    def paint_draw_list(self):
-        new_effects = {}
-        self.draw_list = []
-        for composited_layer in self.composited_layers:
-            current_effect = \
-                DrawCompositedLayer(composited_layer)
-            if not composited_layer.display_items: continue
-            parent = composited_layer.display_items[0].parent
-            while parent:
-                new_parent = self.get_latest(parent)
-                if new_parent in new_effects:
-                    new_effects[new_parent].children.append(
-                        current_effect)
-                    break
-                else:
-                    current_effect = \
-                        new_parent.clone(current_effect)
-                    new_effects[new_parent] = current_effect
-                    parent = parent.parent
-            if not parent:
-                self.draw_list.append(current_effect)
-
-        if self.pending_hover:
-            (x, y) = self.pending_hover
-            y += self.active_tab_scroll
-            a11y_node = self.accessibility_tree.hit_test(x, y)
-            if a11y_node:
-                if not self.hovered_a11y_node or \
-                    a11y_node.node != self.hovered_a11y_node.node:
-                    self.needs_speak_hovered_node = True
-                self.hovered_a11y_node = a11y_node
-        self.pending_hover = None
-
-        if self.hovered_a11y_node:
-            for bound in self.hovered_a11y_node.absolute_bounds():
-                self.draw_list.append(DrawOutline(
-                    bound,
-                    "white" if self.dark_mode else "black", 2))
      
 
 if __name__ == "__main__":
