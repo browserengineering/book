@@ -70,3 +70,18 @@ different chapters, named `server8.py`, `server9.py`, and so on.
 You can also run the book's unit tests with:
 
     make test
+
+## Rebuilding the quiz JavaScript
+
+The source for the interactive multiple-choice quizzes is taken from [mdbook-quiz](https://github.com/cognitive-engineering-lab/mdbook-quiz). To rebuild the JS blob that we include on the quiz pages (located in `www/quiz-embed.iife.js`) do the following:
+
+ - Install [depot](https://github.com/cognitive-engineering-lab/depot) (made by the same people who made `mdbook-quiz`; tldr: `cargo install depot-js --locked`).
+ - Ensure you have [`cargo-make`](https://github.com/sagiegurari/cargo‐make) installed.
+ - `git clone https://github.com/cognitive-engineering-lab/mdbook-quiz && cd mdbook-quiz`
+ - `cargo make init-bindings`
+ - `cd js`
+ - `depot build`
+
+The `quiz-embed.iife.js` file should be in `packages/quiz-embed/dist/`.
+
+These instructions are taken from the `README.md` and `CONTRIBUTING.md` files in the `mdbook-quiz` project.
