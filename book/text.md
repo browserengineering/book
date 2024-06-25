@@ -796,7 +796,7 @@ for x, word, font in self.line:
 ```
 
 Note how `y` starts at the baseline, and moves *up* by just enough to
-accommodate that word's ascent. Now `y` must move far enough down below
+accommodate that word's ascent. Now `cursor_y` must move far enough down below
 `baseline` to account for the deepest descender:
 
 ``` {.python}
@@ -804,8 +804,8 @@ max_descent = max([metric["descent"] for metric in metrics])
 self.cursor_y = baseline + 1.25 * max_descent
 ```
 
-Finally, `flush` must update the `Layout`'s `x`, `y`, and `line`
-fields. `x` and `line` are easy:
+Finally, `flush` must update the `Layout`'s `cursor_x` and `line`
+fields:
 
 ``` {.python}
 self.cursor_x = HSTEP
