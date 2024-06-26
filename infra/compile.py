@@ -751,9 +751,10 @@ def has_named_params(decorator_list):
         for dec in decorator_list
     ])
 
+WHERE_GOT = {}
 
 @catch_issues
-def compile(tree, ctx, indent=0, patches={}, patchables={}):
+def compile(tree, ctx, indent=0):
     if isinstance(tree, ast.Import):
         assert len(tree.names) == 1
         assert not tree.names[0].asname
@@ -777,8 +778,7 @@ def compile(tree, ctx, indent=0, patches={}, patchables={}):
                 to_import.append(name)
             else: # Function
                 to_import.append(name)
-            if name in patches.keys() and not name[0].isupper():
-                to_import.append("patch_{}".format(name))
+            WHERE_GOT[name] = tree.module
 
         import_line = "import {{ {} }} from \"./{}.js\";".format(", ".join(sorted(set(to_import))), tree.module)
         out = " " * indent + import_line
@@ -802,14 +802,26 @@ def compile(tree, ctx, indent=0, patches={}, patchables={}):
             assert len(tree.bases) == 1
             extends = ' extends ' + tree.bases[0].id
         class_name = tree.name
-        if class_name in patches:
-            class_name = class_name + "Patch"
-        # Layout is renamed to BlockLayout in lab5. This rename
-        # to LayoutPatch enables the patching to work; code elsewhere
-        # creates the alias called BlockLayout.
-        elif "Layout" in patches and class_name == "BlockLayout":
-            class_name = "LayoutPatch"
-        return " " * indent + "class " + class_name + extends + " {\n" + "\n\n".join(parts) + "\n}"
+
+        is_patch = any(asttools.is_patch_decorator(dec) for dec in tree.decorator_list)
+        if is_patch:
+            pdc = [dec for dec in tree.decorator_list if asttools.is_patch_decorator(dec)][0]
+            # Layout is renamed to BlockLayout in lab5. This rename
+            # to LayoutPatch enables the patching to work; code elsewhere
+            # creates the alias called BlockLayout.
+            class_name = pdc.args[0].id
+
+        clsdef = " " * indent + "class " + class_name + ("Patch" if is_patch else "") + extends + " {"
+        clsdef += "\n" + "\n\n".join(parts) + "\n" + " " * indent + "}"
+        if is_patch:
+            patch_line = "patch_class({}, {}Patch)".format(class_name, class_name)
+            clsdef += "\n" + " " * indent + patch_line
+            # Layout is renamed to BlockLayout in lab5. The Layout class is patched,
+            # but we also need to declare BLockLayout an alias of this patched
+            # class.
+            if class_name != tree.name:
+                clsdef += "\n" + " " * indent + "let {} = {};".format(tree.name, class_name)
+        return clsdef
     elif isinstance(tree, ast.FunctionDef):
         if tree.name in SKIPPED_FNS:
             return ""
@@ -855,16 +867,35 @@ def compile(tree, ctx, indent=0, patches={}, patchables={}):
                 args = ['args']
                 body = destructure + body
 
-            if fn_name in patches:
-                fn_name = tree.name + "_patch"
             if ctx.type == "module":
                 EXPORTS.append(tree.name)
             kw = "" if ctx.type == "class" else "function "
+
+            is_patch = any(asttools.is_patch_decorator(dec) for dec in tree.decorator_list)
+            if is_patch:
+                assert ctx.type == "module", "Can't patch a method, patch the class"
+                fn_name += "_patch"
+
             def_line = kw + fn_name + "(" + ", ".join(args) + ") {\n"
             if ctx.type != "class" or tree.name not in OUR_SYNC_METHODS:
                 def_line = "async " + def_line
             last_line = "\n" + " " * indent + "}"
-            return " " * indent + def_line + body + last_line
+
+            fndef = " " * indent + def_line + body + last_line
+            if is_patch:
+                import_line = "import {{ patch_{} }} from \"./{}.js\"".format(tree.name, WHERE_GOT[tree.name])
+                fndef += "\n" + " " * indent + import_line
+                patch_line = "patch_{}({})".format(tree.name, fn_name)
+                fndef += "\n" + " " * indent + patch_line
+
+            is_patchable = any(asttools.is_patchable_decorator(dec) for dec in tree.decorator_list)
+            if is_patchable:
+                fndef += "\n" + " " * indent + \
+                    "function patch_{fun}(patch) {{\n  {fun} = patch\n}}".format(
+                        fun=tree.name)
+                EXPORTS.append("patch_{}".format(tree.name))
+
+            return fndef
     elif isinstance(tree, ast.Expr) and ctx.type == "module" and \
          isinstance(tree.value, ast.Constant) and isinstance(tree.value.value, str):
         cmt = " " * indent + "// "
@@ -1033,46 +1064,12 @@ def compile(tree, ctx, indent=0, patches={}, patchables={}):
     else:
         raise UnsupportedConstruct()
     
-def compile_module(tree, patches, patchables):
+def compile_module(tree):
     assert isinstance(tree, ast.Module)
     ctx = Context("module", {})
 
-    items = []
-
-    items.extend(
-        [compile(item, indent=0, ctx=ctx, patches=patches,
-            patchables=patchables) \
-        for item in tree.body])
-
-    patch_items = []
-    for (name, patch) in patches.items():
-        patch_items.append(compile(patch[0], indent=0, ctx=ctx, patches=patches,
-            patchables=patchables))
-        if name[0].isupper():
-            patch_items.append(
-                "patch_class({cls}, {cls}Patch)\n".format(
-                cls=name))
-        else:
-            patch_items.append(
-                "patch_{fun}({fun}_patch)\n".format(
-                fun=name))
-        # Layout is renamed to BlockLayout in lab5. The Layout class is patched,
-        # but we also need to declare BLockLayout an alias of this patched
-        # class.
-        if name == "Layout":
-            patch_items.append("var BlockLayout = Layout")
-
-    # Patches go before definitions, in case a definition needs a patch
-    patch_items.extend(items)
-    items = patch_items
-
-
-    for (name, patchable) in patchables.items():
-        assert not name[0].isupper()
-        items.append(
-            "function patch_{fun}(patch) {{\n  {fun} = patch\n}}".format(
-                fun=name))
-        EXPORTS.append("patch_{}".format(name))
+    items = [compile(item, indent=0, ctx=ctx)
+             for item in tree.body]
 
     exports = ""
     rt_imports = ""
@@ -1117,8 +1114,7 @@ if __name__ == "__main__":
     INDENT = args.indent
     tree = asttools.parse(args.python.read(), args.python.name)
     load_outline(asttools.inline(tree))
-    tree, patches, patchables = asttools.resolve_patches_and_return_them(tree)
-    module_js = compile_module(tree, patches, patchables)
+    module_js = compile_module(tree)
 
     js = 'import { filesystem } from "./rt.js";\n'
 
