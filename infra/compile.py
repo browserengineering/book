@@ -1044,22 +1044,27 @@ def compile_module(tree, patches, patchables):
             patchables=patchables) \
         for item in tree.body])
 
+    patch_items = []
     for (name, patch) in patches.items():
-        items.append(compile(patch[0], indent=0, ctx=ctx, patches=patches,
+        patch_items.append(compile(patch[0], indent=0, ctx=ctx, patches=patches,
             patchables=patchables))
         if name[0].isupper():
-            items.append(
+            patch_items.append(
                 "patch_class({cls}, {cls}Patch)\n".format(
                 cls=name))
         else:
-            items.append(
+            patch_items.append(
                 "patch_{fun}({fun}_patch)\n".format(
                 fun=name))
         # Layout is renamed to BlockLayout in lab5. The Layout class is patched,
         # but we also need to declare BLockLayout an alias of this patched
         # class.
         if name == "Layout":
-            items.append("var BlockLayout = Layout")
+            patch_items.append("var BlockLayout = Layout")
+
+    # Patches go before definitions, in case a definition needs a patch
+    patch_items.extend(items)
+    items = patch_items
 
 
     for (name, patchable) in patchables.items():
