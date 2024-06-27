@@ -11,49 +11,45 @@
 const ckLoaded = CanvasKitInit({
   locateFile: (file) => '/widgets/' + file});
 
-const loadFont = fetch(
+const robotoData = await fetch(
   'https://storage.googleapis.com/skia-cdn/misc/Roboto-Regular.ttf')
   .then((response) => response.arrayBuffer());
 
-Promise.all([ckLoaded, loadFont]).then(([CanvasKit, robotoData]) => {
-    let font_manager = CanvasKit.FontMgr.FromData([robotoData]);
-    let typeface = font_manager.matchFamilyStyle(
-      font_manager.getFamilyName(0), {})
+const CanvasKit = await ckLoaded;
 
-  Promise.all([import("./rt.js"), import("./lab10.js"), import("./lab15.js"),
-    import("./lab16.js"), import("./server10.js")]).then(
-  ([rt, lab10, lab15, lab16, server10]) => {
-    let { init_skia, init_window, socket, Widget, rt_constants} = rt;
-    let { URL } = lab10;
-    let { Browser } = lab15;
-    let { constants } = lab16;
-    let { handle_connection } = server10;
+let font_manager = CanvasKit.FontMgr.FromData([robotoData]);
+let typeface = font_manager.matchFamilyStyle(
+  font_manager.getFamilyName(0), {})
 
-    init_skia(CanvasKit, robotoData)
-    socket.accept(8000, handle_connection);
-    rt_constants.ROOT_CANVAS = document.querySelector("#canvas");
+import { init_skia, init_window, socket, Widget, rt_constants} from "./rt.js";
+import { URL } from "./lab10.js";
+import { Browser } from "./lab15.js";
+import { constants } from "./lab16.js";
+import { handle_connection } from "./server10.js";
 
-    let widget = new Widget(document.querySelector("#controls"));
-    let interval;
-    widget.run(async function() {
-        if (interval)
-          clearInterval(interval);
-        constants.WIDTH = window.innerWidth;
-        let url = "http://browser.engineering";
-        let b = await (new Browser()).init();
-        init_window(b);
-        await b.new_tab(await (new URL().init(url)));
+init_skia(CanvasKit, robotoData)
+socket.accept(8000, handle_connection);
+rt_constants.ROOT_CANVAS = document.querySelector("#canvas");
+
+let widget = new Widget(document.querySelector("#controls"));
+let interval;
+widget.run(async function() {
+    if (interval)
+      clearInterval(interval);
+    constants.WIDTH = window.innerWidth;
+    let url = "http://browser.engineering";
+    let b = await (new Browser()).init();
+    init_window(b);
+    await b.new_tab(await (new URL().init(url)));
+    await b.render();
+    interval = setInterval(async function() {
+      if (b.needs_animation_frame) {
         await b.render();
-        interval = setInterval(async function() {
-          if (b.needs_animation_frame) {
-            await b.render();
-            b.needs_animation_frame = false;
-          }
-          await b.composite_raster_and_draw();
-          await b.schedule_animation_frame();
-        }, 20);
-    });
-    widget.next();
-  });
+        b.needs_animation_frame = false;
+      }
+      await b.composite_raster_and_draw();
+      await b.schedule_animation_frame();
+    }, 20);
 });
+widget.next();
 </script>
