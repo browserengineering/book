@@ -87,7 +87,7 @@ window.addEventListener("DOMContentLoaded", setup_close);
 
 function quiz_telemetry(event_type, event_payload) {
   if (event_type === "answers") {
-    fetch("http://127.0.0.1:4000/api/quiz_telemetry", {
+    fetch("/api/quiz_telemetry", {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

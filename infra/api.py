@@ -11,6 +11,8 @@ import hashlib
 
 NOPASSWORD = False
 
+QUIZ_TELEMETRY_FILE = 'quiz_telemetry.txt'
+
 bottle.TEMPLATE_PATH.append(".")
 
 class Data:
@@ -141,7 +143,7 @@ def comment():
 def quiz_telemetry():
     data = json.load(bottle.request.body)
     # Just dump the quiz telemetry into a file for now
-    with open('quiz_telemetry.txt', 'a') as fh:
+    with open(QUIZ_TELEMETRY_FILE, 'a') as fh:
         fh.write(json.dumps(data) + "\n")
 
 def name_key(name):
