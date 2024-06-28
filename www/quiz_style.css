@@ -326,7 +326,14 @@
   cursor: pointer !important;
 }
 .mdbook-quiz .multiple-choice .response fieldset .choice:hover {
-  filter: brightness(120%);
+  background: var(--mdbook-response-hover-bg);
+  color: var(--mdbook-response-hover-fg);
+  border-radius: 4px;
+}
+.mdbook-quiz .multiple-choice .response fieldset .choice:has(input[type="radio"]:checked) {
+  background: var(--mdbook-response-checked-bg);
+  color: var(--mdbook-response-hover-fg);
+  border-radius: 4px;
 }
 .mdbook-quiz .multiple-choice .response fieldset .choice:not(:last-child) {
   margin-bottom: 0.25em;
