@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import bottle
+from bottle import response
 import json
 import os, sys
 import time
@@ -9,6 +10,8 @@ import html
 import hashlib
 
 NOPASSWORD = False
+
+QUIZ_TELEMETRY_FILE = 'quiz_telemetry.txt'
 
 bottle.TEMPLATE_PATH.append(".")
 
@@ -121,6 +124,13 @@ def comment():
     data = json.load(bottle.request.body)
     DATA.chapter_comment(**data)
 
+@bottle.post("/api/quiz_telemetry", method=['OPTIONS', 'POST'])
+def quiz_telemetry():
+    data = json.load(bottle.request.body)
+    # Just dump the quiz telemetry into a file for now
+    with open(QUIZ_TELEMETRY_FILE, 'a') as fh:
+        fh.write(json.dumps(data) + "\n")
+
 def name_key(name):
     parts = name.split()
     if name == "some now-deleted users":
@@ -132,7 +142,7 @@ def name_key(name):
     else:
         # Very low-effort attempt at "last name"
         return (parts[-1].casefold(), [n.casefold() for n in parts[:-1]])
-    
+
 @bottle.get("/thanks")
 @bottle.view("thanks.view")
 def thanks():
@@ -187,7 +197,7 @@ def thanks():
         "YongWoo Jeon",
         "Jess"
     ]
-    
+
     contributor_names = sorted((feedback_names | gh_names) - author_names, key=name_key) + \
         ["some now-deleted users"]
 
@@ -247,7 +257,7 @@ def feedback():
             saved.setdefault(page, []).append(prettify(o))
         elif o['status'] == "starred":
             starred.append(prettify(o))
-    
+
     return { 'new': new, 'saved': saved, 'starred': starred }
 
 @bottle.route("/feedback.rss")
