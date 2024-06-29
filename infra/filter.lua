@@ -16,6 +16,7 @@ function LoadMeta(meta)
   meta.rel = config.rel
   meta.base = config.base
   meta.draft = config.draft
+  meta.show_quiz = config.show_quiz
   meta.colorlinks = true
 
   if meta.main then
@@ -85,6 +86,16 @@ function Div(el)
      else
         return {}
      end
+  end
+
+  -- Exclude quiz assets and other things
+  if el.classes:includes("quiz") and not config.show_quiz then
+     return {}
+  end
+
+  -- Multiple-choice quiz processing
+  if el.classes[1] == 'mc-quiz' and config.show_quiz then
+     return process_quiz(el)
   end
 
   if not config.show_todos and el.classes[1] == "todo" then
@@ -158,6 +169,75 @@ function latex_wrap(el, env, args)
          el,
          pandoc.RawBlock("latex", "\\end{" .. env .. "}"),
    }
+end
+
+-- Quiz handling routine
+function process_quiz(el)
+   local questions = split_list(el.content, pandoc.HorizontalRule())
+   local parsed_questions = {}
+   for i, e in ipairs(questions) do
+      table.insert(parsed_questions, process_mc_question(pandoc.Div(e)))
+   end
+
+   local encoded = pandoc.json.encode({ questions = parsed_questions })
+
+   return pandoc.Div(pandoc.Para(pandoc.Str('')),
+                     pandoc.Attr('', {"quiz-placeholder"},
+                                 {{"data-quiz-questions", encoded},
+                                  {"data-quiz-name", pandoc.utils.stringify(el.identifier)}}))
+end
+
+function process_mc_question(el)
+   -- expecting Div [ Para ..., BulletList [[Plain ...], ...], Para ...]
+   -- check that everything looks good
+   if el.content[1].tag ~= 'Para' then
+      print('Expected paragraph at beginning of mc quiz block.')
+      return
+   end
+   if el.content[2].tag ~= 'BulletList' then
+      print('Expected bulleted list at middle of mc quiz block.')
+      return
+   end
+
+   local prompt = pandoc.utils.stringify(el.content[1])
+   local answer = pandoc.utils.stringify(el.content[2].content[1])
+   local distractors = {}
+   for i, v in ipairs({table.unpack(el.content[2].content, 2)}) do
+      distractors[i] = pandoc.utils.stringify(v)
+   end
+
+   local context = ''
+   if el.content[3] and el.content[3].tag == 'Para' then
+      context = pandoc.utils.stringify(el.content[3].content)
+   end
+
+   local q = { type = "MultipleChoice",
+               prompt = { prompt = prompt,
+                          distractors = distractors },
+               answer = { answer = answer },
+               context = context }
+
+   return q
+end
+
+-- Generic function to split list
+function split_list(list, split_on)
+    local result = {}
+    local sublist = {}
+    for i, el in ipairs(list) do
+        if el == split_on then
+            if #sublist > 0 then
+                table.insert(result, sublist)
+                sublist = {}
+            end
+        else
+            table.insert(sublist, el)
+        end
+    end
+    if #sublist > 0 then
+        table.insert(result, sublist)
+    end
+    return result
 end
 
 -- Pass 3: Collect and insert a table of contents
