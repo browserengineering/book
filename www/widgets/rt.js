@@ -564,8 +564,8 @@ function patch_canvas(canvas) {
         canvas.drawText(text, x, y, paint.getPaint(), font.getFont())       
     };
 
-    canvas.saveLayer = (paint) => {
-        oldSaveLayer.call(canvas, paint.getPaint());
+    canvas.saveLayer = (rect, paint) => {
+        oldSaveLayer.call(canvas, (paint ?? rect).getPaint());
     };
 
     canvas.clipRect = (rect) => {

@@ -36,6 +36,7 @@ from lab9 import EVENT_DISPATCH_JS
 from lab10 import COOKIE_JAR, URL
 from lab11 import FONTS, NAMED_COLORS, get_font, linespace, paint_tree
 from lab11 import parse_color, parse_blend_mode
+from lab11 import DocumentLayout, LineLayout
 from lab12 import MeasureTime, SingleThreadedTaskRunner, TaskRunner, Chrome
 from lab12 import Task, REFRESH_RATE_SEC
 from lab13 import JSContext, diff_styles, add_parent_pointers, SETTIMEOUT_JS, \
@@ -47,7 +48,7 @@ from lab13 import CompositedLayer, paint_visual_effects
 from lab13 import PaintCommand, DrawText, DrawCompositedLayer, DrawOutline, \
     DrawLine, DrawRRect, DrawRect
 from lab13 import VisualEffect, Blend, Transform, Tab, Browser, CSSParser
-from lab13 import BlockLayout, DocumentLayout, TextLayout, LineLayout, InputLayout
+from lab13 import BlockLayout, TextLayout, InputLayout
 
 @wbetools.patch(Element)
 class Element:

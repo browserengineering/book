@@ -218,10 +218,5 @@ def inline(tree):
     tree3 = ResolvePatches().double_visit(tree2)
     return ast.fix_missing_locations(tree3)
 
-def resolve_patches_and_return_them(tree):
-    r = ResolvePatches()
-    tree2 = r.double_visit(tree)
-    return (ast.fix_missing_locations(tree2), r.patches, r.patchables)
-
 def unparse(tree, explain=False):
     return AST39.unparse(tree, explain=explain)
