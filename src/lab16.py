@@ -1249,12 +1249,12 @@ class Frame:
         self.set_needs_render()
 
     def click(self, x, y):
+        self.focus_element(None)
         y += self.scroll
         loc_rect = skia.Rect.MakeXYWH(x, y, 1, 1)
         objs = [obj for obj in tree_to_list(self.document, [])
                 if absolute_bounds_for_obj(obj).intersects(
                     loc_rect)]
-        self.focus_element(None)
         if not objs: return
         elt = objs[-1].node
         if elt and self.js.dispatch_event(
@@ -1263,8 +1263,11 @@ class Frame:
             if isinstance(elt, Text):
                 pass
             elif elt.tag == "iframe":
-                new_x = x - elt.layout_object.x.get()
-                new_y = y - elt.layout_object.y.get()
+                abs_bounds = \
+                    absolute_bounds_for_obj(elt.layout_object)
+                border = dpx(1, elt.layout_object.zoom.get())
+                new_x = x - abs_bounds.left() - border
+                new_y = y - abs_bounds.top() - border
                 elt.frame.click(new_x, new_y)
                 return
             elif is_focusable(elt):
