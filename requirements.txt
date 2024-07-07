@@ -20,7 +20,7 @@ click==8.1.3
 requests==2.32.0
 urllib3==2.2.2
 idna==3.7
-certifi==2023.7.22
+certifi==2024.7.4
 
 # PlaySound is used in Chapters 14+ for reading accessibility text
 # PyObjC is useful on macOS systems for accellerating playsound
