@@ -4,13 +4,7 @@
   --mdbook-bg: white;
   --mdbook-light-border-color: #ccc;
   --mdbook-heavy-border-color: #aaa;
-  --mdbook-button-bg: #d8dee9;
-  --mdbook-button-fg: #2e3440;
-  --mdbook-button-border-color: #d8dee9;
   --mdbook-prompt-bg: #373B3B;
-  --mdbook-response-hover-bg: #282A2A;
-  --mdbook-response-hover-fg: #f8fafa;
-  --mdbook-response-checked-bg: #373b3b;
   --mdbook-error-color: #e16969;
   --mdbook-highlight: #ffffc1;
   --mdbook-correct: green;
@@ -75,16 +69,6 @@
 }
 .mdbook-quiz h4 {
   margin: 0 0 0.5em;
-}
-.mdbook-quiz button, .mdbook-quiz input[type=submit] {
-  font-family: inherit;
-  font-size: 0.8em;
-  cursor: pointer;
-  background-color: var(--mdbook-button-bg);
-  color: var(--mdbook-button-fg);
-  border: 1px solid var(--mdbook-button-border-color);
-  border-radius: 4px;
-  padding: 0.1em 0.5em;
 }
 .mdbook-quiz form input.error,
 .mdbook-quiz form textarea.error {
@@ -159,15 +143,8 @@
 }
 .mdbook-quiz .prompt {
   position: relative;
-  padding: 1em;
-}
-@media (max-width: 799px) {
-  .mdbook-quiz .prompt {
-    padding: 0.75em;
-  }
 }
 .mdbook-quiz .prompt {
-  background: var(--mdbook-prompt-bg);
   margin-bottom: 1em;
   border-radius: 4px;
 }
@@ -275,7 +252,6 @@
   margin-block-end: 0.5em;
 }
 .mdbook-quiz .answer .answer-row > div {
-  background: var(--mdbook-response-hover-bg);
   border-radius: 4px;
   padding: 0.5rem 1rem;
   width: 50%;
@@ -334,10 +310,6 @@
   text-align: center;
   cursor: pointer;
 }
-.mdbook-quiz .info:hover {
-  color: var(--mdbook-fg);
-  border-color: var(--mdbook-fg);
-}
 .mdbook-quiz .info::before {
   content: "?";
   vertical-align: middle;
@@ -350,16 +322,6 @@
 }
 .mdbook-quiz .multiple-choice .response fieldset .choice * {
   cursor: pointer !important;
-}
-.mdbook-quiz .multiple-choice .response fieldset .choice:hover {
-  background: var(--mdbook-response-hover-bg);
-  color: var(--mdbook-response-hover-fg);
-  border-radius: 4px;
-}
-.mdbook-quiz .multiple-choice .response fieldset .choice:has(input[type="radio"]:checked) {
-  background: var(--mdbook-response-checked-bg);
-  color: var(--mdbook-response-hover-fg);
-  border-radius: 4px;
 }
 .mdbook-quiz .multiple-choice .response fieldset .choice:not(:last-child) {
   margin-bottom: 0.25em;
@@ -411,9 +373,6 @@
   --mdbook-bg: var(--bg);
   --mdbook-light-border-color: var(--theme-popup-border);
   --mdbook-heavy-border-color: var(--searchresults-border-color);
-  --mdbook-button-bg: var(--searchbar-bg);
-  --mdbook-button-fg: var(--searchbar-fg);
-  --mdbook-button-border-color: var(--searchresults-border-color);
   --mdbook-prompt-bg: var(--quote-bg);
   --mdbook-icon-color: var(--icons);
   --mdbook-multipart-bg: var(--theme-popup-bg);
