@@ -155,7 +155,7 @@ body.main { padding: 0 4ex; }
         font-size: 110%; vertical-align: reset; text-align: left;
     }
     div .note { margin-right: calc(-28ex - 1rem - 2px); }
-    .note-container { font-size: 60%; vertical-align: super; cursor: auto; white-space: pre-line; }
+    .note-container { font-size: 60%; vertical-align: super; cursor: auto; }
     .note-container.open:before { content: " [" counter(fn); color: #a86; }
     .note:before { content: counter(fn) ". "; }
 }
