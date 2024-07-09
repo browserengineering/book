@@ -145,7 +145,6 @@
 }
 .mdbook-quiz .prompt {
   margin-bottom: 1em;
-  border-radius: 4px;
 }
 .mdbook-quiz .prompt pre {
   overflow-x: auto;
