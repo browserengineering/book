@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 import bottle
-from bottle import response
 import json
 import os, sys
 import time
