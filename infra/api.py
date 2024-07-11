@@ -10,7 +10,7 @@ import hashlib
 
 NOPASSWORD = False
 
-QUIZ_TELEMETRY_FILE = 'quiz_telemetry.txt'
+QUIZ_TELEMETRY_FILE = 'quiz_telemetry.json'
 
 bottle.TEMPLATE_PATH.append(".")
 
