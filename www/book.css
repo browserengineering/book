@@ -306,15 +306,12 @@ form .checkoff, form button[type=submit] { margin-top: 1em; }
 .wide-ad h1:hover::after { content: none; }
 .wide-ad figure { margin: 0; }
 .wide-ad figure figcaption { display: none; }
-.wide-ad figure img { height: 9em; max-width: none; display: block; }
+.wide-ad figure img { height: 7em; max-width: none; display: block; }
 .wide-ad .description { display: flex; flex-direction: column; gap: 1em; }
 .wide-ad .description * { margin: 0; }
 @media only screen and (max-width: 520px) {
   .wide-ad { padding: .5em; gap: .5em; }
 }
-
-a.go-link { float: right; }
-a.go-link:after { content: " »"; }
 
 aside.ad .wide { display: none; }
 aside.ad .narrow {
