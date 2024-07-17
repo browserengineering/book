@@ -301,6 +301,32 @@ form .checkoff, form button[type=submit] { margin-top: 1em; }
 #signup-close:active { color: red; }
 #signup-close::before { font-size: 24px; content: "❌︎"; }
 
+.wide-ad { display: flex; gap: 1em; padding: 1em; border: 2px solid #59b6ce; }
+.wide-ad figure { margin: 0; }
+.wide-ad figure figcaption { display: none; }
+.wide-ad figure img { height: 9em; max-width: none; display: block; }
+.wide-ad .description { display: flex; flex-direction: column; gap: 1em; }
+.wide-ad .description * { margin: 0; }
+
+a.go-link { float: right; }
+a.go-link:after { content: " »"; }
+
+aside.ad {
+    float: right; font-size: 66%; width: 25ex; clear: right; margin: 0 -28ex 1em 0;
+    position: relative;
+}
+aside.ad img { width: 100%; display: block; }
+aside.ad a {
+    position: absolute; bottom: .5ex; height: 100%; width: 100%;
+    background: linear-gradient(to bottom, rgba(0,0,0,.1) 0%, black 100%);
+    color: white; font-size: 120%; text-align: center; display: flex;
+    flex-direction: column-reverse; padding: 1ex; box-sizing: border-box;
+    opacity: 0; text-decoration: none; 
+}
+aside.ad a:hover { opacity: 1; }
+aside.ad a:visited { color: white; }
+aside.ad a:active { color: #59b6ce; }
+
 .outline { font-size: 60%; font-family: monospace; column-width: 30ch; }
 .outline code { break-inside: avoid; display: block; }
 .outline > code { margin: .33em 0; }

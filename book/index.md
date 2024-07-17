@@ -14,8 +14,20 @@ chapters make inaccurate claims, fail to match published chapters, or
 misbehave. Read them at your own risk.
 :::
 
-::: {.signup}
+::::: {.wide-ad}
+![The cover for Web Browser Engineering, from Oxford University Press](im/cover.jpg)
+
+::: {.description}
+# Pre-order Web Browser Engineering
+
+_Web Browser Engineering_ is will be published by Oxford University
+Press before the end of the year. **Pre-order now** to get it as soon as
+possible.
+
+[Preorder now](https://global.oup.com/academic/product/web-browser-engineering-9780198913856?cc=gb){.go-link}
 :::
+
+:::::
 
 Follow this book's [blog](https://browserbook.substack.com/archive) or
 [Twitter](https://twitter.com/browserbook) for updates. You can also
