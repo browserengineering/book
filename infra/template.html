@@ -65,10 +65,18 @@ $if(date)$
 </nav>
 $endif$
 
+$if(main)$$else$
 <aside class="ad">
-  <img src="im/cover.jpg" alt="The cover design for Web Browser Engineering, published by Oxford University Press. Click the cover to pre-order.">
-  <a class="preorder" href="https://global.oup.com/academic/product/web-browser-engineering-9780198913856?cc=gb">Preorder »</a>
+  <div class="wide">
+    <img src="im/cover.jpg" alt="The cover design for Web Browser Engineering, published by Oxford University Press. Click the cover to pre-order.">
+    <a class="preorder" href="https://global.oup.com/academic/product/web-browser-engineering-9780198913856?cc=gb">Preorder »</a>
+  </div>
+  <p class="narrow">
+    <span><i>Web Browser Engineering</i> will be out soon.</span>
+    <a href="https://global.oup.com/academic/product/web-browser-engineering-9780198913856?cc=gb">Pre-order now »</a>
+  </p>
 </aside>
+$endif$
 
 $if(table-of-contents)$
 <nav id="toc">

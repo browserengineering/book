@@ -30,7 +30,7 @@ header, h1, strong {
     color:black;
 }
 }
-h1 { font-size: 105%; margin: 1.5em 0 0; }
+h1 { font-size: 105%; margin: 1.5em 0 0; text-align: left; }
 
 /* Auto-number section headings, but not on the main page. */
 /* Also, on hover over section headings, show a "#" to indicate permalinks. */
@@ -41,7 +41,8 @@ h1:not(.title):hover { cursor: pointer; }
 h1:not(.title):hover::after { content: " #"; color: #888; }
 
 header { text-align: center; margin: 3em 0 1em; }
-header h1 { font-size: 200%; font-weight: bold; }
+header h1 { font-size: 200%; font-weight: bold; text-align: center; }
+.main header h1 { font-size: 200%; } /* override another style ugh */
 .main header * { margin: 0; }
 header .author { font-style: italic; }
 header .author:before { content: "By "; }
@@ -123,7 +124,7 @@ div#toc:before { padding: .5em 0; border-radius: 10px 10px 0 0; }
 
 nav#toc {
     float: right; width: 25ex; clear: right; margin: 0 -28ex 1em 0;
-    font-size: 60%; border-bottom: 2px solid #eee;
+    font-size: 66%; border-bottom: 2px solid #eee;
 }
 nav#toc:before { padding: 1ex; }
 nav#toc ul { list-style: none; padding: 0; }
@@ -301,31 +302,47 @@ form .checkoff, form button[type=submit] { margin-top: 1em; }
 #signup-close:active { color: red; }
 #signup-close::before { font-size: 24px; content: "❌︎"; }
 
-.wide-ad { display: flex; gap: 1em; padding: 1em; border: 2px solid #59b6ce; }
+.wide-ad { display: flex; gap: 1em; padding: 1em; border: 2px solid #59b6ce; align-items: top; }
+.wide-ad h1:hover::after { content: none; }
 .wide-ad figure { margin: 0; }
 .wide-ad figure figcaption { display: none; }
 .wide-ad figure img { height: 9em; max-width: none; display: block; }
 .wide-ad .description { display: flex; flex-direction: column; gap: 1em; }
 .wide-ad .description * { margin: 0; }
+@media only screen and (max-width: 520px) {
+  .wide-ad { padding: .5em; gap: .5em; }
+}
 
 a.go-link { float: right; }
 a.go-link:after { content: " »"; }
 
-aside.ad {
-    float: right; font-size: 66%; width: 25ex; clear: right; margin: 0 -28ex 1em 0;
-    position: relative;
+aside.ad .wide { display: none; }
+aside.ad .narrow {
+    border: 2px solid #59b6ce; background: #ecf5f8; text-align: left;
+    display: flex; gap: .5ex; padding: .5ex; justify-content: space-between;
 }
-aside.ad img { width: 100%; display: block; }
-aside.ad a {
-    position: absolute; bottom: .5ex; height: 100%; width: 100%;
-    background: linear-gradient(to bottom, rgba(0,0,0,.1) 0%, black 100%);
-    color: white; font-size: 120%; text-align: center; display: flex;
-    flex-direction: column-reverse; padding: 1ex; box-sizing: border-box;
-    opacity: 0; text-decoration: none; 
+aside.ad .narrow a { white-space: pre; }
+@media only screen and (max-width: 520px) {
+  aside.ad .narrow { display: block}
 }
-aside.ad a:hover { opacity: 1; }
-aside.ad a:visited { color: white; }
-aside.ad a:active { color: #59b6ce; }
+@media only screen and (min-width: 1150px) {
+    aside.ad .narrow { display: none; }
+    aside.ad .wide {
+        float: right; font-size: 66%; width: 25ex; clear: right; margin: 0 -28ex 1em 0;
+        position: relative; display: block;
+    }
+    aside.ad img { width: 100%; display: block; }
+    aside.ad a {
+        position: absolute; bottom: .5ex; height: 100%; width: 100%;
+        background: linear-gradient(to bottom, rgba(0,0,0,.1) 0%, black 100%);
+        color: white; font-size: 120%; text-align: center; display: flex;
+        flex-direction: column-reverse; padding: 1ex; box-sizing: border-box;
+        opacity: 0; text-decoration: none; 
+    }
+    aside.ad a:hover { opacity: 1; }
+    aside.ad a:visited { color: white; }
+    aside.ad a:active { color: #59b6ce; }
+}
 
 .outline { font-size: 60%; font-family: monospace; column-width: 30ch; }
 .outline code { break-inside: avoid; display: block; }
@@ -339,6 +356,7 @@ aside.ad a:active { color: #59b6ce; }
     .note-container, .note-container:before, .note-container:after { color: navy; }
     pre { font-size: 10px; }
     #toc a { text-decoration: none; color: black; }
+    aside.ad { display: none; }
 }
 
 .highlight-region { font-size: 24px; line-height: 1.5; padding: 1em; }

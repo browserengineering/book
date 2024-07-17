@@ -18,9 +18,9 @@ misbehave. Read them at your own risk.
 ![The cover for Web Browser Engineering, from Oxford University Press](im/cover.jpg)
 
 ::: {.description}
-# Pre-order Web Browser Engineering
+# Pre-order _Web Browser Engineering_
 
-_Web Browser Engineering_ is will be published by Oxford University
+_Web Browser Engineering_ will be published by Oxford University
 Press before the end of the year. **Pre-order now** to get it as soon as
 possible.
 
