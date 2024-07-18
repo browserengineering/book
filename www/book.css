@@ -329,7 +329,7 @@ aside.ad .narrow a { white-space: pre; }
     aside.ad .narrow { display: none; }
     aside.ad .wide {
         float: right; font-size: 66%; width: 25ex; clear: right; margin: 0 -28ex 1em 0;
-        position: relative; display: block;
+        position: relative; display: block; border: 2px solid #59b6ce; box-sizing: border-box;
     }
     aside.ad img { width: 100%; display: block; }
     aside.ad a {
