@@ -22,7 +22,7 @@ misbehave. Read them at your own risk.
 
 _Web Browser Engineering_ will be published by Oxford University
 Press before the end of the year. To get it as soon as it's out,
-[pre-order now!](https://global.oup.com/academic/product/web-browser-engineering-9780198913856?cc=gb)
+[pre-order now!](https://global.oup.com/academic/product/web-browser-engineering-9780198913863)
 :::
 
 :::::
