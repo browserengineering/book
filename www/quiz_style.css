@@ -151,32 +151,7 @@
   overflow-y: hidden;
 }
 .mdbook-quiz .prompt .bug-report {
-  position: absolute;
-  max-width: 70%;
-  right: 0.5em;
-  top: 0.5em;
-  text-align: right;
-}
-.mdbook-quiz .prompt .bug-report button {
-  filter: grayscale(100%);
-  border: 0;
-  background: none;
-  color: var(--mdbook-fg);
-}
-.mdbook-quiz .prompt .bug-report .reporter {
-  background: var(--mdbook-bg);
-  border: 2px solid var(--mdbook-light-border-color);
-  padding: 0.5em;
-  text-align: left;
-  border-radius: 4px;
-  box-shadow: 1px 1px 4px var(--mdbook-light-border-color);
-  position: relative;
-  z-index: 1000;
-}
-.mdbook-quiz .prompt .bug-report .reporter .close {
-  position: absolute;
-  top: 5px;
-  right: 5px;
+  display: none;
 }
 .mdbook-quiz .response fieldset {
   border: none;
@@ -317,6 +292,9 @@
   display: flex;
   gap: 1em;
   padding: 0.5em;
+}
+.mdbook-quiz .multiple-choice .response fieldset .choice * {
+  cursor: pointer !important;
 }
 .mdbook-quiz .multiple-choice .response fieldset .choice * {
   cursor: pointer !important;
