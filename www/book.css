@@ -150,6 +150,7 @@ body { counter-reset: fn; }
 body.main { padding: 0 4ex; }
 @media only screen and (min-width: 1150px) {
     body { width: 65ex; padding: 0 17ex 0 0; }
+    body.main { padding: 0; }
     .note {
         float: right; width: 25ex; clear: right; margin: 0 -28ex 1em 0;
         font-size: 110%; vertical-align: reset; text-align: left;
