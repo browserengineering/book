@@ -318,6 +318,9 @@ aside.ad .narrow {
     border: 2px solid #59b6ce; background: #ecf5f8; text-align: left;
     display: flex; gap: .5ex; padding: .5ex; justify-content: space-between;
 }
+@media (prefers-color-scheme: dark) {
+    aside.ad .narrow { background: #132832; }
+}
 aside.ad .narrow a { white-space: pre; }
 @media only screen and (max-width: 520px) {
   aside.ad .narrow { display: block}
