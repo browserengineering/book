@@ -142,7 +142,7 @@ tree][gecko-tree].
 [webkit-tree]: https://webkit.org/blog/114/webcore-rendering-i-the-basics/
 [gecko-tree]: https://wiki.mozilla.org/Gecko:Key_Gecko_Structures_And_Invariants
 
-::: {.mc-quiz #layout-tree-quiz}
+::: {.web-only .mc-quiz #layout-tree-quiz}
 The layout tree has a 1:1 correspondence with the HTML tree.
 
  - False. Some HTML elements have *no* corresponding layout elements while others have *many* layout elements.
