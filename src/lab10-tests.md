@@ -117,7 +117,7 @@ Now let's see that cross-domain requests fail:
     >>> url3 = "http://other.site/"
     >>> test.socket.respond(url3, b"HTTP/1.0 200 OK\r\n\r\nPrivate")
     >>> tab.js.run("test", xhrjs(url3)) #doctest: +ELLIPSIS
-    Script test crashed EvalError: Error while calling Python Function: Exception('Cross-origin XHR request not allowed')
+    Script test crashed EvalError: Error while calling Python Function...: Exception('Cross-origin XHR request not allowed')
         ...
 
 It's not important whether the request is _ever_ sent; the CORS
@@ -271,5 +271,5 @@ JavaScript!
     ... x = new XMLHttpRequest()
     ... x.open('GET', 'http://weird.test/xhr', false);
     ... x.send();""") #doctest: +ELLIPSIS
-    Script test crashed EvalError: Error while calling Python Function: Exception('Cross-origin XHR blocked by CSP')
+    Script test crashed EvalError: Error while calling Python Function...: Exception('Cross-origin XHR blocked by CSP')
       ...
