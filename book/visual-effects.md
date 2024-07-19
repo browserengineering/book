@@ -931,7 +931,7 @@ Figure 2: Example of black semi-transparent text blending into an orange backgro
 ::: {.print-only}
 
 ![Figure 2: Example of black semi-transparent text blending into an orange background.
-(See [the website][figure2-website] for a full color image.)](examples/example11-opacity-blend.png)
+(See [the website][figure2-website] for a full-color image.)](examples/example11-opacity-blend.png)
 :::
 
 [figure2-website]: https://browser.engineering/visual-effects.html
@@ -985,7 +985,7 @@ Figure 3: Example of black text on an orange background, then blended semi-trans
 
 ::: {.print-only}
 
-![Figure 3: Example of black text on an orange background, then blended semi-transparently into its ancestor. (See [the website][figure2-website] for a full color image.)](examples/example11-text-blending.png)
+![Figure 3: Example of black text on an orange background, then blended semi-transparently into its ancestor. (See [the website][figure2-website] for a full-color image.)](examples/example11-text-blending.png)
 
 :::    
 
