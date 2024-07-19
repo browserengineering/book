@@ -171,7 +171,7 @@ class Tab:
             try:
                 # ...
             except Exception as e:
-                print("Image", image_img.attributes.get("src", ""),
+                print("Image", img.attributes.get("src", ""),
                     "crashed", e)
                 img.image = BROKEN_IMAGE
 ```
