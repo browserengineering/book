@@ -1173,7 +1173,7 @@ You should see something like Figure 1.
 :::
 
 ::: {.center}
-![Figure 1: Tracing for the timer script in single-threaded mode](examples/example12-trace-count-single-threaded.png)
+![Figure 1: Tracing for the timer script in single-threaded mode.](examples/example12-trace-count-single-threaded.png)
 :::
 
 In Chrome tracing, you can choose the cursor icon from the toolbar and
@@ -1185,7 +1185,7 @@ view in Figure 2. That clearly blows through our 33 ms budget. So, what can
 we do?
 
 ::: {.center}
-![Figure 2: Tracing for render and raster of one frame of the timer script](examples/example12-trace-count-render-raster.png)
+![Figure 2: Tracing for render and raster of one frame of the timer script.](examples/example12-trace-count-render-raster.png)
 :::
 
 ::: {.further}
@@ -1717,7 +1717,7 @@ into one of the tracing tools, you should see something like Figure 3.
 :::
 
 ::: {.center}
-![Figure 3: Tracing for the timer script in two-threads mode](examples/example12-trace-count-two-threads.png)
+![Figure 3: Tracing for the timer script in two-threads mode.](examples/example12-trace-count-two-threads.png)
 :::
 
 You can see how the render and raster tasks now happen on different
@@ -1957,7 +1957,7 @@ time as main-thread work).
 :::
 
 ::: {.center}
-![Figure 4: Trace output of threaded scrolling on the counting demo](examples/example12-count-with-scroll.png)
+![Figure 4: Trace output of threaded scrolling on the counting demo.](examples/example12-count-with-scroll.png)
 :::
 
 As you've seen, moving tasks to the

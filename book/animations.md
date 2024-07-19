@@ -1187,7 +1187,7 @@ The whole rendering cycle between the browser and main threads is summarized
 in Figure 2.
 
 ::: {.center}
-![Figure 2: The rendering cycle between the browser and main threads](im/multi-threaded-rendering-loop.jpg)
+![Figure 2: The rendering cycle between the browser and main threads.](im/multi-threaded-rendering-loop.jpg)
 :::
 
 However, it's not as simple as just setting `needs_render` any time an
@@ -1793,7 +1793,7 @@ The opacity transition example's composited layers should look like Figure 5
 :::
 
 ::: {.center}
-![Figure 5: Example of composited layers for an opacity transition](examples/example13-opacity-layers.png)
+![Figure 5: Example of composited layers for an opacity transition.](examples/example13-opacity-layers.png)
 :::
 
 [flag]: https://docs.python.org/3/library/argparse.html
@@ -1853,7 +1853,7 @@ Figure 6: Example of overlap that can lead to compositing draw errors.
 :::
 
 ::: {.print-only .center}
-![Figure 6: Example of overlap that can lead to compositing draw errors](examples/example13-overlap.png)
+![Figure 6: Example of overlap that can lead to compositing draw errors.](examples/example13-overlap.png)
 :::
 
 Now suppose we want to animate opacity on the blue square, but not the
@@ -2144,7 +2144,7 @@ www/examples/example13-transform-overlap.html
 It should look like Figure 7.
 
 ::: {.center}
-![Figure 7: Example of transformed overlap, clipping and blending](examples/example13-transform-overlap.png)
+![Figure 7: Example of transformed overlap, clipping and blending.](examples/example13-transform-overlap.png)
 :::
 
 Notice how this example exhibits *two* interesting features we had
@@ -2154,14 +2154,14 @@ to get right when implementing compositing:
 if this code were missing it would incorrectly render like Figure 8.
 
 ::: {.center}
-![Figure 8: Wrong rendering because overlap testing is missing](examples/example13-transform-overlap-wrong1.png)
+![Figure 8: Wrong rendering because overlap testing is missing.](examples/example13-transform-overlap-wrong1.png)
 :::
 
 * Reusing cloned effects (without it, blending and clipping would be wrong);
 if this code were missing it would incorrectly render like Figure 9.
 
 ::: {.center}
-![Figure 9: Wrong rendering because of incorrect blending](examples/example13-transform-overlap-wrong2.png)
+![Figure 9: Wrong rendering because of incorrect blending.](examples/example13-transform-overlap-wrong2.png)
 :::
 
 There's one more situation worth thinking about, though. Suppose we have a huge composited layer, containing a lot of text, except that only a small
