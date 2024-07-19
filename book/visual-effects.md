@@ -930,9 +930,11 @@ Figure 2: Example of black semi-transparent text blending into an orange backgro
 
 ::: {.print-only}
 
-![Figure 2: Example of black semi-transparent text blending into an orange background](examples/example11-opacity-blend.png)
-
+![Figure 2: Example of black semi-transparent text blending into an orange background.
+(See [the website][figure2-website] for a full-color image.)](examples/example11-opacity-blend.png)
 :::
+
+[figure2-website]: https://browser.engineering/visual-effects.html
 
 Note that the text is a kind of dark orange, because its color is
 a mix of 50% black and 50% orange.
@@ -983,7 +985,7 @@ Figure 3: Example of black text on an orange background, then blended semi-trans
 
 ::: {.print-only}
 
-![Figure 3: Example of black text on an orange background, then blended semi-transparently into its ancestor](examples/example11-text-blending.png)
+![Figure 3: Example of black text on an orange background, then blended semi-transparently into its ancestor. (See [the website][figure2-website] for a full-color image.)](examples/example11-text-blending.png)
 
 :::    
 
@@ -1047,7 +1049,7 @@ contents need to be blended together into the parent.[^stacking-context-disc]
     
 ::: {.center}
 ![Figure 4: A rendered web page is actually the result of stacking and blending
-a series of different surfaces](im/visual-effects-surfaces.jpg)
+a series of different surfaces.](im/visual-effects-surfaces.jpg)
 :::
 
 [^stacking-context-disc]: This tree of surfaces is an implementation strategy
@@ -1332,11 +1334,11 @@ Parent
 :::
 
 ::: {.web-only}
-Figure 5: Example of the `difference` value for `mix-blend-mode` with a blue child and orange parent, resulting in pink
+Figure 5: Example of the `difference` value for `mix-blend-mode` with a blue child and orange parent, resulting in pink.
 :::
 
 ::: {.print-only}
-![Figure 5: Example of the `difference` value for `mix-blend-mode` with a blue child and orange parent, resulting in pink](examples/example11-difference-blend-mode.png)
+![Figure 5: Example of the `difference` value for `mix-blend-mode` with a blue child and orange parent, resulting in pink.](examples/example11-difference-blend-mode.png)
 :::
 
 Here, when blue overlaps with orange, we see pink: blue has (red,
@@ -1493,7 +1495,7 @@ an example.] Consider this example:
 [longword]: examples/example11-longword.html
 
 ::: {.center}
-![Figure 6: An example of overflowing text not being clipped by rounded corners \label{longword-example}](examples/example11-longword.png)
+![Figure 6: An example of overflowing text not being clipped by rounded corners. \label{longword-example}](examples/example11-longword.png)
 :::
 
 ``` {.html .example}
@@ -1520,7 +1522,7 @@ Figure 7: An example of overflow from text children of a div with
 
 ::: {.print-only}
 ![Figure 7: An example of overflow from text children of a div with
-`overflow:clip` and `border-radius` being clipped out](examples/example11-overflow-clip.png)
+`overflow:clip` and `border-radius` being clipped out.](examples/example11-overflow-clip.png)
 :::
 
 Observe that the letters near the corner are cut off to maintain a sharp rounded

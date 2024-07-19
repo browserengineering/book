@@ -1338,7 +1338,7 @@ it on the [focus example](examples/example14-focus.html). Figure 5 shows what
 it looks like after I pressed tab to focus the "this is a link" element.
 
 ::: {.center}
-![Figure 5: Example of focus outline](examples/example14-focus-outline.png)
+![Figure 5: Example of focus outline.](examples/example14-focus-outline.png)
 :::
 
 But ideally, the focus indicator should be customizable, so that the web page
