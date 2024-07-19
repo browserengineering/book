@@ -1130,7 +1130,8 @@ class Frame:
                 assert img.image, \
                     "Failed to recognize image format for " + str(image_url)
             except Exception as e:
-                print("Image", image_url, "crashed", e)
+                print("Image", img.attributes.get("src", ""),
+                    "crashed", e)
                 img.image = BROKEN_IMAGE
 
         iframes = [node
