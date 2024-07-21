@@ -23375,7 +23375,8 @@ one}):
             \ControlFlowTok{try}\NormalTok{:}
                 \CommentTok{\# ...}
             \ControlFlowTok{except} \PreprocessorTok{Exception} \ImportTok{as}\NormalTok{ e:}
-                \BuiltInTok{print}\NormalTok{(}\StringTok{"Image"}\NormalTok{, image\_url, }\StringTok{"crashed"}\NormalTok{, e)}
+                \BuiltInTok{print}\NormalTok{(}\StringTok{"Image"}\NormalTok{, img.attributes.get(}\StringTok{"src"}\NormalTok{, }\StringTok{""}\NormalTok{),}
+                    \StringTok{"crashed"}\NormalTok{, e)}
 \NormalTok{                img.image }\OperatorTok{=}\NormalTok{ BROKEN\_IMAGE}
 \end{Highlighting}
 \end{Shaded}
