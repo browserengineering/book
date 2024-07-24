@@ -342,7 +342,8 @@ word (without hyphenation at least), but in Chinese that's mostly not a problem.
 For example, <span lang="zh">开&#x2060;关</span> means
 "button" but is composed of <span lang="zh">开</span> "on" and
 <span lang="zh">关</span> "off". Even though this is one word, browsers
-will happily break in the middle of it.
+will happily break in the middle of it (see [here][chinese-line-breaking]
+for exceptions).
 
 Alternate values of the
 [word-break][word-break-css] CSS property allow for other choices. For example
@@ -361,6 +362,8 @@ boundaries rather than individual Chinese characters. The
 [icu-wb]: https://unicode-org.github.io/icu/userguide/boundaryanalysis/break-rules.html#details-about-dictionary-based-break-iteration
 [cjdict]: https://github.com/unicode-org/icu/blob/master/icu4c/source/data/brkitr/dictionaries/cjdict.txt
 [word-break-css]: https://www.w3.org/TR/css-text-4/#word-break-property
+[chinese-line-breaking]: https://en.wikipedia.org/wiki/Line_breaking_rules_in_East_Asian_languages
+
 
 Scrolling Text
 ==============
