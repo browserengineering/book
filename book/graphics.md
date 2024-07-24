@@ -358,7 +358,7 @@ boundaries rather than individual Chinese characters. The
 [word frequency table][cjdict].
 :::
 
-[icu]: https://site.icu-project.org
+[icu]: https://icu.unicode.org/
 [icu-wb]: https://unicode-org.github.io/icu/userguide/boundaryanalysis/break-rules.html#details-about-dictionary-based-break-iteration
 [cjdict]: https://github.com/unicode-org/icu/blob/master/icu4c/source/data/brkitr/dictionaries/cjdict.txt
 [word-break-css]: https://www.w3.org/TR/css-text-4/#word-break-property
