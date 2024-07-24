@@ -340,7 +340,7 @@ users to *scroll*\index{scroll} the page to look at different parts of it.
 In English text, you can't wrap to the next line in the middle of a
 word (without hyphenation at least), but in Chinese that's mostly not a problem.
 For example, <span lang="zh">开关</span> means
-"button" but is composed of <span lang="zh">开</span> "on" and
+"switch" but is composed of <span lang="zh">开</span> "on" and
 <span lang="zh">关</span> "off". Even though this is one word, browsers
 will happily break in the middle of it (see [here][chinese-line-breaking]
 for exceptions).
