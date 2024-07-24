@@ -348,7 +348,7 @@ for exceptions).
 Alternate values of the
 [word-break][word-break-css] CSS property allow for other choices. For example
 `break-all` allows line breaks even within words in Latin-alphabet languages,
-and `auto-phrase` uses detection libraries to only break at "phrase" boundaries
+and `auto-phrase` uses detection libraries to only break at phrase boundaries
 in languages such as Chinese or Japanese.
 
 Other browser features like text selection also try to align to word or phrase
