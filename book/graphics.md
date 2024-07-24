@@ -338,18 +338,29 @@ users to *scroll*\index{scroll} the page to look at different parts of it.
 
 ::: {.further}
 In English text, you can't wrap to the next line in the middle of a
-word (without hyphenation at least), but in Chinese that's mostly not a problem. Mostly, but not
-always! <span lang="zh">开关</span> means "button" but is composed of
-<span lang="zh">开</span> "on" and <span lang="zh">关</span> "off". A
-line break between them would be confusing, because you'd read "on
-off" instead of "button". The [ICU library][icu], used by both Firefox
-and Chrome, [uses dynamic programming][icu-wb] to guess phrase
-boundaries based on a [word frequency table][cjdict].
+word (without hyphenation at least), but in Chinese that's mostly not a problem.
+For example, <span lang="zh">开&#x2060;关</span> means
+"button" but is composed of <span lang="zh">开</span> "on" and
+<span lang="zh">关</span> "off". Even though this is one word, browsers
+will happily break in the middle of it.
+
+Alternate values of the
+[word-break][word-break-css] CSS property allow for other choices. For example
+`break-all` allows line breaks even within words in Latin-alphabet languages,
+and `auto-phrase` uses detection libraries to only break at "phrase" boundaries
+in languages such as Chinese or Japanese.
+
+Other browser features like text selection also try to align to word or phrase
+boundaries rather than individual Chinese characters. The
+[ICU library][icu], used by both Firefox and Chrome,
+[uses dynamic programming][icu-wb] to guess phrase boundaries based on a
+[word frequency table][cjdict].
 :::
 
 [icu]: https://site.icu-project.org
 [icu-wb]: https://unicode-org.github.io/icu/userguide/boundaryanalysis/break-rules.html#details-about-dictionary-based-break-iteration
 [cjdict]: https://github.com/unicode-org/icu/blob/master/icu4c/source/data/brkitr/dictionaries/cjdict.txt
+[word-break-css]: https://www.w3.org/TR/css-text-4/#word-break-property
 
 Scrolling Text
 ==============
