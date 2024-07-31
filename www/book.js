@@ -85,25 +85,13 @@ function setup_close() {
 
 window.addEventListener("DOMContentLoaded", setup_close);
 
-function gen_uuid() {
-  const array = new Uint8Array(16);
-  crypto.getRandomValues(array);
-  array[6] = (array[6] & 0x0f) | 0x40; // Set the 13th character to '4'
-  array[8] = (array[8] & 0x3f) | 0x80; // Set the 17th character to '8', '9', 'A', or 'B'
-
-  return [...array].map((num) => {
-    const hexNum = num.toString(16);
-    return hexNum.length === 1 ? '0' + hexNum : hexNum;
-  }).join('').match(/(.{8})(.{4})(.{4})(.{4})(.{12})/).slice(1).join('-');
-}
-
 // Return UUID for user; generate and store in local storage if first time
 function get_or_set_id() {
   const id_key = "userUUID";
   const current_id = localStorage.getItem(id_key);
 
   if (typeof current_id != "string") {
-    const new_id = gen_uuid();
+    const new_id = crypto.randomUUID();
     localStorage.setItem(id_key, new_id);
     return new_id;
   } else {
