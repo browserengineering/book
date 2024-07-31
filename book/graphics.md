@@ -337,25 +337,17 @@ enough text, not all of the lines will fit on the screen. We want
 users to *scroll*\index{scroll} the page to look at different parts of it.
 
 ::: {.further}
-In English text, you can't wrap to the next line in the middle of a
-word (without hyphenation at least), but in Chinese that's mostly not a problem.
-For example, <span lang="zh">开关</span> means
-"switch" but is composed of <span lang="zh">开</span> "on" and
-<span lang="zh">关</span> "off". Even though this is one word, browsers
-will happily break in the middle of it (see [here][chinese-line-breaking]
-for exceptions).
-
-Alternate values of the
-[word-break][word-break-css] CSS property allow for other choices. For example
-`break-all` allows line breaks even within words in Latin-alphabet languages,
-and `auto-phrase` uses detection libraries to only break at phrase boundaries
-in languages such as Chinese or Japanese.
-
-Other browser features like text selection also try to align to word or phrase
-boundaries rather than individual Chinese characters. The
-[ICU library][icu], used by both Firefox and Chrome,
-[uses dynamic programming][icu-wb] to guess phrase boundaries based on a
-[word frequency table][cjdict].
+In English text, you can't wrap to the next line in the middle of a word
+(without hyphenation at least), but in Chinese that's the default,
+even for words made up of multiple characters (for example,
+开关 meaning "switch" is composed of 开 "on" and 关 "off", but it's just fine
+to line-break after 开).
+But you can change the default with the word-break CSS property:
+break-all allows line breaks anywhere, while auto-phrase prevents
+them inside even inside Chinese or Japanese words or phrases such as 开关.
+The auto part here refers to the fact that the words aren't identified by the
+author but instead auto-detected, often [using dynamic programming][icu-wb]
+based on a [word frequency table][cjdict].
 :::
 
 [icu]: https://icu.unicode.org/
