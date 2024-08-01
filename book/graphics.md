@@ -342,7 +342,7 @@ In English text, you can't wrap to the next line in the middle of a word
 even for words made up of multiple characters. For example,
 <span lang="zh">开关</span> meaning "switch" is composed of <span lang="zh">开</span> "on" and <span lang="zh">关</span> "off", but it's just fine
 to line-break after <span lang="zh">开</span>.
-But you can change the default with the word-break CSS property:
+You can change the default with the word-break CSS property:
 `break-all` allows line breaks anywhere, while `auto-phrase` prevents
 them inside even inside Chinese or Japanese words or phrases such as <span lang="zh">开关</span>.
 The "auto" part here refers to the fact that the words aren't identified by the
