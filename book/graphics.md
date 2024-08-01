@@ -339,13 +339,13 @@ users to *scroll*\index{scroll} the page to look at different parts of it.
 ::: {.further}
 In English text, you can't wrap to the next line in the middle of a word
 (without hyphenation at least), but in Chinese that's the default,
-even for words made up of multiple characters (for example,
-开关 meaning "switch" is composed of 开 "on" and 关 "off", but it's just fine
-to line-break after 开).
+even for words made up of multiple characters. For example,
+<span lang="zh">开关</span> meaning "switch" is composed of <span lang="zh">开</span> "on" and <span lang="zh">关</span> "off", but it's just fine
+to line-break after <span lang="zh">开</span>.
 But you can change the default with the word-break CSS property:
-break-all allows line breaks anywhere, while auto-phrase prevents
-them inside even inside Chinese or Japanese words or phrases such as 开关.
-The auto part here refers to the fact that the words aren't identified by the
+`break-all` allows line breaks anywhere, while `auto-phrase` prevents
+them inside even inside Chinese or Japanese words or phrases such as <span lang="zh">开关</span>.
+The "auto" part here refers to the fact that the words aren't identified by the
 author but instead auto-detected, often [using dynamic programming][icu-wb]
 based on a [word frequency table][cjdict].
 :::
