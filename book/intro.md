@@ -61,10 +61,10 @@ on other operating systems.
 [^meantime-linux]: Meanwhile, the "better Linux browser than Netscape" took a
 long time to appear...
 
-How hard indeed! After seven years in the trenches working on Chrome, I now know
-the answer to his question: building a browser is both easy and incredibly hard,
-both intentional and accidental. And everywhere you look, you see the evolution
-and history of the web wrapped up in one codebase. It's fun and
+How hard indeed! After eleven years in the trenches working on Chrome, I now
+know the answer to his question: building a browser is both easy and incredibly
+hard, both intentional and accidental. And everywhere you look, you see the
+evolution and history of the web wrapped up in one codebase. It's fun and
 endlessly interesting.
 
 So that's how I fell in love with web browsers. Now let me tell you why you
@@ -190,7 +190,7 @@ often through the careful[^browsers-abstraction-hard] introduction of
 modularization and abstraction.
 
 [^browsers-abstraction-hard]: Browsers are so performance-sensitive that, in
-many places, merely the introduction of an abstraction---the function call or
+many places, merely the introduction of an abstraction---a function call or
 branching overhead---can have an unacceptable performance cost!
 
 What makes a browser different from most massive code bases is their _urgency_.
@@ -286,7 +286,7 @@ networking stack; clever data structures and parallel programming techniques; a
 virtual machine, an interpreted language, and a just-in-time compiler; a world-class security
 sandbox; and a uniquely dynamic system for storing data.
 
-And the truth is---you use the browser all the time, maybe for reading this
+And the truth is---you use a browser all the time, maybe for reading this
 book! That makes the algorithms more approachable in a browser than almost
 anywhere else, because the web is already familiar.
 

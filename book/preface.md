@@ -36,7 +36,7 @@ arrange it so that this doesn't make later chapters more difficult.
 
 [^yours-ours]: This book assumes that you will be building a web browser along
 the way while reading it. However, it does present nearly
-all the code---inlined into the book--for a working browser for every
+all the code---inlined into the book---for a working browser for every
 chapter. So most of the time, the book uses the term "our browser",
 which refers to the conceptual browser we (you and us, the
 authors) have built so far. In cases where the book is referring specifically
