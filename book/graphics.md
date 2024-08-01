@@ -337,19 +337,25 @@ enough text, not all of the lines will fit on the screen. We want
 users to *scroll*\index{scroll} the page to look at different parts of it.
 
 ::: {.further}
-In English text, you can't wrap to the next line in the middle of a
-word (without hyphenation at least), but in Chinese that's mostly not a problem. Mostly, but not
-always! <span lang="zh">开关</span> means "button" but is composed of
-<span lang="zh">开</span> "on" and <span lang="zh">关</span> "off". A
-line break between them would be confusing, because you'd read "on
-off" instead of "button". The [ICU library][icu], used by both Firefox
-and Chrome, [uses dynamic programming][icu-wb] to guess phrase
-boundaries based on a [word frequency table][cjdict].
+In English text, you can't wrap to the next line in the middle of a word
+(without hyphenation at least), but in Chinese that's the default,
+even for words made up of multiple characters. For example,
+<span lang="zh">开关</span> meaning "switch" is composed of <span lang="zh">开</span> "on" and <span lang="zh">关</span> "off", but it's just fine
+to line-break after <span lang="zh">开</span>.
+You can change the default with the word-break CSS property:
+`break-all` allows line breaks anywhere, while `auto-phrase` prevents
+them inside even inside Chinese or Japanese words or phrases such as <span lang="zh">开关</span>.
+The "auto" part here refers to the fact that the words aren't identified by the
+author but instead auto-detected, often [using dynamic programming][icu-wb]
+based on a [word frequency table][cjdict].
 :::
 
-[icu]: https://site.icu-project.org
+[icu]: https://icu.unicode.org/
 [icu-wb]: https://unicode-org.github.io/icu/userguide/boundaryanalysis/break-rules.html#details-about-dictionary-based-break-iteration
 [cjdict]: https://github.com/unicode-org/icu/blob/master/icu4c/source/data/brkitr/dictionaries/cjdict.txt
+[word-break-css]: https://www.w3.org/TR/css-text-4/#word-break-property
+[chinese-line-breaking]: https://en.wikipedia.org/wiki/Line_breaking_rules_in_East_Asian_languages
+
 
 Scrolling Text
 ==============
