@@ -643,7 +643,7 @@ class AttributeParser:
         attributes = {}
         tag = None
 
-        tag = self.word()
+        tag = self.word().casefold()
         while self.i < len(self.s):
             self.whitespace()
             key = self.word()

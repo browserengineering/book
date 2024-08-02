@@ -285,6 +285,14 @@ Rendering will read out the accessibility instructions:
     >>> document.children[0].children[0].attributes
     {'src': 'my-url', 'alt': 'This is alt text'}
 
+    Tag and attribute names are lower-cased:
+    >>> parser = lab15.HTMLParser('<IMG SRC=my-url alt="This is alt text">')
+    >>> document = parser.parse()
+    >>> lab15.print_tree(document)
+     <html>
+       <body>
+         <img src="my-url" alt="This is alt text">
+
 Here are some brief tests for the attribute parser. First, that it allows
 spaces:
 
