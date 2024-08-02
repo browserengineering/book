@@ -68,6 +68,14 @@ Attributes can be set on tags:
 	     <div name1="value1" name2="value2">
 	       'text'
 
+    Tag and attribute names are lower-cased:
+    >>> parser = lab4.HTMLParser('<A HREF=my-url attr=my-attr>')
+    >>> document = parser.parse()
+    >>> lab4.print_tree(document)
+     <html>
+       <body>
+         <a href="my-url" attr="my-attr">
+
 Testing Layout
 ==============
 
