@@ -303,7 +303,7 @@ used the same rendering engine, but Chrome forked into
 [Blink](https://en.wikipedia.org/wiki/Blink_(browser_engine)) in 2013,
 which Microsoft Edge adopted by 2020. The second browser war saw the
 development of many features of the modern web, including widespread
-use of AJAX[^ajax] requests, HTML5 features like `<canvas>`, and a huge
+use of AJAX[^ajax], HTML5 features like `<canvas>`, and a huge
 explosion in third-party JavaScript libraries and frameworks.
 
 [^ajax]: Asynchronous JavaScript and XML, where XML stands for
