@@ -120,8 +120,8 @@ This work also formed and inspired one of the key parts of Douglas Engelbart's
 [mother of all demos](https://en.wikipedia.org/wiki/The_Mother_of_All_Demos),
 perhaps the most influential technology demonstration in the history of
 computing (see Figure 3). That demo not only showcased the key concepts of the web, but also
-introduced the computer mouse and graphical user interface, both of which are of
-course central components of a browser UI.[^even-more]
+introduced the computer mouse and graphical user interface, both of which are
+central components of a browser UI.[^even-more]
 
 ::: {.center}
 ![Figure 3: Doug Engelbart presenting the mother of all demos. (SRI International, via the [Doug Engelbart Institute][dei].)](im/engelbart.jpg)
@@ -188,7 +188,7 @@ group](https://www.w3.org/People/Berners-Lee/1991/08/art-6484.txt).
 [^more-less-powerful]: For example, the first browser included the concept of an
 index page meant for searching within a site (vestiges of which exist today in
 the “index.html” convention when a URL path ends in /”), and had a WYSIWYG web
-page editor (the “contenteditable” HTML attribute and “html()” method on DOM
+page editor (the “contenteditable” HTML attribute method on DOM
 elements (see [Chapter 16](invalidation.md))
 have similar semantic behavior, but built-in file saving is gone).
 Today, the index is replaced with a search engine, and web page editors as a
