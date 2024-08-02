@@ -253,7 +253,7 @@ Explorer (see Figure 8) in 1995 and soon bundled it with Windows 95.
 [internet-tidal-wave]: https://lettersofnote.com/2011/07/22/the-internet-tidal-wave/
 
 ::: {.center}
-![Figure 5: ViolaWWW. ([*Viola in a Nutshell*.][violawww-book])](im/violawww.png)
+![Figure 5: ViolaWWW. ([*Viola in a Nutshell*][violawww-book].)](im/violawww.png)
 :::
 
 ::: {.center}
