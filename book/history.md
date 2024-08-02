@@ -330,8 +330,8 @@ standardized at [TC39](https://tc39.es/)\index{TC39}
 (“Technical Committee 39” at
 [ECMA](https://www.ecma-international.org/about-ecma/history/), yet another
 standards body). [HTTP](https://tools.ietf.org/html/rfc2616) is standardized by
-the [IETF](https://www.ietf.org/about/)\index{IETF}. The main point is that the
-standards process set up in the mid-1990s is still with us.
+the [IETF](https://www.ietf.org/about/)\index{IETF}. The important point is
+that the standards process set up in the mid-1990s is still with us.
 
 In the first years of the web, it was not so clear that browsers would remain
 standard and that one browser might not end up “winning” and becoming another
