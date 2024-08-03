@@ -41,8 +41,8 @@ the URL, like ports, queries, and fragments, which we'll see later.
 
 From a URL, the browser can start the process of downloading the web
 page. The browser first asks the local operating system (OS) to put it in touch with the
-*server* described by the *host name*. The OS then talks to a *DNS*
-(Domain Name System)
+*server* described by the *host name*. The OS then talks to a
+Domain Name System (*DNS*)
 server which converts[^dns] a host name like `example.org` into a
 *destination IP address* like `93.184.216.34`.[^ipv6] Then the OS decides
 which hardware is best for communicating with that destination IP
@@ -117,7 +117,7 @@ This means that the OS converted the host name `example.org` into the
 IP address `93.184.216.34` and was able to connect to it.[^10] You can
 now talk to `example.org`.
 
-[^10]: The line about escape characters is just instructions on using
+[^10]: The line about escape characters is just instructions for using
     obscure `telnet` features.
 
 ::: {.further}
@@ -336,7 +336,8 @@ class URL:
 
 The `__init__` method is Python's peculiar syntax for class
 constructors, and the `self` parameter, which you must always make the
-first parameter of any method, is Python's analog of `this`.
+first parameter of any method, is Python's analog of `this` in C++
+or Java.
 
 Let's start with the scheme, which is separated from the rest of the
 URL by `://`. Our browser only supports `http`, so I check that, too:
@@ -349,8 +350,7 @@ class URL:
 ```
 
 Now we must separate the host from the path. The host comes before the
-first `/`, while the path is that slash and everything after it. Let's
-add a function that parses all parts of a URL:
+first `/`, while the path is that slash and everything after it:
 
 ``` {.python}
 class URL:
@@ -442,7 +442,7 @@ class URL:
         s.connect((self.host, 80))
 ```
 
-This talks to `example.org` to set up the connection and ready both
+This talks to `example.org` to set up the connection and prepare both
 computers to exchange data.
 
 ::: {.quirk}
@@ -487,7 +487,7 @@ class URL:
 The `send` method just sends the request to the server.[^send-return]
 There are a few things in this code that have to be exactly right. First,
 it's very important to use `\r\n` instead of `\n` for newlines. It's
-also essential that you put *two* newlines `\r\n` at the end, so that
+also essential that you put *two* `\r\n` newlines at the end, so that
 you send that blank line at the end of the request. If you forget
 that, the other computer will keep waiting on you to send that
 newline, and you'll keep waiting on its response.[^literal]
@@ -609,7 +609,7 @@ are especially important because they tell us that the data we're
 trying to access is being sent in an unusual way. Let's make sure none
 of those are present.[^if-te]
 
-[^if-te]: The "compression" exercise at the end of this chapter
+[^if-te]: Exercise 1-9
     describes how your browser should handle these headers if they are
     present.
 
