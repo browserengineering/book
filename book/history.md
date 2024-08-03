@@ -120,8 +120,8 @@ This work also formed and inspired one of the key parts of Douglas Engelbart's
 [mother of all demos](https://en.wikipedia.org/wiki/The_Mother_of_All_Demos),
 perhaps the most influential technology demonstration in the history of
 computing (see Figure 3). That demo not only showcased the key concepts of the web, but also
-introduced the computer mouse and graphical user interface, both of which are of
-course central components of a browser UI.[^even-more]
+introduced the computer mouse and graphical user interface, both of which are
+central components of a browser UI.[^even-more]
 
 ::: {.center}
 ![Figure 3: Doug Engelbart presenting the mother of all demos. (SRI International, via the [Doug Engelbart Institute][dei].)](im/engelbart.jpg)
@@ -188,7 +188,7 @@ group](https://www.w3.org/People/Berners-Lee/1991/08/art-6484.txt).
 [^more-less-powerful]: For example, the first browser included the concept of an
 index page meant for searching within a site (vestiges of which exist today in
 the “index.html” convention when a URL path ends in /”), and had a WYSIWYG web
-page editor (the “contenteditable” HTML attribute and “html()” method on DOM
+page editor (the “contenteditable” HTML attribute on DOM
 elements (see [Chapter 16](invalidation.md))
 have similar semantic behavior, but built-in file saving is gone).
 Today, the index is replaced with a search engine, and web page editors as a
@@ -253,7 +253,7 @@ Explorer (see Figure 8) in 1995 and soon bundled it with Windows 95.
 [internet-tidal-wave]: https://lettersofnote.com/2011/07/22/the-internet-tidal-wave/
 
 ::: {.center}
-![Figure 5: ViolaWWW. ([*Viola in a Nutshell*.][violawww-book])](im/violawww.png)
+![Figure 5: ViolaWWW. ([*Viola in a Nutshell*][violawww-book].)](im/violawww.png)
 :::
 
 ::: {.center}
@@ -303,7 +303,7 @@ used the same rendering engine, but Chrome forked into
 [Blink](https://en.wikipedia.org/wiki/Blink_(browser_engine)) in 2013,
 which Microsoft Edge adopted by 2020. The second browser war saw the
 development of many features of the modern web, including widespread
-use of AJAX[^ajax] requests, HTML5 features like `<canvas>`, and a huge
+use of AJAX[^ajax], HTML5 features like `<canvas>`, and a huge
 explosion in third-party JavaScript libraries and frameworks.
 
 [^ajax]: Asynchronous JavaScript and XML, where XML stands for
@@ -330,8 +330,8 @@ standardized at [TC39](https://tc39.es/)\index{TC39}
 (“Technical Committee 39” at
 [ECMA](https://www.ecma-international.org/about-ecma/history/), yet another
 standards body). [HTTP](https://tools.ietf.org/html/rfc2616) is standardized by
-the [IETF](https://www.ietf.org/about/)\index{IETF}. The point is that the
-standards process set up in the mid-1990s is still with us.
+the [IETF](https://www.ietf.org/about/)\index{IETF}. The important point is
+that the standards process set up in the mid-1990s is still with us.
 
 In the first years of the web, it was not so clear that browsers would remain
 standard and that one browser might not end up “winning” and becoming another
