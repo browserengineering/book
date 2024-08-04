@@ -408,7 +408,7 @@ SELF_CLOSING_TAGS = [
 
 Our parser needs to auto-close tags from this list:
 
-``` {.python indent=4 replace=parent/attributes, parent}
+``` {.python indent=4 replace=parent)/attributes%2c%20parent)}
 def add_tag(self, tag):
     # ...
     elif tag in self.SELF_CLOSING_TAGS:
