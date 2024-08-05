@@ -302,7 +302,7 @@ Try this out on [the web page](https://browser.engineering/html.html)
 corresponding to this chapter, parsing the HTML source code and then
 calling `print_tree` to visualize it:
 
-``` {.python expected=False}
+``` {.python .example}
 body = URL(sys.argv[1]).request()
 nodes = HTMLParser(body).parse()
 print_tree(nodes)
@@ -408,7 +408,7 @@ SELF_CLOSING_TAGS = [
 
 Our parser needs to auto-close tags from this list:
 
-``` {.python indent=4 expected=False}
+``` {.python indent=4 replace=parent)/attributes%2c%20parent)}
 def add_tag(self, tag):
     # ...
     elif tag in self.SELF_CLOSING_TAGS:
@@ -453,7 +453,6 @@ lower-casing them would be sufficient, but I'm using Python's `casefold`
 function because it's a good habit to get into.
     
 [case-hard]: https://www.b-list.org/weblog/2018/nov/26/case/
-
 
 ``` {.python indent=4}
 def get_attributes(self, text):
@@ -525,7 +524,7 @@ and try your parser again:
 ```
 
 It's close! Yes, if you print the attributes, you'll see that
-attributes with whitespace (like `author` on the fifth `meta` tag)
+attributes with whitespace (like `author` on one of the `meta` tags)
 are mis-parsed as multiple attributes, and the final slash on the
 self-closing tags is incorrectly treated as an extra attribute. A
 better parser would fix these issues. But let's instead leave our
@@ -555,7 +554,7 @@ method and all the cases for close tags will go into a new `close_tag`
 method:[^no-text-case]
 
 [^no-text-case]: The case for text tokens is no longer needed because
-    our browser can just call the existing `text` method directly.
+    our browser can just call the existing `add_text` method directly.
 
 ``` {.python}
 class Layout:
@@ -790,7 +789,7 @@ The rules for malformed HTML may seem arbitrary, and they are: they
 evolved over years of trying to guess what people "meant" when they
 wrote that HTML, and are now codified in the [HTML parsing
 standard][html5-parsing]. Of course, sometimes these rules "guess"
-wrong---but as so often happens on the web, it's often more important
+wrong---but as so often happens on the web, it's more important
 that every browser does the *same* thing, rather than each trying to
 guess what the *right* thing is.
 
