@@ -55,7 +55,7 @@ loop to respond to.
 
 <a name="eventloop"></a>
 
-``` {.python expected=False}
+``` {.python .example}
 while True:
     for evt in pendingEvents():
         handleEvent(evt)
@@ -66,7 +66,7 @@ while True:
 ![Figure 1: Flowchart of an event-handling cycle.](im/graphics-cycle.png)
 :::
 
-Here, `pendingEvent` first asks the desktop environment for recent
+Here, `pendingEvents` first asks the desktop environment for recent
 mouse clicks or key presses, then `handleEvent` calls your application
 to update state, and then `drawScreen` redraws the window. This *event
 loop* \index{event loop} pattern (see Figure 1) is common in many applications, from
@@ -128,7 +128,7 @@ canvas = tkinter.Canvas(window, width=WIDTH, height=HEIGHT)
 canvas.pack()
 ```
 
-The first line creates the window, and the second creates the
+The second line creates the window, and the third creates the
 `Canvas` inside that window. We pass the window as an argument, so
 that Tk knows where to display the canvas. The other arguments define
 the canvas's size; I chose 800 × 600 because that was a common old-timey
@@ -243,7 +243,7 @@ def load(self, url):
 ```
 
 Let's test this code on a real web page. For reasons that might seem
-inscrutable[^delay], let's test it on the [first chapter of <span
+inscrutable,[^delay] let's test it on the [first chapter of <span
 lang="zh">西游记</span> or *Journey to the
 West*][ex-monkey], a classic Chinese novel
 about a monkey. Run this URL[^instructions] through `request`, `lex`, and
