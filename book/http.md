@@ -42,7 +42,7 @@ the URL, like ports, queries, and fragments, which we'll see later.
 From a URL, the browser can start the process of downloading the web
 page. The browser first asks the local operating system (OS) to put it in touch with the
 *server* described by the *host name*. The OS then talks to a
-Domain Name System (*DNS*)
+*Domain Name System* (DNS)
 server which converts[^dns] a host name like `example.org` into a
 *destination IP address* like `93.184.216.34`.[^ipv6] Then the OS decides
 which hardware is best for communicating with that destination IP
