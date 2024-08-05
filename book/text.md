@@ -1002,7 +1002,7 @@ will have different lengths.[^center-tag]
 
 3-2 *Superscripts*. Add support for the `<sup>` tag. Text in this tag
 should be smaller (perhaps half the normal text size) and be placed so
-that the top of a superscript line up with the top of a normal
+that the top of a superscript lines up with the top of a normal
 letter.
 
 3-3 *Soft hyphens*. The soft hyphen character, written `\N{soft hyphen}`
