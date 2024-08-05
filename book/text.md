@@ -1015,7 +1015,7 @@ draw a hyphen when you break a word. The word
 "super­cali­fragi­listic­expi­ali­docious"
 is a good test case.
 
-[^entity]: If you've done Exercise 1-4 on
+[^entity]: If you've done [Exercise 1-4](http.md#exercises) on
     HTML entities, you might also want to add support for the `&shy;`
     entity, which expands to a soft hyphen.
 
