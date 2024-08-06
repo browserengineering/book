@@ -83,7 +83,7 @@ class Layout:
         self.children = []
 ```
 
-That said, requiring a `parent` and `previous` element now makes it
+That said, requiring a `parent` and `previous` object now makes it
 tricky to construct a `Layout` object in `Browser`, since the root of
 the layout tree obviously can't have a parent. To rectify that, let me
 add a second kind of layout object to serve as the root of the layout
