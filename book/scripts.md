@@ -60,8 +60,11 @@ the `duktape` library that `dukpy` uses.
 
 To test whether you installed DukPy correctly, execute this:
 
-``` {.python expected=False}
+``` {.python}
 import dukpy
+```
+
+``` {.python .example}
 dukpy.evaljs("2 + 2")
 ```
 
@@ -74,7 +77,7 @@ support your system, and you might need to debug further.
     ownership. You may have to do some sleuthing.
 
 ::: {.quirk}
-Note to JavaScript experts: Dukpy does not implement newer syntax like
+Note to JavaScript experts: DukPy does not implement newer syntax like
 `let` and `const` or arrow functions. In keeping with this book's
 aesthetics, you'll need to use old-school JavaScript from the turn of
 the century.
@@ -217,14 +220,14 @@ class JSContext:
         self.interp.export_function("log", print)
 ```
 
-We can call an exported function from JavaScript using Dukpy's
+We can call an exported function from JavaScript using DukPy's
 `call_python` function. For example:
 
 ``` {.javascript .example}
 call_python("log", "Hi from JS")
 ```
 
-When this JavaScript code runs, Dukpy converts the JavaScript string
+When this JavaScript code runs, DukPy converts the JavaScript string
 `"Hi from JS"` into a Python string,^[This conversion works for
 numbers, strings, and booleans, plus arrays and dictionaries thereof,
 but not with fancy objects.] and then passes that Python string to the
@@ -327,7 +330,7 @@ Here are a few tips to help with these crashes. First, if you get a
 crash inside some JavaScript function, wrap the body of the function
 like this:
 
-``` {.javascript expected=False}
+``` {.javascript .example}
 function foo() {
     try {
         // ...
@@ -342,7 +345,7 @@ This code catches all exceptions and prints a stack trace before
 re-raising them. If you instead are getting crashes inside an exported
 function you will need to wrap that function, on the Python side:
 
-``` {.python expected=False}
+``` {.python .example}
 class JSContext:
     def foo(self, arg):
         try:
@@ -473,7 +476,7 @@ all, the `Element` class only exists in Python, not JavaScript!
 
 Python objects need to stay on the Python side of the browser, so
 JavaScript code will need to refer to them via some kind of
-indirection. I'll use simple numeric identifier, which I'll call a
+indirection. I'll use a simple numeric identifier, which I'll call a
 *handle* (see Figure 2).[^8]
 
 [^8]: Note the similarity to file descriptors, which give user-level
@@ -597,7 +600,7 @@ Don't forget to export this function as `getAttribute`.
 We finally have enough of the DOM API to implement a little character
 count function for text areas:
 
-``` {.javascript file=comment expected=False}
+``` {.javascript .example}
 inputs = document.querySelectorAll('input')
 for (var i = 0; i < inputs.length; i++) {
     var name = inputs[i].getAttribute("name");
@@ -760,7 +763,9 @@ function lengthCheck() {
         console.log("Input " + name + " has too much text.")
     }
 }
+```
 
+``` {.javascript file=comment}
 var inputs = document.querySelectorAll("input");
 for (var i = 0; i < inputs.length; i++) {
     inputs[i].addEventListener("keydown", lengthCheck);
