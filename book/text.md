@@ -448,7 +448,7 @@ any accumulated text as a `Text` object. Otherwise, if you never saw
 an angle bracket, you'd return an empty list of tokens. But unfinished
 tags, like in `Hi!<hr`, are thrown out.[^errortag]
 
-[^errortag]: This may strike you as an odd decision: why
+[^errortag]: This may strike you as an odd decision: why not
     finish up the tag for the author? I don't know, but dropping
     the tag is what browsers do.
 
