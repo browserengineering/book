@@ -1395,7 +1395,9 @@ address bar. Honestly, do this exercise just for your sanity.
 to open it in a new tab. You might want to use a mouse when testing.
 
 7-3 *Window title*. Browsers set their window title to the contents of the
-current tab's `<title>` element. Make your browser do the same.
+current tab's `<title>` element. Make your browser do the same. (You
+can call the `title` method of `Browser.window` to change the window
+title.)
 
 7-4 *Forward*. Add a forward button, which should undo the back button. If
 the most recent navigation action wasn't a back button, the forward
