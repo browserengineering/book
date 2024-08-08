@@ -593,7 +593,7 @@ def load(self, url):
 
 Now, these style sheet URLs are usually not full URLs; they are
 something called *relative URLs*, which can be:^[There are other flavors,
-including query-relative and scheme-relative URLs, that I'm skipping.]
+including query-relative, that I'm skipping.]
 
 -   a normal URL, which specifies a scheme, host, path, and so on;
 -   a host-relative URL, which starts with a slash but reuses the
