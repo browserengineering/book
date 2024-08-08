@@ -91,9 +91,11 @@ type at a fixed size, style, and weight. For example:[^after-tk]
     Tk objects, after calling `tkinter.Tk()`, which is why I'm putting
     this code in the `Browser` constructor.
 
-``` {.python expected=False}
+``` {.python}
 import tkinter.font
+```
 
+``` {.python .example}
 class Browser:
     def __init__(self):
         # ...
@@ -113,7 +115,7 @@ else.
 
 Font objects can be passed to `create_text`'s `font` argument:
 
-``` {.python expected=False}
+``` {.python .example}
 canvas.create_text(200, 100, text="Hi!", font=bi_times)
 ```
 
@@ -231,14 +233,14 @@ You can use this information to lay text out on the page. For example,
 suppose you want to draw the text "Hello, world!" in two pieces, so that
 "world!" is italic. Let's use two fonts:
 
-``` {.python expected=False}
+``` {.python .example}
 font1 = tkinter.font.Font(family="Times", size=16)
 font2 = tkinter.font.Font(family="Times", size=16, slant='italic')
 ```
 
 We can now lay out the text, starting at `(200, 200)`:
 
-``` {.python expected=False}
+``` {.python .example}
 x, y = 200, 200
 canvas.create_text(x, y, text="Hello, ", font=font1)
 x += font1.measure("Hello, ")
@@ -260,7 +262,7 @@ can instruct Tk to treat the coordinate we gave as the top-left corner
 of the text by setting the `anchor` argument to `"nw"`, meaning the
 "northwest" corner of the text:
 
-``` {.python expected=False}
+``` {.python .example}
 x, y = 200, 225
 canvas.create_text(x, y, text="Hello, ", font=font1, anchor='nw')
 x += font1.measure("Hello, ")
@@ -446,8 +448,8 @@ any accumulated text as a `Text` object. Otherwise, if you never saw
 an angle bracket, you'd return an empty list of tokens. But unfinished
 tags, like in `Hi!<hr`, are thrown out.[^errortag]
 
-[^errortag]: This may strike you as an odd decision: why not raise an error,
-    or finish up the tag for the author? I don't know, but dropping
+[^errortag]: This may strike you as an odd decision: why not
+    finish up the tag for the author? I don't know, but dropping
     the tag is what browsers do.
 
 Note that `Text` and `Tag` are asymmetric: `lex` avoids empty
@@ -503,7 +505,7 @@ text.[^even-misnested]
     `<b><b>twice</b>bolded</b>` text. We'll return to this in
     [Chapter 6](styles.md).
 
-The `bold` and `italic` variables are used to select the font:
+The `style` and `weight` variables are used to select the font:
 
 ``` {.python expected=False}
 if isinstance(tok, Text):
@@ -887,7 +889,7 @@ slow.[^profile]
 Unfortunately, it's hard to make text measurement much faster. With
 proportional fonts and complex font features like hinting and kerning,
 measuring text can require pretty complex computations. But on a large
-web page, some words likely appear a lot---for example, this page
+web page, some words likely appear a lot---for example, this chapter
 includes the word "the" over 200 times. Instead of measuring
 these words over and over again, we could measure them once, and then
 cache the results. On normal English text, this usually results in a
@@ -1013,7 +1015,7 @@ draw a hyphen when you break a word. The word
 "super­cali­fragi­listic­expi­ali­docious"
 is a good test case.
 
-[^entity]: If you've done a [previous exercise](http.md#exercises) on
+[^entity]: If you've done [Exercise 1-4](http.md#exercises) on
     HTML entities, you might also want to add support for the `&shy;`
     entity, which expands to a soft hyphen.
 
@@ -1028,4 +1030,4 @@ lines, and whitespace like spaces and newlines are preserved. Use a
 fixed-width font like `Courier New` or `SFMono` as well. Make sure
 tags work normally inside `<pre>` tags: it should be possible to bold
 some text inside a `<pre>`. The results will look best if you also do
-[Exercise 1-5](http.md#exercises).
+[Exercise 1-4](http.md#exercises).
