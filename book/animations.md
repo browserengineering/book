@@ -635,7 +635,7 @@ class Browser:
             self.composited_layers.append(layer)
 ```
 
-Here, a `CompositedLayer` just stores a list of display items (and a
+Here, a `CompositedLayer` just stores a list of *display items* (and a
 surface that they'll be drawn to).^[For now, it's just one display
 item, but that will change pretty soon.]
 
@@ -769,7 +769,7 @@ class CompositedLayer:
         # ...
 ```
 
-Note that we're creating a surface just big enough to store the items in
+We'll create a surface just big enough to store the items in
 this composited layer; this reduces how much GPU memory we need. That
 being said, there are some tricky corner cases to consider, such as how
 Skia rasters lines or anti-aliased text across multiple pixels
@@ -993,9 +993,11 @@ a linear easing function for our browser, so it will look identical to
 the JavaScript and subtly different from real browsers.
 
 To implement CSS transitions, we'll need to represent animation
-state---like the JavaScript variables like `current_frame` and
-`change_per_frame` from the earlier example---in the browser. Since multiple elements can animate at a time, let's store an `animations` dictionary on each
-node, keyed by the property being animated:[^delete-complicated]
+state---like the JavaScript variables `current_frame` and
+`change_per_frame` from the earlier example---in the browser.
+Since multiple elements can animate at a time, let's store an
+`animations` dictionary on each node, keyed by the property being
+animated:[^delete-complicated]
 
 [^delete-complicated]: For simplicity, this code leaves animations in
     the `animations` dictionary even when they're done animating.
@@ -1138,7 +1140,7 @@ def diff_styles(old_style, new_style):
 ```
 
 Back inside `style`, we're going to want to create a new
-animation object for each transitioning property---we'll support only "opacity". 
+animation object for each transitioning property---we'll support only `opacity`. 
 
 ``` {.python}
 def style(node, rules, tab):
@@ -1383,7 +1385,7 @@ style was changed in a new array called `composited_updates`. We'll
 also only set the `needs_paint` flag, not `needs_layout`, in this
 case:
 
-``` {.python expected=False}
+``` {.python replace=browser/browser%2c%20tab_height}
 class Tab:
     def __init__(self, browser):
         # ...
@@ -1393,6 +1395,7 @@ class Tab:
         for node in tree_to_list(self.nodes, []):
             for (property_name, animation) in \
                 node.animations.items():
+                value = animation.animate()
                 if value:
                     node.style[property_name] = value
                     self.composited_updates.append(node)
