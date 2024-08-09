@@ -991,7 +991,7 @@ Note that `set_needs_animation_frame` will only actually set the dirty
 bit if called from the active tab. This guarantees that inactive tabs
 can't interfere with active tabs. Besides preventing scripts from
 scheduling too many animation frames, this system also makes sure that
-if our browser consistently runs slower than 60 frames per second, we
+if our browser consistently runs slower than 30 frames per second, we
 won't end up with an ever-growing queue of rendering tasks.
 
 ::: {.further}
@@ -2121,7 +2121,7 @@ of modern browsers. The main points to remember are:
 
 - The browser organizes work into task queues, with tasks for things
   like running JavaScript, handling user input, and rendering the page.
-- The goal is to consistently generate frames to the screen at a 60 Hz
+- The goal is to consistently generate frames to the screen at a 30 Hz
   cadence, which means a 33 ms budget to draw each animation frame.
 - The browser has two key threads involved in rendering.
 - The main thread runs JavaScript and the special rendering task.
