@@ -1282,47 +1282,7 @@ be to have three trace events for the three phases of `render`.
 
 Well---with all that done, our browser now supports animations with
 just CSS. And importantly, we can have the browser optimize opacity
-animations to avoid layout and re-rastering composited layers.
-
-::: {.web-only}
-
-Figure 3 shows a screenshot of a rendered frame of an opacity transition that only
-spends a bit more than a millisecond in each `composite_raster_and_draw` call
-(source trace [here](examples/example13-opacity-transition.trace)):
-
-:::
-
-::: {.print-only}
-
-Figure 3 shows a screenshot of a rendered frame of an opacity transition that only
-spends a bit more than a millisecond in each `composite_raster_and_draw` call:
-
-:::
-
-::: {.center}
-![Figure 3: Example trace of an opacity transition optimized by compositing.](examples/example13-trace-opacity-transition.png)
-:::
-
-::: {.web-only}
-
-This can be compared to the same with compositing disabled, shown in Figure 4,
-which spends about double that time (source
-[here](examples/example13-opacity-transition-no-compositing.trace)):^[And
-it would be much slower for a more complex example.]
-
-:::
-
-::: {.print-only}
-
-This can be compared to the same with compositing disabled, shown in Figure 4,
-which spends about double that time:^[And it would be much slower for a
-more complex example.]
-
-:::
-
-::: {.center}
-![Figure 4: Example trace of an opacity transition with compositing disabled.](examples/example13-trace-opacity-transition-no-compositing.png)
-:::
+animations to avoid layout.
 
 ::: {.further}
 
@@ -1584,6 +1544,46 @@ class Browser:
         self.clear_data()
 ```
 
+::: {.web-only}
+
+Figure 3 shows a screenshot of a rendered frame of an opacity transition that only
+spends a bit more than a millisecond in each `composite_raster_and_draw` call
+(source trace [here](examples/example13-opacity-transition.trace)):
+
+:::
+
+::: {.print-only}
+
+Figure 3 shows a screenshot of a rendered frame of an opacity transition that only
+spends a bit more than a millisecond in each `composite_raster_and_draw` call:
+
+:::
+
+::: {.center}
+![Figure 3: Example trace of an opacity transition optimized by compositing.](examples/example13-trace-opacity-transition.png)
+:::
+
+::: {.web-only}
+
+This can be compared to the same with compositing disabled, shown in Figure 4,
+which spends about double that time (source
+[here](examples/example13-opacity-transition-no-compositing.trace)):^[And
+it would be much slower for a more complex example.]
+
+:::
+
+::: {.print-only}
+
+This can be compared to the same with compositing disabled, shown in Figure 4,
+which spends about double that time:^[And it would be much slower for a
+more complex example.]
+
+:::
+
+::: {.center}
+![Figure 4: Example trace of an opacity transition with compositing disabled.](examples/example13-trace-opacity-transition-no-compositing.png)
+:::
+
 
 ::: {.further}
 
@@ -1841,8 +1841,17 @@ The compositing algorithm we implemented works great in many cases.
 Unfortunately, it doesn't work correctly for display list commands
 that *overlap* each other. Let me explain why with an example.
 
+::: {.web-only}
 Consider a light blue square overlapped by a light green one, with a
 white background behind them, as in Figure 6.
+:::
+
+::: {.print-only}
+Consider a light blue square overlapped by a light green one, with a
+white background behind them, as in Figure 6.^[See the
+`browser.engineering` website for actual colors. The blue square referenced
+in this section looks lighter than the green one in the figure here.]
+:::
 
 ::: {.web-only}
 <center>
