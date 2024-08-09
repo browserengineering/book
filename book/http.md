@@ -981,7 +981,7 @@ implemented Exercise 1-4.
 the `Connection: close` header. Instead, when reading the body from
 the socket, only read as many bytes as given in the `Content-Length`
 header and don't close the socket afterward. Instead, save the
-socket, and if another request is made to the same socket reuse the
+socket, and if another request is made to the same server reuse the
 same socket instead of creating a new one. This will speed up repeated
 requests to the same server, which is common.
 
