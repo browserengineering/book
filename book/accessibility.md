@@ -2716,3 +2716,10 @@ only has an effect on focusable elements.
 [focus-method]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/focus
 [focus-event]: https://developer.mozilla.org/en-US/docs/Web/API/Element/focus_event
 [blur-event]: https://developer.mozilla.org/en-US/docs/Web/API/Element/blur_event
+
+*The `zoom` CSS property*. Add support for the [`zoom`][zoom-property] SSS
+property defined here. This exposes the same functionality as the CSS zoom
+accessibility feature to web developers, plus it allows applying it only
+to designated HTML subtrees.
+
+[zoom-property] https://developer.mozilla.org/en-US/docs/Web/CSS/zoom
