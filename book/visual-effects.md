@@ -970,9 +970,18 @@ Check that your browser renders dark-orange text for the example
 above. That shows that it's actually mixing the black color with the
 existing orange color from the background.
 
+::: {.web-only}
 However, there's another, subtly different way to create transparency
 with CSS. Here, 50% transparency is applied to the whole element using
 the `opacity` property, as in Figure 3.
+:::
+
+::: {.print-only}
+However, there's another, subtly different way to create transparency
+with CSS. Here^[See the website for the example and how it reflects in colors],
+50% transparency is applied to the whole element using
+the `opacity` property, as in Figure 3.
+:::
 
 ::: {.web-only}
 <div style="font-size: 50px; padding: 15px; text-align: center;
