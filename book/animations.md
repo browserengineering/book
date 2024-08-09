@@ -64,7 +64,7 @@ what `animate` does we can change what animation occurs.
 
 For example, we can fade an element in by smoothly transitioning its
 `opacity` value from 0.1 to 0.999.[^why-not-one] Doing this over 120
-frames (about two seconds) means increasing the opacity by about 0.008
+frames (about four seconds) means increasing the opacity by about 0.008
 each frame.
 
 [^why-not-one]: Real browsers apply certain optimizations when opacity
@@ -447,7 +447,7 @@ You'll also need to add `children` fields to all of the paint
 commands, since `print_tree` relies on those. Now we can print out our
 browser's display list:
 
-``` {.python expected=False}
+``` {.python .example}
 class Tab:
     def render(self):
         # ...
@@ -459,7 +459,7 @@ For our opacity example, the (key part of) the display list for one frame
 might look like this:
 
 ::: {.example}
-    Blend(alpha=0.112375)
+    Blend(alpha=0.119866666667)
       DrawText(text=This)
       DrawText(text=text)
       DrawText(text=fades)
@@ -468,7 +468,7 @@ might look like this:
 On the next frame, it instead might like this:
 
 ::: {.example}
-    Blend(alpha=0.119866666667)
+    Blend(alpha=0.112375)
       DrawText(text=This)
       DrawText(text=text)
       DrawText(text=fades)
