@@ -990,7 +990,8 @@ JavaScript code uses a linear interpolation (or *easing function*)
 between the old and new values. Real browsers use a non-linear default easing
 function for CSS transitions because it looks better. We'll implement
 a linear easing function for our browser, so it will look identical to
-the JavaScript and subtly different from real browsers.
+the JavaScript and subtly different from real browsers, but you can try
+adding it via Exercise 13-2.
 
 To implement CSS transitions, we'll need to represent animation
 state---like the JavaScript variables `current_frame` and
@@ -1850,7 +1851,8 @@ white background behind them, as in Figure 6.
 Consider a light blue square overlapped by a light green one, with a
 white background behind them, as in Figure 6.^[See the
 `browser.engineering` website for actual colors. The blue square referenced
-in this section looks lighter than the green one in the figure here.]
+in this section looks lighter than the green one in the figure when rendered
+grayscale here.]
 :::
 
 ::: {.web-only}
@@ -2178,7 +2180,7 @@ if this code were missing it would incorrectly render like Figure 9.
 
 There's one more situation worth thinking about, though. Suppose we have a huge composited layer, containing a lot of text, except that only a small
 part of that layer is shown on the screen, the rest being clipped out. Then the `absolute_bounds`
-consider the clip operations and the `composited_bounds` don't, meaning that
+consider the clip operations but the `composited_bounds` don't, meaning that
 we'll make a much larger composited layer than necessary and waste a lot of
 time rastering pixels that the user will never see.
 
@@ -2316,7 +2318,7 @@ function, and one or two others.
 [easing]: https://developer.mozilla.org/en-US/docs/Web/CSS/easing-function
 
 13-3 *Composited and threaded animations*. Our browser supports
-transfoms and scrolling, but they are not fully composited or threaded,
+transfoms and scrolling, but they are not fully composited and threaded,
 and transform transition animations are not supported. Implement these.
 (Hint: for transforms, it just requires following the same pattern as for
 `opacity`; for scrolling, it requires setting fewer dirty bits in
@@ -2325,10 +2327,8 @@ raster either.
 
 [tr-example]: examples/example13-transform-transition.html
 
-13-4 *Width animations*. Implement the CSS `width` and `height` properties; when
-`width` is set to some number of pixels on an element, the element should be
-that many pixels wide, regardless of how its width would normally be computed;
-the same goes for `height`. Make them animatable; you'll need a variant of
+13-4 *Width/height animations*. (You'll need to have done Exercise 6-2 first.)
+Make `width` and `height` animatable; you'll need a variant of
 `NumericAnimation` that parses and produces pixel values (the "px" suffix in
 the string). Since `width` and `height` are layout-inducing, make sure that
 animating them sets `needs_layout`. Check that animating width in your
@@ -2356,14 +2356,14 @@ CSS property and parsing of `@keyframe` to implement the demos
 [here](examples/example13-opacity-animation.html) and
 [here](examples/example13-width-animation.html).
 
-13-6 *Overlap testing with transform animations*. Our
-browser currently does not overlap test correctly in the presence of transform
-animations that cause overlap to come and go. (You'll need to have already done
-Exercise 13-3.) First create a demo that
-exhibits the bug, and then fix it. One way to fix it is to enter "assume
-overlap mode" whenever an animated transform display item is encountered. This
-means that every subsequent display item is assumed to overlap the animating
-one (even if it doesn't at the moment), and therefore can't merge into any
+13-6 *Overlap testing with transform animations*. (You'll need to have already
+done Exercise 13-3.) Our browser currently does not overlap test correctly in
+the presence of transform animations that cause overlap to come and go. First
+create a demo that exhibits the bug, and then fix it. One way to fix it is to
+enter "assume overlap mode" whenever an animated transform display item is
+encountered. This means that every subsequent display item is assumed
+to overlap the animating one (even if it doesn't at the moment), and
+therefore can't merge into any
 `CompositedLayer` earlier in the list than the animating one. Another way is
 to run overlap testing on every animation frame in the browser thread, and if
 the results differ from the prior frame, redo compositing and raster.
@@ -2384,8 +2384,7 @@ One way to reduce that problem is to stop merging paint chunks that would make
 the total area of the `skia.Surface` larger than some fixed value. Implement
 that.[^tiling-helps]
 
- [^tiling-helps]: Another way is via surface tiling (this technique was briefly
- discussed in a Go Further block in Chapter 11).
+ [^tiling-helps]: Another way is via surface tiling.
 
 13-8 *Short display lists*. it's relatively common in real browsers to encounter
 `CompositedLayer`s that are only a single solid color, or only a few
