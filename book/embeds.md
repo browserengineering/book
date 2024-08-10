@@ -277,7 +277,7 @@ value called a [MIME type][mime-type], such as `text/html`,
 `text/css`, and `text/javascript` for HTML, CSS, and JavaScript;
 `image/png` and `image/jpeg` for PNG and JPEG images; and [many
 others][mime-list] for various font, video, audio, and data
-formats.[^mime-history] Interestingly, we didn't need to the image
+formats.[^mime-history] Interestingly, we didn't need to specify the image
 format in the code above. That's because many image formats start with
 ["magic bytes"][magic-bytes]; for example, PNG files always start with
 byte 137 followed by the letters "PNG". These magic bytes are often
@@ -597,7 +597,7 @@ different than its regular size, even before introducing the features in this
 section.] But in fact it's generally valuable for
 authors to control the size of embedded content. There are a number of ways to
 do this,^[For example, the `width` and `height` CSS properties (not to be
-confused with the `width` and `height` attributes!), which we met in Exercise 13-4.]
+confused with the `width` and `height` attributes!), which we met in Exercise 6-2.]
 but one way is the special `width` and `height`
 attributes.^[Images have these mostly for historical reasons: they
 were invented before CSS existed.]
@@ -2196,10 +2196,10 @@ network, preventing private data from leaking.
 
 These isolation and sandboxing features may seem "straightforward", in
 the same sense that the browser thread we added in [Chapter
-13](scheduling.md) is "straightforward". In practice, the many browser
+12](scheduling.md) is "straightforward". In practice, the many browser
 APIs mean the implementation is full of subtleties and ends up being
 extremely complex. Chromium, for example, took many years to ship the
-first implementation of site isolation.
+first implementation of *site isolation*.
 
 [site-isolation]: https://www.chromium.org/Home/chromium-security/site-isolation/
 
