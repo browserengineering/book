@@ -462,7 +462,7 @@ Dark Mode
 =========
 
 Another useful visual change is using darker colors to help users who
-are extra sensitive to light use their device at night, or who just
+are extra sensitive to light, use their device at night, or who just
 prefer a darker color scheme. This browser *dark mode* feature should
 switch both the browser chrome and the web page itself to use white
 text on a black background, and otherwise adjust background colors to
@@ -806,7 +806,7 @@ elements (use with care!) with [`forced-color-adjust`][fc-adjust].
 Keyboard Navigation
 ===================
 
-Right now, most browser features are triggered using the
+Right now, most of our browser's features are triggered using the
 mouse,^[Except for scrolling, which is keyboard only.] which is a
 problem for users with injuries or disabilities in their hand---and
 also a problem for power users that prefer their keyboards. So ideally
@@ -1343,9 +1343,8 @@ it looks like after I pressed tab to focus the "this is a link" element.
 
 But ideally, the focus indicator should be customizable, so that the web page
 author can make sure the focused element stands out. In CSS, that's done with
-what's called the
-"`:focus` [pseudo-class][pseudoclass]". Basically, this means you can
-write a selector like this:
+the `:focus` [pseudo-class][pseudoclass]. Basically, this
+means you can write a selector like this:
 
 [pseudoclass]: https://developer.mozilla.org/en-US/docs/Web/CSS/Pseudo-classes
 
@@ -1639,7 +1638,7 @@ node based on its tag name, or from the special `role` attribute if
 that exists:
 
 [^standard]: Roles and default roles are specified in the
-[WAI ARIA standard][aria-roles].
+[WAI-ARIA standard][aria-roles].
 
 [aria-roles]: https://www.w3.org/TR/wai-aria-1.2/#introroles
 
@@ -2263,7 +2262,8 @@ hear alert text once the button is clicked.
 ::: {.print-only}
 
 You should now be able to load up this example and
-hear alert text once the button is clicked:
+hear alert text once the button is clicked:^[See the `browser.engineering`
+website for the JavaScript source.]
 
 ::: {.transclude .html}
 www/examples/example14-alert-role.html
@@ -2605,12 +2605,16 @@ indicator by using two outlines, a thicker white one and a thinner
 black one, to ensure that there is contrast between the focus ring and
 surrounding content.
 
-14-2 *`Element.focus`*. Implement the JavaScript [`focus`][focus-el]
-method, which lets JavaScript focus a particular element. Make sure
-that the option to prevent scrolling works properly. Be careful:
+14-2 *Focus method and events*. Add support for the JavaScript
+[`focus()`][focus-method] method
+and the corresponding [`focus`][focus-event] and
+[`blur`][blur-event] events on DOM elements. Make sure that `focus()`
+only has an effect on focusable elements. Be careful:
 before reading an element's position, make sure that layout is up to date.
 
-[focus-el]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/focus
+[focus-method]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/focus
+[focus-event]: https://developer.mozilla.org/en-US/docs/Web/API/Element/focus_event
+[blur-event]: https://developer.mozilla.org/en-US/docs/Web/API/Element/blur_event
 
 14-3 *Highlighting elements during read*. The method to read the document
 works, but it would be nice to also highlight the element being read as
@@ -2707,17 +2711,7 @@ compare the behavior with a real browser.
 
 [os-integ]: https://pypi.org/project/accessible_output/
 
-*Focus method and events*. Add support for the JavaScript
-[`focus()`][focus-method] method
-and the corresponding [`focus`][focus-event] and
-[`blur`][blur-event] events on DOM elements. Make sure that `focus()`
-only has an effect on focusable elements.
-
-[focus-method]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/focus
-[focus-event]: https://developer.mozilla.org/en-US/docs/Web/API/Element/focus_event
-[blur-event]: https://developer.mozilla.org/en-US/docs/Web/API/Element/blur_event
-
-*The `zoom` CSS property*. Add support for the [`zoom`][zoom-property] SSS
+14-10 *The `zoom` CSS property*. Add support for the [`zoom`][zoom-property] SSS
 property defined here. This exposes the same functionality as the CSS zoom
 accessibility feature to web developers, plus it allows applying it only
 to designated HTML subtrees.
