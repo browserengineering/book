@@ -136,19 +136,19 @@ European Union is the [European Accessibility Act][europe-a11y].
 [uk-a11y]: https://www.siteimprove.com/glossary/uk-accessibility-laws/
 [europe-a11y]: https://ec.europa.eu/social/main.jsp?catId=1202
 
-CSS Zoom
-========
+Zoom
+====
 
 Let's start with the simplest accessibility problem: text on the
 screen that is too small to read. It's a problem many of us will face
 sooner or later, and possibly the most common user disability issue.
 The simplest and most effective way to address this is by increasing font
-and element sizes. This approach is called *CSS zoom*,[^zoom]\index{zoom}
-which  means to lay out the page as if all of the CSS sizes were increased or
+and element sizes. This approach is called *zoom*,[^zoom]\index{zoom}
+which means to lay out the page as if all of the CSS sizes were increased or
 decreased by a specified factor.
 
 [^zoom]: The word zoom evokes an analogy to a camera zooming in, but
-it is not the same, because CSS zoom causes layout. *Pinch zoom*, on
+it is not the same, because zoom causes layout. *Pinch zoom*, on
 the other hand, is just like a camera and does not cause layout.
 
 To implement it, we first need a way to trigger zooming. On most
@@ -216,7 +216,7 @@ Finally, the `Tab` responds to these commands by adjusting a new
 `zoom` property, which starts at `1` and acts as a
 multiplier for all "CSS sizes" on the web page:[^browser-chrome]
 
-[^browser-chrome]: CSS zoom typically does not change the size of
+[^browser-chrome]: Zoom typically does not change the size of
 elements of the browser chrome. Browsers *can* do that too, but it's
 usually triggered by a global OS setting.
 
@@ -2712,7 +2712,7 @@ compare the behavior with a real browser.
 [os-integ]: https://pypi.org/project/accessible_output/
 
 14-10 *The `zoom` CSS property*. Add support for the [`zoom`][zoom-property] SSS
-property defined here. This exposes the same functionality as the CSS zoom
+property defined here. This exposes the same functionality as the zoom
 accessibility feature to web developers, plus it allows applying it only
 to designated HTML subtrees.
 
