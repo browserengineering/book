@@ -1,5 +1,5 @@
 ---
-title: Constructing a Document Tree
+title: Constructing an HTML Tree
 chapter: 4
 prev: text
 next: layout

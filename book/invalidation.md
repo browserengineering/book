@@ -834,7 +834,7 @@ them (with `set`). We've added `get` and `set`, but who *marks* the
     incorrectly skip too much layout work.
 
 We mark a field's dirty flag when its dependency changes. For example,
-`innerHTML_set` and `keypress` change the DOM tree, which the layout
+`innerHTML_set` and `keypress` change the HTML tree, which the layout
 tree's `children` field depends on, so those handlers call `mark` on
 the `children` field. Since a child's `zoom` field depends on its
 parents' `zoom` field, we need to mark all the children when the
