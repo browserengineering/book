@@ -327,8 +327,8 @@ the [WHATWG](https://whatwg.org/)\index{WHATWG}, but
 [CSS](https://drafts.csswg.org/) and other features are still standardized at
 the W3C. JavaScript\index{JavaScript} is
 standardized at yet another standards body,
-[TC39](https://tc39.es/)\index{TC39}
-(“Technical Committee 39”) at
+TC39\index{TC39}
+([Technical Committee 39](https://tc39.es/)) at
 [ECMA](https://www.ecma-international.org/about-ecma/history/).
 [HTTP](https://tools.ietf.org/html/rfc2616) is standardized by
 the [IETF](https://www.ietf.org/about/)\index{IETF}. The important point is
