@@ -194,7 +194,7 @@ they have batteries of hundreds of thousands of [unit] and [integration] tests.
 Recently, a lot of focus has been put on robust
 [cross-browser tests](https://wpt.fyi) that allow a single automated test
 to run on all browsers to verify that they all behave the same on the same
-input. And there are now yearly [Interoperability]^["Interop", for short.]
+input. And there are now yearly [interoperability]^["Interop", for short.]
 benchmarks that measure how well browsers are doing against this goal for
 key features. Behind the scenes of testing is a whole world of code and
 infrastructure to efficiently run these tests continuously and provide

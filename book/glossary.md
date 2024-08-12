@@ -61,7 +61,7 @@ scripts.
 URL
 
 : Uniform Resource Locator, the name used to refer uniquely to a web
-page.
+page or resource.
 
 Web
 
@@ -74,7 +74,7 @@ navigate web pages. Also often just called a "browser".
 
 Web page
 
-: The basic unit of the web; defined by unique URL.
+: The basic unit of the web; defined by a unique URL that returns HTML.
 
 Web resource
 
@@ -86,9 +86,9 @@ are called *subresources*.
 Web security
 
 : The ability to intentionally limit the behavior of web
-browsers, servers, or applications, usually to prevent unintentional
-harm. There are lots of different aspects of security: browser
-security (so the user's computer isn't harmed by their browser), web
+browsers, servers, or applications, usually to prevent
+harm, unintentional or not. There are lots of different aspects of security:
+browser security (so the user's computer isn't harmed by their browser), web
 application security (so a web application can't be harmed by its
 users), privacy (so a third party can't harm a web user), and many
 others.
@@ -102,7 +102,7 @@ WWW
 
 : World Wide Web. A name for the network of web pages built on
 HTTP, hyperlinks, HTML, CSS and JavaScript, as well as the open and
-decentralized rules that (informally) govern them.
+decentralized rules that govern them.
 
 Standards
 =========
@@ -150,11 +150,6 @@ Document
 : The conceptual object created when loading a web page and
 modified by interacting with it, an analogy to physical documents.
 
-Document tree
-
-: The tree created from parsing HTML. Also sometimes
-called the DOM.
-
 DOM
 
 : Document Object Model. The object-oriented API interface to JavaScript
@@ -164,7 +159,7 @@ HTML.
 
 Element
 
-: Most nodes in the DOM tree are elements (except for
+: Most nodes in the HTML tree are elements (except for
 text and the document object).
 
 Event
@@ -190,6 +185,11 @@ HTML attribute
 : A parameter on an element indicating some
 information, such as the source of an image or the URL of a style sheet.
 
+HTML tree
+
+: The tree created from parsing HTML. Also sometimes
+called the DOM.
+
 Iframe
 
 : A way of embedding one document within another. A
@@ -198,8 +198,7 @@ participates in the layout of the parent.
 
 Image
 
-: A representation of a picture to draw on a computer screen. An
-HTML element of the same name, for the same purpose.
+: A representation of a picture to draw on a computer screen.
 
 Node
 
@@ -282,17 +281,17 @@ elements after applying all rules according to the cascade order.
 
 CSS property
 
-: A single concept (such as "color" or "width") used to style
+: A single concept (such as `color` or `width`) used to style
 a specific part of an element.
 
 CSS property–value
 
 : A key–value pair of a CSS property and its value
-(e.g. "color" and "blue" or "width" and "30px").
+(e.g. `color` and `blue` or `width` and `30px`).
 
 CSS rule
 
-: The combination of a selector and property values.
+: The combination of a CSS selector and CSS property-values.
 
 CSS selector
 
@@ -332,7 +331,7 @@ Element
 layout bounds of the element, which may be off the top or left of the
 viewport if margins or positioning is used.
 
-Layout
+Layer
 
 : This coordinate system's origin is at the top-left of a
 composited layer, which is chosen so as to include all of the paint
@@ -383,7 +382,7 @@ an image) into a simpler format in memory (such as a bitmap).
 
 Device pixel ratio
 
-: the ratio between the screen pixel resolution and a
+: The ratio between the screen pixel resolution and a
 "typical" screen (defined as the pixel resolution of a 1990s CRT).
 
 Display list

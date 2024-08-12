@@ -823,7 +823,7 @@ class Tab:
 ```
 
 Note that the guts of `load` now live in the `Frame`, because
-the `Frame` owns the DOM tree. The `Frame` can *also* construct child
+the `Frame` owns the HTML tree. The `Frame` can *also* construct child
 `Frame`s, for `<iframe>` elements:
 
 ``` {.python}

@@ -59,7 +59,7 @@ Part 1: Drawing Graphics
 Part 2: Viewing Documents
 =========================
 
-4. [Constructing a Document Tree](html.md)\
+4. [Constructing an HTML Tree](html.md)\
     Parsing and fixing HTML
 5. [Laying Out Pages](layout.md)\
     Inline and block layout
