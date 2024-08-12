@@ -115,9 +115,9 @@ it often ran out of bandwidth or computing power and became inaccessible.
 With all that's changed, some things have stayed the same, the core building
 blocks that are the essence of the web:
 
-* The user uses a _User Agent_, called a _browser_, to navigate the web.
 * The web is a _network of information_
   linked by _hyperlinks_.
+* The user uses a _user agent_, called a _browser_, to navigate the web.
 * Information is requested with the _HyperText Transfer Protocol (HTTP)_
   and structured with the _HTML document format_.
 * Documents are identified by Uniform Resource Locators (URLs),
@@ -235,7 +235,7 @@ What makes that all work is the web browser's implementations of [inversion of
 control][inversion], [constraint programming][constraints], and
 [declarative programming][declarative]. The web _inverts control_, with an
 intermediary---the browser---handling most of the rendering, and the web
-developer specifying rendering parameters and content to this intermediary.
+developer specifying rendering parameters and contents to this intermediary.
 [^forms] Further, these parameters usually take the form of _constraints_
 between the relative sizes and positions of on-screen elements instead of
 specifying their values directly;[^constraints] the browser solves the
@@ -320,7 +320,7 @@ _implementer_ of the web: its sandbox keeps web browsing safe; its algorithms
 implement the declarative document model; its UI navigates links. Web pages
 load fast and react smoothly only when the browser is hyper-efficient.
 
-[^useragent]: The User Agent concept views a computer, or software within the
+[^useragent]: The user agent concept views a computer, or software within the
     computer, as a trusted assistant and advocate of the human user.
 
 Browsers and You
