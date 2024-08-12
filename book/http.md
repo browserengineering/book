@@ -983,7 +983,7 @@ the socket, only read as many bytes as given in the `Content-Length`
 header and don't close the socket afterward. Instead, save the
 socket, and if another request is made to the same server reuse the
 same socket instead of creating a new one. This will speed up repeated
-requests to the same server, which is common.
+requests to the same server, which are common.
 
 1-7 *Redirects*. Error codes in the 300 range request a redirect. When
 your browser encounters one, it should make a new request to the URL
@@ -1019,8 +1019,8 @@ compressed. Add support for this case. To decompress the data, you can
 use the `decompress` method in the `gzip` module. GZip data is not
 `utf8`-encoded, so pass `"rb"` to `makefile` to work with raw bytes
 instead. Most web servers send compressed data in a
-`Transfer-Encoding` called [`chunked`][chunked]. You'll need to add
-support for that, too.[^te-gzip]
+`Transfer-Encoding` called [`chunked`][chunked].[^te-gzip]
+You'll need to add support for that, too.
 
 [negotiate]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Content_negotiation
 
