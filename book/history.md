@@ -174,7 +174,7 @@ modern browsers.[^more-less-powerful] On December 20, 1990 the [first web
 page](http://info.cern.ch/hypertext/WWW/TheProject.html) was created. The
 browser we will implement in this book is easily able to render this web page,
 even today.[^original-aesthetics] In 1991, Berners-Lee advertised his browser
-and the concept on the [alt.hypertext Usenet
+and the concept on the [`alt.hypertext` Usenet
 group](https://www.w3.org/People/Berners-Lee/1991/08/art-6484.txt).
 
 ::: {.center}
@@ -326,10 +326,11 @@ on, the HTML specification ended up moving to a different standards body called
 the [WHATWG](https://whatwg.org/)\index{WHATWG}, but
 [CSS](https://drafts.csswg.org/) and other features are still standardized at
 the W3C. JavaScript\index{JavaScript} is
-standardized at [TC39](https://tc39.es/)\index{TC39}
-(“Technical Committee 39” at
-[ECMA](https://www.ecma-international.org/about-ecma/history/), yet another
-standards body). [HTTP](https://tools.ietf.org/html/rfc2616) is standardized by
+standardized at yet another standards body,
+[TC39](https://tc39.es/)\index{TC39}
+(“Technical Committee 39”) at
+[ECMA](https://www.ecma-international.org/about-ecma/history/).
+[HTTP](https://tools.ietf.org/html/rfc2616) is standardized by
 the [IETF](https://www.ietf.org/about/)\index{IETF}. The important point is
 that the standards process set up in the mid-1990s is still with us.
 
@@ -359,7 +360,7 @@ Object Model you'll learn about in this book. Netscape and Internet Explorer at
 first had incompatible implementations of these features, and it took years,
 the development of a common specification, and significant pressure campaigns on
 the browsers before standardization was achieved. You can read about this story in
-much more depth [here](https://css-tricks.com/chapter-7-standards/).
+much more depth [from Jay Hoffman](https://css-tricks.com/chapter-7-standards/).
 
 [^web-os]: There have even been operating systems built around the web! Examples
 include [webOS](https://en.wikipedia.org/wiki/WebOS), which powered some Palm
