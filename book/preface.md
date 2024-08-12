@@ -63,7 +63,7 @@ This book's browser is irreverent toward standards: it handles only a
 sliver of the full HTML, CSS, and JavaScript languages, mishandles
 errors, and isn't resilient to malicious inputs. It is also quite
 slow. Despite that, its architecture matches that of real browsers,
-providing insight into those 10 million lines of code behemoths.
+providing insight into those 10 million line of code behemoths.
 
 That said, we've tried to explicitly note when the book's browser
 simplifies or diverges from standards. If you're not sure how your
