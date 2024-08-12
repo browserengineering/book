@@ -979,7 +979,7 @@ the `opacity` property, as in Figure 3.
 ::: {.print-only}
 However, there's another, subtly different way to create transparency
 with CSS. Here^[See the `browser.engineering` website for the example and
-how it reflects in colors.], 50% transparency is applied to the whole element
+how it looks in color.], 50% transparency is applied to the whole element
 using the `opacity` property, as in Figure 3.
 :::
 
