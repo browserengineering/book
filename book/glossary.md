@@ -74,7 +74,7 @@ navigate web pages. Also often just called a "browser".
 
 Web page
 
-: The basic unit of the web; defined by unique URL that returns HTML.
+: The basic unit of the web; defined by a unique URL that returns HTML.
 
 Web resource
 
