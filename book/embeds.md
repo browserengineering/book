@@ -2199,7 +2199,7 @@ the same sense that the browser thread we added in [Chapter
 12](scheduling.md) is "straightforward". In practice, the many browser
 APIs mean the implementation is full of subtleties and ends up being
 extremely complex. Chromium, for example, took many years to ship the
-first implementation of *site isolation*.
+first implementation of [*site isolation*][site-isolation].
 
 [site-isolation]: https://www.chromium.org/Home/chromium-security/site-isolation/
 
