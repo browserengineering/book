@@ -6,8 +6,8 @@ next: graphics
 ...
 
 A web browser displays information identified by a URL. And the first
-step is to use that URL to connect to and download that information
-from a server somewhere on the Internet.
+step is to use that URL to connect to and download information from a
+server somewhere on the Internet.
 
 Connecting to a Server
 ======================
@@ -141,7 +141,7 @@ Requesting Information
 Once it's connected, the browser requests information from the server
 by giving its *path*, the path being the part of a URL that comes
 after the host name, like `/index.html`. The structure of the request
-is shown in Figure 2. You can type this into `telnet` to try it.
+is shown in Figure 2. Type this into `telnet` to try it.
 
 ::: {.cmd .web-only html=True}
     python3 infra/annotate_code.py <<EOF
@@ -234,8 +234,7 @@ This tells you that the host confirms that it, too, speaks `HTTP/1.0`,
 and that it found your request to be "OK" (which has a numeric code of
 200). You may be familiar with `404 Not Found`; that's another numeric
 code and response, as are `403 Forbidden` or `500 Server Error`. There
-are lots of these codes,^[As [this flow
-chart](https://github.com/for-GET/http-decision-diagram) shows.]
+are lots of these codes,
 and they have a pretty neat organization scheme:^[The status text like
 `OK` can actually be anything and is just there for humans, not for
 machines.]
@@ -286,7 +285,7 @@ code that contains the content of the web page itself.
 [html]:  https://developer.mozilla.org/en-US/docs/Web/HTML
 
 The HTTP request/response transaction is summarized in Figure 4. Let's now
-switch gears from manual connections to Python.
+switch gears from making manual connections to Python.
 
 ::: {.center}
 ![Figure 4: An HTTP request and response pair are how a web browser gets web
@@ -340,7 +339,7 @@ first parameter of any method, is Python's analog of `this` in C++
 or Java.
 
 Let's start with the scheme, which is separated from the rest of the
-URL by `://`. Our browser only supports `http`, so I check that, too:
+URL by `://`. Our browser only supports `http`, so let's check that, too:
 
 ``` {.python replace=%3d%3d/in,%22http%22/[%22http%22%2c%20%22https%22]}
 class URL:
@@ -553,8 +552,8 @@ endings.
     `Content-Type` header usually contains a `charset` declaration
     that specifies the encoding of the body. If it's absent, browsers
     still won't default to `utf8`; they'll guess, based on letter
-    frequencies, and you see ugly � strange áççêñ£ß when they guess
-    wrong. Incorrect-but-common `utf8` skips all that complexity.
+    frequencies, and you will see ugly � strange áççêñ£ß when they guess
+    wrong.
 
 
 Let's now split the response into pieces. The first line is the
@@ -562,7 +561,7 @@ status line:^[I could have asserted
 that 200 is required, since that's the only code our browser supports,
 but it's better to just let the browser render the returned body, because
 servers will generally output a helpful and user-readable HTML error page
-even for these codes. This is another way in which the web is easy to
+even for error codes. This is another way in which the web is easy to
 implement incrementally.]
 
 
@@ -659,8 +658,8 @@ servers seem to use together with compression.
 Displaying the HTML
 ===================
 
-The HTML code in the body defines the content you see in your browser
-window when you go to <http://example.org/index.html>. I'll be
+The HTML code in the response body defines the content you see in your browser
+window when you go to `<http://example.org/index.html>`. I'll be
 talking much, much more about HTML in future chapters, but for now let
 me keep it very simple.
 
@@ -727,6 +726,7 @@ if __name__ == "__main__":
 The first line is Python's version of a `main` function, run only when
 executing this script from the command line. The code reads the first
 argument (`sys.argv[1]`) from the command line and uses it as a URL.
+
 Try running this code on the URL `http://example.org/`:
 
 ``` {.sh}
@@ -810,8 +810,8 @@ class URL:
 ```
 
 (Note that here you're supposed to replace the existing scheme parsing
-code with this new code. It's usually clear from context and the code
-itself what you need to replace.)
+code with this new code. It's usually clear from context, and the code
+itself, what you need to replace.)
 
 Encrypted HTTP connections usually use port 443 instead of port 80:
 
@@ -915,7 +915,7 @@ This chapter went from an empty file to a rudimentary web browser that
 can:
 
 -   parse a URL into a scheme, host, port, and path;
--   connect to that host using the `sockets` and `ssl` libraries;
+-   connect to that host using the `socket` and `ssl` libraries;
 -   send an HTTP request to that host, including a `Host` header;
 -   split the HTTP response into a status line, headers, and a body;
 -   print the text (and not the tags) in the body.
