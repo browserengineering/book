@@ -2712,7 +2712,7 @@ compare the behavior with a real browser.
 [os-integ]: https://pypi.org/project/accessible_output/
 
 14-10 *The `zoom` CSS property*. Add support for the [`zoom`][zoom-property] CSS
-property defined here. This exposes the same functionality as the zoom
+property. This exposes the same functionality as the zoom
 accessibility feature to web developers, plus it allows applying it only
 to designated HTML subtrees.
 
