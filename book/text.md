@@ -305,7 +305,9 @@ def layout(text):
 Unlike Chinese characters, words are different sizes, so we need to
 measure the width of each word:
 
-``` {.python expected=False }
+``` {.python expected=False}
+import tkinter.font
+
 def layout(text):
     font = tkinter.font.Font()
     # ...
