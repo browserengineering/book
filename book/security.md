@@ -366,7 +366,6 @@ particular tab. That means that if you're logged in to a website and
 you open a second tab, you're logged in on that tab as
 well.[^multiple-resources]
 
-
 [^multiple-resources]: Moreover, since `request` can be called multiple
     times on one page---to load CSS and JavaScript---later requests
     transmit cookies set by previous responses. For example our guest
@@ -1091,7 +1090,7 @@ Next, we'll need to extract and parse the `Content-Security-Policy`
 header when loading a page:[^more-complex]
 
 [^more-complex]: In real browsers `Content-Security-Policy` can also
-    list scheme-generic URLs and other sources like `'self'`. And
+    list scheme-generic URLs and other sources like `self`. And
     there are keywords other than `default-src`, to restrict styles,
     scripts, and `XMLHttpRequest`s each to their own set of URLs.
 

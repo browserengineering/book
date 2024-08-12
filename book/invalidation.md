@@ -1499,6 +1499,9 @@ class TextLayout:
         style = self.node.style.read(notify=self.font)
         self.font.set(font(style, zoom))
 
+        f = self.font.read(notify=self.width)
+        self.width.set(f.measureText(self.word))
+
         f = self.font.read(notify=self.ascent)
         self.ascent.set(f.getMetrics().fAscent * 1.25)
 
@@ -2663,7 +2666,7 @@ build* is what browser engineers use when debugging or developing new
 features, and also in automated tests. Debug builds
 also compile in debugging features like [sanitizers][ffx-sanitizers],
 while release builds instead use heavyweight optimizations
-[like PGO][chrome-pgo] (profile-guided optimization).
+[like *profile-guided optimization*][chrome-pgo] (PGO).
 
 :::
 

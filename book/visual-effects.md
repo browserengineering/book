@@ -281,7 +281,7 @@ def parse_color(color):
         return skia.Color(r, g, b)
 ```
 
-The named colors we've seen so far can just be specified in terms of
+The colors we've seen so far can just be specified in terms of
 this syntax:
 
 ``` {.python}
@@ -755,7 +755,7 @@ class Browser:
 Since we didn't create the `tab_surface` on startup, we need to create
 it at the top of `raster_tab`:[^really-big-surface]
 
-[^really-big-surface]: For a very big web page, the `tab_surface` can
+[^really-big-surface]: For a very big web page, `tab_surface` can
 be much larger than the size of the SDL window, and therefore take up
 a very large amount of memory. We'll ignore that, but a real browser
 would only paint and raster surface content up to a certain distance
@@ -1098,7 +1098,7 @@ surface.
 `saveLayer` and `restore` are like a pair of parentheses
 enclosing child drawing operations. This means our display list is
 no longer just a linear sequence of drawing operations, but a tree. So
-in our display list, let's handle `opacity` with an `Alpha`
+in our display list, let's handle `opacity` with an `Opacity`
 command that takes a sequence of other drawing commands as an
 argument:
 
