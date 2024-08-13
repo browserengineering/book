@@ -23,7 +23,7 @@ What is a Font?
 
 So far, we've called `create_text` with a character and two
 coordinates to write text to the screen. But we never specified its
-font\index{font} or size. To talk about those things,
+font\index{font}, size, or style. To talk about those things,
 we need to create and use font objects.
 
 What is a *font*, exactly? Well, in the olden days, printers arranged
@@ -213,6 +213,8 @@ of course, since different letters have different widths:[^widths]
 5
 >>> bi_times.measure("!")
 7
+>>> 13 + 5 + 7
+25
 ```
 
 [^widths]: Note that the sum of the individual letters' lengths is not
@@ -911,7 +913,8 @@ logic itself in a new `get_font` function:
 def get_font(size, weight, style):
     key = (size, weight, style)
     if key not in FONTS:
-        font = tkinter.font.Font(size=size, weight=weight, slant=style)
+        font = tkinter.font.Font(size=size, weight=weight,
+            slant=style)
         label = tkinter.Label(font=font)
         FONTS[key] = (font, label)
     return FONTS[key][0]
