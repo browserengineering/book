@@ -20,7 +20,7 @@ and a node for each span of text.[^1] A simple HTML document showing
 the structure is shown in Figure 1.
 
 [^1]: In reality there are other types of nodes too, like comments,
-    doctypes, and `CDATA` sections, and processing instructions. There
+    doctypes, `CDATA` sections, and processing instructions. There
     are even some deprecated types!
 
 ::: {.center}
@@ -189,7 +189,7 @@ class HTMLParser:
             # ...
 ```
 
-An open tag instead adds an unfinished node to the end of the list:
+An open tag adds an unfinished node to the end of the list:
 
 ``` {.python indent=4 expected=False}
 def add_tag(self, tag):
@@ -370,6 +370,8 @@ looks something like this:
  <html lang="en-US" xml:lang="en-US">
    <head>
      <meta charset="utf-8" /="">
+       <link rel="prefetch" ...>
+         <link rel="prefetch" ...>
 ```
 
 Our next problem: why's everything so deeply indented? Why aren't
@@ -417,7 +419,7 @@ def add_tag(self, tag):
         parent.children.append(node)
 ```
 
-This code looks right, but if you test it out it won't seem to help.
+This code looks right, but it doesn't quite work right.
 Why not? Because our parser is looking for a tag named `meta`, but
 it's finding a tag named "`meta name=...`". The self-closing code
 isn't triggered because the `<meta>` tag has attributes.
@@ -446,7 +448,7 @@ names, so I case-fold them.[^case-fold] Then, inside the loop, I
 split each attribute–value pair into a name and a value. The easiest
 case is an unquoted attribute, where an equal sign separates the two:
 
-[^case-fold]: The `casefold` method works better than `lower`. Lower-casing text
+[^case-fold]: Lower-casing text
 is the [wrong way][case-hard] to do case-insensitive comparisons in languages
 like Cherokee. In HTML specifically, tag names only use the ASCII characters so
 lower-casing them would be sufficient, but I'm using Python's `casefold`
@@ -477,7 +479,8 @@ for attrpair in parts[1:]:
 Finally, the value can be quoted, in which case the quotes have to be
 stripped out:[^for-ws]
 
-[^for-ws]: Quoted attributes allow whitespace between the quotes. That
+[^for-ws]: Quoted attributes allow whitespace between the quotes.
+    Parsing that properly
     requires something like a finite state machine instead of just
     splitting on whitespace.
 
@@ -795,7 +798,7 @@ guess what the *right* thing is.
 
 [html5-parsing]: https://html.spec.whatwg.org/multipage/parsing.html
 
-And now for the payoff! Figure 3 shows a screenshot of our very own [website](https://browser.engineering/),
+And now for the payoff! Figure 3 shows a screenshot of [this book's website](https://browser.engineering/),
 loaded in our own browser.^[To be fair, it actually looks about the same with the Chapter 3 browser.]
 
 ::: {.center}
