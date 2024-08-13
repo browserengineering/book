@@ -93,8 +93,8 @@ their own `layout` and `paint` methods, but before we get to those we
 need to think about how the `LineLayout` and `TextLayout` objects will
 be created. That has to happen during word wrapping.
 
-Recall [how word wrapping happens (see Chapter 3)](text.md)
-inside `BlockLayout`'s `word` method. That method updates a `line` field,
+Recall [how word wrapping (see Chapter 3)](text.md)
+inside `BlockLayout`'s `word` method works. That method updates a `line` field,
 which stores all the words in the current line:
 
 ``` {.python file=lab6 indent=12}
@@ -270,7 +270,7 @@ browser might resolve this paradox with multi-phase layout.
 There are many considerations and optimizations of this kind that are
 needed to make text layout super fast.
 
-That method will pilfer the code from the old `flush` method. First,
+That method will pilfer code from the old `flush` method. First,
 let's lay out each word:
 
 ``` {.python indent=8}
@@ -299,7 +299,7 @@ max_descent = max([word.font.metrics("descent")
 Note that this code is reading from a `font` field on each word and
 writing to each word's `y` field. That means that inside
 `TextLayout`'s `layout` method we need to compute `x`, `width`,
-`height` , and `font`, but not `y`. Remember that for later.
+`height` , and `font`, but not `y`, exactly how we did it.
 
 Finally, since each line is now a standalone layout object, it needs
 to have a height. We compute it from the maximum ascent and descent:
@@ -330,7 +330,7 @@ class TextLayout:
 
 Now we don't need a `display_list` field in `BlockLayout`, and we can
 also remove the part of `BlockLayout`'s `paint`\index{paint} that
-handles it. Instead, `BlockLayout` can just recurse into its children
+handles it. Instead, `paint_tree` can just recurse into its children
 and paint them. So by adding `LineLayout` and `TextLayout` we made
 `BlockLayout` quite a bit simpler and shared more code between block
 and inline layout modes.
@@ -416,8 +416,7 @@ objs = [obj for obj in tree_to_list(self.document, [])
 ```
 
 In principle there might be more than one layout object in this
-list.^[This is actually not possible in our browser at this point, but
-in real browsers there are all sorts of ways this could happen, like
+list.^[In real browsers there are all sorts of ways this could happen, like
 negative margins.] But remember that click handling is the reverse of
 painting. When we paint, we paint the tree from front to back, so when
 hit testing we should start at the last element:[^overlap]
@@ -502,12 +501,12 @@ browser doesn't.[^ffx]
     convince friends and relatives to switch from IE 6 to Firefox.
 
 Fundamentally, implementing tabbed browsing requires us to distinguish
-between the browser itself and tabs that show individual web pages.
+between the browser itself and the tabs that show individual web pages.
 The canvas the browser draws to, for example, is shared by all web pages,
 but the layout tree and display list are specific to one page. We need to
 tease tabs and browsers apart.
 
-Here's the plan: the `Browser` class will own the window and canvas,
+Here's the plan: the `Browser` class will own the window and canvas
 and all related methods, such as event handling. And it'll also
 contain a list of `Tab` objects and the page chrome. But the web page
 itself its associated methods will live in a new `Tab` class.
@@ -543,6 +542,8 @@ class Browser:
         self.window.bind("<Down>", self.handle_down)
         self.window.bind("<Button-1>", self.handle_click)
 ```
+
+Remove these lines from `Tab`'s constructor.
 
 The `handle_down` and `handle_click` methods need page-specific
 information, so these handler methods just forward the event to the
@@ -668,7 +669,7 @@ class Browser:
 
 ```
 
-So, let's design the browser chrome. Ultimately, I think it should
+Let's design the browser chrome. Ultimately, I think it should
 have two rows (see Figure 1):
 
 * At the top, a list of tab names, separated by vertical lines, and a "`+`"
@@ -912,7 +913,7 @@ class Browser:
 
 Note that this display list is always drawn at the top of the window,
 unlike the tab contents (which scroll). Make sure to draw the chrome
-*after* the main tab contents, so that the chrome ends up on top.
+*after* the main tab contents, so that the chrome is drawn over it.
 
 However, we also have to make some adjustments to tab drawing to
 account for the fact that the browser chrome takes up some vertical
@@ -1086,10 +1087,10 @@ class Chrome:
         # ...
         cmds.append(DrawOutline(self.address_rect, "black", 1))
         url = str(self.browser.active_tab.url)
-            cmds.append(DrawText(
-                self.address_rect.left + self.padding,
-                self.address_rect.top,
-                url, self.font, "black"))
+        cmds.append(DrawText(
+            self.address_rect.left + self.padding,
+            self.address_rect.top,
+            url, self.font, "black"))
 ```
 
 Here, `str` is a built-in Python function that we can override to
@@ -1232,8 +1233,8 @@ class Chrome:
 ```
 
 Note that clicking on the address bar also clears the address bar
-contents. That's not quite what a browser does, but it's pretty close,
-and lets us skip adding text selection.
+contents. That's not quite what a real browser does, but it's pretty close,
+and it lets us skip adding text selection.
 
 Now, when we draw the address bar, we need to check whether to draw
 the current URL or the currently typed text:
