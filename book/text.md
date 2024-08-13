@@ -9,7 +9,8 @@ In the last chapter, our browser created a graphical window and
 drew a grid of characters to it. That's OK for Chinese, but English
 text features characters of different widths grouped into words that
 you can't break across lines.[^lotsoflang] In this chapter, we'll add those
-capabilities. You'll even be able to read [this page](https://browser.engineering/text.html)!
+capabilities. You'll even be able to read [this
+chapter](https://browser.engineering/text.html) in your browser!
 
 [^lotsoflang]: There are lots of languages in the world, and lots of
     typographic conventions. A real web browser supports every
@@ -21,8 +22,8 @@ What is a Font?
 ===============
 
 So far, we've called `create_text` with a character and two
-coordinates to write text to the screen. But we never specified the
-font\index{font}, the size, or the color. To talk about those things,
+coordinates to write text to the screen. But we never specified its
+font\index{font}, size, or style. To talk about those things,
 we need to create and use font objects.
 
 What is a *font*, exactly? Well, in the olden days, printers arranged
@@ -88,23 +89,18 @@ Yet Tk's *font objects* correspond to the older meaning of font: a
 type at a fixed size, style, and weight. For example:[^after-tk]
 
 [^after-tk]: You can only create `Font` objects, or any other kinds of
-    Tk objects, after calling `tkinter.Tk()`, which is why I'm putting
-    this code in the `Browser` constructor.
-
-``` {.python}
-import tkinter.font
-```
+    Tk objects, after calling `tkinter.Tk()`, and you need to import
+    `tkinter.font` separately.
 
 ``` {.python .example}
-class Browser:
-    def __init__(self):
-        # ...
-        bi_times = tkinter.font.Font(
-            family="Times",
-            size=16,
-            weight="bold",
-            slant="italic",
-        )
+import tkinter.font
+window = tkinter.Tk()
+bi_times = tkinter.font.Font(
+    family="Times",
+    size=16,
+    weight="bold",
+    slant="italic",
+)
 ```
 
 ::: {.quirk}
@@ -311,7 +307,9 @@ def layout(text):
 Unlike Chinese characters, words are different sizes, so we need to
 measure the width of each word:
 
-``` {.python expected=False }
+``` {.python expected=False}
+import tkinter.font
+
 def layout(text):
     font = tkinter.font.Font()
     # ...
@@ -351,8 +349,8 @@ common to add "line spacing" or "leading"[^leading] between lines. The
     compress a little to keep pressure on the other pieces. Pronounce
     it "led-ing" not "leed-ing".
 
-So now `cursor_x` and `cursor_y` have the location to *start* drawing
-the word, so we add to the display list, and finally we update
+So now `cursor_x` and `cursor_y` have the location to the *start* of
+the word, so we add to the display list and update
 `cursor_x` to point to the end of the word:
 
 ``` {.python expected=False}
@@ -374,7 +372,7 @@ Breaking lines in the middle of a word is called hyphenation, and can
 be turned on via the [`hyphens` CSS property][hyphens]. The state of
 the art is the [Knuth–Liang hyphenation algorithm][liang], which uses
 a dictionary of word fragments to prioritize possible hyphenation
-points to implement this. At first, the CSS specification [was
+points. At first, the CSS specification [was
 incompatible][css-hyphen] with this algorithm, but the recent
 [`text-wrap-style` property][css4-text] fixed that.
 :::
@@ -455,9 +453,9 @@ tags, like in `Hi!<hr`, are thrown out.[^errortag]
 Note that `Text` and `Tag` are asymmetric: `lex` avoids empty
 `Text` objects, but not empty `Tag` objects. That's because an empty
 `Tag` object represents the HTML code `<>`, while an empty `Text`
-object with empty text represents no content at all.
+object represents no content at all.
 
-Since we've modified `lex` we are now passing `layout` not just the
+Since we've modified `lex`, we are now passing `layout` not just the
 text of the page, but also the tags in it. So `layout` must loop over
 tokens, not text:
 
@@ -628,10 +626,10 @@ size is the `<small>` tag and its deprecated sister tag
 [^why-obsolete]: In your web design projects, use the CSS `font-size`
     property to change text size instead of `<big>` and `<small>`. But
     since we haven't yet implemented CSS for our browser (see [Chapter
-    6](styles.md)), we're stuck using them here.
+    6](styles.md)), we're stuck using tags here.
 
 Our experience with font styles and weights suggests a simple
-approach that customizes the `size` field in `Layout`. It starts out as:
+approach that customizes the `size` field in `Layout`. It starts out with:
 
 ``` {.python}
 self.size = 12
@@ -647,7 +645,7 @@ font = tkinter.font.Font(
 )
 ```
 
-And so we can change the sizes of `<big>` and `<small>` tags by updating this
+And we can change the size in `<big>` and `<small>` tags by updating this
 variable:
 
 ``` {.python indent=4}
@@ -685,7 +683,7 @@ aligned along its top, as if it's hanging from a clothes line. But you
 know that English text is typically written with all letters aligned
 at an invisible *baseline* instead.
 
-Let's think through how to fix this. If the big text is moved up, it
+Let's think through how to fix this. If the bigger text is moved up, it
 would overlap with the previous line, so the smaller text has to be
 moved down. That means its vertical position has to be computed later,
 *after* the big text passes through `token`. But since the small text
@@ -773,7 +771,7 @@ def flush(self):
     max_ascent = max([metric["ascent"] for metric in metrics])
 ```
 
-The line is then `max_ascent` below `self.y`—or actually a little more
+The baseline is then `max_ascent` below `self.y`—or actually a little more
 to account for the leading:[^leading-half]
 
 [^leading-half]: Actually, 25% leading doesn't add 25% of the ascent
@@ -846,7 +844,7 @@ I add a bit extra to `cursor_y` here to create a little gap between
 paragraphs.
 
 By this point you should be able to load up your browser and display
-[this page](examples/example3-sizes.html), which should look something
+[an example page](examples/example3-sizes.html), which should look something
 like Figure 6.
 
 ::: {.center}
