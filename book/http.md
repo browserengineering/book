@@ -659,7 +659,7 @@ Displaying the HTML
 ===================
 
 The HTML code in the response body defines the content you see in your browser
-window when you go to `<http://example.org/index.html>`. I'll be
+window when you go to `http://example.org/index.html`. I'll be
 talking much, much more about HTML in future chapters, but for now let
 me keep it very simple.
 
