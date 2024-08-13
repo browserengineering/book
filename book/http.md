@@ -7,7 +7,7 @@ next: graphics
 
 A web browser displays information identified by a URL. And the first
 step is to use that URL to connect to and download information from a
-server somewhere on the Internet.
+server somewhere on the internet.
 
 Connecting to a Server
 ======================
