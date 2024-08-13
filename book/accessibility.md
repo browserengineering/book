@@ -136,19 +136,19 @@ European Union is the [European Accessibility Act][europe-a11y].
 [uk-a11y]: https://www.siteimprove.com/glossary/uk-accessibility-laws/
 [europe-a11y]: https://ec.europa.eu/social/main.jsp?catId=1202
 
-CSS Zoom
-========
+Zoom
+====
 
 Let's start with the simplest accessibility problem: text on the
 screen that is too small to read. It's a problem many of us will face
 sooner or later, and possibly the most common user disability issue.
 The simplest and most effective way to address this is by increasing font
-and element sizes. This approach is called *CSS zoom*,[^zoom]\index{zoom}
-which  means to lay out the page as if all of the CSS sizes were increased or
+and element sizes. This approach is called *zoom*,[^zoom]\index{zoom}
+which means to lay out the page as if all of the CSS sizes were increased or
 decreased by a specified factor.
 
 [^zoom]: The word zoom evokes an analogy to a camera zooming in, but
-it is not the same, because CSS zoom causes layout. *Pinch zoom*, on
+it is not the same, because zoom causes layout. *Pinch zoom*, on
 the other hand, is just like a camera and does not cause layout.
 
 To implement it, we first need a way to trigger zooming. On most
@@ -216,7 +216,7 @@ Finally, the `Tab` responds to these commands by adjusting a new
 `zoom` property, which starts at `1` and acts as a
 multiplier for all "CSS sizes" on the web page:[^browser-chrome]
 
-[^browser-chrome]: CSS zoom typically does not change the size of
+[^browser-chrome]: Zoom typically does not change the size of
 elements of the browser chrome. Browsers *can* do that too, but it's
 usually triggered by a global OS setting.
 
@@ -462,7 +462,7 @@ Dark Mode
 =========
 
 Another useful visual change is using darker colors to help users who
-are extra sensitive to light use their device at night, or who just
+are extra sensitive to light, use their device at night, or who just
 prefer a darker color scheme. This browser *dark mode* feature should
 switch both the browser chrome and the web page itself to use white
 text on a black background, and otherwise adjust background colors to
@@ -806,7 +806,7 @@ elements (use with care!) with [`forced-color-adjust`][fc-adjust].
 Keyboard Navigation
 ===================
 
-Right now, most browser features are triggered using the
+Right now, most of our browser's features are triggered using the
 mouse,^[Except for scrolling, which is keyboard only.] which is a
 problem for users with injuries or disabilities in their hand---and
 also a problem for power users that prefer their keyboards. So ideally
@@ -1343,9 +1343,8 @@ it looks like after I pressed tab to focus the "this is a link" element.
 
 But ideally, the focus indicator should be customizable, so that the web page
 author can make sure the focused element stands out. In CSS, that's done with
-what's called the
-"`:focus` [pseudo-class][pseudoclass]". Basically, this means you can
-write a selector like this:
+the `:focus` [pseudo-class][pseudoclass]. Basically, this
+means you can write a selector like this:
 
 [pseudoclass]: https://developer.mozilla.org/en-US/docs/Web/CSS/Pseudo-classes
 
@@ -1639,7 +1638,7 @@ node based on its tag name, or from the special `role` attribute if
 that exists:
 
 [^standard]: Roles and default roles are specified in the
-[WAI ARIA standard][aria-roles].
+[WAI-ARIA standard][aria-roles].
 
 [aria-roles]: https://www.w3.org/TR/wai-aria-1.2/#introroles
 
@@ -2263,7 +2262,8 @@ hear alert text once the button is clicked.
 ::: {.print-only}
 
 You should now be able to load up this example and
-hear alert text once the button is clicked:
+hear alert text once the button is clicked:^[See the `browser.engineering`
+website for the JavaScript source.]
 
 ::: {.transclude .html}
 www/examples/example14-alert-role.html
@@ -2605,12 +2605,16 @@ indicator by using two outlines, a thicker white one and a thinner
 black one, to ensure that there is contrast between the focus ring and
 surrounding content.
 
-14-2 *`Element.focus`*. Implement the JavaScript [`focus`][focus-el]
-method, which lets JavaScript focus a particular element. Make sure
-that the option to prevent scrolling works properly. Be careful:
+14-2 *Focus method and events*. Add support for the JavaScript
+[`focus()`][focus-method] method
+and the corresponding [`focus`][focus-event] and
+[`blur`][blur-event] events on DOM elements. Make sure that `focus()`
+only has an effect on focusable elements. Be careful:
 before reading an element's position, make sure that layout is up to date.
 
-[focus-el]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/focus
+[focus-method]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/focus
+[focus-event]: https://developer.mozilla.org/en-US/docs/Web/API/Element/focus_event
+[blur-event]: https://developer.mozilla.org/en-US/docs/Web/API/Element/blur_event
 
 14-3 *Highlighting elements during read*. The method to read the document
 works, but it would be nice to also highlight the element being read as
@@ -2707,12 +2711,9 @@ compare the behavior with a real browser.
 
 [os-integ]: https://pypi.org/project/accessible_output/
 
-*Focus method and events*. Add support for the JavaScript
-[`focus()`][focus-method] method
-and the corresponding [`focus`][focus-event] and
-[`blur`][blur-event] events on DOM elements. Make sure that `focus()`
-only has an effect on focusable elements.
+14-10 *The `zoom` CSS property*. Add support for the [`zoom`][zoom-property] CSS
+property. This exposes the same functionality as the zoom
+accessibility feature to web developers, plus it allows applying it only
+to designated HTML subtrees.
 
-[focus-method]: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/focus
-[focus-event]: https://developer.mozilla.org/en-US/docs/Web/API/Element/focus_event
-[blur-event]: https://developer.mozilla.org/en-US/docs/Web/API/Element/blur_event
+[zoom-property] https://developer.mozilla.org/en-US/docs/Web/CSS/zoom
