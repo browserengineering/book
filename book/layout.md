@@ -118,7 +118,7 @@ and the HTML element below it), but a tree nonetheless!
 
 By the way, since we now have `DocumentLayout`, let's rename `Layout`
 so it's less ambiguous. I like `BlockLayout` as a name, because we
-ultimately want `Layout` to represent a block of text, like a
+ultimately want it to represent a block of text, like a
 paragraph or a heading:
 
 ``` {.python}
@@ -188,7 +188,20 @@ The core idea is that we'll have a whole tree of `BlockLayout` objects
 that contain text, and they'll lay out their contents the way we've
 already implemented. But there will also be new, intermediate
 `BlockLayout`s with `BlockLayout` children, and they will stack their
-children vertically.
+children vertically. (An example is shown in Figure 1.)
+
+::: {.web-only}
+
+::: {.widget big-height=490px small-height=860px}
+    layout-container-example.html?embed=true
+:::
+
+:::
+
+
+::: {.center}
+![Figure 1: An example of an HTML tree and the corresponding layout tree.](im/layout-tree.png)
+:::
 
 To create these intermediate `BlockLayout` children, we can use a loop
 like this:
@@ -265,7 +278,7 @@ case.[^anon-block]
 
 [^anon-block]: In real browsers, that repair mechanism is called
 "[anonymous block boxes][anon-block]" and is more complex than what's
-described here.
+described here; see Exercise 5-5.
 
 [anon-block]: https://developer.mozilla.org/en-US/docs/Web/CSS/Visual_formatting_model#anonymous_boxes
 
@@ -309,22 +322,9 @@ class BlockLayout:
 Our browser is now constructing a whole tree of `BlockLayout` objects;
 you can use `print_tree` to see this tree in the `Browser`'s `load` method.
 You'll see that large web pages like this chapter produce large and
-complex layout trees! (An example is shown in Figure 1.)
+complex layout trees!
 Now we need each of these `BlockLayout` objects to have a size and
 position somewhere on the page.
-
-::: {.web-only}
-
-::: {.widget big-height=490px small-height=860px}
-    layout-container-example.html?embed=true
-:::
-
-:::
-
-
-::: {.center}
-![Figure 1: An example of an HTML tree and the corresponding layout tree.](im/layout-tree.png)
-:::
 
 ::: {.further}
 In CSS, the layout mode is set by the [`display`
@@ -671,7 +671,7 @@ to draw, but only in inline mode:[^why-not-change]
 [^why-not-change]: Why not change the `display_list` field inside a
 `BlockLayout` to contain `DrawText` commands directly? I suppose you
 could, but I think it's cleaner to create all of the draw
-commands in one place.
+commands in `paint`.
 
 ``` {.python}
 class BlockLayout:
@@ -702,7 +702,7 @@ background has to be drawn *below* that text. Note also that `paint_tree`
 calls `paint` before recursing into the subtree, so the subtree also paints
 on top of this background, as desired.
 
-With the display list filled out, we need to `draw`
+With the display list filled out, we need to draw
 each graphics command. Let's add an `execute` method for this. On
 `DrawText` it calls `create_text`:
 
@@ -755,7 +755,7 @@ class Browser:
             cmd.execute(self.scroll, self.canvas)
 ```
 
-Try your browser on a page---maybe [this one](https://browser.engineering/layout.html)---with code snippets on
+Try your browser on a page---maybe [this chapter's](https://browser.engineering/layout.html)---with code snippets on
 it. You should see each code snippet set off with a gray background.
 
 Here's one more cute benefit of tree-based layout:
@@ -770,14 +770,14 @@ def scrolldown(self, e):
 ```
 
 Note the `2*VSTEP`, to account for a `VSTEP` of whitespace at the top
-and bottom of the page.
+and bottom of the page. With layout the [browser.engineering
+homepage](https://browser.engineering/) now looks a bit better---see
+Figure 3.
 
 So those are the basics of tree-based layout! In fact, as we'll see in
 the next two chapters, this is just one part of the layout tree's central role in
 the browser. But before we get to that, we need to add some styling
-capabilities to our browser. However, even with layout the
-[browser.engineering homepage](https://browser.engineering/) looks a
-bit better---see Figure 3.
+capabilities to our browser.
 
 ::: {.center}
 ![Figure 3: https://browser.engineering/ viewed in this chapter's
