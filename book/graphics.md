@@ -10,7 +10,7 @@ that page to the user. In the twenty-first century, that means a graphical
 application.[^text-browsers] So in this chapter we'll equip our browser with a
 graphical user interface.
 
-[^1]: There are some obscure text-based browsers: I used `w3m` as my
+[^text-browsers]: There are some obscure text-based browsers: I used `w3m` as my
     main browser for most of 2011. I don't anymore.
 
 Creating Windows
