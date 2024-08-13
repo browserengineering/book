@@ -7,10 +7,10 @@ next: text
 
 A web browser doesn't just download a web page; it also has to show
 that page to the user. In the twenty-first century, that means a graphical
-application. So in this chapter we'll equip our browser with a
-graphical user interface.[^1]
+application.[^text-browsers] So in this chapter we'll equip our browser with a
+graphical user interface.
 
-[^1]: There are some obscure text-based browsers: I used `w3m` as my
+[^text-browsers]: There are some obscure text-based browsers: I used `w3m` as my
     main browser for most of 2011. I don't anymore.
 
 Creating Windows
@@ -18,7 +18,7 @@ Creating Windows
 
 Desktop and laptop computers run operating systems that provide
 *desktop environments*: windows, buttons, and a mouse. So
-responsibility ends up split: programs control their window, but the
+responsibility ends up split: programs control their windows, but the
 desktop environment controls the screen. Therefore:
 
 -   The program asks for a new window and the desktop environment
@@ -30,7 +30,7 @@ desktop environment controls the screen. Therefore:
 
 Doing all of this by hand is a bit of a drag, so programs usually use
 a *graphical toolkit* to simplify these steps. Python comes with a
-graphical toolkit called Tk\index{Tk} using the Python package
+graphical toolkit called Tk\index{Tk} in the Python package
 `tkinter`.[^tcl]\index{Tkinter} Using it is quite simple:
 
 [^tcl]: The library is called Tk, and it was originally written for a different
@@ -101,7 +101,7 @@ good performance harder to achieve. Mobile browsers are challenging!
 mobile editions, and the rendering engine code is almost exactly the same for
 both.
 
-[^meta-viewport]: Look at the source of [this webpage](https://browser.engineering/graphics.html). In the `<head>`
+[^meta-viewport]: Look at the source of [this chapter's webpage](https://browser.engineering/graphics.html). In the `<head>`
 you'll see a "viewport" `<meta>` tag. This tag tells the browser that
 the page supports mobile devices; without it, the browser assumes that
 the site is "desktop-only" and renders it differently, such as
@@ -119,16 +119,15 @@ rectangular Tk widget that you can draw circles, lines, and text
 on. For example, you can create a canvas with Tk like this:[^canvas]
 
 [^canvas]: You may be familiar with the HTML `<canvas>` element, which is a
-    similar idea: a two-dimensional (2D) rectangle in which you can draw shapes.
+    similar idea: a two-dimensional rectangle in which you can draw shapes.
 
 ``` {.python .example}
-WIDTH, HEIGHT = 800, 600
 window = tkinter.Tk()
-canvas = tkinter.Canvas(window, width=WIDTH, height=HEIGHT)
+canvas = tkinter.Canvas(window, width=800, height=600)
 canvas.pack()
 ```
 
-The second line creates the window, and the third creates the
+The first line creates the window, and the second creates the
 `Canvas` inside that window. We pass the window as an argument, so
 that Tk knows where to display the canvas. The other arguments define
 the canvas's size; I chose 800 × 600 because that was a common old-timey
@@ -147,6 +146,8 @@ in 1987, and probably did seem super back then.
 To keep it all organized let's put this code in a class:
 
 ``` {.python}
+WIDTH, HEIGHT = 800, 600
+
 class Browser:
     def __init__(self):
         self.window = tkinter.Tk()
@@ -205,7 +206,8 @@ using it for here. As you can see from [the
 tutorial](https://tkdocs.com/tutorial/canvas.html), you can move
 the individual things you've drawn to the canvas, listen to click
 events on each one, and so on. I'm not using those
-features in this book, because I want to teach you how to implement them.
+features in this book, because I want to teach you how to implement
+them yourself.
 :::
 
 Laying Out Text
@@ -365,7 +367,7 @@ Scrolling introduces a layer of indirection between page coordinates
 coordinates (since you've scrolled 60 pixels down, this text is 72
 pixels from the top of the *screen*)---see Figure 5. Generally speaking, a browser
 *lays out* the page---determines where everything on the page
-goes---in terms of page coordinates and then *renders* the
+goes---in terms of page coordinates and then *rasters* the
 page---draws everything---in terms of screen coordinates.[^screen-coordinates]
 
 [^screen-coordinates]: Sort of. What actually happens is that the page is
@@ -462,7 +464,7 @@ def __init__(self):
 
 Here, `self.scrolldown` is an *event handler*, a function that Tk will
 call whenever the down arrow key is pressed.[^event-arg] All it needs
-to do is increment `y` and redraw the canvas:
+to do is increment `scroll` and redraw the canvas:
 
 [^event-arg]: `scrolldown` is passed an *event object* as an argument
     by Tk, but since scrolling down doesn't require any information
@@ -498,7 +500,7 @@ web page changes due to JavaScript or user interaction.
 
 In general, scrolling is the most common user interaction with web pages.
 Real browsers have accordingly invested a *tremendous* amount of time
-making it fast; we'll get to some more of the ways later in the book.
+making it fast; we'll get to some more of the ways they do this later in the book.
 :::
 
 [webrender]: 
@@ -507,7 +509,7 @@ https://hacks.mozilla.org/2017/10/the-whole-web-at-maximum-fps-how-webrender-get
 Faster Rendering
 ================
 
-<a name="framebudget"></a> Applications have to redraw these contents
+<a name="framebudget"></a> Applications have to redraw page contents
 quickly for interactions to feel fluid,[^compositing] and must respond quickly
 to clicks and key presses so the user doesn't get frustrated. "Feel
 fluid" can be made more precise. Graphical applications such as
@@ -534,7 +536,7 @@ redraw their window contents, though, to change what is displayed.
 [Chapter 13](animations.md) discusses compositing in more detail.
 
 
-But this scrolling is pretty slow.[^slow-scroll] Why? It turns out
+But scrolling in our browser is pretty slow.[^slow-scroll] Why? It turns out
 that loading information about the shape of a character, inside
 `create_text`, takes a while. To speed up scrolling we need to make
 sure to do it only when necessary (while at the same time ensuring the
@@ -607,8 +609,8 @@ these at the end of the chapter so you can see how it improves.]
 
 :::
 
-Next, we'll make this browser work on English text, with all its
-complexities of variable-width characters, line layout, and
+Next, we'll make this browser work on English text, handling
+complexities like variable-width characters, line layout, and
 formatting.
 
 ::: {.signup}
@@ -642,9 +644,9 @@ Make sure you can't scroll past the top of the page.
 Then bind the `<MouseWheel>` event, which triggers when you scroll
 with the mouse wheel.[^laptop-mousewheel] The associated event object
 has an `event.delta` value which tells you how far and in what
-direction to scroll. Unfortunately, Mac and Windows give the
+direction to scroll. Unfortunately, macOS and Windows give the
 `event.delta` objects opposite sign and different scales, and on
-Linux, scrolling instead uses the `<Button-4>` and `<Button-5>`
+Linux scrolling instead uses the `<Button-4>` and `<Button-5>`
 events.[^more-mousewheel]
 
 [^laptop-mousewheel]: It will also trigger with touchpad gestures,
@@ -700,7 +702,7 @@ were `about:blank`.
 2-7 *Alternate text direction*. Not all languages read and lay out from left
 to right. Arabic, Persian, and Hebrew are good examples of right-to-left
 languages. Implement basic support for this with a command-line flag to your
-browser.^[Once we get to [Chapter 4](html.md) you could write it in terms of
+browser.^[Once we get to [Chapter 4](html.md) you could instead use
 the [`dir`][dir-attr] attribute on the `<body>` element.] English sentences
 should still lay out left-to-right, but they should grow from the right
 side of the screen (load [this example][rtl-example] in your favorite
