@@ -8,8 +8,10 @@ next: chrome
 In the [previous chapter](layout.md) we gave each `pre` element a gray
 background. It looks OK, and it *is* good to have defaults, but
 sites want a say in how they look. Websites do that with
-_Cascading Style Sheets_ (CSS), which allow web authors (and, as
+_Cascading Style Sheets_ ([CSS]), which allow web authors (and, as
 we'll see, browser developers) to define how a web page ought to look.
+
+[CSS]: https://developer.mozilla.org/en-US/docs/Web/CSS
 
 Parsing with Functions
 ======================
@@ -22,12 +24,10 @@ attribute. For example, this changes an element's background color:
 ```
 
 More generally, a `style` attribute contains property–value pairs
-separated by semicolons. The browser looks at those [CSS]
+separated by semicolons. The browser looks at those CSS
 property–value\index{css property value}
 pairs to determine how an element looks, for example to determine its
 background color.
-
-[CSS]: https://developer.mozilla.org/en-US/docs/Web/CSS
 
 To add this to our browser, we'll need to start by parsing\index{parsing}
 these property–value pairs. I'll use recursive *parsing functions*, which
@@ -264,7 +264,7 @@ So this is one way web pages can change their appearance. And in the
 early days of the web,^[I'm talking Netscape 3. The late 1990s.]
 something like this was the *only* way. But honestly, it's a
 pain---you need to set a `style` attribute on each element, and if you
-change the style, that's a lot of attributes to edit. CSS\index{CSS}
+redesign the page, that's a lot of attributes to edit. CSS\index{CSS}
 was invented to improve on this state of affairs:
 
 - One CSS file can consistently style many web pages at once.
@@ -296,7 +296,7 @@ values to the elements' `style` fields.
 ::: {.further}
 Actually, before CSS, you'd style pages with custom *presentational tags* like
 [`font`][font-elt] and [`center`][center-elt] (not to mention the
-`<b>` and `<i>` tags we'll encounter later in this chapter). This was easy to
+`<b>` and `<i>` tags that we've already seen). This was easy to
 implement but made it hard to keep pages consistent. There
 were also properties on `<body>` like [`text` and `vlink`][body-attrs]
 that could consistently set text colors, mainly for links.
@@ -315,8 +315,8 @@ elements) and descendant selectors (`article div` selects all `div`
 elements with an `article` ancestor).[^how-associate]
 
 [^how-associate]: The descendant selector associates to the left; in
-    other words, `a b c` means a `c` that descends from a `b` that
-    descends from an `a`, which maybe you'd write `(a b) c` if CSS had
+    other words, `a b c` means a `<c>` that descends from a `<b>` that
+    descends from an `<a>`, which maybe you'd write `(a b) c` if CSS had
     parentheses.
 
 We'll have a class for each type of selector to store the
@@ -509,7 +509,7 @@ To try this out, we'll need a style sheet. Every browser ships with a
 styling for the various HTML elements. For our browser, it might look
 like this:
 
-[^technically-ua]: Technically called a "User Agent" style sheet. User Agent,
+[^technically-ua]: Technically called a "user agent" style sheet. User agent,
     like the Memex.
 
 ``` {.css}
@@ -994,8 +994,8 @@ improvement: the style sheet is simpler and easier to edit. Sometimes
 converting code to data like this means maintaining a new format, but
 browsers get to reuse a format, CSS, they need to support anyway.
 
-But of course our chapter also has the nice benefit of even better rendering
-of this book's homepage (Figure 3). Notice how the background is no longer gray, and the
+But of course styling also has the nice benefit of nicely rendering
+this book's homepage (Figure 3). Notice how the background is no longer gray, and the
 links have colors.
 
 ::: {.center}
@@ -1071,7 +1071,8 @@ case the existing layout algorithm is used.
 6-3 *Class selectors*. Any HTML element can have a `class` attribute,
 whose value is a space-separated list of that element's classes. A CSS
 class selector, like `.main`, affects all elements with the `main`
-class. Implement class selectors; give them priority 10. If you've
+class. Implement class selectors; they should take precedence over tag
+selectors. If you've
 implemented them correctly, you should see syntax highlighting for the
 code blocks in this book.
 
@@ -1085,10 +1086,10 @@ sheet.
 related CSS properties at the same time; for example, `font: italic
 bold 100% Times` sets the `font-style`, `font-weight`, `font-size`,
 and `font-family` properties all at once. Add shorthand properties to
-your parser. (If you haven't implemented `font-family` (Exercise 6-1), just ignore
-that part.)
+your parser. (If you haven't done Exercise 6-1, just ignore
+the `font-family`.)
 
-6-6 *Inline style sheets*. The `link rel=stylesheet` syntax allows importing an
+6-6 *Inline style sheets*. The `<link rel=stylesheet>` syntax allows importing an
  external style sheet (meaning one loaded via its own HTTP request). There is
  also a way to provide a style sheet inline, as part of the HTML, via the
  `<style>` tag---everything up to the following `</style>` tag is interpreted
@@ -1106,7 +1107,7 @@ that part.)
 div div div div` can take a long time---it's `*O(nd)*`{=html}`$O(nd)$`{=latex} in the worst
 case, where *n* is the length of the selector and *d* is the depth of
 the layout tree. Modify the descendant-selector matching code to run
-in `*O(n)*`{=html}`$O(n)$`{=latex} time. It may help to have `DescendantSelector` store a list
+in `*O(n + d)*`{=html}`$O(n + d)$`{=latex} time. It may help to have `DescendantSelector` store a list
 of base selectors instead of just two.
 
 6-8 *Selector sequences*. Sometimes you want to select an element by tag *and*
