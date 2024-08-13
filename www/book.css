@@ -372,3 +372,5 @@ aside.ad .narrow a { white-space: pre; }
 .highlight-region label.side { top: .4em; }
 .highlight-region label.side.left { right: calc(100% + .2em); left: auto; }
 .highlight-region label.side.right { left: calc(100% + .2em); right: auto; }
+
+.author-picture { display: flex; justify-content: center }
