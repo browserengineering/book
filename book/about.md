@@ -3,6 +3,9 @@ title: About the Authors
 next: Preface
 ...
 
+<div class="author-picture">
+  <img width=150 src="im/pavel-panchekha.jpg" alt="Picture of Pavel Panchekha">
+</div>
 [Pavel Panchekha](https://pavpanchekha.com) is a professor in the
 School of Computing at the University of Utah. His research focuses on
 web page layout and web browsers more generally. He received a Ph.D.
