@@ -19,4 +19,4 @@ Software Engineer at Google, where he leads the [Blink
 Rendering](https://www.chromium.org/teams/rendering) team. Previously,
 he was a lead engineer for Google Maps, including founding [Google
 Transit](https://google.com/transit). He received a Ph.D. in Computer
-Science from UC Berkeley in 2004.</div>
+Science from UC Berkeley in 2004.
