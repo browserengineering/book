@@ -726,7 +726,6 @@ if __name__ == "__main__":
 The first line is Python's version of a `main` function, run only when
 executing this script from the command line. The code reads the first
 argument (`sys.argv[1]`) from the command line and uses it as a URL.
-
 Try running this code on the URL `http://example.org/`:
 
 ``` {.sh}
