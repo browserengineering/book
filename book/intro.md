@@ -235,7 +235,7 @@ What makes that all work is the web browser's implementations of [inversion of
 control][inversion], [constraint programming][constraints], and
 [declarative programming][declarative]. The web _inverts control_, with an
 intermediary---the browser---handling most of the rendering, and the web
-developer specifying rendering parameters and contents to this intermediary.
+developer specifying rendering parameters and content to this intermediary.
 [^forms] Further, these parameters usually take the form of _constraints_
 between the relative sizes and positions of on-screen elements instead of
 specifying their values directly;[^constraints] the browser solves the
