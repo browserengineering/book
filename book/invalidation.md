@@ -53,7 +53,7 @@ there are other text editing APIs that can't be. For example, the
 [^amazing-ce]: The `contenteditable` attribute can turn any element on
     any page into a living document. It's how we implemented the "typo"
     feature for this book: type `Ctrl-E` (or `Cmd-E` on a Mac) to turn
-    it on. The source code is [here](https://browser.engineering/feedback.js); see the
+    it on. The source code is [on the website](https://browser.engineering/feedback.js); see the
     `typo_mode` function for the `contenteditable` attribute.
 
 ::: {.web-only .demo contenteditable=true}
@@ -153,7 +153,7 @@ class InputLayout(EmbedLayout):
 ```
 
 You can now edit the examples on
-[this page](https://browser.engineering/invalidation.html) in your browser---but
+[this chapter's page](https://browser.engineering/invalidation.html) in your browser---but
 each key stroke will take more than a second, making for a
 frustrating editing experience. So let's work on speeding that up.
 
@@ -384,7 +384,7 @@ class BlockLayout:
 ```
 
 This makes the `BlockLayout`'s `layout` function idempotent because
-each call will assign a new `children` array.
+each call will start over from a new `children` array.
 
 Before we try running our browser, let's read through all of the other
 `layout` methods, noting any subroutine calls that might not be
@@ -396,7 +396,7 @@ idempotent. I found:[^exercises]
     idempotent ones.
 
 - In `new_line`, `BlockLayout` will append to its `children` array.
-- In `word` and `input`, `BlockLayout` will append to the `children`
+- In `add_inline_child`, `BlockLayout` will append to the `children`
   array of some `LineLayout` child.
 - In `word` and `input`, `BlockLayout` will call `get_font`, as will
   the `TextLayout` and `InputLayout` methods.
@@ -418,7 +418,7 @@ calls*! That makes idempotency the foundation for the rest of this
 chapter, which is all about skipping redundant work.
 
 ::: {.further}
-HTTP also features a [notion of idempotence][idempotence-mdn], but
+HTTP also features a [notion of idempotency][idempotence-mdn], but
 that notion is subtly different from the one we're discussing here
 because HTTP involves both a client and a server. In HTTP, idempotence
 only covers the effects of a request on the server state, not the
@@ -589,7 +589,7 @@ class BlockLayout:
 
 Now that we have all three parts of the dirty flag done, you should be
 able to run your browser and test it on
-[this page](https://browser.engineering/invalidation.html). Even when you edit
+[this chapter's page](https://browser.engineering/invalidation.html). Even when you edit
 text or call `innerHTML`, you shouldn't see any assertion failures.
 Work incrementally and test often---it makes debugging easier.
 
@@ -706,7 +706,7 @@ class BlockLayout:
             sum([child.height for child in self.children.get()])
 ```
 
-The nice thing about `get` is it makes the dirty flag operations
+The nice thing about `get` is that it makes the dirty flag operations
 automatic, and therefore impossible to forget. It also makes the code a
 little nicer to read.
 
@@ -1146,7 +1146,7 @@ build the list of children, and then `set` it as the new value of the
 
 [^perhaps-local]: Perhaps the nicest design would thread a local
 `children` variable through all of the methods involved in line
-layout, similar to how we handle `paint`.
+layout, similar to `tree_to_list`.
 
 ``` {.python}
 class BlockLayout:
@@ -1429,8 +1429,7 @@ class BlockLayout:
 Note that in this last code block, we first `read` the `children`
 field, then iterate over the list of children and `read` each of their
 `height` fields. The `height` field, unlike the previous layout
-fields, depends on the children's fields, not the parent's, and that's
-how we correctly iterate over children (see Figure 2).
+fields, depends on the children's fields, not the parent's (see Figure 2).
 
 ::: {.center}
 ![Figure 2: The dependencies of widths and heights in the layout tree point in opposite directions.](im/protected-field-dependencies-top.jpg)
@@ -2063,10 +2062,10 @@ layout and editing now substantially smoother.[^other-phases]^[Trace
 ![Figure 4: Example after skipping layout traversal.](examples/example16-input-skip-traverse.png)
 :::
 
-However, in Figure 4 I also traced paint, to show you why `render`
-overall is still about 230 ms. (Making a browser fast requires optimizing
+However, Figure 4 shows that `paint` is still slow, and `render`
+overall is still about 230 ms. Making a browser fast requires optimizing
 everything! I won't implement it, but paint can be made a lot faster
-too---see Exercise 16-10.)
+too---see Exercise 16-10.
 
 [^other-phases]:  It might also be pretty laggy on large pages due to the
 composite--raster--draw cycle being fairly slow, depending on which exercises you
@@ -2244,7 +2243,7 @@ def paint_visual_effects(node, cmds, rect):
 However, the `font` method needs a little bit of work. Until now,
 we've read the node's `style` and passed that to `font`:
 
-``` {.python expected=False}
+``` {.python .example}
 class BlockLayout:
     def word(self, node, word):
         zoom = self.children.read(self.zoom)
@@ -2269,7 +2268,7 @@ def font(css_style, zoom, notify):
     return get_font(font_size, weight, style)
 ```
 
-Now we can simply pass `self.children` in for the `who` parameter when
+Now we can simply pass `self.children` in for the `notify` parameter when
 requesting a font during line breaking:
 
 ``` {.python}
@@ -2793,5 +2792,5 @@ of `ProtectedField` to be functional rather than object-oriented.
 
 16-10 *Optimizing paint*. Even after making layout fast for text input, paint is
 still painfully slow. Fix that by storing the display list between frames,
-dirty bits for whether paint is needed for each layout object, and mutating
+adding dirty bits for whether paint is needed for each layout object, and mutating
 the display list rather than recreating it every time.
