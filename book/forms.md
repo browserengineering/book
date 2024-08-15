@@ -237,10 +237,10 @@ resolve the block-mixed-with-inline-siblings problem (see
 a node, we assume it's a block element. But `<input>` elements don't have
 children, yet must have inline layout or else they won't draw correctly.
 Likewise, a `<button>` does have children, but they are treated
-specially.^[These are two examples of
-[atomic
-inlines](https://www.w3.org/TR/CSS2/visuren.html#inline-boxes)---the
-only two examples in our browser so far.]
+specially.^[This situation is specific to these elements in our browser, but
+only because they are the only elements with special painting
+behavior within an inline context. These are also two examples of
+[atomic inlines](https://www.w3.org/TR/CSS2/visuren.html#inline-boxes).]
 
 We can fix that with this change to `layout_mode` to add a second condition
 for returning "inline":
@@ -1189,7 +1189,7 @@ Each topic should have its own URL and its own list of messages. So,
 for example, `/cooking` should be a page of posts (about cooking) and
 comments submitted through the form on that page should only show up
 when you go to `/cooking`, not when you go to `/cars`. Make the home
-page list the available topics with a link to each topic's
+page, at `/`, list the available topics with a link to each topic's
 page. Make it possible for users to add new topics.
 
 8-7 *Persistence*. Back the server's list of guest book entries with a
