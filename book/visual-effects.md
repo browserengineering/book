@@ -330,8 +330,8 @@ class Browser:
 ```
 
 Next, we need to copy the data to an SDL surface. This requires
-telling SDL what order the pixels are stored in, which depends
-on your computer's [endianness][wiki-endianness]:
+telling SDL what order the pixels are stored in and your computer's
+[endianness][wiki-endianness]:
 
 [wiki-endianness]: https://en.wikipedia.org/wiki/Endianness
 
