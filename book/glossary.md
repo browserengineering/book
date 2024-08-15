@@ -4,8 +4,8 @@ title: Glossary
 
 Web browsers can be quite confusing to understand, especially once you consider
 the breadth of all their features. As with all software engineering---indeed,
-all complex subjects---the best way to avoid confusion is to use *consistent and
-clear names*.
+all complex subjects---the best way to avoid confusion is to use *clear and
+consistent names*.
 
 Key Web Terms
 =============
@@ -60,7 +60,7 @@ scripts.
 
 URL
 
-: Uniform Resource Locator, the name used to refer uniquely to a web
+: Uniform Resource Locator, the name used to uniquely refer to a web
 page or resource.
 
 Web
@@ -147,14 +147,14 @@ specify the (mostly visual) styling of elements in the DOM.
 
 Document
 
-: The conceptual object created when loading a web page and
+: The conceptual object created by loading a web page and
 modified by interacting with it, an analogy to physical documents.
 
 DOM
 
 : Document Object Model. The object-oriented API interface to JavaScript
 for mutating the document. It contains in particular a tree of nodes;
-on first page load this tree corresponds to the nested structure of the
+this tree initially corresponds to the nested structure of the
 HTML.
 
 Element
@@ -165,7 +165,7 @@ text and the document object).
 Event
 
 : A way for JavaScript to observe that something has happened on the
-document, and customize its results.
+document and react.
 
 Focus
 
@@ -230,7 +230,7 @@ Networking
 Cookie
 
 : A piece of persistent, per-site state stored by web browsers
-to enable use cases like user logged-in status for access-controlled content.
+to enable use cases like user login for access-controlled content.
 
 Domain
 
@@ -282,7 +282,7 @@ elements after applying all rules according to the cascade order.
 CSS property
 
 : A single concept (such as `color` or `width`) used to style
-a specific part of an element.
+a specific aspect of an element.
 
 CSS property–value
 
@@ -307,8 +307,8 @@ CSS properties (such as font sizing) are inherited by default.
 Style
 
 : All the pieces of information necessary to determine the visual
-display of an element. Also the name of a corresponding attribute to
-specify inline styles.
+display of an element. Also the name of the HTML element that
+specifies inline styles.
 
 Coordinate Spaces
 =================
