@@ -92,7 +92,7 @@ to [WebAssembly][webassembly] to do the same.
 SDL Creates the Window
 ======================
 
-The first big task is to switch to using SDL to create windows and
+The first big task is to switch to using SDL to create the window and
 handle events.
 The main loop of the browser first needs some boilerplate to get SDL
 started:
