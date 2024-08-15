@@ -15,7 +15,7 @@ their misuse.
 
 ::: {.warning}
 Web security\index{web security} is a vast topic, covering browser,
-network, and applications security. It also involves educating the user,
+network, and application security. It also involves educating the user,
 so that attackers can't mislead them into revealing their own secure data.
 This chapter can't cover all of that: if you're writing web
 applications or other security-sensitive code, this book is not
@@ -205,7 +205,8 @@ field:[^password-input]
 [^password-input]: I've given the `password` input area the type
     `password`, which in a real browser will draw stars or dots
     instead of showing what you've entered, though our browser doesn't
-    do that. Also, do note that this is not particularly accessible HTML,
+    do that; see [Exercise 10-1](#exercises). Also, do note that this
+    is not particularly accessible HTML,
     lacking for example `<label>` elements around the form labels. Not
     that our browser supports that!
 
@@ -337,7 +338,7 @@ working, let's switch back to our web browser and implement cookies.
 A more obscure browser authentication system is [TLS client
 certificates][client-certs]. The user downloads a public/private key
 pair from the server, and the browser then uses them to prove who it
-is on later requests to that server. Also, if you've ever seen a URL
+is upon later requests to that server. Also, if you've ever seen a URL
 with `username:password@` before the hostname, that's [HTTP
 authentication][http-auth]. Please don't use either method in new
 websites (without a good reason).
@@ -463,7 +464,8 @@ I'll implement a minimal version here. Specifically, I'll support only
     
 [^obsolete]: Synchronous `XMLHttpRequest`s are slowly moving through
     [deprecation and obsolescence][xhr-open], but I'm using them here
-    because they are easier to implement.
+    because they are easier to implement. We'll implement the
+    asynchronous variant in Chapter 12.
 
 [xhr-open]: https://xhr.spec.whatwg.org/#the-open()-method
 
@@ -1143,8 +1145,8 @@ class JSContext:
         # ...
 ```
 
-The `allowed_request` check needs to handle both the case of no
-`Content-Security-Policy` and the case where there is one:
+The `allowed_request` check needs to handle both the case where there
+is no `Content-Security-Policy` and the case where there is one:
 
 ``` {.python}
 class Tab:
@@ -1265,7 +1267,7 @@ Hidden inputs shouldn't show up or take up space, while password input
 elements should show their contents as stars instead of characters.
 
 10-2 *Certificate errors*. When accessing an HTTPS page, the web server can
-send an invalid certificate ([badssl.com](https://badssl.com) hosts
+send an invalid certificate ([`badssl.com`](https://badssl.com) hosts
 various invalid certificates you can use for testing). In this case,
 the `wrap_socket` function will raise a certificate error; catch these
 errors and show a warning message to the user. For all *other* HTTPS
