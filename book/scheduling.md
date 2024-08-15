@@ -391,12 +391,13 @@ Python's `Thread` class lets us do better:
 threading.Thread(target=callback).start()
 ```
     
-This code creates a new thread and then continues to execute. The
-`callback` then runs in parallel, on the new thread.
+This code creates a new thread and then immediately returns. The
+`callback` then runs in parallel, on the new thread, while the initial
+thread continues to execute later code.
 
 We'll implement asynchronous `XMLHttpRequest` calls using threads.
-Specifically, we'll have the browser start a thread, make the request
-on that thread, and then schedule a `Task` to
+Specifically, we'll have the browser start a thread, do the request
+and parse the response on that thread, and then schedule a `Task` to
 send the response back to the script.
 
 Like with `setTimeout`, we'll store the callback on the
@@ -531,11 +532,11 @@ mutations instead of page loads to update its state is called a
 complex web apps, which in turn made browser speed and responsiveness
 more important.
 
-[^when-gmail]: The first
+[^when-gmail]: GMail dates from April 2004, [soon after][xhr-history]
+enough browsers finished adding support for the API. The first
 application to use `XMLHttpRequest` was [Outlook Web Access][outlook],
 in 1999, but it took a while for the API to make it into other
-browsers. GMail dates from April 2004, [soon after][xhr-history]
-enough browsers finished adding support for the API.
+browsers.
 
 [outlook]: https://en.wikipedia.org/wiki/Outlook_on_the_web
 [xhr-history]: https://en.wikipedia.org/wiki/XMLHttpRequest#History
