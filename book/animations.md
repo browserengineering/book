@@ -6,7 +6,8 @@ next: accessibility
 ...
 
 Complex web applications use *animations*\index{animation} when transitioning
-between states. These animations help users understand the change and improve
+between states. These animations help users understand the state
+change and they improve
 visual polish by replacing sudden jumps with gradual changes. But to
 execute these animations smoothly, the browser must minimize time in each
 animation frame, using GPU acceleration to speed up
@@ -141,9 +142,7 @@ The animation pattern presented in this section is yet another example
 of the *event loop* first introduced [in Chapter 2][eventloop-ch2]
 and evolved further [in Chapter 12][eventloop-ch12]. What's new in this
 chapter is that we finally have enough tech built up to actually create
-meaningful, practical animations.
-
-And the same happened with the web. A whole lot of the
+meaningful, practical animations. And the same happened with the web. A whole lot of the
 APIs for proper animations, from the `requestAnimationFrame` API to
 CSS-native animations, came onto the scene only in the
 [2010s][cssanim-hist].
@@ -179,7 +178,7 @@ effects.
 At a high level, to raster and draw on the GPU our browser
 must:[^gpu-variations]
 
-[^gpu-variations]: These steps vary a bit in the details by GPU architecture.
+[^gpu-variations]: These steps vary a bit in their details by GPU architecture.
 
 * *Upload* the display list to specialized GPU memory.
 
@@ -290,20 +289,20 @@ method implicitly binds to the existing GL context.
 ``` {.python}
 class Browser:
     def __init__(self):
-        #. ...
-            self.skia_context = skia.GrDirectContext.MakeGL()
+        # ...
+        self.skia_context = skia.GrDirectContext.MakeGL()
 
-            self.root_surface = \
-                skia.Surface.MakeFromBackendRenderTarget(
-                self.skia_context,
-                skia.GrBackendRenderTarget(
-                    WIDTH, HEIGHT, 0, 0,
-                    skia.GrGLFramebufferInfo(
-                        0, OpenGL.GL.GL_RGBA8)),
-                    skia.kBottomLeft_GrSurfaceOrigin,
-                    skia.kRGBA_8888_ColorType,
-                    skia.ColorSpace.MakeSRGB())
-            assert self.root_surface is not None
+        self.root_surface = \
+            skia.Surface.MakeFromBackendRenderTarget(
+            self.skia_context,
+            skia.GrBackendRenderTarget(
+                WIDTH, HEIGHT, 0, 0,
+                skia.GrGLFramebufferInfo(
+                    0, OpenGL.GL.GL_RGBA8)),
+                skia.kBottomLeft_GrSurfaceOrigin,
+                skia.kRGBA_8888_ColorType,
+                skia.ColorSpace.MakeSRGB())
+        assert self.root_surface is not None
 ```
 
 An extra advantage of using OpenGL is that we won't need to copy data
@@ -316,15 +315,7 @@ the new framebuffer (because of OpenGL [double-buffering][double]):
 ``` {.python}
 class Browser:
     def draw(self):
-        canvas = self.root_surface.getCanvas()
         # ...
-        chrome_rect = skia.Rect.MakeLTRB(
-            0, 0, WIDTH, self.chrome.bottom)
-        canvas.save()
-        canvas.clipRect(chrome_rect)
-        self.chrome_surface.draw(canvas, 0, 0)
-        canvas.restore()
-
         self.root_surface.flushAndSubmit()
         sdl2.SDL_GL_SwapWindow(self.sdl_window)
 ```
@@ -380,7 +371,7 @@ also didn't have GPU acceleration.) The same is generally true of Firefox and
 Safari, though Safari was able to accelerate content more easily because it
 only targeted the limited number of GPUs supported by macOS and iOS.
 
-[^timeline-gpu]: You can see a timeline [here][rng-gpu].
+[^timeline-gpu]: You can see a timeline [on the Chrome developer blog][rng-gpu].
 
 [rng-gpu]: https://developer.chrome.com/blog/renderingng/#gpu-acceleration-everywhere
 
@@ -388,7 +379,6 @@ There are *many* challenges to implementing GPU-accelerated raster, among them
 working correctly across many GPU architectures, gracefully falling back to CPU
 raster in complex or error scenarios, and finding ways to efficiently
 GPU-raster content in difficult situations like anti-aliased and complex shapes.
-
 So while you might think it's odd to wait until now to turn on
 GPU acceleration in our browser, this also mirrors the evolution timeline of
 browsers.
@@ -580,9 +570,6 @@ class DrawLine(PaintCommand):
 ```
 
 `MakeLTRB` creates the `rect` for the `PaintCommand` constructor.
-It'll be useful to have these as Skia `Rect` objects instead of just
-four `x1`/`y1`/`x2`/`y2` fields.
-
 We can also give a superclass to visual effects:
 
 ``` {.python replace=):/%2c%20node%3dNone):}
@@ -755,7 +742,7 @@ class Browser:
 ```
 
 Inside `raster`, the composited layer needs to allocate a surface to raster
-itself into; to make this surface requires knowing how big it is. That's
+itself into; this requires knowing how big it is. That's
 just the union of the bounding boxes of all of its paint commands---the `rect`
 field:
 
@@ -894,8 +881,9 @@ layout and raster steps if the display list didn't change much between frames.
 
 The algorithm presented here is a simplified version of what
 Chromium actually implements. For more details and information on how Chromium
-implements these concepts see [here][renderingng-dl] and
-[here][rendersurface]; other browsers do something broadly similar. Chromium's
+implements these concepts see [blog][renderingng-dl]
+[posts][rendersurface]
+on the Chrome developer blog; other browsers do something broadly similar. Chromium's
 implementation of the "visual effect nesting" data structure is called
 [property trees][prop-trees]. The name is plural because there is more than
 one tree, due to the complex [containing block][cb] structure of scrolling
@@ -932,7 +920,7 @@ always be somewhat brittle and incomplete.
 
 CSS transitions take the `requestAnimationFrame` loop we
 used to implement animations and move it "into the browser". The web page
-just needs to interpret the CSS [`transition`][css-transitions] property,
+just needs to add a CSS [`transition`][css-transitions] property,
 which defines properties to animate and how long to animate them for. Here's
 how to say opacity changes to a `div` should animate for two seconds:
 
@@ -1136,7 +1124,6 @@ def diff_styles(old_style, new_style):
         if old_value == new_value: continue
         transitions[property] = \
             (old_value, new_value, num_frames)
-
     return transitions
 ```
 
@@ -1157,7 +1144,7 @@ def style(node, rules, tab):
                 node.style[property] = animation.animate()
 ```
 
-Any time a property listed in a `transition` changes its value, we'll
+Any time a property listed in a `transition` changes its value, we
 create an animation and get ready to run it.^[Note that we need to
 call `set_needs_render` here to make sure that the animation will run
 on the next frame.]
@@ -1184,9 +1171,7 @@ animation's `animate` method and save the new value to the node's
 `style`. Second, since that changes rendering inputs, set a
 dirty bit requiring rendering later.^[We also need to
 schedule an animation frame for the next frame of the animation, but
-`set_needs_render` already does that for us.]
-
-The whole rendering cycle between the browser and main threads is summarized
+`set_needs_render` already does that for us.] The whole rendering cycle between the browser and main threads is summarized
 in Figure 2.
 
 ::: {.center}
@@ -1221,10 +1206,10 @@ class Tab:
 To implement `set_needs_layout`, we've got to replace the single
 `needs_render` flag with three flags: `needs_style`, `needs_layout`,
 and `needs_paint`. In our implementation, setting a dirty bit earlier
-in the pipeline will end up causing everything after it to also run,
-so `set_needs_render` still just sets the `needs_style` flag:^[This
+in the pipeline will end up causing everything after it to also run,^[This
 is yet another difference from real browsers, which optimize some
 cases that just require style and paint, or other combinations.]
+so `set_needs_render` still just sets the `needs_style` flag:
 
 ``` {.python}
 class Tab:
@@ -1307,7 +1292,6 @@ requires parsing a new `@keyframes` syntax and the `animation` CSS property.
 Notice how `@keyframes` defines the start and end point declaratively, which
 allows us to make the animation alternate infinitely
 because a reverse is just going backward among the keyframes.
-
 There is also the [Web Animations API][web-animations], which allows creation
 and management of animations via JavaScript.
 
@@ -1328,7 +1312,10 @@ Implementing this is harder than it sounds. We'll need to split the _new_
 display list into the _old_ composited layers and a _new_ draw display list. To
 do this we'll need to know how the new and old display lists are related, and what
 parts of the display list changed. For this purpose we'll add a `node` field to
-each display item, storing the node that painted it, as a sort of identifier:
+each display item, storing the node that painted it, as a sort of
+identifier:^[Note that the browser thread can never *access* that
+node, since it is owned by another thread. But it can use the node as
+an identifier.]
 
 ``` {.python}
 class VisualEffect:
@@ -1461,6 +1448,7 @@ Then, where we currently call `set_needs_raster_and_draw`, such as
 `handle_down`, we need to call `set_needs_raster`:
 
 ``` {.python}
+class Browser:
     def handle_down(self):
         # ...
         self.set_needs_raster()
@@ -1499,7 +1487,6 @@ effect from `composited_updates` if there is one:
 
 ``` {.python}
 class Browser:
-    # ...
     def get_latest(self, effect):
         node = effect.node
         if node not in self.composited_updates:
@@ -1811,7 +1798,7 @@ fully and benchmark its performance.
 
 ::: {.further}
 
-Mostly for simplicity, our browser composites `Blend` visual effects,
+Mostly for simplicity, our browser composites `Blend` visual effects
 regardless of whether they are animating. But in fact, there are some good
 reasons to always composite certain visual effects.
 
@@ -2322,7 +2309,7 @@ transfoms and scrolling, but they are not fully composited and threaded,
 and transform transition animations are not supported. Implement these.
 (Hint: for transforms, it just requires following the same pattern as for
 `opacity`; for scrolling, it requires setting fewer dirty bits in
-`handle_down`.) [This simultaneous transform and opacity animation][tr-example] should now work, without any raster, and scrolling on that page should not
+`handle_down`.) [A simultaneous transform and opacity animation][tr-example] should now work, without any raster, and scrolling on that page should not
 raster either.
 
 [tr-example]: examples/example13-transform-transition.html
@@ -2333,7 +2320,7 @@ Make `width` and `height` animatable; you'll need a variant of
 the string). Since `width` and `height` are layout-inducing, make sure that
 animating them sets `needs_layout`. Check that animating width in your
 browser changes line breaks.
-[This example](examples/example13-width-transition.html) should work once
+[A width transition example](examples/example13-width-transition.html) should work once
 you've implemented width animations.[^note-layout-animations]
 
 [^note-layout-animations]: Width animations can't be composited because
@@ -2352,9 +2339,10 @@ visual *gutter* between content and the edge of the window.
 
 13-5 *CSS animations*. Implement the basics of the
 [CSS animations][css-animations] API, in particular enough of the `animation`
-CSS property and parsing of `@keyframe` to implement the demos
-[here](examples/example13-opacity-animation.html) and
-[here](examples/example13-width-animation.html).
+CSS property and parsing of `@keyframe` to implement
+[two](examples/example13-opacity-animation.html)
+[demos](examples/example13-width-animation.html) on the
+`browser.engineering` website.
 
 13-6 *Overlap testing with transform animations*. (You'll need to have already
 done Exercise 13-3.) Our browser currently does not overlap test correctly in
