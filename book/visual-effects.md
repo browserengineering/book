@@ -11,7 +11,7 @@ effects*\index{visual effect} that change how pixels and colors blend
 together. To implement those effects, and also make our browser
 faster, we'll need control over *surfaces*\index{surface}, the key
 low-level feature behind fast scrolling, visual effects, animations,
-and many other browser features. To get that control, we'll also
+and many other browser capabilities. To get that control, we'll also
 switch to using the Skia graphics library and even take a peek under
 its hood.
 
@@ -92,7 +92,7 @@ to [WebAssembly][webassembly] to do the same.
 SDL Creates the Window
 ======================
 
-The first big task is to switch to using SDL to create the window and
+The first big task is to switch to using SDL to create windows and
 handle events.
 The main loop of the browser first needs some boilerplate to get SDL
 started:
@@ -330,8 +330,8 @@ class Browser:
 ```
 
 Next, we need to copy the data to an SDL surface. This requires
-telling SDL what order the pixels are stored in and your computer's
-[endianness][wiki-endianness]:
+telling SDL what order the pixels are stored in, which depends
+on your computer's [endianness][wiki-endianness]:
 
 [wiki-endianness]: https://en.wikipedia.org/wiki/Endianness
 
@@ -497,7 +497,6 @@ class DrawRect:
 ```
 
 Here, the `rect` field needs to become a Skia `Rect` object.
-
 Get rid of the old `Rect` class that was introduced in [Chapter
 7](chrome.md) in favor of `skia.Rect`. Everywhere that a `Rect` was
 constructed, instead put `skia.Rect.MakeLTRB` (for "make
@@ -650,11 +649,10 @@ example](https://browser.engineering/examples/example11-rounded-background.html)
 www/examples/example11-rounded-background.html
 :::
 
-will round the corners of its background
-(see Figure 1; notice that it does not round the text, though).
+will round the corners of its background (see Figure 1).
 
 ::: {.center}
-![Figure 1: Example of a long word with a rounded background.](examples/example11-rounded-background.png)
+![Figure 1: Example of a rounded background.](examples/example11-rounded-background.png)
 :::
 
 Similar changes should be made to `InputLayout`. New shapes, like
@@ -776,11 +774,12 @@ class Browser:
         # ...
 ```
 
+Note that we need to recreate the tab surface if
+the page's height changes.
 The way we compute the page bounds here, based on the layout tree's
 height, would be incorrect if page elements could stick out below (or
 to the right) of their parents---but our browser doesn't support any
-features like that. Note that we need to recreate the tab surface if
-the page's height changes.
+features like that.
 
 Next, `draw` should copy from the chrome and tab surfaces to the root
 surface. Moreover, we need to translate the `tab_surface` down by
@@ -1049,7 +1048,7 @@ own surface, and then blended into its parent surface. Different structures of
 intermediate surfaces create different visual effects.[^tree-blog]
 Rastering a web page requires a
 bottom-up traversal of this conceptual tree: to raster a surface you first need to raster
-its contents, including its child surfaces, and then the whole
+its contents, including its child surfaces, and then the
 contents need to be blended together into the parent.[^stacking-context-disc]
 
 [^tree-blog]: You can see a more detailed discussion of how the tree
@@ -1180,8 +1179,8 @@ commands to a surface, and *then* apply transparency to it when
 blending into the parent.
 
 ::: {.further}
-I highly recommend [this blog post](https://ciechanow.ski/alpha-compositing/),
-which gives a really nice visual overview of many of the same concepts explored in
+I highly recommend a [blog post by Bartosz Ciechanowski](https://ciechanow.ski/alpha-compositing/),
+that gives a really nice visual overview of many of the concepts explored in
 this chapter, plus way more content about how a library such as Skia might
 implement features like raster sampling of vector graphics for lines and text
 and interpolation of surfaces when their pixel arrays don't match in resolution
@@ -1285,8 +1284,9 @@ Source-over compositing is one way to combine two pixel values. But
 it's not the only method---you could write literally any computation
 that combines two pixel values if you wanted. Two computations that
 produce interesting effects are traditionally called "multiply" and
-"difference" and use simple mathematical operations. "Multiply"
-multiplies the color values:
+"difference" and use simple mathematical operations.
+
+"Multiply" multiplies the color values:
 
 ``` {.python file=examples .example}
 class Pixel:
@@ -1332,7 +1332,8 @@ the [`mix-blend-mode` property][mix-blend-mode-def], like this:
 </div>
 ```
 
-This HTML will look like Figure 5.
+This HTML will look like Figure 5.^[See the `browser.engineering`
+website for the example and how it looks in color.]
 
 ::: {.web-only}
 <div style="background-color:orange">
@@ -1536,7 +1537,7 @@ Figure 7: An example of overflow from text children of a div with
 
 Observe that the letters near the corner are cut off to maintain a sharp rounded
 edge. That's clipping; without the `overflow: clip` property these letters
-would instead be fully drawn, like we saw in Figure 1.
+would instead be fully drawn.
 
 Counterintuitively, we'll implement clipping using blending modes.
 We'll make a new surface (the mask), draw a rounded rectangle into it,
@@ -1596,9 +1597,7 @@ After drawing all of the element contents with `cmds` (and applying
 opacity), this code draws a rounded rectangle on another layer to
 serve as the mask, and uses destination-in blending to clip the
 element contents. Here I chose to draw the rounded rectangle in white,
-but the color doesn't matter as long as it's opaque. On the other
-hand, if there's no clipping, I don't round the corners of the mask,
-which means nothing is clipped out.
+but the color doesn't matter as long as it's opaque.
 
 Notice how similar this masking technique is to the physical analogy
 with scissors described earlier, with the two layers playing the role
@@ -1630,8 +1629,8 @@ and nested rounded corner clips.
 
 [^didnt-stop]: The lack of support didn't stop web developers from
 putting rounded corners on their sites before `border-radius` was
-supported. There are a number of clever ways to do it; [this
-video][rr-video] walks through several.
+supported. There are a number of clever ways to do it; [a
+video from 2008][rr-video] walks through several.
 
 [mac-story]: https://www.folklore.org/StoryView.py?story=Round_Rects_Are_Everywhere.txt
 [quickdraw]: https://raw.githubusercontent.com/jrk/QuickDraw/master/RRects.a
@@ -1676,7 +1675,7 @@ class Opacity:
 Similarly, `Blend` doesn't necessarily need to create a layer if
 there's no blending going on. But the logic here is a little trickier: the
 `Blend` operation not only applies blending but also
-isolates the element contents `cmds`, which matters if they are being clipped by
+isolates the element contents, which matters if they are being clipped by
 `overflow`. So let's skip creating a layer in `Blend` when there's no
 blending mode, but let's set the blend mode to a special, non-standard
 `source-over` value when we need clipping:
@@ -1773,7 +1772,7 @@ Note that I've specified an opacity of `1.0` for the clip `Blend`.
 
 ::: {.further}
 Implementing high-quality raster libraries is very interesting in its own
-right---check out [Real-Time Rendering][rtr-book] for more.[^cgpp]
+right---check out [*Real-Time Rendering*][rtr-book] for more.[^cgpp]
 These days, it's especially important to leverage GPUs when they're
 available, and browsers often push the envelope. Browser teams
 typically include or work closely with raster library experts: Skia
@@ -1799,11 +1798,11 @@ Summary
 So there you have it: our browser can draw not only boring
 text and boxes but also:
 
+- browser compositing with extra surfaces for faster scrolling.
 - partial transparency via an alpha channel;
 - user-configurable blending modes via `mix-blend-mode`;
 - rounded rectangle clipping via destination-in blending or direct clipping;
 - optimizations to avoid surfaces when possible;
-- browser compositing with extra surfaces for faster scrolling.
 
 Besides the new features, we've upgraded from Tkinter to SDL and Skia,
 which makes our browser faster and more responsive, and also sets a
@@ -1853,7 +1852,7 @@ radii into account.
 
 11-3 *Interest region*. Our browser now draws the whole web page to a
 single surface, which means a very long web page (like
-[this one](http://browser.engineering/visual-effects.html)!)
+[this chapter's](http://browser.engineering/visual-effects.html)!)
 creates a large surface, thereby using a lot of memory. Instead, only
 draw an "interest region" of limited height, say `4 * HEIGHT` pixels.
 You'll need to keep track of where the interest region is on the page,
