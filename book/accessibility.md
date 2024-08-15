@@ -141,7 +141,7 @@ Zoom
 
 Let's start with the simplest accessibility problem: text on the
 screen that is too small to read. It's a problem many of us will face
-sooner or later, and possibly the most common user disability issue.
+sooner or later, and is possibly the most common user disability issue.
 The simplest and most effective way to address this is by increasing font
 and element sizes. This approach is called *zoom*,[^zoom]\index{zoom}
 which means to lay out the page as if all of the CSS sizes were increased or
@@ -226,7 +226,6 @@ class Tab:
     	# ...
     	self.zoom = 1
 
-	# ...
     def zoom_by(self, increment):
         if increment:
             self.zoom *= 1.1
@@ -279,8 +278,10 @@ class DocumentLayout:
 ``` {.python}
 class Tab:
     def render(self):
-        # ...
+        if self.needs_layout:
+            # ...
             self.document.layout(self.zoom)
+            # ...
 ```
 
 Every other layout object can also have a `zoom` field, copied from
@@ -324,11 +325,13 @@ class BlockLayout:
     	# ...
         px_size = float(node.style["font-size"][:-2])
         size = dpx(px_size * 0.75, self.zoom)
+    	# ...
 
     def input(self, node):
-	    # ...
+        # ...
         px_size = float(node.style["font-size"][:-2])
         size = dpx(px_size * 0.75, self.zoom)
+    	# ...
 ```
 
 ``` {.python expected=False}
@@ -337,6 +340,7 @@ class InputLayout:
         # ...
         px_size = float(self.node.style["font-size"][:-2])
         size = dpx(px_size * 0.75, self.zoom)
+    	# ...
 ```
 
 As well as the font size in `TextLayout`:[^min-font-size]
@@ -455,7 +459,7 @@ zoom-based scaling factors.
 integer because that tends to make text and layout look crisper, but
 this isn't required, and as pixel densities increase it becomes less
 and less important. For example, the Pixelbook Go I'm using to write
-this book, with a resolution of 166 pixels per inch has a ratio of
+this book, with a resolution of 166 pixels per inch, has a ratio of
 1.25. The choice of ratio for a given screen is somewhat arbitrary.
 
 Dark Mode
@@ -781,7 +785,8 @@ background and lighter foreground. It should look like Figure 4 in dark mode.
 :::
 
 ::: {.center}
-![Figure 4: Example of dark mode with forms.](examples/example14-dark-mode-forms.png)
+![Figure 4: Example of dark mode with forms. See the
+`browser.engineering` website for full color.](examples/example14-dark-mode-forms.png)
 :::
 
 ::: {.further}
@@ -1199,7 +1204,7 @@ def paint_outline(node, cmds, rect, zoom):
     cmds.append(DrawOutline(rect, "black", 1))
 ```
 
-Set this flag in a new `focus_element` method that we'll now use
+Set this `is_focused` flag in a new `focus_element` method that we'll now use
 to change the `focus` field in a `Tab`:
 
 ``` {.python}
@@ -1415,7 +1420,7 @@ Unknown pseudoclasses simply never match anything.
 The focused element can now be styled. But ideally we'd also be able to
 customize the focus outline itself and not just the element. That can be done
 by adding support for the CSS [`outline` property][outline], which looks like
-this to show a 3px red outline:[^outline-syntax]
+this (for a 3-pixel-thick red outline):[^outline-syntax]
 
     outline: 3px solid red;
 
@@ -1482,10 +1487,10 @@ class LineLayout:
 ```
 
 For the [focus example](examples/example14-focus.html), the focus outline
-of an `<a>` element becomes red, as in Figure 6.
+of an `<a>` element becomes thicker and red, as in Figure 6.
 
 ::: {.center}
-![Figure 6: Example of a customized red focus outline.](examples/example14-focus-outline-custom.png)
+![Figure 6: Example of a customized focus outline.](examples/example14-focus-outline-custom.png)
 :::
 
 As with dark mode, focus outlines are a case where adding an
@@ -1625,7 +1630,6 @@ class AccessibilityNode:
     def __init__(self, node):
         self.node = node
         self.children = []
-        self.text = ""
 ```
 
 The `build` method on `AccessibilityNode` recursively creates the
@@ -1822,8 +1826,10 @@ and [`playsound`][playsound]. You can install them using `pip`:
 
 [playsound]: https://pypi.org/project/playsound/
 
-    python3 -m pip install gtts
-    python3 -m pip install playsound
+``` {.sh}
+python3 -m pip install gtts
+python3 -m pip install playsound
+```
 
 You can use these libraries to convert text to an audio file, and then
 play it:
@@ -2145,7 +2151,7 @@ The `alert` role addresses this need. A screen reader
 will immediately[^alert-css] read an element with that role, no matter
 where in the document the user currently is. Note that there aren't
 any HTML elements whose default role is `alert`, so this requires
-setting the `role` attribute.
+the page author to explicitly set the `role` attribute.
 
 [^alert-css]: The alert is only triggered if the element is added to
     the document, has the `alert` role (or the equivalent `aria-live`
@@ -2440,9 +2446,7 @@ class Browser:
 
 By the way, the acronym `a11y` in `a11y_node`, with an "a", the number 11, and
 a "y", is a common shorthand for the word "accessibility".[^why-11] The
-`hit_test` function I'm calling is the same one we wrote
-[earlier in Section 7.3](chrome.md#click-handling) to handle clicks, except
-of course that it's searching a different tree:
+`hit_test` function recurses over the accessibility tree:
 
 [^why-11]: The number "11" refers to the number of letters we're
     eliding from "accessibility".
