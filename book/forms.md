@@ -5,7 +5,7 @@ prev: chrome
 next: scripts
 ...
 
-So far, our browser has seen the web as read only---but when you post
+So far, our browser has seen the web as read-only---but when you post
 on Facebook, fill out a survey, or search Google, you're sending
 information *to* servers as well as receiving information *from* them.
 In this chapter, we'll start to transform our browser into a platform
@@ -19,7 +19,7 @@ HTML forms have a couple of moving parts.
 
 First, in HTML there is a `form` element, which contains `input`
 elements,[^or-others] which in turn can be edited by the user. So a
-form might be written like this:
+form might be written like this (see results in Figure 1):
 
 [^or-others]: There are other elements similar to `input`, such as
     `select` and `textarea`. They work similarly enough; they just
@@ -33,8 +33,6 @@ form might be written like this:
     <p><button>Submit!</button></p>
 </form>
 ```
-
-And look like Figure 1.
 
 ::: {.center}
 ![Figure 1: The example form in our browser.](im/forms-screenshot.png)
@@ -239,10 +237,10 @@ resolve the block-mixed-with-inline-siblings problem (see
 a node, we assume it's a block element. But `<input>` elements don't have
 children, yet must have inline layout or else they won't draw correctly.
 Likewise, a `<button>` does have children, but they are treated
-specially.^[This situation is specific to these elements in our browser, but
-only because they are the only elements with special painting
-behavior within an inline context. These are also two examples of
-[atomic inlines](https://www.w3.org/TR/CSS2/visuren.html#inline-boxes).]
+specially.^[These are two examples of
+[atomic
+inlines](https://www.w3.org/TR/CSS2/visuren.html#inline-boxes)---the
+only two examples in our browser so far.]
 
 We can fix that with this change to `layout_mode` to add a second condition
 for returning "inline":
@@ -522,12 +520,9 @@ class Tab:
                 return self.render()
 ```
 
-Note that we have to un-focus[^blur] the currently focused element,
+Note that we have to un-focus the currently focused element,
 lest it keep drawing its cursor. Anyway, now we can draw a cursor if
 an `input` element is focused:
-
-[^blur]: Un-focusing is called "blurring", which is funny but can
-    sometimes lead to confusion.
 
 ``` {.python}
 class InputLayout:
@@ -1075,7 +1070,7 @@ able to use the guest book from a real web browser.
 
 ::: {.further}
 Typically, connection handling and request routing is handled by a web
-framework; this book, for example uses [bottle.py][bottle-py].
+framework; this book's website, for example uses [bottle.py][bottle-py].
 Frameworks parse requests into convenient data structures, route
 requests to the right handler, and can also provide tools like HTML
 templates, session handling, database access, input validation, and
@@ -1194,7 +1189,7 @@ Each topic should have its own URL and its own list of messages. So,
 for example, `/cooking` should be a page of posts (about cooking) and
 comments submitted through the form on that page should only show up
 when you go to `/cooking`, not when you go to `/cars`. Make the home
-page, from `/`, list the available topics with a link to each topic's
+page list the available topics with a link to each topic's
 page. Make it possible for users to add new topics.
 
 8-7 *Persistence*. Back the server's list of guest book entries with a
