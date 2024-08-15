@@ -286,7 +286,7 @@ incantation is:[^weird]
 strange API with a lot of hidden global state; the `MakeGL` Skia
 method implicitly binds to the existing GL context.
 
-``` {.python}
+``` {.python indent=4}
 class Browser:
     def __init__(self):
         # ...
