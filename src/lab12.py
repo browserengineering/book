@@ -411,7 +411,6 @@ class TaskRunner:
     def clear_pending_tasks(self):
         self.condition.acquire(blocking=True)
         self.tasks.clear()
-        self.pending_scroll = None
         self.condition.release()
 
     def start_thread(self):
