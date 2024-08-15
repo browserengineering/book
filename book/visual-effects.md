@@ -1332,10 +1332,9 @@ the [`mix-blend-mode` property][mix-blend-mode-def], like this:
 </div>
 ```
 
-This HTML will look like Figure 5.^[See the `browser.engineering`
-website for the example and how it looks in color.]
-
 ::: {.web-only}
+This HTML will look like Figure 5.
+
 <div style="background-color:orange">
 Parent
 <div style="background-color:blue;mix-blend-mode:difference">Child</div>
@@ -1348,6 +1347,9 @@ Figure 5: Example of the `difference` value for `mix-blend-mode` with a blue chi
 :::
 
 ::: {.print-only}
+This HTML will look like Figure 5.^[See the `browser.engineering`
+website for the example and how it looks in color.]
+
 ![Figure 5: Example of the `difference` value for `mix-blend-mode` with a blue child and orange parent, resulting in pink.](examples/example11-difference-blend-mode.png)
 :::
 
