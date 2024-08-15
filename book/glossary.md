@@ -307,8 +307,8 @@ CSS properties (such as font sizing) are inherited by default.
 Style
 
 : All the pieces of information necessary to determine the visual
-display of an element. Also the name of the HTML element that
-specifies inline styles.
+display of an element. Also the name of a corresponding attribute to
+specify inline styles.
 
 Coordinate Spaces
 =================
