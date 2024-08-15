@@ -960,7 +960,7 @@ class Tab:
 
 In this code I used a new `dispatch_RAF` method:
 
-``` {.python}
+``` {.python expected=False}
 class JSContext:
     def dispatch_RAF(self):
         self.interp.evaljs(code)
