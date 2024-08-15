@@ -958,8 +958,7 @@ class Tab:
         # ...
 ```
 
-In this code I used a new `dispatch_RAF` method, which is just like the
-pre-iframe code:
+In this code I used a new `dispatch_RAF` method:
 
 ``` {.python}
 class JSContext:
