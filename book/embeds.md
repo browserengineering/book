@@ -961,7 +961,7 @@ class Tab:
 In this code I used a new `dispatch_RAF` method, which is just like the
 pre-iframe code but wraps the call for the specified `window_id`:
 
-``` {.python expected=False}
+``` {.python}
 class JSContext:
     def dispatch_RAF(self, window_id):
         self.interp.evaljs(code)
