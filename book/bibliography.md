@@ -8,7 +8,7 @@ Alan Grosskurth and Michael W. Godfrey. [*A Reference Architecture for Web Brows
 
 Jesse James Garrett. [*Ajax: A New Approach to Web Applications*](https://www.semanticscholar.org/paper/Ajax%3A-A-New-Approach-to-Web-Applications-Garrett/c440ae765ff19ddd3deda24a92ac39cef9570f1e), 2005.
  
-James D. Foley, Andries van Dam, Steven K. Feiner, John Hughes, Morgan McGuire, David F. Sklar, and Kurt Akeley. [*Computer Graphics: Principles and Practice*](https://en.wikipedia.org/wiki/Computer_Graphics:_Principles_and_Practice). Addison-Wesley, 1995.
+James D. Foley, Andries van Dam, Steven K. Feiner, John Hughes, Morgan McGuire, David F. Sklar, and Kurt Akeley. *Computer Graphics: Principles and Practice*. Addison-Wesley, 1995.
 
 Aaron Gustafson. [*From URL to Interactive*](https://alistapart.com/article/from-url-to-interactive/), 2018.
 
