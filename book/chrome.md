@@ -508,7 +508,7 @@ tease tabs and browsers apart.
 
 Here's the plan: the `Browser` class will own the window and canvas
 and all related methods, such as event handling. And it'll also
-contain a list of `Tab` objects and the page chrome. But the web page
+contain a list of `Tab` objects and the browser chrome. But the web page
 itself and its associated methods will live in a new `Tab` class.
 
 To start, rename your existing `Browser` class to be just `Tab`, since
