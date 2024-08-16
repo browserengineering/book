@@ -22,9 +22,7 @@ button:focus { outline: 2px solid black; }
 
 div:focus { outline: 2px solid black; }
 
-a:focus {
-    outline: 2px solid black;
-}
+a:focus { outline: 2px solid black; }
 
 @media (prefers-color-scheme: dark) {
   a { color: lightblue; }

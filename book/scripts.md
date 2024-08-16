@@ -95,7 +95,8 @@ On the web, JavaScript is found in `<script>` tags. Normally, a
 to a JavaScript file, much like with CSS files. A `<script>` tag could
 also contain JavaScript source code between the start and end tag, but
 we won't implement that.^[It's a challenge for parsing, since it's
-hard to avoid less-than and greater-than signs in JavaScript code.]
+hard to avoid less-than and greater-than signs in JavaScript code. See
+[Exercise 4-3](html.md#exercises).]
 
 Finding and downloading those scripts is similar to what we did for
 CSS. First, we need to find all of the scripts:
@@ -206,7 +207,7 @@ that the other uses, say on a page like this:
 
 Suppose `a.js` is "`var x = 2;`" and `b.js` is "`console.log(x + x)`";
 the variable `x` is set in `a.js` but used in `b.js`. In real web
-browsers, that's important, since one script might define library
+browsers, that's common, since one script might define library
 functions that another script wants to call.
 
 Now, to allow JavaScript to interact with the outside world, DukPy
@@ -239,7 +240,7 @@ and then give it a `log` property. We can do that *in JavaScript*:
 
 [console-log]: https://developer.mozilla.org/en-US/docs/Web/API/console/log
 
-``` {.javascript .example}
+``` {.javascript}
 console = { log: function(x) { call_python("log", x); } }
 ```
 
@@ -378,7 +379,7 @@ key elements of the full API:
 
 -   `querySelectorAll` returns all the elements matching a selector;
 -   `getAttribute` returns an element's value for some attribute; and
--   `innerHTML` replaces the contents of an element with new HTML.
+-   `innerHTML` replaces the content of an element with new HTML.
 
 We'll implement simplified versions of these APIs.[^simplified]
 
@@ -612,7 +613,7 @@ for (var i = 0; i < inputs.length; i++) {
 ```
 
 Ideally, though we'd update the character count every time the user
-types into an input box, but that requires running JavaScript on every
+types into an input box. That requires running JavaScript on every
 key press. Let's implement that next.
 
 ::: {.further}
@@ -1203,7 +1204,7 @@ included.[^text-children]
 [children]: https://developer.mozilla.org/en-US/docs/Web/API/Element/children
 
 [^text-children]: The DOM method `childNodes` gives access to both elements and
-    text.
+    text nodes.
 
 9-2 *`createElement`*. The [`document.createElement`][createElement] method
 creates a new element, which can be *attached* to the document with the
@@ -1258,8 +1259,8 @@ reflect the *current* attributes of the element; for example:
 ``` {.javascript .example} 
 element.innerHTML = '<span id=foo>Chris was here</span>';
 element.id = 'bar';
-// Prints "<span id=bar>Chris was here</span>":
 console.log(element.innerHTML);
+// Prints "<span id=bar>Chris was here</span>":
 ```
 
 Implement this behavior for `innerHTML` as a getter. Also implement

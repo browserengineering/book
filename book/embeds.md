@@ -158,7 +158,7 @@ field.[^memoryview]
     of the rest of the browser which is why I'm choosing to avoid it.
     
 These download and decode steps can both fail; if that happens we'll
-load a "broken image" placeholder (I used [this one][broken-image]):
+load a "broken image" placeholder (I used [one from Wikipedia][broken-image]):
 
 [broken-image]: https://commons.wikimedia.org/wiki/File:Broken_Image.png
 
@@ -643,7 +643,7 @@ and `height`, and compute the other using the image's *aspect
 ratio*.[^only-recently-aspect-ratio]
 
 [^only-recently-aspect-ratio]: Despite it being easy to implement, this
-feature of real web browsers only reached all of them in 2021. Before that, developers resorted to things like the [padding-top hack][padding-top-hack]. Sometimes design oversights take a long time to fix.
+feature of real web browsers only reached all of them in 2021. Before that, developers resorted to things like the [`padding-top` hack][padding-top-hack]. Sometimes design oversights take a long time to fix.
 
 [padding-top-hack]: https://web.dev/aspect-ratio/#the-old-hack-maintaining-aspect-ratio-with-padding-top
 
@@ -717,7 +717,7 @@ discuss those here.]
 [^variants]: As are variations like the [`<canvas>`][canvas-elt]
     element. Instead of loading an image from the network, JavaScript
     can draw on a `<canvas>` element via an API. Unlike images,
-    `<canvas>` element's don't have intrinsic sizes, but besides that
+    `<canvas>` elements don't have intrinsic sizes, but besides that
     they are pretty similar in terms of layout.
 
 [canvas-elt]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas
@@ -877,16 +877,18 @@ will sometimes need direct access to an arbitrary frame, let's also
 give each frame an identifier, which I'm calling a *window ID*:
 
 ``` {.python}
+class Tab:
+    def __init__(self, browser, tab_height):
+        # ...
+        self.window_id_to_frame = {}
+```
+
+``` {.python}
 class Frame:
     def __init__(self, tab, parent_frame, frame_element):
         # ...
         self.window_id = len(self.tab.window_id_to_frame)
         self.tab.window_id_to_frame[self.window_id] = self
-
-class Tab:
-    def __init__(self, browser, tab_height):
-        # ...
-        self.window_id_to_frame = {}
 ```
 
 Now that we have frames being created, let's work on rendering those
@@ -1020,19 +1022,19 @@ a "seamless" iframe whose layout is coordinated with its parent frame.
 
 ``` {.python}
 class BlockLayout:
-    # ...
-
     def layout_mode(self):
         # ...
         elif self.node.tag in ["input", "img", "iframe"]:
             return "inline"
 
     def recurse(self, node):
-        # ...
+        else:
+            # ...
             elif node.tag == "iframe" and \
                  "src" in node.attributes:
                 self.iframe(node)
-    # ...
+            # ...
+
     def iframe(self, node):
         if "width" in self.node.attributes:
             w = dpx(int(self.node.attributes["width"]),
@@ -1110,6 +1112,9 @@ class IframeLayout(EmbedLayout):
                 self.width - dpx(2, self.zoom)
 ```
 
+The conditional is only there to handle the (unusual) case of an
+iframe blocked by CSP.
+
 You might be surprised that I'm not calling `set_needs_render` on the child
 frame here. That's a shortcut: the `width` and `height` attributes can only
 change through `setAttribute`, while `zoom` can only change in `zoom_by` and
@@ -1124,9 +1129,6 @@ class Tab:
         for id, frame in self.window_id_to_frame.items():
             frame.set_needs_render()
 ```
-
-The conditional is only there to handle the (unusual) case of an
-iframe blocked due by CSP.
 
 The root frame, of course, fills the whole window:
 
@@ -1157,14 +1159,6 @@ class Tab:
             self.display_list = []
             paint_tree(self.root_frame.document, self.display_list)
             self.needs_paint = False
-```
-
-We'll then have the `Frame` call the layout tree's `paint` method:
-
-``` {.python expected=False}
-class Frame:
-    def paint(self):
-        self.document.paint(display_list)
 ```
 
 Most of the layout tree's `paint` methods don't need to change, but to
@@ -1226,9 +1220,7 @@ somewhat incorrect.
 [box-model]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Box_Model/Introduction_to_the_CSS_box_model
 
 ``` {.css}
-iframe {
-    outline: 1px solid black;
-}
+iframe { outline: 1px solid black; }
 ```
 
 Finally, let's also add iframes to the accessibility tree. Like the
@@ -1313,7 +1305,7 @@ now cause a frame to navigate to a new page. And because a `Frame` has
 all the loading and navigation logic that `Tab` used to have, it just
 works without any more changes!
 
-You should now be able to load [this
+You should now be able to load [an iframe
 example](examples/example15-iframe.html). It should look like the image
 shown in Figure 5.
 
@@ -1549,14 +1541,17 @@ class AccessibilityNode:
         self.parent = parent
 
     def build_internal(self, child_node):
-        # ...
+        if isinstance(child_node, Element) \
+            and child_node.tag == "iframe" and child_node.frame \
+            and child_node.frame.loaded:
             child = FrameAccessibilityNode(child_node, self)
         else:
             child = AccessibilityNode(child_node, self)
+        # ...
 ```
 
 And now we're ready for the method to map to absolute coordinates. This
-loops over all bounds rects and maps them up to the root. Note that there is
+loops over all bounds `Rect`s and maps them up to the root. Note that there is
 a special case for `FrameAccessibilityNode`, because its self-bounds are in
 the coordinate space of the frame containing the iframe.
 
@@ -1726,7 +1721,7 @@ context, we'll create multiple `Window` objects: `window_1`,
 `window` to that frame's `Window` object, so that the script uses the
 correct `Window`.[^dukpy-limitation]
 
-[^dukpy-limitation]: Some JavaScript engines support a simple API for
+[^dukpy-limitation]: Some JavaScript engines support an API for
     changing the global object, but the DukPy library that we're using
     isn't one of them. There *is* a standard JavaScript operator
     called `with` which sort of does this, but the rules are
@@ -2135,7 +2130,7 @@ You should now be able to use `postMessage` to send messages between
 frames,[^postmessage-demo] including cross-origin frames running in
 different `JSContext`s, in a secure way.
 
-[^postmessage-demo]: In [this demo](https://browser.engineering/examples/example15-iframe.html), for example, you should see "Message received from iframe: This is the contents of
+[^postmessage-demo]: In [the iframe demo](https://browser.engineering/examples/example15-iframe.html), for example, you should see "Message received from iframe: This is the contents of
 postMessage." printed to the console. (This particular example uses a
 same-origin `postMessage`. You can test cross-origin locally by starting two
 local HTTP servers on different ports, then changing the URL of the
@@ -2222,7 +2217,7 @@ for timing attacks. For example, browsers reduce the accuracy of APIs
 like `Date.now` or `setTimeout`.
 
 Worse yet, there are browser APIs that don't seem like timers but can
-be used as such.[^sharedarraybuffer-attack] These API are useful, so
+be used as such.[^sharedarraybuffer-attack] These APIs are useful, so
 browsers don't quite want to remove them, but there is also no way to
 make them "less accurate", since they are not a clock to begin with.
 Browsers now require [certain optional HTTP headers][sab-headers] to
@@ -2272,7 +2267,7 @@ images and iframes. Reiterating the main points:
 - Iframes introduce all the complexities of the web---rendering, event
   handling, navigation, security---into the browser's handling of
   embedded content. However, this complexity is justified, because
-  they enable important cross-origin use cases like ads, video, and
+  they enable important cross-origin use cases like ads, videos, and
   social media buttons.
 
 And, as we hope you saw in this chapter, none of these features are too
@@ -2342,7 +2337,7 @@ aspect ratio.
 [obj-fit]: https://developer.mozilla.org/en-US/docs/Web/CSS/object-fit
 
 15-4 *Lazy loading*. Downloading images can use quite a bit of
-data.[^early-lazy-loading] While browsers default to download all
+data.[^early-lazy-loading] While browsers default to downloading all
 images on the page immediately, the [`loading`
 attribute][img-loading] on `img` elements can instruct a browser to only
 download images if they are close to the visible area of the page.
