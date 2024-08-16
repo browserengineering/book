@@ -10,7 +10,7 @@ various callbacks, and ultimately render to the screen, all while
 staying fast and responsive. That requires a unified task abstraction
 to keep track of the browser's pending work. Moreover, browser work
 must be split across multiple CPU threads\index{thread}, with
-different threads running events in parallel to maximize
+different threads running tasks in parallel to maximize
 responsiveness.
 
 Tasks and Task Queues
@@ -117,13 +117,6 @@ That makes pages slower to load. We can fix this by creating tasks for
 running scripts:
 
 ``` {.python}
-class JSContext:
-    def run(self, script, code):
-        try:
-            self.interp.evaljs(code)
-        except dukpy.JSRuntimeError as e:
-            print("Script", script, "crashed", e)
-
 class Tab:
     def load(self, url, payload=None):
         # ...
@@ -227,7 +220,7 @@ def callback():
 threading.Timer(1.0, callback).start()
 ```
 
-This runs `callback` one second from now on a new Python thread.
+This runs `callback` one second from now.
 Simple! But `threading.Timer` executes its callback *on a new Python
 thread*, and that introduces a lot of challenges. The callback can't
 just call `evaljs` directly: we'd end up with JavaScript running on
@@ -272,11 +265,12 @@ only one thread accesses the `task_runner` at a time.
 
 [race-condition]: https://en.wikipedia.org/wiki/Race_condition
 
-To do so we use a [`Condition`][condition-variable] object, which can only held
+To do so we use a [`Condition`][condition-variable] object, which can
+only be held
 by one thread at a time. Each thread will try to acquire `condition` before
 reading or writing to the `task_runner`, avoiding simultaneous
 access.^[The `blocking` parameter to `acquire` indicates whether the thread
-should wait for the lock to be available before continuing; in this chapter
+should wait for the condition to be available before continuing; in this chapter
 you'll always set it to `True`. (When the thread is waiting, it's said to be
 *blocked*.)]
 
@@ -286,20 +280,6 @@ do right now, acquire `condition` and then call `wait`. This will cause the
 thread to stop at that line of code. When more work comes in to do, such as in
 `schedule_task`, a call to `notify_all` will wake up the thread that called
 `wait`.
-
-It's important to call `wait` at the end of the `run` loop if there is nothing
-left to do. Otherwise that thread will tend to use up a lot of the CPU,
-plus constantly be acquiring and releasing `condition`. This busywork not only
-slows down the computer, but also causes the callbacks from the `Timer` to
-happen at erratic times, because the two threads are competing for the
-lock.[^try-it]
-
-[condition-variable]: https://docs.python.org/3/library/threading.html#threading.Condition
-
-[lock-class]: https://docs.python.org/3/library/threading.html#threading.Lock
-
-[^try-it]: Try removing this code and observe. The timers will become quite
-erratic.
 
 ``` {.python expected=False}
 class TaskRunner:
@@ -327,6 +307,20 @@ class TaskRunner:
             self.condition.wait()
         self.condition.release()
 ```
+
+It's important to call `wait` at the end of the `run` loop if there is nothing
+left to do. Otherwise that thread will tend to use up a lot of the CPU,
+plus constantly be acquiring and releasing `condition`. This busywork not only
+slows down the computer, but also causes the callbacks from the `Timer` to
+happen at erratic times, because the two threads are competing for the
+lock.[^try-it]
+
+[condition-variable]: https://docs.python.org/3/library/threading.html#threading.Condition
+
+[lock-class]: https://docs.python.org/3/library/threading.html#threading.Lock
+
+[^try-it]: Try removing this code and observe. The timers will become quite
+erratic.
 
 When using locks, it's super important to remember to release the lock
 eventually and to hold it for the shortest time possible. The code
@@ -393,7 +387,9 @@ Chapter 10 is not very useful and a huge performance footgun. Some
 browsers are now moving to deprecate synchronous `XMLHttpRequest`.]
 Python's `Thread` class lets us do better:
 
-    threading.Thread(target=callback).start()
+``` {.python .example}
+threading.Thread(target=callback).start()
+```
     
 This code creates a new thread and then immediately returns. The
 `callback` then runs in parallel, on the new thread, while the initial
@@ -489,7 +485,10 @@ class JSContext:
 
 Note that in the asynchronous case, the `XMLHttpRequest_send` method starts a
 thread and then immediately returns. That thread will run in parallel
-with the browser's main work until the request is done.
+with the browser's main work until the request is done.^[In theory two
+parallel requests could race while accessing the cookie jar; I'm not
+fixing this out of expediency but a proper implementation would have
+locks for the cookie jar.]
 
 To communicate the result back to JavaScript, we'll call a
 `__runXHROnload` function from `dispatch_xhr_onload`:
@@ -505,7 +504,8 @@ class JSContext:
 ```
 
 The `__runXHROnload` method just pulls the relevant object from
-`XHR_REQUESTS` and calls its `onload` function:
+`XHR_REQUESTS` and calls its `onload` function, which is the standard
+callback for asynchronous `XMLHttpRequest`s:
 
 ``` {.javascript}
 function __runXHROnload(body, handle) {
@@ -1016,8 +1016,9 @@ is really being spent rendering. It's important to always measure
 before optimizing, because the result is often surprising.
 
 To instrument our browser, let's have it output the
-[JSON][json] tracing format used by [chrome://tracing][chrome-tracing]
-in Chrome, [Firefox Profiler](https://profiler.firefox.com/) or
+[JSON][json] tracing format used by
+[`chrome://tracing` in Chrome][chrome-tracing],
+[Firefox Profiler](https://profiler.firefox.com/) or
 [Perfetto UI](https://ui.perfetto.dev/).[^note-standards]
 
 [json]: https://www.json.org/
@@ -1099,7 +1100,7 @@ class MeasureTime:
         self.file.flush()
 ```
 
-Here, the `name` argument to `start` should describe what kind of
+Here, the `name` argument to `time` should describe what kind of
 computation is starting, and it needs to match the name passed to the
 corresponding `stop` event:
 
@@ -1115,7 +1116,7 @@ class MeasureTime:
         self.file.flush()
 ```
 
-We can also measure tab rendering by just calling `start` and `stop`:
+We can measure tab rendering by just calling `time` and `stop`:
 
 ``` {.python}
 class Tab:
@@ -1361,7 +1362,7 @@ class Browser:
         self.active_tab.task_runner.schedule_task(task)
 ```
 
-Above, I needed to clear any pending tasks before loading a new page, because
+We need to clear any pending tasks before loading a new page, because
 those previous tasks are now invalid:
 
 ``` {.python}
@@ -1369,7 +1370,6 @@ class TaskRunner:
     def clear_pending_tasks(self):
         self.condition.acquire(blocking=True)
         self.tasks.clear()
-        self.pending_scroll = None
         self.condition.release()
 ```
 
@@ -1409,7 +1409,7 @@ class Chrome:
 Event handlers are mostly similar, except that we need to be careful
 to distinguish events that affect the browser chrome from those that
 affect the tab. For example, consider `handle_click`. If the user
-clicked on the browser chrome (meaning `e.y < self.chrome.bottom`), we can
+clicked on the browser chrome, we can
 handle it right there in the browser thread. But if the user clicked
 on the web page, we must schedule a task on the main thread:
 
@@ -1527,8 +1527,8 @@ it was sent and call `set_needs_raster_and_draw` as needed. Because this call
 will come from another thread, we'll need to acquire a lock. Another important
 step is to not clear the `animation_timer` object until *after* the next
 commit occurs. Otherwise multiple rendering tasks could be queued at the same
-time. Finally, rename `scroll` to `active_tab_scroll` and `url` to
-`active_tab_url` to make more clear what they mean.
+time. Finally, save `scroll` in `active_tab_scroll` and `url` in
+`active_tab_url`:
 
 ``` {.python}
 class Browser:
@@ -1818,7 +1818,9 @@ but in this case we don't know the right scroll offset yet. We need
 the main thread to run in order to commit a new display list for the
 other tab, and at that point we will have a new scroll offset as well.
 Move tab switching (in `load` and `handle_click`) to a new method
-`set_active_tab` that simply schedules a new animation frame:
+`set_active_tab` that simply schedules a new animation frame:^[Note
+that both callers already hold the lock, so this method doesn't need
+to acquire it.]
 
 ``` {.python}
 class Browser:
@@ -1886,6 +1888,7 @@ browser thread's scroll offset is past the bottom of the page:
 ``` {.python}
 class Tab:
     def load(self, url, payload=None):
+        # ...
         self.scroll = 0
         self.scroll_changed_in_tab = True
 
@@ -1895,8 +1898,6 @@ class Tab:
         return max(0, min(scroll, maxscroll))
 
     def run_animation_frame(self, scroll):
-        # ...
-        self.render()
         # ...
         self.browser.commit(self, commit_data)
         self.scroll_changed_in_tab = False
