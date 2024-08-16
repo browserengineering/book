@@ -165,7 +165,7 @@ text and the document object).
 Event
 
 : A way for JavaScript to observe that something has happened on the
-document and react.
+document and customize its results.
 
 Focus
 
