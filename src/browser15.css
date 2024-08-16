@@ -22,13 +22,9 @@ button:focus { outline: 1px solid black; }
 
 div:focus { outline: 1px solid black; }
 
-a:focus {
-    outline: 1px solid black;
-}
+a:focus { outline: 1px solid black; }
 
-iframe {
-    outline: 1px solid black;
-}
+iframe { outline: 1px solid black; }
 
 @media (prefers-color-scheme: dark) {
 
