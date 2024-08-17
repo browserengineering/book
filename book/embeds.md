@@ -963,7 +963,7 @@ In this code I used a new `dispatch_RAF` method:
 ``` {.python expected=False}
 class JSContext:
     def dispatch_RAF(self):
-        self.interp.evaljs(code)
+        self.interp.evaljs("window.__runRAFHandlers()")
 ```
 
 Note that the `needs_accessibility`, `pending_hover`, and other flags
