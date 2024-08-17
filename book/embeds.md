@@ -960,14 +960,12 @@ class Tab:
         # ...
 ```
 
-In this code I used a new `dispatch_RAF` method, which is just like the
-pre-iframe code but wraps the call for the specified `window_id`:
+In this code I used a new `dispatch_RAF` method:
 
-``` {.python}
+``` {.python expected=False}
 class JSContext:
-    def dispatch_RAF(self, window_id):
-        code = self.wrap("window.__runRAFHandlers()", window_id)
-        self.interp.evaljs(code)
+    def dispatch_RAF(self):
+        self.interp.evaljs("window.__runRAFHandlers()")
 ```
 
 Note that the `needs_accessibility`, `pending_hover`, and other flags
