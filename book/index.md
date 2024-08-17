@@ -46,8 +46,8 @@ Introduction
 3. [History of the Web](history.md)
 :::
 
-Part 1: Drawing Graphics
-========================
+Part 1: Loading Pages
+=====================
 
 1. [Downloading Web Pages](http.md)\
     URLs and HTTP requests
