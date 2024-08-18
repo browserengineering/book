@@ -2665,7 +2665,7 @@ build* is what browser engineers use when debugging or developing new
 features, and also in automated tests. Debug builds
 also compile in debugging features like [sanitizers][ffx-sanitizers],
 while release builds instead use heavyweight optimizations
-[like *profile-guided optimization*][chrome-pgo] (PGO).
+[like *profile-guided optimization*][chrome-pgo].
 
 :::
 
