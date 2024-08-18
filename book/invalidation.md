@@ -398,7 +398,7 @@ idempotent. I found:[^exercises]
 - In `new_line`, `BlockLayout` will append to its `children` array.
 - In `add_inline_child`, `BlockLayout` will append to the `children`
   array of some `LineLayout` child.
-- In `word` and `input`, `BlockLayout` will call `get_font`, as will
+- In `add_inline_child`, `BlockLayout` will call `get_font`, as will
   the `TextLayout` and `InputLayout` methods.
 - Basically every layout method calls `dpx`.
 
