@@ -579,6 +579,7 @@ we also need to set dark mode when changing tabs, since all tabs should
 be either dark or light:
 
 ``` {.python}
+class Browser:
    def set_active_tab(self, tab):
         # ...
         task = Task(self.active_tab.set_dark_mode, self.dark_mode)
@@ -1135,7 +1136,7 @@ If you print out `focusable_nodes` for the
 [focus example](examples/example14-focus.html), you should
 get this:
 
-``` {.python .example}
+``` {.python .output}
 [<a tabindex="1" href="/">,
  <button tabindex="2">,
  <div tabindex="3">,
@@ -1353,7 +1354,9 @@ means you can write a selector like this:
 
 [pseudoclass]: https://developer.mozilla.org/en-US/docs/Web/CSS/Pseudo-classes
 
-    div:focus { ... }
+``` {.css .example}
+div:focus { ... }
+```
 
 And then that selector applies only to `<div>` elements that are
 currently focused.[^why-pseudoclass]
@@ -1422,7 +1425,9 @@ customize the focus outline itself and not just the element. That can be done
 by adding support for the CSS [`outline` property][outline], which looks like
 this (for a 3-pixel-thick red outline):[^outline-syntax]
 
-    outline: 3px solid red;
+``` {.css .example}
+outline: 3px solid red;
+```
 
 [outline]: https://developer.mozilla.org/en-US/docs/Web/CSS/outline
 
@@ -1695,7 +1700,7 @@ class AccessibilityNode:
 Here is the accessibility tree for the
 [focus example](examples/example14-focus.html):
 
-``` {.text .example}
+``` {.output}
  role=document
    role=button
      role=focusable text
@@ -1965,7 +1970,7 @@ This text construction logic is, of course, pretty naive, but it's
 enough to demonstrate the idea. Here is how it works out for the
 [focus example](examples/example14-focus.html):
 
-``` {.text .example}
+``` {.output}
  role=document text=Document
    role=button text=Button
      role=focusable text text=Focusable text: This is a button

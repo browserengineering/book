@@ -26,7 +26,7 @@ form might be written like this (see results in Figure 1):
     represent different kinds of user controls, like dropdowns and
     multi-line inputs.
 
-``` {.html}
+``` {.html .example}
 <form action="/submit" method="post">
     <p>Name: <input name=name value=1></p>
     <p>Comment: <input name=comment value=2></p>
@@ -47,7 +47,7 @@ to the URL given by the `form` element's `action` attribute, with the
 usual rules of relative URLs---so in this case, `/submit`. The `POST`
 request looks like this:
 
-``` {.example}
+``` {.output}
 POST /submit HTTP/1.0
 Host: example.org
 Content-Length: 16

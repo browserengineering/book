@@ -47,17 +47,17 @@ Here are the technical details. An HTTP response can contain a
 example, the following header sets the value of the `foo` cookie to
 `bar`:
 
-::: {.example}
-    Set-Cookie: foo=bar
-:::
+``` {.example}
+Set-Cookie: foo=bar
+```
     
 The browser remembers this key–value pair, and the next time it makes
 a request to the same server (cookies are site-specific), the browser
 echoes it back in the `Cookie` header:
 
-::: {.example}
-    Cookie: foo=bar
-:::
+``` {.example}
+Cookie: foo=bar
+```
 
 Servers can set multiple cookies, and also set parameters like
 expiration dates, but this `Set-Cookie` / `Cookie` transaction
@@ -654,7 +654,7 @@ called *cross-site request forgery*, often shortened to CSRF.
 In cross-site request forgery, instead of using `XMLHttpRequest`, the
 attacker uses a form that submits to the guest book:
 
-``` {.html}
+``` {.html .example}
 <form action="http://localhost:8000/add" method=post>
   <p><input name=guest></p>
   <p><button>Sign the book!</button></p>
@@ -781,9 +781,9 @@ will not send them in cross-site form submissions.[^in-progress]
 
 A cookie is marked `SameSite` in the `Set-Cookie` header like this:
 
-::: {.example}
-    Set-Cookie: foo=bar; SameSite=Lax
-:::
+``` {.example}
+Set-Cookie: foo=bar; SameSite=Lax
+```
 
 The `SameSite` attribute can take the value `Lax`, `Strict`, or
 `None`, and as I write, browsers have and plan different defaults. Our
@@ -992,7 +992,7 @@ Hi! <script src="http://my-server/evil.js"></script>
 
 The server would then output this HTML:
 
-``` {.html .example}
+``` {.html .output}
 <p>Hi! <script src="http://my-server/evil.js"></script>
 <i>by crashoverride</i></p>
 ```
@@ -1065,9 +1065,9 @@ specification for this header is quite complex, but in the simplest
 case, the header is set to the keyword `default-src` followed by a
 space-separated list of servers:
 
-::: {.example}
-    Content-Security-Policy: default-src http://example.org
-:::
+``` {.example}
+Content-Security-Policy: default-src http://example.org
+```
 
 This header asks the browser not to load any resources (including CSS,
 JavaScript, images, and so on) except from the listed origins. If our

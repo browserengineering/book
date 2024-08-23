@@ -170,7 +170,7 @@ we'll implement `setTimeout` by saving the callback in a JavaScript
 variable and creating a handle by which the Python-side code can call
 it:
 
-``` {.javascript file=runtime}
+``` {.javascript}
 SET_TIMEOUT_REQUESTS = {}
 
 function setTimeout(callback, time_delta) {
@@ -192,7 +192,7 @@ callback. That last part will happen via `__runSetTimeout`:[^mem-leak]
     between the browser and the browser application takes a lot of
     care and this book doesn't attempt to do it right.
 
-``` {.javascript file=runtime}
+``` {.javascript}
 function __runSetTimeout(handle) {
     var callback = SET_TIMEOUT_REQUESTS[handle]
     callback();
@@ -403,7 +403,7 @@ send the response back to the script.
 Like with `setTimeout`, we'll store the callback on the
 JavaScript side and refer to it with a handle:
 
-``` {.javascript file=runtime}
+``` {.javascript}
 XHR_REQUESTS = {}
 
 function XMLHttpRequest() {
@@ -418,7 +418,7 @@ we'll now allow the `is_async` flag to be true:[^async-default]
 [^async-default]: In browsers, the `is_async` parameter is optional
     and defaults to `true`, but our browser doesn't implement that.
 
-``` {.javascript file=runtime}
+``` {.javascript}
 XMLHttpRequest.prototype.open = function(method, url, is_async) {
     this.is_async = is_async;
     this.method = method;
@@ -429,7 +429,7 @@ XMLHttpRequest.prototype.open = function(method, url, is_async) {
 The `send` method will need to send over the `is_async` flag and the
 handle:
 
-``` {.javascript file=runtime}
+``` {.javascript}
 XMLHttpRequest.prototype.send = function(body) {
     this.responseText = call_python("XMLHttpRequest_send",
         this.method, this.url, body, this.is_async, this.handle);
@@ -842,7 +842,7 @@ be confident that it will be rendered right away.
 The implementation of this JavaScript API is straightforward. Like
 before, we store the callbacks on the JavaScript side:
 
-``` {.javascript file=runtime}
+``` {.javascript}
 RAF_LISTENERS = [];
 
 function requestAnimationFrame(fn) {
@@ -881,7 +881,7 @@ class Tab:
 
 This `__runRAFHandlers` function is a little tricky:
 
-``` {.javascript file=runtime}
+``` {.javascript}
 function __runRAFHandlers() {
     var handlers_copy = RAF_LISTENERS;
     RAF_LISTENERS = [];
@@ -1747,7 +1747,7 @@ much. But it's still possible for really slow JavaScript to slow the
 browser down. For example, imagine our counter adds the following
 artificial slowdown:
 
-``` {.javascript file=eventloop .example}
+``` {.javascript file=eventloop}
 function callback() {
     for (var i = 0; i < 5e6; i++);
     // ...
