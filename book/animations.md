@@ -162,7 +162,7 @@ after all, [Chapter 12](scheduling.md#profiling-rendering) showed
 that raster and draw was about 62`\,`{=latex}` `{=html}ms for simple pages, and render
 was 23`\,`{=latex}` `{=html}ms.
 
-Even with just 62\,{=latex} {=html}ms per frame, our browser is barely doing 15 frames per
+Even with just 62`\,`{=latex}` `{=html}ms per frame, our browser is barely doing 15 frames per
 second; for smooth animations we want 30! So we need to speed up
 raster and draw.
 
