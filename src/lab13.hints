@@ -3,12 +3,7 @@
  {"code": "b'Browser'", "js": "'Browser'"},
  {"code": "MeasureTime()", "js": "new MeasureTime()"},
  {"code": "print", "js": "console.log"},
- {"code": "elt not in self.node_to_handle", "type": "map"},
  {"code": "self.node_to_handle = {}", "js": "    this.node_to_handle = new Map();"},
- {"code": "self.node_to_handle.get(elt, -1)", "js": "this.node_to_handle.get(elt) ?? -1"},
- {"code": "self.node_to_handle[elt]", "js": "this.node_to_handle.get(elt)"},
- {"code": "len(self.node_to_handle)", "js": "this.node_to_handle.size"},
- {"code": "self.node_to_handle[elt] = handle", "js": "      this.node_to_handle.set(elt, handle);"},
  {"code": "('OpenGL initialized: vendor={},' + 'renderer={}').format(OpenGL.GL.glGetString(OpenGL.GL.GL_VENDOR), OpenGL.GL.glGetString(OpenGL.GL.GL_RENDERER))", "js": ""},
  {"code": "self.s[self.i] not in chars", "type": "str"},
  {"code": "property not in old_style", "type": "dict"},
@@ -17,6 +12,5 @@
  {"code": "node not in self.composited_updates", "type": "list"},
  {"code": "new_parent in new_effects", "type": "dict"},
  {"code": "rect.outset(1, 1)", "js": "rect.outset(1, 1)"},
- {"code": "sys.exit()", "js": ""},
- {"code": "open('runtime13.js').read()", "js": "filesystem.open('runtime13.js').read()"}
+ {"code": "sys.exit()", "js": ""}
 ]

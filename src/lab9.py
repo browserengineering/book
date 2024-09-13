@@ -39,8 +39,7 @@ class JSContext:
         self.interp.export_function("getAttribute",
             self.getAttribute)
         self.interp.export_function("innerHTML_set", self.innerHTML_set)
-        with open("runtime9.js") as f:
-            self.interp.evaljs(RUNTIME_JS)
+        self.interp.evaljs(RUNTIME_JS)
 
         self.node_to_handle = {}
         self.handle_to_node = {}
@@ -58,7 +57,7 @@ class JSContext:
         return not do_default
 
     def get_handle(self, elt):
-        if elt not in self.node_to_handle:
+        elt not in self.node_to_handle:
             handle = len(self.node_to_handle)
             self.node_to_handle[elt] = handle
             self.handle_to_node[handle] = elt

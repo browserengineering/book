@@ -117,7 +117,8 @@ class socket {
             let [line1] = this.input.split("\r\n", 1);
             let [method, path, protocol] = line1.split(" ");
             this.url = this.scheme + "://" + this.host + path;
-            if (this.host == "localhost" && rt_constants.URLS["local://" + this.port]) {
+            if (this.host == "localhost" && rt_constants.URLS["local://" + this.port] &&
+                path.indexOf("example") == -1) {
                 let s = new socket({family: "inet", type: "stream", proto: "tcp"});
                 s.is_proxy_socket = true;
                 s.output = this.input;
@@ -129,7 +130,7 @@ class socket {
                 this.output = typeof response === "function" ? response() : response;
                 this.idx = 0;
                 this.closed = false;
-            } else if (this.host == "browser.engineering") {
+            } else if (this.host == "browser.engineering" || this.host == "localhost") {
                 let response = await fetch(path);
                 this.output = "HTTP/1.0 " + response.status + " " + response.statusText + "\r\n";
                 for (let [header, value] of response.headers.entries()) {

@@ -10,6 +10,5 @@
  {"code": "self.node_to_handle[elt]", "js": "this.node_to_handle.get(elt)"},
  {"code": "len(self.node_to_handle)", "js": "this.node_to_handle.size"},
  {"code": "self.node_to_handle[elt] = handle", "js": "      this.node_to_handle.set(elt, handle);"},
- {"code": "DEFAULT_STYLE_SHEET.copy()", "js": "constants.DEFAULT_STYLE_SHEET.slice()"},
- {"code": "open('runtime9.js').read()", "js": "filesystem.open('runtime9.js').read()"}
+ {"code": "DEFAULT_STYLE_SHEET.copy()", "js": "constants.DEFAULT_STYLE_SHEET.slice()"}
 ]

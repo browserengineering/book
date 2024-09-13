@@ -473,21 +473,6 @@ class JSContext:
         self.node_to_handle = {}
         self.handle_to_node = {}
 
-    def dispatch_event(self, type, elt):
-        handle = self.node_to_handle.get(elt, -1)
-        do_default = self.interp.evaljs(
-            EVENT_DISPATCH_JS, type=type, handle=handle)
-        return not do_default
-
-    def get_handle(self, elt):
-        if elt not in self.node_to_handle:
-            handle = len(self.node_to_handle)
-            self.node_to_handle[elt] = handle
-            self.handle_to_node[handle] = elt
-        else:
-            handle = self.node_to_handle[elt]
-        return handle
-
     def style_set(self, handle, s):
         elt = self.handle_to_node[handle]
         elt.attributes["style"] = s;

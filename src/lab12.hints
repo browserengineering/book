@@ -14,6 +14,5 @@
  {"code": "callback", "js": "callback"},
  {"code": "self.file.flush()", "js": "self.file.flush()"},
  {"code": "self.node_to_handle = {}", "js": "    this.node_to_handle = new Map();"},
- {"code": "DEFAULT_STYLE_SHEET.copy()", "js": "constants.DEFAULT_STYLE_SHEET.slice()"},
- {"code": "open('runtime12.js').read()", "js": "filesystem.open('runtime12.js').read()"}
+ {"code": "DEFAULT_STYLE_SHEET.copy()", "js": "constants.DEFAULT_STYLE_SHEET.slice()"}
 ]
