@@ -57,7 +57,7 @@ class JSContext:
         return not do_default
 
     def get_handle(self, elt):
-        elt not in self.node_to_handle:
+        if elt not in self.node_to_handle:
             handle = len(self.node_to_handle)
             self.node_to_handle[elt] = handle
             self.handle_to_node[handle] = elt
