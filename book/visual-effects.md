@@ -39,7 +39,9 @@ graphics cards and GPUs became widespread.
 ::: {.installation}
 Start by installing [Skia][skia-python] and [SDL][sdl-python]:
 
-    python3 -m pip install 'skia-python==87.*' pysdl2 pysdl2-dll
+``` {.sh}
+python3 -m pip install 'skia-python==87.*' pysdl2 pysdl2-dll
+```
 
 As elsewhere in this book, you may need to install the `pip` package
 first, or use your IDE's package installer. If you're on Linux, you'll

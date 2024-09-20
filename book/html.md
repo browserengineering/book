@@ -310,7 +310,7 @@ print_tree(nodes)
 
 You'll see something like this at the beginning:
 
-``` {.example}
+``` {.output}
  <!doctype html>
    '\n'
    <html lang="en-US" xml:lang="en-US">
@@ -366,7 +366,7 @@ def add_text(self, text):
 The first part of the parsed HTML tree for the `browser.engineering` home page now
 looks something like this:
 
-``` {.example}
+``` {.output}
  <html lang="en-US" xml:lang="en-US">
    <head>
      <meta charset="utf-8" /="">
@@ -514,16 +514,16 @@ def add_tag(self, tag):
 Remember to use `tag` and `attribute` instead of `text` in `add_tag`,
 and try your parser again:
 
-``` {.example}
-<html>
-   <head>
-     <meta>
-     <link>
-     <link>
-     <link>
-     <link>
-     <link>
-     <meta>
+``` {.output}
+ <html>
+    <head>
+      <meta>
+      <link>
+      <link>
+      <link>
+      <link>
+      <link>
+      <meta>
 ```
 
 It's close! Yes, if you print the attributes, you'll see that
@@ -649,7 +649,7 @@ with dozens of ever-more-special cases forming a taxonomy of human
 error, but one of its nicer features is *implicit* tags. Normally, an
 HTML document starts with a familiar boilerplate:
 
-``` {.html}
+``` {.html .example}
 <!doctype html>
 <html>
   <head>

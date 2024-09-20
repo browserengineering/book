@@ -60,11 +60,8 @@ the `duktape` library that `dukpy` uses.
 
 To test whether you installed DukPy correctly, execute this:
 
-``` {.python}
-import dukpy
-```
-
 ``` {.python .example}
+import dukpy
 dukpy.evaljs("2 + 2")
 ```
 
@@ -131,7 +128,7 @@ def load(self, url, payload=None):
 This should run before styling and layout. To try it out, create a
 simple web page with a `script` tag:
 
-``` {.html}
+``` {.html .example}
 <script src=test.js></script>
 ```
 
@@ -144,7 +141,9 @@ x + x
 
 Point your browser at that page, and you should see:
 
-    Script returned: 4
+``` {.output}
+Script returned: 4
+```
 
 That's your browser running its first bit of JavaScript!
 
@@ -200,7 +199,7 @@ As a side benefit of using one `JSContext` for all scripts, it is now
 possible to run two scripts and have one of them define a variable
 that the other uses, say on a page like this:
 
-``` {.html}
+``` {.html .example}
 <script src=a.js></script>
 <script src=b.js></script>
 ```
@@ -462,9 +461,11 @@ def querySelectorAll(self, selector_text):
 
 However, this throws an error:[^7]
 
-    _dukpy.JSRuntimeError: EvalError:
-    Error while calling Python Function:
-    TypeError('Object of type Element is not JSON serializable')
+``` {.output}
+_dukpy.JSRuntimeError: EvalError:
+Error while calling Python Function:
+TypeError('Object of type Element is not JSON serializable')
+```
 
 [^7]: Yes, that's a confusing error message. Is it a `JSRuntimeError`,
     an `EvalError`, or a `TypeError`? The confusion is a consequence
