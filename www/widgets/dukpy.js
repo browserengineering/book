@@ -16,6 +16,7 @@ addEventListener("message", (e) => {
             val = eval?.(e.data.body);
         } catch (e) {
             console.log('Script crashed');
+            console.log(e);
         }
         if (val instanceof Function || val instanceof Object) val = null;
         $$POSTMESSAGE({"type": "return", "data": val});

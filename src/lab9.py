@@ -39,8 +39,7 @@ class JSContext:
         self.interp.export_function("getAttribute",
             self.getAttribute)
         self.interp.export_function("innerHTML_set", self.innerHTML_set)
-        with open("runtime9.js") as f:
-            self.interp.evaljs(RUNTIME_JS)
+        self.interp.evaljs(RUNTIME_JS)
 
         self.node_to_handle = {}
         self.handle_to_node = {}

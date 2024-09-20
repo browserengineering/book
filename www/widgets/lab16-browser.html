@@ -44,8 +44,8 @@ widget.run(async function() {
     await b.render();
     interval = setInterval(async function() {
       if (b.needs_animation_frame) {
-        await b.render();
         b.needs_animation_frame = false;
+        await b.render();
       }
       await b.composite_raster_and_draw();
       await b.schedule_animation_frame();
