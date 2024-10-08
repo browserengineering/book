@@ -1029,7 +1029,7 @@ as code. For example, in HTML, you can write `&lt;` to display a
 less-than sign.[^ch1-ex] Python has an `html` module for this kind of
 encoding:
 
-[^ch1-ex]: You may have implemented this in Exercise 1-5.
+[^ch1-ex]: You may have implemented this in Exercise 1-4.
 
 ``` {.python file=server}
 import html
