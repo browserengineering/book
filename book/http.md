@@ -735,7 +735,7 @@ python3 browser.py http://example.org/
 ```
 
 You should see some short text welcoming you to the official example
-web page. You can also try using it on [this chapter](https://browser.engineering/http.html)!
+web page. You can also try using it on [this chapter](http://browser.engineering/http.html)!
 
 ::: {.further}
 HTML, just like URLs and HTTP, is designed to be very easy to parse and
