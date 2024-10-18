@@ -635,8 +635,8 @@ great read!
 InternetWorks browser, a browser obscure enough that it doesn't have a
 Wikipedia page, though you can see some screenshots
 [on Twitter][booklink-x]. However, its tabs were slightly different from
-the modern conception, more like bookmarks than tabs. SimulBrowse instead
-used the modern notion of tabs.
+the modern conception, [more like bookmarks or history][tabbed-dna] than tabs.
+SimulBrowse instead used the modern notion of tabs.
 
 [tabbed-dna]: https://ajstiles.wordpress.com/2005/02/11/tabbed_browser_/
 [booklink-x]: https://twitter.com/awesomekling/status/1694242398539264363
