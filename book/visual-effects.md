@@ -441,8 +441,8 @@ documentation for more on the Skia API.
 ``` {.python replace=%2c%20scroll/,%20-%20scroll/}
 class DrawLine:
     def execute(self, canvas, scroll):
-        path = skia.Path().moveTo(self.x1 - scroll, self.y1) \
-                          .lineTo(self.x2 - scroll, self.y2)
+        path = skia.Path().moveTo(self.rect.left - scroll, self.rect.top) \
+                          .lineTo(self.rect.right - scroll, self.rect.bottom)
         paint = skia.Paint(
             Color=parse_color(self.color),
             StrokeWidth=self.thickness,
@@ -472,8 +472,8 @@ class DrawText:
             AntiAlias=True,
             Color=parse_color(self.color),
         )
-        baseline = self.top - scroll - self.font.getMetrics().fAscent
-        canvas.drawString(self.text, float(self.left), baseline,
+        baseline = self.rect.top - scroll - self.font.getMetrics().fAscent
+        canvas.drawString(self.text, float(self.rect.left), baseline,
             self.font, paint)
 ```
 
@@ -508,21 +508,17 @@ rectangle (e.g., `left`) were checked, replace them with the
 corresponding function on a Skia `Rect` (e.g., `left()`). Also replace
 calls to `containsPoint` with Skia's `contains`.
 
-While we're here, let's also add a `rect` field to the other drawing
-commands, replacing its `top`, `left`, `bottom`, and `right`
-fields:
-
 ``` {.python}
 class DrawText:
     def __init__(self, x1, y1, text, font, color):
+        self.rect = skia.Rect.MakeLTRB(
+            x1, y1, x1 + font.measure(text), y1 + font.metrics("linespace"))
         # ...
-        self.rect = \
-            skia.Rect.MakeLTRB(x1, y1, self.right, self.bottom)
 
 class DrawLine:
     def __init__(self, x1, y1, x2, y2, color, thickness):
-        # ...
         self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
+        # ...
 ```
 
 To create an outline, draw a rectangle but set the `Style` parameter of
