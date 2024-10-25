@@ -140,7 +140,8 @@ class DrawText:
         self.rect = skia.Rect.MakeLTRB(
             x1, y1,
             x1 + font.measureText(text),
-            y1 - font.getMetrics().fAscent + font.getMetrics().fDescent)
+            y1 - font.getMetrics().fAscent \
+                + font.getMetrics().fDescent)
         self.font = font
         self.text = text
         self.color = color
@@ -150,9 +151,10 @@ class DrawText:
             AntiAlias=True,
             Color=parse_color(self.color),
         )
-        baseline = self.rect.top() - self.font.getMetrics().fAscent
-        canvas.drawString(self.text, float(self.rect.left()), baseline,
-            self.font, paint)
+        baseline = self.rect.top() \
+            - self.font.getMetrics().fAscent
+        canvas.drawString(self.text, float(self.rect.left()),
+            baseline, self.font, paint)
 
 @wbetools.patch(DrawOutline)
 class DrawOutline:
@@ -177,8 +179,10 @@ class DrawLine:
         self.thickness = thickness
 
     def execute(self, canvas):
-        path = skia.Path().moveTo(self.rect.left(), self.rect.top()) \
-                          .lineTo(self.rect.right(), self.rect.bottom())
+        path = skia.Path().moveTo(
+            self.rect.left(), self.rect.top()) \
+                .lineTo(self.rect.right(),
+                    self.rect.bottom())
         paint = skia.Paint(
             Color=parse_color(self.color),
             StrokeWidth=self.thickness,
