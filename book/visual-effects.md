@@ -432,6 +432,35 @@ class Browser:
         # ...
 ```
 
+Let's change the various classes to use Skia's raster APIs.
+
+The first thing we need to do is change the `rect` field into a
+Skia `Rect` object. Get rid of the old `Rect` class that was introduced in
+[Chapter 7](chrome.md) in favor of `skia.Rect`. Everywhere that a `Rect` was
+constructed, instead put `skia.Rect.MakeLTRB` (for "make
+left-top-right-bottom") or `MakeXYWH` (for "make
+*x*-*y*-width-height"). Everywhere that the sides of the
+rectangle (e.g., `left`) were checked, replace them with the
+corresponding function on a Skia `Rect` (e.g., `left()`). Also replace
+calls to `containsPoint` with Skia's `contains`.
+
+For `DrawText` and `DrawLine` in particular, it's:
+
+``` {.python}
+class DrawText:
+    def __init__(self, x1, y1, text, font, color):
+        self.rect = skia.Rect.MakeLTRB(
+            x1, y1,
+            x1 + font.measureText(text),
+            y1 - font.getMetrics().fAscent \
+                + font.getMetrics().fDescent)
+        # ...
+
+class DrawLine:
+    def __init__(self, x1, y1, x2, y2, color, thickness):
+        self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
+        # ...
+```
 Our browser's drawing commands will need to invoke Skia methods on
 this canvas. To draw a line, you use Skia's `Path` object:[^skia-docs]
 
@@ -499,32 +528,6 @@ class DrawRect:
             Color=parse_color(self.color),
         )
         canvas.drawRect(self.rect.makeOffset(0, -scroll), paint)
-```
-
-Here, the `rect` field needs to become a Skia `Rect` object.
-Get rid of the old `Rect` class that was introduced in [Chapter
-7](chrome.md) in favor of `skia.Rect`. Everywhere that a `Rect` was
-constructed, instead put `skia.Rect.MakeLTRB` (for "make
-left-top-right-bottom") or `MakeXYWH` (for "make
-*x*-*y*-width-height"). Everywhere that the sides of the
-rectangle (e.g., `left`) were checked, replace them with the
-corresponding function on a Skia `Rect` (e.g., `left()`). Also replace
-calls to `containsPoint` with Skia's `contains`.
-
-``` {.python}
-class DrawText:
-    def __init__(self, x1, y1, text, font, color):
-        self.rect = skia.Rect.MakeLTRB(
-            x1, y1,
-            x1 + font.measureText(text),
-            y1 - font.getMetrics().fAscent \
-                + font.getMetrics().fDescent)
-        # ...
-
-class DrawLine:
-    def __init__(self, x1, y1, x2, y2, color, thickness):
-        self.rect = skia.Rect.MakeLTRB(x1, y1, x2, y2)
-        # ...
 ```
 
 To create an outline, draw a rectangle but set the `Style` parameter of
