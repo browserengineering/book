@@ -467,7 +467,6 @@ this canvas. To draw a line, you use Skia's `Path` object:[^skia-docs]
 [^skia-docs]: Consult the [Skia][skia] and [skia-python][skia-python]
 documentation for more on the Skia API.
 
-
 ``` {.python replace=%2c%20scroll/,%20-%20scroll/}
 class DrawLine:
     def execute(self, canvas, scroll):
