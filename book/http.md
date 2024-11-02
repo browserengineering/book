@@ -620,7 +620,7 @@ class URL:
         assert "content-encoding" not in response_headers
 ```
 
-The usual way to send the data, then, is everything after the headers:
+The usual way to get the sent data, then, is everything after the headers:
 
 ``` {.python}
 class URL:
@@ -678,7 +678,7 @@ followed by the tag name (and no attributes).
 So, to create our very, very simple web browser, let's take the page
 HTML and print all the text, but not the tags, in it.[^python2] I'll do
 this in a new function, `show`:^[Note that this is a global function and
-not the `URL` class.]
+not in the `URL` class.]
 
 [^python2]: If this example causes Python to produce a `SyntaxError` pointing to
 the `end` on the last line, it is likely because you are running Python 2

@@ -1127,7 +1127,9 @@ these and modify the parser to parse them. Sum priorities.[^lexicographic]
 6-9 *`!important`*. A CSS property–value pair can be marked "important" using
 the `!important` syntax, like this:
 
-    #banner a { color: black !important; }
+``` {.css .example}
+#banner a { color: black !important; }
+```
 
 This gives that property–value pair (but not other pairs in the same block!) a
 higher priority than any other selector (except for other `!important`
