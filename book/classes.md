@@ -22,8 +22,8 @@ have used [Web Browser Engineering](index.md) as a textbook.
 # University of Utah
 
 CS 4560 Web Browser Internals is an undergraduate-level course at the
-University of Utah first taught in Fall 2019 and most recently taught
-in Fall 2021. The most recent course description reads,
+University of Utah first taught every other year. The most recent
+course description reads,
 
 > How does a web browser work? This class covers all the major
 > components of a modern web browser, including networking, graphics,
@@ -33,31 +33,17 @@ in Fall 2021. The most recent course description reads,
 > follows a textbook and is taught in a "flipped" format, allowing a
 > lot of student interaction.
 
-
-In Spring 2024, it was taught by [Pavel
-Panchekha](https://pavpanchekha.com) under course number CS 4560.
-
-In Fall 2021, it was taught by [Pavel
-Panchekha](https://pavpanchekha.com) assisted by Ian Briggs under
-course number CS 4962.
-[Syllabus](https://pavpanchekha.com/teach/wbe-fa21-syllabus.pdf)
-available.
-
-In Fall 2020, it was taught by [Pavel
-Panchekha](https://pavpanchekha.com) under course number CS 6968.
-[Syllabus](https://pavpanchekha.com/teach/wbe-fa20-syllabus.pdf)
-available.
-
-In Fall 2019, it was taught by [Pavel
-Panchekha](https://pavpanchekha.com) under course number CS 6968.
-[Syllabus](https://pavpanchekha.com/teach/wbe-fa19-syllabus.pdf)
-available.
+The course is taught by [Pavel Panchekha](https://pavpanchekha.com)
+under course number CS 4560; previous installments used course numbers
+CS 4962 and CS 6968. An [example
+syllabus](https://pavpanchekha.com/teach/wbe-fa21-syllabus.pdf)
+is available; feel free to contact for more information.
 
 # University of Washington
 
 CSE 493X Web Browser Engineering is an undergraduate-level course at
-the University of Washington most recently taught in Spring 2023. The
-most recent course description reads,
+the University of Washington taught annually. The most recent course
+description reads,
 
 > We live in a world completely permeated by the internet and the web.
 > It's time to think of the web browser as a critical piece of systems
@@ -75,14 +61,11 @@ most recent course description reads,
 > implementing features in your browser. Previous experience with web
 > technologies is not required.
 
-In Spring 2024, it will be taught by [Gilbert
-Bernstein](http://www.gilbertbernstein.com/).
-
-In Spring 2023, it was taught by [James R. Wilcox](https://jamesrwilcox.com).
-Course materials can be found [online](https://courses.cs.washington.edu/courses/cse493x/23sp/).
-
-In Spring 2022, it was taught by [James R. Wilcox](https://jamesrwilcox.com).
-Course materials can be found [online](https://courses.cs.washington.edu/courses/cse490x/22sp/).
+In Spring 2024, it was taught by [Gilbert
+Bernstein](http://www.gilbertbernstein.com/); in previous installments
+by [James R. Wilcox](https://jamesrwilcox.com). Recent course
+materials can be found
+[online](https://courses.cs.washington.edu/courses/cse493x/24sp/).
 
 # HAW Hamburg
 
