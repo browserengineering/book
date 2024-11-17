@@ -603,18 +603,24 @@ time you render it's one "frame"---like a drawing in a picture frame.
 
 ``` {.python expected=False}
 class Browser:
+    def __init__(self):
+        self.animation_timer = None
+
     def schedule_animation_frame(self):
         def callback():
             active_tab = self.active_tab
             task = Task(active_tab.render)
             active_tab.task_runner.schedule_task(task)
-        threading.Timer(REFRESH_RATE_SEC, callback).start()
+            self.animation_timer = None
+        if not self.animation_timer:
+            self.animation_timer = \
+                threading.Timer(REFRESH_RATE_SEC, callback)
+            self.animation_timer.start()
 ```
 
-Note how every time a frame is scheduled, we set up a timer to schedule the next
-one. We can kick off the process when we start the browser. In the top-level
-loop, after running a task on the active tab the browser will need to
-raster and draw, in case that task was a rendering task:
+We can kick off the process when we start the browser. In the top-level loop,
+after running a task on the active tab the browser will need to raster and
+draw, in case that task was a rendering task:
 
 ``` {.python expected=False}
 def mainloop(browser):
@@ -625,8 +631,10 @@ def mainloop(browser):
         browser.schedule_animation_frame()
 ```
 
-Now we're scheduling a new rendering task every 33 ms, just
-as we wanted to.
+The additional call to `schedule_animation_frame` will happen every time
+through the loop, but only have an effect once `callback` was called, which
+only happens after 33 ms. Thus we're scheduling a new rendering task every
+33 ms, just as we wanted to.
 
 ::: {.further}
 
@@ -951,8 +959,6 @@ whether a rendering task actually needs to be scheduled:
 ``` {.python}
 class Browser:
     def __init__(self):
-        self.animation_timer = None
-        # ...
         self.needs_animation_frame = True
 ```
 
@@ -960,13 +966,8 @@ class Browser:
     def schedule_animation_frame(self):
         # ...
         if self.needs_animation_frame and not self.animation_timer:
-            self.animation_timer = \
-                threading.Timer(REFRESH_RATE_SEC, callback)
-            self.animation_timer.start()
+            # ...
 ```
-
-Note how I also checked for not having an animation timer object; this avoids
-running two at once.
 
 A tab will set the `needs_animation_frame` flag when an animation
 frame is requested:
@@ -1503,7 +1504,8 @@ class Tab:
         self.js.interp.evaljs("__runRAFHandlers()")
         self.render()
         commit_data = CommitData(
-            self.url, self.scroll, document_height, self.display_list)
+            self.url, self.scroll, document_height, \
+            self.display_list)
         self.display_list = None
         self.browser.commit(self, commit_data)
 ```
@@ -1922,7 +1924,8 @@ class Tab:
         if self.scroll_changed_in_tab:
             scroll = self.scroll
         commit_data = CommitData(
-            self.url, scroll, document_height, self.display_list)
+            self.url, scroll, document_height, \
+            self.display_list)
         # ...
 ```
 
