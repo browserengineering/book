@@ -632,7 +632,8 @@ def mainloop(browser):
 ```
 
 The additional call to `schedule_animation_frame` will happen every time
-through the loop, but only have an effect once `callback` was called, which
+through the loop. However, because of the check for `self.animation_timer`
+being `None`, it will only have an effect once `callback` was called, which
 only happens after 33 ms. Thus we're scheduling a new rendering task every
 33 ms, just as we wanted to.
 
