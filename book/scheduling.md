@@ -1527,8 +1527,9 @@ it was sent and call `set_needs_raster_and_draw` as needed. Because this call
 will come from another thread, we'll need to acquire a lock. Another important
 step is to not clear the `animation_timer` object until *after* the next
 commit occurs. Otherwise multiple rendering tasks could be queued at the same
-time. Finally, save `scroll` in `active_tab_scroll` and `url` in
-`active_tab_url`:
+time. Finally, store all the CommitData: save the `scroll` in `active_tab_scroll`,
+the `url` in `active_tab_url`, and additionally store the `height` and, if available,
+the `display_list`:
 
 ``` {.python}
 class Browser:
