@@ -2,6 +2,9 @@
 
 // Thanks for reading the code! You can hit Ctrl-E / Cmd-E to access the feedback tools.
 
+// This code is written in a bit of an odd style to avoid error
+// messages in the WBE browser. There's a lot of old-school JS.
+
 var chapter_overlay;
 
 function ctrl_key_pressed(e) {
@@ -20,6 +23,7 @@ function ctrl_key_name() {
     }  
 }
 
+if (document.addEventListener)
 document.addEventListener("DOMContentLoaded", function() {
     if (window.localStorage["edit"] == "true") {
         typo_mode();
@@ -36,7 +40,7 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     });
 
-    let feedback_button = document.querySelector("#feedback-button");
+    var feedback_button = document.querySelector("#feedback-button");
     if (feedback_button) {
         feedback_button.addEventListener("click", function(e) {
             setup_chapter_feedback();
@@ -239,7 +243,7 @@ function submit_chapter_comment(comment, email) {
     }));
 }
 
-let previous_comment = null;
+var previous_comment = null;
 
 function setup_chapter_feedback() {
     var submit = Element("button", { type: "submit" }, "Submit feedback");
@@ -294,11 +298,11 @@ function setup_chapter_feedback() {
             this.querySelector("input[name='email']").value)
         e.preventDefault();
         this.querySelector(".confirm-feedback").classList.add("active");
-        setTimeout(() => chapter_overlay.remove(), 2000);
+        setTimeout(function() { chapter_overlay.remove(); }, 2000);
     }
     
     function do_cancel(e) {
-        let result = this.querySelector("textarea");
+        var result = this.querySelector("textarea");
         if (result)
             previous_comment = result.value;
         chapter_overlay.remove();
