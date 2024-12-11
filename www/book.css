@@ -1,3 +1,18 @@
+/* In a few places, this file has to use parser tricks to make the WBE
+ * browser do something different from a real browser. The WBE browser
+ * supports:
+ *
+ * Ch 6: font-{size,weight,style}, color, background-color
+ * Ch 11: border-radius, opacity, mix-blend-mode, overflow
+ * Ch 13: transform, transition
+ * Ch 14: outline
+ * Ch 15: image-rendering
+ *
+ * Of these, basically only the first four (fonts & colors) matter.
+ * Some effort has been put toward making class selectors do something
+ * nice: highlighting info boxes, syntax highlighting, and making
+ * footnotes stand out. */
+
 html { font-size: 24px; line-height: 1.3; padding: 0.5ex; }
 body {
     max-width: 65ex; margin: 0 auto; font-family: 'Lora', 'Times', sans-serif;
@@ -13,7 +28,11 @@ body {
 }
 
 pre, code { hyphens: none; -webkit-hyphens: none; }
-pre { font-size: 18px; overflow: auto; padding-left: 2ex; }
+pre {
+    font-size: 18px; overflow: auto; padding-left: 2ex;
+    background-color: #ddd; /* For WBE browser only */
+    background: transparent;
+}
 
 dt { margin-top: 1em; }
 dd { margin-bottom: 1em; }
@@ -30,7 +49,7 @@ header, h1, strong {
     color:black;
 }
 }
-h1 { font-size: 105%; margin: 1.5em 0 0; text-align: left; }
+h1 { font-size: 105%; font-weight: bold; margin: 1.5em 0 0; text-align: left; }
 
 /* Auto-number section headings, but not on the main page. */
 /* Also, on hover over section headings, show a "#" to indicate permalinks. */
@@ -144,8 +163,8 @@ body { counter-reset: fn; }
 .note { font-style: italic; white-space: normal; }
 .note em { font-style: normal; }
 @media (prefers-color-scheme: light) {
-.note-container:after, .note-container:before, .note { color: #a86; }
-}
+.note-container:after, .note-container:before { color: #a86; }
+.note { color: #a86;}
 }
 /* Assume no footnotes on main page, but margin numbers */
 body.main { padding: 0 4ex; }
@@ -157,6 +176,8 @@ body.main { padding: 0 4ex; }
         font-size: 110%; vertical-align: reset; text-align: left;
     }
     div .note { margin-right: calc(-28ex - 1rem - 2px); }
+}
+@media only screen and (min-width: 1150px) {
     .note-container { font-size: 60%; vertical-align: super; cursor: auto; }
     .note-container.open:before { content: " [" counter(fn); color: #a86; }
     .note:before { content: counter(fn) ". "; }
@@ -180,35 +201,33 @@ body.main { padding: 0 4ex; }
     font-weight: bold; font-family: 'Vollkorn', 'Garamond', serif;
     text-align: center;
 }
-p
-img { max-width: 100%; }
 
 img { max-width: 100%; }
 
-.quirk { border: 2px solid purple; }
+.quirk { outline: 2px solid purple; }
 .quirk:before { content: "Quirk"; color: purple; }
-.warning { border: 2px solid red; }
+.warning { outline: 2px solid red; }
 .warning:before { content: "Warning"; color: red; }
-.installation { border: 2px solid blue; }
+.installation { outline: 2px solid blue; }
 .installation:before { content: "Installation"; color: blue; }
-.demo { border: 2px solid gray; }
+.demo { outline: 2px solid gray; }
 .demo:before { content: "Demonstration"; color: gray; }
-.further { border: 2px solid green; padding-top: 0; }
+.further { outline: 2px solid green; padding-top: 0; }
 .further > :first-child:before { content: "Go further: "; font-weight: bold; color: green; }
 .widget { width: 100%; border: 2px solid navy; }
 .center { text-align: center }
-.example, .output { border: 2px solid lightgray; padding: 1em }
+.example, .output { outline: 2px solid lightgray; padding: 1em }
 
 @media (prefers-color-scheme: dark) {
-.quirk { border: 2px solid #CBC3E3; }
+.quirk { outline: 2px solid #CBC3E3; }
 .quirk:before { color: #CBC3E3; }
-.warning { border: 2px solid #FFCCCB; }
+.warning { outline: 2px solid #FFCCCB; }
 .warning:before { color: #FFCCCB; }
-.installation { border: 2px solid lightblue; }
+.installation { outline: 2px solid lightblue; }
 .installation:before { color: lightblue; }
-.further { border: 2px solid lightgreen; }
+.further { outline: 2px solid lightgreen; }
 .further > :first-child:before { color: lightgreen; }
-.widget { width: 100%; border: 2px solid navy; }
+.widget { width: 100%; outline: 2px solid navy; }
 }
 
 code .st { color: #666; }
@@ -294,7 +313,7 @@ form h1 { margin-bottom: 1em; margin-top: 0; }
 a.checkoff { font-size: 24px; }
 form .checkoff, form button[type=submit] { margin-top: 1em; }
 
-#signup { border: 2px solid gold; position: relative; text-align: center; }
+#signup { outline: 2px solid gold; position: relative; text-align: center; }
 #signup-close {
     position: absolute; top: 0; right: 8px;
     font-size: 0; text-decoration: none; color: #333;
@@ -303,7 +322,7 @@ form .checkoff, form button[type=submit] { margin-top: 1em; }
 #signup-close:active { color: red; }
 #signup-close::before { font-size: 24px; content: "❌︎"; }
 
-.wide-ad { display: flex; gap: 1em; padding: 1em; border: 2px solid #59b6ce; align-items: top; }
+.wide-ad { display: flex; gap: 1em; padding: 1em; outline: 2px solid #59b6ce; align-items: top; }
 .wide-ad h1:hover::after { content: none; }
 .wide-ad figure { margin: 0; }
 .wide-ad figure figcaption { display: none; }
@@ -316,7 +335,7 @@ form .checkoff, form button[type=submit] { margin-top: 1em; }
 
 aside.ad .wide { display: none; }
 aside.ad .narrow {
-    border: 2px solid #59b6ce; background: #ecf5f8; text-align: left;
+    outline: 2px solid #59b6ce; background: #ecf5f8; text-align: left;
     display: flex; gap: .5ex; padding: .5ex; justify-content: space-between;
 }
 @media (prefers-color-scheme: dark) {
@@ -330,7 +349,7 @@ aside.ad .narrow a { white-space: pre; }
     aside.ad .narrow { display: none; }
     aside.ad .wide {
         float: right; font-size: 66%; width: 25ex; clear: right; margin: 0 -28ex 1em 0;
-        position: relative; display: block; border: 2px solid #59b6ce; box-sizing: border-box;
+        position: relative; display: block; outline: 2px solid #59b6ce; box-sizing: border-box;
     }
     aside.ad img { width: 100%; display: block; }
     aside.ad a {
@@ -350,12 +369,15 @@ aside.ad .narrow a { white-space: pre; }
 .outline > code { margin: .33em 0; }
 .outline code > code { margin-left: 2ch; }
 
+/* Do not merge these two blocks, workaround for WBE browser bug */
 @media print {
     html { font-size: 12px; }
+}
+@media print {
+    pre { font-size: 10px; }
     #signup, nav.links { display: none;}
     .note-container:before { content: " ["; }
     .note-container, .note-container:before, .note-container:after { color: navy; }
-    pre { font-size: 10px; }
     #toc a { text-decoration: none; color: black; }
     aside.ad { display: none; }
 }
