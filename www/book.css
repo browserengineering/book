@@ -13,10 +13,10 @@
  * nice: highlighting info boxes, syntax highlighting, and making
  * footnotes stand out. */
 
-html { font-size: 24px; line-height: 1.3; padding: 0.5ex; }
+html { font-size: 24px; line-height: 1.2; padding: 0.5ex; }
 body {
-    max-width: 65ex; margin: 0 auto; font-family: 'Lora', 'Times', sans-serif;
-    text-align: justify; hyphens: auto; -webkit-hyphens: auto;
+    max-width: 60ch; margin: 0 auto; font-family: 'Crimson Pro', 'Times', serif;
+    font-weight: 400; text-align: justify; hyphens: auto; -webkit-hyphens: auto;
 }
 @media (prefers-color-scheme: light) {
 body {
@@ -27,7 +27,7 @@ body {
     html { font-size: 18px; }
 }
 
-pre, code { hyphens: none; -webkit-hyphens: none; }
+pre, code { hyphens: none; -webkit-hyphens: none; font-family: 'Inconsolata', monospace; }
 pre {
     font-size: 18px; overflow: auto; padding-left: 2ex;
     background-color: #ddd; /* For WBE browser only */
@@ -43,13 +43,13 @@ blockquote { border-left: 1ex solid #eee; padding-left: 1ex; margin-left: 0; }
 
 footer { text-align: center; font: italic 60% serif; margin: 5em 0; }
 
-header, h1, strong { font-family: 'Vollkorn', 'Garamond', serif;}
+header, h1, strong { font-family: 'Crimson Pro', 'Garamond', serif;}
 @media (prefers-color-scheme: light) {
 header, h1, strong {
     color:black;
 }
 }
-h1 { font-size: 105%; font-weight: bold; margin: 1.5em 0 0; text-align: left; }
+h1 { font-size: 115%; font-weight: bold; margin: 2.5em 0 1em; text-align: center; }
 
 /* Auto-number section headings, but not on the main page. */
 /* Also, on hover over section headings, show a "#" to indicate permalinks. */
@@ -57,10 +57,14 @@ body > h1 { counter-increment: section; }
 body > h1::before { content: counter(section) ". "; color: #888; }
 .main h1::before { content: none !important; }
 h1:not(.title):hover { cursor: pointer; }
-h1:not(.title):hover::after { content: " #"; color: #888; }
+h1:not(.title):hover::after {
+    content: "#"; color: #888;
+    /* So the header doesn't change width as you hover on it */
+    position: absolute; margin-left: 0.5ch;
+}
 
 header { text-align: center; margin: 3em 0 1em; }
-header h1 { font-size: 200%; font-weight: bold; text-align: center; }
+header h1 { font-size: 200%; font-weight: 400; text-align: center; letter-spacing: -0.08ex }
 .main header h1 { font-size: 200%; } /* override another style ugh */
 .main header * { margin: 0; }
 header .author { font-style: italic; }
@@ -91,6 +95,9 @@ li { margin: 1em 0; }
 .intro, .outro { }
 .intro ol { list-style: lower-roman; }
 .outro ol { list-style: upper-alpha; }
+
+p { margin: 0; }
+p + p { text-indent: 1em; }
 
 nav.links {
     line-height: 40px; text-align: center;
@@ -130,7 +137,7 @@ nav.links a[rel=next] {
 #toc:before {
     content: "Table of Contents"; display: block; text-align: center;
     font-size: 105%; font-weight: bold; background-color: #eee;
-    font-family: 'Vollkorn', 'Garamond', serif; color: black; 
+    font-family: 'Crimson Pro', 'Garamond', serif; color: black; 
 }
 @media (prefers-color-scheme: dark) {
 #toc:before {
@@ -169,7 +176,7 @@ body { counter-reset: fn; }
 /* Assume no footnotes on main page, but margin numbers */
 body.main { padding: 0 4ex; }
 @media only screen and (min-width: 1150px) {
-    body { width: 65ex; padding: 0 17ex 0 0; }
+    body { width: 60ch; padding: 0 17ex 0 0; }
     body.main { padding: 0; }
     .note {
         float: right; width: 25ex; clear: right; margin: 0 -28ex 1em 0;
@@ -196,27 +203,30 @@ body.main { padding: 0 4ex; }
   .note form { display: inline; }
 }
 
-.todo, .quirk, .warning, .installation, .further, .demo, .example, .output { padding: 1em 1em 0; margin: 1em 0; }
-.quirk:before, .warning:before, .installation:before {
-    font-weight: bold; font-family: 'Vollkorn', 'Garamond', serif;
-    text-align: center;
+.todo, .quirk, .warning, .installation, .further, .demo, .example, .output {
+    padding: .5em .5em .5em; margin: 1em 0;
+}
+.quirk:before, .warning:before, .installation:before, .demo:before, .further:before {
+    display: block;
+    font-size: 125%; font-weight: 600; font-family: 'Crimson Pro', 'Garamond', serif;
+    margin-bottom: .5em; border-bottom: 1px solid currentColor; padding-bottom: .25em;
 }
 
 img { max-width: 100%; }
 
-.quirk { outline: 2px solid purple; }
+.quirk { outline: 1px solid purple; }
 .quirk:before { content: "Quirk"; color: purple; }
-.warning { outline: 2px solid red; }
+.warning { outline: 1px solid red; }
 .warning:before { content: "Warning"; color: red; }
-.installation { outline: 2px solid blue; }
+.installation { outline: 1px solid blue; }
 .installation:before { content: "Installation"; color: blue; }
-.demo { outline: 2px solid gray; }
+.demo { outline: 1px solid gray; }
 .demo:before { content: "Demonstration"; color: gray; }
-.further { outline: 2px solid green; padding-top: 0; }
-.further > :first-child:before { content: "Go further: "; font-weight: bold; color: green; }
-.widget { width: 100%; border: 2px solid navy; }
+.further { outline: 1px solid green; }
+.further:before { content: "Go Further "; color: green; border-bottom: none; }
+.widget { width: 100%; border: 1px solid navy; }
 .center { text-align: center }
-.example, .output { outline: 2px solid lightgray; padding: 1em }
+.example, .output { outline: 1px solid black; padding: 1em; margin: 0.5em 0; background: #d7d7d7; }
 
 @media (prefers-color-scheme: dark) {
 .quirk { outline: 2px solid #CBC3E3; }
@@ -232,7 +242,7 @@ img { max-width: 100%; }
 
 code .st { color: #666; }
 code .cf { color: #606; }
-code .kw { color: #606; }
+code .kw { color: #606; font-weight: bold; }
 code .im { color: #606; }
 code .co { color: #a86; }
 
@@ -364,7 +374,7 @@ aside.ad .narrow a { white-space: pre; }
     aside.ad a:active { color: #59b6ce; }
 }
 
-.outline { font-size: 60%; font-family: monospace; column-width: 30ch; }
+.outline { font-size: 60%; font-family: 'Inconsolata', monospace; column-width: 30ch; }
 .outline code { break-inside: avoid; display: block; }
 .outline > code { margin: .33em 0; }
 .outline code > code { margin-left: 2ch; }
