@@ -8,7 +8,7 @@ def patch(existing_cls):
         if isinstance(new_cls, type): # Patching classes
             assert isinstance(existing_cls, type), f"Can't patch {existing_cls} with {new_cls}"
             for attr, obj in new_cls.__dict__.items():
-                if attr in ["__module__", "__dict__", "__weakref__", "__doc__"]: continue
+                if attr in ["__module__", "__dict__", "__weakref__", "__doc__", "__firstlineno__", "__static_attributes__"]: continue
                 assert isinstance(obj, type(record)), f"Can't patch attribute {attr} of {new_cls} to be {obj}"
                 setattr(existing_cls, attr, obj)
         elif isinstance(new_cls, type(record)): # Patching functions

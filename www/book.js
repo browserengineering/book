@@ -1,40 +1,55 @@
+/* NOTE: because this is deployed to browser.engineering, this must use
+ * only old-school JavaScript supported by DukPy, including no `let`, no
+ * `for of`, no arrow functions, and so on.
+ *
+ * Also there is no `window` object in early versions of the browser; so
+ * any references to window.addEventListener need to be guarded. */
+
 // Add click handlers to open and close inline notes on small screens.
 // Notes start out closed.
 function addEventListeners() {
-	for (let note_container of document.querySelectorAll(".note-container")) {
-		note_container.addEventListener("click", (event) => {
-			console.log(event.target);
+        var containers = document.querySelectorAll(".note-container")
+	for (var i = 0; i < containers.length; i++) {
+	    var callback = (function(note_container) {
+		return function (event) {
 			if (event.target != note_container &&
 				  event.target != note_container.firstElementChild)
 				return;
-			let classes = note_container.classList;
+			var classes = note_container.classList;
 			if (!classes.contains("open"))
 				classes.add("open");
 			else
 				classes.remove("open");
 			event.preventDefault();
-		});
+		}
+	    })(containers[i]);
+	    containers[i].addEventListener("click", callback);
 	}
 
- 	for (let header of document.querySelectorAll("h1")) {
-		header.addEventListener("click", (event) => {
+        var headers = document.querySelectorAll("h1");
+ 	for (var i = 0; i < headers.length; i++) {
+	    var callback = (function(header) {
+		return function(event) {
  			if (header.id)
-				window.location.href = `#${header.id}`;
+				window.location.href = "#" + header.id;
 			event.preventDefault();
-		});
+		}
+	    })(headers[i])
+	    headers[i].addEventListener("click", callback);
 	}
 
 }
 
-window.addEventListener("load", addEventListeners);
+if (globalThis.window && window.addEventListener)
+    window.addEventListener("load", addEventListeners);
 
 function resize_iframes(event) {
-    let elts = document.querySelectorAll("[data-big-height][data-small-height]");
-    for (let elt of elts) {
+    var elts = document.querySelectorAll("[data-big-height][data-small-height]");
+    for (var i = 0; i < elts.length; i++) {
         if (document.documentElement.clientWidth <= 800) {
-            elt.height = elt.dataset.smallHeight;
+            elts[i].height = elt.dataset.smallHeight;
         } else {
-            elt.height = elt.dataset.bigHeight;
+            elts[i].height = elt.dataset.bigHeight;
         }
     }
 }
@@ -51,21 +66,25 @@ const COLORS = [
 
 function highlight_regions() {
     var pres = document.querySelectorAll(".highlight-region");
-    for (var pre of pres) {
+    for (var j = 0; j < pres.length; j++) {
+	var pre = pres[j];
         var marks = pre.querySelectorAll("mark");
         for (var i = 0; i < marks.length; i++) {
-            let [bgcolor, labelcolor] = COLORS[i % COLORS.length];
-            let mark = marks[i];
-            let label = mark.querySelector("label");
+            var color_entry = COLORS[i % COLORS.length];
+	    var bgcolor = color_entry[0], labelcolor = color_entry[1];
+            var mark = marks[i];
+            var label = mark.querySelector("label");
             mark.style["background-color"] = bgcolor;
             label.style["color"] = labelcolor;
         }
     }
 }
 
-window.addEventListener("load", resize_iframes);
-window.addEventListener("resize", resize_iframes);
-window.addEventListener("DOMContentLoaded", highlight_regions);
+if (globalThis.window && window.addEventListener) {
+    window.addEventListener("load", resize_iframes);
+    window.addEventListener("resize", resize_iframes);
+    window.addEventListener("DOMContentLoaded", highlight_regions);
+}
 
 function close_signup(e) {
     window.localStorage["signup"] = "close";
@@ -83,7 +102,8 @@ function setup_close() {
     }
 }
 
-window.addEventListener("DOMContentLoaded", setup_close);
+if (globalThis.window && window.addEventListener)
+    window.addEventListener("DOMContentLoaded", setup_close);
 
 // Return UUID for user; generate and store in local storage if first time
 function get_or_set_id() {
@@ -100,7 +120,7 @@ function get_or_set_id() {
 }
 
 function quiz_telemetry(event_type, event_payload) {
-  event_payload = { userId: get_or_set_id(), ...event_payload };
+  event_payload.userId = get_or_set_id();
   if (event_type === "answers") {
     fetch("/api/quiz_telemetry", {
       method: 'POST',
@@ -108,9 +128,10 @@ function quiz_telemetry(event_type, event_payload) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(event_payload)
-    }).catch(err => console.error('Quiz telemetry error', err));
+    }).catch(function (err) { console.error('Quiz telemetry error', err); });
   }
 }
 
 // The quiz code picks this function up out of the window object
-window.telemetry = { log: quiz_telemetry };
+if (globalThis.window)
+    window.telemetry = { log: quiz_telemetry };
