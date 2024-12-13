@@ -45,9 +45,25 @@ We need to make sure we didn't break layout with all of these changes:
            BlockLayout[inline](x=13, y=48.0, width=774, height=15.0, node=<span>)
 
     >>> browser.display_list #doctest: +NORMALIZE_WHITESPACE
-    [DrawText(top=20.25 left=13 bottom=32.25 text=text font=Font size=12 weight=normal slant=roman style=None),
-     DrawText(top=35.25 left=13 bottom=47.25 text=text font=Font size=12 weight=normal slant=roman style=None),
-     DrawText(top=50.25 left=13 bottom=62.25 text=text font=Font size=12 weight=normal slant=roman style=None)]
+    [DrawText(top=20.25 left=13 bottom=32.25 text=text
+              font=Font size=12 weight=normal slant=roman style=None),
+     DrawText(top=35.25 left=13 bottom=47.25 text=text
+              font=Font size=12 weight=normal slant=roman style=None),
+     DrawText(top=50.25 left=13 bottom=62.25 text=text
+              font=Font size=12 weight=normal slant=roman style=None)]
+     
+Here's a case with a paragraph split over multiple lines:
+
+    >>> url = lab6.URL(test.socket.serve("""
+    ... <p>Hello<br>World!</p>
+    ... """))
+    >>> browser = lab6.Browser()
+    >>> browser.load(url)
+    >>> browser.display_list #doctest: +NORMALIZE_WHITESPACE
+    [DrawText(top=20.25 left=13 bottom=32.25 text=Hello
+              font=Font size=12 weight=normal slant=roman style=None),
+     DrawText(top=35.25 left=13 bottom=47.25 text=World!
+              font=Font size=12 weight=normal slant=roman style=None)]
 
 Testing resolve_url
 ===================
