@@ -1645,7 +1645,7 @@ class CompositedLayer:
 ```
 
 But we should only add compatible display items to the same composited
-layer, determined by the `can_merge` method. A display item
+layer, determined by the `can_merge` method. A display item can
 be merged if it has the same parents as existing ones in the composited layer:
 
 ``` {.python}
