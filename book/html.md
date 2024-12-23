@@ -78,8 +78,8 @@ other nodes are unfinished: more children can be added to the
 `<html>`, `<section>`, and `<h1>` nodes, depending on what HTML comes
 next---see Figure 2.
 
-::: {.print-only}
-![Figure 2: The finished and unfinished nodes while parsing some HTML.](im/html-lr.png)
+::: {.center}
+![Figure 2: The finished and unfinished nodes while parsing some HTML.](im/html-lr-2.gif)
 :::
 
 Since the parser reads the HTML file from beginning to end, these

@@ -1175,7 +1175,7 @@ schedule an animation frame for the next frame of the animation, but
 in Figure 2.
 
 ::: {.center}
-![Figure 2: The rendering cycle between the browser and main threads.](im/multi-threaded-rendering-loop.jpg)
+![Figure 2: The rendering cycle between the browser and main threads.](im/multi-threaded-rendering-loop-2.gif)
 :::
 
 However, it's not as simple as just setting `needs_render` any time an

@@ -253,9 +253,9 @@ in Figure 1.
 
 [mdn-js]: https://developer.mozilla.org/en-US/docs/Learn/JavaScript/First_steps/A_first_splash
 
-::: {.print-only}
+::: {.center}
 ![Figure 1: The browser can evaluate JavaScript and JavaScript code can call
-back into the browser.](im/scripts-calls.png)
+back into the browser.](im/scripts-calls-2.gif)
 :::
 
 We can call that JavaScript code our "JavaScript runtime"; we run it
@@ -487,7 +487,7 @@ indirection. I'll use a simple numeric identifier, which I'll call a
 ::: {.center}
 ![Figure 2: The relationship between `Node` objects in JavaScript and
 `Element`/`Text` objects in the browser is maintained through
-handles.](im/scripts-handles.png)
+handles.](im/scripts-handles-2.gif)
 :::
 
 We'll need to keep track of the handle to node mapping. Let's create a
@@ -651,7 +651,7 @@ It's basically Tk's `bind`, but in the browser---see Figure 3.
 Let's implement it.
 
 ::: {.center}
-![Figure 3: The browser calls into JavaScript when events happen.](im/scripts-events.png)
+![Figure 3: The browser calls into JavaScript when events happen.](im/scripts-events-2.gif)
 :::
 
 Let's start with generating events. I'll create a `dispatch_event`

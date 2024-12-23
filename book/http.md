@@ -291,7 +291,7 @@ switch gears from making manual connections to Python.
 
 ::: {.center}
 ![Figure 4: An HTTP request and response pair are how a web browser gets web
-pages from a web server.](im/http-request.png)
+pages from a web server.](im/http-request-2.gif)
 :::
 
 ::: {.further}
@@ -764,7 +764,7 @@ the correct host. The difference in the protocol layers involved is shown in
 Figure 5.
 
 ::: {.center}
-![Figure 5: The difference between HTTP and HTTPS is the addition of a TLS layer.](im/http-tls.png)
+![Figure 5: The difference between HTTP and HTTPS is the addition of a TLS layer.](im/http-tls-2.gif)
 :::
 
 Luckily, the Python `ssl` library implements all of these details for
