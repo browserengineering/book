@@ -196,9 +196,7 @@ body.main { padding: 0 4ex; }
   .note form { display: inline; }
 }
 
-.todo, .quirk, .warning, .installation, .further, .demo, .example, .output {
-    padding: 1em; margin: 1em 0;
-}
+.todo, .quirk, .warning, .installation, .further, .demo, .example, .output { padding: 1em 1em 0; margin: 1em 0; }
 .quirk:before, .warning:before, .installation:before {
     font-weight: bold; font-family: 'Vollkorn', 'Garamond', serif;
     text-align: center;
@@ -214,7 +212,7 @@ img { max-width: 100%; }
 .installation:before { content: "Installation"; color: blue; }
 .demo { outline: 2px solid gray; }
 .demo:before { content: "Demonstration"; color: gray; }
-.further { outline: 2px solid green; }
+.further { outline: 2px solid green; padding-top: 0; }
 .further > :first-child:before { content: "Go further: "; font-weight: bold; color: green; }
 .widget { width: 100%; border: 2px solid navy; }
 .center { text-align: center }
