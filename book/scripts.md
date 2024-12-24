@@ -309,7 +309,8 @@ throw Error("bad");
 
 When a web page runs some JavaScript that crashes, the browser should
 ignore the crash. Web pages shouldn't be able to crash our browser!
-You can implement that like this:
+You can implement that like this (plus changing the call site of `run` to
+pass the script):
 
 ``` {.python}
 class JSContext:
