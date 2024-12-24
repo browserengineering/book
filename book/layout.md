@@ -233,7 +233,7 @@ and `flush`, or this `layout_intermediate` function. To determine
 which one a layout object should use, we'll need to know what kind
 of content its HTML node contains: *inline* text and text-related tags like
 `<b>`, or *blocks* like `<p>` and `<h1>`. Let's add a `layout_mode` method
-that computes it:
+that computes which is which:
 
 ``` {.python}
 class BlockLayout:
