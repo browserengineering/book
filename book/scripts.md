@@ -1104,7 +1104,6 @@ the length on the server side too:
 def add_entry(params):
     if 'guest' in params and len(params['guest']) <= 100:
         ENTRIES.append(params['guest'])
-    return show_comments()
 ```
 
 Note that we shouldn't---can't---rely on JavaScript being executed by
