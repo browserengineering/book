@@ -997,7 +997,7 @@ let's add a quick method to test whether a point is contained in a
 
 ``` {.python}
 class Rect:
-    def containsPoint(self, x, y):
+    def contains_point(self, x, y):
         return x >= self.left and x < self.right \
             and y >= self.top and y < self.bottom
 ```
@@ -1008,11 +1008,11 @@ between clicking to add a tab or select an open tab.
 ``` {.python}
 class Chrome:
     def click(self, x, y):
-        if self.newtab_rect.containsPoint(x, y):
+        if self.newtab_rect.contains_point(x, y):
             self.browser.new_tab(URL("https://browser.engineering/"))
         else:
             for i, tab in enumerate(self.browser.tabs):
-                if self.tab_rect(i).containsPoint(x, y):
+                if self.tab_rect(i).contains_point(x, y):
                     self.browser.active_tab = tab
                     break
 ```
@@ -1121,7 +1121,7 @@ invoke some method on the current tab to go back:
 class Chrome:
     def click(self, x, y):
         # ...
-        elif self.back_rect.containsPoint(x, y):
+        elif self.back_rect.contains_point(x, y):
             self.browser.active_tab.go_back()
 ```
 
@@ -1230,7 +1230,7 @@ class Chrome:
     def click(self, x, y):
         self.focus = None
         # ...
-        elif self.address_rect.containsPoint(x, y):
+        elif self.address_rect.contains_point(x, y):
             self.focus = "address bar"
             self.address_bar = ""
 ```
