@@ -172,6 +172,7 @@ Testing focus
 
     Clicking back on the content area unfocuses it
     >>> browser.handle_click(test.Event(200, 200))
+    Ignoring HTML contents inside button
     >>> browser.focus
     'content'
     >>> browser.chrome.focus
@@ -183,6 +184,7 @@ Testing focus
     >>> browser.chrome.focus
 
     >>> browser.handle_click(test.Event(200, 200))
+    Ignoring HTML contents inside button
     >>> browser.focus
     'content'
     >>> browser.chrome.focus
