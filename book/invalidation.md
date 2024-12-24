@@ -263,7 +263,7 @@ every time the layout phase runs:
 class Frame:
     def render(self):
         if self.needs_layout:
-            self.document = DocumentLayout(self.nodes, self)
+            self.document = DocumentLayout(self.node, self)
             self.document.layout(self.frame_width, self.tab.zoom)
             # ...
 ```
@@ -301,7 +301,7 @@ time.[^side-effects] That's wasteful; let's create the
 class Frame:
     def load(self, url, payload=None):
         # ...
-        self.document = DocumentLayout(self.nodes, self)
+        self.document = DocumentLayout(self.node, self)
         self.set_needs_render()
 
     def render(self):
@@ -2301,7 +2301,7 @@ invalidate just the animating property when handling animations:
 class Tab:
     def run_animation_frame(self, scroll):
         for (window_id, frame) in self.window_id_to_frame.items():
-            for node in tree_to_list(frame.nodes, []):
+            for node in tree_to_list(frame.node, []):
                 for (property_name, animation) in \
                     node.animations.items():
                     value = animation.animate()

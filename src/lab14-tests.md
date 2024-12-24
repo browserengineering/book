@@ -151,12 +151,12 @@ are:
 
 The first `div` is not focusable.
 
-    >>> lab14.is_focusable(browser.tabs[0].nodes.children[0].children[0])
+    >>> lab14.is_focusable(browser.tabs[0].node.children[0].children[0])
     False
 
 But the second one is, because it has a `tabindex` attribute.
 
-    >>> lab14.is_focusable(browser.tabs[0].nodes.children[0].children[1])
+    >>> lab14.is_focusable(browser.tabs[0].node.children[0].children[1])
     True
 
 Accessibility

@@ -19,7 +19,7 @@ We need to make sure we didn't break layout with all of these changes:
     >>> url = lab6.URL(test.socket.serve(sample_html))
     >>> browser = lab6.Browser()
     >>> browser.load(url)
-    >>> lab6.print_tree(browser.nodes)
+    >>> lab6.print_tree(browser.node)
      <html>
        <body>
          <div>

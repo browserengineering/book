@@ -120,7 +120,7 @@ Once we have a `Node` object we can call `getAttribute`:
 
 Note that this is "live": as the page changes `querySelectorAll` gives new results:
 
-    >>> b.tabs[0].nodes.children[0].children[0].children[0].attributes['id'] = 'blah'
+    >>> b.tabs[0].node.children[0].children[0].children[0].attributes['id'] = 'blah'
     >>> js.run("test", "document.querySelectorAll('p')[0].getAttribute('id')")
     'blah'
 
@@ -195,7 +195,7 @@ Events are the trickiest thing to test here. First, let's do a basic test of
 adding an event listener and then triggering it. I'll use the `div` element to
 test things:
 
-    >>> div = b.tabs[0].nodes.children[0].children[0]
+    >>> div = b.tabs[0].node.children[0].children[0]
     >>> js.run("test", "var div = document.querySelectorAll('div')[0]")
     >>> js.run("test", "div.addEventListener('test', function(e) { console.log('Listener ran!')})")
     >>> js.dispatch_event("test", div)

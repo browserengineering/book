@@ -142,11 +142,11 @@ class Tab:
                 for origin in csp[1:]:
                     self.allowed_origins.append(URL(origin).origin())
 
-        self.nodes = HTMLParser(body).parse()
+        self.node = HTMLParser(body).parse()
 
         self.js = JSContext(self)
         scripts = [node.attributes["src"] for node
-                   in tree_to_list(self.nodes, [])
+                   in tree_to_list(self.node, [])
                    if isinstance(node, Element)
                    and node.tag == "script"
                    and "src" in node.attributes]
@@ -163,7 +163,7 @@ class Tab:
 
         self.rules = DEFAULT_STYLE_SHEET.copy()
         links = [node.attributes["href"]
-                 for node in tree_to_list(self.nodes, [])
+                 for node in tree_to_list(self.node, [])
                  if isinstance(node, Element)
                  and node.tag == "link"
                  and node.attributes.get("rel") == "stylesheet"

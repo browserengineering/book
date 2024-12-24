@@ -204,8 +204,8 @@ def paint_tree(layout_object, display_list):
 class Browser:
     def load(self, url):
         body = url.request()
-        self.nodes = HTMLParser(body).parse()
-        self.document = DocumentLayout(self.nodes)
+        self.node = HTMLParser(body).parse()
+        self.document = DocumentLayout(self.node)
         self.document.layout()
         self.display_list = []
         paint_tree(self.document, self.display_list)

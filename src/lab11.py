@@ -414,8 +414,8 @@ class DocumentLayout:
 @wbetools.patch(Tab)
 class Tab:
     def render(self):
-        style(self.nodes, sorted(self.rules, key=cascade_priority))
-        self.document = DocumentLayout(self.nodes)
+        style(self.node, sorted(self.rules, key=cascade_priority))
+        self.document = DocumentLayout(self.node)
         self.document.layout()
         self.display_list = []
         paint_tree(self.document, self.display_list)

@@ -699,7 +699,7 @@ class Tab:
         self.js.interp.evaljs("__runRAFHandlers()")
         self.browser.measure.stop('script-runRAFHandlers')
 
-        for node in tree_to_list(self.nodes, []):
+        for node in tree_to_list(self.node, []):
             for (property_name, animation) in \
                 node.animations.items():
                 value = animation.animate()
@@ -740,12 +740,12 @@ class Tab:
         self.browser.measure.time('render')
 
         if self.needs_style:
-            style(self.nodes, sorted(self.rules, key=cascade_priority), self)
+            style(self.node, sorted(self.rules, key=cascade_priority), self)
             self.needs_layout = True
             self.needs_style = False
 
         if self.needs_layout:
-            self.document = DocumentLayout(self.nodes)
+            self.document = DocumentLayout(self.node)
             self.document.layout()
             self.needs_paint = True
             self.needs_layout = False

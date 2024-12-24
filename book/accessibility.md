@@ -601,7 +601,7 @@ class Tab:
                 INHERITED_PROPERTIES["color"] = "white"
             else:
                 INHERITED_PROPERTIES["color"] = "black"
-            style(self.nodes,
+            style(self.node,
                 sorted(self.rules, key=cascade_priority))
 ```
 
@@ -950,7 +950,7 @@ def is_focusable(node):
 class Tab:
     def advance_tab(self):
         focusable_nodes = [node
-            for node in tree_to_list(self.nodes, [])
+            for node in tree_to_list(self.node, [])
             if isinstance(node, Element) and is_focusable(node)]
 ```
 
@@ -1107,7 +1107,7 @@ we can sort by `get_tabindex` in `advance_tab`:
 class Tab:
     def advance_tab(self):
         focusable_nodes = [node
-            for node in tree_to_list(self.nodes, [])
+            for node in tree_to_list(self.node, [])
             if isinstance(node, Element) and is_focusable(node)]
         focusable_nodes.sort(key=get_tabindex)
         # ...
@@ -1623,7 +1623,7 @@ class Tab:
             self.needs_layout = False
 
         if self.needs_accessibility:
-            self.accessibility_tree = AccessibilityNode(self.nodes)
+            self.accessibility_tree = AccessibilityNode(self.node)
             self.accessibility_tree.build()
             self.needs_accessibility = False
 ```

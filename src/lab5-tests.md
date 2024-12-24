@@ -82,7 +82,7 @@ Testing the layout tree
     >>> url = lab5.URL(test.socket.serve(sample_html))
     >>> browser = lab5.Browser()
     >>> browser.load(url)
-    >>> lab5.print_tree(browser.nodes)
+    >>> lab5.print_tree(browser.node)
      <html>
        <body>
          <div>
@@ -120,7 +120,7 @@ Testing background painting
     >>> url = lab5.URL(test.socket.serve("<pre>pre text</pre>"))
     >>> browser = lab5.Browser()
     >>> browser.load(url)
-    >>> lab5.print_tree(browser.nodes)
+    >>> lab5.print_tree(browser.node)
      <html>
        <body>
          <pre>

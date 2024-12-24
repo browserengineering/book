@@ -49,7 +49,7 @@ Testing CSS transtions
                  DrawCompositedLayer()
              DrawCompositedLayer()
     >>> tab = browser.active_tab
-    >>> div = tab.nodes.children[1].children[0]
+    >>> div = tab.node.children[1].children[0]
 
 There is a transition defined for opacity, for a duration of 2 seconds. This is
 about 60 animation frames, so `parse_transition` should return 60.
@@ -102,7 +102,7 @@ Animations work:
     >>> browser.render()
     >>> browser.composite_raster_and_draw()
     >>> tab = browser.active_tab
-    >>> div = tab.nodes.children[1].children[0]
+    >>> div = tab.node.children[1].children[0]
     >>> lab13.parse_transition(div.style.get("transition"))
     {'transform': 60}
     >>> div.animations

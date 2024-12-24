@@ -686,12 +686,12 @@ class Tab:
            if len(csp) > 0 and csp[0] == "default-src":
                self.allowed_origins = csp[1:]
 
-        self.nodes = HTMLParser(body).parse()
+        self.node = HTMLParser(body).parse()
 
         if self.js: self.js.discarded = True
         self.js = JSContext(self)
         scripts = [node.attributes["src"] for node
-                   in tree_to_list(self.nodes, [])
+                   in tree_to_list(self.node, [])
                    if isinstance(node, Element)
                    and node.tag == "script"
                    and "src" in node.attributes]
@@ -710,7 +710,7 @@ class Tab:
 
         self.rules = DEFAULT_STYLE_SHEET.copy()
         links = [node.attributes["href"]
-                 for node in tree_to_list(self.nodes, [])
+                 for node in tree_to_list(self.node, [])
                  if isinstance(node, Element)
                  and node.tag == "link"
                  and node.attributes.get("rel") == "stylesheet"
@@ -735,7 +735,7 @@ class Tab:
         self.js.interp.evaljs("__runRAFHandlers()")
         self.browser.measure.stop('script-runRAFHandlers')
 
-        for node in tree_to_list(self.nodes, []):
+        for node in tree_to_list(self.node, []):
             for (property_name, animation) in \
                 node.animations.items():
                 value = animation.animate()
@@ -785,20 +785,20 @@ class Tab:
                 INHERITED_PROPERTIES["color"] = "white"
             else:
                 INHERITED_PROPERTIES["color"] = "black"
-            style(self.nodes,
+            style(self.node,
                 sorted(self.rules, key=cascade_priority), self)
             self.needs_layout = True
             self.needs_style = False
 
         if self.needs_layout:
-            self.document = DocumentLayout(self.nodes)
+            self.document = DocumentLayout(self.node)
             self.document.layout(self.zoom)
             self.needs_accessibility = True
             self.needs_paint = True
             self.needs_layout = False
 
         if self.needs_accessibility:
-            self.accessibility_tree = AccessibilityNode(self.nodes)
+            self.accessibility_tree = AccessibilityNode(self.node)
             self.accessibility_tree.build()
             self.needs_accessibility = False
 
@@ -890,7 +890,7 @@ class Tab:
 
     def advance_tab(self):
         focusable_nodes = [node
-            for node in tree_to_list(self.nodes, [])
+            for node in tree_to_list(self.node, [])
             if isinstance(node, Element) and is_focusable(node)]
         focusable_nodes.sort(key=get_tabindex)
 
