@@ -231,9 +231,9 @@ from `node.children` (in the HTML tree) and writes to `self.children`
 So we have two ways to lay out an element: either calling `recurse`
 and `flush`, or this `layout_intermediate` function. To determine
 which one a layout object should use, we'll need to know what kind
-of content its HTML node contains: text and text-related tags like
-`<b>`, or blocks like `<p>` and `<h1>`. That function looks something
-like this:
+of content its HTML node contains: *inline* text and text-related tags like
+`<b>`, or *blocks* like `<p>` and `<h1>`. Let's add a `layout_mode` method
+that computes it:
 
 ``` {.python}
 class BlockLayout:
