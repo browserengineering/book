@@ -135,6 +135,7 @@ method for that:
 ``` {.python}
 class BlockLayout:
     def word(self, node, word):
+        # ...
         if self.cursor_x + w > self.width:
             self.new_line()
 ```
