@@ -101,7 +101,7 @@ class Data:
 
     def set_status(self, i, status):
         if status == "denied-all":
-           for d in self.data:
+            for d in self.data:
                 if d['name'] == self.data[i]['name']:
                     d['status'] = 'denied'
             return
