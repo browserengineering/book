@@ -37,7 +37,8 @@ def do_request(method, url, headers, body):
             return "200 OK", f.read()
     elif method == "POST" and url == "/add":
         params = form_decode(body)
-        return "200 OK", add_entry(params)
+        add_entry(params)
+        return "200 OK", show_comments()
     
     return "404 Not Found", not_found(url, method)
 
@@ -71,7 +72,6 @@ def not_found(url, method):
 def add_entry(params):
     if 'guest' in params and len(params['guest']) <= 100:
         ENTRIES.append(params['guest'])
-    return show_comments()
 
 if __name__ == "__main__":
     s = socket.socket(

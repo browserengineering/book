@@ -63,7 +63,7 @@ while True:
 ```
 
 ::: {.center}
-![Figure 1: Flowchart of an event-handling cycle.](im/graphics-cycle.png)
+![Figure 1: Flowchart of an event-handling cycle.](im/graphics-cycle-2.gif)
 :::
 
 Here, `pendingEvents` first asks the desktop environment for recent
@@ -375,7 +375,7 @@ first drawn into a bitmap or GPU texture, then that bitmap/texture is shifted
 according to the scroll, and the result is rendered to the screen. [Chapter 11](visual-effects.md)
 will have more on this topic.
 
-![Figure 5: The difference between page and screen coordinates.](im/graphics-coords.png)
+![Figure 5: The difference between page and screen coordinates.](im/graphics-coords-2.gif)
 
 Our browser will have the same split. Right now `load` computes
 both the position of each character and draws it: layout\index{layout}

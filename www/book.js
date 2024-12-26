@@ -46,10 +46,11 @@ if (globalThis.window && window.addEventListener)
 function resize_iframes(event) {
     var elts = document.querySelectorAll("[data-big-height][data-small-height]");
     for (var i = 0; i < elts.length; i++) {
+        var elt = elts[i];
         if (document.documentElement.clientWidth <= 800) {
-            elts[i].height = elt.dataset.smallHeight;
+            elt.height = elt.dataset.smallHeight;
         } else {
-            elts[i].height = elt.dataset.bigHeight;
+            elt.height = elt.dataset.bigHeight;
         }
     }
 }
