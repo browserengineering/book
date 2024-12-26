@@ -156,7 +156,7 @@ line", not along their tops or bottoms.
 [^fixed]: The `fixed` parameter is actually a boolean and tells you whether
     all letters are the same *width*, so it doesn't really fit here.
     
-::: {.print-only .center}
+::: {.center}
 ![Figure 3: The various vertical metrics of a font. All glyphs in a font share
 the same ascent, *x*-height, and descent, and are laid out on a shared
 baseline. However, the measure (or advance) of glyphs can differ.](im/text-metrics.png)
@@ -262,7 +262,8 @@ of the text by setting the `anchor` argument to `"nw"`, meaning the
 x, y = 200, 225
 canvas.create_text(x, y, text="Hello, ", font=font1, anchor='nw')
 x += font1.measure("Hello, ")
-canvas.create_text(x, y, text="overlapping!", font=font2, anchor='nw')
+canvas.create_text(
+    x, y, text="overlapping!", font=font2, anchor='nw')
 ```
 
 Modify the `draw` function to set `anchor` to `"nw"`; we didn't need

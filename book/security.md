@@ -66,7 +66,7 @@ as shown in Figure 1 is the core principle.
 ::: {.center}
 ![Figure 1: The server assigns cookies to the browser with the `Set-Cookie`
 header, and the browser thereafter identifies itself with the `Cookie`
-header.](im/security-cookies.png)
+header.](im/security-cookies-2.gif)
 :::
 
 Let's use cookies to write a login system for our guest book. Each
@@ -531,9 +531,9 @@ post, see hover previews, or submit a form without reloading.
 
 [mdn-fetch]: https://developer.mozilla.org/en-US/docs/Web/API/fetch
 
-::: {.print-only}
+::: {.center}
 ![Figure 2: The architecture of a single-page application leveraging
-`XMLHttpRequest`.](im/security-spa.png)
+`XMLHttpRequest`.](im/security-spa-2.gif)
 :::
 
 ::: {.further}
