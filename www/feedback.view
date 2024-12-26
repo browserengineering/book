@@ -28,6 +28,7 @@
     <div class="{{obj['type']}}" data-id="{{obj['id']}}">
     <button type='button' class='saved'>Save</button>
     <button type='button' class='denied'>Deny</button>
+    <button type='button' class='denied-all'>Deny all for this user</button>
     <h1>{{obj.get('name', "anon")}} in <code>{{obj['url']}}</code>:</h1>
     %if obj['type'] == 'typo':
       <a target=_blank href="https://github.com/browserengineering/book/issues/new?title=Feedback%20on%20{{obj['url']}}&body={{quote(obj['diff'])}}">File a new issue on github</a>
