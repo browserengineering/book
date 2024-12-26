@@ -902,7 +902,8 @@ class BlockLayout:
 
 ```
 
-Add a `rect` field to `DrawText` and `DrawLine` too.
+Add a `rect` field to `DrawText` and `DrawLine` too. (The width and
+height for `DrawText` should be the width and height of the text.)
 
 Drawing this chrome display list is now straightforward:
 
