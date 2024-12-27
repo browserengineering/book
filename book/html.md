@@ -884,7 +884,7 @@ inside `<script>`, except the `</script>` close tag.[^or-space]
 
 [script-end-state]: https://html.spec.whatwg.org/multipage/parsing.html#script-data-end-tag-name-state
 
-4-4*Quoted attributes*. Quoted attributes can contain spaces and right
+4-4 *Quoted attributes*. Quoted attributes can contain spaces and right
 angle brackets. Fix the lexer so that this is supported properly.
 Hint: the current lexer is a finite state machine, with two states
 (determined by `in_tag`). You'll need more states.
