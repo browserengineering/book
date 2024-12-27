@@ -803,6 +803,8 @@ Let's try to take this code and add it to `request`. First, we need to
 detect which scheme is being used:
 
 ``` {.python}
+import ssl
+
 class URL:
     def __init__(self, url):
         self.scheme, url = url.split("://", 1)
@@ -843,7 +845,7 @@ class URL:
     def request(self):
         # ...
         s.connect((self.host, self.port))
-p        if self.scheme == "https":
+        if self.scheme == "https":
             ctx = ssl.create_default_context()
             s = ctx.wrap_socket(s, server_hostname=self.host)
         # ...
