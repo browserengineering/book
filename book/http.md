@@ -842,7 +842,8 @@ Next, we'll wrap the socket with the `ssl` library:
 class URL:
     def request(self):
         # ...
-        if self.scheme == "https":
+        s.connect((self.host, self.port))
+p        if self.scheme == "https":
             ctx = ssl.create_default_context()
             s = ctx.wrap_socket(s, server_hostname=self.host)
         # ...
