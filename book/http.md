@@ -984,7 +984,8 @@ print the entire HTML file as if it was text. You'll want to have also
 implemented Exercise 1-4.
 
 1-6 *Keep-alive*. Implement Exercise 1-1; however, do not send
-the `Connection: close` header. Instead, when reading the body from
+the `Connection: close` header (send `Connection: keep-alive` instead).
+Instead, when reading the body from
 the socket, only read as many bytes as given in the `Content-Length`
 header and don't close the socket afterward. Instead, save the
 socket, and if another request is made to the same server reuse the
