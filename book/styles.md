@@ -583,7 +583,7 @@ comprehension to grab the URL of each linked style sheet:[^crazy]
 def load(self, url):
     # ...
     links = [node.attributes["href"]
-             for node in tree_to_list(self.nodes, [])
+             for node in tree_to_list(self.node, [])
              if isinstance(node, Element)
              and node.tag == "link"
              and node.attributes.get("rel") == "stylesheet"
@@ -716,7 +716,7 @@ Now when we call `style`, we need to sort the rules, like this:
 ``` {.python indent=4}
 def load(self, url):
     # ...
-    style(self.nodes, sorted(rules, key=cascade_priority))
+    style(self.node, sorted(rules, key=cascade_priority))
     # ...
 ```
 

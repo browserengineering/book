@@ -44,7 +44,7 @@ Let's verify that we can request the image:
 
 The browser has now downloaded a Skia `Image` object:
 
-    >>> img = frame.nodes.children[0].children[0].image
+    >>> img = frame.node.children[0].children[0].image
     >>> img # doctest: +ELLIPSIS
     Image(5, 5, ..., AlphaType.kPremul_AlphaType)
     >>> img.width()
@@ -215,7 +215,7 @@ Clicking the sub-frame focuses it:
     >>> e = Event(50, browser.chrome.bottom + 670)
     >>> browser.handle_click(e)
     >>> browser.render()
-    >>> child_frame = browser.tabs[0].root_frame.nodes.children[0].children[-1].frame
+    >>> child_frame = browser.tabs[0].root_frame.node.children[0].children[-1].frame
     >>> browser.tabs[0].focused_frame == child_frame
     True
     >>> browser.root_frame_focused
@@ -223,13 +223,13 @@ Clicking the sub-frame focuses it:
 
 And now scrolling affects just the child frame:
 
-    >>> browser.tabs[0].root_frame.nodes.children[0].children[-1].frame.scroll
+    >>> browser.tabs[0].root_frame.node.children[0].children[-1].frame.scroll
     0
     >>> browser.handle_down()
     >>> browser.render()
     >>> browser.active_tab_scroll > 0
     False
-    >>> browser.tabs[0].root_frame.nodes.children[0].children[-1].frame.scroll
+    >>> browser.tabs[0].root_frame.node.children[0].children[-1].frame.scroll
     18.0
 
 Accessibility
@@ -323,7 +323,7 @@ resizing is dramatic:
     >>> browser.render()
     >>> frame1 = browser.tabs[0].root_frame
     >>> iframe = [
-    ...    n for n in lab15.tree_to_list(frame1.nodes, [])
+    ...    n for n in lab15.tree_to_list(frame1.node, [])
     ...    if isinstance(n, lab15.Element) and n.tag == "iframe"][0]
     >>> frame2 = iframe.frame
     >>> lab15.print_tree(frame1.document)

@@ -103,7 +103,7 @@ class Tab:
     def load(self, url, payload=None):
         # ...
         scripts = [node.attributes["src"] for node
-                   in tree_to_list(self.nodes, [])
+                   in tree_to_list(self.node, [])
                    if isinstance(node, Element)
                    and node.tag == "script"
                    and "src" in node.attributes]
@@ -446,7 +446,7 @@ Now `querySelectorAll` will find all nodes matching the selector:
 def querySelectorAll(self, selector_text):
     # ...
     nodes = [node for node
-             in tree_to_list(self.tab.nodes, [])
+             in tree_to_list(self.tab.node, [])
              if selector.matches(node)]
 ```
 

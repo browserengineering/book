@@ -339,14 +339,14 @@ class Tab:
         self.render()
 
     def render(self):
-        style(self.nodes, sorted(self.rules, key=cascade_priority))
-        self.document = DocumentLayout(self.nodes)
+        style(self.node, sorted(self.rules, key=cascade_priority))
+        self.document = DocumentLayout(self.node)
         self.document.layout()
         self.display_list = []
         paint_tree(self.document, self.display_list)
 ```
 
-For this code to work, you'll also need to change `nodes` and `rules`
+For this code to work, you'll also need to change `node` and `rules`
 from local variables in the `load` method to new fields on a `Tab`.
 Note that styling moved from `load` to `render`, but downloading the
 style sheets didn't---we don't re-download the style
