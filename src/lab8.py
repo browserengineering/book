@@ -279,12 +279,14 @@ class Tab:
         paint_tree(self.document, self.display_list)
 
     def click(self, x, y):
+        if self.focus:
+            self.focus.is_focused = False
         self.focus = None
         y += self.scroll
         objs = [obj for obj in tree_to_list(self.document, [])
                 if obj.x <= x < obj.x + obj.width
                 and obj.y <= y < obj.y + obj.height]
-        if not objs: return
+        if not objs: return self.render()
         elt = objs[-1].node
         while elt:
             if isinstance(elt, Text):
@@ -294,17 +296,16 @@ class Tab:
                 return self.load(url)
             elif elt.tag == "input":
                 elt.attributes["value"] = ""
-                if self.focus:
-                    self.focus.is_focused = False
                 self.focus = elt
                 elt.is_focused = True
-                return self.render()
+                break
             elif elt.tag == "button":
                 while elt:
                     if elt.tag == "form" and "action" in elt.attributes:
                         return self.submit_form(elt)
                     elt = elt.parent
             elt = elt.parent
+        self.render()
 
     def submit_form(self, elt):
         inputs = [node for node in tree_to_list(elt, [])
