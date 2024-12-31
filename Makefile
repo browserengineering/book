@@ -102,7 +102,7 @@ bottle.py:
 wc:
 	@ printf " Words  Code  File\n"; awk -f infra/wc.awk book/*.md | sort -rn
 
-publish:
+publish: book draft widgets
 	rsync -rtu --exclude=db.json --exclude=*.hash www/ server:/var/www/wbe/
 	ssh server chmod -Rf a+r /var/www/wbe/ || true
 
