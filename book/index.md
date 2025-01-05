@@ -21,7 +21,7 @@ misbehave. Read them at your own risk.
 # Pre-order _Web Browser Engineering_
 
 _Web Browser Engineering_ will be published by Oxford University
-Press before the end of the year. To get it as soon as it's out,
+Press early this year. To get it as soon as it's out,
 [pre-order now!](https://global.oup.com/academic/product/web-browser-engineering-9780198913863)
 :::
 
