@@ -8,10 +8,11 @@ let preamble = `
 `;
  
 function updateState() {
-  targetIframe.srcdoc = `${preamble}${htmlSource.value}`;
+  var clean = DOMPurify.sanitize(htmlSource.value);
+  targetIframe.srcdoc = `${preamble}${clean}`;
   link.href =
   	`layout-block-container-example.html?htmlSource=${
-  		  encodeURIComponent(htmlSource.value)}`;
+  		  encodeURIComponent(clean)}`;
 }
 
 onload = () => {
