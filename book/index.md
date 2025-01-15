@@ -33,8 +33,8 @@ talk about the book with others in our [discussion forum][forum].
 
 [forum]: https://github.com/browserengineering/book/discussions
 
-If you are enjoying the book online, consider supporting us by buying a physical
-copy for your home bookshelf.
+If you are enjoying the book online, consider supporting us by buying a
+physical copy for your home bookshelf.
 
 You can also email us [here](mailto:author@browser.engineering).
 
