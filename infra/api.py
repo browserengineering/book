@@ -200,7 +200,12 @@ def thanks():
         "Liza Daly",
         "Sangyeob Han",
         "YongWoo Jeon",
-        "Jess"
+        "Jess",
+        "Martin Minkov",
+        "Peter Rushforth",
+        "Gowtham K",
+        "Ryo Ogawa",
+        "JaviFML"
     ]
 
     contributor_names = sorted((feedback_names | gh_names) - author_names, key=name_key) + \
