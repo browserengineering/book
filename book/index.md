@@ -33,10 +33,10 @@ talk about the book with others in our [discussion forum][forum].
 
 [forum]: https://github.com/browserengineering/book/discussions
 
-If you are enjoying the book, consider supporting us by buying a physical copy.
-You'll also end up with something nice to put on our bookshelf!
+If you are enjoying the book online, consider supporting us by buying a physical
+copy for your home bookshelf.
 
-Or just [send us an email](mailto:author@browser.engineering)!
+You can also email us [here](mailto:author@browser.engineering).
 
 ::: {.intro}
 Introduction
