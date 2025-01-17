@@ -265,11 +265,11 @@ class Tab:
         self.scroll = 0
         self.url = url
         self.history.append(url)
-        self.nodes = HTMLParser(body).parse()
+        self.node = HTMLParser(body).parse()
 
         rules = DEFAULT_STYLE_SHEET.copy()
         links = [node.attributes["href"]
-                 for node in tree_to_list(self.nodes, [])
+                 for node in tree_to_list(self.node, [])
                  if isinstance(node, Element)
                  and node.tag == "link"
                  and node.attributes.get("rel") == "stylesheet"
@@ -280,9 +280,9 @@ class Tab:
             except:
                 continue
             rules.extend(CSSParser(body).parse())
-        style(self.nodes, sorted(rules, key=cascade_priority))
+        style(self.node, sorted(rules, key=cascade_priority))
 
-        self.document = DocumentLayout(self.nodes)
+        self.document = DocumentLayout(self.node)
         self.document.layout()
         self.display_list = []
         paint_tree(self.document, self.display_list)

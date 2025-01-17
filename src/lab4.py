@@ -198,8 +198,8 @@ class Layout:
 class Browser:
     def load(self, url):
         body = url.request()
-        self.nodes = HTMLParser(body).parse()
-        self.display_list = Layout(self.nodes).display_list
+        self.node = HTMLParser(body).parse()
+        self.display_list = Layout(self.node).display_list
         self.draw()
 
 if __name__ == "__main__":
