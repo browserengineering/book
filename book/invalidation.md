@@ -755,8 +755,8 @@ find][hard-to-find] because they typically only show up if you make a
 very specific sequence of changes.
 :::
 
-[under-invalidation]: https://developer.chrome.com/articles/layoutng/#under-invalidation
-[hard-to-find]: https://developer.chrome.com/articles/layoutng/#correctness
+[under-invalidation]: https://developer.chrome.com/docs/chromium/layoutng/#under-invalidation
+[hard-to-find]: https://developer.chrome.com/docs/chromium/layoutng/#correctness
 
 Recursive Invalidation
 ======================
@@ -1227,7 +1227,7 @@ and new fragment trees instead of by using dirty flags, though the
 effect of that is pretty similar to what this book describes.
 :::
 
-[fragment-tree]: https://developer.chrome.com/articles/renderingng-data-structures/#the-immutable-fragment-tree
+[fragment-tree]: https://developer.chrome.com/docs/chromium/renderingng-data-structures/#the_immutable_fragment_tree
 
 [^our-book-simple]: This book doesn't separate out the fragment tree
     because our layout algorithm is simple enough not to need it.
