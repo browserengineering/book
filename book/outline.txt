@@ -141,7 +141,7 @@ WIDTH, HEIGHT
 HSTEP, VSTEP
 class Rect:
     def __init__(left, top, right, bottom)
-    def containsPoint(x, y)
+    def contains_point(x, y)
 INPUT_WIDTH_PX
 IFRAME_WIDTH_PX, IFRAME_HEIGHT_PX
 BLOCK_ELEMENTS

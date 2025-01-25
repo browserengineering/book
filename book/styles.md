@@ -19,9 +19,13 @@ Parsing with Functions
 One way a web page can change its appearance is with the `style`\index{style}
 attribute. For example, this changes an element's background color:
 
-``` {.html .example style=background-color:lightblue}
-<div style="background-color:lightblue"></div>
+``` {.html .example}
+<div style="background-color:lightblue">Blue background</div>
 ```
+
+And it renders like this:
+
+<div style="background-color:lightblue">Blue background</div>
 
 More generally, a `style` attribute contains property–value pairs
 separated by semicolons. The browser looks at those CSS
@@ -547,8 +551,8 @@ sheet[^like-canonical] and the `href` attribute has the style sheet
 URL. We need to find all these links, download their style sheets, and
 apply them, as in Figure 2.
 
-::: {.print-only}
-![Figure 2: A browser loading related assets, like a stylesheet, for a web page.](im/styles-http.png)
+::: {.center}
+![Figure 2: A browser loading related assets, like a stylesheet, for a web page.](im/styles-http-2.gif)
 :::
 
 Since we'll be doing similar tasks in the next few chapters, let's

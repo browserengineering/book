@@ -755,8 +755,8 @@ find][hard-to-find] because they typically only show up if you make a
 very specific sequence of changes.
 :::
 
-[under-invalidation]: https://developer.chrome.com/articles/layoutng/#under-invalidation
-[hard-to-find]: https://developer.chrome.com/articles/layoutng/#correctness
+[under-invalidation]: https://developer.chrome.com/docs/chromium/layoutng/#under-invalidation
+[hard-to-find]: https://developer.chrome.com/docs/chromium/layoutng/#correctness
 
 Recursive Invalidation
 ======================
@@ -1227,7 +1227,7 @@ and new fragment trees instead of by using dirty flags, though the
 effect of that is pretty similar to what this book describes.
 :::
 
-[fragment-tree]: https://developer.chrome.com/articles/renderingng-data-structures/#the-immutable-fragment-tree
+[fragment-tree]: https://developer.chrome.com/docs/chromium/renderingng-data-structures/#the_immutable_fragment_tree
 
 [^our-book-simple]: This book doesn't separate out the fragment tree
     because our layout algorithm is simple enough not to need it.
@@ -1432,7 +1432,7 @@ field, then iterate over the list of children and `read` each of their
 fields, depends on the children's fields, not the parent's (see Figure 2).
 
 ::: {.center}
-![Figure 2: The dependencies of widths and heights in the layout tree point in opposite directions.](im/protected-field-dependencies-top.jpg)
+![Figure 2: The dependencies of widths and heights in the layout tree point in opposite directions.](im/protected-field-dependencies-top-2.gif)
 :::
 
 So that's all the layout fields on `BlockLayout` and `DocumentLayout`.
@@ -2358,7 +2358,7 @@ accidental bugs in the future and also improve performance.
 
 ::: {.center}
 ![Figure 5: A dependency diagram for the layout fields in our browser.
-Simplified though it is, the dependency diagram is already quite complex.](im/protected-field-dependencies-bottom.jpg)
+Simplified though it is, the dependency diagram is already quite complex.](im/protected-field-dependencies-bottom-2.gif)
 :::
 
 An easy first step is explicitly listing the dependencies of each

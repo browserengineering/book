@@ -188,7 +188,8 @@ The core idea is that we'll have a whole tree of `BlockLayout` objects
 that contain text, and they'll lay out their contents the way we've
 already implemented. But there will also be new, intermediate
 `BlockLayout`s with `BlockLayout` children, and they will stack their
-children vertically. (An example is shown in Figure 1.)
+children vertically. (An example is shown in Figure 1. A widget above it
+lets you play with how block layout leads to different visual output.)
 
 ::: {.web-only}
 
@@ -200,7 +201,7 @@ children vertically. (An example is shown in Figure 1.)
 
 
 ::: {.center}
-![Figure 1: An example of an HTML tree and the corresponding layout tree.](im/layout-tree.png)
+![Figure 1: An example of an HTML tree and the corresponding layout tree.](im/layout-tree-2.gif)
 :::
 
 To create these intermediate `BlockLayout` children, we can use a loop
@@ -231,9 +232,9 @@ from `node.children` (in the HTML tree) and writes to `self.children`
 So we have two ways to lay out an element: either calling `recurse`
 and `flush`, or this `layout_intermediate` function. To determine
 which one a layout object should use, we'll need to know what kind
-of content its HTML node contains: text and text-related tags like
-`<b>`, or blocks like `<p>` and `<h1>`. That function looks something
-like this:
+of content its HTML node contains: *inline* text and text-related tags like
+`<b>`, or *blocks* like `<p>` and `<h1>`. Let's add a `layout_mode` method
+that computes which is which:
 
 ``` {.python}
 class BlockLayout:

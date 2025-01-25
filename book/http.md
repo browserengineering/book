@@ -291,7 +291,7 @@ switch gears from making manual connections to Python.
 
 ::: {.center}
 ![Figure 4: An HTTP request and response pair are how a web browser gets web
-pages from a web server.](im/http-request.png)
+pages from a web server.](im/http-request-2.gif)
 :::
 
 ::: {.further}
@@ -764,7 +764,7 @@ the correct host. The difference in the protocol layers involved is shown in
 Figure 5.
 
 ::: {.center}
-![Figure 5: The difference between HTTP and HTTPS is the addition of a TLS layer.](im/http-tls.png)
+![Figure 5: The difference between HTTP and HTTPS is the addition of a TLS layer.](im/http-tls-2.gif)
 :::
 
 Luckily, the Python `ssl` library implements all of these details for
@@ -803,6 +803,8 @@ Let's try to take this code and add it to `request`. First, we need to
 detect which scheme is being used:
 
 ``` {.python}
+import ssl
+
 class URL:
     def __init__(self, url):
         self.scheme, url = url.split("://", 1)
@@ -842,6 +844,7 @@ Next, we'll wrap the socket with the `ssl` library:
 class URL:
     def request(self):
         # ...
+        s.connect((self.host, self.port))
         if self.scheme == "https":
             ctx = ssl.create_default_context()
             s = ctx.wrap_socket(s, server_hostname=self.host)
@@ -981,12 +984,14 @@ print the entire HTML file as if it was text. You'll want to have also
 implemented Exercise 1-4.
 
 1-6 *Keep-alive*. Implement Exercise 1-1; however, do not send
-the `Connection: close` header. Instead, when reading the body from
-the socket, only read as many bytes as given in the `Content-Length`
-header and don't close the socket afterward. Instead, save the
-socket, and if another request is made to the same server reuse the
-same socket instead of creating a new one. This will speed up repeated
-requests to the same server, which are common.
+the `Connection: close` header (send `Connection: keep-alive` instead).
+When reading the body from the socket, only read as many bytes as given
+in the `Content-Length` header and don't close the socket afterward.
+Instead, save the socket, and if another request is made to the same server
+reuse the same socket instead of creating a new one. 
+(You'll also need to pass the `"rb"` option to `makefile` or the value reported
+by `Content-Length` might not match the length of the string you're reading.)
+This will speed up repeated requests to the same server, which are common.
 
 1-7 *Redirects*. Error codes in the 300 range request a redirect. When
 your browser encounters one, it should make a new request to the URL

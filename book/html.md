@@ -78,8 +78,8 @@ other nodes are unfinished: more children can be added to the
 `<html>`, `<section>`, and `<h1>` nodes, depending on what HTML comes
 next---see Figure 2.
 
-::: {.print-only}
-![Figure 2: The finished and unfinished nodes while parsing some HTML.](im/html-lr.png)
+::: {.center}
+![Figure 2: The finished and unfinished nodes while parsing some HTML.](im/html-lr-2.gif)
 :::
 
 Since the parser reads the HTML file from beginning to end, these
@@ -884,7 +884,7 @@ inside `<script>`, except the `</script>` close tag.[^or-space]
 
 [script-end-state]: https://html.spec.whatwg.org/multipage/parsing.html#script-data-end-tag-name-state
 
-4-4*Quoted attributes*. Quoted attributes can contain spaces and right
+4-4 *Quoted attributes*. Quoted attributes can contain spaces and right
 angle brackets. Fix the lexer so that this is supported properly.
 Hint: the current lexer is a finite state machine, with two states
 (determined by `in_tag`). You'll need more states.

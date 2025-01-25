@@ -2725,4 +2725,4 @@ property. This exposes the same functionality as the zoom
 accessibility feature to web developers, plus it allows applying it only
 to designated HTML subtrees.
 
-[zoom-property] https://developer.mozilla.org/en-US/docs/Web/CSS/zoom
+[zoom-property]: https://developer.mozilla.org/en-US/docs/Web/CSS/zoom

@@ -214,19 +214,19 @@ body.main { padding: 0 4ex; }
 
 img { max-width: 100%; }
 
-.quirk { outline: 1px solid purple; }
+.quirk { outline: 2px solid purple; }
 .quirk:before { content: "Quirk"; color: purple; }
-.warning { outline: 1px solid red; }
+.warning { outline: 2px solid red; }
 .warning:before { content: "Warning"; color: red; }
-.installation { outline: 1px solid blue; }
+.installation { outline: 2px solid blue; }
 .installation:before { content: "Installation"; color: blue; }
-.demo { outline: 1px solid gray; }
+.demo { outline: 2px solid gray; }
 .demo:before { content: "Demonstration"; color: gray; }
-.further { outline: 1px solid green; }
-.further:before { content: "Go Further "; color: green; border-bottom: none; }
-.widget { width: 100%; border: 1px solid navy; }
+.further { outline: 2px solid green; }
+.further:before { content: "Go further"; font-weight: bold; color: green; }
+.widget { width: 100%; border: 2px solid navy; }
 .center { text-align: center }
-.example, .output { outline: 1px solid black; padding: 1em; margin: 0.5em 0; background: #d7d7d7; }
+.example, .output { outline: 2px solid lightgray; padding: 1em }
 
 @media (prefers-color-scheme: dark) {
 .quirk { outline: 2px solid #CBC3E3; }

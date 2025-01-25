@@ -10,7 +10,7 @@ function feedback_mode() {
         elts[i].addEventListener('click', function() {
             var pw = window.localStorage["pw"];
             submit_status(parseInt(this.parentNode.dataset.id), this.className, pw);
-            this.parentNode.remove();
+            setTimeout(function () { location.reload(); }, 100);
         });
     }
 }

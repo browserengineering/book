@@ -1175,7 +1175,7 @@ schedule an animation frame for the next frame of the animation, but
 in Figure 2.
 
 ::: {.center}
-![Figure 2: The rendering cycle between the browser and main threads.](im/multi-threaded-rendering-loop.jpg)
+![Figure 2: The rendering cycle between the browser and main threads.](im/multi-threaded-rendering-loop-2.gif)
 :::
 
 However, it's not as simple as just setting `needs_render` any time an
@@ -1645,7 +1645,7 @@ class CompositedLayer:
 ```
 
 But we should only add compatible display items to the same composited
-layer, determined by the `can_merge` method. A display item
+layer, determined by the `can_merge` method. A display item can
 be merged if it has the same parents as existing ones in the composited layer:
 
 ``` {.python}
