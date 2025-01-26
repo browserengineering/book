@@ -85,7 +85,7 @@ li { margin: 1em 0; }
 .main ol, .main h1 { font-size: 120%; }
 .main header { margin-bottom: 3em; }
 .main > h1 { margin: 0; }
-.main ol { margin: 0; }
+.main ol { margin: 0; padding-left: 2.5ex; }
 @media (prefers-color-scheme: light) {
 .main ol { color: black; }
 }
