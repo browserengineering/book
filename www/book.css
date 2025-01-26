@@ -96,7 +96,7 @@ li { margin: 1em 0; }
 .intro ol { list-style: lower-roman; }
 .outro ol { list-style: upper-alpha; }
 
-p { margin: 0; }
+p { margin: 6pt 0; }
 p + p { text-indent: 1em; }
 
 nav.links {
