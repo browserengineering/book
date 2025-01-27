@@ -1,4 +1,4 @@
-.PHONY: book draft widgets publish clean download wc lint examples
+.PHONY: book widgets publish clean download wc lint examples
 
 FLAGS=
 
@@ -16,7 +16,6 @@ EXAMPLE_JS=$(patsubst src/example%.js,%,$(wildcard src/example*.js))
 EXAMPLE_CSS=$(patsubst src/example%.css,%,$(wildcard src/example*.css))
 
 book: $(patsubst %,www/%.html,$(CHAPTERS)) www/rss.xml widgets examples www/index.html
-draft: $(patsubst %,www/draft/%.html,$(CHAPTERS)) www/onepage.html widgets
 examples: $(patsubst %,www/examples/example%.html,$(EXAMPLE_HTML)) \
 	$(patsubst %,www/examples/example%.js,$(EXAMPLE_JS)) \
 	$(patsubst %,www/examples/example%.css,$(EXAMPLE_CSS))
@@ -77,9 +76,6 @@ latex/book.pdf: latex/book.tex latex/macros.tex
 www/%.html: book/%.md infra/template.html infra/signup.html infra/filter.lua config.json src/lab*.py
 	$(PANDOC) --toc --metadata=mode:book --template infra/template.html -c book.css $< -o $@
 
-www/draft/%.html: book/%.md infra/template.html infra/signup.html infra/filter.lua config.json
-	$(PANDOC) --toc --metadata=mode:draft --template infra/template.html -c book.css $< -o $@
-
 www/rss.xml: news.yaml infra/rss-template.xml
 	pandoc --template infra/rss-template.xml  -f markdown -t html $< -o $@
 
@@ -102,7 +98,7 @@ bottle.py:
 wc:
 	@ printf " Words  Code  File\n"; awk -f infra/wc.awk book/*.md | sort -rn
 
-publish: book draft widgets
+publish: book widgets
 	rsync -rtu --exclude=db.json --exclude=*.hash www/ server:/var/www/wbe/
 	ssh server chmod -Rf a+r /var/www/wbe/ || true
 
