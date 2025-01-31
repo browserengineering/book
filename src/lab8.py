@@ -254,11 +254,11 @@ class Tab:
         self.url = url
         self.history.append(url)
         body = url.request(payload)
-        self.nodes = HTMLParser(body).parse()
+        self.node = HTMLParser(body).parse()
 
         self.rules = DEFAULT_STYLE_SHEET.copy()
         links = [node.attributes["href"]
-                 for node in tree_to_list(self.nodes, [])
+                 for node in tree_to_list(self.node, [])
                  if isinstance(node, Element)
                  and node.tag == "link"
                  and node.attributes.get("rel") == "stylesheet"
@@ -272,8 +272,8 @@ class Tab:
         self.render()
 
     def render(self):
-        style(self.nodes, sorted(self.rules, key=cascade_priority))
-        self.document = DocumentLayout(self.nodes)
+        style(self.node, sorted(self.rules, key=cascade_priority))
+        self.document = DocumentLayout(self.node)
         self.document.layout()
         self.display_list = []
         paint_tree(self.document, self.display_list)
