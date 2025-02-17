@@ -100,7 +100,7 @@ newly generated token:
 ``` {.python file=server replace=%7b%7d/%7b%7d;%20SameSite%3dLax}
 def handle_connection(conx):
     # ...
-    if 'cookie' not in headers:
+    if "cookie" not in headers:
         template = "Set-Cookie: token={}\r\n"
         response += template.format(token)
     # ...
@@ -936,7 +936,7 @@ Our guest book can now mark its cookies `SameSite`:
 
 ``` {.python file=server}
 def handle_connection(conx):
-    if 'cookie' not in headers:
+    if "cookie" not in headers:
         template = "Set-Cookie: token={}; SameSite=Lax\r\n"
         response += template.format(token)
 ```
