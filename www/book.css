@@ -16,7 +16,7 @@
 html { font-size: 24px; line-height: 1.2; padding: 1em; }
 body {
     max-width: 60ch; margin: 0 auto; font-family: 'Crimson Pro', 'Times', serif;
-    font-weight: 400; text-align: justify; hyphens: auto; -webkit-hyphens: auto;
+    font-weight: normal; text-align: justify; hyphens: auto; -webkit-hyphens: auto;
 }
 @media (prefers-color-scheme: light) {
 body {
@@ -64,7 +64,7 @@ h1:not(.title):hover::after {
 }
 
 header { text-align: center; margin: 3em 0 1em; }
-header h1 { margin: 0; font-size: 200%; font-weight: 400; text-align: center; letter-spacing: -0.08ex }
+header h1 { margin: 0; font-size: 200%; font-weight: normal; text-align: center; letter-spacing: -0.08ex }
 .main header h1 { font-size: 200%; } /* override another style ugh */
 .main header * { margin: 0; }
 header .author { font-style: italic; }
