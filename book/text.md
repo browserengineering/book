@@ -772,8 +772,8 @@ def flush(self):
     max_ascent = max([metric["ascent"] for metric in metrics])
 ```
 
-The baseline is then `max_ascent` below `self.y`—or actually a little more
-to account for the leading:[^leading-half]
+The baseline is then `max_ascent` below `self.cursor_y`—or actually a little
+more to account for the leading:[^leading-half]
 
 [^leading-half]: Actually, 25% leading doesn't add 25% of the ascent
     above the ascender and 25% of the descent below the descender.

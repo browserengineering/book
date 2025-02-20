@@ -190,7 +190,7 @@ index page meant for searching within a site (vestiges of which exist today in
 the “index.html” convention when a URL path ends in /”), and had a WYSIWYG web
 page editor (the “contenteditable” HTML attribute on DOM
 elements (see [Chapter 16](invalidation.md))
-have similar semantic behavior, but built-in file saving is gone).
+has similar semantic behavior, but built-in file saving is gone).
 Today, the index is replaced with a search engine, and web page editors as a
 concept are somewhat obsolete due to the highly dynamic nature of today’s web
 page rendering.
