@@ -120,6 +120,7 @@ current line can be found at the end of the `children` array:
 ``` {.python}
 class BlockLayout:
     def word(self, node, word):
+        # ...
         line = self.children[-1]
         previous_word = line.children[-1] if line.children else None
         text = TextLayout(node, word, line, previous_word)
