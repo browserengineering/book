@@ -371,7 +371,7 @@ class Tab:
         while elt:
             elif elt.tag == "input":
                 elt.attributes["value"] = ""
-                break
+                return self.render()
         self.render()
 ```
 
