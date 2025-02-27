@@ -751,7 +751,7 @@ the user sees; with forms, the server sends a new HTML page in its
 response to the `POST` request. This process is shown in Figure 2.
 
 ::: {.center}
-![Figure 2: The cycle of request and response for a multi-page application.](im/forms-mpa.png)
+![Figure 2: The cycle of request and response for a multi-page application.](im/forms-mpa-2.gif)
 :::
 
 Forms are a simple, minimal introduction to this cycle of request and
@@ -935,7 +935,7 @@ headers at all except `Content-Length`, it doesn't support TLS, and so
 on. Again: this is a web *browser* book---it'll do.
 
 ::: {.center}
-![Figure 3: The architecture of the simple web server in this chapter.](im/forms-server.png)
+![Figure 3: The architecture of the simple web server in this chapter.](im/forms-server-2.gif)
 :::
 
 ::: {.further}

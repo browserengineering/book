@@ -120,6 +120,7 @@ current line can be found at the end of the `children` array:
 ``` {.python}
 class BlockLayout:
     def word(self, node, word):
+        # ...
         line = self.children[-1]
         previous_word = line.children[-1] if line.children else None
         text = TextLayout(node, word, line, previous_word)
@@ -135,6 +136,7 @@ method for that:
 ``` {.python}
 class BlockLayout:
     def word(self, node, word):
+        # ...
         if self.cursor_x + w > self.width:
             self.new_line()
 ```
@@ -901,7 +903,8 @@ class BlockLayout:
 
 ```
 
-Add a `rect` field to `DrawText` and `DrawLine` too.
+Add a `rect` field to `DrawText` and `DrawLine` too. (The width and
+height for `DrawText` should be the width and height of the text.)
 
 Drawing this chrome display list is now straightforward:
 
@@ -996,7 +999,7 @@ let's add a quick method to test whether a point is contained in a
 
 ``` {.python}
 class Rect:
-    def containsPoint(self, x, y):
+    def contains_point(self, x, y):
         return x >= self.left and x < self.right \
             and y >= self.top and y < self.bottom
 ```
@@ -1007,11 +1010,11 @@ between clicking to add a tab or select an open tab.
 ``` {.python}
 class Chrome:
     def click(self, x, y):
-        if self.newtab_rect.containsPoint(x, y):
+        if self.newtab_rect.contains_point(x, y):
             self.browser.new_tab(URL("https://browser.engineering/"))
         else:
             for i, tab in enumerate(self.browser.tabs):
-                if self.tab_rect(i).containsPoint(x, y):
+                if self.tab_rect(i).contains_point(x, y):
                     self.browser.active_tab = tab
                     break
 ```
@@ -1120,7 +1123,7 @@ invoke some method on the current tab to go back:
 class Chrome:
     def click(self, x, y):
         # ...
-        elif self.back_rect.containsPoint(x, y):
+        elif self.back_rect.contains_point(x, y):
             self.browser.active_tab.go_back()
 ```
 
@@ -1229,7 +1232,7 @@ class Chrome:
     def click(self, x, y):
         self.focus = None
         # ...
-        elif self.address_rect.containsPoint(x, y):
+        elif self.address_rect.contains_point(x, y):
             self.focus = "address bar"
             self.address_bar = ""
 ```

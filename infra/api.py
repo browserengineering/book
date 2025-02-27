@@ -100,6 +100,12 @@ class Data:
         }
 
     def set_status(self, i, status):
+        if status == "denied-all":
+            for d in self.data:
+                if d['name'] == self.data[i]['name']:
+                    d['status'] = 'denied'
+            self.save()
+            return
         self.data[i]['status'] = status
         self.save()
 
@@ -194,7 +200,12 @@ def thanks():
         "Liza Daly",
         "Sangyeob Han",
         "YongWoo Jeon",
-        "Jess"
+        "Jess",
+        "Martin Minkov",
+        "Peter Rushforth",
+        "Gowtham K",
+        "Ryo Ogawa",
+        "JaviFML"
     ]
 
     contributor_names = sorted((feedback_names | gh_names) - author_names, key=name_key) + \

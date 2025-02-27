@@ -21,7 +21,7 @@ misbehave. Read them at your own risk.
 # Pre-order _Web Browser Engineering_
 
 _Web Browser Engineering_ will be published by Oxford University
-Press before the end of the year. To get it as soon as it's out,
+Press early this year. To get it as soon as it's out,
 [pre-order now!](https://global.oup.com/academic/product/web-browser-engineering-9780198913863)
 :::
 
@@ -33,9 +33,10 @@ talk about the book with others in our [discussion forum][forum].
 
 [forum]: https://github.com/browserengineering/book/discussions
 
-If you are enjoying the book, consider supporting us on [Patreon](https://patreon.com/browserengineering).
+If you are enjoying the book online, consider supporting us by buying a
+physical copy for your home bookshelf.
 
-Or just [send us an email](mailto:author@browser.engineering)!
+You can also email us [here](mailto:author@browser.engineering).
 
 ::: {.intro}
 Introduction
