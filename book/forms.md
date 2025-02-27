@@ -361,8 +361,9 @@ sheets[^update-styles] every time you type!
     browser.
     
 Now when we click an `input` element and clear its contents, we should
-call `render` to redraw the page with the `input` cleared. To make things
-easier, I'm just always calling `render` regardless of whether things changed:
+call `render` to redraw the page with the `input` cleared. We also need
+to call `render` if we clicked off an input element, since we might have unfocused
+an input element in the process:
 
 ``` {.python}
 class Tab:
@@ -370,7 +371,7 @@ class Tab:
         while elt:
             elif elt.tag == "input":
                 elt.attributes["value"] = ""
-                break
+                return self.render()
         self.render()
 ```
 
