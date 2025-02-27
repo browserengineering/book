@@ -298,7 +298,7 @@ class Tab:
                 elt.attributes["value"] = ""
                 self.focus = elt
                 elt.is_focused = True
-                break
+                return self.render()
             elif elt.tag == "button":
                 while elt:
                     if elt.tag == "form" and "action" in elt.attributes:
