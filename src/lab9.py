@@ -148,7 +148,7 @@ class Tab:
                     self.focus.is_focused = False
                 self.focus = elt
                 elt.is_focused = True
-                break
+                return self.render()
             elif elt.tag == "button":
                 if self.js.dispatch_event("click", elt): return
                 while elt.parent:
