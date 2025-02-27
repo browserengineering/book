@@ -362,8 +362,8 @@ sheets[^update-styles] every time you type!
     
 Now when we click an `input` element and clear its contents, we should
 call `render` to redraw the page with the `input` cleared. We also need
-to call `render` if we clicked off an input element, since we might have unfocused
-an input element in the process:
+to call `render` if we clicked off an input element, since we might have
+unfocused an input element in the process:
 
 ``` {.python}
 class Tab:
@@ -520,6 +520,7 @@ class Tab:
                 elt.attributes["value"] = ""
                 self.focus = elt
                 elt.is_focused = True
+                return self.render()
 ```
 
 Note that we have to un-focus the currently focused element,
