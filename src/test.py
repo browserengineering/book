@@ -77,11 +77,14 @@ class socket:
         cls.URLs[url] = [method, response, body]
 
     @classmethod
-    def serve(cls, html):
+    def serve(cls, html, headers={}):
         html = html.encode("utf8") if isinstance(html, str) else html
         response  = b"HTTP/1.0 200 OK\r\n"
         response += b"Content-Type: text/html\r\n"
         response += b"Content-Length: " + str(len(html)).encode("ascii") + b"\r\n"
+        for header, value in headers.items():
+            header_pretty = "-".join([name.title() for name in header.split("-")])
+            response += header_pretty.encode("ascii") + b": " + value.encode("ascii") + b"\r\n"
         response += b"\r\n" + html
         prefix = "http://test/"
         url = next(prefix + str(i) for i in range(1000) if prefix + str(i) not in cls.URLs)
