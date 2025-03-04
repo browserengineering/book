@@ -121,7 +121,13 @@ tkinter.Tk = SilentTk
 
 class SilentCanvas:
     def __init__(self, *args, **kwargs):
-        pass
+        self._parameters = kwargs
+
+    def winfo_reqwidth(self):
+        return self._parameters["width"]
+
+    def winfo_reqheight(self):
+        return self._parameters["height"]
 
     def create_text(self, x, y, text, **kwargs):
         pass
@@ -148,7 +154,13 @@ tkinter.Canvas = SilentCanvas
 
 class TkCanvas:
     def __init__(self, *args, **kwargs):
-        pass
+        self._parameters = kwargs
+
+    def winfo_reqwidth(self):
+        return self._parameters["width"]
+
+    def winfo_reqheight(self):
+        return self._parameters["height"]
 
     def create_text(self, x, y, text, font=None, anchor=None, **kwargs):
         if font or anchor:
