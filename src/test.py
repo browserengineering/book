@@ -185,7 +185,7 @@ def unpatch_canvas():
     tkinter.Canvas = original_tkinter_canvas
 
 class TkFont:
-    def __init__(self, size=None, weight=None, slant=None, style=None):
+    def __init__(self, size=12, weight='normal', slant='roman', style=None):
         self.size = size
         self.weight = weight
         self.slant = slant
