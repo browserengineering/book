@@ -17,19 +17,18 @@ You can run this file with `doctest` to run the tests.
 1.4 Telnet in Python
 --------------------
 
-If you're testing this section before you finish reading the rest of
-the chapter, make sure to set `self.port = 80` into your `URL`
-constructor and print that port in your `__repr__` function.
-
 Constructing a `URL` object parses a URL:
 
-    >>> lab1.URL('http://test.test/example1')
-    URL(scheme=http, host=test.test, port=80, path='/example1')
+    >>> lab1.URL('http://test.test/example1') #doctest: +ELLIPSIS
+    URL(scheme=http, host=test.test,... path='/example1')
 
 This works even if there is no path:
 
-    >>> lab1.URL('http://test.test')
-    URL(scheme=http, host=test.test, port=80, path='/')
+    >>> lab1.URL('http://test.test') #doctest: +ELLIPSIS
+    URL(scheme=http, host=test.test,... path='/')
+
+The `...` allow you to print a port once you implement that in Section
+1.7.
     
 The first half of the `request` function is tested in the next section.
 
