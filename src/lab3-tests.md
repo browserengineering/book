@@ -14,7 +14,7 @@ Testing Mocks
 
 This section handles a refactor that's introduced later in in Section
 3.5; you can ignore it. Basically, if you've already created a
-`Layout` class it creates a sub `layout` function that calls it and
+`Layout` class it creates a stub `layout` function that calls it and
 undoes a lot of later changes like font changes, leading, and so on,
 for testing previous sections.
 
