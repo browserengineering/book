@@ -177,7 +177,7 @@ resizing is dramatic:
        BlockLayout(x=13.0, y=13.0, width=774.0, height=152.0, node=<html>)
          BlockLayout(x=13.0, y=13.0, width=774.0, height=152.0, node=<body>)
            LineLayout(x=13.0, y=18.0, width=774.0, height=152.0)
-             IframeLayout(src=http://test/2, x=13.0, y=18.0, width=52.0, height=152.0)
+             IframeLayout(src=http://test/page2, x=13.0, y=18.0, width=52.0, height=152.0)
     >>> lab16.print_tree(frame2.document)
      DocumentLayout()
        BlockLayout(x=13.0, y=13.0, width=24.0, height=60.0, node=<html>)
@@ -208,7 +208,7 @@ The parent frame should now have resized the iframe:
        BlockLayout(x=13.0, y=13.0, width=774.0, height=152.0, node=<html>)
          BlockLayout(x=13.0, y=13.0, width=774.0, height=152.0, node=<body>)
            LineLayout(x=13.0, y=18.0, width=774.0, height=152.0)
-             IframeLayout(src=http://test/2, x=13.0, y=18.0, width=102.0, height=152.0)
+             IframeLayout(src=http://test/page2, x=13.0, y=18.0, width=102.0, height=152.0)
 
 But also the child frame should have resized as well:
 

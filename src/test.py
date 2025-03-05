@@ -86,7 +86,7 @@ class socket:
             header_pretty = "-".join([name.title() for name in header.split("-")])
             response += header_pretty.encode("ascii") + b": " + value.encode("ascii") + b"\r\n"
         response += b"\r\n" + html
-        prefix = "http://test/"
+        prefix = "http://test/page"
         url = next(prefix + str(i) for i in range(1000) if prefix + str(i) not in cls.URLs)
         cls.respond(url, response)
         return url

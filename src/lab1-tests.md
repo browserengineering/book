@@ -44,7 +44,7 @@ Then we request the URL and test both request and response:
 
     >>> body = lab1.URL(url).request()
     >>> test.socket.last_request(url)
-    b'GET /0 HTTP/1.0\r\nHost: test\r\n\r\n'
+    b'GET /page0 HTTP/1.0\r\nHost: test\r\n\r\n'
     >>> body
     'Body text'
 
