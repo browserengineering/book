@@ -91,6 +91,7 @@ plus the text drawn:
 Note that each character steps to the right until it reaches the end
 of the line, at which point it wraps.
 
+
 2.4 Scrolling Text
 ------------------
 
@@ -146,6 +147,50 @@ Those characters are stored in the display list for later scrolling:
 
     >>> browser.display_list
     [(1, 1, 'B'), (2, 1, 'o'), (3, 1, 'd'), (4, 1, 'y'), (5, 1, ' '), (6, 1, 't'), (7, 1, 'e'), (8, 1, 'x'), (9, 1, 't')]
+
+Putting it all together, with break points
+
+    >>> test.patch_breakpoint()
+
+    >>> browser.load(lab2.URL(test.socket.serve("Body text")))
+    breakpoint(name='lex', 'B')
+    breakpoint(name='lex', 'Bo')
+    breakpoint(name='lex', 'Bod')
+    breakpoint(name='lex', 'Body')
+    breakpoint(name='lex', 'Body ')
+    breakpoint(name='lex', 'Body t')
+    breakpoint(name='lex', 'Body te')
+    breakpoint(name='lex', 'Body tex')
+    breakpoint(name='lex', 'Body text')
+    breakpoint(name='layout', '[(1, 1, 'B')]')
+    breakpoint(name='layout', '[(1, 1, 'B'), (2, 1, 'o')]')
+    breakpoint(name='layout', '[(1, 1, 'B'), (2, 1, 'o'), (3, 1, 'd')]')
+    breakpoint(name='layout', '[(1, 1, 'B'), (2, 1, 'o'), (3, 1, 'd'), (4, 1, 'y')]')
+    breakpoint(name='layout', '[(1, 1, 'B'), (2, 1, 'o'), (3, 1, 'd'), (4, 1, 'y'), (5, 1, ' ')]')
+    breakpoint(name='layout', '[(1, 1, 'B'), (2, 1, 'o'), (3, 1, 'd'), (4, 1, 'y'), (5, 1, ' '), (6, 1, 't')]')
+    breakpoint(name='layout', '[(1, 1, 'B'), (2, 1, 'o'), (3, 1, 'd'), (4, 1, 'y'), (5, 1, ' '), (6, 1, 't'), (7, 1, 'e')]')
+    breakpoint(name='layout', '[(1, 1, 'B'), (2, 1, 'o'), (3, 1, 'd'), (4, 1, 'y'), (5, 1, ' '), (6, 1, 't'), (7, 1, 'e'), (8, 1, 'x')]')
+    breakpoint(name='layout', '[(1, 1, 'B'), (2, 1, 'o'), (3, 1, 'd'), (4, 1, 'y'), (5, 1, ' '), (6, 1, 't'), (7, 1, 'e'), (8, 1, 'x'), (9, 1, 't')]')
+    breakpoint(name='draw')
+    create_text: x=1 y=1 text=B
+    breakpoint(name='draw')
+    create_text: x=2 y=1 text=o
+    breakpoint(name='draw')
+    create_text: x=3 y=1 text=d
+    breakpoint(name='draw')
+    create_text: x=4 y=1 text=y
+    breakpoint(name='draw')
+    create_text: x=5 y=1 text= 
+    breakpoint(name='draw')
+    create_text: x=6 y=1 text=t
+    breakpoint(name='draw')
+    create_text: x=7 y=1 text=e
+    breakpoint(name='draw')
+    create_text: x=8 y=1 text=x
+    breakpoint(name='draw')
+    create_text: x=9 y=1 text=t
+
+    >>> test.unpatch_breakpoint()
 
 Now let's test scrolling. SCROLL_STEP configures how much to scroll by
 each time. Let's set it to a convenient value:
@@ -253,3 +298,4 @@ from later in the document:
     create_text: x=4 y=0 text=g
     create_text: x=5 y=0 text=e
     create_text: x=6 y=0 text=r
+
