@@ -11,7 +11,7 @@ file contains tests for this functionality.
     >>> import lab2
     
 2.2 Drawing to the Window
---------------------
+-------------------------
 
 Instantiating `Browser` should create a `window` object and a `canvas`
 inside of the appropriate width and height:
