@@ -61,7 +61,7 @@ With an unusual `Transfer-Encoding` the request should fail:
 Likewise with `Content-Encoding`:
     
     >>> url = test.socket.serve("", headers={
-    ...     "Content-Encoding": "chunked"
+    ...     "Content-Encoding": "gzip"
     ... })
     >>> lab1.URL(url).request()
     Traceback (most recent call last):
