@@ -77,13 +77,16 @@ class socket:
         cls.URLs[url] = [method, response, body]
 
     @classmethod
-    def serve(cls, html):
+    def serve(cls, html, headers={}):
         html = html.encode("utf8") if isinstance(html, str) else html
         response  = b"HTTP/1.0 200 OK\r\n"
         response += b"Content-Type: text/html\r\n"
         response += b"Content-Length: " + str(len(html)).encode("ascii") + b"\r\n"
+        for header, value in headers.items():
+            header_pretty = "-".join([name.title() for name in header.split("-")])
+            response += header_pretty.encode("ascii") + b": " + value.encode("ascii") + b"\r\n"
         response += b"\r\n" + html
-        prefix = "http://test/"
+        prefix = "http://test/page"
         url = next(prefix + str(i) for i in range(1000) if prefix + str(i) not in cls.URLs)
         cls.respond(url, response)
         return url
@@ -118,7 +121,13 @@ tkinter.Tk = SilentTk
 
 class SilentCanvas:
     def __init__(self, *args, **kwargs):
-        pass
+        self._parameters = kwargs
+
+    def winfo_reqwidth(self):
+        return self._parameters["width"]
+
+    def winfo_reqheight(self):
+        return self._parameters["height"]
 
     def create_text(self, x, y, text, **kwargs):
         pass
@@ -145,7 +154,13 @@ tkinter.Canvas = SilentCanvas
 
 class TkCanvas:
     def __init__(self, *args, **kwargs):
-        pass
+        self._parameters = kwargs
+
+    def winfo_reqwidth(self):
+        return self._parameters["width"]
+
+    def winfo_reqheight(self):
+        return self._parameters["height"]
 
     def create_text(self, x, y, text, font=None, anchor=None, **kwargs):
         if font or anchor:
@@ -170,7 +185,7 @@ def unpatch_canvas():
     tkinter.Canvas = original_tkinter_canvas
 
 class TkFont:
-    def __init__(self, size=None, weight=None, slant=None, style=None):
+    def __init__(self, size=12, weight='normal', slant='roman', style=None):
         self.size = size
         self.weight = weight
         self.slant = slant

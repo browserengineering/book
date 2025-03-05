@@ -18,7 +18,7 @@ Testing LineLayout and TextLayout
     >>> browser = lab7.Browser()
     >>> browser.new_tab(url)
     >>> browser.tabs
-    [Tab(history=[URL(scheme=http, host=test, port=80, path='/0')])]
+    [Tab(history=[URL(scheme=http, host=test, port=80, path='/page0')])]
     >>> lab7.print_tree(browser.tabs[0].document.node)
      <html>
        <body>
@@ -56,19 +56,19 @@ Testing Tab
 ===========
 
     >>> url2 = lab7.URL(test.socket.serve(
-    ...   "<a href=\"http://test/0\">Click me</a>"))
+    ...   "<a href=\"http://test/page0\">Click me</a>"))
 
 The browser can have multiple tabs:
 
     >>> browser.new_tab(url2)
     >>> browser.tabs #doctest: +NORMALIZE_WHITESPACE
-    [Tab(history=[URL(scheme=http, host=test, port=80, path='/0')]),
-     Tab(history=[URL(scheme=http, host=test, port=80, path='/1')])]
+    [Tab(history=[URL(scheme=http, host=test, port=80, path='/page0')]),
+     Tab(history=[URL(scheme=http, host=test, port=80, path='/page1')])]
 
     >>> lab7.print_tree(browser.tabs[1].document.node)
      <html>
        <body>
-         <a href="http://test/0">
+         <a href="http://test/page0">
            'Click me'
 
     >>> lab7.print_tree(browser.tabs[1].document)
@@ -83,7 +83,7 @@ Tabs supports navigation---clicking on a link to navigate a tab to a new site:
 
     >>> browser.tabs[1].click(14, 21)
     >>> browser.tabs[1].url
-    URL(scheme=http, host=test, port=80, path='/0')
+    URL(scheme=http, host=test, port=80, path='/page0')
     >>> lab7.print_tree(browser.tabs[1].document.node)
      <html>
        <body>
@@ -97,25 +97,25 @@ Tabs supports navigation---clicking on a link to navigate a tab to a new site:
 The old page is now in the history of the tab:
 
     >>> browser.tabs[1] #doctest: +NORMALIZE_WHITESPACE
-    Tab(history=[URL(scheme=http, host=test, port=80, path='/1'),
-                 URL(scheme=http, host=test, port=80, path='/0')])
+    Tab(history=[URL(scheme=http, host=test, port=80, path='/page1'),
+                 URL(scheme=http, host=test, port=80, path='/page0')])
 
 Navigating back restores the old page:
 
     >>> browser.tabs[1].go_back()
     >>> browser.tabs[1].url
-    URL(scheme=http, host=test, port=80, path='/1')
+    URL(scheme=http, host=test, port=80, path='/page1')
     >>> lab7.print_tree(browser.tabs[1].document.node)
      <html>
        <body>
-         <a href="http://test/0">
+         <a href="http://test/page0">
            'Click me'
 
 Clicking on a non-clickable area of the page does nothing:
 
     >>> browser.tabs[1].click(1, 1)
     >>> browser.tabs[1].url
-    URL(scheme=http, host=test, port=80, path='/1')
+    URL(scheme=http, host=test, port=80, path='/page1')
 
 Testing Browser
 ===============
@@ -123,15 +123,15 @@ Testing Browser
 Clicking on a browser tab focuses it:
 
     >>> browser.active_tab
-    Tab(history=[URL(scheme=http, host=test, port=80, path='/1')])
+    Tab(history=[URL(scheme=http, host=test, port=80, path='/page1')])
     >>> rect = browser.chrome.tab_rect(0)
     >>> browser.handle_click(test.Event(rect.left + 1, rect.top + 1))
     >>> browser.active_tab
-    Tab(history=[URL(scheme=http, host=test, port=80, path='/0')])
+    Tab(history=[URL(scheme=http, host=test, port=80, path='/page0')])
     >>> rect = browser.chrome.tab_rect(1)
     >>> browser.handle_click(test.Event(rect.left + 1, rect.top + 1))
     >>> browser.active_tab
-    Tab(history=[URL(scheme=http, host=test, port=80, path='/1')])
+    Tab(history=[URL(scheme=http, host=test, port=80, path='/page1')])
 
 Clicking on the address bar focuses it:
 
@@ -142,26 +142,26 @@ Clicking on the address bar focuses it:
 The back button works:
 
     >>> browser.tabs[1].history
-    [URL(scheme=http, host=test, port=80, path='/1')]
+    [URL(scheme=http, host=test, port=80, path='/page1')]
     >>> browser.handle_click(test.Event(14, browser.chrome.bottom + 21))
     >>> browser.tabs[1].history #doctest: +NORMALIZE_WHITESPACE
-    [URL(scheme=http, host=test, port=80, path='/1'),
-     URL(scheme=http, host=test, port=80, path='/0')]
+    [URL(scheme=http, host=test, port=80, path='/page1'),
+     URL(scheme=http, host=test, port=80, path='/page0')]
     >>> rect = browser.chrome.back_rect
     >>> browser.handle_click(test.Event(rect.left + 1, rect.top + 1))
     >>> browser.tabs[1].history
-    [URL(scheme=http, host=test, port=80, path='/1')]
+    [URL(scheme=http, host=test, port=80, path='/page1')]
 
 Pressing enter with text in the address bar works:
 
     >>> browser.handle_click(test.Event(50, 51))
     >>> browser.chrome.focus
     'address bar'
-    >>> browser.chrome.address_bar = "http://test/0"
+    >>> browser.chrome.address_bar = "http://test/page0"
     >>> browser.handle_enter(test.Event(0, 0))
     >>> browser.tabs[1].history #doctest: +NORMALIZE_WHITESPACE
-    [URL(scheme=http, host=test, port=80, path='/1'),
-     URL(scheme=http, host=test, port=80, path='/0')]
+    [URL(scheme=http, host=test, port=80, path='/page1'),
+     URL(scheme=http, host=test, port=80, path='/page0')]
 
 The home button works:
 
@@ -171,7 +171,7 @@ The home button works:
     ... b"Web Browser Engineering homepage")
     >>> browser.handle_click(test.Event(10, 10))
     >>> browser.tabs #doctest: +NORMALIZE_WHITESPACE
-    [Tab(history=[URL(scheme=http, host=test, port=80, path='/0')]),
-     Tab(history=[URL(scheme=http, host=test, port=80, path='/1'),
-                  URL(scheme=http, host=test, port=80, path='/0')]),
+    [Tab(history=[URL(scheme=http, host=test, port=80, path='/page0')]),
+     Tab(history=[URL(scheme=http, host=test, port=80, path='/page1'),
+                  URL(scheme=http, host=test, port=80, path='/page0')]),
      Tab(history=[URL(scheme=https, host=browser.engineering, port=443, path='/')])]

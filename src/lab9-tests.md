@@ -21,7 +21,7 @@ The browser should download JavaScript code mentioned in a `<script>` tag:
     >>> url = lab9.URL(test.socket.serve("<script src=" + str(url2) + "></script>"))
     >>> lab9.Browser().new_tab(url)
     >>> test.socket.last_request(str(url2))
-    b'GET /0 HTTP/1.0\r\nHost: test\r\n\r\n'
+    b'GET /page0 HTTP/1.0\r\nHost: test\r\n\r\n'
 
 If the script succeeds, the browser prints nothing:
 
@@ -32,7 +32,7 @@ If instead the script crashes, the browser prints an error message:
 
     >>> test.socket.respond(str(url2), b"HTTP/1.0 200 OK\r\n\r\nthrow Error('Oops');")
     >>> lab9.Browser().new_tab(url) #doctest: +ELLIPSIS
-    Script http://test/0 crashed Error: Oops
+    Script http://test/page0 crashed Error: Oops
     ...
 
 Note that in the last test I set the `ELLIPSIS` flag to elide the duktape stack
@@ -282,7 +282,7 @@ However, we should not have navigated away from the original URL, because we
 prevented submission:
 
     >>> b.tabs[1].history
-    [URL(scheme=http, host=test, port=80, path='/1')]
+    [URL(scheme=http, host=test, port=80, path='/page1')]
     
 Similarly, when we clicked on the `input` element its `value` should be cleared,
 but when we then typed `t` into it that was canceled so the value should still
