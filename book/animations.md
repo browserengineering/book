@@ -1160,7 +1160,7 @@ class Tab:
         # ...
         self.js.interp.evaljs("__runRAFHandlers()")
 
-        for node in tree_to_list(self.nodes, []):
+        for node in tree_to_list(self.node, []):
             for (property_name, animation) in \
                 node.animations.items():
                 # ...
@@ -1194,7 +1194,7 @@ style---the computed style and the animated style---to solve issues like this.
 ``` {.python}
 class Tab:
     def run_animation_frame(self, scroll):
-        for node in tree_to_list(self.nodes, []):
+        for node in tree_to_list(self.node, []):
             for (property_name, animation) in \
                 node.animations.items():
                 value = animation.animate()
@@ -1340,7 +1340,7 @@ class Tab:
         self.composited_updates = []
 
     def run_animation_frame(self, scroll):
-        for node in tree_to_list(self.nodes, []):
+        for node in tree_to_list(self.node, []):
             for (property_name, animation) in \
                 node.animations.items():
                 value = animation.animate()
