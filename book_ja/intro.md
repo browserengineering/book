@@ -5,349 +5,89 @@ next: history
 prev: preface
 ...
 
-I---this is Chris speaking---have known the web[^theweb] for all of my
-adult life. The web for me is something of a technological companion,
-and I’ve never been far from it in my studies or my work. Perhaps it's
-been the same for you. And using the web means using a browser. I
-hope, as you read this book, that you fall in love with web browsers,
-just like I did.
+私（クリス）は大人になってからずっとwebについて詳しい。私にとってwebとは技術的な仲間のようなもので、勉強でも仕事でもwebから離れたことはない。おそらく、それはあなたも同じであろう。そして、webを使うということは、ブラウザを使うということでもある。私は、あなたがこの本を読むことで、私のようにwebブラウザに恋に落ちることを願っている。
 
-The Browser and Me
+ブラウザと私
 ==================
 
-Since I first encountered the web and its predecessors,[^bbs] in the
-early 1990s, I've been fascinated by browsers and the concept of networked user
-interfaces. When I [surfed][websurfing] the web, even in its earliest form, I
-felt I was seeing the future of computing. In some ways, the web and I grew
-together---for example, 1994, the year the web went commercial, was the same
-year I started college; while there I spent a fair amount of time
-surfing the web,
-and by the time I graduated in 1999, the browser had fueled the famous dot-com
-speculation gold rush. Not only that, but the company for which I now work,
-Google, is a child of the web and was founded during that time. 
+1990年代初頭に、私が初めてwebとその前身に出会って以来、私はブラウザとネットワーク化されたユーザーインターフェースの概念に魅了されてきた。初期のwebの形であったとしても、webサーフィンをしているとき、私はコンピューティングの未来を見ているように感じた。ある意味で、webと私はともに成長してきた。例えば1994年、webが商業化した年と同じ年に、私の大学生活は始まった。そこで私はかなりの時間をwebサーフィンに費やし、1999年に大学を卒業する頃には、ブラウザは有名な dot-com 投機のゴールドラッシュを煽っていた。それだけでなく、私が今働いている Google もwebの子供であり、その時期に設立された。
 
-[^theweb]: Broadly defined, the web is the interlinked network (“web”)
-of [web pages](https://en.wikipedia.org/wiki/Web_page) on the
-internet. If you've never made a web page, I recommend MDN's [Learn
-Web Development][learn-web] series, especially the [Getting
-Started][learn-basics] guide. This book will be easier to read if
-you're familiar with the core technologies.
-    
-[learn-web]: https://developer.mozilla.org/en-US/docs/Learn
-[learn-basics]: https://developer.mozilla.org/en-US/docs/Learn/Getting_started_with_the_web
+大学1年生のとき、私はRedHatのセールスマンのプレゼンテーションに参加した。プレゼンはRedHat Linuxを売り込むのが狙いで、おそらくそれを「未来のオペレーティングシステム」と呼び、「Linuxデスクトップの年」について推測していた。しかし、RedHatが直面する困難について質問されたとき、セールスマンはLinuxではなくwebについて言及した。彼は、「誰かが、Linux用の良いブラウザを作る必要がある」と言った。当時でさえ、web創成期にはすでにブラウザはすべてのコンピュータに必要なコンポーネントだった。彼は、「より良いブラウザを作るのはどれだけ難しいか？」という挑戦さえ投げかけた。確かに、どれほど難しいことだろうか？何がそんなに難しいのか？その疑問は、長い間私の心に引っかかっていた。
 
-[websurfing]: https://www.pcmag.com/encyclopedia/term/web-surfing
+実に難しい！Chromeの開発に11年関わってきて今、彼の問いに対する答えがわかった。
+ブラウザの構築は簡単でありながら信じられないほど難しく、意図的でもあり偶発的でもある。そして、どこを見ても、webの進化と歴史がひとつのコードベースに集約されている。それは楽しく、果てしなく興味深い。
 
-[^bbs]: For me, [bulletin board systems (BBSs)](https://en.wikipedia.org/wiki/Bulletin_board_system)
-over a dial-up modem connection. A BBS, like a browser, is a
-window into dynamic content somewhere else on the internet.
+こうして私はwebブラウザに恋に落ちた。なぜあなたもそうなるのか、今からその理由伝えよう
 
-In my freshman year at college, I attended a presentation by a RedHat salesman.
-The presentation was of course aimed at selling RedHat Linux, probably calling
-it the "operating system of the future" and speculating about the "year of the
-Linux desktop". But when asked about challenges RedHat faced, the salesman
-mentioned not Linux but _the web_: he said that someone "needs to make a good
-browser for Linux".[^netscape-linux] Even back then, in the first
-years of the web, the browser was already a necessary component
-of every computer.
-He even threw out a challenge: "How hard could it be to build a better browser?"
-Indeed, how hard could it be? What makes it so hard? That question stuck with me
-for a long time.[^meantime-linux]
-
-[^netscape-linux]: Netscape Navigator was available for Linux at that time, but
-it wasn’t viewed as especially fast or featureful compared to its implementation
-on other operating systems.
-
-[^meantime-linux]: Meanwhile, the "better Linux browser than Netscape" took a
-long time to appear...
-
-How hard indeed! After eleven years in the trenches working on Chrome, I now
-know the answer to his question: building a browser is both easy and incredibly
-hard, both intentional and accidental. And everywhere you look, you see the
-evolution and history of the web wrapped up in one codebase. It's fun and
-endlessly interesting.
-
-So that's how I fell in love with web browsers. Now let me tell you why you
-will, too.
-
-The Web in History
+歴史の中のweb
 ==================
 
-The web is a grand, crazy experiment. It's natural, nowadays, to watch videos,
-read news, and connect with friends on the web. That can make the web seem
-simple and obvious, finished, already built. But the web is neither simple nor
-obvious (and is certainly not finished). It is the result of experiments and
-research, reaching back to nearly the beginning of computing,[^precursors] about
-how to help people connect and learn from each other.
+webは壮大でクレイジーな実験だ。今や、webでビデオを見たり、ニュースを読んだり、友人とつながったりするのは当たり前のことだ。そのため、webは単純明快で、完成され、すでに構築されているように思われがちだ。しかし、webは単純でも明白でもない（そして確かに完成していない）。これは、コンピューティングのほぼ初期にまでさかのぼる、人々が互いにつながり、学び合うことを支援する方法についての、実験と研究の結果である。
 
-[^precursors]: And the web _also_ needed rich computer displays, powerful
-user-interface-building libraries, fast networks, and sufficient computing power and information
-storage capacity. As so often happens with technology, the web had many similar
-predecessors, but only took its modern form once all the pieces came together.
+初期のインターネットは、主に大学や研究所、大企業のコンピュータが物理的なケーブルで結ばれ、アプリケーション固有のプロトコルで通信する世界規模のコンピューターのネットワークだった。初期のwebは、ほとんどがこの基盤の上に構築されていた。webページは、特定のコンピューターに保存された特定のフォーマットのファイルだった。webページのアドレスにはコンピュータとファイルの名前が付けられており、初期のサーバーはディスクからファイルを読み取る以外にほとんど何もしなかった。webの論理的構造は、その物理的構造を反映していた。
 
-In the early days, the internet was a world-wide network of computers, largely
-at universities, labs, and major corporations, linked by physical cables and
-communicating over application-specific protocols. The (very) early web mostly
-built on this foundation. Web pages were files in a specific format stored on
-specific computers. The addresses for web pages named the computer and the file, and
-early servers did little besides read files from a disk. The logical structure
-of the web mirrored its physical structure.
+多くのことが変わった。現在のwebページのHTMLは通常、動的に組み立てられ、あなたのブラウザにオンデマンドで送信される。組み上げられるコンテンツは、ニュース、受信トレイのコンテンツ、あなたの好みに合わせてダイナミックに変化する広告などがある。アドレスでさえ、もはや特定のコンピュータを識別することはできない。コンテンツ配信ネットワークは、世界中の何千台ものコンピューターのいずれかにリクエストを送る。より高いレベルでは、ほとんどのwebページは誰かの自宅のコンピューターからではなく、大企業のソーシャルメディアプラットフォームかクラウドコンピューティングサービスから提供されている。
 
-A lot has changed. The HyperText Markup Language (HTML) for web pages
-is now usually dynamically assembled on the
-fly[^server-side-rendering] and sent on demand to your browser. The pieces being
-assembled are themselves filled with dynamic content---news, inbox contents, and
-advertisements adjusted to your particular tastes. Even the addresses no longer identify
-a specific computer---content distribution networks route requests to any of
-thousands of computers all around the world. At a higher level, most web pages
-are served not from someone's home computer[^self-hosted] but from a
-major corporation's social media platform or cloud computing service.
+すべてが変化しても、webの本質である核となる構成要素は変わらないものもある：
 
-[^server-side-rendering]: "Server-side rendering" is the process of assembling
-HTML on the server when loading a web page. Server-side rendering can use web
-technologies like JavaScript and even [headless
-browsers](https://en.wikipedia.org/wiki/Headless_browser). Yet one more place
-browsers are taking over!
+* webは、ハイパーリンクで結ばれた情報のネットワークである
+* ユーザーは、ブラウザと呼ばれるユーザーエージェントを使用してwebを使う
+* 情報はHTTPで要求され、HTML文書フォーマットで構造化される
+* ドキュメントは、コンテンツではなくURLによって識別され、動的に生成されることもある
+* webページは、画像、動画、CSS、JavaScriptなど、さまざまな形式の補助アセットにリンクすることができる
+* これらの構成要素はすべてオープンで標準化されており、自由に使用または再利用することができる
 
-[^self-hosted]: People actually did this! And when their website became popular,
-it often ran out of bandwidth or computing power and became inaccessible.
+哲学的な問題として、おそらくこれらの原則のどちらか一方は二の次なのだろう。webのネットワーキングとレンダリングの側面を区別しようとすることもできる。リンクやネットワーキングを、特定のプロトコルやデータフォーマットの選択から抽象化することもできる。ブラウザが理論的に必要かどうかを問うこともできるし、HTTP、URL、ハイパーリンクだけがwebに本当に必要な部分だと主張することもできる。
 
-With all that's changed, some things have stayed the same, the core building
-blocks that are the essence of the web:
+結局のところ、webは実験であり、コア技術は進化し、成長していく。しかし、webは偶然の産物ではない。そのデザインは、コンピューティングだけでなく、人間がどのようにつながり、相互作用できるのかという真実を反映している。ホスティングとコンテンツの仮想化が進む中、webが生き残っただけでなく繁栄したのは、特にこのオリジナルなデザインの優雅さと効果によるものだ。
 
-* The web is a _network of information_
-  linked by _hyperlinks_.
-* The user uses a _user agent_, called a _browser_, to navigate the web.
-* Information is requested with the _HyperText Transfer Protocol (HTTP)_
-  and structured with the _HTML document format_.
-* Documents are identified by Uniform Resource Locators (URLs),
-  _not_ by their content, and may be dynamically generated.
-* Web pages can link to auxiliary assets in different formats,
-  including images, videos, Cascading Style Sheets (CSS), and JavaScript.
-* All these building blocks are open, standardized, and free to use or reuse.
+理解すべき重要なことは、この壮大な実験は終わっていないということだ。webの本質は残るが、webブラウザを作ることによって、その未来を形作るチャンスがあるのだ。
 
-As a philosophical matter, perhaps one or another of these principles is
-secondary. One could try to distinguish between the networking and rendering
-aspects of the web. One could abstract linking and networking from the
-particular choice of protocol and data format. One could ask whether the browser
-is necessary in theory, or argue that HTTP, URLs, and hyperlinking are the only
-truly essential parts of the web.
-
-Perhaps.[^perhaps] The web is, after all, an experiment; the core technologies
-evolve and grow. But the web is not an accident; its original design reflects
-truths not just about computing, but about how human beings can connect and
-interact. The web not only survived but thrived during the virtualization of
-hosting and content, specifically due to the elegance and effectiveness of
-this original design.
-
-[^perhaps]: It is indeed true that one or more of the implementation choices
-could be replaced, and perhaps that will happen over time. For example,
-JavaScript might eventually be replaced by another language or technology, HTTP
-by some other protocol, or HTML by a successor. Yet the web will stay the web,
-because any successor format is sure to support a *superset* of functionality,
-and have the same fundamental structure.
-
-The key thing to understand is that this grand experiment is not over.
-The essence of the web will stay, but by building web browsers you have the
-chance to shape its future.
-
-Real Browser Codebases
+実際のブラウザコードベース
 ======================
 
-So let me tell you what it's like to contribute to a browser. Some time during
-my first few months of working on Chrome, I came across the code implementing
-the[`<br>`][br-tag] tag---look at that, the good old `<br>` tag, which I’ve
-used many times to insert newlines into web pages! And the implementation turns
-out to be barely any code at all, both in Chrome and in this book's simple
-browser.
+ブラウザに貢献するとはどんなことかを話そう。Chromeの開発を始めて数ヶ月のあるとき、<br>タグを実装しているコードにであった—あの懐かしい<br>タグ、webページに改行を挿入するために何度も使ってきた！ そして、Chromeでも、この本に登場するシンプルなブラウザでも、その実装は実際にはほとんどコードがないことが判明した。
 
-[br-tag]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/br
+しかし、Chrome全体としては、その機能、スピード、セキュリティ、信頼性には驚かされる。Chromeの開発には、何千人もの人年が費やされた。web上の何千もの企業、何百万人もの開発者、そして何十億人ものwebユーザーのために、より多くの機能を追加し、パフォーマンスを向上させ、「webエコシステム」に対応し続けなければならないというプレッシャーが常にある。
 
-But Chrome as a whole---its features, speed, security, reliability---_wow_.
-_Thousands_ of person-years went into it. There is constant pressure to do
-more---to add more features, to improve performance, to keep up with the "web
-ecosystem"---for the thousands of businesses, millions of
-developers,[^developers] and billions of users on the web.
+このようなコードベースに取り組むと、圧倒されるように感じることがある。会ったこともない誰かが15年前に最後に触ったコードの行を見つけたり、今でも存在すら知らなかったファイルやクラスを発見したり、必要なさそうなのに重要だと判明したコードの行を見たりすることがよくある。その15年前のコードは何をしているのだろう？初めて見るファイルの目的は何だろう？そのコードには理由があるのだろうか？
 
-[^developers]: I usually prefer “engineer”---hence the title of this book---but
-“developer” or “web developer” is much more common on the web. One important
-reason is that anyone can build a web page---not just trained software engineers
-and computer scientists. “Web developer” also is more inclusive of additional,
-critical roles like designers, authors, editors, and photographers. A web
-developer is anyone who makes web pages, regardless of how.
+どのブラウザにも、小さなミスから無数のミックスアップやミスマッチまで、何千もの未修正のバグがある。どのブラウザも、最後のパフォーマンスを絞り出すために、延々とチューニングと最適化を続けなければならない。どのブラウザも、コードの複雑さを軽減するために、しばしばモジュール化と抽象化を慎重に導入しながら、継続的にコードをリファクタリングする骨の折れる作業を必要とする。
 
-Working on such a codebase can feel daunting. I often find lines of code last
-touched 15 years ago by someone I've never met; or even now discover files and
-classes that I never knew existed; or see lines of code that don’t look necessary,
-yet turn out to be important. What does that 15-year-old code do? What
-is the purpose of these new-to-me files? Is that code there for a reason?
+ブラウザが多くの巨大なコードベースと異なるのは、その緊急性だ。ブラウザは「レガシー」コードベースと同じくらい古いものだが、レガシーではないし、放棄されたものでも、半ば非推奨のものでも、置き換えが予定されているものでもない。それどころか、世界経済にとって不可欠なものなのだ。そのため、ブラウザエンジニアは、放棄したり置き換えたりするのではなく、修正・改善しなければならない。また、webの特性そのものが高度に分散化されているため、ブラウザが満たすユースケースは、特定のブラウザを「所有」または「管理」する企業によって決まるわけではない。あなたを含む他の人々が、アイデア、提案、実装に貢献することができるし、実際に貢献している。
 
-Every browser has thousands of unfixed bugs, from the smallest of mistakes to
-myriad mix ups and mismatches. Every browser must be endlessly tuned and
-optimized to squeeze out that last bit of performance. Every browser requires
-painstaking work to continuously refactor the code to reduce its complexity,
-often through the careful[^browsers-abstraction-hard] introduction of
-modularization and abstraction.
+驚くべきは、その規模とペースと複雑さにもかかわらず、貢献する余地がまだたくさんあるということだ。今日のすべてのブラウザはオープンソースであり、web開発者のコミュニティ全体にその実装を開放している。ブラウザは巨大な研究プロジェクトのように進化し、常に新しいアイデアが提案され、テストされている。予想通り、失敗する機能もあれば成功する機能もある。成功したものは仕様になり、他のブラウザによって実装される。どのwebブラウザも、バグの修正、新機能の提案、有望な最適化の実装など、貢献に対してオープンである。
 
-[^browsers-abstraction-hard]: Browsers are so performance-sensitive that, in
-many places, merely the introduction of an abstraction---a function call or
-branching overhead---can have an unacceptable performance cost!
-
-What makes a browser different from most massive code bases is their _urgency_.
-Browsers are nearly as old as any “legacy” codebase, but are _not_ legacy, not
-abandoned or half-deprecated, not slated for replacement. On the contrary, they
-are vital to the world’s economy. Browser engineers must therefore fix and
-improve rather than abandon and replace. And since the character of the web
-itself is highly decentralized, the use cases met by browsers are to a
-significant extent _not determined_ by the companies “owning” or “controlling” a
-particular browser. Other people---including you---can and do contribute ideas,
-proposals, and implementations.
-
-What's amazing is that, despite the scale and the pace and the complexity, there
-is still plenty of room to contribute. Every browser today is open source, which
-opens up its implementation to the whole community of web developers. Browsers
-evolve like giant research projects, where new ideas are constantly being proposed
-and tested out. As you would expect, some features fail and some succeed. The
-ones that succeed end up in specifications and are implemented by other
-browsers. Every web browser is open to contributions---whether
-fixing bugs or proposing new features or implementing promising optimizations.
-
-And it's worth contributing, because working on web browsers is a lot of fun.
-
-Browser Code Concepts
+ブラウザコードの概念
 =====================
 
-HTML and CSS are meant to be black boxes---declarative application
-programming interfaces (APIs)---where one
-specifies _what_ outcome to achieve, and the _browser itself_ is
-responsible for figuring out _how_ to achieve it. Web developers
-don't, and mostly can't, draw their web pages' pixels on their own.
+HTMLとCSSはブラックボックスである。達成すべき結果を指定し、どのように実現するかはブラウザ自身が責任を持つ、宣言的なAPIである。web開発者は、自分たちでwebページのピクセルを描くことはないし、たいていの場合、それを行うこともできない。
 
-That can make the browser magical or frustrating---depending on
-whether it is doing the right thing! But that also makes a browser a pretty
-unusual piece of software, with unique challenges, interesting algorithms, and
-clever optimizations. Browsers are worth studying for the pure pleasure of it.
+正しく処理をするかどうかによって、ブラウザを魔法のようにしたり、イライラさせるものにしたりする。しかし、ブラウザはまた、ユニークな挑戦、興味深いアルゴリズム、巧妙な最適化などを持ち合わせた、かなり珍しいソフトウェアでもある。ブラウザは純粋に楽しむために研究する価値がある。
 
-[^loss-of-control]: Loss of control is not necessarily specific to the web---much
-of computing these days relies on mountains of other people's code.
+これらを全て機能させているのは、webブラウザが、制御の反転、制約プログラミング、宣言的プログラミング、を実装しているからである。webは制御を逆転させ、ブラウザという仲介者を介してレンダリングの大部分を処理し、web開発者はこの仲介者にレンダリングパラメータとコンテンツを指定する。さらに、これらのパラメータは通常、値を直接指定するのではなく、画面上の要素の相対的なサイズと位置間の制約の上で指定される。ブラウザはその制約を解決して、これらの値を見つけ出す。同じ考え方がアクションにも当てはまり、webページは、アクションがいつ行われるかを指定することなく実行されることを要求することがほとんどである。この宣言的なスタイルは、開発者の視点からは変更が「すぐに適用される」ことを意味するが、その裏では、ブラウザは怠慢になり、変更が外部に見えるようになるまで適用を遅らせることができる。これは、後続のAPI呼び出しのため、あるいはページをユーザーに表示していなければならないためである。
 
-What makes that all work is the web browser's implementations of [inversion of
-control][inversion], [constraint programming][constraints], and
-[declarative programming][declarative]. The web _inverts control_, with an
-intermediary---the browser---handling most of the rendering, and the web
-developer specifying rendering parameters and content to this intermediary.
-[^forms] Further, these parameters usually take the form of _constraints_
-between the relative sizes and positions of on-screen elements instead of
-specifying their values directly;[^constraints] the browser solves the
-constraints to find those values. The same idea applies for actions: web pages
-mostly require _that_ actions take place without specifying _when_ they do.
-This _declarative_ style means that from the point of view of a developer,
-changes "apply immediately", but under the hood, the browser can be
-[lazy] and delay applying the changes until they become externally visible,
-either due to subsequent API calls or because the page has to be displayed to
-the user.[^style-calculation]
+ブラウザの設計が特殊であることには、現実的な理由がある。たしかに、開発者はいくつかのコントロールとエージェンシーを失う。ピクセルが間違っていても、開発者はそれを直接修正できない。しかし、細かいことを気にすることなくコンテンツをweb上に展開し、現存するほとんどすべてのコンピューティングデバイスでそのコンテンツを即座に利用可能にし、将来にわたってアクセス可能な状態を維持する能力を得ることができ、ソフトウェアの避けがたい陳腐化をほとんど回避することができる。
 
-[inversion]: https://en.wikipedia.org/wiki/Inversion_of_control
-[constraints]: https://en.wikipedia.org/wiki/Constraint_programming
-[declarative]: https://en.wikipedia.org/wiki/Declarative_programming
-[lazy]: https://en.wikipedia.org/wiki/Lazy_evaluation
+私にとってブラウザとは、アルゴリズムに命が吹き込まれる場所だ。ブラウザには、どんなコンピューターゲームよりも複雑で強力なレンダリングエンジン、フルネットワーキングスタック、巧妙なデータ構造と並列プログラミング技術、仮想マシン、インタプリタ言語、ジャストインタイムコンパイラー、ワールドクラスのセキュリティサンドボックス、そしてユニークでダイナミックなデータ保存システムが搭載されている。
 
-There are practical reasons for the unusual design of a browser. Yes, developers
-lose some control and agency---when pixels are wrong, developers cannot fix them
-directly.[^loss-of-control] But they gain the ability to deploy content on the
-web without worrying about the details, to make that content instantly available
-on almost every computing device in existence, and to keep it accessible in the
-future, mostly avoiding software's inevitable obsolescence.
+実際、あなたはいつもブラウザを使っている。もしかしたら、この本を読むために使っているかもしれない！webにはすでに慣れ親しんでいるから、ブラウザのアルゴリズムは、他のどこよりも親しみやすくなっている
 
-[^forms]: For example, in HTML there are many built-in [form control
-elements][forms] that take care of the various ways the user of a web page can
-provide input. The developer need only specify parameters such as button names,
-sizing, and look-and-feel, or JavaScript extension points to handle form
-submission to the server. The rest of the implementation is taken care of by the
-browser.
-
-[forms]: https://developer.mozilla.org/en-US/docs/Learn/Forms/Basic_native_form_controls
-
-[^constraints]: Constraint programming is clearest during web page layout, where
-font and window sizes, desired positions and sizes, and the relative arrangement
-of widgets is rarely specified directly.
-
-[^style-calculation]: For example, when exactly does the browser
-compute HTML element styles? Any change to the styles is visible to
-all subsequent API calls, so in that sense it applies "immediately".
-But it is better for the browser to delay style recalculation,
-avoiding redundant work if styles change twice in quick succession.
-Maximally exploiting the opportunities afforded by declarative
-programming makes real-world browsers very complex.
-
-To me, browsers are where algorithms _come to life_. A browser contains a
-rendering engine more complex and powerful than any computer game; a full
-networking stack; clever data structures and parallel programming techniques; a
-virtual machine, an interpreted language, and a just-in-time compiler; a world-class security
-sandbox; and a uniquely dynamic system for storing data.
-
-And the truth is---you use a browser all the time, maybe for reading this
-book! That makes the algorithms more approachable in a browser than almost
-anywhere else, because the web is already familiar.
-
-The Role of the Browser
+ブラウザの役割
 =======================
 
-The web is at the center of modern computing.
-Every year the web expands its reach to more and more of what we do with
-computers. It now goes far beyond its original use for document-based
-information sharing: many people now spend their entire day in a browser, not
-using a single other application! Moreover, desktop applications are now often
-built and delivered as _web apps_: web pages loaded by a browser but used like
-installed applications.[^pwa] Even on mobile devices, apps often embed a browser
-to render parts of the application user interface (UI).[^hybrid] Perhaps in the future both
-desktop and mobile devices will largely be containers for web apps. Already,
-browsers are a critical and indispensable part of computing.
+webは現代のコンピューティングの中心にある。年々、私たちがコンピュータを使って行うことに対して、webが及ぶ範囲が拡大している。現在では、文書ベースの情報共有という当初の用途をはるかに超えている。多くの人が、他のアプリケーションを1つも使わず、1日中ブラウザで過ごしている！さらに、現在ではデスクトップアプリケーションはしばしば、webアプリケーションとして構築され、提供される。webページはブラウザによって読み込まれるが、インストールされたアプリケーションのように使用される。モバイルデバイスでも、UIの一部をレンダリングするために、アプリにはしばしばブラウザが組み込まれる。
+おそらく将来的には、デスクトップとモバイルデバイスの両方が、webアプリケーションのコンテナとして機能するようになるだろう。すでに、ブラウザはコンピューティングに不可欠な重要な要素となっている。
 
-[^pwa]: Related to the notion of a web app is a Progressive Web App, which is a
-web app that becomes indistinguishable from a native app through [progressive
-enhancement][prog-enhance-def].
+webのこの中心的な位置付けを考えると、webがどのように機能するかを知ることは価値がある。特に、ユーザーエージェントであり、最終的にはwebの原則を実現するwebのインタラクションの仲介者であるブラウザに注目することは価値がある。ブラウザはwebの実装者でもある。そのサンドボックスはwebブラウジングを安全に保ち、そのアルゴリズムは宣言的文書モデルを実装し、そのUIはリンクをナビゲートする。ブラウザが超効率的であれば、webページは高速にロードされ、スムーズに反応する。
 
-[^hybrid]: The fraction of such "hybrid" apps that are shown via a "web view" is
-    likely increasing over time. In some markets like China, "super-apps" act
-    like a mobile web browser for web-view-based games and widgets.
-    
-So given this centrality, it's worth knowing how the web works. And in
-particular, it's worth focusing on the browser, which is the user
-agent[^useragent] and the mediator of the web's interactions, which
-ultimately is what makes the web's principles real. The browser is also the
-_implementer_ of the web: its sandbox keeps web browsing safe; its algorithms
-implement the declarative document model; its UI navigates links. Web pages
-load fast and react smoothly only when the browser is hyper-efficient.
-
-[^useragent]: The user agent concept views a computer, or software within the
-    computer, as a trusted assistant and advocate of the human user.
-
-Browsers and You
+ブラウザとあなた
 ================
 
-This book explains how to build a simple browser, one that can---despite its
-simplicity---display interesting-looking web pages and support many interesting
-behaviors. As you’ll see, it’s surprisingly easy, and it
-demonstrates all the core concepts you need to understand a real-world browser.
-The browser stops being a mystery when it becomes code.
+本書はシンプルなブラウザを作る方法を説明しており、それはシンプルであるにもかかわらず、興味深いwebページを表示し、多くの興味深い動作をサポートすることができる。ご覧の通り、驚くほど簡単で、実世界のブラウザを理解するのに必要な核となる概念をすべて示している。ブラウザはコードになることで、不可解なものではなくなるのだ。
 
-[prog-enhance-def]:
-https://en.wikipedia.org/wiki/Progressive_enhancement
+序盤の章では、自身のブラウザを自分で構築していくことを目的としている。いったんブラウザを立ち上げ、動作させれば、パフォーマンスを向上させたり、機能を追加したりする機会は無限にあり、それらのいくつかは、練習問題として提示している。これらの練習問題の多くは実際のブラウザで実装されている機能であり、これら練習問題に触れることを推奨する。機能の追加はブラウザ開発の醍醐味のひとつである！
 
-The intention is for you to build your own browser as you work through the early
-chapters. Once it is up and running, there are endless opportunities to improve
-performance or add features, some of which are suggested as exercises. Many of
-these exercises are features implemented in real browsers, and I encourage you
-to try them---adding features is one of the best parts of browser development!
+そして、私のChromeでの経験に基づき、実際のブラウザのレンダリングエンジンのアーキテクチャを具体化するための詳細や高度な機能へと本書は進んでいく。この本を読み終えた後には、それほど苦労することなく、ChromiumやGecko、WebKitのソースコードを掘り下げ、そして理解することができるようになっているはずだ。
 
-The book then moves on to details and advanced features that flesh out the
-architecture of a real browser’s rendering engine, based on my experiences with
-Chrome. After finishing the book, you should be able to dig into the source code
-of Chromium, Gecko, or WebKit and understand it without too much trouble.
-
-I hope the book lets you appreciate a browser's depth, complexity, and power. I
-hope the book passes along a browser's beauty---its clever algorithms and data
-structures, its co-evolution with the culture and history of computing, its
-centrality in our world. But most of all, I hope the book lets you see in
-yourself someone building the browser of the future.
+この本を通じて、あなたがブラウザの奥深さ、複雑さ、パワーを理解することを私は願っている。この本が、ブラウザの美しさ、具体的には巧みなアルゴリズムやデータ構造、コンピューティングの文化や歴史との共進化、私たちの世界における中心性などを伝えてくれることを願っている。そして何よりも、この本が、あなた自身が未来のブラウザを作っている人物だと、あなたに感じさせてくれることを願っている。
