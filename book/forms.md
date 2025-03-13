@@ -360,8 +360,10 @@ sheets[^update-styles] every time you type!
     area definitely can't make such changes, so let's skip this in our
     browser.
     
-Now when we click an `input` element and clear its contents, we can
-call `render` to redraw the page with the `input` cleared:
+Now when we click an `input` element and clear its contents, we should
+call `render` to redraw the page with the `input` cleared. We also need
+to call `render` if we clicked off an input element, since we might have
+unfocused an input element in the process:
 
 ``` {.python}
 class Tab:
@@ -370,6 +372,7 @@ class Tab:
             elif elt.tag == "input":
                 elt.attributes["value"] = ""
                 return self.render()
+        self.render()
 ```
 
 So that's clicking in an `input` area. But typing is harder. Think
@@ -510,11 +513,11 @@ element:
 ``` {.python}
 class Tab:
     def click(self, x, y):
+        if self.focus:
+            self.focus.is_focused = False
         while elt:
             elif elt.tag == "input":
                 elt.attributes["value"] = ""
-                if self.focus:
-                    self.focus.is_focused = False
                 self.focus = elt
                 elt.is_focused = True
                 return self.render()

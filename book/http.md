@@ -124,7 +124,7 @@ now talk to `example.org`.
 
 ::: {.further}
 The URL syntax is defined in
-[RFC 3987](https://tools.ietf.org/html/rfc3986), whose first author is
+[RFC 3986](https://tools.ietf.org/html/rfc3986), whose first author is
 Tim Berners-Lee---no surprise there! The second author is Roy Fielding, a
 key contributor to the design of HTTP and also well known for describing
 the Representational State Transfer (REST) architecture of the web in his [Ph.D. thesis][rest-thesis],

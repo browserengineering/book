@@ -125,12 +125,14 @@ class Tab:
         self.render()
 
     def click(self, x, y):
+        if self.focus:
+            self.focus.is_focused = False
         self.focus = None
         y += self.scroll
         objs = [obj for obj in tree_to_list(self.document, [])
                 if obj.x <= x < obj.x + obj.width
                 and obj.y <= y < obj.y + obj.height]
-        if not objs: return
+        if not objs: return self.render()
         elt = objs[-1].node
         while elt:
             if isinstance(elt, Text):
@@ -154,6 +156,7 @@ class Tab:
                         return self.submit_form(elt)
                     elt = elt.parent
             elt = elt.parent
+        self.render()
 
     def submit_form(self, elt):
         if self.js.dispatch_event("submit", elt): return
