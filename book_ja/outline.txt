@@ -1,0 +1,465 @@
+# -*- mode: python -*-
+
+# This file is a template for the code outlines in the book;
+# definitions will appear in the outline in the same order that they appear here
+
+# In general, the format is interpreted as follows:
+#  - Whitespace lines and comments don't matter
+#  - Classes, functions, and constants are matched by name with the relevant prefix
+#  - So function arguments don't matter, but you can have them if you want
+#  - A line with two constants on it, like `WIDTH, HEIGHT`, will print with both constants on one line, in that order
+#  - If a definition is generated but not in this template you'll get an error
+
+# Networking
+COOKIE_JAR
+class URL:
+    def __init__
+    def request
+    def resolve
+    def origin
+    def __str__
+
+# HTML tree
+class Text:
+    def __init__
+    def __repr__
+class Tag:
+    def __init__
+class Element:
+    def __init__
+    def __repr__
+def print_tree
+def tree_to_list
+def is_focusable(node)
+def get_tabindex(node)
+
+# HTML parser
+def show(body)
+def lex(body)
+class HTMLParser:
+    SELF_CLOSING_TAGS
+    HEAD_TAGS
+    def __init__(body)
+    def parse()
+    def get_attributes(text)
+    def add_text(text)
+    def add_tag(tag)
+    def implicit_tags(tag)
+    def finish()
+
+# CSS parser
+class CSSParser:
+    def __init__(s)
+    def whitespace()
+    def literal(literal)
+    def word()
+    def ignore_until(chars)
+    def pair(until)
+    def selector()
+    def body()
+    def parse()
+    # TODO: why? Remove...
+    def until_semicolon()
+    def until_chars(chars)
+    def simple_selector()
+    def media_query()
+class TagSelector:
+    def __init__(tag)
+    def matches(node)
+class DescendantSelector:
+    def __init__(ancestor, descendant)
+    def matches(node)
+class PseudoclassSelector:
+    def __init__(pseudoclass, base)
+    def matches(node)
+
+# Fonts
+FONTS
+def get_font(size, weight, style)
+def font(css_style, zoom, notify)
+def linespace(font)
+
+# CSS value parser
+NAMED_COLORS
+def parse_color(color)
+def parse_blend_mode(blend_mode_str)
+def parse_transition(value)
+def parse_transform(transform_str)
+def parse_outline(outline_str)
+def parse_image_rendering(quality)
+
+# Timing
+REFRESH_RATE_SEC
+class MeasureTime:
+    def __init__()
+    def time(name)
+    def stop(name)
+    def finish()
+
+# Task queue
+class Task:
+    def __init__(task_code)
+    def run()
+class TaskRunner:
+    def __init__(tab)
+    def schedule_task(task)
+    def set_needs_quit()
+    def clear_pending_tasks()
+    def start_thread()
+    def run()
+    def handle_quit()
+
+# Styling
+DEFAULT_STYLE_SHEET
+CSS_PROPERTIES
+INHERITED_PROPERTIES
+def init_style(node)
+def style(node, rules, frame)
+def cascade_priority(rule)
+def diff_styles(old_style, new_style)
+class NumericAnimation:
+    def __init__(old_value, new_value, num_frames)
+    def animate()
+    def __repr__()
+def dirty_style(node)
+
+# Layout
+class ProtectedField:
+    def __init__(obj, name, parent, dependencies, invalidations)
+    def set_dependencies(dependencies)
+    def set_ancestor_dirty_bits()
+    def mark()
+    def notify()
+    def set(value)
+    def get()
+    def read(notify)
+    def copy(field)
+    def __repr__()
+
+def dpx(css_px, zoom)
+WIDTH, HEIGHT
+HSTEP, VSTEP
+class Rect:
+    def __init__(left, top, right, bottom)
+    def contains_point(x, y)
+INPUT_WIDTH_PX
+IFRAME_WIDTH_PX, IFRAME_HEIGHT_PX
+BLOCK_ELEMENTS
+def layout(text)
+class Layout:
+    def __init__
+    def recurse(tree)
+    def token(tok)
+    def open_tag(tag)
+    def close_tag(tag)
+    def flush()
+    def word(word)
+class DocumentLayout:
+    def __init__(node, frame)
+    def layout(width, zoom)
+    def should_paint()
+    def paint()
+    def paint_effects(cmds)
+    def layout_needed()
+class BlockLayout:
+    def __init__(node, parent, previous, frame)
+    def layout_mode()
+    def layout()
+    def recurse(node)
+    def open_tag(tag)
+    def close_tag(tag)
+    def add_inline_child(node, w, child_class, frame, word)
+    def flush()
+    def new_line()
+    def word(node, word)
+    def input(node)
+    def image(node)
+    def iframe(node)
+    def self_rect()
+    def should_paint()
+    def paint()
+    def paint_effects(cmds)
+    def layout_needed()
+class LineLayout:
+    def __init__(node, parent, previous)
+    def layout()
+    def should_paint()
+    def paint()
+    def paint_effects(cmds)
+    def layout_needed()
+class TextLayout:
+    def __init__(node, parent, previous, word)
+    def layout()
+    def should_paint()
+    def paint()
+    def paint_effects(cmds)
+    def self_rect()
+    def layout_needed()
+class EmbedLayout:
+    def __init__(node, parent, previous, frame)
+    def layout()
+    def should_paint()
+    def layout_needed()
+class InputLayout:
+    def __init__(node, parent, previous, frame)
+    def layout()
+    def should_paint()
+    def paint()
+    def paint_effects(cmds)
+    def self_rect()
+class ImageLayout:
+    def __init__(node, parent, previous, frame)
+    def layout()
+    def paint()
+    def paint_effects(cmds)
+class IframeLayout:
+    def __init__(node, parent, previous, parent_frame)
+    def layout()
+    def paint()
+    def paint_effects(cmds)
+
+# Display list
+BROKEN_IMAGE
+class PaintCommand:
+    def __init__(rect)
+class DrawText:
+    def __init__(x1, y1, text, font, color)
+    def execute(canvas)
+    def __repr__()
+class DrawRect:
+    def __init__(rect, color)
+    def execute(canvas)
+class DrawRRect:
+    def __init__(rect, radius, color)
+    def execute(canvas)
+    def print(indent)
+    def __repr__()
+class DrawLine:
+    def __init__(x1, y1, x2, y2, color, thickness)
+    def execute(canvas)
+    def __repr__()
+class DrawOutline:
+    def __init__(rect, color, thickness)
+    def execute(canvas)
+class DrawCompositedLayer:
+    def __init__(composited_layer)
+    def execute(canvas)
+    def __repr__()
+class DrawImage:
+    def __init__(image, rect, quality)
+    def execute(canvas)
+def DrawCursor(elt, offset)
+
+# Stacking context
+class VisualEffect:
+    def __init__(rect, children, node)
+class Blend:
+    def __init__(opacity, blend_mode, node, children)
+    def execute(canvas)
+    def map(rect)
+    def unmap(rect)
+    def clone(child)
+    def __repr__()
+class Transform:
+    def __init__(translation, rect, node, children)
+    def execute(canvas)
+    def map(rect)
+    def unmap(rect)
+    def clone(child)
+    def __repr__()
+
+# Coordinate transforms
+def local_to_absolute(display_item, rect)
+def absolute_bounds_for_obj(obj)
+def absolute_to_local(display_item, rect)
+def map_translation(rect, translation, reversed)
+
+# Painter
+def paint_tree(layout_object, display_list)
+def paint_visual_effects(node, cmds, rect)
+def paint_outline(node, cmds, rect, zoom)
+
+# Compositing
+def add_parent_pointers(nodes, parent)
+class CompositedLayer:
+    def __init__(skia_context, display_item)
+    def can_merge(display_item)
+    def add(display_item)
+    def composited_bounds()
+    def absolute_bounds()
+    def raster()
+    def __repr__()
+
+# Accessibility
+SPEECH_FILE
+class AccessibilityNode:
+    def __init__(node, parent)
+    def compute_bounds()
+    def build()
+    def build_internal(child_node)
+    def contains_point(x, y)
+    def hit_test(x, y)
+    def map_to_parent(rect)
+    def absolute_bounds()
+class FrameAccessibilityNode:
+    def __init__(node, parent)
+    def build()
+    def hit_test(x, y)
+    def map_to_parent(rect)
+def speak_text(text)
+
+# JS
+EVENT_DISPATCH_JS
+SETTIMEOUT_JS
+XHR_ONLOAD_JS
+POST_MESSAGE_DISPATCH_JS
+RUNTIME_JS
+
+class JSContext:
+    def __init__(tab, url_origin)
+    def run(script, code, window_id)
+    def add_window(frame)
+    def wrap(script, window_id)
+    # --
+    def dispatch_event(type, elt, window_id)
+    def dispatch_post_message(message, window_id)
+    def dispatch_settimeout(handle, window_id)
+    def dispatch_xhr_onload(out, handle, window_id)
+    def dispatch_RAF(window_id)
+    # --
+    def throw_if_cross_origin(frame)
+    def get_handle(elt)
+    # --
+    def querySelectorAll(selector_text, window_id)
+    def getAttribute(handle, attr)
+    def setAttribute(handle, attr, value, window_id)
+    def innerHTML_set(handle, s, window_id)
+    def style_set(handle, s, window_id)
+    def XMLHttpRequest_send(method, url, body, isasync, handle, window_id) # noargs
+    def setTimeout(handle, time, window_id)
+    def requestAnimationFrame()
+    def parent(window_id)
+    def postMessage(target_window_id, message, origin)
+
+# Tab/Frame
+SCROLL_STEP
+class Frame:
+    def __init__(tab, parent_frame, frame_element)
+    # --
+    def allowed_request(url)
+    def load(url, payload)
+    def render()
+    def clamp_scroll(scroll)
+    # --
+    def set_needs_render()
+    def set_needs_layout()
+    # --
+    def advance_tab()
+    def focus_element(node)
+    def activate_element(elt)
+    def submit_form(elt)
+    def keypress(char)
+    def scrolldown()
+    def scroll_to(elt)
+    def click(x, y)
+class Tab:
+    def __init__(browser, tab_height)
+    def load(url, payload)
+    def run_animation_frame(scroll)
+    def render()
+    def draw(canvas, offset)
+    def get_js(url)
+    def allowed_request(url)
+    def raster(canvas)
+    def clamp_scroll(scroll)
+    # --
+    def set_needs_render()
+    def set_needs_layout()
+    def set_needs_paint()
+    def set_needs_render_all_frames()
+    def set_needs_accessibility()
+    # --
+    def scrolldown()
+    def click(x, y)
+    def go_back()
+    def submit_form(elt)
+    def keypress(char)
+    def focus_element(node)
+    def activate_element(elt)
+    def scroll_to(elt)
+    def enter()
+    def advance_tab()
+    def zoom_by(increment)
+    def reset_zoom()
+    def set_dark_mode(val)
+    def post_message(message, target_window_id)
+    
+# Chrome
+class Chrome:
+    def __init__(browser)
+    def tab_rect(i)
+    def paint()
+    # --
+    def click(x, y)
+    def keypress(char)
+    def enter()
+    def blur()
+    def focus_addressbar()
+
+# Mainloop
+def load(url)
+class CommitData:
+    def __init__() # noargs
+class Browser:
+    def __init__()
+    # --
+    def schedule_animation_frame()
+    def commit(tab, data)
+    # --
+    def render()
+    def raster_and_draw()
+    def composite_raster_and_draw()
+    def composite()
+    def get_latest(effect)
+    def paint_draw_list()
+    def raster_tab()
+    def raster_chrome()
+    def update_accessibility()
+    def draw()
+    # --
+    def speak_node(node, text)
+    def speak_document()
+    # --
+    def set_needs_accessibility()
+    def set_needs_animation_frame(tab)
+    def set_needs_raster_and_draw()
+    def set_needs_raster()
+    def set_needs_composite()
+    def set_needs_draw()
+    def clear_data()
+    # --
+    def load(url)
+    def new_tab(url)
+    def new_tab_internal(url)
+    def set_active_tab(tab)
+    def schedule_load(url, body)
+    def clamp_scroll(scroll)
+    def scrolldown(e)
+    # --
+    def handle_down()
+    def handle_click(e)
+    def handle_key(char)
+    def handle_enter()
+    def handle_tab()
+    def handle_hover(event)
+    def handle_quit()
+    # --
+    def toggle_dark_mode()
+    def increment_zoom(increment)
+    def reset_zoom()
+    def focus_content()
+    def focus_addressbar()
+    def go_back()
+    def cycle_tabs()
+    def toggle_accessibility()
+def mainloop(browser)
