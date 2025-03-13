@@ -14,16 +14,13 @@ JavaScript, in a couple thousand lines of Python.
 ::: {.description}
 # Buy _Web Browser Engineering_
 
-_Web Browser Engineering_ is now available in the US and the UK
-from
-[Oxford University Press](https://global.oup.com/academic/product/web-browser-engineering-9780198913863)
+Please support us by buying a physical copy of _Web Browser
+Engineering_ from [Oxford University
+Press](https://global.oup.com/academic/product/web-browser-engineering-9780198913863)
 and from resellers like
-[Amazon](https://www.amazon.com/Web-Browser-Engineering-Pavel-Panchekha/dp/0198913869/),
-for $50 US / £40 UK.
-
-Please consider buying a physical copy for your bookshelf if you enjoy
-the book. More countries, and even some translations, are
-coming soon.
+[Amazon](https://www.amazon.com/Web-Browser-Engineering-Pavel-Panchekha/dp/0198913869/).
+It's currently available in the US ($50) and the UK (£40), with more
+countries and even translations coming soon.
 :::
 
 :::::
