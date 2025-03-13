@@ -8,35 +8,33 @@ Web browsers are ubiquitous, but how do they work? This book explains,
 building a basic but complete web browser, from networking to
 JavaScript, in a couple thousand lines of Python.
 
-::: {.todo}
-This draft version of the book includes unfinished chapters, and those
-chapters make inaccurate claims, fail to match published chapters, or
-misbehave. Read them at your own risk.
-:::
-
 ::::: {.wide-ad}
 ![The cover for Web Browser Engineering, from Oxford University Press](im/cover.jpg)
 
 ::: {.description}
-# Pre-order _Web Browser Engineering_
+# Buy _Web Browser Engineering_
 
-_Web Browser Engineering_ will be published by Oxford University
-Press early this year. To get it as soon as it's out,
-[pre-order now!](https://global.oup.com/academic/product/web-browser-engineering-9780198913863)
+_Web Browser Engineering_ is now available in the US and the UK
+from
+[Oxford University Press](https://global.oup.com/academic/product/web-browser-engineering-9780198913863)
+and from resellers like
+[Amazon](https://www.amazon.com/Web-Browser-Engineering-Pavel-Panchekha/dp/0198913869/),
+for $50 US / £40 UK.
+
+Please consider buying a physical copy for your bookshelf if you enjoy
+the book. More countries, and even some translations, are
+coming soon.
 :::
 
 :::::
 
-Follow this book's [blog](https://browserbook.substack.com/archive) or
-[Twitter](https://twitter.com/browserbook) for updates. You can also
-talk about the book with others in our [discussion forum][forum].
+Follow this book's [blog][blog] or [Twitter][twitter] for updates.
+There's a [discussion forum][forum] for the book on Github, or you
+can [email us directly](mailto:author@browser.engineering).
 
+[blog]: https://browserbook.substack.com/archive
+[twitter]: https://twitter.com/browserbook
 [forum]: https://github.com/browserengineering/book/discussions
-
-If you are enjoying the book online, consider supporting us by buying a
-physical copy for your home bookshelf.
-
-You can also email us [here](mailto:author@browser.engineering).
 
 ::: {.intro}
 Introduction
