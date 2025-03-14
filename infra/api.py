@@ -163,21 +163,35 @@ def thanks():
     #   git log --format='%aN' | sort -u`
     #
     # And searching the Github issues and pull requests.
-    # List below current as of 30 Mar 2022.
+    # List below current as of 14 Mar 2025.
     gh_names = {
         "Abram Himmer",
-        "BO41",
-        "Ian Briggs",
-        "Shuhei Kagawa",
+        "Alex Saveau",
         "Anthony Geoghegan",
-        "Thomas Lovett",
-        "Pranav Shridhar",
-        "Sujal Singh",
-        "Michal Čaplygin",
-        "Lars Hamann",
+        "Ashton Wiersdorf",
+        "BO41",
         "Bruno P. Kinoshita",
+        "bokken",
         "Daniel Rosenwasser",
+        "Ian Briggs",
+        "James Wilcox",
+        "Jerry Kuch",
+        "Jesús Gollonet",
+        "Lars Hamann",
         "metamas",
+        "Michal Čaplygin",
+        "Oliver Byford",
+        "Pauline",
+        "Pavel Kurochkin",
+        "Philip Grabenhorst",
+        "Pranav Shridhar",
+        "Ryuan Choi",
+        "Shinya Fujino",
+        "Shuhei Kagawa",
+        "Sujal Singh",
+        "Thomas Lovett",
+        "Xiaochen Zhou",
+        "YongWoo Jeon",
     }
 
     # These should be in order of sponsorship, oldest first.

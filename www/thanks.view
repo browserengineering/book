@@ -66,6 +66,11 @@ a <a href="https://bugs.chromium.org/p/chromium/issues/detail?id=1499290"
 alt="Chromium bug #1499290">Chromium bug</a> affecting margin notes on
 this website and to Koji Ishii for fixing it.</p>
 
+<p>Thank you also to Hin-Tak Leung and Kota Yamaguchi, the maintainers
+of <code>skia-python</code>, and Alessandro Molina, the maintainer of
+DukPy, for bug fixes, new releases, generally for maintaining
+fantastic libraries without which this book may have been impossible.</p>
+
 <p>Credit to Fredrik Lundh for the hack that makes <code>get_font</code> fast.
 </p>
 
