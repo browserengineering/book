@@ -25,7 +25,7 @@ countries and even translations coming soon.
 
 :::::
 
-Follow this book's [blog][blog], [Mastodon][mastodon] or [Twitter][twitter] for updates.
+Follow this book's [blog][blog], [Mastodon][mastodon], or [Twitter][twitter] for updates.
 There's a [discussion forum][forum] for the book on Github, or you
 can [email us directly](mailto:author@browser.engineering).
 
