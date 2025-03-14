@@ -130,18 +130,6 @@
             "show_signup": false,
             "print": true
         },
-        "draft": {
-            "base": "../",
-            "draft": true,
-            "show_toc": true,
-            "show_disabled": true,
-            "show_quiz": true,
-            "show_todos": true
-        },
-        "blog": {
-            "base": "../",
-            "show_signup": true
-        },
         "onepage": {
             "show_toc": true
         }
