@@ -31,6 +31,7 @@ can [email us directly](mailto:author@browser.engineering).
 
 [blog]: https://browserbook.substack.com/archive
 [twitter]: https://twitter.com/browserbook
+[mastodon]: https://indieweb.social/@browserbook
 [forum]: https://github.com/browserengineering/book/discussions
 
 ::: {.intro}
