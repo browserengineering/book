@@ -14,15 +14,14 @@ JavaScript, in a couple thousand lines of Python.
 ::: {.description}
 # Buy _Web Browser Engineering_
 
-Please support us by buying a physical copy of _Web Browser
-Engineering_ from [Oxford University
+Please support us by buying _Web Browser Engineering_ from [Oxford University
 Press](https://global.oup.com/academic/product/web-browser-engineering-9780198913863)
-and from resellers like
+or from a reseller like
 [Bookshop.org](https://bookshop.org/p/books/web-browser-engineering-chris-harrelson/21588966),
 [B&N](https://www.barnesandnoble.com/w/web-browser-engineering-pavel-panchekha/1146050176),
 and [Amazon](https://www.amazon.com/Web-Browser-Engineering-Pavel-Panchekha/dp/0198913869/).
-It's currently available in the US ($50) and the UK (£40), with more
-countries and even translations coming soon.
+It's currently $50 in the US and £40 in the UK, with similar prices in
+many other countries. Translations are coming soon!
 :::
 
 :::::
