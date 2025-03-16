@@ -5,20 +5,14 @@ prev: history
 next: graphics
 ...
 
-A web browser displays information identified by a URL. And the first
-step is to use that URL to connect to and download information from a
-server somewhere on the internet.
+Web ブラウザは URL で識別される情報を表示します。最初のステップは、その URL を使用してインターネット上のどこかにあるサーバーに接続し、情報をダウンロードすることです。
 
-Connecting to a Server
+サーバーへの接続
 ======================
 
-Browsing the internet starts with a URL\index{URL},[^url] a short string that
-identifies a particular web page that the browser should visit.
+インターネットの閲覧はURLから始まります。[^url] ブラウザがアクセスする特定の Web ページを識別する短い文字列。
 
-[^url]: "URL" stands for "uniform resource locator", meaning that it
-    is a portable (uniform) way to identify web pages
-    (resources\index{web resource}) and
-    also that it describes how to access those files (locator).
+[^url]: 「URL」は「Uniform Resource Locator」の略で、Web ページ (リソース) を識別するポータブル (統一) な方法であり、それらのファイルにアクセスする方法 (ロケーター) を記述するものであることを意味します。
 
 ::: {.cmd .web-only .center html=True}
     python3 infra/annotate_code.py <<EOF
@@ -31,58 +25,33 @@ Figure 1: The syntax of URLs.
 :::
 
 ::: {.print-only}
-![Figure 1: The syntax of URLs.](im/http-url.png)
+![図 1: URL の構文。](im/http-url.png)
 :::
 
-A URL has three parts (see Figure 1): the scheme\index{scheme} explains *how* to get the
-information; the host name explains *where* to get it; and the path\index{path}
-explains *what* information to get. There are also optional parts to
-the URL, like ports, queries, and fragments, which we'll see later.
+URL には 3 つの部分があります (図 1 を参照)。スキームは 情報を取得する 方法、ホスト名は情報の取得場所、パスは取得する情報について説明します。URL にはポート、クエリ、フラグメントなどのオプションの部分もありますが、これについては後で説明します。
 
-From a URL, the browser can start the process of downloading the web
-page. The browser first asks the local operating system (OS) to put it in touch with the
-*server* described by the *host name*. The OS then talks to a
-*Domain Name System* (DNS)
-server which converts[^dns] a host name like `example.org` into a
-*destination IP address* like `93.184.216.34`.[^ipv6] Then the OS decides
-which hardware is best for communicating with that destination IP
-address (say, wireless or wired) using what is called a *routing
-table*, and then uses device drivers to send signals over a wire or
-over the air.[^skipped-steps] Those signals are picked up and transmitted by a
-series of *routers*[^switch-ap] which each choose the best direction to send
-your message so that it eventually gets to the destination.[^network-tracing]
-When the message reaches the server, a connection is created. Anyway, the
-point of this is that the browser tells the OS, “Hey, put me in touch
-with `example.org`”, and it does.
+URLから、ブラウザはウェブページのダウンロードプロセスを開始できます。ブラウザはまず、ローカルオペレーティングシステム（OS）にホスト名で記述されたサーバーに接続するように要求します。次にOSはドメインネームシステム（DNS）サーバーと通信し、DNSサーバーはURLを変換します。のようなホスト名を、のような宛先 IP アドレスexample.orgに変換します 。93.184.216.34現在、IP (インターネット プロトコル) には IPv4 と IPv6 の 2 つのバージョンがあります。IPv6 アドレスははるかに長く、通常は 16 進数で記述されますが、それ以外は違いは重要ではありません。次に、OS はルーティング テーブルと呼ばれるものを使用して、その宛先 IP アドレスとの通信に最適なハードウェア (ワイヤレスまたは有線など) を決定し、デバイス ドライバーを使用して信号を有線または無線で送信します。ここでは手順を省略します。有線では、まず通信をイーサネット フレームでラップする必要がありますが、無線ではさらに多くのことを行う必要があります。簡潔に説明します。これらの信号は一連のルーターによって受信され送信されるあるいはスイッチやアクセス ポイントなど、さまざまな可能性がありますが、最終的にはルーターになります。それぞれが最適な方向を選択してメッセージを送信し、最終的に宛先にメッセージが届くようにします。また、返信を転送できるように、メッセージの送信元を記録することもあります。メッセージがサーバーに到達すると、接続が作成されます。とにかく、ここでのポイントは、ブラウザが OS に「 に接続させてください example.org」と伝え、実際に接続が確立されることです。
 
-[^dns]: You can use a DNS lookup tool like
-    [nslookup.io](https://nslookup.io) or the `dig` command to do this
-    conversion yourself.
+多くのシステムでは、次のようにプログラムを使用してこの種の接続を設定できます telnet。
 
-[^ipv6]: Today there are two versions of IP (Internet Protocol): IPv4
-    and IPv6. IPv6 addresses are a lot longer and are usually written
-    in hexadecimal, but otherwise the differences don't matter here.
+[^dns]: nslookup.ioなどの DNS ルックアップ ツールやdigコマンドを使用して、この変換を自分で実行できます。
 
-[^skipped-steps]: I'm skipping steps here. On wires you first have to wrap
-    communications in ethernet frames, on wireless you have to do even
-    more. I'm trying to be brief.
+[^ipv6]: 現在、IP (インターネット プロトコル) には IPv4 と IPv6 の 2 つのバージョンがあります。IPv6 アドレスははるかに長く、通常は 16 進数で記述されますが、それ以外は違いは重要ではありません。
 
-[^switch-ap]: Or a switch, or an access point; there are a lot of possibilities,
-but eventually there is a router.
+[^skipped-steps]: こでは手順を省略します。有線では、まず通信をイーサネット フレームでラップする必要がありますが、無線ではさらに多くのことを行う必要があります。簡潔に説明します。
 
-[^network-tracing]: They may also record where the message came from so they can
-forward the reply back.
+[^switch-ap]: あるいはスイッチやアクセス ポイントなど、さまざまな可能性がありますが、最終的にはルーターになります。
 
-On many systems, you can set up this kind of connection using the
-`telnet` program, like this:^[The "80" is the port, discussed below.]
+[^network-tracing]: また、返信を転送できるように、メッセージの送信元を記録することもあります。
+
+多くのシステムでは、次のようにプログラムを使用してこの種の接続を設定できます telnet。
 
 ``` {.example}
 telnet example.org 80
 ```
 
 ::: {.web-only}
-(Note: When you see a gray outline, it means that the code in question is
-an example only, and *not* actually part of our browser's code.)
+(注: 灰色のアウトラインが表示されている場合、問題のコードは単なる例であり、実際にはブラウザのコードの一部ではないことを意味します。)
 :::
 
 ::: {.print-only}
@@ -91,23 +60,16 @@ an example only, and *not* actually part of our browser's code.)
 :::
 
 ::: {.installation}
-You might need to install `telnet`; it is often disabled by default.
-On Windows, [go to Programs and Features / Turn Windows features on or
-off](https://www.lifewire.com/what-is-telnet-2626026) in the Control
-Panel; you'll need to reboot. When you run it, it'll clear the screen
-instead of printing something, but other than that works normally. On
-macOS, you can use the `nc -v` command as a replacement for `telnet`:
+をインストールする必要がある場合がありますtelnet。これは、デフォルトでは無効になっていることが多いです。Windows では、コントロール パネルの[プログラムと機能] / [Windows の機能の有効化または無効化] に移動しますnc -v。再起動する必要があります。これを実行すると、何かを印刷する代わりに画面がクリアされますが、それ以外は通常どおり動作します。macOS では、の代わりに コマンド を使用できますtelnet。
 
 ``` {.example}
 nc -v example.org 80
 ```
 
-The output is a little different but it works in the same way.
-On most Linux systems, you can install `telnet` or `nc` from the package
-manager, usually from packages called `telnet` and `netcat`.
+出力は少し異なりますが、動作は同じです。ほとんどの Linux システムでは、パッケージ マネージャー (通常は および というパッケージ) から またはtelnetを インストールできます。nctelnetnetcat
 :::
 
-You'll get output that looks like this:
+次のような出力が得られます。
 
 ``` {.output}
 Trying 93.184.216.34...
@@ -115,35 +77,21 @@ Connected to example.org.
 Escape character is '^]'.
 ```
 
-This means that the OS converted the host name `example.org` into the
-IP address `93.184.216.34` and was able to connect to it.[^10] You can
-now talk to `example.org`.
+これは、OS がホスト名 example.orgを IP アドレスに変換し93.184.216.34 、接続できたことを意味します。エスケープ文字に関する行は、わかりにくいtelnet機能を使用するための指示にすぎません。と話すことができるようになりましたexample.org。
 
-[^10]: The line about escape characters is just instructions for using
-    obscure `telnet` features.
+[^10]: エスケープ文字に関する行は、わかりにくいtelnet機能を使用するための指示にすぎません。
 
 ::: {.further}
-The URL syntax is defined in
-[RFC 3986](https://tools.ietf.org/html/rfc3986), whose first author is
-Tim Berners-Lee---no surprise there! The second author is Roy Fielding, a
-key contributor to the design of HTTP and also well known for describing
-the Representational State Transfer (REST) architecture of the web in his [Ph.D. thesis][rest-thesis],
-which explains how REST allowed the web to grow in a decentralized
-way. Today, many services provide "RESTful APIs" that also follow these
-principles, though there does seem to be [some
-confusion][what-is-rest] about it.
+URL 構文はRFC 3986で定義されています。その第一著者は Tim Berners-Lee です。驚くことではありません。第二著者は Roy Fielding です。彼は HTTP 設計の主要な貢献者であり、博士論文で Web の Representational State Transfer (REST) アーキテクチャを説明したことでも有名です。この論文では、REST によって Web が分散型で成長できるようになった理由が説明されています。今日では、多くのサービスがこれらの原則に従った「RESTful API」を提供していますが、それについては多少の混乱があるようです 。
 :::
 
 [rest-thesis]: https://ics.uci.edu/~fielding/pubs/dissertation/fielding_dissertation_2up.pdf
 [what-is-rest]: https://twobithistory.org/2020/06/28/rest.html
 
-Requesting Information
+情報の要求
 ======================
 
-Once it's connected, the browser requests information from the server
-by giving its *path*, the path being the part of a URL that comes
-after the host name, like `/index.html`. The structure of the request
-is shown in Figure 2. Type this into `telnet` to try it.
+接続されると、ブラウザはパスを指定してサーバーに情報を要求します。パスは、 のようにホスト名の後に続く URL の一部です/index.html。要求の構造を図 2 に示します。これを に入力してtelnet試してください。
 
 ::: {.cmd .web-only html=True}
     python3 infra/annotate_code.py <<EOF
@@ -161,59 +109,27 @@ Figure 2: An annotated HTTP GET request.
 ![Figure 2: An annotated HTTP GET request.](im/http-get.png)
 :::
 
-Here, the word `GET`\index{GET} means that the browser would like to receive
-information,[^11] then comes the path, and finally there is the word
-`HTTP/1.0` which tells the host that the browser speaks version 1.0 of
-[HTTP]\index{HTTP}. There are several versions of HTTP ([0.9, 1.0, 1.1, 
-2.0, and 3.0](https://medium.com/platform-engineer/evolution-of-http-69cfe6531ba0)).
-The HTTP 1.1 standard adds a variety of useful features, like
-keep-alive, but in the interest of simplicity our browser won't use
-them. We're also not implementing HTTP 2.0; it is much more
-complex than the 1.*x* series, and is intended for large and complex web
-applications, which our browser can't run anyway.
+ここでの単語はGETブラウザが情報を受け取りたいという意味です。情報を送信する意図があるかどうかはわかりますPOSTが、他にももっとわかりにくいオプションがいくつかあります。次にパスが続き、最後にブラウザがHTTPHTTP/1.0バージョン 1.0 を使っていることをホストに伝える単語があります。HTTP には複数のバージョンがあります ( 0.9、1.0、1.1、2.0、3.0 )。HTTP 1.1 標準では、キープアライブなどのさまざまな便利な機能が追加されていますが、簡潔さを優先するため、ブラウザではそれらを使用しません。また、HTTP 2.0 も実装していません。HTTP 2.0 は 1.xシリーズよりもはるかに複雑で、大規模で複雑な Web アプリケーションを対象としていますが、ブラウザでは実行できません
 
 [HTTP]: https://developer.mozilla.org/en-US/docs/Web/HTTP
 
-After the first line, each line contains a *header*, which has a name
-(like `Host`) and a value (like `example.org`). Different headers mean
-different things; the `Host` header, for example, tells the server who
-you think it is.[^13] There are lots of other headers one could send,
-but let's stick to just `Host` for now.
+最初の行の後、各行にはヘッダーが含まれ、ヘッダーには名前 ( などHost) と値 ( など example.org) が含まれます。異なるヘッダーはそれぞれ異なる意味を持ちます。 Hostたとえば、ヘッダーはサーバーに、それが誰であるかを伝えます。これは、同じ IP アドレスが複数のホスト名に対応し、複数の Web サイトをホストしている場合 ( およびexample.comなど example.org) に便利です。Hostヘッダーは、複数の Web サイトのうちどれが必要かをサーバーに伝えます。基本的に、これらの Web サイトはHost適切に機能するためにヘッダーを必要とします。1 台のコンピューターで複数のドメインをホストすることは非常に一般的です。送信できるヘッダーは他にもたくさんありますが、 Host今のところはこれだけにしておきましょう。
 
-Finally, after the headers comes a single blank line; that tells the
-host that you are done with headers. So type a blank line into
-`telnet` (hit Enter twice after typing the two lines of the request)
-and you should get a response from `example.org`.
+最後に、ヘッダーの後に 1 行の空白行が続きます。これは、ヘッダーの処理が完了したことをホストに通知します。したがって、 に空白行を入力すると telnet(リクエストの 2 行を入力した後に Enter キーを 2 回押す)、 から応答が返されるはずです example.org。
 
-[^11]: It could say `POST` if it intended to send information, plus
-    there are some other, more obscure, options.
+[^11]: 情報を送信する意図があるかどうかはわかりますPOSTが、他にももっとわかりにくいオプションがいくつかあります。
 
-[^13]: This is useful when the same IP address corresponds to multiple
-    host names and hosts multiple websites (for example, `example.com`
-    and `example.org`). The `Host` header tells the server which of
-    multiple websites you want. These websites basically require the
-    `Host` header to function properly. Hosting multiple domains on a
-    single computer is very common.
+[^13]: これは、同じ IP アドレスが複数のホスト名に対応し、複数の Web サイトをホストしている場合 ( およびexample.comなど example.org) に便利です。Hostヘッダーは、複数の Web サイトのうちどれが必要かをサーバーに伝えます。基本的に、これらの Web サイトはHost適切に機能するためにヘッダーを必要とします。1 台のコンピューターで複数のドメインをホストすることは非常に一般的です。
 
 
 ::: {.further}
-HTTP/1.0 is standardized in [RFC
-1945](https://tools.ietf.org/html/rfc1945), and HTTP/1.1 in
-[RFC 2616](https://tools.ietf.org/html/rfc2616).
-HTTP was designed to be simple to understand and implement, making it
-easy for any kind of computer to adopt it. It's no coincidence that
-you can type HTTP directly into `telnet`! Nor is it an accident that
-HTTP is a "line-based protocol", using plain text and newlines,
-similar to the Simple Mail Transfer Protocol ([SMTP][SMTP]) for email.
-Ultimately, the whole pattern derives
-from early computers only having line-based text input. In
-fact, one of the first two browsers had a [line-mode UI][line-mode].
+HTTP/1.0 はRFC 1945で標準化され、HTTP/1.1 は RFC 2616で標準化されています。HTTP は理解と実装が簡単なように設計されており、あらゆる種類のコンピューターで簡単に導入できます。 に直接 HTTP と入力できるのは偶然ではありません。また、HTTP が電子メールの Simple Mail Transfer Protocol ( SMTPtelnet )と同様に、プレーンテキストと改行を使用する「行ベースのプロトコル」であることも偶然ではありません。結局のところ、このパターン全体は、初期のコンピューターが行ベースのテキスト入力しかできなかったことに由来しています。実際、最初の 2 つのブラウザーのうちの 1 つには行モードの UIがありました。
 :::
 
 [SMTP]: https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol
 [line-mode]: https://en.wikipedia.org/wiki/Line_Mode_Browser
 
-The Server's Response
+サーバーの応答
 =====================
 
 The server's response starts with the line in Figure 3.
@@ -232,30 +148,17 @@ Figure 3: Annotated first line of an HTTP response.
 ![Figure 3: Annotated first line of an HTTP response.](im/http-status.png)
 :::
 
-This tells you that the host confirms that it, too, speaks `HTTP/1.0`,
-and that it found your request to be "OK" (which has a numeric code of
-200). You may be familiar with `404 Not Found`; that's another numeric
-code and response, as are `403 Forbidden` or `500 Server Error`. There
-are lots of these codes,
-and they have a pretty neat organization scheme:^[The status text like
-`OK` can actually be anything and is just there for humans, not for
-machines.]
+これは、ホストが を話すことを確認し HTTP/1.0、リクエストが「OK」(数値コードは 200) であることを確認したことを示しています。 についてはご存知かもしれませんが 、これはや404 Not Foundと同様に、別の数値コードと応答です。このようなコードはたくさんあり、非常にすっきりとした構成になっています。403 Forbidden500 Server Error
 
- - the 100s are informational messages;
- - the 200s mean you were successful;
- - the 300s request follow-up action (usually a redirect);
- - the 400s mean you sent a bad request;
- - the 500s mean the server handled the request badly.
+ - 100 番台は情報メッセージです。
+ - 200 は成功したことを意味します。
+ - 300 番台はフォローアップアクション (通常はリダイレクト) を要求します。
+ - 400 番台は不正なリクエストを送信したことを意味します。
+ - 500 番台はサーバーがリクエストを適切に処理しなかったことを意味します。
 
-Note the genius of having two sets of error codes (400s and 500s)
-to tell you who is at fault, the server or the browser.^[More
-precisely, who the server thinks is at fault.] You can find a full
-list of the different codes [on
-Wikipedia](https://en.wikipedia.org/wiki/List_of_HTTP_status_codes),
-and new ones do get added here and there.
+サーバーとブラウザのどちらに問題があるかを示す 2 セットのエラー コード (400 番台と 500 番台) があるという優れた点に注目してください。もっと正確に言えば、サーバーが誰が悪いと考えているかです。さまざまなコードの完全なリストはWikipedia で見つかります。また、新しいコードが随時追加されています。
 
-After the `200 OK` line, the server sends its own headers. When I did
-this, I got these headers (but yours will differ):
+この200 OK行の後に、サーバーは独自のヘッダーを送信します。私がこれを実行したとき、次のヘッダーが返されました (ただし、実際のヘッダーは異なります)。
 
 ``` {.example}
 Age: 545933
@@ -272,36 +175,18 @@ Content-Length: 1270
 Connection: close
 ```
 
-There is *a lot* here, about the information you are requesting
-(`Content-Type`, `Content-Length`, and `Last-Modified`), about the
-server (`Server`, `X-Cache`), about how long the browser should cache
-this information (`Cache-Control`, `Expires`, `Etag`), and about all sorts
-of other stuff. Let's move on for now.
+ここには、要求している情報 ( 、、 )、サーバー ( 、 )、ブラウザーがこの情報をキャッシュする期間 ( 、、 )、その他さまざまなことに関する多くの情報があります。とりあえず先に進みましょう。Content-TypeContent-LengthLast-ModifiedServerX-CacheCache-ControlExpiresEtag
 
-After the headers there is a blank line followed by a bunch of
-[HTML]\index{HTML} code. This is called the *body* of the server's
-response, and your browser knows that it is HTML because of the
-`Content-Type` header, which says that it is `text/html`. It's this HTML
-code that contains the content of the web page itself.
+ヘッダーの後に空白行があり、その後にHTMLコードが続きます。これはサーバーの応答の本文Content-Typeと呼ばれ、ブラウザーは ヘッダーに HTML であると記載されているため、それが HTML であることを認識しますtext/html。この HTML コードには、Web ページ自体のコンテンツが含まれています。
 
-[html]:  https://developer.mozilla.org/en-US/docs/Web/HTML
-
-The HTTP request/response transaction is summarized in Figure 4. Let's now
-switch gears from making manual connections to Python.
+HTTP 要求/応答トランザクションは、図 4 にまとめられています。ここで、手動接続から Python への切り替えを行いましょう。
 
 ::: {.center}
-![Figure 4: An HTTP request and response pair are how a web browser gets web
-pages from a web server.](im/http-request-2.gif)
+![図 4: HTTP リクエストとレスポンスのペアは、Web ブラウザが Web サーバーから Web ページを取得する方法です。](im/http-request-2.gif)
 :::
 
 ::: {.further}
-Wikipedia has nice lists of HTTP [headers][headers] and [response codes][codes].
-Some of the HTTP response codes are almost never used, like [402]
-"Payment Required". This code was intended to be used for "digital
-cash or (micro) payment systems". While e-commerce is alive and well
-without the response code 402, [micropayments] have not (yet?) gained
-much traction, even though many people (including me!) think they are
-a good idea.
+Wikipedia には、HTTPヘッダー と応答コードの優れたリストがあります。HTTP 応答コードの中には、 402 「支払いが必要」のようにほとんど使用されないものもあります。このコードは、「デジタル キャッシュまたは (マイクロ) 支払いシステム」で使用することを意図していました。電子商取引は応答コード 402 がなくても健在ですが、マイクロ支払いは(まだ?) あまり普及していません。多くの人 (私も含めて!) が良いアイデアだと考えているにもかかわらずです。
 :::
 
 [headers]: https://en.wikipedia.org/wiki/List_of_HTTP_header_fields
@@ -312,22 +197,15 @@ a good idea.
 
 [micropayments]: https://en.wikipedia.org/wiki/Micropayment
 
-Telnet in Python
+PythonにおけるTelnet
 ================
 
-So far we've communicated with another computer using `telnet`. But it
-turns out that `telnet` is quite a simple program, and we can do the
-same programmatically. It'll require extracting the host name and path
-from the URL, creating a *socket*, sending a request, and receiving a
-response.[^why-not-parse]
+これまでは を使用して別のコンピュータと通信してきました telnet。しかし、これは非常に単純なプログラムであり、プログラムで同じことを行うことができます。URL からホスト名とパスを抽出し、ソケットを作成し、リクエストを送信して、応答を受信するtelnet必要があります 。Python には URL を解析するためのライブラリがありますurllib.parseが、独自に実装すると学習に役立つと思います。また、この本は Python に特化したものではなくなります。
 
-[^why-not-parse]: In Python, there's a library called `urllib.parse`
-    for parsing URLs, but I think implementing our own will be good
-    for learning. Plus, it makes this book less Python-specific.
+URL の解析から始めましょう。URL を解析するとオブジェクトが返されるようにしURL、解析コードをコンストラクターに配置します。
 
-Let's start with parsing the URL. I'm going to make parsing a URL
-return a `URL` object, and I'll put the parsing code into the
-constructor:
+[^why-not-parse]: Python には URL を解析するためのライブラリがありますurllib.parseが、独自に実装すると学習に役立つと思います。また、この本は Python に特化したものではなくなります。
+
 
 ``` {.python}
 class URL:
@@ -335,13 +213,9 @@ class URL:
         # ...
 ```
 
-The `__init__` method is Python's peculiar syntax for class
-constructors, and the `self` parameter, which you must always make the
-first parameter of any method, is Python's analog of `this` in C++
-or Java.
+メソッド__init__は、クラス コンストラクター用の Python 特有の構文であり、self常にメソッドの最初のパラメーターにする必要があるパラメーターは、 thisC++ または Java の Python 版です。
 
-Let's start with the scheme, which is separated from the rest of the
-URL by `://`. Our browser only supports `http`, so let's check that, too:
+まずは、 によって URL の残りの部分から区切られている スキーム から始めましょう://。ブラウザは のみをサポートしているhttpので、これも確認しましょう。
 
 ``` {.python replace=%3d%3d/in,%22http%22/[%22http%22%2c%20%22https%22]}
 class URL:
@@ -350,8 +224,7 @@ class URL:
         assert self.scheme == "http"
 ```
 
-Now we must separate the host from the path. The host comes before the
-first `/`, while the path is that slash and everything after it:
+ここで、ホストとパスを分離する必要があります。ホストは最初の の前に来ます/が、パスはそのスラッシュとその後のすべてです。
 
 ``` {.python}
 class URL:
@@ -363,14 +236,9 @@ class URL:
         self.path = "/" + url
 ```
 
-(When you see a code block with a `# ...`, like this one, that means
-you're adding code to an existing method or block.) The `split(s, n)`
-method splits a string at the first `n` copies of `s`. Note that
-there's some tricky logic here for handling the slash between the host
-name and the path. That (optional) slash is part of the path.
+(この例のように を含むコード ブロックがある場合は# ...、既存のメソッドまたはブロックにコードを追加していることを意味します。) split(s, n)メソッドは、 の最初の nコピーで文字列を分割しますs。ホスト名とパスの間のスラッシュを処理するための巧妙なロジックがここにあることに注意してください。その (オプションの) スラッシュはパスの一部です。
 
-Now that the `URL` has the `host` and `path` fields, we can download
-the web page at that URL. We'll do that in a new method, `request`:
+におよび フィールドURLが追加されたので、その URL の Web ページをダウンロードできます。これを新しいメソッドで実行します。hostpathrequest
 
 ``` {.python}
 class URL:
@@ -378,47 +246,22 @@ class URL:
         # ...
 ```
 
-Note that you always need to write the `self` parameter for methods in
-Python. In the future, I won't always make such a big deal out of
-defining a method---if you see a code block with code in a method or
-function that doesn't exist yet, that means we're defining it.
+Python では、メソッドのパラメータを常に記述する必要があることに注意してくださいself。今後は、メソッドの定義をそれほど重要視しなくなるでしょう。メソッドまたは関数内にまだ存在しないコードを含むコード ブロックが表示された場合は、それを定義していることを意味します。
 
-The first step to downloading a web page is connecting to the host.
-The operating system provides a feature called "sockets" for this.
-When you want to talk to other computers (either to tell them
-something, or to wait for them to tell you something), you create a
-socket, and then that socket can be used to send information back and
-forth. Sockets come in a few different kinds, because there are
-multiple ways to talk to other computers:
+Web ページをダウンロードする最初のステップは、ホストに接続することです。オペレーティング システムには、このために「ソケット」と呼ばれる機能が用意されています。他のコンピューターと通信する場合 (何かを伝えるため、または何かを伝えるのを待つため)、ソケットを作成します。その後、そのソケットを使用して情報を送受信できます。他のコンピューターと通信する方法は複数あるため、ソケットにはいくつかの種類があります
 
--   A socket has an *address family*, which tells you how to find the
-    other computer. Address families have names that begin with `AF`. We
-    want `AF_INET`, but for example `AF_BLUETOOTH` is another.
--   A socket has a *type*, which describes the sort of conversation
-    that's going to happen. Types have names that begin with `SOCK`. We
-    want `SOCK_STREAM`, which means each computer can send arbitrary
-    amounts of data, but there's also `SOCK_DGRAM`, in which case
-    they send each other packets of some fixed size.[^dgram]
--   A socket has a *protocol*, which describes the steps by which the
-    two computers will establish a connection. Protocols have names that
-    depend on the address family, but we want `IPPROTO_TCP`.[^quic]
+-   ソケットにはアドレス ファミリがあり、これによって他のコンピュータを見つける方法がわかります。アドレス ファミリの名前は で始まります AF。 が必要ですAF_INETが、たとえば は AF_BLUETOOTH別の例です。
+-   ソケットには、発生する会話の種類を表す タイプSOCKがあります。タイプの名前は で始まります。 が必要ですSOCK_STREAM。これは、各コンピューターが任意の量のデータを送信できることを意味しますが、 もあります SOCK_DGRAM。この場合は、コンピューターが互いに固定サイズのパケットを送信します。
+-   ソケットには、2 台のコンピュータが接続を確立する手順を記述するプロトコルIPPROTO_TCPがあります。プロトコルの名前はアドレス ファミリによって異なりますが、ここでは を使用します。
 
-[^dgram]: `DGRAM` stands for "datagram", which I imagine to be like a
-postcard.
+[^dgram]: DGRAM「データグラム」の略で、ポストカードのようなものをイメージしています。
 
-[^quic]: Newer versions of HTTP use something called
-    [QUIC](https://en.wikipedia.org/wiki/QUIC) instead of the
-    Transmission Control Protocol (TCP), but our
-    browser will stick to HTTP 1.0.
+[^quic]: 新しいバージョンの HTTP では、伝送制御プロトコル (TCP) の代わりにQUICと呼ばれるものが使用されます が、ブラウザは HTTP 1.0 を使用します。
 
 
-By picking all of these options, we can create a socket like so:[^sockets]
+これらすべてのオプションを選択すると、次のようなソケットを作成できます。
 
-[^sockets]: While this code uses the Python `socket` library, your favorite
-    language likely contains a very similar library; the API is
-    basically standardized. In Python, the flags we pass are defaults,
-    so you can actually call `socket.socket()`; I'm keeping the flags
-    here in case you're following along in another language.
+[^sockets]: このコードは Pythonsocketライブラリを使用していますが、お気に入りの言語には非常によく似たライブラリが含まれている可能性があります。API は基本的に標準化されています。Python では、渡すフラグはデフォルトなので、実際に を呼び出すことができます socket.socket()。別の言語でこの手順に従う場合に備えて、ここではフラグを残しておきます。
 
 ``` {.python}
 import socket
@@ -432,9 +275,7 @@ class URL:
         )
 ```
 
-Once you have a socket, you need to tell it to connect to the other
-computer. For that, you need the host and a *port*.\index{port} The port
-depends on the protocol you are using; for now it should be 80.
+ソケットを取得したら、他のコンピュータに接続するように指示する必要があります。そのためには、ホストとポートが必要です。ポートは使用しているプロトコルによって異なりますが、現時点では 80 である必要があります。
 
 ``` {.python replace=80/self.port}
 class URL:
@@ -443,27 +284,16 @@ class URL:
         s.connect((self.host, 80))
 ```
 
-This talks to `example.org` to set up the connection and prepare both
-computers to exchange data.
+これは、example.org接続を設定し、両方のコンピューターがデータを交換できるように準備するために行われます。
 
 ::: {.quirk}
-Naturally this won't work if you're offline. It also might not work if
-you're behind a proxy, or in a variety of more complex networking
-environments. The workaround will depend on your setup---it might be
-as simple as disabling your proxy, or it could be much more complex.
+当然ながら、オフラインの場合はこの方法は機能しません。また、プロキシの背後にいる場合や、さまざまなより複雑なネットワーク環境にいる場合も機能しない可能性があります。回避策は設定によって異なります。プロキシを無効にするだけの簡単なものもあれば、もっと複雑なものもあります。
 :::
 
-Note that there are two parentheses in the `connect` call: `connect`
-takes a single argument, and that argument is a pair of a host and a
-port. This is because different address families have different
-numbers of arguments.
+呼び出しには 2 つの括弧があることに注意してくださいconnect。 connectは 1 つの引数を取り、その引数はホストとポートのペアです。 これは、アドレス ファミリによって引数の数が異なるためです。
 
 ::: {.further}
-The "sockets" API, which Python more or less implements directly,
-derives from the original "[Berkeley sockets][bsd-sockets]" API design
-for 4.2 BSD Unix in 1983. Of course, Windows and Linux merely
-reimplement the API, but macOS and iOS actually do [still
-use][mac-bsd] large amounts of code descended from BSD Unix.
+Python が多かれ少なかれ直接実装している「ソケット」 API は、1983 年の 4.2 BSD Unix 用のオリジナルの「バークレー ソケット」 API 設計から派生したものです。もちろん、Windows と Linux は単に API を再実装しただけですが、macOS と iOS は実際には依然としてBSD Unix から派生した大量のコードを使用しています。
 :::
 
 [bsd-sockets]: https://en.wikipedia.org/wiki/Berkeley_sockets
@@ -473,8 +303,7 @@ use][mac-bsd] large amounts of code descended from BSD Unix.
 Request and Response
 ====================
 
-Now that we have a connection, we make a request to the other server.
-To do so, we send it some data using the `send` method:
+接続が確立されたので、他のサーバーにリクエストを送信します。そのためには、次のsendメソッドを使用してデータを送信します。
 
 ``` {.python}
 class URL:
@@ -485,35 +314,16 @@ class URL:
         request += "\r\n"
         s.send(request.encode("utf8"))
 ```
-The `send` method just sends the request to the server.[^send-return]
-There are a few things in this code that have to be exactly right. First,
-it's very important to use `\r\n` instead of `\n` for newlines. It's
-also essential that you put *two* `\r\n` newlines at the end, so that
-you send that blank line at the end of the request. If you forget
-that, the other computer will keep waiting on you to send that
-newline, and you'll keep waiting on its response.[^literal]
+このsendメソッドは、リクエストをサーバーに送信するだけです。send 実際には数値を返します47。この場合は です。これは、他のコンピュータに送信したデータのバイト数を示します。たとえば、データ送信の途中でネットワーク接続が失敗した場合、接続が失敗する前に送信したデータ量を知る必要がある場合があります。このコードには、正確に記述しなければならない点がいくつかあります。まず、改行には の\r\n 代わりにを使用することが非常に重要です。また、最後に2 つの\n改行を入れて、リクエストの最後に空白行を送信することも重要です。これを忘れると、他のコンピュータは改行の送信を待ち続け、あなたもその応答を待ち続けることになります。 \r\nコンピューターは限りなく文字通りに解釈します。
 
-[^send-return]: `send` actually returns a number, in this case `47`.
-    That tells you how many bytes of data you sent to the other
-    computer; if, say, your network connection failed midway through
-    sending the data, you might want to know how much you sent before
-    the connection failed.
+また、encode呼び出しにも注意してください。データを送信するときは、生のビットとバイトを送信していることを覚えておくことが重要です。これらはテキスト、画像、またはビデオを形成する可能性があります。ただし、Python 文字列はテキストを表すために特別に使用されます。encodeメソッドはテキストをバイトに変換しますが、 decode逆方向の対応するメソッドがあります。呼び出すときに encode、どの文字エンコードを使用するかをdecodeコンピューターに伝える必要があります。これは複雑なトピックです。ここでは一般的な文字エンコードを使用しており、多くのページで機能しますが、実際の使用ではより注意する必要があります。utf8Python では、テキストとバイトに異なる型を与えることで注意を促すようにしています。
 
-[^literal]: Computers are endlessly literal-minded.
+[^send-return]: send 実際には数値を返します47。この場合は です。これは、他のコンピュータに送信したデータのバイト数を示します。たとえば、データ送信の途中でネットワーク接続が失敗した場合、接続が失敗する前に送信したデータ量を知る必要がある場合があります。
 
-Also note the `encode` call. When you send data, it's important to
-remember that you are sending raw bits and bytes; they could form text
-or an image or video. But a Python string is specifically for
-representing text. The `encode` method converts text into bytes, and
-there's a corresponding `decode` method that goes the other
-way.[^charset] Python reminds you to be careful by giving different
-types to text and to bytes:
+[^literal]: コンピューターは限りなく文字通りに解釈します。
 
-[^charset]: When you call `encode` and `decode` you need to tell the
-    computer what *character encoding* you want it to use. This is a
-    complicated topic. I'm using `utf8` here, which is a common
-    character encoding and will work on many pages, but in the real
-    world you would need to be more careful.
+
+[^charset]: 呼び出すときに encode、どの文字エンコードを使用するかをdecodeコンピューターに伝える必要があります。これは複雑なトピックです。ここでは一般的な文字エンコードを使用しており、多くのページで機能しますが、実際の使用ではより注意する必要があります。utf8
 
 ``` {.python .output}
 >>> type("text")
@@ -521,15 +331,9 @@ types to text and to bytes:
 >>> type("text".encode("utf8"))
 <class 'bytes'>
 ```
+strversusに関するエラーが表示される場合は、どこかでまたは bytesを呼び出すのを忘れたためです。encodedecode
 
-If you see an error about `str` versus `bytes`, it's because you
-forgot to call `encode` or `decode` somewhere.
-
-To read the server's response, you could use the `read` function on
-sockets, which gives whatever bits of the response have already
-arrived. Then you write a loop to collect those bits as they arrive.
-However, in Python you can use the `makefile` helper function, which
-hides the loop:[^socket-loop]
+サーバーの応答を読み取るには、ソケットの関数を使用します。この関数は、すでに到着している応答のビットを返します。次に、到着したビットを収集するループを記述します。ただし、Python では、ループを非表示にするヘルパー関数read を使用できます。makefile
 
 [^socket-loop]: If you're in another language, you might only have `socket.read`
 available. You'll need to write the loop, checking the socket status,
@@ -543,28 +347,15 @@ class URL:
         response = s.makefile("r", encoding="utf8", newline="\r\n")
 ```
 
-Here, `makefile` returns a file-like object containing every byte we
-receive from the server. I am instructing Python to turn those bytes
-into a string using the `utf8` *encoding*, or method of associating
-bytes to letters.[^utf8] I'm also informing Python of HTTP's weird line
-endings.
+ここで、 は、makefileサーバーから受信したすべてのバイトを含むファイルのようなオブジェクトを返します。utf8 エンコーディング、つまりバイトを文字に関連付ける方法を使用して、それらのバイトを文字列に変換するように Python に指示しています。ハードコーディングはutf8 正しくありませんが、ほとんどの英語の Web サイトで問題なく機能するショートカットです。実際、Content-Typeヘッダーには通常、charset本文のエンコードを指定する宣言が含まれています。この宣言がない場合、ブラウザーは をデフォルトにせず utf8、文字の頻度に基づいて推測します。推測が間違っていると、見苦しい奇妙な áççêñ£ß が表示されます。また、HTTP の奇妙な行末についても Python に通知しています。
 
-[^utf8]: Hard-coding `utf8` is not correct, but it's a shortcut that
-    will work alright on most English-language websites. In fact, the
-    `Content-Type` header usually contains a `charset` declaration
-    that specifies the encoding of the body. If it's absent, browsers
-    still won't default to `utf8`; they'll guess, based on letter
-    frequencies, and you will see ugly � strange áççêñ£ß when they guess
-    wrong.
+応答を分割してみましょう。最初の行はステータス行です。
+
+[^utf8]: ハードコーディングはutf8 正しくありませんが、ほとんどの英語の Web サイトで問題なく機能するショートカットです。実際、Content-Typeヘッダーには通常、charset本文のエンコードを指定する宣言が含まれています。この宣言がない場合、ブラウザーは をデフォルトにせず utf8、文字の頻度に基づいて推測します。推測が間違っていると、見苦しい奇妙な áççêñ£ß が表示されます。
 
 
-Let's now split the response into pieces. The first line is the
-status line:^[I could have asserted
-that 200 is required, since that's the only code our browser supports,
-but it's better to just let the browser render the returned body, because
-servers will generally output a helpful and user-readable HTML error page
-even for error codes. This is another way in which the web is easy to
-implement incrementally.]
+応答を分割してみましょう。最初の行はステータス行です。
+^[ブラウザがサポートする唯一のコードである 200 が必須であると断言することもできましたが、サーバーはエラー コードに対しても、一般的には役立つ、ユーザーが判読できる HTML エラー ページを出力するため、返された本文をブラウザにレンダリングさせる方が適切です。これは、Web を段階的に簡単に実装できるもう 1 つの方法です]
 
 
 ``` {.python}
@@ -575,13 +366,9 @@ class URL:
         version, status, explanation = statusline.split(" ", 2)
 ```
 
-Note that I do *not* check that the server's version of HTTP is the
-same as mine; this might sound like a good idea, but there are a lot
-of misconfigured servers out there that respond in HTTP 1.1 even when
-you talk to them in HTTP 1.0.^[Luckily the protocols are similar
-enough to not cause confusion.]
+サーバーの HTTP バージョンが自分のものと同じかどうかはチェックしていないことに注意してください。これは良い考えのように思えるかもしれませんが、HTTP 1.0 で通信しているにもかかわらず HTTP 1.1 で応答する、誤って構成されたサーバーが多数存在します。幸いなことに、プロトコルは混乱を起こさない程度に似ています。
 
-After the status line come the headers:
+ステータス ラインの後にヘッダーが続きます。
 
 ``` {.python}
 class URL:
@@ -595,24 +382,15 @@ class URL:
             response_headers[header.casefold()] = value.strip()
 ```
 
-For the headers, I split each line at the first colon and fill in a map of
-header names to header values. Headers are case-insensitive, so I normalize
-them to lower case.[^casefold] Also, whitespace is insignificant in HTTP
-header values, so I strip off extra whitespace at the beginning and end.
+ヘッダーについては、各行を最初のコロンで分割し、ヘッダー名とヘッダー値のマップを入力します。ヘッダーは大文字と小文字を区別しないため、小文字に正規化します。より多くの言語でより適切に機能するため、casefold の代わりにを使用しました。lowerまた、HTTP ヘッダー値では空白は重要ではないため、先頭と末尾の余分な空白を削除します。
 
-[^casefold]: I used [`casefold`][casefold] instead of `lower`, because it works
-better for more languages.
+ヘッダーにはあらゆる種類の情報を記述できますが、アクセスしようとしているデータが通常とは異なる方法で送信されていることを示すヘッダーがいくつかあるため、特に重要です。これらのヘッダーが存在しないことを確認しましょう。
+
+[^casefold]: より多くの言語でより適切に機能するため、casefold の代わりにを使用しました。lower
 
 [casefold]: https://docs.python.org/3/library/stdtypes.html#str.casefold
 
-Headers can describe all sorts of information, but a couple of headers
-are especially important because they tell us that the data we're
-trying to access is being sent in an unusual way. Let's make sure none
-of those are present.[^if-te]
-
-[^if-te]: Exercise 1-9
-    describes how your browser should handle these headers if they are
-    present.
+[^if-te]: 演習 1-9 では、これらのヘッダーが存在する場合にブラウザーがどのように処理するかについて説明します。
 
 ``` {.python}
 class URL:
@@ -622,7 +400,7 @@ class URL:
         assert "content-encoding" not in response_headers
 ```
 
-The usual way to get the sent data, then, is everything after the headers:
+送信されたデータを取得する通常の方法は、ヘッダーの後のすべてです。
 
 ``` {.python}
 class URL:
@@ -632,7 +410,7 @@ class URL:
         s.close()
 ```
 
-It's the body that we're going to display, so let's return that:
+表示するのはこの本体なので、それを返しましょう:
 
 ``` {.python}
 class URL:
@@ -641,50 +419,28 @@ class URL:
         return content
 ```
 
-Now let's actually display the text in the response body.
+それでは、実際にレスポンス本文にテキストを表示してみましょう。
 
 ::: {.further}
-The [`Content-Encoding`][ce-header] header lets the server compress
-web pages before sending them. Large, text-heavy web pages compress
-well, and as a result the page loads faster. The browser needs to send
-an [`Accept-Encoding` header][ae-header] in its request to list
-the compression algorithms it supports. [`Transfer-Encoding`][te-header]
-is similar and also allows the data to be "chunked", which many
-servers seem to use together with compression.
+ヘッダーContent-Encoding により、サーバーは Web ページを送信する前に圧縮できます。テキストの多い大きな Web ページは圧縮率が高く、その結果、ページの読み込みが速くなります。ブラウザーは、サポートしている圧縮アルゴリズムをリストするために、リクエストでAccept-Encoding ヘッダーTransfer-Encodingを送信する必要があります。 も同様で、データを「チャンク化」することもできます。多くのサーバーは、これを圧縮と一緒に使用しているようです。
 :::
 
 [ce-header]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Encoding
 [te-header]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding
 [ae-header]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding
 
-Displaying the HTML
+HTMLの表示
 ===================
 
-The HTML code in the response body defines the content you see in your browser
-window when you go to `http://example.org/index.html`. I'll be
-talking much, much more about HTML in future chapters, but for now let
-me keep it very simple.
+レスポンス本文の HTML コードは、 にアクセスしたときにブラウザ ウィンドウに表示されるコンテンツを定義します http://example.org/index.html。今後の章で HTML についてさらに詳しく説明しますが、今はごく簡単に説明します。
 
-In HTML, there are *tags* and *text*. Each tag starts with a `<` and
-ends with a `>`; generally speaking, tags tell you what kind of thing
-some content is, while text is the actual content.[^content-tag] Most tags come
-in pairs of a start and an end tag; for example, the title of the page
-is enclosed in a pair of tags: `<title>` and `</title>`. Each tag, inside
-the angle brackets, has a tag name\index{tag name} (like `title` here),
-and then optionally a space followed by *attributes*, and its pair has a `/`
-followed by the tag name (and no attributes). 
+HTML には、タグとテキストがあります。各タグは で始まり<で終わります>。一般的に、タグはコンテンツがどのようなものかを示し、テキストは実際のコンテンツです。ただし、 などの一部のタグはimgコンテンツであり、それに関する情報ではありません。ほとんどのタグは、開始タグと終了タグのペアになっています。たとえば、ページのタイトルは、<title>と のタグのペアで囲まれています</title>。山括弧内の各タグには、タグ名 (titleこの例のように) があり、その後にオプションでスペースが 1 つ入り、その後に属性が続きます。タグのペアには、 の/ 後にタグ名が続きます (属性はありません)。
 
-[^content-tag]: That said, some tags, like `img`, are content, not information
-    about it.
+そこで、非常にシンプルな Web ブラウザーを作成するには、ページの HTML を取得し、その中のタグを除くすべてのテキストを印刷してみましょう。SyntaxErrorこの例で Python が最後の行を指すを生成する場合end 、Python 3 ではなく Python 2 を実行していることが原因である可能性があります。Python 3 を使用していることを確認してください。これを新しい関数で実行しますshow。
 
-So, to create our very, very simple web browser, let's take the page
-HTML and print all the text, but not the tags, in it.[^python2] I'll do
-this in a new function, `show`:^[Note that this is a global function and
-not in the `URL` class.]
+[^content-tag]: ただし、 などの一部のタグはimgコンテンツであり、それに関する情報ではありません。
 
-[^python2]: If this example causes Python to produce a `SyntaxError` pointing to
-the `end` on the last line, it is likely because you are running Python 2
-instead of Python 3. Make sure you are using Python 3.
+[^python2]: SyntaxErrorこの例で Python が最後の行を指すを生成する場合end 、Python 3 ではなく Python 2 を実行していることが原因である可能性があります。Python 3 を使用していることを確認してください。
 
 
 ``` {.python}
@@ -699,17 +455,12 @@ def show(body):
             print(c, end="")
 ```
 
-This code is pretty complex. It goes through the request body character
-by character, and it has two states: `in_tag`, when it is currently
-between a pair of angle brackets, and `not in_tag`. When the current
-character is an angle bracket, it changes between those states; 
-normal characters, not inside a tag, are printed.[^python-newline]
+このコードはかなり複雑です。リクエスト ボディを 1 文字ずつ処理し、2 つの状態 (in_tag現在山括弧のペアの間にある場合 、および ) がありますnot in_tag。現在の文字が山括弧の場合、これらの状態が切り替わり、タグ内ではない通常の文字が印刷されます。この end引数は、文字の後に改行を印刷しないように Python に指示します。
 
-[^python-newline]: The `end` argument tells Python not to print a newline after
-the character, which it otherwise would.
+requestとを連結するだけで Web ページを読み込むことができるようになりました show。
 
-We can now load a web page just by stringing together `request` and
-`show`:^[Like `show`, this is a global function.]
+[^python-newline]: この end引数は、文字の後に改行を印刷しないように Python に指示します。
+
 
 ``` {.python}
 def load(url):
@@ -717,7 +468,7 @@ def load(url):
     show(body)
 ```
 
-Add the following code to run `load` from the command line:
+loadコマンドラインから実行するには、次のコードを追加します。
 
 ``` {.python}
 if __name__ == "__main__":
@@ -725,59 +476,34 @@ if __name__ == "__main__":
     load(URL(sys.argv[1]))
 ```
 
-The first line is Python's version of a `main` function, run only when
-executing this script from the command line. The code reads the first
-argument (`sys.argv[1]`) from the command line and uses it as a URL.
-Try running this code on the URL `http://example.org/`:
+最初の行は Python バージョンの関数でmain、このスクリプトをコマンドラインから実行する場合にのみ実行されます。コードはコマンドラインから最初の引数 ( sys.argv[1]) を読み取り、それを URL として使用します。次のコードを URL で実行してみてください http://example.org/。
+
+
 
 ``` {.sh}
 python3 browser.py http://example.org/
 ```
 
-You should see some short text welcoming you to the official example
-web page. You can also try using it on [this chapter](http://browser.engineering/http.html)!
+公式サンプル Web ページへようこそという短いテキストが表示されます。この章でもそれを使用してみることができます。
 
 ::: {.further}
-HTML, just like URLs and HTTP, is designed to be very easy to parse and
-display at a basic level. And in the beginning there were very few features
-in HTML, so it was possible to code up something not so much more fancy than
-what you see here, yet still display the content in a usable way. Even our
-super simple and basic HTML parser can already print out the text of the
-[browser.engineering](https://browser.engineering/) website.
+HTML は、URL や HTTP と同様に、基本的なレベルで解析および表示が非常に簡単になるように設計されています。また、当初は HTML の機能が非常に少なかったため、ここで紹介したものよりそれほど凝ったものではなく、コンテンツを使いやすい形で表示できるコードを作成することができました。当社の非常にシンプルで基本的な HTML パーサーでも、browser.engineering Web サイトのテキストを印刷できます。
 :::
 
-Encrypted Connections
+暗号化された接続
 =====================
 
-So far, our browser supports the `http` scheme. That's a pretty common
-scheme. But more and more websites are migrating to the
-`https`\index{HTTPS} scheme, and many websites require it.
+今のところ、ブラウザはこのhttpスキームをサポートしています。これはかなり一般的なスキームです。しかし、ますます多くの Web サイトがこの httpsスキームに移行しており、多くの Web サイトがこれを必須としています。
 
-The difference between `http` and `https` is that `https` is more
-secure---but let's be a little more specific. The `https` scheme, or
-more formally HTTP over TLS\index{TLS}\index{SSL} (Transport Layer Security), is identical to the
-normal `http` scheme, except that all communication between the browser
-and the host is encrypted. There are quite a few details to how this works:
-which encryption algorithms are used, how a common encryption key is agreed
-to, and of course how to make sure that the browser is connecting to
-the correct host. The difference in the protocol layers involved is shown in
-Figure 5.
+との違いは、httpの方がより安全であるhttpsということですhttpsが、もう少し具体的に説明しましょう。httpsスキーム、またはより正式には HTTP over TLS (Transport Layer Security) は、ブラウザーとホスト間のすべての通信が暗号化されることを除いて、通常のhttp スキームと同じです。 この仕組みには、どの暗号化アルゴリズムが使用されるか、共通の暗号化キーがどのように合意されるか、そしてもちろん、ブラウザーが正しいホストに接続していることを確認する方法など、かなり多くの詳細があります。 関連するプロトコル レイヤーの違いは、図 5 に示されています。
 
 ::: {.center}
-![Figure 5: The difference between HTTP and HTTPS is the addition of a TLS layer.](im/http-tls-2.gif)
+![図 5: HTTP と HTTPS の違いは、TLS レイヤーが追加されていることです。](im/http-tls-2.gif)
 :::
 
-Luckily, the Python `ssl` library implements all of these details for
-us, so making an encrypted connection is almost as easy as making a
-regular connection. That ease of use comes with accepting some default
-settings which could be inappropriate for some situations, but for
-teaching purposes they are fine.
+幸いなことに、Pythonsslライブラリはこれらすべての詳細を実装しているので、暗号化された接続は通常の接続とほぼ同じくらい簡単です。この使いやすさは、状況によっては不適切となる可能性のあるいくつかのデフォルト設定を受け入れることで実現されますが、教育目的であれば問題ありません。
 
-Making an encrypted connection with `ssl` is pretty easy. Suppose
-you've already created a socket, `s`, and connected it to
-`example.org`. To encrypt the connection, you use
-`ssl.create_default_context` to create a *context* `ctx` and use that
-context to *wrap* the socket `s`:
+との暗号化された接続はssl非常に簡単です。 ソケット をすでに作成しs、 に接続しているとしますexample.org。接続を暗号化するには、 を使用して コンテキストssl.create_default_contextを作成し、そのコンテキストを使用してソケット をラップします。 ctxs
 
 ``` {.python .example}
 import ssl
@@ -785,22 +511,15 @@ ctx = ssl.create_default_context()
 s = ctx.wrap_socket(s, server_hostname=host)
 ```
 
-Note that `wrap_socket` returns a new socket, which I save back into
-the `s` variable. That's because you don't want to send any data over
-the original socket; it would be unencrypted and also confusing. The
-`server_hostname` argument is used to check that you've connected to
-the right server. It should match the `Host` header.
+はwrap_socket新しいソケットを返し、それをs変数に保存し直します。これは、元のソケット経由でデータを送信したくないためです。暗号化されず、混乱を招く恐れがあります。server_hostname引数は、正しいサーバーに接続しているかどうかを確認するために使用されます。ヘッダーと一致する必要があります Host。
 
 ::: {.installation}
-On macOS, you'll need to [run a program called "Install
-Certificates"][macos-fix] before you can use Python's `ssl` package on
-most websites.
+macOS では、ほとんどの Web サイトで Python のパッケージを使用する前に、 「証明書のインストール」というプログラムを実行する必要があります。ssl
 :::
 
 [macos-fix]: https://stackoverflow.com/questions/52805115/certificate-verify-failed-unable-to-get-local-issuer-certificate
 
-Let's try to take this code and add it to `request`. First, we need to
-detect which scheme is being used:
+このコードを に追加してみましょうrequest。まず、どのスキームが使用されているかを検出する必要があります。
 
 ``` {.python}
 import ssl
@@ -812,11 +531,9 @@ class URL:
         # ...
 ```
 
-(Note that here you're supposed to replace the existing scheme parsing
-code with this new code. It's usually clear from context, and the code
-itself, what you need to replace.)
+(ここでは、既存のスキーム解析コードをこの新しいコードに置き換える必要があることに注意してください。通常、コンテキストとコード自体から、何を置き換える必要があるかは明らかです。)
 
-Encrypted HTTP connections usually use port 443 instead of port 80:
+暗号化された HTTP 接続では通常、ポート 80 ではなくポート 443 が使用されます。
 
 ``` {.python expected=False}
 class URL:
@@ -828,7 +545,7 @@ class URL:
             self.port = 443
 ```
 
-We can use that port when creating the socket:
+ソケットを作成するときにそのポートを使用できます。
 
 ``` {.python}
 class URL:
@@ -838,7 +555,7 @@ class URL:
         # ...
 ```
 
-Next, we'll wrap the socket with the `ssl` library:
+次に、ソケットをsslライブラリでラップします。
 
 ``` {.python}
 class URL:
@@ -851,11 +568,9 @@ class URL:
         # ...
 ```
 
-Your browser should now be able to connect to HTTPS sites.
+これでブラウザは HTTPS サイトに接続できるようになります。
 
-While we're at it, let's add support for custom ports, which are
-specified in a URL by putting a colon after the host name, as in
-Figure 6.
+ついでに、図 6 のように、ホスト名の後にコロンを付けて URL で指定するカスタム ポートのサポートを追加しましょう。
 
 ::: {.cmd .web-only html=True}
     python3 infra/annotate_code.py <<EOF
@@ -868,10 +583,10 @@ Figure 6: Where the port goes in a URL.
 :::
 
 ::: {.print-only}
-![Figure 6: Where the port goes in a URL.](im/http-ports.png)
+![図 6: URL 内でのポートの位置](im/http-ports.png)
 :::
 
-If the URL has a port we can parse it out and use it:
+URL にポートがある場合は、それを解析して使用できます。
 
 ``` {.python}
 class URL:
@@ -882,25 +597,19 @@ class URL:
             self.port = int(port)
 ```
 
-Custom ports are handy for debugging. Python has a built-in web server
-you can use to serve files on your computer. For example, if you run
+カスタムポートはデバッグに便利です。Pythonには、コンピュータ上でファイルを提供できる組み込みのWebサーバーがあります。たとえば、
 
 ``` {.sh}
 python3 -m http.server 8000 -d /some/directory
 ```
 
-then going to `http://localhost:8000/` should show you all the files
-in that directory. This is a good way to test your browser.
+すると、http://localhost:8000/そのディレクトリ内のすべてのファイルが表示されます。これはブラウザをテストするのに適した方法です。
 
 ::: {.further}
-TLS is pretty complicated. You can read the details in [RFC
-8446](https://tools.ietf.org/html/rfc8446), but implementing your own is
-not recommended. It's very difficult to write a custom TLS
-implementation that is not only correct but secure.
+TLS は非常に複雑です。詳細はRFC 8446で確認できますが、独自に実装することはお勧めしません。正しいだけでなく安全なカスタム TLS 実装を書くのは非常に困難です。
 :::
 
-At this point you should be able to run your program on any web page.
-Here is what it should output for [a simple example][example-simple]:
+この時点で、任意の Web ページでプログラムを実行できるはずです。簡単な例の出力は次のようになります。
 
 [example-simple]: examples/example1-simple.html
 
@@ -914,29 +623,27 @@ Here is what it should output for [a simple example][example-simple]:
 
 ```
 
-Summary
+まとめ
 =======
 
-This chapter went from an empty file to a rudimentary web browser that
-can:
+この章では、空のファイルから、次のことができる基本的な Web ブラウザーを作成しました。
 
--   parse a URL into a scheme, host, port, and path;
--   connect to that host using the `socket` and `ssl` libraries;
--   send an HTTP request to that host, including a `Host` header;
--   split the HTTP response into a status line, headers, and a body;
--   print the text (and not the tags) in the body.
 
-Yes, this is still more of a command-line tool than a web browser, but
-it already has some of the core capabilities of a browser.
+-   URL をスキーム、ホスト、ポート、パスに解析します。
+-   socketおよび ライブラリを使用してそのホストに接続しますssl
+-   ヘッダーを含む HTTP リクエストをそのホストに送信しますHost 。
+-   HTTP 応答をステータス行、ヘッダー、本文に分割します。
+-   本文にテキスト（タグではない）を印刷します。
+
+はい、これはまだ Web ブラウザというよりはコマンドライン ツールですが、ブラウザのコア機能の一部はすでに備えています。
 
 ::: {.signup}
 :::
 
-Outline
+概要
 =======
 
-The complete set of functions, classes, and methods in our browser 
-should look something like this:
+ブラウザ内の関数、クラス、メソッドの完全なセットは次のようになります。
 
 ::: {.web-only .cmd .python .outline html=True}
     python3 infra/outlines.py --html src/lab1.py --template book/outline.txt
@@ -947,92 +654,30 @@ should look something like this:
 :::
 
 
-Exercises
+演習
 =========
 
-1-1 *HTTP/1.1*. Along with `Host`, send the `Connection` header in the
-`request` function with the value `close`. Your browser can now
-declare that it is using `HTTP/1.1`. Also add a `User-Agent` header.
-Its value can be whatever you want---it identifies your browser to the
-host. Make it easy to add further headers in the future.
+1-1 HTTP/1.1。 とともにHost、 関数Connectionで ヘッダーを のrequest値とともに送信しますclose。これで、ブラウザは を使用していることを宣言できますHTTP/1.1。また、User-Agentヘッダーを追加します。その値は任意の値にすることができます。この値は、ホストに対してブラウザを識別します。将来的にさらにヘッダーを追加しやすくなります。
 
-1-2 *File URLs*. Add support for the `file` scheme, which allows the browser
-to open local files. For example, `file:///path/goes/here` should
-refer to the file on your computer at location `/path/goes/here`. Also
-make it so that, if your browser is started without a URL being given,
-some specific file on your computer is opened. You can use that file
-for quick testing.
+1-2ファイル URL。 スキームのサポートを追加しますfile。これにより、ブラウザーでローカル ファイルを開くことができます。たとえば、 は file:///path/goes/hereコンピューター上の場所 にあるファイルを参照する必要があります/path/goes/here。また、URL を指定せずにブラウザーを起動すると、コンピューター上の特定のファイルが開かれるようにします。そのファイルを使用して、簡単なテストを行うことができます。
 
-1-3 *`data`*. Yet another scheme is `data`, which allows inlining
-HTML content into the URL itself. Try navigating to
-`data:text/html,Hello world!` in a real browser to see what happens.
-Add support for this scheme to your browser. The `data` scheme is
-especially convenient for making tests without having to put them in
-separate files.
+1-3 data。さらに別のスキームとして があり data、これを使用すると、HTML コンテンツを URL 自体にインライン化できます。data:text/html,Hello world!実際のブラウザで に移動して、何が起こるかを確認してください。ブラウザにこのスキームのサポートを追加してください。このdataスキームは、テストを別のファイルに配置せずに作成するのに特に便利です。
 
-1-4 *Entities*. Implement support for the less-than (`&lt;`) and
-greater-than (`&gt;`) entities. These should be printed as `<` and
-`>`, respectively. For example, if the HTML response was
-`&lt;div&gt;`, the `show` method of your browser should print `<div>`.
-Entities allow web pages to include these special characters without
-the browser interpreting them as tags.
+1-4エンティティ。小なり ( &lt;) エンティティと大なり ( ) エンティティのサポートを実装します。これらは、それぞれと &gt;として印刷されます。たとえば、HTML 応答が の場合 、ブラウザの メソッドは を印刷します。エンティティを使用すると、ブラウザがタグとして解釈することなく、Web ページにこれらの特殊文字を含めることができます。<>&lt;div&gt;show<div>
 
-1-5 *`view-source`*. Add support for the `view-source` scheme; navigating to
-`view-source:http://example.org/` should show the HTML source instead of
-the rendered page. Add support for this scheme. Your browser should
-print the entire HTML file as if it was text. You'll want to have also
-implemented Exercise 1-4.
+1-5 view-source。スキームのサポートを追加します view-source。 に移動すると、 view-source:http://example.org/レンダリングされたページではなく HTML ソースが表示されます。 このスキームのサポートを追加します。 ブラウザは、HTML ファイル全体をテキストのように印刷します。 演習 1-4 も実装しておく必要があります。
 
-1-6 *Keep-alive*. Implement Exercise 1-1; however, do not send
-the `Connection: close` header (send `Connection: keep-alive` instead).
-When reading the body from the socket, only read as many bytes as given
-in the `Content-Length` header and don't close the socket afterward.
-Instead, save the socket, and if another request is made to the same server
-reuse the same socket instead of creating a new one. 
-(You'll also need to pass the `"rb"` option to `makefile` or the value reported
-by `Content-Length` might not match the length of the string you're reading.)
-This will speed up repeated requests to the same server, which are common.
+1-6キープアライブ。演習 1-1 を実装します。ただし、ヘッダーは送信しませんConnection: close( Connection: keep-alive代わりに を送信します)。ソケットから本体を読み取るときは、ヘッダーで指定されたバイト数だけを読み取り Content-Length、その後ソケットを閉じません。代わりに、ソケットを保存し、同じサーバーに別の要求が行われた場合は、新しいソケットを作成するのではなく、同じソケットを再利用します。("rb"にオプションを渡す必要もあります。そうしないmakefileと、 によって報告される値が、Content-Length読み取っている文字列の長さと一致しない可能性があります。) これにより、よくある同じサーバーへの繰り返しの要求が高速化されます。
 
-1-7 *Redirects*. Error codes in the 300 range request a redirect. When
-your browser encounters one, it should make a new request to the URL
-given in the `Location` header. Sometimes the `Location` header is a
-full URL, but sometimes it skips the host and scheme and just starts
-with a `/` (meaning the same host and scheme as the original request).
-The new URL might itself be a redirect, so make sure to handle that
-case. You don't, however, want to get stuck in a redirect loop, so
-make sure to limit how many redirects your browser can follow in a row.
-You can test this with the URL
-<http://browser.engineering/redirect>, which redirects back to this
-page, and its [/redirect2](http://browser.engineering/redirect2) and
-[/redirect3](http://browser.engineering/redirect3) cousins which do more
-complicated redirect chains.
+1-7リダイレクト。300 の範囲のエラー コードではリダイレクトが要求されます。ブラウザーがリダイレクトに遭遇すると、Locationヘッダーに指定された URL に新しい要求が行われます。 Locationヘッダーは完全な URL である場合もありますが、ホストとスキームをスキップして で始まる場合も/あります (つまり、元の要求と同じホストとスキーム)。新しい URL 自体がリダイレクトである場合もあるので、その場合は必ず処理してください。ただし、リダイレクト ループにはまりたくないので、ブラウザーが連続して実行できるリダイレクトの数を制限するようにしてください。このページにリダイレクトする URL http://browser.engineering/redirectと、より複雑なリダイレクト チェーンを実行する/redirect2および/redirect3の類似 URL でこれをテストできます。
 
-1-8 *Caching*. Typically, the same images, styles, and scripts are used on
-multiple pages; downloading them repeatedly is a waste. It's generally
-valid to cache any HTTP response, as long as it was requested with
-`GET` and received a `200` response.^[Some other status codes like
-`301` and `404` can also be cached.] Implement a cache in your browser
-and test it by requesting the same file multiple times. Servers
-control caches using the `Cache-Control` header. Add support for this
-header, specifically for the `no-store` and `max-age` values. If the
-`Cache-Control` header contains any value other than these two, it's best not
-to cache the response.
+1-8キャッシュGET。通常、同じ画像、スタイル、スクリプトが複数のページで使用されているため、それらを繰り返しダウンロードするのは無駄です。HTTP 応答が要求され、応答を受け取った限り、HTTP 応答をキャッシュすることは一般的に有効です200。301やなどの他のステータス コード 404もキャッシュできます。 ブラウザにキャッシュを実装し、同じファイルを複数回要求してテストします。サーバーはヘッダーを使用してキャッシュを制御します 。このヘッダー、特にと の値Cache-Controlのサポートを追加します 。ヘッダーにこれら 2 つ以外の値が含まれている場合は、応答をキャッシュしないことをお勧めします。no-storemax-ageCache-Control
 
-1-9 *Compression*. Add support for HTTP compression, in which the browser
-[informs the server][negotiate] that compressed data is acceptable.
-Your browser must send the `Accept-Encoding` header with the value
-`gzip`. If the server supports compression, its response will have a
-`Content-Encoding` header with value `gzip`. The body is then
-compressed. Add support for this case. To decompress the data, you can
-use the `decompress` method in the `gzip` module. GZip data is not
-`utf8`-encoded, so pass `"rb"` to `makefile` to work with raw bytes
-instead. Most web servers send compressed data in a
-`Transfer-Encoding` called [`chunked`][chunked].[^te-gzip]
-You'll need to add support for that, too.
+1-9圧縮。HTTP 圧縮のサポートを追加します。これにより、ブラウザはサーバーに圧縮されたデータが受け入れ可能であることを通知します。ブラウザは、Accept-Encoding値 のヘッダー を送信する必要がありますgzip。サーバーが圧縮をサポートしている場合、その応答にはContent-Encoding値 のヘッダー が含まれます。その後、本体は圧縮されます。このケースのサポートを追加します。データを解凍するには、モジュール の メソッドgzipを使用できます。GZip データは-encodedではない ため、代わりに生のバイトを処理するには に 渡します。ほとんどの Web サーバーは、と呼ばれるで圧縮データを送信します。decompressgziputf8"rb"makefileTransfer-EncodingchunkedTransfer-Encodingデータを圧縮する もいくつかありますが 、あまり使用されません。そのためのサポートも追加する必要があります
+
 
 [negotiate]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Content_negotiation
 
 [chunked]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding
 
-[^te-gzip]: There are also a couple of `Transfer-Encoding`s that
-    compress the data. They aren't commonly used.
+[^te-gzip]: Transfer-Encodingデータを圧縮する もいくつかありますが 、あまり使用されません。
