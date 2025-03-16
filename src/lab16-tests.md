@@ -30,7 +30,7 @@ Here's a simple editable web page:
     >>> browser = lab16.Browser()
     >>> browser.new_tab(url)
     >>> browser.render()
-    >>> lab16.print_tree(browser.tabs[0].root_frame.nodes)
+    >>> lab16.print_tree(browser.tabs[0].root_frame.node)
      <html>
        <body>
          <p contenteditable="">
@@ -50,7 +50,7 @@ Now that we're focused on the element, we can type into it:
     >>> tab.keypress("H")
     >>> tab.keypress("i")
     >>> tab.keypress("!")
-    >>> lab16.print_tree(browser.tabs[0].root_frame.nodes)
+    >>> lab16.print_tree(browser.tabs[0].root_frame.node)
      <html>
        <body>
          <p contenteditable="">
@@ -169,7 +169,7 @@ resizing is dramatic:
     >>> browser.render()
     >>> frame1 = browser.tabs[0].root_frame
     >>> iframe = [
-    ...    n for n in lab16.tree_to_list(frame1.nodes, [])
+    ...    n for n in lab16.tree_to_list(frame1.node, [])
     ...    if isinstance(n, lab16.Element) and n.tag == "iframe"][0]
     >>> frame2 = iframe.frame
     >>> lab16.print_tree(frame1.document)

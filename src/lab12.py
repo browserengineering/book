@@ -213,12 +213,12 @@ class Tab:
            if len(csp) > 0 and csp[0] == "default-src":
                self.allowed_origins = csp[1:]
 
-        self.nodes = HTMLParser(body).parse()
+        self.node = HTMLParser(body).parse()
 
         if self.js: self.js.discarded = True
         self.js = JSContext(self)
         scripts = [node.attributes["src"] for node
-                   in tree_to_list(self.nodes, [])
+                   in tree_to_list(self.node, [])
                    if isinstance(node, Element)
                    and node.tag == "script"
                    and "src" in node.attributes]
@@ -237,7 +237,7 @@ class Tab:
 
         self.rules = DEFAULT_STYLE_SHEET.copy()
         links = [node.attributes["href"]
-                 for node in tree_to_list(self.nodes, [])
+                 for node in tree_to_list(self.node, [])
                  if isinstance(node, Element)
                  and node.tag == "link"
                  and node.attributes.get("rel") == "stylesheet"
@@ -287,9 +287,9 @@ class Tab:
     def render(self):
         if not self.needs_render: return
         self.browser.measure.time('render')
-        style(self.nodes, sorted(self.rules,
+        style(self.node, sorted(self.rules,
             key=cascade_priority))
-        self.document = DocumentLayout(self.nodes)
+        self.document = DocumentLayout(self.node)
         self.document.layout()
         self.display_list = []
         paint_tree(self.document, self.display_list)

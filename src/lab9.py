@@ -68,7 +68,7 @@ class JSContext:
     def querySelectorAll(self, selector_text):
         selector = CSSParser(selector_text).selector()
         nodes = [node for node
-                 in tree_to_list(self.tab.nodes, [])
+                 in tree_to_list(self.tab.node, [])
                  if selector.matches(node)]
         return [self.get_handle(node) for node in nodes]
 
@@ -93,11 +93,11 @@ class Tab:
         self.url = url
         self.history.append(url)
         body = url.request(payload)
-        self.nodes = HTMLParser(body).parse()
+        self.node = HTMLParser(body).parse()
 
         self.js = JSContext(self)
         scripts = [node.attributes["src"] for node
-                   in tree_to_list(self.nodes, [])
+                   in tree_to_list(self.node, [])
                    if isinstance(node, Element)
                    and node.tag == "script"
                    and "src" in node.attributes]
@@ -111,7 +111,7 @@ class Tab:
 
         self.rules = DEFAULT_STYLE_SHEET.copy()
         links = [node.attributes["href"]
-                 for node in tree_to_list(self.nodes, [])
+                 for node in tree_to_list(self.node, [])
                  if isinstance(node, Element)
                  and node.tag == "link"
                  and node.attributes.get("rel") == "stylesheet"

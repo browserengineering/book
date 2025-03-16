@@ -116,7 +116,7 @@ class Tab:
     def load(self, url, payload=None):
         # ...
         images = [node
-            for node in tree_to_list(self.nodes, [])
+            for node in tree_to_list(self.node, [])
             if isinstance(node, Element)
             and node.tag == "img"]
         for img in images:
@@ -831,7 +831,7 @@ class Frame:
     def load(self, url, payload=None):
         # ...
         iframes = [node
-                   for node in tree_to_list(self.nodes, [])
+                   for node in tree_to_list(self.node, [])
                    if isinstance(node, Element)
                    and node.tag == "iframe"
                    and "src" in node.attributes]
@@ -1235,13 +1235,13 @@ class AccessibilityNode:
 
 To `build` such a node, we just recurse into the frame:
 
-``` {.python replace=AccessibilityNode(child_node.frame.nodes)/FrameAccessibilityNode(child_node%2C%20self)}
+``` {.python replace=AccessibilityNode(child_node.frame.node)/FrameAccessibilityNode(child_node%2C%20self)}
 class AccessibilityNode:
    def build_internal(self, child_node):
         if isinstance(child_node, Element) \
             and child_node.tag == "iframe" and child_node.frame \
             and child_node.frame.loaded:
-            child = AccessibilityNode(child_node.frame.nodes)
+            child = AccessibilityNode(child_node.frame.node)
         # ... 
 ```
 
@@ -1858,7 +1858,7 @@ class JSContext:
         frame = self.tab.window_id_to_frame[window_id]
         selector = CSSParser(selector_text).selector()
         nodes = [node for node
-                 in tree_to_list(frame.nodes, [])
+                 in tree_to_list(frame.node, [])
                  if selector.matches(node)]
         return [self.get_handle(node) for node in nodes]
 ```
