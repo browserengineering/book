@@ -19,7 +19,7 @@ Press](https://global.oup.com/academic/product/web-browser-engineering-978019891
 or from a reseller like
 [Bookshop.org](https://bookshop.org/p/books/web-browser-engineering-chris-harrelson/21588966),
 [B&N](https://www.barnesandnoble.com/w/web-browser-engineering-pavel-panchekha/1146050176),
-and [Amazon](https://www.amazon.com/Web-Browser-Engineering-Pavel-Panchekha/dp/0198913869/).
+and [Amazon](https://amzn.to/4hFTkC2).
 It's currently $50 in the US and £40 in the UK, with similar prices in
 many other countries. Translations are coming soon!
 :::
