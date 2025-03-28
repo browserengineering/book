@@ -10,8 +10,29 @@ adds support for drawing the background colors of document tree elements.
     >>> _ = test.ssl.patch().start()
     >>> import lab5
 
-Testing layout_mode
-===================
+Testing Tweaks
+--------------
+
+You'll need to implement appropriate `__repr__` methods for each
+layout class.
+
+5.1 The Layout Tree
+-------------------
+
+At the end of this section, creating a `Browser` and calling its
+`load` method should create a `document` field of type
+`DocumentLayout`. However, in the text, the `DocumentLayout`'s
+`layout` method calls its child `Layout` object's `layout` method,
+which doesn't exist yet.
+
+So for now let's just test that `DocumentLayout` exists. In the test,
+the `and None` avoids printing the name of the class.
+
+    >>> lab5.DocumentLayout and None
+    >>> lab5.BlockLayout and None
+    
+5.2 Block Layout
+----------------
 
 The `layout_mode` method returns "inline" if the object is a `Text` node
 or has all inline children, and otherwise returns "block".
@@ -30,7 +51,13 @@ or has all inline children, and otherwise returns "block".
     
 Here's some tests on a bigger, more complex document
 
-    >>> sample_html = "<div></div><div>text</div><div><div></div>text</div><span></span><span>text</span>"
+    >>> sample_html = """
+    ...   <div></div>
+    ...   <div>text</div>
+    ...   <div><div></div>text</div>
+    ...   <span></span>
+    ...   <span>text</span>
+    ... """
     >>> parser = lab5.HTMLParser(sample_html)
     >>> document_tree = parser.parse()
     >>> lab5.print_tree(document_tree)
@@ -76,24 +103,26 @@ The span has block layout mode, even though spans are inline normally:
     >>> lmode(document_tree.children[0].children[4])
     'inline'
 
-Testing the layout tree
-=======================
-
+Let's load it and make sure we a recursive structure of layout objects:
+    
     >>> url = lab5.URL(test.socket.serve(sample_html))
     >>> browser = lab5.Browser()
     >>> browser.load(url)
-    >>> lab5.print_tree(browser.nodes)
-     <html>
-       <body>
-         <div>
-         <div>
-           'text'
-         <div>
-           <div>
-           'text'
-         <span>
-         <span>
-           'text'
+    >>> assert isinstance(browser.document, lab5.DocumentLayout)
+    >>> assert isinstance(browser.document.children[0], lab5.BlockLayout)
+    >>> assert isinstance(browser.document.children[0].children[0], lab5.BlockLayout)
+    >>> assert isinstance(browser.document.children[0].children[0].children[0], lab5.BlockLayout)
+
+We'll test the exact shape of the tree in a second when we test size
+and position.
+
+5.3 Size and Position
+---------------------
+
+At this point you have to add `__repr__` functions to your layout
+objects. These `__repr__` functions print the sizes and positions.
+
+Let's test the page above:
 
     >>> lab5.print_tree(browser.document)
      DocumentLayout()
@@ -107,25 +136,33 @@ Testing the layout tree
            BlockLayout[block](x=13, y=48.0, width=774, height=0, node=<span>)
            BlockLayout[inline](x=13, y=48.0, width=774, height=15.0, node=<span>)
 
+5.4 Recursive Painting
+----------------------
+
+Now let's make sure we can recursively paint the whole document above:
+
+    >>> len(browser.display_list)
+    3
+
+Let's not test the actual contents, yet, because the contents of the
+display list is about to change.
+
+5.5 Backgrounds
+---------------
+
+We should now have `DrawText` and `DrawRect` objects:
+
     >>> browser.display_list #doctest: +NORMALIZE_WHITESPACE
     [DrawText(top=20.25 left=13 bottom=32.25 text=text font=Font size=12 weight=normal slant=roman style=None),
      DrawText(top=35.25 left=13 bottom=47.25 text=text font=Font size=12 weight=normal slant=roman style=None),
      DrawText(top=50.25 left=13 bottom=62.25 text=text font=Font size=12 weight=normal slant=roman style=None)]
 
-Testing background painting
-===========================
 
-`<pre>` elements have a gray background.
+A this point, `<pre>` elements should have a gray background.
 
     >>> url = lab5.URL(test.socket.serve("<pre>pre text</pre>"))
     >>> browser = lab5.Browser()
     >>> browser.load(url)
-    >>> lab5.print_tree(browser.nodes)
-     <html>
-       <body>
-         <pre>
-           'pre text'
-
     >>> lab5.print_tree(browser.document)
      DocumentLayout()
        BlockLayout[block](x=13, y=18, width=774, height=15.0, node=<html>)
