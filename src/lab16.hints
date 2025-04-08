@@ -22,5 +22,6 @@
 {"code": "DEFAULT_STYLE_SHEET.copy()", "js": "constants.DEFAULT_STYLE_SHEET.slice()"},
 {"code": "node.attributes.get('rel') == 'stylesheet'", "js": "node.attributes['rel'] == 'stylesheet'"},
 {"code": "CSS_PROPERTIES", "type": "dict"},
-{"code": "self.node.attributes", "type": "dict"}
+{"code": "self.node.attributes", "type": "dict"},
+{"code": "img.attributes", "type": "dict"}
 ]
