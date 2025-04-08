@@ -224,7 +224,7 @@ img { max-width: 100%; }
 .demo:before { content: "Demonstration"; color: gray; }
 .further { outline: 2px solid green; }
 .further:before { content: "Go further"; font-weight: bold; color: green; }
-.widget { width: 100%; border: 2px solid navy; }
+.widget { width: round(down, 100%, 1px); border: 2px solid navy; box-sizing: border-box; }
 .center { text-align: center }
 .example, .output { outline: 2px solid lightgray; padding: 1em }
 
