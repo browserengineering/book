@@ -92,7 +92,7 @@ If a `<button>` contains rich markup inside of it, it should be blank:
     >>> browser.tabs[0].display_list
     [DrawRect(top=20.25 left=13 bottom=32.25 right=213 color=orange), DrawText(text=)]
 
-7.3 Interacting with Widgets
+8.3 Interacting with Widgets
 ----------------------------
 
 Clicking on the address bar focuses it
@@ -124,7 +124,7 @@ Clicking on the back button
     >>> browser.chrome.focus
 
 
-7.4 Submitting Forms
+8.4 Submitting Forms
 --------------------
 
 This chapter adds the ability to submit a POST request in addition to a GET
@@ -156,13 +156,13 @@ Forms are submitted via a click on the submit button.
          <div>
            'Form submitted'
            
-7.6 Receiving POST Requests
+8.6 Receiving POST Requests
 ---------------------------
 
 There are no tests for this section since `do_request` doesn't exist yet.
 
 
-7.7 Generating Web Pages
+8.7 Generating Web Pages
 ------------------------
 
     >>> import server8
