@@ -47,10 +47,10 @@ class socket:
         else:
             url = self.scheme + "://" + self.host + ":" + str(self.port) + self.path
         self.Requests.setdefault(url, []).append(self.request)
-        assert self.method == self.URLs[url][0], f"Made a {self.method} request to a {self.URLs[url][0]} URL"
+        assert self.method == self.URLs[url][0], f"Made a {self.method} request to {url}, should be {self.URLs[url][0]}"
         output = self.URLs[url][1]
         if self.URLs[url][2]:
-            assert self.body == self.URLs[url][2], (self.body, self.URLs[url][2])
+            assert self.body == self.URLs[url][2], f"Request to {url} should have body {self.URLs[url][2]!r} but instead has body {self.body!r}"
         stream = io.BytesIO(output)
         if encoding:
             stream = io.TextIOWrapper(stream, encoding=encoding, newline=newline)
