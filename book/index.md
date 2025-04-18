@@ -14,9 +14,7 @@ JavaScript, in a couple thousand lines of Python.
 ::: {.description}
 # Buy _Web Browser Engineering_
 
-Please support us by buying _Web Browser Engineering_ from [Oxford University
-Press](https://global.oup.com/academic/product/web-browser-engineering-9780198913863)
-or from a reseller like
+Please support us by buying _Web Browser Engineering_ from a reseller like
 [Bookshop.org](https://bookshop.org/p/books/web-browser-engineering-chris-harrelson/21588966),
 [B&N](https://www.barnesandnoble.com/w/web-browser-engineering-pavel-panchekha/1146050176),
 and [Amazon](https://amzn.to/4hFTkC2).
