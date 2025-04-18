@@ -12,8 +12,8 @@ interaction.
 
 Note that we aren't mocking `dukpy`. It should just run JavaScript normally!
 
-Testing basic <script> support
-==============================
+9.2 Running JavaScript Code
+---------------------------
 
 The browser should download JavaScript code mentioned in a `<script>` tag:
 
@@ -38,8 +38,8 @@ If instead the script crashes, the browser prints an error message:
 Note that in the last test I set the `ELLIPSIS` flag to elide the duktape stack
 trace.
 
-Testing JSContext
-=================
+9.3 Exporting Functions
+-----------------------
 
 For the rest of these tests we're going to use `console.log` for most testing:
 
@@ -73,8 +73,9 @@ Next let's try to do two scripts:
     >>> lab9.Browser().new_tab(url)
     Testing, testing
 
-Testing querySelectorAll
-========================
+
+9.5 Returning Handles
+---------------------
 
 The `querySelectorAll` method is easiest to test by looking at the number of
 matching nodes:
@@ -104,14 +105,14 @@ That last query is finding an implicit tag. Complex queries are also supported
     >>> js.run("test", "document.querySelectorAll('body html div p').length")
     0
 
-Testing getAttribute
-====================
-
 `querySelectorAll` should return `Node` objects:
 
     >>> js.run("test", "document.querySelectorAll('html')[0] instanceof Node")
     True
 
+
+9.6 Wrapping Handles
+--------------------
 
 Once we have a `Node` object we can call `getAttribute`:
 
@@ -124,17 +125,19 @@ Note that this is "live": as the page changes `querySelectorAll` gives new resul
     >>> js.run("test", "document.querySelectorAll('p')[0].getAttribute('id')")
     'blah'
 
-Testing innerHTML
-=================
+9.8 Modifying the DOM
+---------------------
 
 Testing `innerHTML` is tricky because it knowingly misbehaves on hard-to-parse
 HTML fragments. So we must purposely avoid testing those.
 
 One annoying thing about `innerHTML` is that, since it is an assignment, it
-returns its right hand side. I use `void()` to avoid testing that.
+returns its right hand side. I have a helper function to quash that
+return value:
 
-    >>> js.run("test", "void(document.querySelectorAll('p')[0].innerHTML" +
-    ...     " = 'This is a <b id=new>new</b> element!')")
+    >>> def void(s): return
+    >>> void(js.run("test", "document.querySelectorAll('p')[0].innerHTML" +
+    ...     " = 'This is a <b id=new>new</b> element!'"))
 
 Once we've changed the page, the browser should re-render:
 
@@ -164,8 +167,8 @@ Now that we've modified the page we should be able to find the new elements:
 
 We should also be able to delete nodes this way:
 
-    >>> js.run("test", "var old_b = document.querySelectorAll('b')[0]")
-    >>> js.run("test", "void(document.querySelectorAll('p')[0].innerHTML = 'Lorem')")
+    >>> void(js.run("test", "var old_b = document.querySelectorAll('b')[0]"))
+    >>> void(js.run("test", "document.querySelectorAll('p')[0].innerHTML = 'Lorem'"))
     >>> js.run("test", "document.querySelectorAll('b').length")
     0
     
@@ -188,16 +191,16 @@ Despite this, the old nodes should stick around:
     >>> js.run("test", "old_b.getAttribute('id')")
     'new'
 
-Testing events
-==============
+9.9 Event Defaults
+------------------
 
 Events are the trickiest thing to test here. First, let's do a basic test of
 adding an event listener and then triggering it. I'll use the `div` element to
 test things:
 
     >>> div = b.tabs[0].nodes.children[0].children[0]
-    >>> js.run("test", "var div = document.querySelectorAll('div')[0]")
-    >>> js.run("test", "div.addEventListener('test', function(e) { console.log('Listener ran!')})")
+    >>> void(js.run("test", "var div = document.querySelectorAll('div')[0]"))
+    >>> void(js.run("test", "div.addEventListener('test', function(e) { console.log('Listener ran!')})"))
     >>> js.dispatch_event("test", div)
     Listener ran!
     False
@@ -222,10 +225,10 @@ input, typing into the input, clicking on the button, and submitting the form.
 We'll have a mix of `preventDefault` and non-`preventDefault` handlers to test
 that feature as well.
 
-    >>> js.run("test", "var a = document.querySelectorAll('a')[0]")
-    >>> js.run("test", "var form = document.querySelectorAll('form')[0]")
-    >>> js.run("test", "var input = document.querySelectorAll('input')[0]")
-    >>> js.run("test", "var button = document.querySelectorAll('button')[0]")
+    >>> void(js.run("test", "var a = document.querySelectorAll('a')[0]"))
+    >>> void(js.run("test", "var form = document.querySelectorAll('form')[0]"))
+    >>> void(js.run("test", "var input = document.querySelectorAll('input')[0]"))
+    >>> void(js.run("test", "var button = document.querySelectorAll('button')[0]"))
     
 Note that the `input` element has a value of `hi`:
 
@@ -235,23 +238,23 @@ Note that the `input` element has a value of `hi`:
 Clicking on the link should be canceled because we don't actually want to
 navigate to a new page.
 
-    >>> js.run("test", "a.addEventListener('click', " +
-    ...     "function(e) { console.log('a clicked'); e.preventDefault()})")
+    >>> void(js.run("test", "a.addEventListener('click', " +
+    ...     "function(e) { console.log('a clicked'); e.preventDefault()})"))
 
 For the `input` element, clicking should work, because we need to focus it to
 type into it. But let's cancel the `keydown` event just to test that that works.
 
-    >>> js.run("test", "input.addEventListener('click', " +
-    ...     "function(e) { console.log('input clicked')})")
-    >>> js.run("test", "input.addEventListener('keydown', " +
-    ...     "function(e) { console.log('input typed'); e.preventDefault()})")
+    >>> void(js.run("test", "input.addEventListener('click', " +
+    ...     "function(e) { console.log('input clicked')})"))
+    >>> void(js.run("test", "input.addEventListener('keydown', " +
+    ...     "function(e) { console.log('input typed'); e.preventDefault()})"))
 
 Finally, let's allow clicking on the button but then cancel the form submission:
 
-    >>> js.run("test", "button.addEventListener('click', " +
-    ...     "function(e) { console.log('button clicked')})")
-    >>> js.run("test", "form.addEventListener('submit', " +
-    ...     "function(e) { console.log('form submitted'); e.preventDefault()})")
+    >>> void(js.run("test", "button.addEventListener('click', " +
+    ...     "function(e) { console.log('button clicked')})"))
+    >>> void(js.run("test", "form.addEventListener('submit', " +
+    ...     "function(e) { console.log('form submitted'); e.preventDefault()})"))
 
 With these all set up, we need to do some clicking and typing to trigger these
 events. The display list gives us coordinates for clicking.
