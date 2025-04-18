@@ -47,6 +47,7 @@ class socket:
         else:
             url = self.scheme + "://" + self.host + ":" + str(self.port) + self.path
         self.Requests.setdefault(url, []).append(self.request)
+        assert url in self.URLs, f"Unknown URL {url}, only know {', '.join(self.URLs.keys())}"
         assert self.method == self.URLs[url][0], f"Made a {self.method} request to {url}, should be {self.URLs[url][0]}"
         output = self.URLs[url][1]
         if self.URLs[url][2]:
