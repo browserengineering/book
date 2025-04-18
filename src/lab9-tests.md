@@ -12,8 +12,8 @@ interaction.
 
 Note that we aren't mocking `dukpy`. It should just run JavaScript normally!
 
-Testing basic <script> support
-==============================
+9.2 Running JavaScript Code
+---------------------------
 
 The browser should download JavaScript code mentioned in a `<script>` tag:
 
@@ -38,8 +38,8 @@ If instead the script crashes, the browser prints an error message:
 Note that in the last test I set the `ELLIPSIS` flag to elide the duktape stack
 trace.
 
-Testing JSContext
-=================
+9.3 Exporting Functions
+-----------------------
 
 For the rest of these tests we're going to use `console.log` for most testing:
 
@@ -73,8 +73,9 @@ Next let's try to do two scripts:
     >>> lab9.Browser().new_tab(url)
     Testing, testing
 
-Testing querySelectorAll
-========================
+
+9.5 Returning Handles
+---------------------
 
 The `querySelectorAll` method is easiest to test by looking at the number of
 matching nodes:
@@ -104,14 +105,14 @@ That last query is finding an implicit tag. Complex queries are also supported
     >>> js.run("test", "document.querySelectorAll('body html div p').length")
     0
 
-Testing getAttribute
-====================
-
 `querySelectorAll` should return `Node` objects:
 
     >>> js.run("test", "document.querySelectorAll('html')[0] instanceof Node")
     True
 
+
+9.6 Wrapping Handles
+--------------------
 
 Once we have a `Node` object we can call `getAttribute`:
 
@@ -124,17 +125,123 @@ Note that this is "live": as the page changes `querySelectorAll` gives new resul
     >>> js.run("test", "document.querySelectorAll('p')[0].getAttribute('id')")
     'blah'
 
-Testing innerHTML
-=================
+
+9.7 Event Handling
+------------------
+
+Events are the trickiest thing to test here. There are two steps:
+establish a listener and then trigger it. This helper function quashes
+the return value for the first step; otherwise it differs by DukPy version:
+
+    >>> def void(s): return
+
+Let's do a basic test of adding an event listener and then triggering
+it. I'll use the `div` element to test things:
+
+    >>> div = b.tabs[0].nodes.children[0].children[0]
+    >>> void(js.run("test", "var div = document.querySelectorAll('div')[0]"))
+    >>> void(js.run("test", "div.addEventListener('test', function(e) { console.log('Listener ran!')})"))
+    >>> js.dispatch_event("test", div) #doctest: +ELLIPSIS
+    Listener ran!...
+
+The `...` ignores `preventDefault` handling once you implement that.
+    
+Let's test each of our automatic event types. We'll need a new web page with a
+link, a button, and an input area:
+
+    >>> post = test.socket.respond_ok("http://test/post", "Submitted", method="POST", body="input=t")
+    >>> url = test.socket.serve("""<!doctype html>
+    ... <a href=page2>Click me!</a>
+    ... <form action=/post>
+    ...   <input name=input value=hi>
+    ...   <button>Submit</button>
+    ... </form>""")
+    >>> b.new_tab(lab9.URL(url))
+    >>> js = b.tabs[1].js
+
+Now we're going test five event handlers: clicking on the link, clicking on the
+input, typing into the input, clicking on the button, and submitting the form.
+
+    >>> void(js.run("test", "var form = document.querySelectorAll('form')[0]"))
+    >>> void(js.run("test", "var input = document.querySelectorAll('input')[0]"))
+    >>> void(js.run("test", "var button = document.querySelectorAll('button')[0]"))
+    
+Note that the `input` element has a value of `hi`:
+
+    >>> js.run("test", "input.getAttribute('value')")
+    'hi'
+
+We'll log on every event:
+
+    >>> void(js.run("test", "input.addEventListener('click', " +
+    ...     "function(e) { console.log('input clicked')})"))
+    >>> void(js.run("test", "input.addEventListener('keydown', " +
+    ...     "function(e) { console.log('input typed');})"))
+    >>> void(js.run("test", "button.addEventListener('click', " +
+    ...     "function(e) { console.log('button clicked')})"))
+    >>> void(js.run("test", "form.addEventListener('submit', " +
+    ...     "function(e) { console.log('form submitted');})"))
+
+With these all set up, we need to do some clicking and typing to trigger these
+events. The display list gives us coordinates for clicking.
+
+    >>> lab9.print_tree(b.tabs[1].document)
+     DocumentLayout()
+       BlockLayout[block](x=13, y=18, width=774, height=30.0, node=<html>)
+         BlockLayout[block](x=13, y=18, width=774, height=30.0, node=<body>)
+           BlockLayout[inline](x=13, y=18, width=774, height=15.0, node=<a href="page2">)
+             LineLayout(x=13, y=18, width=774, height=15.0)
+               TextLayout(x=13, y=20.25, width=60, height=12, word=Click)
+               TextLayout(x=85, y=20.25, width=36, height=12, word=me!)
+           BlockLayout[inline](x=13, y=33.0, width=774, height=15.0, node=<form action="/post">)
+             LineLayout(x=13, y=33.0, width=774, height=15.0)
+               InputLayout(x=13, y=35.25, width=200, height=12, type=input)
+               InputLayout(x=225, y=35.25, width=200, height=12, type=button text=Submit)
+
+    >>> b.tabs[1].click(14, 40)
+    input clicked
+    >>> b.tabs[1].keypress('t')
+    input typed
+    >>> b.tabs[1].click(230, 40)
+    button clicked
+    form submitted
+    >>> b.tabs[1].history #doctest: +NORMALIZE_WHITESPACE
+    [URL(scheme=http, host=test, port=80, path='/page2'),
+     URL(scheme=http, host=test, port=80, path='/post')]
+
+This submits the form because we allowed the default action from
+clicking a button---form submission.
+ 
+We need to re-set-up the listeners since we reloaded the page, but
+let's also test clicking the link:
+
+    >>> b.tabs[1].go_back()
+    >>> js = b.tabs[1].js
+    >>> b.tabs[1].history #doctest: +NORMALIZE_WHITESPACE
+    [URL(scheme=http, host=test, port=80, path='/page2')]
+    >>> void(js.run("test", "var a = document.querySelectorAll('a')[0]"))
+    >>> void(js.run("test", "a.addEventListener('click', " +
+    ...     "function(e) { console.log('a clicked');})"))
+    >>> b.tabs[1].click(14, 22)
+    a clicked
+    >>> b.tabs[1].history #doctest: +NORMALIZE_WHITESPACE
+    [URL(scheme=http, host=test, port=80, path='/page2'),
+     URL(scheme=http, host=test, port=80, path='/page2')]
+
+Note that we navigated to a new page---that's because we allowed the
+default action to occur.
+
+
+
+9.8 Modifying the DOM
+---------------------
 
 Testing `innerHTML` is tricky because it knowingly misbehaves on hard-to-parse
 HTML fragments. So we must purposely avoid testing those.
 
-One annoying thing about `innerHTML` is that, since it is an assignment, it
-returns its right hand side. I use `void()` to avoid testing that.
-
-    >>> js.run("test", "void(document.querySelectorAll('p')[0].innerHTML" +
-    ...     " = 'This is a <b id=new>new</b> element!')")
+    >>> js = b.tabs[0].js
+    >>> void(js.run("test", "document.querySelectorAll('p')[0].innerHTML" +
+    ...     " = 'This is a <b id=new>new</b> element!'"))
 
 Once we've changed the page, the browser should re-render:
 
@@ -164,8 +271,8 @@ Now that we've modified the page we should be able to find the new elements:
 
 We should also be able to delete nodes this way:
 
-    >>> js.run("test", "var old_b = document.querySelectorAll('b')[0]")
-    >>> js.run("test", "void(document.querySelectorAll('p')[0].innerHTML = 'Lorem')")
+    >>> void(js.run("test", "var old_b = document.querySelectorAll('b')[0]"))
+    >>> void(js.run("test", "document.querySelectorAll('p')[0].innerHTML = 'Lorem'"))
     >>> js.run("test", "document.querySelectorAll('b').length")
     0
     
@@ -188,33 +295,13 @@ Despite this, the old nodes should stick around:
     >>> js.run("test", "old_b.getAttribute('id')")
     'new'
 
-Testing events
-==============
-
-Events are the trickiest thing to test here. First, let's do a basic test of
-adding an event listener and then triggering it. I'll use the `div` element to
-test things:
-
-    >>> div = b.tabs[0].nodes.children[0].children[0]
-    >>> js.run("test", "var div = document.querySelectorAll('div')[0]")
-    >>> js.run("test", "div.addEventListener('test', function(e) { console.log('Listener ran!')})")
-    >>> js.dispatch_event("test", div)
-    Listener ran!
-    False
-
-The `False` is from our `preventDefault` handling (we didn't call it).
+9.9 Event Defaults
+------------------
 
 Let's test each of our automatic event types. We'll need a new web page with a
 link, a button, and an input area:
 
-    >>> page = """<!doctype html>
-    ... <a href=page2>Click me!</a>
-    ... <form action=/post>
-    ...   <input name=input value=hi>
-    ...   <button>Submit</button>
-    ... </form>"""
-    >>> test.socket.respond(str(url), b"HTTP/1.0 200 OK\r\n\r\n" + page.encode("utf8"))
-    >>> b.new_tab(url)
+    >>> b.tabs[1].go_back()
     >>> js = b.tabs[1].js
 
 Now we're going test five event handlers: clicking on the link, clicking on the
@@ -222,10 +309,10 @@ input, typing into the input, clicking on the button, and submitting the form.
 We'll have a mix of `preventDefault` and non-`preventDefault` handlers to test
 that feature as well.
 
-    >>> js.run("test", "var a = document.querySelectorAll('a')[0]")
-    >>> js.run("test", "var form = document.querySelectorAll('form')[0]")
-    >>> js.run("test", "var input = document.querySelectorAll('input')[0]")
-    >>> js.run("test", "var button = document.querySelectorAll('button')[0]")
+    >>> void(js.run("test", "var a = document.querySelectorAll('a')[0]"))
+    >>> void(js.run("test", "var form = document.querySelectorAll('form')[0]"))
+    >>> void(js.run("test", "var input = document.querySelectorAll('input')[0]"))
+    >>> void(js.run("test", "var button = document.querySelectorAll('button')[0]"))
     
 Note that the `input` element has a value of `hi`:
 
@@ -235,23 +322,23 @@ Note that the `input` element has a value of `hi`:
 Clicking on the link should be canceled because we don't actually want to
 navigate to a new page.
 
-    >>> js.run("test", "a.addEventListener('click', " +
-    ...     "function(e) { console.log('a clicked'); e.preventDefault()})")
+    >>> void(js.run("test", "a.addEventListener('click', " +
+    ...     "function(e) { console.log('a clicked'); e.preventDefault()})"))
 
 For the `input` element, clicking should work, because we need to focus it to
 type into it. But let's cancel the `keydown` event just to test that that works.
 
-    >>> js.run("test", "input.addEventListener('click', " +
-    ...     "function(e) { console.log('input clicked')})")
-    >>> js.run("test", "input.addEventListener('keydown', " +
-    ...     "function(e) { console.log('input typed'); e.preventDefault()})")
+    >>> void(js.run("test", "input.addEventListener('click', " +
+    ...     "function(e) { console.log('input clicked')})"))
+    >>> void(js.run("test", "input.addEventListener('keydown', " +
+    ...     "function(e) { console.log('input typed'); e.preventDefault()})"))
 
 Finally, let's allow clicking on the button but then cancel the form submission:
 
-    >>> js.run("test", "button.addEventListener('click', " +
-    ...     "function(e) { console.log('button clicked')})")
-    >>> js.run("test", "form.addEventListener('submit', " +
-    ...     "function(e) { console.log('form submitted'); e.preventDefault()})")
+    >>> void(js.run("test", "button.addEventListener('click', " +
+    ...     "function(e) { console.log('button clicked')})"))
+    >>> void(js.run("test", "form.addEventListener('submit', " +
+    ...     "function(e) { console.log('form submitted'); e.preventDefault()})"))
 
 With these all set up, we need to do some clicking and typing to trigger these
 events. The display list gives us coordinates for clicking.
@@ -282,7 +369,7 @@ However, we should not have navigated away from the original URL, because we
 prevented submission:
 
     >>> b.tabs[1].history
-    [URL(scheme=http, host=test, port=80, path='/page1')]
+    [URL(scheme=http, host=test, port=80, path='/page2')]
     
 Similarly, when we clicked on the `input` element its `value` should be cleared,
 but when we then typed `t` into it that was canceled so the value should still
