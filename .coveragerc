@@ -20,3 +20,6 @@ source=
 [report]
 omit=
   */inliner
+exclude_lines=
+  ^if __name__ == .__main__.:$
+  ^\s*@wbetools.js_hide$
