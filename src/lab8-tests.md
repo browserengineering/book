@@ -11,45 +11,23 @@ how the server processes form submissions.
     >>> _ = test.ssl.patch().start()
     >>> import lab8
 
-Testing request
-===============
+8.2 Rendering Widgets
+---------------------
 
-This chapter adds the ability to submit a POST request in addition to a GET
-one.
+Let's test how a simple form renders. Here's the form with two inputs
+and a button:
 
-    >>> url = 'http://test/submit'
-    >>> request_body = "name=1&comment=2%3D3"
-    >>> test.socket.respond(url, b"HTTP/1.0 200 OK\r\n" +
-    ... b"Header1: Value1\r\n\r\n" +
-    ... b"<div>Form submitted</div>", method="POST", body=request_body)
-    >>> body = lab8.URL(url).request(request_body)
-    >>> test.socket.last_request(url)
-    b'POST /submit HTTP/1.0\r\nContent-Length: 20\r\nHost: test\r\n\r\nname=1&comment=2%3D3'
+    >>> url2 = test.socket.serve("""
+    ... <form action="/submit">
+    ...   <p>Name: <input name=name value=1></p>
+    ...   <p>Comment: <input name=comment value="2=3"></p>
+    ...   <p><button>Submit!</button></p>
+    ... </form>""")
+    
+Here's how it renders; node the `InputLayout`s:
 
-Testing InputLayout
-===================
-
-    >>> url2 = lab8.URL(test.socket.serve(
-    ... b"<form action=\"/submit\">" +
-    ... b"  <p>Name: <input name=name value=1></p>" +
-    ... b"  <p>Comment: <input name=comment value=\"2=3\"></p>" +
-    ... b"  <p><button>Submit!</button></p>" +
-    ... b"</form>"))
     >>> browser = lab8.Browser()
-    >>> browser.new_tab(url2)
-    >>> lab8.print_tree(browser.tabs[0].document.node)
-     <html>
-       <body>
-         <form action="/submit">
-           <p>
-             'Name: '
-             <input name="name" value="1">
-           <p>
-             'Comment: '
-             <input name="comment" value="2=3">
-           <p>
-             <button>
-               'Submit!'
+    >>> browser.new_tab(lab8.URL(url2))
     >>> lab8.print_tree(browser.tabs[0].document)
      DocumentLayout()
        BlockLayout[block](x=13, y=18, width=774, height=45.0, node=<html>)
@@ -78,8 +56,96 @@ of a text input should be its `value` attribute:
     >>> button.paint()
     [DrawRect(top=50.25 left=13 bottom=62.25 right=213 color=orange), DrawText(text=Submit!)]
 
-Testing form submission
-=======================
+Let's test mixed inline/block content, like an input and a `<div>` as siblings:
+
+    >>> block_inline_url = test.socket.serve("<input><div>")
+    >>> browser = lab8.Browser()
+    >>> browser.new_tab(lab8.URL(block_inline_url))
+
+In this case, because there is an inline element (the `<input>`) and a block'
+sibling (the `<div`), they should be contianed in a `BlockLayout[block]`, but the
+`<input>` element is in an `BlockLayout[inline]`:
+
+    >>> lab8.print_tree(browser.tabs[0].document)
+     DocumentLayout()
+       BlockLayout[block](x=13, y=18, width=774, height=15.0, node=<html>)
+         BlockLayout[block](x=13, y=18, width=774, height=15.0, node=<body>)
+           BlockLayout[inline](x=13, y=18, width=774, height=15.0, node=<input>)
+             LineLayout(x=13, y=18, width=774, height=15.0)
+               InputLayout(x=13, y=20.25, width=200, height=12, type=input)
+           BlockLayout[block](x=13, y=33.0, width=774, height=0, node=<div>)
+
+The painted output also is only drawing the input as 200px wide:
+
+    >>> browser.tabs[0].display_list
+    [DrawRect(top=20.25 left=13 bottom=32.25 right=213 color=lightblue), DrawText(text=)]
+    
+If a `<button>` contains rich markup inside of it, it should be blank:
+
+    >>> url3 = test.socket.serve("""
+    ... <form action="/submit" method=post>
+    ... <button><b>Rich markup</b></button>
+    ... </form>""")
+    >>> browser = lab8.Browser()
+    >>> browser.new_tab(lab8.URL(url3))
+    Ignoring HTML contents inside button
+    >>> browser.tabs[0].display_list
+    [DrawRect(top=20.25 left=13 bottom=32.25 right=213 color=orange), DrawText(text=)]
+
+8.3 Interacting with Widgets
+----------------------------
+
+Clicking on the address bar focuses it
+
+    >>> browser.handle_click(test.Event(51, 51))
+    >>> browser.focus
+    >>> browser.chrome.focus
+    'address bar'
+
+Clicking back on the content area unfocuses it
+
+    >>> browser.handle_click(test.Event(200, 200))
+    Ignoring HTML contents inside button
+    >>> browser.focus
+    'content'
+    >>> browser.chrome.focus
+
+Clicking on the back button 
+
+    >>> rect = browser.chrome.back_rect
+    >>> browser.handle_click(test.Event(rect.left + 1, rect.top + 1))
+    >>> browser.focus
+    >>> browser.chrome.focus
+
+    >>> browser.handle_click(test.Event(200, 200))
+    Ignoring HTML contents inside button
+    >>> browser.focus
+    'content'
+    >>> browser.chrome.focus
+
+
+8.4 Submitting Forms
+--------------------
+
+This chapter adds the ability to submit a POST request in addition to a GET
+one.
+
+    >>> url2 = test.socket.serve("""
+    ... <form action="/submit">
+    ...   <p>Name: <input name=name value=1></p>
+    ...   <p>Comment: <input name=comment value="2=3"></p>
+    ...   <p><button>Submit!</button></p>
+    ... </form>""")
+    >>> browser = lab8.Browser()
+    >>> browser.new_tab(lab8.URL(url2))
+
+    >>> url = 'http://test/submit'
+    >>> request_body = "name=1&comment=2%3D3"
+    >>> test.socket.respond_ok(url,
+    ...    "<div>Form submitted</div>", method="POST", body=request_body)
+    >>> body = lab8.URL(url).request(request_body)
+    >>> test.socket.last_request(url)
+    b'POST /submit HTTP/1.0\r\nContent-Length: 20\r\nHost: test\r\n\r\nname=1&comment=2%3D3'
 
 Forms are submitted via a click on the submit button.
 
@@ -89,9 +155,15 @@ Forms are submitted via a click on the submit button.
        <body>
          <div>
            'Form submitted'
+           
+8.6 Receiving POST Requests
+---------------------------
 
-Testing the server
-==================
+There are no tests for this section since `do_request` doesn't exist yet.
+
+
+8.7 Generating Web Pages
+------------------------
 
     >>> import server8
 
@@ -112,79 +184,7 @@ the response page:
     >>> server8.do_request("POST", "/add", {}, "guest=Chris")
     ('200 OK', '<!doctype html><form action=add method=post><p><input name=guest></p><p><button>Sign the book!</button></p></form><p>Pavel was here</p><p>Chris</p>')
 
-POST requsts to other URLs return 404 pages:
+POST requests to other URLs return 404 pages:
 
     >>> server8.do_request("POST", "/", {}, "")
     ('404 Not Found', '<!doctype html><h1>POST / not found!</h1>')
-
-Testing layout_mode
-===================
-
-    >>> block_inline_url = lab8.URL(test.socket.serve(
-    ... b"<input>" +
-    ... b"<div></div>"))
-    >>> browser = lab8.Browser()
-    >>> browser.new_tab(block_inline_url)
-    >>> lab8.print_tree(browser.tabs[0].document.node)
-     <html>
-       <body>
-         <input>
-         <div>
-
-In this case, because there is an inline element (the `<input>`) and a block'
-sibling (the `<div`), they should be contianed in a `BlockLayout[block]`, but the
-`<input>` element is in an `BlockLayout[inline]`:
-
-    >>> lab8.print_tree(browser.tabs[0].document)
-     DocumentLayout()
-       BlockLayout[block](x=13, y=18, width=774, height=15.0, node=<html>)
-         BlockLayout[block](x=13, y=18, width=774, height=15.0, node=<body>)
-           BlockLayout[inline](x=13, y=18, width=774, height=15.0, node=<input>)
-             LineLayout(x=13, y=18, width=774, height=15.0)
-               InputLayout(x=13, y=20.25, width=200, height=12, type=input)
-           BlockLayout[block](x=13, y=33.0, width=774, height=0, node=<div>)
-
-The painted output also is only drawing the input as 200px wide:
-
-    >>> browser.tabs[0].display_list
-    [DrawRect(top=20.25 left=13 bottom=32.25 right=213 color=lightblue), DrawText(text=)]
-    
-If a `<button>` contains rich markup inside of it, it should print nothing:
-
-    >>> url3 = lab8.URL(test.socket.serve(
-    ... b"<form action=\"/submit\">" +
-    ... b"<button><b>Rich markup</b></button>" +
-    ... b"</form>"))
-    >>> browser = lab8.Browser()
-    >>> browser.new_tab(url3)
-    Ignoring HTML contents inside button
-    >>> browser.tabs[0].display_list
-    [DrawRect(top=20.25 left=13 bottom=32.25 right=213 color=orange), DrawText(text=)]
-
-Testing focus
-=============
-
-    Clicking on the address bar focuses it
-    >>> browser.handle_click(test.Event(51, 51))
-    >>> browser.focus
-    >>> browser.chrome.focus
-    'address bar'
-
-    Clicking back on the content area unfocuses it
-    >>> browser.handle_click(test.Event(200, 200))
-    Ignoring HTML contents inside button
-    >>> browser.focus
-    'content'
-    >>> browser.chrome.focus
-
-    Clicking on the back button 
-    >>> rect = browser.chrome.back_rect
-    >>> browser.handle_click(test.Event(rect.left + 1, rect.top + 1))
-    >>> browser.focus
-    >>> browser.chrome.focus
-
-    >>> browser.handle_click(test.Event(200, 200))
-    Ignoring HTML contents inside button
-    >>> browser.focus
-    'content'
-    >>> browser.chrome.focus

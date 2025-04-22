@@ -123,7 +123,7 @@ Requests can be made to those ports:
 
 Requesting the wrong port is an error:
 
-    >>> lab1.URL("http://test.test:401/example3").request()
+    >>> lab1.URL("http://test.test:401/example3").request() #doctest: +ELLIPSIS
     Traceback (most recent call last):
       ...
-    KeyError: 'http://test.test:401/example3'
+    AssertionError: Unknown URL http://test.test:401/example3, ...
