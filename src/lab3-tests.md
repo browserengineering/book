@@ -245,7 +245,7 @@ Let's also test that `</p>` tags are handled correctly:
     [(13, 20.25, 'Para1', Font size=12 weight=normal slant=roman style=None),
      (13, 53.25, 'Para2', Font size=12 weight=normal slant=roman style=None)]
      
-Note that in this chapters it's the `</p>`, not `<p>`, tags that
+Note that in this chapter it's the `</p>`, not `<p>`, tags that
 introduce the extra whitespace:
 
     >>> l = lab3.Layout(lab3.lex("<p>Para1<p>Para2"))
