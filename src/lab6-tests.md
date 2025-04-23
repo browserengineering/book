@@ -204,6 +204,13 @@ Now we make sure that the `div` is blue:
 
     >>> browser.nodes.children[1].children[0].style["background-color"]
     'blue'
+    
+If the page doesn't exist, the browser doesn't crash:
+
+    >>> htmlurl = test.socket.serve("""
+    ...    <link rel=stylesheet href='/does/not/exist'>
+    ... """)
+    >>> browser.load(lab6.URL(htmlurl))
 
 This first test used an absolute URL, but let's also test relative URLs.
 
