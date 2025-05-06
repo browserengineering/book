@@ -2374,7 +2374,7 @@ that.[^tiling-helps]
 
  [^tiling-helps]: Another way is via surface tiling.
 
-13-8 *Short display lists*. it's relatively common in real browsers to encounter
+13-8 *Short display lists*. It's relatively common in real browsers to encounter
 `CompositedLayer`s that are only a single solid color, or only a few
 simple paint commands.[^real-browser-simple] Implement an optimization that
 skips storing a `skia.Surface` on a `CompositedLayer` with less than a fixed
