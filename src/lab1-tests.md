@@ -29,6 +29,14 @@ This works even if there is no path:
 
 The `...` allow you to print a port once you implement that in Section
 1.7.
+
+If you fail to provide a valid URL, it'll load the book's home page:
+
+    >>> lab1.URL('not a url') #doctest: +ELLIPSIS
+    Malformed URL found, falling back to the WBE home page.
+      URL was: not a url
+    URL(scheme=http..., host=browser.engineering,... path='/')
+
     
 The first half of the `request` function is tested in the next section.
 
@@ -90,6 +98,12 @@ Note that the tags do not have to match:
     hello
     >>> lab1.show('he<body>l<div>l</body>o</div>')
     hello
+    
+The `load` method loads and displays a web page:
+
+    >>> url = test.socket.serve("Some <span>text</span> here")
+    >>> lab1.load(lab1.URL(url))
+    Some text here
 
 1.7 Encrypted Connections
 -------------------------

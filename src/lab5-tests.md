@@ -122,8 +122,21 @@ and position.
 At this point you have to add `__repr__` functions to your layout
 objects. These `__repr__` functions print the sizes and positions.
 
+Let's test line breaking:
+
+    >>> lines_url = test.socket.serve("""
+    ... this is a page with a lot of long text and this test will test
+    ... whether that long text will line break correctly and create a
+    ... BlockLayout with a height of more than one line""")
+    >>> browser.load(lab5.URL(lines_url))
+    >>> lab5.print_tree(browser.document)
+     DocumentLayout()
+       BlockLayout[block](x=13, y=18, width=774, height=45.0, node=<html>)
+         BlockLayout[inline](x=13, y=18, width=774, height=45.0, node=<body>)
+
 Let's test the page above:
 
+    >>> browser.load(url)
     >>> lab5.print_tree(browser.document)
      DocumentLayout()
        BlockLayout[block](x=13, y=18, width=774, height=45.0, node=<html>)
@@ -173,6 +186,25 @@ The first display list entry is now a gray rect, since it's for a `<pre>` elemen
 
     >>> browser.display_list[0]
     DrawRect(top=18 left=13 bottom=33.0 right=787 color=gray)
+    
+Let's also test that we can't scroll past the bottom of the page now.
+Let's make a really tall page and scroll to the bottom:
+
+    >>> tall_url = test.socket.serve("a<br>" * 100)
+    >>> browser.load(lab5.URL(tall_url))
+    >>> browser.document.height
+    1500.0
+    >>> browser.scrolldown(None)
+    >>> browser.scroll
+    100
+    >>> for i in range(100): browser.scrolldown(None)
+    >>> browser.scroll
+    936.0
+    >>> browser.scrolldown(None)
+    >>> browser.scroll
+    936.0
+
+Any further scroll-down events leave the scroll offset unchanged.
 
 
 Testing breakpoints in layout

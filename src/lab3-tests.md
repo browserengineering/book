@@ -61,6 +61,16 @@ Different words should have different lengths:
     >>> lab3.layout("a bb ccc dddd")
     [(13, 18, 'a'), (37, 18, 'bb'), (73, 18, 'ccc'), (121, 18, 'dddd')]
 
+Line breaking still works:
+
+    >>> lab3.WIDTH
+    800
+    >>> lab3.WIDTH = 70
+    >>> lab3.layout("a b c") #doctest: +NORMALIZE_WHITESPACE
+    [(13, 18, 'a'), (37, 18, 'b'), (13, 33, 'c')]
+    >>> lab3.WIDTH = 800
+
+
 Note that the step sizes are 24, 36, and 48 pixels; that's because
 it's measuring 2, 3, and 4 letters---note the space character!
 
@@ -228,8 +238,23 @@ The differing line heights don't occur when text gets smaller:
     >>> baseline(l.display_list[3]) - baseline(l.display_list[1])
     15.0
 
+Let's also test that `</p>` tags are handled correctly:
 
-3.6 Font Caching
+    >>> l = lab3.Layout(lab3.lex("<p>Para1</p><p>Para2</p>"))
+    >>> l.display_list #doctest: +NORMALIZE_WHITESPACE
+    [(13, 20.25, 'Para1', Font size=12 weight=normal slant=roman style=None),
+     (13, 53.25, 'Para2', Font size=12 weight=normal slant=roman style=None)]
+     
+Note that in this chapter it's the `</p>`, not `<p>`, tags that
+introduce the extra whitespace:
+
+    >>> l = lab3.Layout(lab3.lex("<p>Para1<p>Para2"))
+    >>> l.display_list #doctest: +NORMALIZE_WHITESPACE
+    [(13, 20.25, 'Para1', Font size=12 weight=normal slant=roman style=None),
+     (85, 20.25, 'Para2', Font size=12 weight=normal slant=roman style=None)]
+
+
+3.7 Font Caching
 ----------------
 
 To test font caching, we call `get_font` twice and use Python's `is`
