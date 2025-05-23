@@ -330,7 +330,7 @@ class CSSParser:
         self.literal(":")
         self.whitespace()
         val = self.until_chars(until)
-        return prop.casefold(), val.strip()
+        return prop, val.strip()
 
     def body(self):
         pairs = {}

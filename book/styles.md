@@ -114,7 +114,7 @@ def pair(self):
     self.literal(":")
     self.whitespace()
     val = self.word()
-    return prop.casefold(), val
+    return prop, val
 ```
 
 We can parse sequences by calling parsing functions in a loop. For
