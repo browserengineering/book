@@ -72,7 +72,7 @@ class CSSParser:
         self.literal(":")
         self.whitespace()
         val = self.word()
-        return prop, val
+        return prop.casefold(), val
 
     def ignore_until(self, chars):
         while self.i < len(self.s):
@@ -87,7 +87,7 @@ class CSSParser:
         while self.i < len(self.s) and self.s[self.i] != "}":
             try:
                 prop, val = self.pair()
-                pairs[prop.casefold()] = val
+                pairs[prop] = val
                 self.whitespace()
                 self.literal(";")
                 self.whitespace()

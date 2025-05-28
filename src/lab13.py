@@ -330,14 +330,14 @@ class CSSParser:
         self.literal(":")
         self.whitespace()
         val = self.until_chars(until)
-        return prop, val.strip()
+        return prop.casefold(), val.strip()
 
     def body(self):
         pairs = {}
         while self.i < len(self.s) and self.s[self.i] != "}":
             try:
                 prop, val = self.pair([";", "}"])
-                pairs[prop.casefold()] = val
+                pairs[prop] = val
                 self.whitespace()
                 self.literal(";")
                 self.whitespace()

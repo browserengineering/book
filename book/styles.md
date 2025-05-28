@@ -114,7 +114,7 @@ def pair(self):
     self.literal(":")
     self.whitespace()
     val = self.word()
-    return prop, val
+    return prop.casefold(), val
 ```
 
 We can parse sequences by calling parsing functions in a loop. For
@@ -125,7 +125,7 @@ def body(self):
     pairs = {}
     while self.i < len(self.s):
         prop, val = self.pair()
-        pairs[prop.casefold()] = val
+        pairs[prop] = val
         self.whitespace()
         self.literal(";")
         self.whitespace()
