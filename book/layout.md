@@ -95,7 +95,7 @@ call it `DocumentLayout`:
 the root layout object also computes its size and position
 differently, as we'll see later in this chapter.
 
-``` {.python replace=%20Layout/%20BlockLayout}
+``` {.python replace=%20Layout/%20BlockLayout dropline=display_list}
 class DocumentLayout:
     def __init__(self, node):
         self.node = node
