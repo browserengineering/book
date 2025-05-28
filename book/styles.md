@@ -125,7 +125,7 @@ def body(self):
     pairs = {}
     while self.i < len(self.s):
         prop, val = self.pair()
-        pairs[prop.casefold()] = val
+        pairs[prop] = val
         self.whitespace()
         self.literal(";")
         self.whitespace()

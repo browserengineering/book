@@ -337,7 +337,7 @@ class CSSParser:
         while self.i < len(self.s) and self.s[self.i] != "}":
             try:
                 prop, val = self.pair([";", "}"])
-                pairs[prop.casefold()] = val
+                pairs[prop] = val
                 self.whitespace()
                 self.literal(";")
                 self.whitespace()
