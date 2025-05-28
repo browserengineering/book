@@ -37,7 +37,7 @@ for each layout object, and finally draws each layout object to the screen.
 
 Let's start by looking at how the existing `Layout` class is used:
 
-``` {.python expected=False}
+``` {.python file=lab4}
 class Browser:
     def load(self, url):
         # ...
@@ -49,7 +49,7 @@ Here, a `Layout` object is created briefly and then thrown away.
 Let's instead make it the beginning of our layout tree by storing it
 in a `Browser` field:
 
-``` {.python expected=False}
+``` {.python replace=Layout/DocumentLayout dropline=display_list}
 class Browser:
     def load(self, url):
         # ...
