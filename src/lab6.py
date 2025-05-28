@@ -218,7 +218,7 @@ class BlockLayout:
         font = get_font(size, weight, style)
 
         w = font.measure(word)
-        if self.cursor_x + w > self.width:
+        if self.cursor_x + w > self.width: # unchanged
             self.flush()
         color = node.style["color"]
         self.line.append((self.cursor_x, word, font, color))
