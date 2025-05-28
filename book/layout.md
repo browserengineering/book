@@ -55,6 +55,7 @@ class Browser:
         # ...
         self.document = Layout(self.nodes)
         self.document.layout()
+        self.display_list = self.document.display_list
         #...
 ```
 
@@ -105,6 +106,7 @@ class DocumentLayout:
         child = Layout(self.node, self, None)
         self.children.append(child)
         child.layout()
+        self.display_list = child.display_list
 ```
 
 Note an interesting thing about this new `layout` method: its role is
