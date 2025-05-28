@@ -55,6 +55,7 @@ class Browser:
         # ...
         self.document = Layout(self.nodes)
         self.document.layout()
+        self.display_list = self.document.display_list
         #...
 ```
 
@@ -94,7 +95,7 @@ call it `DocumentLayout`:
 the root layout object also computes its size and position
 differently, as we'll see later in this chapter.
 
-``` {.python replace=%20Layout/%20BlockLayout}
+``` {.python replace=%20Layout/%20BlockLayout dropline=display_list}
 class DocumentLayout:
     def __init__(self, node):
         self.node = node
@@ -105,6 +106,7 @@ class DocumentLayout:
         child = Layout(self.node, self, None)
         self.children.append(child)
         child.layout()
+        self.display_list = child.display_list
 ```
 
 Note an interesting thing about this new `layout` method: its role is
