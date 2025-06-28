@@ -373,7 +373,7 @@ only targeted the limited number of GPUs supported by macOS and iOS.
 
 [^timeline-gpu]: You can see a timeline [on the Chrome developer blog][rng-gpu].
 
-[rng-gpu]: https://developer.chrome.com/blog/renderingng/#gpu-acceleration-everywhere
+[rng-gpu]: https://developer.chrome.com/docs/chromium/renderingng/#gpu-acceleration-everywhere
 
 There are *many* challenges to implementing GPU-accelerated raster, among them
 working correctly across many GPU architectures, gracefully falling back to CPU
@@ -891,9 +891,9 @@ and clipping.
 
 [cb]: https://developer.mozilla.org/en-US/docs/Web/CSS/Containing_block
 
-[renderingng-dl]: https://developer.chrome.com/blog/renderingng-data-structures/#display-lists-and-paint-chunks
-[rendersurface]: https://developer.chrome.com/blog/renderingng-data-structures/#compositor-frames-surfaces-render-surfaces-and-gpu-texture-tiles
-[prop-trees]: https://developer.chrome.com/blog/renderingng-data-structures/#property-trees
+[renderingng-dl]: https://developer.chrome.com/docs/chromium/renderingng-data-structures#display_lists_and_paint_chunks
+[rendersurface]: https://developer.chrome.com/docs/chromium/renderingng-data-structures#compositor-frames
+[prop-trees]: https://developer.chrome.com/docs/chromium/renderingng-data-structures#property_trees
 
 :::
 
@@ -1613,7 +1613,7 @@ so perhaps sometime soon this work will be threaded in Chromium.
 
 :::
 
-[cap]: https://developer.chrome.com/blog/renderingng/#compositeafterpaint
+[cap]: https://developer.chrome.com/docs/chromium/renderingng#compositeafterpaint
 
 [threaded-12]: scheduling.html#threaded-scrolling
 
