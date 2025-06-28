@@ -373,7 +373,7 @@ only targeted the limited number of GPUs supported by macOS and iOS.
 
 [^timeline-gpu]: You can see a timeline [on the Chrome developer blog][rng-gpu].
 
-[rng-gpu]: https://developer.chrome.com/docs/chromium/renderingng/#gpu-acceleration-everywhere
+[rng-gpu]: https://developer.chrome.com/docs/chromium/renderingng/#gpu_acceleration_everywhere
 
 There are *many* challenges to implementing GPU-accelerated raster, among them
 working correctly across many GPU architectures, gracefully falling back to CPU
