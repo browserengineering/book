@@ -27,3 +27,7 @@ src/outline*.txt
 latex/*
 browser.trace
 package.json
+.coverage
+bin/
+lib/
+pyvenv.cfg
