@@ -117,3 +117,7 @@ lint test:
 	python3 -m doctest infra/annotate_code.md
 	python3 infra/runtests.py config.json --chapter $(CHAPTER)
 	! grep -n '^```' book/*.md | awk '(NR % 2) {print}' | grep -v '{.'
+
+coverage:
+	coverage run infra/runtests.py config.json 
+	coverage html

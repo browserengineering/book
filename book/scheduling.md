@@ -2024,7 +2024,7 @@ browsers typically have a collection of network or input/output (I/O) threads, w
 move all interaction with the network or the file system off the
 main thread.
 
-[renderingng-architecture]: https://developer.chrome.com/blog/renderingng-architecture/#process-and-thread-structure
+[renderingng-architecture]: https://developer.chrome.com/docs/chromium/renderingng-architecture#process_and_thread_structure
 
 On the other hand, some parts of the browser can't be easily threaded.
 For example, consider the earlier part of the rendering pipeline:

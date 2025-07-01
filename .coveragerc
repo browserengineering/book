@@ -1,0 +1,26 @@
+[run]
+source=
+  lab1
+  lab2
+  lab3
+  lab4
+  lab5
+  lab6
+  lab7
+  lab8
+  lab9
+  lab10
+  lab11
+  lab12
+  lab13
+  lab14
+  lab15
+  lab16
+  
+[report]
+omit=
+  */inliner
+exclude_lines=
+  ^if __name__ == .__main__.:$
+  ^\s*@wbetools.js_hide$
+  \# unchanged$
