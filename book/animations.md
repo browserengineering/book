@@ -2248,7 +2248,7 @@ undesired side-effects leading to performance problems. For example, suppose we
 wanted to *turn off* composited scrolling in certain situations, such as on a
 machine without a lot of memory, but still use compositing for visual effect
 animations. But what if the animation is on content underneath a scroller? In
-practice, it can be very difficulty to implement this situation correctly
+practice, it can be very difficult to implement this situation correctly
 without just giving up and compositing the scroller.
 
 :::
