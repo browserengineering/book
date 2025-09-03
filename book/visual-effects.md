@@ -790,7 +790,7 @@ features like that.
 
 Next, `draw` should copy from the chrome and tab surfaces to the root
 surface. Moreover, we need to translate the `tab_surface` down by
-`chrome_bottom` and up by `scroll`, and clip it to just the area of
+`chrome.bottom` and up by `scroll`, and clip it to just the area of
 the window that doesn't overlap the browser chrome:
 
 ``` {.python}
@@ -863,7 +863,7 @@ class Browser:
 We also have some related changes in `Tab`. Let's rename `Tab`'s
 `draw` method to `raster`. In it, we no longer need
 to pass around the scroll offset to the `execute` methods, or account
-for `chrome_bottom`, because we always draw the whole tab to the tab
+for `chrome.bottom`, because we always draw the whole tab to the tab
 surface:
 
 ``` {.python}
