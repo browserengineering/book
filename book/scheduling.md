@@ -303,24 +303,13 @@ class TaskRunner:
             task.run()
 
         self.condition.acquire(blocking=True)
-        if len(self.tasks) == 0:
-            self.condition.wait()
         self.condition.release()
 ```
-
-It's important to call `wait` at the end of the `run` loop if there is nothing
-left to do. Otherwise that thread will tend to use up a lot of the CPU,
-plus constantly be acquiring and releasing `condition`. This busywork not only
-slows down the computer, but also causes the callbacks from the `Timer` to
-happen at erratic times, because the two threads are competing for the
-lock.[^try-it]
 
 [condition-variable]: https://docs.python.org/3/library/threading.html#threading.Condition
 
 [lock-class]: https://docs.python.org/3/library/threading.html#threading.Lock
 
-[^try-it]: Try removing this code and observe. The timers will become quite
-erratic.
 
 When using locks, it's super important to remember to release the lock
 eventually and to hold it for the shortest time possible. The code
@@ -1351,6 +1340,16 @@ class TaskRunner:
                 self.condition.wait()
             self.condition.release()
 ```
+
+It's important to call `condition.wait` at the end of the `run` loop if
+there is nothing left to do. Otherwise that thread will tend to use up a lot of
+the CPU, plus constantly be acquiring and releasing `condition`. This busywork
+not only slows down the computer, but also causes the callbacks from the
+`Timer` to happen at erratic times, because the two threads are competing for
+the lock.[^try-it]
+
+[^try-it]: Try removing this code and observe. The timers will become quite
+erratic.
 
 The `Browser` should no longer call any methods on the `Tab`. Instead,
 to handle events, it should schedule tasks on the main thread. For
