@@ -569,7 +569,6 @@ class DrawLine(PaintCommand):
         # ...
 ```
 
-`MakeLTRB` creates the `rect` for the `PaintCommand` constructor.
 We can also give a superclass to visual effects:
 
 ``` {.python replace=):/%2c%20node%3dNone):}
