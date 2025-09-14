@@ -1720,6 +1720,7 @@ class VisualEffect:
         # ...
         self.needs_compositing = any([
             child.needs_compositing for child in self.children
+            if isinstance(child, VisualEffect)
         ])
 ```
 
