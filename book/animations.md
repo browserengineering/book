@@ -662,8 +662,7 @@ to the visual effects classes. For `Blend`, it'll create a new
 class Blend(VisualEffect):
     # ...
     def clone(self, child):
-        return Blend(self.opacity, self.blend_mode,
-                     self.node, [child])
+        return Blend(self.opacity, self.blend_mode, [child])
 ```
 
 Our browser won't be cloning paint commands, since they're all going to be
@@ -1321,6 +1320,15 @@ class VisualEffect:
     def __init__(self, rect, children, node=None):
         # ...
         self.node = node
+
+class Blend(VisualEffect):
+    def __init__(self, opacity, blend_mode, node, children):
+        super().__init__(skia.Rect.MakeEmpty(), children, node)
+        # ...
+
+    def clone(self, child):
+        return Blend(self.opacity, self.blend_mode,
+                     self.node, [child])
 ```
 
 Now, when an animation runs---but nothing else changes---we'll use
