@@ -658,7 +658,7 @@ commands and inject new children, so let's add a new `clone` method
 to the visual effects classes. For `Blend`, it'll create a new
 `Blend` with the same parameters but new children:
 
-``` {.python}
+``` {.python replace=%20[child]%29/}
 class Blend(VisualEffect):
     # ...
     def clone(self, child):
