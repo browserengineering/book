@@ -1033,7 +1033,7 @@ class Tab:
             if isinstance(elt, Text):
                 pass
             elif is_focusable(elt):
-                self.focus_element(elt)
+                self.focus = elt
                 self.activate_element(elt)
                 return
             elt = elt.parent
