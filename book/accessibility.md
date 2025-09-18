@@ -1026,14 +1026,15 @@ instead. That quirk is a workaround for our browser
 The `click` method can now be rewritten to call `activate_element`
 directly:
 
-``` {.python}
+``` {.python replace=focus%20%3d%20elt/focus_element(elt)}
 class Tab:
     def click(self, x, y):
+        # ...
         while elt:
             if isinstance(elt, Text):
                 pass
             elif is_focusable(elt):
-                self.focus_element(elt)
+                self.focus = elt
                 self.activate_element(elt)
                 return
             elt = elt.parent
