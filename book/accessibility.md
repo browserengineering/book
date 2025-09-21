@@ -1230,10 +1230,6 @@ class InputLayout:
         return cmds
 ```
 
-I also changed the cursor drawing to only happen if the node is
-focused *and* it's an `input` element. Tabbing over to a `button`
-element should not draw a cursor!
-
 Unfortunately, handling links is a little more complicated. That's
 because one `<a>` element corresponds to multiple `TextLayout`
 objects, so there's not just one layout object where we can stick the
