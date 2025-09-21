@@ -1207,7 +1207,7 @@ def paint_outline(node, cmds, rect, zoom):
 ```
 
 Set this `is_focused` flag in a new `focus_element` method that we'll now use
-to change the `focus` field in a `Tab` (and update existing code that sets
+to change the `focus` field in a `Tab` (you should also update existing code that sets
 `is_focused` directly to call `focus_element` instead):
 
 ``` {.python}
