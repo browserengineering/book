@@ -1128,7 +1128,8 @@ class Frame:
                 data = skia.Data.MakeWithoutCopy(body)
                 img.image = skia.Image.MakeFromEncoded(data)
                 assert img.image, \
-                    "Failed to recognize image format for " + str(image_url)
+                    "Failed to recognize image format for " + \
+                        str(image_url)
             except Exception as e:
                 print("Image", img.attributes.get("src", ""),
                     "crashed", e)
