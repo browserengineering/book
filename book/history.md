@@ -281,7 +281,7 @@ war"](https://en.wikipedia.org/wiki/Browser_wars#First_Browser_War_(1995%E2%80%9
 ensued: a competition between Netscape Navigator and [Internet Explorer]. There
 were also other browsers with smaller market shares; one notable example is
 [Opera](https://en.wikipedia.org/wiki/Opera_(web_browser)). The
-[WebKit](https://en.wikipedia.org/wiki/WebKit) project began in 1999;
+[KHTML](https://en.wikipedia.org/wiki/KHTML) project began in 1999;
 [Safari](https://en.wikipedia.org/wiki/Safari_(web_browser)) and
 [Chromium](https://www.chromium.org/)-based browsers, such as Chrome and newer
 versions of [Edge](https://en.wikipedia.org/wiki/Microsoft_Edge), descend from
