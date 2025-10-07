@@ -23,7 +23,7 @@ implementation if it sounds interesting!] so this chapter uses the
 [DukPy](https://github.com/amol-/dukpy)\index{DukPy} wraps a
 JavaScript interpreter called [Duktape](https://duktape.org). The most
 famous JavaScript interpreters are those used in browsers:
-TraceMonkey (Firefox), JavaScriptCore (Safari), and V8 (Chrome). Unlike
+SpiderMonkey (Firefox), JavaScriptCore (Safari), and V8 (Chrome). Unlike
 those implementations, which are extremely fast but also extremely complex,
 Duktape aims to be simple and extensible, and is usually embedded
 inside a larger C or C++ project.[^1]
