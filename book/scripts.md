@@ -565,6 +565,19 @@ document = { querySelectorAll: function(s) {
     handle. That means you can't use equality to compare `Node`
     objects. I'll ignore that but a real browser wouldn't.
 
+::: {.further}
+Early browsers didn't offer `querySelectorAll`, only `getElementById`
+and `getElementsByTagName`, and the [earliest versions][gEBS] of
+`querySelectorAll` were [JavaScript re-implementations][jSelect],
+especially in the popular and influential [jQuery
+library](https://jquery.org). But since browsers *already* implement
+CSS selectors, it only makes sense to expose that implementation to
+JavaScript directly.
+:::
+
+[gEBS]: https://simonwillison.net/2003/Mar/25/getElementsBySelector/
+[jSelect]: https://johnresig.com/blog/selectors-in-javascript/
+
 Wrapping Handles
 ================
 
