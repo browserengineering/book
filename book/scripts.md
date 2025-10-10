@@ -362,6 +362,23 @@ Python and JavaScript get pretty complicated. *Because* these bugs are hard,
 it's worth approaching debugging systematically and gathering a lot of
 information before attempting a fix.
 
+::: {.further}
+Early web browsers offered about this support for JavaScript debugging!
+Today's sophisticated developer tools came together bit by bit.
+Microsoft's [Script Debugger][msd] introduced a step debugger for
+JavaScript,^[Which it called JScript for trademark reasons.]
+[Firebug][firebug] introduced a JS Console and the Network tab,
+and Webkit's [Web Inspector][web-inspector] the "Inspect" button
+and DOM view. These features were so useful they quickly [became
+standard][chrome-devtools] and are now a core part of every browser
+engine.
+:::
+
+[msd]: https://en.wikipedia.org/wiki/Microsoft_Script_Debugger
+[firebug]: https://hacks.mozilla.org/2017/10/saying-goodbye-to-firebug/
+[web-inspector]: https://webkit.org/blog/5718/10-years-of-web-inspector/
+[chrome-devtools]: https://blog.chromium.org/2018/09/10-years-of-chrome-devtools.html
+
 Returning Handles
 =================
 
