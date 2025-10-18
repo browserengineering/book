@@ -19,8 +19,11 @@ Please support us by buying _Web Browser Engineering_ from a reseller like
 [B&N](https://www.barnesandnoble.com/w/web-browser-engineering-pavel-panchekha/1146050176),
 and [Amazon](https://amzn.to/4hFTkC2).
 It's currently $50 in the US and £40 in the UK, with similar prices in
-many other countries. Translations are coming soon!
+many other countries. Translations are coming soon (the forthcoming Korean
+edition cover art is shown on the right).
 :::
+
+![here](im/wbe-korean.jpeg)
 
 :::::
 
