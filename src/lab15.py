@@ -1042,12 +1042,12 @@ class Frame:
 
     def set_needs_render(self):
         self.needs_style = True
-        self.tab.set_needs_accessibility()
+        self.tab.needs_accessibility = True
         self.tab.set_needs_paint()
 
     def set_needs_layout(self):
         self.needs_layout = True
-        self.tab.set_needs_accessibility()
+        self.tab.needs_accessibility = True
         self.tab.set_needs_paint()
 
     def allowed_request(self, url):
@@ -1374,12 +1374,6 @@ class Tab:
         for id, frame in self.window_id_to_frame.items():
             frame.set_needs_render()
 
-    def set_needs_accessibility(self):
-        if not self.accessibility_is_on:
-            return
-        self.needs_accessibility = True
-        self.browser.set_needs_animation_frame(self)
-
     def set_needs_paint(self):
         self.needs_paint = True
         self.browser.set_needs_animation_frame(self)
@@ -1482,7 +1476,7 @@ class Tab:
     def scrolldown(self):
         frame = self.focused_frame or self.root_frame
         frame.scrolldown()
-        self.set_needs_accessibility()
+        self.needs_accessibility = True
         self.set_needs_paint()
 
     def enter(self):
