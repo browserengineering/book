@@ -854,7 +854,7 @@ class Browser:
 All that's left is wiring these methods up; let's rename
 `raster_and_draw` to `composite_raster_and_draw` (to remind us that
 there's now an additional composite step) and add our two new methods.
-(And don't forget to rename the corresponding dirty bit and call
+(And don't forget to rename the corresponding dirty flag and call
 sites.)
 
 ``` {.python}
@@ -1167,7 +1167,7 @@ class Tab:
 Inside this loop we need to do two things. First, call the
 animation's `animate` method and save the new value to the node's
 `style`. Second, since that changes rendering inputs, set a
-dirty bit requiring rendering later.^[We also need to
+dirty flag requiring rendering later.^[We also need to
 schedule an animation frame for the next frame of the animation, but
 `set_needs_render` already does that for us.] The whole rendering cycle between the browser and main threads is summarized
 in Figure 2.
@@ -1203,7 +1203,7 @@ class Tab:
 
 To implement `set_needs_layout`, we've got to replace the single
 `needs_render` flag with three flags: `needs_style`, `needs_layout`,
-and `needs_paint`. In our implementation, setting a dirty bit earlier
+and `needs_paint`. In our implementation, setting a dirty flag earlier
 in the pipeline will end up causing everything after it to also run,^[This
 is yet another difference from real browsers, which optimize some
 cases that just require style and paint, or other combinations.]
@@ -1233,8 +1233,8 @@ class Tab:
         self.browser.set_needs_animation_frame(self)
 ```
 
-To support these new dirty bits, `render` must check each phase's bit
-instead of checking `needs_render` at the start:[^timer-obsolete]
+To support these new dirty flags, `render` must check each phase's
+flag instead of checking `needs_render` at the start:[^timer-obsolete]
 
 ``` {.python}
 class Tab:
@@ -1414,9 +1414,9 @@ class Tab:
 ```
 
 Now for the browser thread. First, add `needs_composite`, `needs_raster` and
-`needs_draw` dirty bits and corresponding `set_needs_composite`,
+`needs_draw` dirty flags and corresponding `set_needs_composite`,
 `set_needs_raster`, and `set_needs_draw` methods (and remove the old dirty
-bit):
+flag):
 
 ``` {.python}
 class Browser:
@@ -2316,7 +2316,7 @@ function, and one or two others.
 transfoms and scrolling, but they are not fully composited and threaded,
 and transform transition animations are not supported. Implement these.
 (Hint: for transforms, it just requires following the same pattern as for
-`opacity`; for scrolling, it requires setting fewer dirty bits in
+`opacity`; for scrolling, it requires setting fewer dirty flags in
 `handle_down`.) [A simultaneous transform and opacity animation][tr-example] should now work, without any raster, and scrolling on that page should not
 raster either.
 
