@@ -244,18 +244,24 @@ higher-quality "bilinear" or even "[Lanczos][lanczos]" algorithms.[^resizing]
 To give web page authors control over this performance bottleneck,
 there's an [`image-rendering`][image-rendering] CSS property that
 indicates which algorithm to use. Let's add that as an argument to
-`DrawImage`:
+`DrawImage`:[^skia-87]
+
+[^skia-87]: The 1^st^ edition of *Web Browser Engineering* used an
+    older API for image rendering quality, described in the 
+    [porting notes](https://browser.engineering/porting.html).
 
 [image-rendering]: https://developer.mozilla.org/en-US/docs/Web/CSS/image-rendering
 
 ``` {.python}
 def parse_image_rendering(quality):
    if quality == "high-quality":
-       return skia.FilterQuality.kHigh_FilterQuality
+       return skia.SamplingOptions(skia.CubicResampler.Mitchell())
    elif quality == "crisp-edges":
-       return skia.FilterQuality.kLow_FilterQuality
+       return skia.SamplingOptions(
+           skia.FilterMode.kNearest, skia.MipmapMode.kNone)
    else:
-       return skia.FilterQuality.kMedium_FilterQuality
+       return skia.SamplingOptions(
+           skia.FilterMode.kLinear, skia.MipmapMode.kLinear)
 
 class DrawImage(PaintCommand):
     def __init__(self, image, rect, quality):
@@ -263,10 +269,7 @@ class DrawImage(PaintCommand):
         self.quality = parse_image_rendering(quality)
 
     def execute(self, canvas):
-        paint = skia.Paint(
-            FilterQuality=self.quality,
-        )
-        canvas.drawImageRect(self.image, self.rect, paint)
+        canvas.drawImageRect(self.image, self.rect, self.quality)
 ```
 
 But to talk about where this argument comes from, or more generally to
