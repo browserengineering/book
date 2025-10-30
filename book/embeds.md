@@ -182,7 +182,7 @@ class Tab:
 Now that we've downloaded and saved the image, we need to use it.
 That just requires calling Skia's `drawImageRect` function:
 
-``` {.python replace=%2c%20rect/%2c%20rect%2c%20quality,self.rect)/self.rect%2c%20paint)}
+``` {.python replace=%2c%20rect/%2c%20rect%2c%20quality,self.rect)/self.rect%2c%20self.quality)}
 class DrawImage(PaintCommand):
     def __init__(self, image, rect):
         super().__init__(rect)
