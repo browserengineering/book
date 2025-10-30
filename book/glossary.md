@@ -385,6 +385,11 @@ Device pixel ratio
 : The ratio between the screen pixel resolution and a
 "typical" screen (defined as the pixel resolution of a 1990s CRT).
 
+Dirty flag
+
+: A boolean variable that indicates whether some other piece of data
+  is up to date and thus usable or out of date and thus invalidated.
+
 Display list
 
 : A sequence of graphics commands explaining how to draw a

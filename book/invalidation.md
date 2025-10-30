@@ -531,9 +531,9 @@ class Frame:
 ```
 
 It's important that _all_ dependencies of the protected field set the
-dirty bit. This can be challenging, since it requires being vigilant
+dirty flag. This can be challenging, since it requires being vigilant
 about which fields depend on which others. But if we do forget to set
-the dirty bit, we'll sometimes fail to recompute the protected
+the dirty flag, we'll sometimes fail to recompute the protected
 fields, which means we'll display the page incorrectly. Typically
 these bugs look like unpredictable layout glitches, and they can be
 very hard to debug---so we need to be careful.
@@ -1895,9 +1895,9 @@ Skipping Traversals
 ===================
 
 Now that all of the layout fields are protected, we can check if any
-of them need to be recomputed by checking their dirty bits. But to
-check all of those dirty bits, we'd need to *visit* every layout object,
-which can take a long time. Instead, we should use dirty bits to
+of them need to be recomputed by checking their dirty flags. But to
+check all of those dirty flags, we'd need to *visit* every layout object,
+which can take a long time. Instead, we should use dirty flags to
 minimize the number of layout objects we need to visit.
 
 The basic idea revolves around the question: do we even need to call
@@ -1916,7 +1916,7 @@ descendant has a dirty `ProtectedField`:[^ancestors]
 
 [^ancestors]: In some code bases, you will see these called *ancestor*
     dirty flags instead. It's the same thing, just following the flow
-    of dirty bits instead of the flow of control.
+    of dirty flags instead of the flow of control.
 
 ``` {.python}
 class BlockLayout:
@@ -1957,11 +1957,11 @@ class BlockLayout:
 ```
 
 Then, whenever `mark` or `notify` is called, we set the descendant
-bits by walking the `parent` chain:
+flags by walking the `parent` chain:
 
 ``` {.python}
 class ProtectedField:
-    def set_ancestor_dirty_bits(self):
+    def set_ancestor_dirty_flags(self):
         parent = self.parent
         while parent and not parent.has_dirty_descendants:
             parent.has_dirty_descendants = True
@@ -1969,17 +1969,17 @@ class ProtectedField:
 
     def mark(self):
         # ...
-        self.set_ancestor_dirty_bits()
+        self.set_ancestor_dirty_flags()
 ```
 
-Note that the `while` loop exits early if the descendants bit is
-already set. That's because whoever set _that_ bit already set all the
-ancestors' descendant dirty bits.^[This
+Note that the `while` loop exits early if the descendants flag is
+already set. That's because whoever set _that_ flag already set all the
+ancestors' descendant dirty flags.^[This
 optimization is important in real browsers. Without it, repeatedly
 invalidating the same object would walk up the tree to the root repeatedly,
 violating the principle of incremental performance.]
 
-We'll need to clear the descendant bits after `layout`:
+We'll need to clear the descendant flags after `layout`:
 
 ``` {.python}
 class BlockLayout:
@@ -2001,7 +2001,7 @@ class BlockLayout:
         # ...
 ```
 
-Here, the `layout_needed` method just checks all of the dirty bits:
+Here, the `layout_needed` method just checks all of the dirty flags:
 
 ``` {.python}
 class BlockLayout:
@@ -2077,7 +2077,7 @@ pattern][observer-pattern], where one piece of code runs a callback
 when a piece of state changes. This pattern is [common in UI
 frameworks][kvo]. Usually these observers *eagerly* recompute
 dependent results, but our callbacks---`mark` and `notify`---simply set a
-dirty bit to be cleaned up later. That means our invalidation
+dirty flag to be cleaned up later. That means our invalidation
 algorithm is a kind of [*lazy* observer][lazy-eval]. Laziness helps
 performance by batching updates.
 :::
@@ -2644,7 +2644,7 @@ ideal.
 Luckily, techniques like compile-time code generation and macros can
 be used to turn `ProtectedField` objects into straight-line code
 behind the scenes. Setting a particular `ProtectedField` can set the
-dirty bits on statically known invalidations, the dirty bits can be
+dirty flags on statically known invalidations, the dirty flags can be
 inlined into the layout objects, and the `read` function can check
 that the dependency was declared at compile time.^[Real browsers pull
 tricks like that all the time, in order to be super fast but still
@@ -2737,7 +2737,7 @@ invalidation properly.
 [^unless-createelement]: Unless you've implemented Exercises 9-2 and 9-3,
     in which case they can also be "detached" elements.
 
-16-4 *Descendant bits for style*. Add descendant dirty flags for `style`
+16-4 *Descendant flags for style*. Add descendant dirty flags for `style`
 information, so that the `style` phase doesn't need to traverse nodes
 whose styles are unchanged.
 
@@ -2792,5 +2792,5 @@ of `ProtectedField` to be functional rather than object-oriented.
 
 16-10 *Optimizing paint*. Even after making layout fast for text input, paint is
 still painfully slow. Fix that by storing the display list between frames,
-adding dirty bits for whether paint is needed for each layout object, and mutating
+adding dirty flags for whether paint is needed for each layout object, and mutating
 the display list rather than recreating it every time.

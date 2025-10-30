@@ -1000,7 +1000,7 @@ class Frame:
             # ...
 ```
 
-Again, these dirty bits move to the `Frame` because they relate to the
+Again, these dirty flags move to the `Frame` because they relate to the
 frame's part of rendering.
 
 Unlike images, iframes have *no [intrinsic size][intrinsic-size]*:

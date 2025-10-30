@@ -642,8 +642,8 @@ varying rate between 60 and 24.
 [refresh-rate]: https://www.intel.com/content/www/us/en/gaming/resources/highest-refresh-rate-gaming.html
 [hobbit-fps]: https://www.extremetech.com/extreme/128113-why-movies-are-moving-from-24-to-48-fps
 
-Optimizing with Dirty Bits
-==========================
+Optimizing with Dirty Flags
+===========================
 
 If you run this on your computer, there's a good chance your CPU usage
 will spike and your batteries will start draining. That's because
@@ -654,9 +654,9 @@ the web page will not have changed at all, so the old styles, layout
 trees, and display lists would have worked just as well as the new
 ones.
 
-Let's fix this using a *dirty bit*, a piece of state that tells us if
+Let's fix this using a *dirty flag*, a piece of state that tells us if
 some complex data structure is up to date. Since we want to know if we
-need to run `render`, let's call our dirty bit `needs_render`:
+need to run `render`, let's call our dirty flag `needs_render`:
 
 ``` {.python}
 class Tab:
@@ -718,12 +718,12 @@ doing `raster_and_draw` every time the active tab runs a task.
 But sometimes that task is just running JavaScript that doesn't touch
 the web page, and the `raster_and_draw` call is a waste.
 
-We can avoid this using another dirty bit, which I'll call
+We can avoid this using another dirty flag, which I'll call
 `needs_raster_and_draw`:[^not-just-speed]
 
-[^not-just-speed]: The `needs_raster_and_draw` dirty bit doesn't just
+[^not-just-speed]: The `needs_raster_and_draw` dirty flag doesn't just
 make the browser a bit more efficient. Later in this chapter, we'll
-add multiple browser threads, and at that point this dirty bit is
+add multiple browser threads, and at that point this dirty flag is
 necessary to avoid erratic behavior when animating. Try removing it
 later and see for yourself!
 
@@ -777,7 +777,7 @@ class Chrome:
         return False
 ```
 
-And the `Tab` should also set this bit after running `render`:
+And the `Tab` should also set this flag after running `render`:
 
 ``` {.python dropline=set_needs_raster_and_draw}
 class Tab:
@@ -942,7 +942,7 @@ later, they might end up delayed by many, many frames.
 
 Luckily, rendering is special in that it never makes sense to have two
 rendering tasks in a row, since the page wouldn't have changed in
-between. To avoid having two rendering tasks we'll add a dirty bit
+between. To avoid having two rendering tasks we'll add a dirty flag
 called `needs_animation_frame` to the `Browser` that indicates
 whether a rendering task actually needs to be scheduled:
 
@@ -979,7 +979,7 @@ class Browser:
 ```
 
 Note that `set_needs_animation_frame` will only actually set the dirty
-bit if called from the active tab. This guarantees that inactive tabs
+flag if called from the active tab. This guarantees that inactive tabs
 can't interfere with active tabs. Besides preventing scripts from
 scheduling too many animation frames, this system also makes sure that
 if our browser consistently runs slower than 30 frames per second, we

@@ -84,7 +84,7 @@ class ProtectedField:
             dependency.invalidations.add(self)
         self.frozen_dependencies = True
 
-    def set_ancestor_dirty_bits(self):
+    def set_ancestor_dirty_flags(self):
         parent = self.parent
         while parent and not parent.has_dirty_descendants:
             parent.has_dirty_descendants = True
@@ -93,12 +93,12 @@ class ProtectedField:
     def mark(self):
         if self.dirty: return
         self.dirty = True
-        self.set_ancestor_dirty_bits()
+        self.set_ancestor_dirty_flags()
 
     def notify(self):
         for field in self.invalidations:
             field.mark()
-        self.set_ancestor_dirty_bits()
+        self.set_ancestor_dirty_flags()
 
     def set(self, value):
         # if self.value != None:
