@@ -79,6 +79,11 @@ for that:
     ... x.send();
     ... console.log(x.responseText);"""
 
+This helper function quashes the return value for `js.run`; otherwise 
+it differs by DukPy version:
+
+    >>> def void(s): return
+
 Now let's test a simple same-site request:
 
     >>> url = "http://about.blank/"
@@ -88,12 +93,12 @@ Now let's test a simple same-site request:
     >>> browser = lab10.Browser()
     >>> browser.new_tab(lab10.URL(url))
     >>> tab = browser.tabs[0]
-    >>> tab.js.run("test", xhrjs(url2))
+    >>> void(tab.js.run("test", xhrjs(url2)))
     Hello!
 
 Relative URLs also work:
 
-    >>> tab.js.run("test", xhrjs("/hello"))
+    >>> void(tab.js.run("test", xhrjs("/hello")))
     Hello!
     
 Non-synchronous XHRs should fail:
@@ -105,7 +110,7 @@ Non-synchronous XHRs should fail:
 If cookies are present, they should be sent:
 
     >>> lab10.COOKIE_JAR["about.blank"] = ('foo=bar', {})
-    >>> tab.js.run("test", xhrjs(url2))
+    >>> void(tab.js.run("test", xhrjs(url2)))
     Hello!
     >>> test.socket.last_request(url2)
     b'GET /hello HTTP/1.0\r\nHost: about.blank\r\nCookie: foo=bar\r\n\r\n'
