@@ -13,8 +13,7 @@ jobs:
           cache: pip
       - name: Install dependencies
         run: |
-          sudo apt update
-          sudo apt install -y libegl1-mesa
+          sudo apt install -y libegl1
           python -m pip install -r requirements.txt --no-deps
       - uses: r-lib/actions/setup-pandoc@v2
         with:
