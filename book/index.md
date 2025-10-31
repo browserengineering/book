@@ -14,13 +14,16 @@ JavaScript, in a couple thousand lines of Python.
 ::: {.description}
 # Buy _Web Browser Engineering_
 
-Please support us by buying _Web Browser Engineering_ from a reseller like
+_Web Browser Engineering_ is available in English
+for about $50 from
 [Bookshop.org](https://bookshop.org/p/books/web-browser-engineering-chris-harrelson/21588966),
 [B&N](https://www.barnesandnoble.com/w/web-browser-engineering-pavel-panchekha/1146050176),
-and [Amazon](https://amzn.to/4hFTkC2).
-It's currently $50 in the US and £40 in the UK, with similar prices in
-many other countries. Translations are coming soon (the forthcoming Korean
-edition cover art is shown on the right).
+or [Amazon](https://amzn.to/4hFTkC2),
+and in Korean from
+[Yes24](https://www.yes24.com/product/goods/153499985)
+or directly from
+[Hanbit](https://www.hanbit.co.kr/store/books/look.php?p_code=B6818199506).
+More translations coming soon.
 :::
 
 ![here](im/wbe-korean.jpeg)
