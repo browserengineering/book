@@ -246,8 +246,8 @@ there's an [`image-rendering`][image-rendering] CSS property that
 indicates which algorithm to use. Let's add that as an argument to
 `DrawImage`:[^skia-87]
 
-[^skia-87]: The 1^st^ edition of *Web Browser Engineering* used an
-    older API for image rendering quality, described in the 
+[^skia-87]: The 1^st^ printed edition of *Web Browser Engineering*
+    used an older API for image rendering quality, described in the
     [porting notes](https://browser.engineering/porting.html).
 
 [image-rendering]: https://developer.mozilla.org/en-US/docs/Web/CSS/image-rendering

@@ -52,11 +52,11 @@ to find SDL in your system package manager instead. Consult the
 more details.
 :::
 
-[^book-old]: The 1^st^ edition of *Web Browser Engineering* used an
-    older Skia version, and if you're reading this website together
-    with a printed 1^st^ edition, make sure to check the 
-    [porting notes](https://browser.engineering/porting.html)
-    to understand the differences between the two.
+[^book-old]: The 1^st^ printed edition of *Web Browser Engineering*
+    used an older Skia version, and if you're reading this website
+    together with a printed 1^st^ edition, make sure to check the
+    [porting notes](https://browser.engineering/porting.html) to
+    understand the differences between the two.
 
 [skia-python]: https://kyamagu.github.io/skia-python/
 [sdl-python]: https://pypi.org/project/PySDL2/

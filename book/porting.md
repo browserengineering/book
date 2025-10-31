@@ -14,12 +14,12 @@ Porting to Skia 87
 ==================
 
 The text of this online book uses Skia 138, but the printed 1^st^
-edition used the earlier version 87. This earlier version was missing
-the `SamplingOptions` API used in [Chapter 15](embeds.md) of this
-book. Skia 87 instead provides the older `FilterQuality` API.
+printed edition used the earlier version 87. This earlier version was
+missing the `SamplingOptions` API used in [Chapter 15](embeds.md) of
+this book. Skia 87 instead provides the older `FilterQuality` API.
 
-Readers of the 1^st^ edition thus saw a different implementation of
-`parse_image_rendering`:
+Readers of the 1^st^ printed edition thus saw a different
+implementation of `parse_image_rendering`:
 
 ``` {.python}
 def parse_image_rendering(quality):
@@ -46,5 +46,5 @@ The `SDL_GL_SetAttribute` method calls in the `Browser` constructor
 were also not necessary on this older version.
 
 We recommend new readers use a recent Skia version, as described in
-the main text, but the old code is documented here to preserve the
-code of the 1^st^ edition.
+the main text, but the old code is provided here for owners of the
+1^st^ printed edition.
