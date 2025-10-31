@@ -1013,7 +1013,8 @@ class Browser:
 
             sdl2.SDL_GL_SetAttribute(sdl2.SDL_GL_CONTEXT_MAJOR_VERSION, 3)
             sdl2.SDL_GL_SetAttribute(sdl2.SDL_GL_CONTEXT_MINOR_VERSION, 2)
-            sdl2.SDL_GL_SetAttribute(sdl2.SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG, True)
+            sdl2.SDL_GL_SetAttribute(
+                sdl2.SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG, True)
             sdl2.SDL_GL_SetAttribute(sdl2.SDL_GL_CONTEXT_PROFILE_MASK,
                                      sdl2.SDL_GL_CONTEXT_PROFILE_CORE)
 

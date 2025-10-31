@@ -113,22 +113,14 @@ class URL:
 DEFAULT_STYLE_SHEET = CSSParser(open("browser15.css").read()).parse()
 
 def parse_image_rendering(quality):
-    if int(skia.__version__.split(".")[0]) > 87:
-        if quality == "high-quality":
-            return skia.SamplingOptions(skia.CubicResampler.Mitchell())
-        elif quality == "crisp-edges":
-            return skia.SamplingOptions(
-                skia.FilterMode.kNearest, skia.MipmapMode.kNone)
-        else:
-            return skia.SamplingOptions(
-                skia.FilterMode.kLinear, skia.MipmapMode.kLinear)
-
     if quality == "high-quality":
-        return skia.FilterQuality.kHigh_FilterQuality
+        return skia.SamplingOptions(skia.CubicResampler.Mitchell())
     elif quality == "crisp-edges":
-        return skia.FilterQuality.kLow_FilterQuality
+        return skia.SamplingOptions(
+            skia.FilterMode.kNearest, skia.MipmapMode.kNone)
     else:
-        return skia.FilterQuality.kMedium_FilterQuality
+        return skia.SamplingOptions(
+            skia.FilterMode.kLinear, skia.MipmapMode.kLinear)
 
 class DrawImage(PaintCommand):
     def __init__(self, image, rect, quality):
@@ -137,14 +129,7 @@ class DrawImage(PaintCommand):
         self.quality = parse_image_rendering(quality)
 
     def execute(self, canvas):
-        if int(skia.__version__.split(".")[0]) > 87:
-            canvas.drawImageRect(self.image, self.rect, self.quality)
-            return
-
-        paint = skia.Paint(
-            FilterQuality=self.quality,
-        )
-        canvas.drawImageRect(self.image, self.rect, paint)
+        canvas.drawImageRect(self.image, self.rect, self.quality)
 
     @wbetools.js_hide
     def __repr__(self):
@@ -1533,7 +1518,8 @@ class Browser:
 
             sdl2.SDL_GL_SetAttribute(sdl2.SDL_GL_CONTEXT_MAJOR_VERSION, 3)
             sdl2.SDL_GL_SetAttribute(sdl2.SDL_GL_CONTEXT_MINOR_VERSION, 2)
-            sdl2.SDL_GL_SetAttribute(sdl2.SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG, True)
+            sdl2.SDL_GL_SetAttribute(
+                sdl2.SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG, True)
             sdl2.SDL_GL_SetAttribute(sdl2.SDL_GL_CONTEXT_PROFILE_MASK,
                                      sdl2.SDL_GL_CONTEXT_PROFILE_CORE)
 

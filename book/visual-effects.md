@@ -37,10 +37,10 @@ Tkinter uses, dates from the early 1990s, before high-performance
 graphics cards and GPUs became widespread.
 
 ::: {.installation}
-Start by installing [Skia][skia-python] and [SDL][sdl-python]:
+Start by installing [Skia][skia-python] and [SDL][sdl-python]:[^book-old]
 
 ``` {.sh}
-python3 -m pip install 'skia-python==87.*' pysdl2 pysdl2-dll
+python3 -m pip install skia-python pysdl2 pysdl2-dll
 ```
 
 As elsewhere in this book, you may need to install the `pip` package
@@ -50,17 +50,13 @@ Also, you may not be able to install `pysdl2-dll`; if so, you'll need
 to find SDL in your system package manager instead. Consult the
 [`skia-python`][skia-python] and [`pysdl2`][sdl-python] web pages for
 more details.
-
-Note that I'm explicitly installing Skia version 87. Skia makes
-regular releases that change APIs or break compatibility; version 87
-is fairly old and should work reliably on most systems. In your own
-projects, or before filing bug reports in Skia, please do use more
-recent Skia releases. It's also possible that future Python version no
-longer support Skia 87; our
-[porting notes](https://browser.engineering/porting.html) explain how
-to use recent Skia releases for the code in this book.
-
 :::
+
+[^book-old]: The 1^st^ printed edition of *Web Browser Engineering*
+    used an older Skia version, and if you're reading this website
+    together with a printed 1^st^ edition, make sure to check the
+    [porting notes](https://browser.engineering/porting.html) to
+    understand the differences between the two.
 
 [skia-python]: https://kyamagu.github.io/skia-python/
 [sdl-python]: https://pypi.org/project/PySDL2/
