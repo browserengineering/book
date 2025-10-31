@@ -984,12 +984,12 @@ class Frame:
 
     def set_needs_render(self):
         self.needs_style = True
-        self.tab.set_needs_accessibility()
+        self.tab.needs_accessibility = True
         self.tab.set_needs_paint()
 
     def set_needs_layout(self):
         self.needs_layout = True
-        self.tab.set_needs_accessibility()
+        self.tab.needs_accessibility = True
         self.tab.set_needs_paint()
 
     def render(self):
