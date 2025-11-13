@@ -40,7 +40,7 @@ from lab13 import VisualEffect, Blend, Transform, DrawOutline
 from lab14 import parse_outline, style, \
     paint_outline, dpx, cascade_priority, \
     is_focusable, get_tabindex, speak_text, \
-    CSSParser, mainloop, Chrome, PseudoclassSelector, SPEECH_FILE
+    CSSParser, mainloop, Chrome, PseudoclassSelector
 from lab15 import URL, HTMLParser, AttributeParser, DrawImage, \
     DocumentLayout, BlockLayout, \
     EmbedLayout, InputLayout, LineLayout, TextLayout, ImageLayout, \
