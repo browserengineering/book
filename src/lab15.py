@@ -7,7 +7,6 @@ without exercises.
 import sys
 import ctypes
 import dukpy
-import gtts
 import math
 import os
 import sdl2
