@@ -43,6 +43,12 @@ window = tkinter.Tk()
 tkinter.mainloop()
 ```
 
+::: {.installation}
+Usually Tk ships with Python, so you probably already have it
+installed. But on some Linux distributions, you might need to install
+a separate package called something like `python3-tk`.
+:::
+
 Here, `tkinter.Tk()` asks the desktop environment to create a window
 and returns an object that you can use to draw to the window. The
 `tkinter.mainloop()` call enters a loop that looks like this:[^infinite-loop]
