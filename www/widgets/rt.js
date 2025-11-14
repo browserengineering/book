@@ -6,7 +6,6 @@ export {
     truthy, comparator, pysplit, pyrsplit, asyncfilter,
     rt_constants, Widget, http_textarea, skia, sdl2, init_skia,
     init_window, threading, time, OpenGL, patch_class, patch_function, dict,
-    gtts, os, playsound
     };
 
 function patch_class(cls, patched_cls) {
@@ -895,22 +894,6 @@ function init_skia(canvasKit, robotoData) {
 class OpenGL {
     static GL = {
         GL_RGBA8 : 0
-    }
-}
-
-class gtts {
-    static gTTS(text) {
-        return { save: (file) => {} }
-    }
-}
-
-class playsound {
-    static playsound(file) {
-    }
-}
-
-class os {
-    static remove(file) {
     }
 }
 

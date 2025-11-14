@@ -8,13 +8,7 @@ import sys
 import ctypes
 import dukpy
 import math
-import os
-import gtts
-try:
-    import playsound
-except:
-    playsound = None
-    
+
 import sdl2
 import skia
 import socket
@@ -494,15 +488,8 @@ class AccessibilityNode:
         return "AccessibilityNode(node={} role={} text={} bounds={}".format(
             str(self.node), self.role, self.text, self.bounds)
 
-SPEECH_FILE = "/tmp/speech-fragment.mp3"
-
 def speak_text(text):
     print("SPEAK:", text)
-    tts = gtts.gTTS(text)
-    tts.save(SPEECH_FILE)
-    if playsound:
-        playsound.playsound(SPEECH_FILE)
-    os.remove(SPEECH_FILE)
     
 class PseudoclassSelector:
     def __init__(self, pseudoclass, base):

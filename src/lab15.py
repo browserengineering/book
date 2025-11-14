@@ -7,7 +7,6 @@ without exercises.
 import sys
 import ctypes
 import dukpy
-import gtts
 import math
 import os
 import sdl2
@@ -44,7 +43,7 @@ from lab14 import parse_outline, paint_outline, \
     dpx, cascade_priority, style, \
     is_focusable, get_tabindex, speak_text, \
     CSSParser, mainloop, Browser, Chrome, Tab, \
-    AccessibilityNode, PseudoclassSelector, SPEECH_FILE
+    AccessibilityNode, PseudoclassSelector
 from lab14 import DocumentLayout, BlockLayout, LineLayout, TextLayout
 
 @wbetools.patch(URL)

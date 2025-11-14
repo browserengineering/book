@@ -1769,6 +1769,12 @@ more clearly how screen readers interact with the accessibility tree, our
 discussion of screen reader support will instead include a minimal
 screen reader integrated directly into the browser.
 
+[^why-diff]: Screen readers need to help the user with operating
+    system actions such as logging in, starting applications, and
+    switching between them, so it makes sense for the screen reader to
+    be outside any application and to integrate with them through the
+    operating system.
+
 But should our built-in screen reader live in the `Browser` or each `Tab`?
 Modern browsers generally talk to screen readers from  something like the
 `Browser`, so we'll do that too.^[And therefore the browser thread in our
@@ -1813,54 +1819,22 @@ browser thread, much like with the display list, to avoid a data race.
 [ch12-commit]: scheduling.html#committing-a-display-list
 
 Now that the tree is in the browser thread, let's implement the screen
-reader. We'll use two Python libraries to actually read text out loud:
-[`gtts`][gtts] (which wraps the Google [text-to-speech service][tts])
-and [`playsound`][playsound]. You can install them using `pip`:
+reader. Normally screen readers read text aloud, often much faster
+than a normal speaking pace. Let's skip that---it'd add all sorts of
+complexities around audio mixing and playback---and just have the
+screen reader print the text it's going to say to the screen.[^playsound]
 
-[^why-diff]: Screen readers need to help the user with operating
-    system actions such as logging in, starting applications, and
-    switching between them, so it makes sense for the screen reader to
-    be outside any application and to integrate with them through the
-    operating system.
-
-[gtts]: https://pypi.org/project/gTTS/
-
-[tts]: https://cloud.google.com/text-to-speech/docs/apis
-
-[playsound]: https://pypi.org/project/playsound/
-
-``` {.sh}
-python3 -m pip install gtts
-python3 -m pip install playsound
-```
+[^playsound]: Older editions of this book implemented an actual speech
+    engine using the `playsound` and `gtts` libraries, but it was
+    perhaps too simple to be useful; see Exercise 14-11.
 
 You can use these libraries to convert text to an audio file, and then
 play it:
 
 ``` {.python}
-import os
-import gtts
-import playsound
-
-SPEECH_FILE = "/tmp/speech-fragment.mp3"
-
 def speak_text(text):
     print("SPEAK:", text)
-    tts = gtts.gTTS(text)
-    tts.save(SPEECH_FILE)
-    playsound.playsound(SPEECH_FILE)
-    os.remove(SPEECH_FILE)
 ```
-
-::: {.quirk}
-You may need to adjust the `SPEECH_FILE` path to fit your system
-better. If you have trouble importing any of the libraries, you may
-need to consult the [`gtts`][gtts] or [`playsound`][playsound]
-documentation. If you can't get these libraries working, just delete
-everything in `speak_text` except the `print` statement. You won't
-hear things being spoken, but you can at least debug by watching the
-console output.
-:::
 
 To start with, we'll want a key binding that turns the screen reader
 on and off. While real operating systems typically use more obscure
@@ -2724,3 +2698,13 @@ accessibility feature to web developers, plus it allows applying it only
 to designated HTML subtrees.
 
 [zoom-property]: https://developer.mozilla.org/en-US/docs/Web/CSS/zoom
+
+14-11 *Speaking out loud*. Add code to actually read web pages aloud.
+The [`pyttsx`][pyttsx] library can speak text in "non-blocking" mode,
+though it will require some integration with the browser event loop.
+Make sure to interrupt speech when the user hovers over nodes or tabs
+throughout the document. Implement the `aria-live` attribute so the
+author can create either `assertive` alerts that interrupt current
+speech or `polite` ones that don't.
+
+[pyttsx]: https://pypi.org/project/pyttsx3/

@@ -234,20 +234,6 @@ class Event:
         self.x = x
         self.y = y
 
-class gtts:
-    class gTTS:
-        def __init__(self, text):
-            pass
-        def save(self, file):
-            pass
-
-    @classmethod
-    def patch(cls):
-        import sys
-        sys.modules["gtts"] = cls()
-
-
-
 def SDL_GetWindowSurfacePatched(window):
     return None
 
