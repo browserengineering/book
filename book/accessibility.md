@@ -2699,13 +2699,12 @@ to designated HTML subtrees.
 
 [zoom-property]: https://developer.mozilla.org/en-US/docs/Web/CSS/zoom
 
-14-11 *Speaking out loud*. Implement a simple screen reader to
-actually read web pages aloud. The [`pyttsx`][pyttsx] is one popular
-option for speaking text, and can run in "non-blocking" mode, though
-it will require some integration with the browser event loop. Make
-sure to handle interrupting the speech when the user takes actions
-like hovering over nodes or tabbing throughout the document. Implement
-the `aria-live` attribute so the author can create either `assertive`
-alerts that interrupt current speech or `polite` ones that don't.
+14-11 *Speaking out loud*. Add code to actually read web pages aloud.
+The [`pyttsx`][pyttsx] library can speak text in "non-blocking" mode,
+though it will require some integration with the browser event loop.
+Make sure to interrupt speech when the user hovers over nodes or tabs
+throughout the document. Implement the `aria-live` attribute so the
+author can create either `assertive` alerts that interrupt current
+speech or `polite` ones that don't.
 
 [pyttsx]: https://pypi.org/project/pyttsx3/
