@@ -1822,7 +1822,11 @@ Now that the tree is in the browser thread, let's implement the screen
 reader. Normally screen readers read text aloud, often much faster
 than a normal speaking pace. Let's skip that---it'd add all sorts of
 complexities around audio mixing and playback---and just have the
-screen reader print the text it's going to say to the screen.
+screen reader print the text it's going to say to the screen.[^playsound]
+
+[^playsound]: Older editions of this book implemented an actual speech
+    engine using the `playsound` and `gtts` libraries, but it was
+    perhaps too simple to be useful; see Exercise 14-11.
 
 You can use these libraries to convert text to an audio file, and then
 play it:
@@ -2694,3 +2698,14 @@ accessibility feature to web developers, plus it allows applying it only
 to designated HTML subtrees.
 
 [zoom-property]: https://developer.mozilla.org/en-US/docs/Web/CSS/zoom
+
+14-11 *Speaking out loud*. Implement a simple screen reader to
+actually read web pages aloud. The [`pyttsx`][pyttsx] is one popular
+option for speaking text, and can run in "non-blocking" mode, though
+it will require some integration with the browser event loop. Make
+sure to handle interrupting the speech when the user takes actions
+like hovering over nodes or tabbing throughout the document. Implement
+the `aria-live` attribute so the author can create either `assertive`
+alerts that interrupt current speech or `polite` ones that don't.
+
+[pyttsx]: https://pypi.org/project/pyttsx3/
