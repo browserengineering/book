@@ -926,7 +926,7 @@ def get_font(size, weight, style):
 `metrics` for some reason, and is recommended by the [Python
 documentation][metrics-doc].
 
-[metrics-doc]: https://github.com/python/cpython/blob/main/Lib/tkinter/font.py#L163
+[metrics-doc]: https://github.com/python/cpython/blob/v3.14.0/Lib/tkinter/font.py#L166-L167
 
 Then the `word` method can call `get_font` instead of creating a `Font`
 object directly:
