@@ -28,7 +28,7 @@ class Data:
             json.dump(self.data, f)
 
     def safe_tag(self, tag):
-        if tag.lower() in [ "p", "li", "pre", "span" ]:
+        if isinstance(tag, str) and tag.lower() in [ "p", "li", "pre", "span" ]:
             return tag
         else:
             return "p"
@@ -39,18 +39,22 @@ class Data:
                obj['old'] == old and
                obj['new'] == new for obj in self.data):
             return
-        self.data.append({
-            'id': len(self.data),
-            'time': time.time(),
-            'type': 'typo',
-            'tag': self.safe_tag(tag),
-            'url': url,
-            'old': old,
-            'new': new,
-            'name': name,
-            'status': 'new',
-        })
-        self.save()
+        if isinstance(url, str) and isinstance(old, str) and \
+           isinstance(new, str) and isinstance(name, str):
+            self.data.append({
+                'id': len(self.data),
+                'time': time.time(),
+                'type': 'typo',
+                'tag': self.safe_tag(tag),
+                'url': url,
+                'old': old,
+                'new': new,
+                'name': name,
+                'status': 'new',
+            })
+            self.save()
+        else:
+            abort(400, "Invalid JSON object")
 
     def text_comment(self, url, text, comment, name, tag="p"):
         if any(obj['type'] == 'comment' and
@@ -58,35 +62,43 @@ class Data:
                obj['text'] == text and
                obj['comment'] == comment for obj in self.data):
             return
-        self.data.append({
-            'id': len(self.data),
-            'time': time.time(),
-            'type': 'comment',
-            'tag': self.safe_tag(tag),
-            'url': url,
-            'text': text,
-            'comment': comment,
-            'name': name,
-            'status': 'new',
-        })
-        self.save()
+        if isinstance(url, str) and isinstance(text, str) and \
+           isinstance(comment, str) and isinstance(name, str):
+            self.data.append({
+                'id': len(self.data),
+                'time': time.time(),
+                'type': 'comment',
+                'tag': self.safe_tag(tag),
+                'url': url,
+                'text': text,
+                'comment': comment,
+                'name': name,
+                'status': 'new',
+            })
+            self.save()
+        else:
+            abort(400, "Invalid JSON object")
 
     def chapter_comment(self, url, comment, name, email):
         if any(obj['type'] == 'chapter_comment' and
                obj['url'] == url and
                obj['comment'] == comment for obj in self.data):
             return
-        self.data.append({
-            'id': len(self.data),
-            'time': time.time(),
-            'type': 'chapter_comment',
-            'url': url,
-            'comment': comment,
-            'name': name,
-            'email': email,
-            'status': 'new',
-        })
-        self.save()
+        if isinstance(url, str) and isinstance(email, str) and \
+           isinstance(comment, str) and isinstance(name, str):
+            self.data.append({
+                'id': len(self.data),
+                'time': time.time(),
+                'type': 'chapter_comment',
+                'url': url,
+                'comment': comment,
+                'name': name,
+                'email': email,
+                'status': 'new',
+            })
+            self.save()
+        else:
+            abort(400, "Invalid JSON object")
 
     def status(self, i):
         return self.data[i]["status"]
