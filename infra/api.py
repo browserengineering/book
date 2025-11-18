@@ -33,6 +33,9 @@ class Data:
         else:
             return "p"
 
+    def new_id(self):
+        return max([obj['id'] for obj in self.data]) + 1 if self.data else 0
+
     def typo(self, url, old, new, name, tag="p"):
         if any(obj['type'] == 'typo' and
                obj['url'] == url and
@@ -42,7 +45,7 @@ class Data:
         if isinstance(url, str) and isinstance(old, str) and \
            isinstance(new, str) and isinstance(name, str):
             self.data.append({
-                'id': len(self.data),
+                'id': self.new_id(),
                 'time': time.time(),
                 'type': 'typo',
                 'tag': self.safe_tag(tag),
@@ -65,7 +68,7 @@ class Data:
         if isinstance(url, str) and isinstance(text, str) and \
            isinstance(comment, str) and isinstance(name, str):
             self.data.append({
-                'id': len(self.data),
+                'id': self.new_id(),
                 'time': time.time(),
                 'type': 'comment',
                 'tag': self.safe_tag(tag),
@@ -87,7 +90,7 @@ class Data:
         if isinstance(url, str) and isinstance(email, str) and \
            isinstance(comment, str) and isinstance(name, str):
             self.data.append({
-                'id': len(self.data),
+                'id': self.new_id(),
                 'time': time.time(),
                 'type': 'chapter_comment',
                 'url': url,
