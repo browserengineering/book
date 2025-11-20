@@ -1,13 +1,13 @@
 # DukPy is used in Chapters 9+ for executing JavaScript
-dukpy==0.3.0
+dukpy==0.5.0
 
 # Skia is used in Chapters 11+ for advanced graphics
 skia-python==138
-pybind11==2.10.4
+pybind11==3.0.1
 
 # SDL2 is used in Chapters 11+ for a Skia-compatible GUI
-PySDL2==0.9.15
-pysdl2-dll==2.26.5
+PySDL2==0.9.17
+pysdl2-dll==2.32.0
 
 # OpenGL is used in Chapters 13+ for GPU-accellerated Skia
-PyOpenGL==3.1.6
+PyOpenGL==3.1.10
