@@ -127,7 +127,7 @@ def dirty_style(node)
 class ProtectedField:
     def __init__(obj, name, parent, dependencies, invalidations)
     def set_dependencies(dependencies)
-    def set_ancestor_dirty_bits()
+    def set_ancestor_dirty_flags()
     def mark()
     def notify()
     def set(value)
