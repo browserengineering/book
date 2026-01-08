@@ -40,7 +40,7 @@ graphics cards and GPUs became widespread.
 Start by installing [Skia][skia-python] and [SDL][sdl-python]:[^book-old]
 
 ``` {.sh}
-python3 -m pip install skia-python pysdl2 pysdl2-dll
+python3 -m pip install skia-python pysdl2 pysdl2-dll PyOpenGL
 ```
 
 As elsewhere in this book, you may need to install the `pip` package
