@@ -459,7 +459,7 @@ class Chrome:
             self.urlbar_bottom - self.padding)
 
         self.address_rect = skia.Rect.MakeLTRB(
-            self.back_rect.top() + self.padding,
+            self.back_rect.right() + self.padding,
             self.urlbar_top + self.padding,
             WIDTH - self.padding,
             self.urlbar_bottom - self.padding)

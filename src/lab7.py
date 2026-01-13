@@ -383,8 +383,9 @@ class Chrome:
             self.padding + back_width,
             self.urlbar_bottom - self.padding)
 
+        print('hi')
         self.address_rect = Rect(
-            self.back_rect.top + self.padding,
+            self.back_rect.right + self.padding,
             self.urlbar_top + self.padding,
             WIDTH - self.padding,
             self.urlbar_bottom - self.padding)
