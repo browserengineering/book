@@ -1057,7 +1057,7 @@ This "URL bar" will contain the back button and the address bar:
 ``` {.python}
 class Chrome:
     def __init__(self, browser):
-    # ...
+        # ...
         back_width = self.font.measure("<") + 2*self.padding
         self.back_rect = Rect(
             self.padding,
