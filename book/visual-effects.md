@@ -465,7 +465,7 @@ documentation for more on the Skia API.
 
 ``` {.python replace=%2c%20scroll/,%20-%20scroll/}
 class DrawLine:
-    def execute(self, canvas, scroll):
+    def execute(self, scroll, canvas):
         path = skia.Path().moveTo(
             self.rect.left(), self.rect.top() - scroll) \
                 .lineTo(self.rect.right(),
@@ -494,7 +494,7 @@ We do something similar to draw text using `drawString`:
 
 ``` {.python replace=%2c%20scroll/,%20-%20scroll/}
 class DrawText:
-    def execute(self, canvas, scroll):
+    def execute(self, scroll, canvas):
         paint = skia.Paint(
             AntiAlias=True,
             Color=parse_color(self.color),
@@ -519,7 +519,7 @@ Finally, for drawing rectangles you use `drawRect`:
 
 ``` {.python replace=%2c%20scroll/,rect.makeOffset(0%2c%20-scroll)/rect}
 class DrawRect:
-    def execute(self, canvas, scroll):
+    def execute(self, scroll, canvas):
         paint = skia.Paint(
             Color=parse_color(self.color),
         )
