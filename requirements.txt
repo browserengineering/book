@@ -2,7 +2,7 @@
 dukpy==0.5.0
 
 # Skia is used in Chapters 11+ for advanced graphics
-skia-python==138
+skia-python==144.0.post1
 pybind11==3.0.1
 
 # SDL2 is used in Chapters 11+ for a Skia-compatible GUI
