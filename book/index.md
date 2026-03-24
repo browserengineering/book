@@ -9,24 +9,24 @@ building a basic but complete web browser, from networking to
 JavaScript, in a couple thousand lines of Python.
 
 ::::: {.wide-ad}
+
 ![The cover for Web Browser Engineering, from Oxford University Press](im/cover.jpg)
 
 ::: {.description}
 # Buy _Web Browser Engineering_
 
-_Web Browser Engineering_ is available in English
-for about $50 from
-[Bookshop.org](https://bookshop.org/p/books/web-browser-engineering-chris-harrelson/21588966),
+_Web Browser Engineering_ is available from
+[Bookshop](https://bookshop.org/p/books/web-browser-engineering-chris-harrelson/21588966),
 [B&N](https://www.barnesandnoble.com/w/web-browser-engineering-pavel-panchekha/1146050176),
-or [Amazon](https://amzn.to/4hFTkC2),
-and in Korean from
-[Yes24](https://www.yes24.com/product/goods/153499985)
-or directly from
-[Hanbit](https://www.hanbit.co.kr/store/books/look.php?p_code=B6818199506).
-More translations coming soon.
+and [Amazon](https://amzn.to/4hFTkC2),
+or in translation
+in Korean (from [Hanbit](https://www.hanbit.co.kr/store/books/look.php?p_code=B6818199506))
+and Japanese (from [O'Reilly](https://www.oreilly.co.jp/books/9784814401574/)).
 :::
 
-![here](im/wbe-korean.jpeg)
+![The cover for Web Browser Engineering in Korean, from Hanbit](im/wbe-korean.jpeg)
+
+![The cover for Web Browser Engineering in Japanese, from O'Reilly](im/wbe-japanese.jpeg)
 
 :::::
 
