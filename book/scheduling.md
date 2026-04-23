@@ -301,9 +301,6 @@ class TaskRunner:
         self.condition.release()
         if task:
             task.run()
-
-        self.condition.acquire(blocking=True)
-        self.condition.release()
 ```
 
 [condition-variable]: https://docs.python.org/3/library/threading.html#threading.Condition
