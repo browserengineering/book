@@ -703,7 +703,7 @@ line.](im/text-line.png)
 
 Let's start with phase one. Since one line contains text from many
 tags, we need a field on `Layout` to store the line-to-be. That
-field, `line`, will be a list, and `text` will add words to it instead
+field, `line`, will be a list, and `word` will add words to it instead
 of to the display list. Entries in `line` will have *x* but not *y*
 positions, since *y* positions aren't computed in the first phase:
 
@@ -718,6 +718,7 @@ class Layout:
     def word(self, word):
         # ...
         self.line.append((self.cursor_x, word, font))
+        # ...
 ```
 
 The new `line` field is essentially a buffer, where words are held
@@ -727,6 +728,7 @@ being flushed when we're finished with a line:
 ``` {.python}
 class Layout:
     def word(self, word):
+        # ...
         if self.cursor_x + w > WIDTH - HSTEP:
             self.flush()
 ```
