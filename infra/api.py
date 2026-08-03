@@ -132,20 +132,20 @@ class Data:
 
 DATA = Data("db.json")
 
+def feedback_disabled():
+    bottle.abort(410, "Feedback submission is disabled.")
+
 @bottle.post("/api/typo")
 def typo():
-    data = json.load(bottle.request.body)
-    DATA.typo(**data)
+    feedback_disabled()
 
 @bottle.post("/api/text_comment")
 def text_comment():
-    data = json.load(bottle.request.body)
-    DATA.text_comment(**data)
+    feedback_disabled()
 
 @bottle.post("/api/chapter_comment")
 def comment():
-    data = json.load(bottle.request.body)
-    DATA.chapter_comment(**data)
+    feedback_disabled()
 
 @bottle.post("/api/quiz_telemetry", method=['OPTIONS', 'POST'])
 def quiz_telemetry():

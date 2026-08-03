@@ -51,10 +51,9 @@ there are other text editing APIs that can't be. For example, the
     layout, just paint.
 
 [^amazing-ce]: The `contenteditable` attribute can turn any element on
-    any page into a living document. It's how we implemented the "typo"
-    feature for this book: type `Ctrl-E` (or `Cmd-E` on a Mac) to turn
-    it on. The source code is [on the website](https://browser.engineering/feedback.js); see the
-    `typo_mode` function for the `contenteditable` attribute.
+    any page into a living document. When we were first writing this book,
+    we used it to implement a typo feature on this website, so users could
+    make corrections and send them to us for review.
 
 ::: {.web-only .demo contenteditable=true}
 Click on this <i>formatted</i> <b>text</b> to edit it, including rich text!
