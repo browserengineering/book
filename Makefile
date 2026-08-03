@@ -15,7 +15,7 @@ EXAMPLE_HTML=$(patsubst src/example%.html,%,$(wildcard src/example*.html))
 EXAMPLE_JS=$(patsubst src/example%.js,%,$(wildcard src/example*.js))
 EXAMPLE_CSS=$(patsubst src/example%.css,%,$(wildcard src/example*.css))
 
-book: $(patsubst %,www/%.html,$(CHAPTERS)) www/rss.xml widgets examples www/index.html
+book: $(patsubst %,www/%.html,$(CHAPTERS)) www/rss.xml widgets examples www/index.html www/onepage.html
 examples: $(patsubst %,www/examples/example%.html,$(EXAMPLE_HTML)) \
 	$(patsubst %,www/examples/example%.js,$(EXAMPLE_JS)) \
 	$(patsubst %,www/examples/example%.css,$(EXAMPLE_CSS))
