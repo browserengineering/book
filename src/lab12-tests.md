@@ -46,7 +46,7 @@ The Tab has already committed:
     >>> len(browser.active_tab_display_list)
     1
 
-But no raster or draw should have occured, because that is the responsibility
+But no raster or draw should have occurred, because that is the responsibility
 of the Browser event loop, which we are running manually in this test.
 
     >>> browser.tab_surface == None
