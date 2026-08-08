@@ -111,7 +111,7 @@ me to join the adventure. (Turns out Pavel and I had the same idea!)
 A final note
 ============
 
-This book is, and will remain, a work in progress. Please [email us](mailto:author@browser.engineering)
+This book is, and will remain, a work in progress. Please [file a github issue](https://github.com/browserengineering/book/issues/new)
 with comments or typos. The full source code is also available
 [on GitHub][github].
 
