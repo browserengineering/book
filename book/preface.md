@@ -108,7 +108,7 @@ me to join the adventure. (Turns out Pavel and I had the same idea!)
 
 ::: {.web-only}
 
-A final note
+A Final Note
 ============
 
 This book is, and will remain, a work in progress. Please [file a github issue](https://github.com/browserengineering/book/issues/new)
