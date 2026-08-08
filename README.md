@@ -17,11 +17,11 @@ The source code contains:
 - A template and code for converting the book to HTML, in `infra/`
 - Chapter-by-chapter implementations of the browser, in `src/`
 - Styling for the book's website, in `www/`
-- The book's built-in feedback system, in `www/`, including JavaScript
-  and the Python backend.
+- The Python backend for the book's former feedback system, in `www/` and
+  `infra/`.
 
-We prefer to receive typos and small comments on the text using the
-book's built-in feedback tools, which you can enable with `Ctrl+E`.
+The book's built-in feedback system is disabled. Please [open a GitHub issue](https://github.com/browserengineering/book/issues)
+with typos or small comments about the text.
 
 You can run the book's built-in checks with:
 

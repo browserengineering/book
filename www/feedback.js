@@ -5,6 +5,10 @@
 // This code is written in a bit of an odd style to avoid error
 // messages in the WBE browser. There's a lot of old-school JS.
 
+// Retained for historical reference, but the public feedback mechanism is
+// disabled. The server also rejects all feedback submissions.
+var FEEDBACK_ENABLED = false;
+
 var chapter_overlay;
 
 function ctrl_key_pressed(e) {
@@ -25,6 +29,7 @@ function ctrl_key_name() {
 
 if (document.addEventListener)
 document.addEventListener("DOMContentLoaded", function() {
+    if (!FEEDBACK_ENABLED) return;
     if (window.localStorage["edit"] == "true") {
         typo_mode();
     }
