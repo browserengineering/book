@@ -8,7 +8,6 @@ import sys
 import ctypes
 import dukpy
 import math
-import os
 import sdl2
 import skia
 import socket

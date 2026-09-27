@@ -1,0 +1,24 @@
+/* Self-hosted copies of the fonts used by the interactive widgets. */
+@font-face {
+  font-family: "Merriweather";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url("merriweather.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Lora";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("lora.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Vollkorn";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("vollkorn.ttf") format("truetype");
+}
