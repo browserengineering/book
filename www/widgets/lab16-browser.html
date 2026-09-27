@@ -12,7 +12,7 @@ const ckLoaded = CanvasKitInit({
   locateFile: (file) => '/widgets/' + file});
 
 const robotoData = await fetch(
-  'https://storage.googleapis.com/skia-cdn/misc/Roboto-Regular.ttf')
+  './roboto.ttf')
   .then((response) => response.arrayBuffer());
 
 const CanvasKit = await ckLoaded;
