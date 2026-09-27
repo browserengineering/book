@@ -69,8 +69,8 @@ latex/book.tex: latex/book-skeleton.tex latex-chapters
 	sed -i.bak '/---Contents---/d' latex/book.tex
 
 latex/book.pdf: latex/book.tex latex/macros.tex
-	(cd latex && ln -f -s ../www/examples/ examples)
-	(cd latex && ln -f -s ../www/im/ im)
+	(cd latex && ln -f -s -n ../www/examples/ examples)
+	(cd latex && ln -f -s -n ../www/im/ im)
 	(cd latex && pdflatex book.tex)
 
 www/%.html: book/%.md infra/template.html infra/signup.html infra/filter.lua config.json src/lab*.py
