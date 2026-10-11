@@ -149,7 +149,7 @@ finer-grained control over appearance, which a canvas provides.[^widgets]
 [^svga]: This size, called Super Video Graphics Array (SVGA), was standardized
 in 1987, and probably did seem super back then.
 
-To keep it all organized let's put this code in a class:
+To keep it all organized let's put this code in a class:[^geometry]
 
 ``` {.python}
 WIDTH, HEIGHT = 800, 600
@@ -163,7 +163,15 @@ class Browser:
             height=HEIGHT
         )
         self.canvas.pack()
+        self.window.geometry(f"{WIDTH}x{HEIGHT}")
 ```
+
+[^geometry]: The class also calls `geometry`, which sets the window's
+    size to match the canvas. That shouldn't be necessary, but Tk 9.1 on
+    macOS has a [bug][tk-40dc19ee] that leaves a canvas blank until its
+    window is first resized, and setting the size explicitly avoids it.
+
+[tk-40dc19ee]: https://core.tcl-lang.org/tk/tktview/40dc19ee
 
 Once you've made a canvas, you can call methods that draw shapes on
 the canvas. Let's do that inside `load`, which we'll move into the new
