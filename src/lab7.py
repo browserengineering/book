@@ -495,6 +495,7 @@ class Browser:
             bg="white",
         )
         self.canvas.pack()
+        self.window.geometry(f"{WIDTH}x{HEIGHT}")
 
         self.window.bind("<Down>", self.handle_down)
         self.window.bind("<Button-1>", self.handle_click)

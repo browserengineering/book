@@ -291,6 +291,7 @@ class Browser:
             bg="white",
         )
         self.canvas.pack()
+        self.window.geometry(f"{WIDTH}x{HEIGHT}")
 
         self.scroll = 0
         self.window.bind("<Down>", self.scrolldown)
