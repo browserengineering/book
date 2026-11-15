@@ -948,7 +948,10 @@ def init_style(node):
 @wbetools.patch(style)
 def style(node, rules, frame):
     if not node.style:
+        first_time = True
         init_style(node)
+    else:
+        first_time = False
     needs_style = any([field.dirty for field in node.style.values()])
     if needs_style:
         old_style = dict([
@@ -984,7 +987,7 @@ def style(node, rules, frame):
             node_pct = float(new_style["font-size"][:-1]) / 100
             parent_px = float(parent_font_size[:-2])
             new_style["font-size"] = str(node_pct * parent_px) + "px"
-        if old_style:
+        if not first_time:
             transitions = diff_styles(old_style, new_style)
             for property, (old_value, new_value, num_frames) in \
                 transitions.items():
