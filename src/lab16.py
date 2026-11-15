@@ -1001,6 +1001,7 @@ def style(node, rules, frame):
         style(child, rules, frame)
 
 def dirty_style(node):
+    if not node.style: return
     for property, value in node.style.items():
         value.mark()
 
@@ -1249,6 +1250,7 @@ class Frame:
         self.set_needs_render()
 
     def click(self, x, y):
+        if not self.document: return
         self.focus_element(None)
         y += self.scroll
         loc_rect = skia.Rect.MakeXYWH(x, y, 1, 1)
