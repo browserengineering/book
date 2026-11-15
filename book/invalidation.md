@@ -2043,11 +2043,13 @@ class Tab:
     def zoom_by(self, increment):
         # ...
         for id, frame in self.window_id_to_frame.items():
+            if not frame.document: continue
             frame.document.zoom.mark()
 
     def reset_zoom(self):
         # ...
         for id, frame in self.window_id_to_frame.items():
+            if not frame.document: continue
             frame.document.zoom.mark()
 ```
 
