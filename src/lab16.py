@@ -1226,7 +1226,7 @@ class Frame:
         new_scroll = obj.y.get() - SCROLL_STEP
         self.scroll = self.clamp_scroll(new_scroll)
         self.scroll_changed_in_frame = True
-        self.set_needs_paint()
+        self.tab.set_needs_paint()
 
     def clamp_scroll(self, scroll):
         height = math.ceil(self.document.height.get() + 2*VSTEP)
