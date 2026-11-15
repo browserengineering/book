@@ -469,7 +469,8 @@ class Chrome:
         if self.focus == "address bar":
             self.browser.schedule_load(URL(self.address_bar))
             self.focus = None
-            self.browser.focus = None
+            return True
+        return False
     
     def tab_rect(self, i):
         tabs_start = self.newtab_rect.right() + self.padding
@@ -538,13 +539,6 @@ class Chrome:
                 url, self.font, "black"))
 
         return cmds
-
-    def enter(self):
-        if self.focus == "address bar":
-            self.browser.active_tab.load(URL(self.address_bar))
-            self.focus = None
-            return True
-        return False
 
 @wbetools.patch(Browser)
 class Browser:
