@@ -848,7 +848,7 @@ def mainloop(browser):
                         browser.focus_addressbar()
                     elif event.key.keysym.sym == sdl2.SDLK_t:
                         browser.new_tab(
-                            "https://browser.engineering/")
+                            URL("https://browser.engineering/"))
                     elif event.key.keysym.sym == sdl2.SDLK_TAB:
                         browser.cycle_tabs()
                     elif event.key.keysym.sym == sdl2.SDLK_q:
