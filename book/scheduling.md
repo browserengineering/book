@@ -764,7 +764,7 @@ class Browser:
 
 Here I need a small change to make `enter` return whether something was done:
 
-``` {.python}
+``` {.python replace=active_tab.load/schedule_load}
 class Chrome:
     def enter(self):
         if self.focus == "address bar":
