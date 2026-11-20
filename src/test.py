@@ -118,6 +118,9 @@ class SilentTk:
     def bind(self, event, callback):
         pass
 
+    def geometry(self, spec):
+        pass
+
 tkinter.Tk = SilentTk
 
 class SilentCanvas:
